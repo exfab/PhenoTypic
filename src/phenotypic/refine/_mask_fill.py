@@ -10,7 +10,7 @@ from scipy.ndimage import binary_fill_holes
 from typing import Optional
 
 from phenotypic.abc_ import ObjectRefiner
-from phenotypic.tools.funcs_ import is_binary_mask
+from phenotypic.tools_.funcs_ import is_binary_mask
 
 
 class MaskFill(ObjectRefiner):
@@ -20,7 +20,7 @@ class MaskFill(ObjectRefiner):
         Thresholding on agar-plate images can leave small voids inside colony
         masks due to illumination gradients, pigment heterogeneity, or glare.
         Filling these holes produces contiguous masks that better match the
-        true colony footprint and improve area-based phenotypes.
+        true colony shape and improve area-based phenotypes.
 
     Why this is useful for agar plates:
         Many colonies exhibit darker centers or radial texture. Hole filling
@@ -47,11 +47,11 @@ class MaskFill(ObjectRefiner):
             influence edge behavior at colony boundaries.
 
     Examples:
-        .. dropdown:: Fill holes in colony masks to produce solid shapes
+        Fill holes in colony masks to produce solid shapes:
 
-            >>> from phenotypic.refine import MaskFill
-            >>> op = MaskFill()
-            >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+        >>> from phenotypic.refine import MaskFill
+        >>> op = MaskFill()
+        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
     """
 
     def __init__(self, structure: Optional[np.ndarray] = None, origin: int = 0):
@@ -77,6 +77,6 @@ class MaskFill(ObjectRefiner):
 
     def _operate(self, image: Image) -> Image:
         image.objmask[:] = binary_fill_holes(
-            input=image.objmask[:], structure=self.structure, origin=self.origin
+                input=image.objmask[:], structure=self.structure, origin=self.origin
         )
         return image

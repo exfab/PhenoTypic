@@ -5,7 +5,6 @@ from typing import Literal, TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic import Image
 
-import numpy as np
 from skimage.morphology import skeletonize
 
 from phenotypic.abc_ import ObjectRefiner
@@ -17,7 +16,7 @@ class Skeletonize(ObjectRefiner):
     Intuition:
         Skeletonization compresses object regions to their medial axes (centerlines),
         preserving topological structure while reducing to 1-pixel width. On agar plates,
-        this distills colony morphology to its core branching structure, useful for
+        this distills colony morphology to its _core branching structure, useful for
         analyzing filamentous or spreading phenotypes without boundary noise. The method
         efficiently extracts the 'backbone' of colony shape.
 
@@ -51,11 +50,11 @@ class Skeletonize(ObjectRefiner):
             - None: Auto-select based on image dimensionality (Zhang for 2D, Lee for 3D).
 
     Examples:
-        .. dropdown:: Reduce filamentous colony to medial axis skeleton
+        Reduce filamentous colony to medial axis skeleton:
 
-            >>> from phenotypic.refine import Skeletonize
-            >>> op = Skeletonize(method="zhang")
-            >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+        >>> from phenotypic.refine import Skeletonize
+        >>> op = Skeletonize(method="zhang")
+        >>> image = op.apply(image, inplace=True) # doctest: +SKIP
 
     Raises:
         ValueError: If an invalid ``method`` is provided (checked during operation).
@@ -80,5 +79,5 @@ class Skeletonize(ObjectRefiner):
         self.method: Literal["zhang", "lee"] | None = method
 
     def _operate(self, image: Image) -> Image:
-        image.objmask[:] = skeletonize(image.objmask[:], method=self.method)
+        image.objmask[:] = skeletonize(image.objmask.copy(), method=self.method)
         return image

@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic import Image
 
-import numpy as np
 from skimage.morphology import thin
 
 from phenotypic.abc_ import ObjectRefiner
@@ -54,17 +53,17 @@ class Thinning(ObjectRefiner):
             higher (10-50 depending on colony size).
 
     Examples:
-        .. dropdown:: Gradually thin colonies to clarify boundaries
+        Gradually thin colonies to clarify boundaries:
 
-            >>> from phenotypic.refine import Thinning
-            >>> op = Thinning(max_num_iter=2)
-            >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+        >>> from phenotypic.refine import Thinning
+        >>> op = Thinning(max_num_iter=2)
+        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
 
-        .. dropdown:: Thin to convergence (full skeleton)
+        Thin to convergence (full skeleton):
 
-            >>> from phenotypic.refine import Thinning
-            >>> op = Thinning()  # Iterate until no change
-            >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+        >>> from phenotypic.refine import Thinning
+        >>> op = Thinning()  # Iterate until no change
+        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
 
     Raises:
         ValueError: If ``max_num_iter`` is negative (checked during operation).

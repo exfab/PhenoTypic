@@ -3,29 +3,13 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic import GridImage
-from phenotypic.abc_ import GridMeasureFeatures, MeasurementInfo
+from phenotypic.abc_ import GridMeasureFeatures
+from ..tools_.measurement_info_ import GRID_SPREAD
 
 import pandas as pd
 import numpy as np
 from scipy.spatial import distance_matrix
-from phenotypic.tools.constants_ import OBJECT, BBOX, GRID
-
-
-class GRID_SPREAD(MeasurementInfo):
-    """Grid section spatial spread measurements.
-
-    Provides measurements for evaluating spatial distribution of colonies within
-    grid sections of arrayed microbial assays.
-    """
-
-    @classmethod
-    def category(cls):
-        return "GridSpread"
-
-    OBJECT_SPREAD = (
-        "ObjectSpread",
-        "Sum of squared pairwise Euclidean distances between all unique colony pairs within a grid section. Quantifies spatial dispersion of colonies in a grid cell. Higher values indicate greater spread from the section center, suggesting over-segmentation, multi-detections, or colonies growing beyond expected boundaries. Used to identify problematic grid sections requiring refinement or quality review.",
-    )
+from phenotypic.tools_.measurement_info_ import BBOX, GRID
 
 
 class MeasureGridSpread(GridMeasureFeatures):
@@ -68,51 +52,45 @@ class MeasureGridSpread(GridMeasureFeatures):
                 Sorted in descending order by ObjectSpread.
 
     Examples:
-        .. dropdown:: Measure colony spread across a plate
+        Measure colony spread across a plate:
 
-            .. code-block:: python
+        >>> from phenotypic import GridImage
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.measure import MeasureGridSpread
+        >>> # Load a plate with grid
+        >>> grid_image = GridImage.imread("plate_384well.jpg", nrows=16, ncols=24)  # doctest: +SKIP
+        >>> # Detect colonies
+        >>> detector = OtsuDetector()
+        >>> grid_image = detector.operate(grid_image)  # doctest: +SKIP
+        >>> # Measure spread per well
+        >>> spreader = MeasureGridSpread()
+        >>> spread_results = spreader.operate(grid_image)  # doctest: +SKIP
+        >>> # Find wells with high spread (potential over-segmentation)
+        >>> high_spread = spread_results.nlargest(10, 'GridSpread_ObjectSpread')  # doctest: +SKIP
+        >>> print(f"Top 10 problematic wells:")  # doctest: +SKIP
+        >>> print(high_spread)  # doctest: +SKIP
 
-                from phenotypic import GridImage
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.measure import MeasureGridSpread
+        Identify over-segmented wells:
 
-                # Load a plate with grid
-                grid_image = GridImage.from_image_path("plate_384well.jpg", grid_shape=(16, 24))
-
-                # Detect colonies
-                detector = OtsuDetector()
-                grid_image = detector.operate(grid_image)
-
-                # Measure spread per well
-                spreader = MeasureGridSpread()
-                spread_results = spreader.operate(grid_image)
-
-                # Find wells with high spread (potential over-segmentation)
-                high_spread = spread_results.nlargest(10, 'GridSpread_ObjectSpread')
-                print(f"Top 10 problematic wells:")
-                print(high_spread)
-
-        .. dropdown:: Identify over-segmented wells
-
-            .. code-block:: python
-
-                # Flag wells with both multiple detections AND high spread
-                multi_obj = spread_results[spread_results['count'] > 1]
-                high_spread_multi = multi_obj[
-                    multi_obj['GridSpread_ObjectSpread'] > spread_results['GridSpread_ObjectSpread'].quantile(0.75)
-                ]
-                print(f"Wells needing refinement: {list(high_spread_multi.index)}")
+        >>> # Flag wells with both multiple detections AND high spread
+        >>> multi_obj = spread_results[spread_results['count'] > 1]  # doctest: +SKIP
+        >>> high_spread_multi = multi_obj[
+        ...     multi_obj['GridSpread_ObjectSpread'] > spread_results['GridSpread_ObjectSpread'].quantile(0.75)
+        ... ]  # doctest: +SKIP
+        >>> print(f"Wells needing refinement: {list(high_spread_multi.index)}")  # doctest: +SKIP
     """
 
-    @staticmethod
-    def _operate(image: GridImage) -> pd.DataFrame:
+    _measurement_info_class = GRID_SPREAD
+
+    def _operate(self, image: GridImage) -> pd.DataFrame:
         gs_table = image.grid.info()
-        gs_counts = pd.DataFrame(gs_table.loc[:, str(GRID.SECTION_NUM)].value_counts())
+        gs_counts = pd.DataFrame(
+            gs_table.loc[:, str(GRID.ROW_MAJOR_IDX)].value_counts())
 
         obj_spread = []
         for gs_bindex in gs_counts.index:
             curr_gs_subtable = gs_table.loc[
-                gs_table.loc[:, str(GRID.SECTION_NUM)] == gs_bindex, :
+                gs_table.loc[:, str(GRID.ROW_MAJOR_IDX)] == gs_bindex, :
             ]
 
             x_vector = curr_gs_subtable.loc[:, str(BBOX.CENTER_CC)]
@@ -121,8 +99,10 @@ class MeasureGridSpread(GridMeasureFeatures):
             gs_distance_matrix = distance_matrix(x=obj_vector, y=obj_vector, p=2)
 
             obj_spread.append(np.sum(np.unique(gs_distance_matrix) ** 2))
-        gs_counts.insert(loc=1, column=str(GRID_SPREAD.OBJECT_SPREAD), value=pd.Series(obj_spread))
-        gs_counts.sort_values(by=str(GRID_SPREAD.OBJECT_SPREAD), ascending=False, inplace=True)
+        gs_counts.insert(loc=1, column=str(GRID_SPREAD.OBJECT_SPREAD),
+                         value=pd.Series(obj_spread))
+        gs_counts.sort_values(by=str(GRID_SPREAD.OBJECT_SPREAD), ascending=False,
+                              inplace=True)
         return gs_counts
 
 

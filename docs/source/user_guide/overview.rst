@@ -25,14 +25,14 @@ A simple workflow for PhenoTypic using a pre-built pipline would look like:
     pipe = HeavyWatershedPipeline()
     new_image_one = pipe.apply(image)
 
-    # GridImage.show_overlay() shows the objects detected in the image
-    overlay_fig, overlay_ax = new_image_one.show_overlay()
+    # GridImage.plot.overlay() shows the objects detected in the image
+    overlay_fig, overlay_ax = new_image_one.plot.overlay()
     overlay_fig.show()
 
     # If the default settings don't work for your images continue tuning
     pipe_two = HeavyWatershedPipeline(border_remover_size=50)
     new_image_two = pipe_two.apply(image)
-    overlay_two_fig, overlay_two_ax = new_image_two.show_overlay()
+    overlay_two_fig, overlay_two_ax = new_image_two.plot.overlay()
     overlay_two_fig.show()
 
     # Once the overlay detection looks like how you want, then you

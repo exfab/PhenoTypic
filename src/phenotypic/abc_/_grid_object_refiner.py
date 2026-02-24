@@ -7,8 +7,8 @@ if TYPE_CHECKING:
 
 from phenotypic.abc_ import ObjectRefiner
 from phenotypic.abc_ import GridOperation
-from phenotypic.tools.exceptions_ import GridImageInputError
-from phenotypic.tools.funcs_ import validate_operation_integrity
+from phenotypic.tools_.exceptions_ import GridImageInputError
+from phenotypic.tools_.funcs_ import validate_operation_integrity
 from abc import ABC
 
 
@@ -18,22 +18,55 @@ class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
     GridObjectRefiner is the grid-aware variant of ObjectRefiner, combining object mask refinement
     with grid structure awareness. It refines detected objects (colony masks and labeled maps) while
     respecting well boundaries and grid-aligned regions in arrayed plate images (96-well, 384-well,
-    etc.). Like ObjectRefiner, it protects original image data (RGB, grayscale, enhanced grayscale)
+    etc.). Like ObjectRefiner, it protects original image data (RGB, grayscale, detection matrix)
     and modifies only detection results.
+
+    **Quick Decision Guide: GridObjectRefiner vs ObjectRefiner**
+
+    - **Use GridObjectRefiner if:** Refining detections on GridImage where well structure or grid
+      position affects refinement logic (per-well filtering, boundary enforcement, position-aware cleanup).
+    - **Use ObjectRefiner if:** Refining on plain Image without grid, or using global algorithms that
+      don't need grid awareness (size filtering, shape filtering, general morphology).
+    - **GridImage requirement:** GridObjectRefiner only accepts GridImage input; plain Image raises
+      GridImageInputError at runtime.
+    - **Grid-aware refinement:** Access well positions, row/column boundaries, and grid metadata via
+      image.grid to make position-aware decisions (e.g., filter colonies oversized for their well).
+    - **Oversized colonies:** [GridOversizedObjectRemover](src/phenotypic/refine/_grid_oversized_object_remover.py)
+      removes objects spanning nearly entire well (merged colonies, segmentation spillover).
+    - **Per-well largest:** [GridSectionLargest](src/phenotypic/refine/_grid_section_largest.py) keeps
+      only the largest object per grid cell (one colony per well).
+    - **Multi-well reducer:** [ReduceMultipleGridObjects](src/phenotypic/refine/_min_residual_error_reducer.py)
+      merges multiple objects per well into single representative region.
+    - **Border handling:** Grid structure enables identifying and filtering objects near plate/well
+      edges that may be incomplete or distorted.
+    - **Grid registration:** When grid detection is imperfect, grid-aware refinement helps filter
+      mis-assigned or boundary-adjacent objects by position.
+    - **When to chain:** Combine grid refiners in ImagePipeline (e.g., global size filter, then
+      per-well filtering) for comprehensive cleanup respecting array structure.
 
     **What is GridObjectRefiner?**
 
-    GridObjectRefiner is the specialized version of ObjectRefiner for GridImage objects:
+    GridObjectRefiner is the specialized version of ObjectRefiner for GridImage objects, adding grid-aware
+    refinement to the core post-detection cleanup workflow:
 
-    - **GridImage requirement:** Accepts only GridImage input (with detected grid structure),
-      enforced at runtime via ``GridImageInputError``.
+    - **Grid-structure awareness:** Unlike ObjectRefiner (which operates globally), GridObjectRefiner can
+      access grid boundaries, well positions, row/column indices, and per-cell metadata via ``image.grid``.
+      This enables refinement logic that respects array structure.
 
-    - **Grid-aware refinement:** Can access well positions, grid cell boundaries, and row/column
-      structure via ``image.grid`` to make refinement decisions (e.g., remove colonies that exceed
-      well boundaries, filter by grid position).
+    - **GridImage requirement:** Accepts only GridImage input (with detected grid structure), enforced
+      at runtime via ``GridImageInputError``. Passing a plain Image raises an error.
+
+    - **Grid access interface:** Within ``_operate()``, call ``image.grid.get_row_edges()``,
+      ``image.grid.get_col_edges()``, and ``image.grid.info()`` to retrieve grid metadata and make
+      position-aware refinement decisions.
 
     - **Detection-only modification:** Like ObjectRefiner, modifies only ``image.objmask[:]`` and
-      ``image.objmap[:]``. Original image components are protected via ``@validate_operation_integrity``.
+      ``image.objmap[:]``. Original image components (RGB, grayscale, detection matrix) are protected
+      via ``@validate_operation_integrity`` decorator.
+
+    - **Array phenotyping:** Well-suited for high-throughput plate analysis where grid structure matters
+      for biology (one colony per well expected, oversized objects indicate merging, boundary objects
+      may be incomplete or distorted).
 
     **When to use GridObjectRefiner vs ObjectRefiner**
 
@@ -64,7 +97,7 @@ class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
 
     **Implementing a Custom GridObjectRefiner**
 
-    Subclass GridObjectRefiner and implement ``_operate()``:
+    Subclass GridObjectRefiner and implement ``_operate()``. Use this template:
 
     .. code-block:: python
 
@@ -79,48 +112,75 @@ class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
 
             @staticmethod
             def _operate(image: GridImage, max_width_fraction: float = 0.9) -> GridImage:
-                # Get grid info
-                col_edges = image.grid.get_col_edges()
-                max_cell_width = (col_edges[1:] - col_edges[:-1]).max()
+                # Get grid structure information
+                col_edges = image.grid.get_col_edges()      # x-coordinates of column boundaries
+                row_edges = image.grid.get_row_edges()      # y-coordinates of row boundaries
+                nrows, ncols = image.grid.nrows, image.grid.ncols
 
-                # Measure object widths
+                # Get per-object grid metadata (label, row, column, position)
+                grid_info = image.grid.info()  # pd.DataFrame
+
+                # Measure object properties
                 objmap = image.objmap[:]
                 from skimage.measure import regionprops_table
+                props = regionprops_table(objmap, properties=['label', 'bbox', 'area'])
 
-                props = regionprops_table(objmap, properties=['label', 'bbox'])
-                # ... compute widths and filter ...
+                # Make position-aware refinement decisions
+                # Example: filter objects by grid position or size relative to well
+                max_width = (col_edges[1:] - col_edges[:-1]).max()
+                # ... implement your grid-aware logic ...
 
                 return image
 
     **Key Rules**
 
-    1. ``_operate()`` must be static (for parallel execution).
+    1. ``_operate()`` must be static (for parallel execution in pipelines).
     2. All parameters except ``image`` must exist as instance attributes.
     3. Only modify ``image.objmask[:]`` and ``image.objmap[:]``.
-    4. Access grid via ``image.grid`` (row/column edges, well positions, metadata).
-    5. Return the modified GridImage.
+    4. Access grid via ``image.grid`` methods: get_row_edges(), get_col_edges(), info().
+    5. Return the modified GridImage object.
 
-    **Grid Access Patterns**
+    **Per-Well Filtering Patterns**
 
-    Within ``_operate()``, access grid information via the GridImage accessor:
+    Common grid-aware refinement strategies:
+
+    - **Remove oversized objects:** Filter objects larger than well dimensions (merged colonies, segmentation
+      spillover). Compare object bounding box to max_width and max_height of grid cells.
+
+    - **Keep largest per well:** Select only the largest object per grid cell (assumes one colony per well).
+      Use grid_info to group objects by row and column, then keep max-area object per group.
+
+    - **Remove boundary objects:** Filter objects touching or near well edges (incomplete detections).
+      Use grid_info's boundary flags or compute distance to nearest grid boundary.
+
+    - **Per-row/column filtering:** Apply different thresholds by row or column position (accounts for
+      uneven illumination across plate). Use grid_info to stratify objects by position.
+
+    **Grid Access Interface**
+
+    Within ``_operate()``, use the GridImage accessor to retrieve grid metadata:
 
     .. code-block:: python
 
-        # Grid structure
+        # Grid structure information
         nrows, ncols = image.grid.nrows, image.grid.ncols
         row_edges = image.grid.get_row_edges()          # Row boundary positions (y-coordinates)
         col_edges = image.grid.get_col_edges()          # Col boundary positions (x-coordinates)
-        cell_info = image.grid.info()                   # DataFrame with per-object grid info
+        grid_info = image.grid.info()                   # DataFrame with per-object grid metadata
 
-        # Per-object grid metadata (label, row, col, boundary flags)
-        grid_data = image.grid.info()  # pd.DataFrame with object properties
+        # grid_info columns (example):
+        # ['label', 'row', 'col', 'row_edge_min', 'row_edge_max', 'col_edge_min', 'col_edge_max', ...]
+
+        # Per-well cell dimensions
+        cell_heights = row_edges[1:] - row_edges[:-1]
+        cell_widths = col_edges[1:] - col_edges[:-1]
 
     Notes:
         - **GridImage input required:** ``apply()`` enforces GridImage type at runtime.
           Passing a plain Image raises ``GridImageInputError``.
 
         - **Protected components:** The ``@validate_operation_integrity`` decorator ensures
-          ``image.rgb``, ``image.gray``, ``image.enh_gray`` cannot be modified.
+          ``image.rgb``, ``image.gray``, ``image.detect_mat`` cannot be modified.
           Only ``image.objmask`` and ``image.objmap`` can be refined.
 
         - **Immutability by default:** ``apply(image)`` returns a modified copy. Set
@@ -135,75 +195,108 @@ class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
           as instance attributes for automatic parameter matching.
 
     Examples:
-        .. dropdown:: Remove objects larger than their grid cell width
+        Remove objects larger than their grid cell width:
 
-            .. code-block:: python
+        >>> from phenotypic.abc_ import GridObjectRefiner
+        >>> from phenotypic import GridImage
+        >>> import numpy as np
+        >>> class OversizedObjectRemover(GridObjectRefiner):
+        ...     '''Remove objects exceeding cell dimensions.'''
+        ...
+        ...     def __init__(self):
+        ...         super().__init__()
+        ...
+        ...     @staticmethod
+        ...     def _operate(image: GridImage) -> GridImage:
+        ...         # Get grid boundaries
+        ...         col_edges = image.grid.get_col_edges()
+        ...         row_edges = image.grid.get_row_edges()
+        ...         max_width = (col_edges[1:] - col_edges[:-1]).max()
+        ...         max_height = (row_edges[1:] - row_edges[:-1]).max()
+        ...         # Measure objects
+        ...         objmap = image.objmap[:]
+        ...         from skimage.measure import regionprops_table
+        ...         props = regionprops_table(objmap, properties=['label', 'bbox'])
+        ...         # Filter oversized
+        ...         import pandas as pd
+        ...         df = pd.DataFrame(props)
+        ...         df['width'] = df['bbox-2'] - df['bbox-0']
+        ...         df['height'] = df['bbox-3'] - df['bbox-1']
+        ...         keep = df[(df['width'] < max_width) &
+        ...                   (df['height'] < max_height)]['label'].values
+        ...         # Refine map
+        ...         refined = np.where(np.isin(objmap, keep), objmap, 0)
+        ...         image.objmap[:] = refined
+        ...         return image
+        >>> # Usage on gridded plate image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> image = GridImage.imread('plate.jpg', nrows=8, ncols=12)
+        >>> detected = OtsuDetector().apply(image)
+        >>> cleaned = OversizedObjectRemover().apply(detected)
 
-                from phenotypic.abc_ import GridObjectRefiner
-                from phenotypic import GridImage
-                import numpy as np
+        Per-well filtering: remove colonies oversized for their well:
 
-                class OversizedObjectRemover(GridObjectRefiner):
-                    '''Remove objects exceeding cell dimensions.'''
+        >>> from phenotypic.abc_ import GridObjectRefiner
+        >>> from phenotypic import GridImage
+        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> import numpy as np
+        >>> import pandas as pd
+        >>> class PerWellOversizedRemover(GridObjectRefiner):
+        ...     '''Remove objects that exceed size threshold relative to their well.'''
+        ...
+        ...     def __init__(self, max_area_fraction: float = 0.8):
+        ...         super().__init__()
+        ...         self.max_area_fraction = max_area_fraction
+        ...
+        ...     @staticmethod
+        ...     def _operate(image: GridImage, max_area_fraction: float = 0.8) -> GridImage:
+        ...         # Get grid structure
+        ...         col_edges = image.grid.get_col_edges()
+        ...         row_edges = image.grid.get_row_edges()
+        ...         # Compute well area (assume uniform grid cells)
+        ...         cell_width = (col_edges[1:] - col_edges[:-1]).mean()
+        ...         cell_height = (row_edges[1:] - row_edges[:-1]).mean()
+        ...         max_cell_area = cell_width * cell_height
+        ...         # Get grid info and measure object areas
+        ...         objmap = image.objmap[:]
+        ...         grid_info = image.grid.info()
+        ...         from skimage.measure import regionprops_table
+        ...         props = regionprops_table(objmap, properties=['label', 'area'])
+        ...         props_df = pd.DataFrame(props)
+        ...         # Filter: keep objects smaller than max_area_fraction of their well
+        ...         max_allowed_area = max_cell_area * max_area_fraction
+        ...         keep = props_df[props_df['area'] < max_allowed_area]['label'].values
+        ...         # Refine map
+        ...         refined = np.where(np.isin(objmap, keep), objmap, 0)
+        ...         image.objmap[:] = refined
+        ...         return image
+        >>> # Usage: remove merged colonies and artifacts spanning most of well
+        >>> from phenotypic.detect import OtsuDetector
+        >>> image = load_synth_yeast_plate()  # Returns GridImage
+        >>> detected = OtsuDetector().apply(image)
+        >>> # Remove colonies > 80% of well area (likely merged or segmentation error)
+        >>> cleaner = PerWellOversizedRemover(max_area_fraction=0.8)
+        >>> refined = cleaner.apply(detected)
+        >>> print(f"Removed oversized: {detected.objmap[:].max()} -> {refined.objmap[:].max()}")
 
-                    def __init__(self):
-                        super().__init__()
+        Chaining grid and non-grid refinements:
 
-                    @staticmethod
-                    def _operate(image: GridImage) -> GridImage:
-                        # Get grid boundaries
-                        col_edges = image.grid.get_col_edges()
-                        row_edges = image.grid.get_row_edges()
-                        max_width = (col_edges[1:] - col_edges[:-1]).max()
-                        max_height = (row_edges[1:] - row_edges[:-1]).max()
-
-                        # Measure objects
-                        objmap = image.objmap[:]
-                        from skimage.measure import regionprops_table
-                        props = regionprops_table(objmap, properties=['label', 'bbox'])
-
-                        # Filter oversized
-                        import pandas as pd
-                        df = pd.DataFrame(props)
-                        df['width'] = df['bbox-2'] - df['bbox-0']
-                        df['height'] = df['bbox-3'] - df['bbox-1']
-                        keep = df[(df['width'] < max_width) &
-                                  (df['height'] < max_height)]['label'].values
-
-                        # Refine map
-                        refined = np.where(np.isin(objmap, keep), objmap, 0)
-                        image.objmap[:] = refined
-                        return image
-
-                # Usage on gridded plate image
-                from phenotypic.detect import OtsuDetector
-                image = GridImage.from_image_path('plate.jpg', nrows=8, ncols=12)
-                detected = OtsuDetector().apply(image)
-                cleaned = OversizedObjectRemover().apply(detected)
-
-        .. dropdown:: Chaining grid and non-grid refinements
-
-            .. code-block:: python
-
-                from phenotypic import GridImage, ImagePipeline
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.refine import SmallObjectRemover, GridOversizedObjectRemover
-
-                # Create detection pipeline with mixed refinements
-                pipeline = ImagePipeline()
-                pipeline.add(OtsuDetector())                        # Detect colonies
-                pipeline.add(SmallObjectRemover(min_size=100))      # Global size filter
-                pipeline.add(GridOversizedObjectRemover())          # Grid-aware filter
-
-                # Apply to gridded plate
-                image = GridImage.from_image_path('plate.jpg', nrows=8, ncols=12)
-                results = pipeline.operate([image])
-                refined_image = results[0]
-
-                print(f"Refined: {refined_image.objmap[:].max()} colonies")
+        >>> from phenotypic import GridImage, ImagePipeline
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.refine import SmallObjectRemover, GridOversizedObjectRemover
+        >>> # Create detection pipeline with mixed refinements
+        >>> pipeline = ImagePipeline()
+        >>> pipeline.add(OtsuDetector())                        # Detect colonies
+        >>> pipeline.add(SmallObjectRemover(min_size=100))      # Global size filter
+        >>> pipeline.add(GridOversizedObjectRemover())          # Grid-aware filter
+        >>> # Apply to gridded plate
+        >>> image = GridImage.imread('plate.jpg', nrows=8, ncols=12)
+        >>> results = pipeline.operate([image])
+        >>> refined_image = results[0]
+        >>> print(f"Refined: {refined_image.objmap[:].max()} colonies")
     """
 
-    @validate_operation_integrity("image.rgb", "image.gray", "image.enh_gray")
+    @validate_operation_integrity("image.rgb", "image.gray", "image.detect_mat")
     def apply(self, image: GridImage, inplace: bool = False) -> GridImage:
         from phenotypic import GridImage
 

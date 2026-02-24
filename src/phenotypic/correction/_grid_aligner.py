@@ -9,7 +9,7 @@ from scipy.spatial.distance import euclidean
 from scipy.optimize import minimize_scalar
 
 from phenotypic.abc_ import GridCorrector
-from phenotypic.tools.constants_ import OBJECT, BBOX, GRID
+from phenotypic.tools_.measurement_info_ import BBOX, GRID
 
 
 class GridAligner(GridCorrector):
@@ -42,11 +42,11 @@ class GridAligner(GridCorrector):
             ImageGridHandler: The rotated grid image object after alignment.
         """
         if self.axis == 0:
-            # If performing row-wise alignment, the x other_image is the cc other_image
+            # If performing row-wise alignment, the x value is the cc value
             x_group = str(GRID.ROW_NUM)
             x_val = str(BBOX.CENTER_CC)
         elif self.axis == 1:
-            # If performing column-wise alignment, the x other_image is the rr other_image
+            # If performing column-wise alignment, the x value is the rr value
             x_group = str(GRID.COL_NUM)
             x_val = str(BBOX.CENTER_RR)
         else:
@@ -56,42 +56,45 @@ class GridAligner(GridCorrector):
         m, b = image.grid.get_centroid_alignment_info(axis=self.axis)
         grid_info = image.grid.info()
 
+        # Collect aligned X positions of the vertices
+        grouped = (grid_info.groupby(x_group, observed=True)[x_val]
+                   .agg(["min", "max"])
+                   .to_numpy())
+
         # Collect the X position of the vertices
-        x_min = grid_info.groupby(x_group, observed=True)[x_val].min().to_numpy()
+        x_min = grouped[:, 0]
 
-        y_0 = (
-            x_min * m
-        ) + b  # Find the corresponding y-other_image at the above x values
+        # Find the x value of the upper ray
+        x_max = grouped[:, 1]
 
-        # Find the x other_image of the upper ray
-        x_max = grid_info.groupby(x_group, observed=True)[x_val].max().to_numpy()
+        # Find the corresponding y-value at the above x values
+        y_0 = (x_min * m) + b
 
-        y_1 = (
-            x_max * m
-        ) + b  # Find the corresponding y-other_image at the above x values
+        # Find the corresponding y-value at the above x values
+        y_1 = (x_max * m) + b
 
         # Collect opening angle ray coordinate info
-        xy_vertices = np.vstack(
-            [x_min, y_0]
-        ).T  # An array containing the x & y coordinates of the vertices
 
-        xy_upper_ray = np.vstack(
-            [x_max, y_1]
-        ).T  # An array containing the x & y coordinates of the upper ray endpoint
+        # An array containing the x & y coordinates of the vertices
+        xy_vertices = np.vstack([x_min, y_0]).T
 
-        # Function to find the euclidead distance between two points within two xy arrays stacked column-wise
+        # An array containing the x & y coordinates of the upper ray endpoint
+        xy_upper_ray = np.vstack([x_max, y_1]).T
+
+        # Function to find the euclidead distance between two points within 
+        # two xy arrays stacked column-wise
 
         # Get the size of each hypotenuse
         hyp_dist = np.apply_along_axis(
-            func1d=self._find_hyp_dist,
-            axis=1,
-            arr=np.column_stack([xy_vertices, xy_upper_ray]),
+                func1d=self._find_hyp_dist,
+                axis=1,
+                arr=np.column_stack([xy_vertices, xy_upper_ray]),
         )
 
         adj_dist = x_max - x_min
 
         adj_over_hyp = np.divide(
-            adj_dist, hyp_dist, where=(hyp_dist != 0) | (adj_dist != 0)
+                adj_dist, hyp_dist, where=(hyp_dist != 0) | (adj_dist != 0)
         )
 
         # Find the angle of rotation from horizon in degrees
@@ -101,24 +104,26 @@ class GridAligner(GridCorrector):
         theta_sign = y_0 - y_1
         theta = theta * (np.divide(theta_sign, abs(theta_sign), where=theta_sign != 0))
 
-        def find_angle_of_rot(x):
-            new_theta = theta + x
-            err = np.mean(new_theta**2)
-            return err
-
         largest_angle = np.abs(theta).max()
         optimal_angle = minimize_scalar(
-            fun=find_angle_of_rot,
-            bounds=(-largest_angle, largest_angle),
+                fun=self._find_angle_of_rot,
+                bounds=(-largest_angle, largest_angle),
+                args=theta
         )
 
         image.rotate(angle_of_rotation=optimal_angle.x, mode=self.mode)
         return image
+
+    def _find_angle_of_rot(self, X, theta):
+        new_theta = theta + X
+        err = np.mean(new_theta ** 2)
+        return err
 
     @staticmethod
     def _find_hyp_dist(row):
         return euclidean(u=[row[0], row[1]], v=[row[2], row[3]])
 
 
-# Set the documentation to match for sphinx. This is unavoidable due to sphinx statically resolving.
+# Set the documentation to match for sphinx.
+# This is unavoidable due to sphinx statically resolving.
 GridAligner.apply.__doc__ = GridAligner._operate.__doc__

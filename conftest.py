@@ -1,8 +1,15 @@
 # conftest.py
 import logging
 
+# Share test fixtures defined in tests/test_fixtures.py across the suite.
+pytest_plugins = ["tests.unit.test_fixtures"]
+
 
 def pytest_configure(config):
+    import phenotypic.settings_
+
+    phenotypic.settings_.VALIDATE_OPS = True
+
     # Enable specific loggers
     logging.getLogger("ImagePipeline").setLevel(logging.DEBUG)
     logging.getLogger("ImagePipeline.coordinator").setLevel(logging.DEBUG)

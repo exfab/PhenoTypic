@@ -2,50 +2,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import numpy as np
-
-from phenotypic.tools.constants_ import OBJECT
+from phenotypic.tools_.constants_ import OBJECT
 
 if TYPE_CHECKING:
     from phenotypic import Image
-from enum import Enum
-from functools import partial
 
 import pandas as pd
 
-from phenotypic.abc_ import MeasureFeatures, MeasurementInfo
-
-
-class INTENSITY(MeasurementInfo):
-    @classmethod
-    def category(cls):
-        return "Intensity"
-
-    INTEGRATED_INTENSITY = ("IntegratedIntensity", "The sum of the object's pixels")
-    MINIMUM_INTENSITY = ("MinimumIntensity", "The minimum intensity of the object")
-    MAXIMUM_INTENSITY = ("MaximumIntensity", "The maximum intensity of the object")
-    MEAN_INTENSITY = ("MeanIntensity", "The mean intensity of the object")
-    MEDIAN_INTENSITY = ("MedianIntensity", "The median intensity of the object")
-    STANDARD_DEVIATION_INTENSITY = (
-        "StandardDeviationIntensity",
-        "The standard deviation of the object",
-    )
-    COEFFICIENT_VARIANCE_INTENSITY = (
-        "CoefficientVarianceIntensity",
-        "The coefficient of variation of the object",
-    )
-    Q1_INTENSITY = (
-        "LowerQuartileIntensity",
-        "The lower quartile intensity of the object",
-    )
-    Q3_INTENSITY = (
-        "UpperQuartileIntensity",
-        "The upper quartile intensity of the object",
-    )
-    IQR_INTENSITY = (
-        "InterquartileRangeIntensity",
-        "The interquartile range of the object",
-    )
+from phenotypic.abc_ import MeasureFeatures
+from ..tools_.measurement_info_ import INTENSITY
 
 
 class MeasureIntensity(MeasureFeatures):
@@ -75,7 +40,7 @@ class MeasureIntensity(MeasureFeatures):
     - Intensity depends critically on imaging conditions (lighting, exposure, camera gain); standardize
       these settings across plates and experiments for reliable comparisons.
     - Grayscale conversion to luminance (Y channel) may not capture all visual information from colored
-      agar or pigmented colonies; use enhanced grayscale (enh_gray) for better contrast, or measure color
+      agar or pigmented colonies; use detection matrix (detect_mat) for better contrast, or measure color
       separately.
     - Integrated intensity mixes area and brightness; normalize by area or use intensity density (mean)
       for size-independent comparisons.
@@ -96,43 +61,40 @@ class MeasureIntensity(MeasureFeatures):
             - CoefficientVarianceIntensity: Normalized variability (std dev / mean, unitless).
 
     Examples:
-        .. dropdown:: Measure colony biomass via intensity
+        Measure colony biomass via intensity:
 
-            .. code-block:: python
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.measure import MeasureIntensity
+        >>> # Load and process plate image
+        >>> image = Image.imread("colony_plate_t24h.jpg")  # doctest: +SKIP
+        >>> detector = OtsuDetector()
+        >>> image = detector.operate(image)  # doctest: +SKIP
+        >>> # Measure intensity to estimate biomass
+        >>> measurer = MeasureIntensity()
+        >>> intensity = measurer.operate(image)  # doctest: +SKIP
+        >>> # Track colonies by integrated intensity (proxy for biomass)
+        >>> high_biomass = intensity[intensity['Intensity_IntegratedIntensity'] > 100000]  # doctest: +SKIP
+        >>> print(f"Colonies with high biomass (>100k): {len(high_biomass)}")  # doctest: +SKIP
 
-                from phenotypic import Image
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.measure import MeasureIntensity
+        Identify heterogeneous or sectored colonies:
 
-                # Load and process plate image
-                image = Image.from_image_path("colony_plate_t24h.jpg")
-                detector = OtsuDetector()
-                image = detector.operate(image)
-
-                # Measure intensity to estimate biomass
-                measurer = MeasureIntensity()
-                intensity = measurer.operate(image)
-
-                # Track colonies by integrated intensity (proxy for biomass)
-                high_biomass = intensity[intensity['Intensity_IntegratedIntensity'] > 100000]
-                print(f"Colonies with high biomass (>100k): {len(high_biomass)}")
-
-        .. dropdown:: Identify heterogeneous or sectored colonies
-
-            .. code-block:: python
-
-                # Measure intensity variance to detect sectoring
-                intensity = measurer.operate(image)
-
-                # Colonies with high variance may be sectored or chimeric
-                sectored = intensity[
-                    intensity['Intensity_CoefficientVarianceIntensity'] >
-                    intensity['Intensity_CoefficientVarianceIntensity'].quantile(0.75)
-                ]
-                print(f"Potentially sectored colonies: {list(sectored.index)}")
+        >>> # Measure intensity variance to detect sectoring
+        >>> intensity = measurer.operate(image)  # doctest: +SKIP
+        >>> # Colonies with high variance may be sectored or chimeric
+        >>> sectored = intensity[
+        ...     intensity['Intensity_CoefficientVarianceIntensity'] >
+        ...     intensity['Intensity_CoefficientVarianceIntensity'].quantile(0.75)
+        ... ]  # doctest: +SKIP
+        >>> print(f"Potentially sectored colonies: {list(sectored.index)}")  # doctest: +SKIP
     """
 
+    _measurement_info_class = INTENSITY
+
     def _operate(self, image: Image) -> pd.DataFrame:
+        from phenotypic.measure._measure_shape import MeasureShape
+        from ..tools_.measurement_info_ import SHAPE
+
         intensity_matrix, objmap = image.gray[:].copy(), image.objmap[:].copy()
         measurements = {
             str(INTENSITY.INTEGRATED_INTENSITY)        : self._calculate_sum(
@@ -173,6 +135,17 @@ class MeasureIntensity(MeasureFeatures):
         measurements = pd.DataFrame(measurements)
         measurements.insert(
                 loc=0, column=OBJECT.LABEL, value=image.objects.labels2series()
+        )
+        shape_measurements = MeasureShape().measure(image)
+
+        measurements[INTENSITY.DENSITY] = (
+                measurements[INTENSITY.INTEGRATED_INTENSITY]
+                / shape_measurements[SHAPE.AREA]
+        )
+
+        measurements[INTENSITY.CONVEX_DENSITY] = (
+                measurements[INTENSITY.INTEGRATED_INTENSITY]
+                / shape_measurements[SHAPE.CONVEX_AREA]
         )
         return measurements
 

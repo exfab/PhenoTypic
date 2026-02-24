@@ -14,36 +14,7 @@ from sklearn.metrics import (
 )
 
 from phenotypic.analysis.abc_ import ModelFitter
-from phenotypic.tools.constants_ import MeasurementInfo
-
-
-class LOG_GROWTH_MODEL(MeasurementInfo):
-    @classmethod
-    def category(cls) -> str:
-        return "LogGrowthModel"
-
-    R_FIT = "r", "The intrinsic growth rate"
-    K_FIT = "K", "The carrying capacity"
-    N0_FIT = "N0", "The initial number of the colony size metric being fitted"
-    LAM = (
-        "lamda",
-        "The regularization factor applied to the max specific growth rate and initial population size",
-    )
-    ALPHA = (
-        "alpha",
-        (
-            "The penalty factor applied to relative difference of "
-            "the carrying capacity from the largest measurement"
-        ),
-    )
-    GROWTH_RATE = "µmax", "The growth rate of the colony calculated as (K*r)/4"
-    K_MAX = "Kmax", "The upper bound of the carrying capacity for model fitting"
-    NUM_SAMPLES = "NumSamples", "The number of samples used for model fitting"
-    LOSS = "OptimizerLoss", "The loss of model fitting"
-    STATUS = "OptimizerStatus", "The output of the optimizer status"
-    MAE = "MAE", "The mean absolute error"
-    MSE = "MSE", "The mean squared error"
-    RMSE = "RMSE", "The root mean squared error"
+from phenotypic.tools_.measurement_info_ import LOG_GROWTH_MODEL
 
 
 class LogGrowthModel(ModelFitter):
@@ -89,17 +60,17 @@ class LogGrowthModel(ModelFitter):
            \frac{1}{n}\sum_{i=1}^{n}
            \frac{1}{2}\left(f_{K,N_0,r}(t^{(i)}) - N_t^{(i)}\right)^2
            + \lambda\left(\left(\frac{dN}{dt}\right)^2 + N_0^2\right)
-           + \alpha \frac{\lvert K - \max(N_t) \rvert}{N_t}
+           + \beta \frac{\lvert K - \max(N_t) \rvert}{N_t}
 
         :math:`\lambda`: regularization term for growth rate and initial population size
 
-        :math:`\alpha`: penalty term for deviations in carrying capacity relative to
+        :math:`\beta`: penalty term for deviations in carrying capacity relative to
             the largest measurement
 
 
     Attributes:
         lam (float): The penalty factor applied to growth rates.
-        alpha (float): The maximum penalty factor applied to the carrying
+        beta (float): The maximum penalty factor applied to the carrying
             capacity.
         loss (Literal["linear"]): The loss calculation method used for fitting.
         verbose (bool): A flag to enable or disable detailed logging.
@@ -109,6 +80,8 @@ class LogGrowthModel(ModelFitter):
             values, if provided.
     """
 
+    _measurement_info_class = LOG_GROWTH_MODEL
+
     def __init__(
             self,
             on: str,
@@ -116,7 +89,7 @@ class LogGrowthModel(ModelFitter):
             time_label: str = "Metadata_Time",
             agg_func: Callable | str | list | dict | None = "mean",
             lam=1.2,
-            alpha=2,
+            beta=2,
             Kmax_label: str | None = None,
             loss: Literal["linear"] = "linear",
             verbose: bool = False,
@@ -135,9 +108,9 @@ class LogGrowthModel(ModelFitter):
             agg_func (Callable | str | list | dict | None): Aggregation function(s) to
                 apply to grouped data. Parameter is fed to
                     `pandas.DataFrame.groupby.agg()`. Defaults to 'mean'.
-            lam: The penalty factor applied to growth rates. Defaults to 1.2.
-            alpha: The maximum penalty factor applied to the carrying capacity.
-                Defaults to 2.
+            lam: The regularization factor applied to growth rates. Defaults to 1.2.
+            beta: The penalty factor applied to the relative difference
+                between carrying capacity and the last value. Defaults to 2.
             Kmax_label (str | None): Column name that provides maximum K value for
                 processing. Defaults to None.
             loss (Literal["linear"]): Loss calculation method to apply. Defaults to
@@ -148,7 +121,7 @@ class LogGrowthModel(ModelFitter):
         """
         super().__init__(on=on, groupby=groupby, agg_func=agg_func, num_workers=n_jobs)
         self.lam = lam
-        self.alpha = alpha
+        self.beta = beta
         self.loss = loss
         self.verbose = verbose
 
@@ -169,7 +142,7 @@ class LogGrowthModel(ModelFitter):
                 size_label=self.on,
                 Kmax_label=self.Kmax_label,
                 lam=self.lam,
-                alpha=self.alpha,
+                beta=self.beta,
                 loss=self.loss,
                 verbose=self.verbose,
         )
@@ -211,8 +184,8 @@ class LogGrowthModel(ModelFitter):
 
         self._latest_model_scores.insert(
                 loc=len(self._latest_model_scores.columns),
-                column=LOG_GROWTH_MODEL.ALPHA,
-                value=self.alpha,
+                column=LOG_GROWTH_MODEL.BETA,
+                value=self.beta,
         )
         return self._latest_model_scores
 
@@ -346,7 +319,7 @@ class LogGrowthModel(ModelFitter):
                 color_iter = itertools.cycle([cmap])
         else:
             # Default to None for automatic matplotlib coloring
-            color_iter = itertools.cycle([None]*len(model_groups))
+            color_iter = itertools.cycle([None] * len(model_groups))
 
         for model_key, model_group in model_groups.items():
             curr_meas = meas_groups[model_key]
@@ -367,7 +340,7 @@ class LogGrowthModel(ModelFitter):
             curr_time_groups = curr_meas.groupby(by=self.time_label)
             curr_mean = curr_time_groups[self.on].mean()
             curr_stddev = curr_time_groups[self.on].std()
-            curr_stderr = curr_stddev/np.sqrt(curr_time_groups[self.on].count())
+            curr_stderr = curr_stddev / np.sqrt(curr_time_groups[self.on].count())
 
             # noinspection PyUnresolvedReferences
             errorbar_kwargs = {
@@ -401,8 +374,8 @@ class LogGrowthModel(ModelFitter):
 
             # Check if legend is larger than axes (with small tolerance)
             if (
-                    legend_bbox.width > axes_bbox.width*0.95
-                    or legend_bbox.height > axes_bbox.height*0.95
+                    legend_bbox.width > axes_bbox.width * 0.95
+                    or legend_bbox.height > axes_bbox.height * 0.95
             ):
                 legend_obj.remove()
 
@@ -440,11 +413,11 @@ class LogGrowthModel(ModelFitter):
             float | np.ndarray[float]: The computed population size at the given time
             or array of times based on the logistic growth model.
         """
-        a = (K - N0)/N0
-        return K/(1 + a*np.exp(-r*t))
+        a = (K - N0) / N0
+        return K / (1 + a * np.exp(-r * t))
 
     @staticmethod
-    def _loss_func(params, t, y, lam, alpha):
+    def _loss_func(params, t, y, lam, beta):
         r"""
         Computes a combined loss which includes both the residuals from the predicted
         values using a logarithmic growth model, a regularization term, and a penalty
@@ -452,18 +425,20 @@ class LogGrowthModel(ModelFitter):
 
         To solve for the parameters, we use the following loss function with the
         SciPy linear least-squares solver:
+        .. math::
+            \phi=\left(\frac{dN}{dt}\right)^2 + N_0^2
 
         .. math::
 
            J(K, N_0, r) =
            \frac{1}{n}\sum_{i=1}^{n}
-           \frac{1}{2}\left(f_{K,N_0,r}(t^{(i)}) - N_t^{(i)}\right)^2
+           \left(f_{K,N_0,r}(t^{(i)}) - N_t^{(i)}\right)^2
            + \lambda\left(\left(\frac{dN}{dt}\right)^2 + N_0^2\right)
-           + \alpha \frac{\lvert K - \max(N_t) \rvert}{N_t}
+           + \beta \frac{\lvert K - N_{n} \rvert}{N_{n}}
 
         :math:`\lambda`: regularization term for growth rate and initial population size
 
-        :math:`\alpha`: penalty term for deviations in carrying capacity relative to
+        :math:`\beta`: penalty term for deviations in carrying capacity relative to
             the largest measurement
 
         The function calculates the residuals (difference between actual and predicted
@@ -487,7 +462,7 @@ class LogGrowthModel(ModelFitter):
                 pandas.Series object.
             lam (float): Regularization parameter for the specific growth rate and
                 initial population size.
-            alpha (float): Scaling parameter for the K-based penalty.
+            beta (float): Scaling parameter for the K-based penalty.
 
         Returns:
             np.ndarray: A combined loss array consisting of the residuals,
@@ -502,8 +477,8 @@ class LogGrowthModel(ModelFitter):
         cost_func = y - LogGrowthModel.model_func(t=t, r=r, K=K, N0=N0)
 
         # regularization term
-        dN_dt = r*K/4
-        reg_term = np.sqrt(lam)*np.array([dN_dt, N0])
+        dN_dt = r * K / 4
+        reg_term = np.sqrt(lam) * np.array([dN_dt, N0])
 
         # K-based penalty
         if hasattr(y, "values"):
@@ -516,14 +491,15 @@ class LogGrowthModel(ModelFitter):
         y_max_observed = y_array[np.argmax(t)]
 
         # Numerical stability epsilon
-        epsilon = 1e-8*np.median(np.abs(y_array[y_array > 0]))
+        epsilon = 1e-8 * np.median(np.abs(y_array[y_array > 0]))
         if epsilon == 0 or np.isnan(epsilon):
             epsilon = 1e-8
 
         # Relative K penalty
-        K_penalty_weight = np.sqrt(alpha)
+        K_penalty_weight = np.sqrt(beta)
         K_penalty = (
-                K_penalty_weight*np.abs(K - y_max_observed)/(y_max_observed + epsilon)
+                K_penalty_weight * np.abs(K - y_max_observed) / (
+                    y_max_observed + epsilon)
         )
 
         return np.hstack(
@@ -540,7 +516,7 @@ class LogGrowthModel(ModelFitter):
             size_label: str,
             Kmax_label: str | None,
             lam: float,
-            alpha: float,
+            beta: float,
             loss: Literal["linear"],
             verbose: bool,
     ):
@@ -580,7 +556,7 @@ class LogGrowthModel(ModelFitter):
                             t=t_data,
                             y=size_data,
                             lam=lam,
-                            alpha=alpha,
+                            beta=beta,
                     ),
                     verbose=verbose,
                     method="trf",
@@ -591,7 +567,7 @@ class LogGrowthModel(ModelFitter):
                 LOG_GROWTH_MODEL.R_FIT      : x[0],
                 LOG_GROWTH_MODEL.K_FIT      : x[1],
                 LOG_GROWTH_MODEL.N0_FIT     : x[2],
-                LOG_GROWTH_MODEL.GROWTH_RATE: (x[0]*x[1])/4,
+                LOG_GROWTH_MODEL.GROWTH_RATE: (x[0] * x[1]) / 4,
             }
 
             y_pred = LogGrowthModel.model_func(t=t_data, r=x[0], K=x[1], N0=x[2])

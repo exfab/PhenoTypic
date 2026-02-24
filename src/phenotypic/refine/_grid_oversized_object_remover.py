@@ -8,7 +8,8 @@ if TYPE_CHECKING:
 import numpy as np
 
 from phenotypic.abc_ import GridObjectRefiner
-from phenotypic.tools.constants_ import BBOX, OBJECT
+from phenotypic.tools_.constants_ import OBJECT
+from phenotypic.tools_.measurement_info_ import BBOX
 
 
 class GridOversizedObjectRemover(GridObjectRefiner):
@@ -40,11 +41,11 @@ class GridOversizedObjectRemover(GridObjectRefiner):
         (No public attributes)
 
     Examples:
-        .. dropdown:: Remove objects larger than their grid cell allows
+        Remove objects larger than their grid cell allows:
 
-            >>> from phenotypic.refine import GridOversizedObjectRemover
-            >>> op = GridOversizedObjectRemover()
-            >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+        >>> from phenotypic.refine import GridOversizedObjectRemover
+        >>> op = GridOversizedObjectRemover()
+        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
     """
 
     def _operate(self, image: GridImage) -> GridImage:
@@ -72,11 +73,11 @@ class GridOversizedObjectRemover(GridObjectRefiner):
 
         # Calculate the width and height of each object
         grid_info.loc[:, "width"] = (
-            grid_info.loc[:, str(BBOX.MAX_CC)] - grid_info.loc[:, str(BBOX.MIN_CC)]
+                grid_info.loc[:, str(BBOX.MAX_CC)] - grid_info.loc[:, str(BBOX.MIN_CC)]
         )
 
         grid_info.loc[:, "height"] = (
-            grid_info.loc[:, str(BBOX.MAX_RR)] - grid_info.loc[:, str(BBOX.MIN_RR)]
+                grid_info.loc[:, str(BBOX.MAX_RR)] - grid_info.loc[:, str(BBOX.MIN_RR)]
         )
 
         # Find objects that are past the max height & width

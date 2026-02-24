@@ -1,10 +1,9 @@
-from docutils.parsers.rst import Directive, directives
+from docutils.parsers.rst import directives
 from docutils import nodes
 from sphinx.util.docutils import SphinxDirective
 from sphinx.addnodes import pending_xref
 import inspect
 import importlib
-from docutils.statemachine import StringList
 import re
 
 

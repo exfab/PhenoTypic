@@ -9,7 +9,8 @@ from skimage.measure import regionprops_table
 
 from phenotypic.abc_ import MeasureFeatures
 
-from ..tools.constants_ import OBJECT, BBOX
+from ..tools_.constants_ import OBJECT
+from ..tools_.measurement_info_ import BBOX
 
 
 class MeasureBounds(MeasureFeatures):
@@ -25,7 +26,7 @@ class MeasureBounds(MeasureFeatures):
     measurements) and are used to relate colonies to expected well positions in arrayed assays.
 
     **Use cases (agar plates):**
-    - Establish the spatial footprint of each detected colony for morphological analysis.
+    - Establish the spatial shape of each detected colony for morphological analysis.
     - Compute centroids for aligning colonies to grid positions in high-throughput assays.
     - Enable region-of-interest (ROI) extraction for downstream intensity, color, or texture measurements.
     - Assess colony positioning relative to plate edges to detect spreading beyond well boundaries.
@@ -48,53 +49,53 @@ class MeasureBounds(MeasureFeatures):
             - MaxRR, MaxCC: Maximum (bottom-right) row and column of bounding box.
 
     Examples:
-        .. dropdown:: Extract colony boundaries for a plate image
+        Extract colony boundaries for a plate image:
 
-            .. code-block:: python
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.measure import MeasureBounds
+        >>> # Load image and detect colonies
+        >>> image = Image.imread("colony_plate.jpg")  # doctest: +SKIP
+        >>> detector = OtsuDetector()
+        >>> image = detector.operate(image)  # doctest: +SKIP
+        >>> # Extract boundaries
+        >>> boundsizer = MeasureBounds()
+        >>> bounds = boundsizer.operate(image)  # doctest: +SKIP
+        >>> print(bounds.head())  # doctest: +SKIP
+        # Output: Label, CenterRR, CenterCC, MinRR, MinCC, MaxRR, MaxCC
 
-                from phenotypic import Image
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.measure import MeasureBounds
+        Use boundaries to extract colony ROIs:
 
-                # Load image and detect colonies
-                image = Image.from_image_path("colony_plate.jpg")
-                detector = OtsuDetector()
-                image = detector.operate(image)
-
-                # Extract boundaries
-                boundsizer = MeasureBounds()
-                bounds = boundsizer.operate(image)
-                print(bounds.head())
-                # Output: Label, CenterRR, CenterCC, MinRR, MinCC, MaxRR, MaxCC
-
-        .. dropdown:: Use boundaries to extract colony ROIs
-
-            .. code-block:: python
-
-                # Extract a region for each colony for detailed analysis
-                bounds = boundsizer.operate(image)
-                for idx, row in bounds.iterrows():
-                    min_rr, max_rr = int(row['BBOX_MinRR']), int(row['BBOX_MaxRR'])
-                    min_cc, max_cc = int(row['BBOX_MinCC']), int(row['BBOX_MaxCC'])
-                    colony_roi = image.rgb[min_rr:max_rr, min_cc:max_cc]
-                    # Process ROI independently (e.g., color analysis, morphology)
+        >>> # Extract a region for each colony for detailed analysis
+        >>> bounds = boundsizer.operate(image)  # doctest: +SKIP
+        >>> for idx, row in bounds.iterrows():  # doctest: +SKIP
+        ...     min_rr, max_rr = int(row['BBOX_MinRR']), int(row['BBOX_MaxRR'])
+        ...     min_cc, max_cc = int(row['BBOX_MinCC']), int(row['BBOX_MaxCC'])
+        ...     colony_roi = image.rgb[min_rr:max_rr, min_cc:max_cc]
+        ...     # Process ROI independently (e.g., color analysis, morphology)
     """
+
+    _measurement_info_class = BBOX
 
     def _operate(self, image: Image) -> pd.DataFrame:
         results = pd.DataFrame(
-            data=regionprops_table(
-                label_image=image.objmap[:], properties=["label", "centroid", "bbox"]
-            )
+                data=regionprops_table(
+                        label_image=image.objmap[:],
+                        intensity_image=image.gray[:],
+                        properties=["label", "centroid", "bbox", "centroid_weighted"]
+                )
         ).rename(
-            columns={
-                "label": OBJECT.LABEL,
-                "centroid-0": str(BBOX.CENTER_RR),
-                "centroid-1": str(BBOX.CENTER_CC),
-                "bbox-0": str(BBOX.MIN_RR),
-                "bbox-1": str(BBOX.MIN_CC),
-                "bbox-2": str(BBOX.MAX_RR),
-                "bbox-3": str(BBOX.MAX_CC),
-            }
+                columns={
+                    "label"              : OBJECT.LABEL,
+                    "centroid-0"         : str(BBOX.CENTER_RR),
+                    "centroid-1"         : str(BBOX.CENTER_CC),
+                    "centroid_weighted-0": BBOX.WEIGHTED_CENTER_RR,
+                    "centroid_weighted-1": BBOX.WEIGHTED_CENTER_CC,
+                    "bbox-0"             : str(BBOX.MIN_RR),
+                    "bbox-1"             : str(BBOX.MIN_CC),
+                    "bbox-2"             : str(BBOX.MAX_RR),
+                    "bbox-3"             : str(BBOX.MAX_CC),
+                }
         )
 
         return results

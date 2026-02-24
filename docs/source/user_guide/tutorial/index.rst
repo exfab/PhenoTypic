@@ -10,7 +10,7 @@ Welcome to the Phenotypic tutorial section! These tutorials provide in-depth exa
    :caption: Tutorial Topics
 
    notebooks/GettingStarted
-   notebooks/LongerStart
+   notebooks/BatchProcessing
    notebooks/Images
    notebooks/GridImages
    notebooks/ImagePipelines

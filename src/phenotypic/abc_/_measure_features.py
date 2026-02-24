@@ -17,9 +17,9 @@ import warnings
 from functools import partial, wraps
 
 from ._base_operation import BaseOperation
-from phenotypic.tools.exceptions_ import OperationFailedError
-from phenotypic.tools.funcs_ import validate_measure_integrity
-from phenotypic.tools.constants_ import OBJECT
+from phenotypic.tools_.exceptions_ import OperationFailedError
+from phenotypic.tools_.funcs_ import validate_measure_integrity
+from phenotypic.tools_.constants_ import OBJECT
 from abc import ABC
 
 
@@ -55,6 +55,18 @@ class MeasureFeatures(BaseOperation, ABC):
     MeasureFeatures subclasses extract numerical measurements from detected objects
     and return pandas DataFrames.
 
+    **Quick Decision Guide:**
+
+    Use MeasureFeatures when you need to extract numerical colony phenotypes from detected objects.
+    Choose specific measurers based on your phenotype of interest:
+
+    - **Size/morphology:** [MeasureSize](src/phenotypic/measure/_measure_size.py) for area, perimeter, circularity
+    - **Shape characteristics:** [MeasureShape](src/phenotypic/measure/_measure_shape.py) for aspect ratio, eccentricity
+    - **Color/pigmentation:** [MeasureColor](src/phenotypic/measure/_measure_color.py) for RGB, Lab, HSV measurements
+    - **Intensity distribution:** [MeasureIntensity](src/phenotypic/measure/_measure_intensity.py) for brightness statistics
+    - **Surface texture:** [MeasureTexture](src/phenotypic/measure/_measure_texture.py) for roughness, biofilm detection
+    - **Custom features:** Subclass MeasureFeatures directly for novel measurements
+
     **Design Principles:**
 
     This class follows a strict pattern where subclasses implement minimal code:
@@ -86,7 +98,7 @@ class MeasureFeatures(BaseOperation, ABC):
     (lazy-evaluated, cached):
 
     - **image.gray[:]** - Grayscale intensity values (weighted luminance)
-    - **image.enh_gray[:]** - Enhanced grayscale (preprocessed for analysis)
+    - **image.detect_mat[:]** - Detection matrix (preprocessed for analysis)
     - **image.objmask[:]** - Binary mask of detected objects (1 = object, 0 = background)
     - **image.objmap[:]** - Labeled integer array (label ID per object, 0 = background)
     - **image.color.Lab[:]** - CIE Lab color space (perceptually uniform)
@@ -113,78 +125,82 @@ class MeasureFeatures(BaseOperation, ABC):
         2            | 956  | 135.2         | 14.1
         3            | 1101 | 120.8         | 11.9
 
-    **Static Helper Methods:**
+    **Static Helper Methods for Common Measurements:**
 
-    This class provides 20+ static helper methods for common measurements on
-    labeled objects:
+    This class provides 20+ static helper methods to compute statistics on labeled objects:
 
-    - **Statistical:** _calculate_mean(), _calculate_median(), _calculate_stddev(),
-      _calculate_variance(), _calculate_sum(), _calculate_center_of_mass()
-    - **Extrema:** _calculate_minimum(), _calculate_maximum(), _calculate_extrema()
-    - **Quantiles:** _calculate_q1(), _calculate_q3(), _calculate_iqr()
-    - **Advanced:** _calculate_coeff_variation(), _calculate_min_extrema(),
-      _calculate_max_extrema()
-    - **Custom:** _funcmap2objects() (apply arbitrary functions to labeled regions)
-    - **Utility:** _ensure_array() (normalize scalar/array inputs)
+    - **Statistical:** mean, median, stddev, variance, sum, center_of_mass
+    - **Extrema:** minimum, maximum, min_extrema (position + value), max_extrema (position + value)
+    - **Quantiles:** Q1 (25th percentile), Q3 (75th percentile), IQR (interquartile range)
+    - **Advanced:** coefficient_of_variation (relative texture measure), custom function application
+    - **Custom computation:** _funcmap2objects() to apply arbitrary Python functions to object regions
+    - **Utilities:** _ensure_array() to normalize scalars and arrays uniformly
 
-    All helpers accept an `objmap` parameter (labeled integer array). If None,
-    the entire non-zero region is treated as a single object.
+    **Helper Method Usage Pattern:**
+
+    All helpers follow a consistent signature: `_calculate_*(array, objmap=None)` where array is
+    your 2D data and objmap is the labeled integer array from image.objmap[:]. If objmap=None,
+    the entire non-zero region is treated as one object. Returns 1D numpy array with one value
+    per object (or scalar for single-object mode).
+
+    Example within _operate():
+
+    .. code-block:: python
+
+        gray = image.detect_mat[:]
+        objmap = image.objmap[:]
+        area = self._calculate_sum(image.objmask[:], objmap)  # Pixel count
+        mean_int = self._calculate_mean(gray, objmap)  # Average brightness
+        stddev = self._calculate_stddev(gray, objmap)  # Texture uniformity
+        cv = self._calculate_coeff_variation(gray, objmap)  # Relative variation
 
     **Example: Creating a Custom Measurer for Bacterial Colonies**
 
-    .. dropdown:: Implementing a custom colony measurement class
+    Implementing a custom colony measurement class:
 
-        .. code-block:: python
-
-            from phenotypic.abc_ import MeasureFeatures
-            from phenotypic.tools.constants_ import OBJECT
-            import pandas as pd
-            import numpy as np
-
-            class MeasureCustom(MeasureFeatures):
-                \"\"\"Measure custom morphology metrics for microbial colonies.\"\"\"
-
-                def __init__(self, intensity_threshold=100):
-                    \"\"\"Initialize with intensity threshold for bright pixels.\"\"\"
-                    self.intensity_threshold = intensity_threshold
-
-                def _operate(self, image):
-                    \"\"\"Extract bright region area and mean intensity.\"\"\"
-                    gray = image.enh_gray[:]
-                    objmap = image.objmap[:]
-
-                    # Identify bright pixels within each object
-                    bright_mask = gray > self.intensity_threshold
-
-                    # Count bright pixels per object
-                    bright_area = self._calculate_sum(
-                        array=bright_mask.astype(int),
-                        objmap=objmap
-                    )
-
-                    # Mean intensity of bright pixels
-                    bright_intensity = self._funcmap2objects(
-                        func=lambda arr: np.mean(arr[arr > self.intensity_threshold]),
-                        out_dtype=float,
-                        array=gray,
-                        objmap=objmap,
-                        default=np.nan
-                    )
-
-                    # Create results DataFrame
-                    results = pd.DataFrame({
-                        'BrightArea': bright_area,
-                        'BrightMeanIntensity': bright_intensity,
-                    })
-                    results.insert(0, OBJECT.LABEL, image.objects.labels2series())
-                    return results
-
-            # Usage:
-            from phenotypic import Image
-            image = Image.from_image_path('colony_plate.jpg')
-            # (After detection...)
-            measurer = MeasureCustom(intensity_threshold=150)
-            measurements = measurer.measure(image)  # Returns DataFrame
+    >>> from phenotypic.abc_ import MeasureFeatures
+    >>> from phenotypic.tools_.constants_ import OBJECT
+    >>> import pandas as pd
+    >>> import numpy as np
+    >>> class MeasureCustom(MeasureFeatures):
+    ...     '''Measure custom morphology metrics for microbial colonies.'''
+    ...
+    ...     def __init__(self, intensity_threshold=100):
+    ...         '''Initialize with intensity threshold for bright pixels.'''
+    ...         self.intensity_threshold = intensity_threshold
+    ...
+    ...     def _operate(self, image):
+    ...         '''Extract bright region area and mean intensity.'''
+    ...         gray = image.detect_mat[:]
+    ...         objmap = image.objmap[:]
+    ...         # Identify bright pixels within each object
+    ...         bright_mask = gray > self.intensity_threshold
+    ...         # Count bright pixels per object
+    ...         bright_area = self._calculate_sum(
+    ...             array=bright_mask.astype(int),
+    ...             objmap=objmap
+    ...         )
+    ...         # Mean intensity of bright pixels
+    ...         bright_intensity = self._funcmap2objects(
+    ...             func=lambda arr: np.mean(arr[arr > self.intensity_threshold]),
+    ...             out_dtype=float,
+    ...             array=gray,
+    ...             objmap=objmap,
+    ...             default=np.nan
+    ...         )
+    ...         # Create results DataFrame
+    ...         results = pd.DataFrame({
+    ...             'BrightArea': bright_area,
+    ...             'BrightMeanIntensity': bright_intensity,
+    ...         })
+    ...         results.insert(0, OBJECT.LABEL, image.objects.labels2series())
+    ...         return results
+    >>> # Usage:
+    >>> from phenotypic import Image
+    >>> image = Image('colony_plate.jpg')
+    >>> # (After detection...)
+    >>> measurer = MeasureCustom(intensity_threshold=150)
+    >>> measurements = measurer.measure(image)  # Returns DataFrame
 
     **When to Use MeasureFeatures vs ImageOperation:**
 
@@ -204,56 +220,82 @@ class MeasureFeatures(BaseOperation, ABC):
         No public attributes. Configuration is passed through __init__() parameters.
 
     Examples:
-        .. dropdown:: Basic usage: measure colony area and intensity
+        Basic usage: measure colony area and intensity:
 
-            .. code-block:: python
+        >>> from phenotypic import Image
+        >>> from phenotypic.measure import MeasureSize
+        >>> # Load and detect colonies
+        >>> image = Image('plate_image.jpg')
+        >>> from phenotypic.detect import OtsuDetector
+        >>> detector = OtsuDetector()
+        >>> image = detector.operate(image)
+        >>> # Extract size measurements
+        >>> measurer = MeasureSize()
+        >>> df = measurer.measure(image)
+        >>> print(df)
+        # Output:
+        #   OBJECT.LABEL  Area  IntegratedIntensity
+        # 0             1  1024                 128512
+        # 1             2   956                 121232
+        # 2             3  1101                 134232
 
-                from phenotypic import Image
-                from phenotypic.measure import MeasureSize
+        Advanced: extract multiple measurement types with metadata:
 
-                # Load and detect colonies
-                image = Image.from_image_path('plate_image.jpg')
-                from phenotypic.detect import OtsuDetector
-                detector = OtsuDetector()
-                image = detector.operate(image)
+        >>> from phenotypic.measure import (
+        ...     MeasureSize,
+        ...     MeasureShape,
+        ...     MeasureColor
+        ... )
+        >>> from phenotypic._core import ImagePipeline
+        >>> # Create pipeline combining detectors and measurers
+        >>> pipeline = ImagePipeline(
+        ...     detector=OtsuDetector(),
+        ...     measurers=[
+        ...         MeasureSize(),
+        ...         MeasureShape(),
+        ...         MeasureColor(include_XYZ=False)
+        ...     ]
+        ... )
+        >>> # Measure a single image with metadata
+        >>> results = pipeline.operate(image)
+        >>> # Combine measurements: merge multiple DataFrames by OBJECT.LABEL
+        >>> combined = results[0]
+        >>> for df in results[1:]:
+        ...     combined = combined.merge(df, on=OBJECT.LABEL)
 
-                # Extract size measurements
-                measurer = MeasureSize()
-                df = measurer.measure(image)
-                print(df)
-                # Output:
-                #   OBJECT.LABEL  Area  IntegratedIntensity
-                # 0             1  1024                 128512
-                # 1             2   956                 121232
-                # 2             3  1101                 134232
+        Custom feature engineering: growth density index:
 
-        .. dropdown:: Advanced: extract multiple measurement types with metadata
-
-            .. code-block:: python
-
-                from phenotypic.measure import (
-                    MeasureSize,
-                    MeasureShape,
-                    MeasureColor
-                )
-                from phenotypic.core import ImagePipeline
-
-                # Create pipeline combining detectors and measurers
-                pipeline = ImagePipeline(
-                    detector=OtsuDetector(),
-                    measurers=[
-                        MeasureSize(),
-                        MeasureShape(),
-                        MeasureColor(include_XYZ=False)
-                    ]
-                )
-
-                # Measure a single image with metadata
-                results = pipeline.operate(image)
-                # Combine measurements: merge multiple DataFrames by OBJECT.LABEL
-                combined = results[0]
-                for df in results[1:]:
-                    combined = combined.merge(df, on=OBJECT.LABEL)
+        >>> from phenotypic.abc_ import MeasureFeatures
+        >>> from phenotypic.tools_.constants_ import OBJECT
+        >>> import pandas as pd
+        >>> import numpy as np
+        >>> class MeasureGrowthDensity(MeasureFeatures):
+        ...     '''Custom measurer: compute colony compactness index.'''
+        ...
+        ...     def _operate(self, image):
+        ...         '''Calculate area, perimeter, and density index.'''
+        ...         objmap = image.objmap[:]
+        ...         gray = image.detect_mat[:]
+        ...         # Area and perimeter
+        ...         area = self._calculate_sum(image.objmask[:], objmap)
+        ...         perimeter = self._funcmap2objects(
+        ...             func=lambda arr: np.sqrt(np.sum(arr > 0)) * 4,
+        ...             out_dtype=float,
+        ...             array=image.objmask[:],
+        ...             objmap=objmap
+        ...         )
+        ...         # Mean intensity (growth density)
+        ...         mean_intensity = self._calculate_mean(gray, objmap)
+        ...         # Compactness = 4*pi*Area / Perimeter^2
+        ...         compactness = (4 * np.pi * area) / (perimeter ** 2 + 1e-6)
+        ...         results = pd.DataFrame({
+        ...             'Area': area,
+        ...             'Perimeter': perimeter,
+        ...             'MeanIntensity': mean_intensity,
+        ...             'CompactnessIndex': compactness,
+        ...         })
+        ...         results.insert(0, OBJECT.LABEL, image.objects.labels2series())
+        ...         return results
     """
 
     @validate_measure_integrity()
@@ -313,38 +355,30 @@ class MeasureFeatures(BaseOperation, ABC):
             - Image must have detected objects (image.objmap should be non-empty)
 
         Examples:
-            .. dropdown:: Basic measurement extraction
+            Basic measurement extraction:
 
-                .. code-block:: python
+            >>> from phenotypic import Image
+            >>> from phenotypic.measure import MeasureSize
+            >>> from phenotypic.detect import OtsuDetector
+            >>> # Load and detect
+            >>> image = Image('plate.jpg')
+            >>> image = OtsuDetector().operate(image)
+            >>> # Extract measurements
+            >>> measurer = MeasureSize()
+            >>> df = measurer.measure(image)
+            >>> print(df.head())
 
-                    from phenotypic import Image
-                    from phenotypic.measure import MeasureSize
-                    from phenotypic.detect import OtsuDetector
+            Include metadata in measurements:
 
-                    # Load and detect
-                    image = Image.from_image_path('plate.jpg')
-                    image = OtsuDetector().operate(image)
-
-                    # Extract measurements
-                    measurer = MeasureSize()
-                    df = measurer.measure(image)
-                    print(df.head())
-
-            .. dropdown:: Include metadata in measurements
-
-                .. code-block:: python
-
-                    # With image metadata (filename, grid info)
-                    df_with_meta = measurer.measure(image, include_meta=True)
-                    print(df_with_meta.columns)
-                    # Output: ['Filename', 'GridRow', 'GridCol', 'OBJECT.LABEL',
-                    #          'Area', 'IntegratedIntensity', ...]
+            >>> # With image metadata (filename, grid info)
+            >>> df_with_meta = measurer.measure(image, include_meta=True)
+            >>> print(df_with_meta.columns)
+            # Output: ['Filename', 'GridRow', 'GridCol', 'OBJECT.LABEL',
+            #          'Area', 'IntegratedIntensity', ...]
         """
 
         try:
-            matched_args = self._get_matched_operation_args()
-
-            meas = self._operate(image, **matched_args)
+            meas = self._operate(image)
             if include_meta:
                 meta = (
                     image.grid.info(include_metadata=True)
@@ -357,10 +391,10 @@ class MeasureFeatures(BaseOperation, ABC):
 
         except Exception as e:
             raise OperationFailedError(
-                operation=self.__class__.__name__,
-                image_name=image.name,
-                err_type=type(e),
-                message=str(e),
+                    operation=self.__class__.__name__,
+                    image_name=image.name,
+                    err_type=type(e),
+                    message=str(e),
             )
 
     @staticmethod
@@ -391,25 +425,21 @@ class MeasureFeatures(BaseOperation, ABC):
             returned in consistent numpy array format.
 
         Examples:
-            .. dropdown:: Normalize various input types
+            Normalize various input types:
 
-                .. code-block:: python
-
-                    # Scalar to array
-                    result = MeasureFeatures._ensure_array(5)
-                    print(type(result), result.shape)
-                    # Output: <class 'numpy.ndarray'> ()
-
-                    # List to array
-                    result = MeasureFeatures._ensure_array([1, 2, 3])
-                    print(result, result.shape)
-                    # Output: [1 2 3] (3,)
-
-                    # Already array
-                    arr = np.array([1.0, 2.0, 3.0])
-                    result = MeasureFeatures._ensure_array(arr)
-                    print(np.array_equal(result, arr))
-                    # Output: True
+            >>> # Scalar to array
+            >>> result = MeasureFeatures._ensure_array(5)
+            >>> print(type(result), result.shape)
+            # Output: <class 'numpy.ndarray'> ()
+            >>> # List to array
+            >>> result = MeasureFeatures._ensure_array([1, 2, 3])
+            >>> print(result, result.shape)
+            # Output: [1 2 3] (3,)
+            >>> # Already array
+            >>> arr = np.array([1.0, 2.0, 3.0])
+            >>> result = MeasureFeatures._ensure_array(arr)
+            >>> print(np.array_equal(result, arr))
+            # Output: True
         """
         if is_scalar(value):
             return np.asarray(value)
@@ -450,34 +480,28 @@ class MeasureFeatures(BaseOperation, ABC):
             - For equal-weighted center, use uniform-intensity array with same shape
 
         Examples:
-            .. dropdown:: Find colony centroid positions
+            Find colony centroid positions:
 
-                .. code-block:: python
+            >>> # Measure intensity-weighted centers for stained colonies
+            >>> gray = image.detect_mat[:]  # Preprocessed intensity
+            >>> objmap = image.objmap[:]
+            >>> centers = MeasureFeatures._calculate_center_of_mass(
+            ...     array=gray,
+            ...     objmap=objmap
+            ... )
+            # Returns: [[42.3, 105.8], [156.2, 89.5], ...]
+            # (row, col) for each object
+            >>> # Detect colonies with off-center intensity (asymmetric growth)
+            >>> for i, (row, col) in enumerate(centers):
+            ...     obj_label = i + 1
+            ...     # Analyze intensity distribution around center
 
-                    # Measure intensity-weighted centers for stained colonies
-                    gray = image.enh_gray[:]  # Preprocessed intensity
-                    objmap = image.objmap[:]
+            Single colony mass center (no objmap):
 
-                    centers = MeasureFeatures._calculate_center_of_mass(
-                        array=gray,
-                        objmap=objmap
-                    )
-                    # Returns: [[42.3, 105.8], [156.2, 89.5], ...]
-                    # (row, col) for each object
-
-                    # Detect colonies with off-center intensity (asymmetric growth)
-                    for i, (row, col) in enumerate(centers):
-                        obj_label = i + 1
-                        # Analyze intensity distribution around center
-
-            .. dropdown:: Single colony mass center (no objmap)
-
-                .. code-block:: python
-
-                    # Find center for isolated colony region
-                    colony_region = image.enh_gray[50:150, 50:150]
-                    center = MeasureFeatures._calculate_center_of_mass(colony_region)
-                    # Returns: (42.5, 52.3) - single (row, col) tuple
+            >>> # Find center for isolated colony region
+            >>> colony_region = image.detect_mat[50:150, 50:150]
+            >>> center = MeasureFeatures._calculate_center_of_mass(colony_region)
+            # Returns: (42.5, 52.3) - single (row, col) tuple
         """
         if objmap is not None:
             indexes = np.unique(objmap)
@@ -485,7 +509,7 @@ class MeasureFeatures(BaseOperation, ABC):
         else:
             indexes = None
         return MeasureFeatures._ensure_array(
-            scipy.ndimage.center_of_mass(array, objmap, index=indexes)
+                scipy.ndimage.center_of_mass(array, objmap, index=indexes)
         )
 
     @staticmethod
@@ -514,14 +538,12 @@ class MeasureFeatures(BaseOperation, ABC):
             - Useful with binary masks to count bright-region pixels
 
         Examples:
-            .. dropdown:: Find brightest pixels in colonies
+            Find brightest pixels in colonies:
 
-                .. code-block:: python
-
-                    gray = image.enh_gray[:]
-                    objmap = image.objmap[:]
-                    max_intensity = MeasureFeatures._calculate_maximum(gray, objmap)
-                    # Returns: [245, 238, 241, ...] brightness per object
+            >>> gray = image.detect_mat[:]
+            >>> objmap = image.objmap[:]
+            >>> max_intensity = MeasureFeatures._calculate_maximum(gray, objmap)
+            # Returns: [245, 238, 241, ...] brightness per object
         """
         if objmap is not None:
             indexes = np.unique(objmap)
@@ -529,7 +551,7 @@ class MeasureFeatures(BaseOperation, ABC):
         else:
             indexes = None
         return MeasureFeatures._ensure_array(
-            scipy.ndimage.maximum(array, objmap, index=indexes)
+                scipy.ndimage.maximum(array, objmap, index=indexes)
         )
 
     @staticmethod
@@ -559,15 +581,13 @@ class MeasureFeatures(BaseOperation, ABC):
             - Zero/background pixels excluded from calculation
 
         Examples:
-            .. dropdown:: Compare colony growth intensity
+            Compare colony growth intensity:
 
-                .. code-block:: python
-
-                    gray = image.enh_gray[:]
-                    objmap = image.objmap[:]
-                    mean_intensities = MeasureFeatures._calculate_mean(gray, objmap)
-                    # Returns: [128.5, 142.3, 135.8, ...] avg brightness per colony
-                    # High values = dense/pigmented growth
+            >>> gray = image.detect_mat[:]
+            >>> objmap = image.objmap[:]
+            >>> mean_intensities = MeasureFeatures._calculate_mean(gray, objmap)
+            # Returns: [128.5, 142.3, 135.8, ...] avg brightness per colony
+            # High values = dense/pigmented growth
         """
         if objmap is not None:
             indexes = np.unique(objmap)
@@ -575,7 +595,7 @@ class MeasureFeatures(BaseOperation, ABC):
         else:
             indexes = None
         return MeasureFeatures._ensure_array(
-            scipy.ndimage.mean(array, objmap, index=indexes)
+                scipy.ndimage.mean(array, objmap, index=indexes)
         )
 
     @staticmethod
@@ -604,15 +624,13 @@ class MeasureFeatures(BaseOperation, ABC):
             - Good for colonies with speckling or uneven stain distribution
 
         Examples:
-            .. dropdown:: Robust growth intensity measurement
+            Robust growth intensity measurement:
 
-                .. code-block:: python
-
-                    gray = image.enh_gray[:]
-                    objmap = image.objmap[:]
-                    # For colonies with bright debris or speckles
-                    median_int = MeasureFeatures._calculate_median(gray, objmap)
-                    # More stable than mean for noisy images
+            >>> gray = image.detect_mat[:]
+            >>> objmap = image.objmap[:]
+            >>> # For colonies with bright debris or speckles
+            >>> median_int = MeasureFeatures._calculate_median(gray, objmap)
+            # More stable than mean for noisy images
         """
         if objmap is not None:
             indexes = np.unique(objmap)
@@ -620,7 +638,7 @@ class MeasureFeatures(BaseOperation, ABC):
         else:
             indexes = None
         return MeasureFeatures._ensure_array(
-            scipy.ndimage.median(array, objmap, index=indexes)
+                scipy.ndimage.median(array, objmap, index=indexes)
         )
 
     @staticmethod
@@ -649,14 +667,12 @@ class MeasureFeatures(BaseOperation, ABC):
             - Combined with maximum, reveals intensity range within colony
 
         Examples:
-            .. dropdown:: Detect dark regions in colonies
+            Detect dark regions in colonies:
 
-                .. code-block:: python
-
-                    gray = image.enh_gray[:]
-                    objmap = image.objmap[:]
-                    min_int = MeasureFeatures._calculate_minimum(gray, objmap)
-                    # Identifies colonies with dark cores (aging or death)
+            >>> gray = image.detect_mat[:]
+            >>> objmap = image.objmap[:]
+            >>> min_int = MeasureFeatures._calculate_minimum(gray, objmap)
+            # Identifies colonies with dark cores (aging or death)
         """
         if objmap is not None:
             indexes = np.unique(objmap)
@@ -664,7 +680,7 @@ class MeasureFeatures(BaseOperation, ABC):
         else:
             indexes = None
         return MeasureFeatures._ensure_array(
-            scipy.ndimage.minimum(array, objmap, index=indexes)
+                scipy.ndimage.minimum(array, objmap, index=indexes)
         )
 
     @staticmethod
@@ -694,16 +710,14 @@ class MeasureFeatures(BaseOperation, ABC):
               mutants with rougher colony surfaces
 
         Examples:
-            .. dropdown:: Detect rough/textured colonies
+            Detect rough/textured colonies:
 
-                .. code-block:: python
-
-                    gray = image.enh_gray[:]
-                    objmap = image.objmap[:]
-                    stddev = MeasureFeatures._calculate_stddev(gray, objmap)
-                    # High stddev = rough/textured colonies
-                    # Low stddev = smooth/uniform growth
-                    rough_colonies = np.where(stddev > 20)[0]
+            >>> gray = image.detect_mat[:]
+            >>> objmap = image.objmap[:]
+            >>> stddev = MeasureFeatures._calculate_stddev(gray, objmap)
+            # High stddev = rough/textured colonies
+            # Low stddev = smooth/uniform growth
+            >>> rough_colonies = np.where(stddev > 20)[0]
         """
         if objmap is not None:
             indexes = np.unique(objmap)
@@ -711,7 +725,7 @@ class MeasureFeatures(BaseOperation, ABC):
         else:
             indexes = None
         return MeasureFeatures._ensure_array(
-            scipy.ndimage.standard_deviation(array, objmap, index=indexes)
+                scipy.ndimage.standard_deviation(array, objmap, index=indexes)
         )
 
     @staticmethod
@@ -742,19 +756,16 @@ class MeasureFeatures(BaseOperation, ABC):
             - No division by area (unlike mean), so larger objects always sum higher
 
         Examples:
-            .. dropdown:: Calculate colony area and integrated intensity
+            Calculate colony area and integrated intensity:
 
-                .. code-block:: python
-
-                    # Area = sum of binary mask
-                    area = MeasureFeatures._calculate_sum(image.objmask[:],
-                                                         image.objmap[:])
-                    # Returns pixel count per colony
-
-                    # Integrated intensity = sum of grayscale
-                    intensity = MeasureFeatures._calculate_sum(image.gray[:],
-                                                              image.objmap[:])
-                    # Returns total brightness per colony
+            >>> # Area = sum of binary mask
+            >>> area = MeasureFeatures._calculate_sum(image.objmask[:],
+            ...                                      image.objmap[:])
+            # Returns pixel count per colony
+            >>> # Integrated intensity = sum of grayscale
+            >>> intensity = MeasureFeatures._calculate_sum(image.gray[:],
+            ...                                           image.objmap[:])
+            # Returns total brightness per colony
         """
         if objmap is not None:
             indexes = np.unique(objmap)
@@ -762,7 +773,7 @@ class MeasureFeatures(BaseOperation, ABC):
         else:
             indexes = None
         return MeasureFeatures._ensure_array(
-            scipy.ndimage.sum_labels(array, objmap, index=indexes)
+                scipy.ndimage.sum_labels(array, objmap, index=indexes)
         )
 
     @staticmethod
@@ -792,14 +803,12 @@ class MeasureFeatures(BaseOperation, ABC):
             - Zero for perfectly uniform colonies
 
         Examples:
-            .. dropdown:: Analyze colony texture variability
+            Analyze colony texture variability:
 
-                .. code-block:: python
-
-                    gray = image.enh_gray[:]
-                    objmap = image.objmap[:]
-                    variance = MeasureFeatures._calculate_variance(gray, objmap)
-                    stddev = np.sqrt(variance)  # Convert back to original units
+            >>> gray = image.detect_mat[:]
+            >>> objmap = image.objmap[:]
+            >>> variance = MeasureFeatures._calculate_variance(gray, objmap)
+            >>> stddev = np.sqrt(variance)  # Convert back to original units
         """
         if objmap is not None:
             indexes = np.unique(objmap)
@@ -807,7 +816,7 @@ class MeasureFeatures(BaseOperation, ABC):
         else:
             indexes = None
         return MeasureFeatures._ensure_array(
-            scipy.ndimage.variance(array, objmap, index=indexes)
+                scipy.ndimage.variance(array, objmap, index=indexes)
         )
 
     @staticmethod
@@ -846,23 +855,21 @@ class MeasureFeatures(BaseOperation, ABC):
             - Unbiased estimator: (1 + 1/n) * biased_cv
 
         Examples:
-            .. dropdown:: Compare colony growth uniformity
+            Compare colony growth uniformity:
 
-                .. code-block:: python
-
-                    gray = image.enh_gray[:]
-                    objmap = image.objmap[:]
-                    cv = MeasureFeatures._calculate_coeff_variation(gray, objmap)
-                    # Returns: [0.08, 0.15, 0.32, ...] relative variation
-                    # CV < 0.1: smooth, uniform colonies
-                    # CV > 0.2: rough, textured growth (biofilm)
-                    textured = np.where(cv > 0.2)[0]  # Find biofilm-like colonies
+            >>> gray = image.detect_mat[:]
+            >>> objmap = image.objmap[:]
+            >>> cv = MeasureFeatures._calculate_coeff_variation(gray, objmap)
+            # Returns: [0.08, 0.15, 0.32, ...] relative variation
+            # CV < 0.1: smooth, uniform colonies
+            # CV > 0.2: rough, textured growth (biofilm)
+            >>> textured = np.where(cv > 0.2)[0]  # Find biofilm-like colonies
         """
         if objmap is not None:
             unique_labels, unique_counts = np.unique(objmap, return_counts=True)
             unique_counts = unique_counts[unique_labels != 0]
             biased_cv = MeasureFeatures._calculate_stddev(
-                array, objmap
+                    array, objmap
             ) / MeasureFeatures._calculate_mean(array, objmap)
             result = (1 + (1 / unique_counts)) * biased_cv
         else:
@@ -897,7 +904,7 @@ class MeasureFeatures(BaseOperation, ABC):
         else:
             indexes = None
         min_extrema, max_extrema, min_pos, max_pos = MeasureFeatures._ensure_array(
-            scipy.ndimage.extrema(array, objmap, index=indexes)
+                scipy.ndimage.extrema(array, objmap, index=indexes)
         )
         return (
             MeasureFeatures._ensure_array(min_extrema),
@@ -936,17 +943,15 @@ class MeasureFeatures(BaseOperation, ABC):
             - May return multiple positions if minimum occurs multiple times
 
         Examples:
-            .. dropdown:: Locate dark regions in colonies
+            Locate dark regions in colonies:
 
-                .. code-block:: python
-
-                    gray = image.enh_gray[:]
-                    objmap = image.objmap[:]
-                    min_vals, min_pos = MeasureFeatures._calculate_min_extrema(
-                        gray, objmap
-                    )
-                    # min_vals: [50, 45, 52, ...] darkest pixel per colony
-                    # min_pos: [(45, 103), (156, 87), ...] locations
+            >>> gray = image.detect_mat[:]
+            >>> objmap = image.objmap[:]
+            >>> min_vals, min_pos = MeasureFeatures._calculate_min_extrema(
+            ...     gray, objmap
+            ... )
+            # min_vals: [50, 45, 52, ...] darkest pixel per colony
+            # min_pos: [(45, 103), (156, 87), ...] locations
         """
         min_extrema, _, min_pos, _ = MeasureFeatures._calculate_extrema(array, objmap)
         return min_extrema, min_pos
@@ -981,29 +986,27 @@ class MeasureFeatures(BaseOperation, ABC):
             - Multiple positions possible if maximum occurs multiple times
 
         Examples:
-            .. dropdown:: Find brightest spots in colonies
+            Find brightest spots in colonies:
 
-                .. code-block:: python
-
-                    gray = image.enh_gray[:]
-                    objmap = image.objmap[:]
-                    max_vals, max_pos = MeasureFeatures._calculate_max_extrema(
-                        gray, objmap
-                    )
-                    # max_vals: [245, 238, 241, ...] brightest pixel per colony
-                    # max_pos: [(42, 105), (155, 89), ...] center locations
+            >>> gray = image.detect_mat[:]
+            >>> objmap = image.objmap[:]
+            >>> max_vals, max_pos = MeasureFeatures._calculate_max_extrema(
+            ...     gray, objmap
+            ... )
+            # max_vals: [245, 238, 241, ...] brightest pixel per colony
+            # max_pos: [(42, 105), (155, 89), ...] center locations
         """
         _, max_extreme, _, max_pos = MeasureFeatures._calculate_extrema(array, objmap)
         return max_extreme, max_pos
 
     @staticmethod
     def _funcmap2objects(
-        func: Callable,
-        out_dtype: np.dtype,
-        array: np.ndarray,
-        objmap: ArrayLike = None,
-        default: int | float | np.nan = np.nan,
-        pass_positions: bool = False,
+            func: Callable,
+            out_dtype: np.dtype,
+            array: np.ndarray,
+            objmap: ArrayLike = None,
+            default: int | float | np.nan = np.nan,
+            pass_positions: bool = False,
     ):
         """Apply a custom function to each labeled region in an array (advanced helper).
 
@@ -1046,63 +1049,53 @@ class MeasureFeatures(BaseOperation, ABC):
             - func() receives actual pixel values, not labeled indices
 
         Examples:
-            .. dropdown:: Custom measurement: find 90th percentile intensity
+            Custom measurement: find 90th percentile intensity:
 
-                .. code-block:: python
+            >>> from functools import partial
+            >>> gray = image.detect_mat[:]
+            >>> objmap = image.objmap[:]
+            >>> # Define custom function
+            >>> q90 = partial(np.percentile, q=90)
+            >>> results = MeasureFeatures._funcmap2objects(
+            ...     func=q90,
+            ...     out_dtype=float,
+            ...     array=gray,
+            ...     objmap=objmap,
+            ...     default=np.nan
+            ... )
+            # Returns: [200, 195, 210, ...] 90th percentile per colony
 
-                    from functools import partial
+            Custom: count pixels above threshold:
 
-                    gray = image.enh_gray[:]
-                    objmap = image.objmap[:]
+            >>> # Count bright pixels within each colony
+            >>> def count_bright(pixels):
+            ...     return np.sum(pixels > 200)
+            >>> bright_pixels = MeasureFeatures._funcmap2objects(
+            ...     func=count_bright,
+            ...     out_dtype=int,
+            ...     array=gray,
+            ...     objmap=objmap,
+            ...     default=0
+            ... )
+            # Returns: [45, 32, 58, ...] bright pixel count per colony
 
-                    # Define custom function
-                    q90 = partial(np.percentile, q=90)
-                    results = MeasureFeatures._funcmap2objects(
-                        func=q90,
-                        out_dtype=float,
-                        array=gray,
-                        objmap=objmap,
-                        default=np.nan
-                    )
-                    # Returns: [200, 195, 210, ...] 90th percentile per colony
+            Advanced: use positions for spatial analysis:
 
-            .. dropdown:: Custom: count pixels above threshold
-
-                .. code-block:: python
-
-                    # Count bright pixels within each colony
-                    def count_bright(pixels):
-                        return np.sum(pixels > 200)
-
-                    bright_pixels = MeasureFeatures._funcmap2objects(
-                        func=count_bright,
-                        out_dtype=int,
-                        array=gray,
-                        objmap=objmap,
-                        default=0
-                    )
-                    # Returns: [45, 32, 58, ...] bright pixel count per colony
-
-            .. dropdown:: Advanced: use positions for spatial analysis
-
-                .. code-block:: python
-
-                    # Find distance from top-left for brightest pixel
-                    def distance_to_topleft(pixels, positions):
-                        if len(pixels) == 0:
-                            return np.nan
-                        brightest_idx = np.argmax(pixels)
-                        row, col = positions[brightest_idx]
-                        return np.sqrt(row**2 + col**2)
-
-                    distances = MeasureFeatures._funcmap2objects(
-                        func=distance_to_topleft,
-                        out_dtype=float,
-                        array=gray,
-                        objmap=objmap,
-                        pass_positions=True,
-                        default=np.nan
-                    )
+            >>> # Find distance from top-left for brightest pixel
+            >>> def distance_to_topleft(pixels, positions):
+            ...     if len(pixels) == 0:
+            ...         return np.nan
+            ...     brightest_idx = np.argmax(pixels)
+            ...     row, col = positions[brightest_idx]
+            ...     return np.sqrt(row**2 + col**2)
+            >>> distances = MeasureFeatures._funcmap2objects(
+            ...     func=distance_to_topleft,
+            ...     out_dtype=float,
+            ...     array=gray,
+            ...     objmap=objmap,
+            ...     pass_positions=True,
+            ...     default=np.nan
+            ... )
         """
         if objmap is not None:
             index = np.unique(objmap)
@@ -1111,15 +1104,15 @@ class MeasureFeatures(BaseOperation, ABC):
             index = None
 
         return MeasureFeatures._ensure_array(
-            scipy.ndimage.labeled_comprehension(
-                input=array,
-                labels=objmap,
-                index=index,
-                func=func,
-                out_dtype=out_dtype,
-                pass_positions=pass_positions,
-                default=default,
-            ),
+                scipy.ndimage.labeled_comprehension(
+                        input=array,
+                        labels=objmap,
+                        index=index,
+                        func=func,
+                        out_dtype=out_dtype,
+                        pass_positions=pass_positions,
+                        default=default,
+                ),
         )
 
     @staticmethod
@@ -1148,12 +1141,12 @@ class MeasureFeatures(BaseOperation, ABC):
         """
         find_q1 = partial(np.quantile, q=0.25, method=method)
         q1 = MeasureFeatures._funcmap2objects(
-            func=find_q1,
-            out_dtype=array.dtype,
-            array=array,
-            objmap=objmap,
-            default=np.nan,
-            pass_positions=False,
+                func=find_q1,
+                out_dtype=array.dtype,
+                array=array,
+                objmap=objmap,
+                default=np.nan,
+                pass_positions=False,
         )
         return MeasureFeatures._ensure_array(q1)
 
@@ -1182,19 +1175,19 @@ class MeasureFeatures(BaseOperation, ABC):
         """
         find_q3 = partial(np.quantile, q=0.75, method=method)
         q3 = MeasureFeatures._funcmap2objects(
-            func=find_q3,
-            out_dtype=array.dtype,
-            array=array,
-            objmap=objmap,
-            default=np.nan,
-            pass_positions=False,
+                func=find_q3,
+                out_dtype=array.dtype,
+                array=array,
+                objmap=objmap,
+                default=np.nan,
+                pass_positions=False,
         )
         return MeasureFeatures._ensure_array(q3)
 
     @staticmethod
     @catch_warnings_decorator
     def _calculate_iqr(
-        array, objmap=None, method: str = "linear", nan_policy: str = "omit"
+            array, objmap=None, method: str = "linear", nan_policy: str = "omit"
     ):
         """Calculate the interquartile range (Q3 - Q1) for each object.
 
@@ -1221,26 +1214,24 @@ class MeasureFeatures(BaseOperation, ABC):
             - Preferred over stddev/variance for non-normal distributions
 
         Examples:
-            .. dropdown:: Compare colony texture via IQR
+            Compare colony texture via IQR:
 
-                .. code-block:: python
-
-                    gray = image.enh_gray[:]
-                    objmap = image.objmap[:]
-                    iqr = MeasureFeatures._calculate_iqr(gray, objmap)
-                    # IQR < 30: smooth, uniform colonies
-                    # IQR > 100: rough, textured growth
+            >>> gray = image.detect_mat[:]
+            >>> objmap = image.objmap[:]
+            >>> iqr = MeasureFeatures._calculate_iqr(gray, objmap)
+            # IQR < 30: smooth, uniform colonies
+            # IQR > 100: rough, textured growth
         """
         find_iqr = partial(
-            scipy.stats.iqr, axis=None, nan_policy=nan_policy, interpolation=method
+                scipy.stats.iqr, axis=None, nan_policy=nan_policy, interpolation=method
         )
         return MeasureFeatures._ensure_array(
-            MeasureFeatures._funcmap2objects(
-                func=find_iqr,
-                out_dtype=array.dtype,
-                array=array,
-                objmap=objmap,
-                default=np.nan,
-                pass_positions=False,
-            ),
+                MeasureFeatures._funcmap2objects(
+                        func=find_iqr,
+                        out_dtype=array.dtype,
+                        array=array,
+                        objmap=objmap,
+                        default=np.nan,
+                        pass_positions=False,
+                ),
         )

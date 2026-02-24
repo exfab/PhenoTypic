@@ -107,7 +107,11 @@ jobs:
       - name: Activate venv and run tests (Linux)
         run: |
           source .venv/bin/activate
-          pytest -n auto
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            pytest --testmon
+          else
+            pytest -n auto
+          fi
 
   tests-windows:
     needs: check-manual-run
@@ -143,7 +147,11 @@ jobs:
       - name: Activate venv and run tests (Windows)
         run: |
           .venv\Scripts\activate
-          pytest -n auto
+          if ($env:GITHUB_EVENT_NAME -eq "pull_request") {
+            pytest --testmon
+          } else {
+            pytest -n auto
+          }
         shell: pwsh
 
   tests-macos:
@@ -181,13 +189,21 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           source .venv/bin/activate
-          pytest -n auto
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            pytest --testmon
+          else
+            pytest -n auto
+          fi
 
       - name: Activate venv and run tests (Windows)
         if: runner.os == 'Windows'
         run: |
           .venv\Scripts\activate
-          pytest -n auto
+          if ($env:GITHUB_EVENT_NAME -eq "pull_request") {
+            pytest --testmon
+          } else {
+            pytest -n auto
+          }
         shell: pwsh
 
   docs-build:

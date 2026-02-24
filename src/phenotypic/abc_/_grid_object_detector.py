@@ -7,8 +7,8 @@ if TYPE_CHECKING:
     from phenotypic import GridImage
 
 from phenotypic.abc_ import ObjectDetector, GridOperation
-from phenotypic.tools.funcs_ import validate_operation_integrity
-from phenotypic.tools.exceptions_ import GridImageInputError
+from phenotypic.tools_.funcs_ import validate_operation_integrity
+from phenotypic.tools_.exceptions_ import GridImageInputError
 from abc import ABC
 
 
@@ -85,7 +85,7 @@ class GridObjectDetector(ObjectDetector, GridOperation, ABC):
                 from scipy.ndimage import label
                 from skimage.filters import threshold_local
 
-                enh = image.enh_gray[:]
+                enh = image.detect_mat[:]
                 grid = image.grid  # Access grid structure
 
                 # Apply adaptive threshold per well
@@ -101,7 +101,7 @@ class GridObjectDetector(ObjectDetector, GridOperation, ABC):
     **Critical Implementation Detail**
 
     GridObjectDetector includes input validation (GridImage required) but NO output integrity
-    checks. Like ObjectDetector, it is READ-ONLY for rgb, gray, enh_gray. You may only write
+    checks. Like ObjectDetector, it is READ-ONLY for rgb, gray, detect_mat. You may only write
     to objmask and objmap.
 
     .. code-block:: python
@@ -109,7 +109,7 @@ class GridObjectDetector(ObjectDetector, GridOperation, ABC):
         @staticmethod
         def _operate(image: GridImage, **kwargs) -> GridImage:
             # Read (protected by @validate_operation_integrity):
-            enh = image.enh_gray[:]
+            enh = image.detect_mat[:]
             gray = image.gray[:]
             rgb = image.rgb[:]
 
@@ -132,7 +132,7 @@ class GridObjectDetector(ObjectDetector, GridOperation, ABC):
     **Notes**
 
     - GridObjectDetector enforces GridImage input type at runtime. Passing plain Image raises error.
-    - Input validation uses @validate_operation_integrity('image.rgb', 'image.gray', 'image.enh_gray')
+    - Input validation uses @validate_operation_integrity('image.rgb', 'image.gray', 'image.detect_mat')
       to ensure image color data is not modified.
     - GridImage must have valid grid structure before detection. Typically set by GridFinder
       or manually specified grid before applying GridObjectDetector.
@@ -140,87 +140,70 @@ class GridObjectDetector(ObjectDetector, GridOperation, ABC):
     - Output is always GridImage (input type is preserved).
 
     Examples:
-        .. dropdown:: Per-well Otsu detection with grid structure
+        Per-well Otsu detection with grid structure:
 
-            .. code-block:: python
+        >>> from phenotypic import GridImage, Image
+        >>> from phenotypic.abc_ import GridObjectDetector
+        >>> from scipy.ndimage import label
+        >>> from skimage.filters import threshold_otsu
+        >>> import numpy as np
+        >>> class GridOtsuDetector(GridObjectDetector):
+        ...     '''Detect colonies using global Otsu threshold on grid plate.'''
+        ...
+        ...     def _operate(self, image: GridImage) -> GridImage:
+        ...         enh = image.detect_mat[:]
+        ...         # Apply global Otsu threshold
+        ...         threshold = threshold_otsu(enh)
+        ...         binary_mask = enh > threshold
+        ...         # Label connected components
+        ...         labeled_map, _ = label(binary_mask)
+        ...         # Set detection results
+        ...         image.objmask[:] = binary_mask
+        ...         image.objmap[:] = labeled_map
+        ...         return image
+        >>> # Usage
+        >>> image = Image.imread('plate.jpg')
+        >>> grid_image = GridImage(image)
+        >>> grid_image.detect_grid()
+        >>> detector = GridOtsuDetector()
+        >>> detected = detector.operate(grid_image)
+        >>> # Grid structure preserved; can access wells
+        >>> for well_row in range(grid_image.nrows):
+        ...     for well_col in range(grid_image.ncols):
+        ...         # Colonies in this well available via grid accessor
+        ...         pass
 
-                from phenotypic import GridImage, Image
-                from phenotypic.abc_ import GridObjectDetector
-                from scipy.ndimage import label
-                from skimage.filters import threshold_otsu
-                import numpy as np
+        Per-well adaptive detection using well centers as hints:
 
-                class GridOtsuDetector(GridObjectDetector):
-                    \"\"\"Detect colonies using global Otsu threshold on grid plate.\"\"\"
-
-                    def _operate(self, image: GridImage) -> GridImage:
-                        enh = image.enh_gray[:]
-
-                        # Apply global Otsu threshold
-                        threshold = threshold_otsu(enh)
-                        binary_mask = enh > threshold
-
-                        # Label connected components
-                        labeled_map, _ = label(binary_mask)
-
-                        # Set detection results
-                        image.objmask[:] = binary_mask
-                        image.objmap[:] = labeled_map
-
-                        return image
-
-                # Usage
-                image = Image.from_image_path('plate.jpg')
-                grid_image = GridImage(image)
-                grid_image.detect_grid()
-
-                detector = GridOtsuDetector()
-                detected = detector.operate(grid_image)
-
-                # Grid structure preserved; can access wells
-                for well_row in range(grid_image.nrows):
-                    for well_col in range(grid_image.ncols):
-                        # Colonies in this well available via grid accessor
-                        pass
-
-        .. dropdown:: Per-well adaptive detection using well centers as hints
-
-            .. code-block:: python
-
-                from phenotypic.abc_ import GridObjectDetector
-                from phenotypic import GridImage
-                from scipy.ndimage import label
-                from skimage.filters import threshold_local
-
-                class GridAdaptiveDetector(GridObjectDetector):
-                    \"\"\"Adaptive per-well detection using well center positions.\"\"\"
-
-                    def __init__(self, neighborhood_size: int = 31):
-                        super().__init__()
-                        self.neighborhood_size = neighborhood_size
-
-                    def _operate(self, image: GridImage) -> GridImage:
-                        enh = image.enh_gray[:]
-                        grid = image.grid
-
-                        # Apply local adaptive threshold (per-well region)
-                        binary_mask = threshold_local(
-                            enh, self.neighborhood_size
-                        ) > enh
-
-                        # Label and store
-                        labeled_map, _ = label(binary_mask)
-                        image.objmask[:] = binary_mask
-                        image.objmap[:] = labeled_map
-
-                        return image
-
-                # Usage: handle uneven illumination on large plates
-                detector = GridAdaptiveDetector(neighborhood_size=31)
-                detected = detector.operate(grid_image)
+        >>> from phenotypic.abc_ import GridObjectDetector
+        >>> from phenotypic import GridImage
+        >>> from scipy.ndimage import label
+        >>> from skimage.filters import threshold_local
+        >>> class GridAdaptiveDetector(GridObjectDetector):
+        ...     '''Adaptive per-well detection using well center positions.'''
+        ...
+        ...     def __init__(self, neighborhood_size: int = 31):
+        ...         super().__init__()
+        ...         self.neighborhood_size = neighborhood_size
+        ...
+        ...     def _operate(self, image: GridImage) -> GridImage:
+        ...         enh = image.detect_mat[:]
+        ...         grid = image.grid
+        ...         # Apply local adaptive threshold (per-well region)
+        ...         binary_mask = threshold_local(
+        ...             enh, self.neighborhood_size
+        ...         ) > enh
+        ...         # Label and store
+        ...         labeled_map, _ = label(binary_mask)
+        ...         image.objmask[:] = binary_mask
+        ...         image.objmap[:] = labeled_map
+        ...         return image
+        >>> # Usage: handle uneven illumination on large plates
+        >>> detector = GridAdaptiveDetector(neighborhood_size=31)
+        >>> detected = detector.operate(grid_image)
     """
 
-    @validate_operation_integrity("image.rgb", "image.gray", "image.enh_gray")
+    @validate_operation_integrity("image.rgb", "image.gray", "image.detect_mat")
     def apply(self, image: GridImage, inplace=False) -> GridImage:
         from phenotypic import GridImage
 

@@ -117,9 +117,17 @@ Welcome to Phenotypic's documentation. Here you'll find comprehensive guides and
       :link: https://github.com/exfab/PhenoTypic/issues
       :link-type: url
 
-      Notice a problem or need help? Open an issue on GitHub and add a label so we can help you faster.
+      Notice a problem or need help? Open an issue on GitHub and add a label so we can
+      help you faster. Make sure to include error logs when possible!
 
       +++
+
+      .. button-link:: https://github.com/exfab/PhenoTypic/issues
+         :click-parent:
+         :color: secondary
+         :expand:
+
+         Report an issue
 
 
 .. toctree::

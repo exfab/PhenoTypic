@@ -9,7 +9,6 @@ import gc
 
 import numpy as np
 import numpy.ma as ma
-import scipy.ndimage as ndimage
 from scipy.ndimage import distance_transform_edt
 from skimage import feature, filters, morphology, segmentation
 
@@ -17,47 +16,107 @@ from phenotypic.abc_ import ThresholdDetector
 
 
 class WatershedDetector(ThresholdDetector):
-    """
-    Class for detecting objects in an image using the Watershed algorithm.
+    """Region-growing colony detector using watershed segmentation from distance transform.
 
-    The WatershedDetector class processes images to detect and segment objects
-    by applying the watershed algorithm. This class extends the capabilities
-    of ThresholdDetector and includes customization for parameters such as footprint
-    size, minimum object size, compactness, and connectivity. This is useful for
-    image segmentation tasks, where proximity-based object identification is needed.
+    WatershedDetector segments colonies using the watershed algorithm: (1) threshold
+    image to binary mask, (2) compute distance transform to locate colony centers,
+    (3) find local maxima as seed markers, (4) propagate regions via watershed on
+    Sobel gradient. This region-growing approach effectively separates touching
+    colonies and handles variable colony sizes better than global thresholding.
 
-    Note:
-        Its recommended to use `GaussianBlur` beforehand
+    Args:
+        footprint: Structure element for peak detection. Options: 'auto' (infer from
+            grid if GridImage), ndarray (custom), int (diamond radius), None (default).
+            Controls neighborhood size for local maxima detection.
+
+        min_size: Minimum object area in pixels (default 50). Objects smaller than
+            this are removed, filtering dust and debris.
+
+        compactness: Watershed compactness parameter (default 0.001). Higher values
+            enforce more regularly shaped segments but may over-segment irregular colonies.
+
+        connectivity: Connectivity for region labeling (1=4-connected, 2=8-connected,
+            default 1). Controls how adjacent pixels merge into regions.
+
+        relabel: If True (default), relabel segments to ensure consecutive IDs.
+
+        ignore_zeros: If True (default), exclude zero-intensity pixels from threshold
+            computation. Essential for images with black borders or masks.
 
     Attributes:
-        footprint (Literal['auto'] | np.ndarray | int | None): Structure element to define
-            the neighborhood for dilation and erosion operations. Can be specified directly
-            as 'auto', an ndarray, an integer for diamond size, or None for implementation-based
-            determination.
-        min_size (int): Minimum size of objects to retain during segmentation.
-            Objects smaller than this other_image are removed.
-        compactness (float): Compactness parameter controlling segment shapes. Higher values
-            enforce more regularly shaped objects.
-        connectivity (int): The connectivity level used for determining connected components.
-            Represents the number of dimensions neighbors need to share (1 for fully
-            connected, higher values for less connectivity).
-        relabel (bool): Whether to relabel segmented objects during processing to ensure
-            consistent labeling.
-        ignore_zeros (bool): Whether to exclude zero-valued pixels from threshold calculation.
-            When True, Otsu threshold is calculated using only non-zero pixels, and zero pixels
-            are automatically treated as background. When False, all pixels (including zeros)
-            are used for threshold calculation. Default is True, which is useful for microscopy
-            images where zero pixels represent true background or imaging artifacts.
+        footprint, min_size, compactness, connectivity, relabel, ignore_zeros
+
+    Returns:
+        Image: Input image with objmap set to labeled colonies from watershed segmentation.
+
+    Raises:
+        ValueError: If invalid parameters or computation fails (e.g., out of memory).
+
+    **Use cases**
+
+    - **Touching/overlapping colonies:** Region-growing effectively separates colonies
+      in close contact where threshold-based methods merge them.
+    - **Variable colony sizes:** Distance transform-based seeding adapts to colony size
+      variations better than fixed-threshold methods.
+    - **Irregular colony shapes:** Watershed respects local intensity gradients,
+      handling non-circular morphologies better than geometric methods.
+
+    **Limitations**
+
+    - Memory-intensive. Distance transform, gradient, and watershed on large images
+      consume significant RAM. Not suitable for very large images on memory-constrained systems.
+    - Compactness parameter tuning required. Incorrect values cause over/under-segmentation.
+    - Assumes detectable local intensity maxima. Very faint or flat colonies may not
+      seed properly, causing under-segmentation.
+    - Sensitive to noise. Noisy backgrounds can create spurious peaks. Pre-blur with
+      GaussianBlur recommended before detection.
+    - Slower than simple thresholding. Distance transform and watershed operations
+      are computationally expensive.
+
+    **Parameter effects on colony detection**
+
+    - **footprint:** Larger footprints merge nearby peaks, fewer seeds → larger regions.
+      Smaller footprints detect more peaks, more seeds → finer segmentation.
+    - **min_size:** Filters small noise but may remove genuine small colonies if set
+      too high. Balance sensitivity vs robustness.
+    - **compactness:** Controls segment regularity. Higher values enforce compact shapes
+      but may violate true colony boundaries. Lower values follow intensity gradients.
+
+    Examples:
+        Basic watershed detection with preprocessing::
+
+            from phenotypic import Image
+            from phenotypic.detect import WatershedDetector
+
+            plate = Image.imread("plate.jpg")
+            detector = WatershedDetector(min_size=50, compactness=0.001)
+            detected = detector.apply(plate)
+            num_colonies = detected.objects.count
+            print(f"Detected {num_colonies} colonies via watershed")
+
+        Pipeline with Gaussian blur for noise reduction::
+
+            from phenotypic import ImagePipeline
+            from phenotypic.enhance import GaussianBlur
+            from phenotypic.detect import WatershedDetector
+
+            pipeline = ImagePipeline([
+                GaussianBlur(sigma=1.5),
+                WatershedDetector(min_size=50, compactness=0.001)
+            ])
+
+            image = Image.imread("plate.jpg")
+            result = pipeline.apply(image)
     """
 
     def __init__(
-        self,
-        footprint: Literal["auto"] | np.ndarray | int | None = None,
-        min_size: int = 50,
-        compactness: float = 0.001,
-        connectivity: int = 1,
-        relabel: bool = True,
-        ignore_zeros: bool = True,
+            self,
+            footprint: Literal["auto"] | np.ndarray | int | None = None,
+            min_size: int = 50,
+            compactness: float = 0.001,
+            connectivity: int = 1,
+            relabel: bool = True,
+            ignore_zeros: bool = True,
     ):
         super().__init__()
 
@@ -69,7 +128,7 @@ class WatershedDetector(ThresholdDetector):
             case "auto":
                 self.footprint = "auto"
             case None:
-                # footprint will be automatically determined by implementation
+                # shape will be automatically determined by implementation
                 self.footprint = None
         self.min_size = min_size
         self.compactness = compactness
@@ -80,17 +139,17 @@ class WatershedDetector(ThresholdDetector):
     def _operate(self, image: Image | GridImage) -> Image:
         from phenotypic import Image, GridImage
 
-        enhanced_matrix = image.enh_gray[
+        enhanced_matrix = image.detect_mat[
             :
-        ]  # direct access to reduce memory footprint, but careful to not delete
-        self._log_memory_usage("getting enhanced gray")
+        ]  # direct access to reduce memory shape, but careful to not delete
+        self._log_memory_usage("getting detection matrix")
 
-        # Determine footprint for peak detection
+        # Determine shape for peak detection
         if self.footprint == "auto":
             if isinstance(image, GridImage):
                 est_footprint_diameter = max(
-                    image.shape[0] // image.grid.nrows,
-                    image.shape[1] // image.grid.ncols,
+                        image.shape[0] // image.grid.nrows,
+                        image.shape[1] // image.grid.ncols,
                 )
                 footprint = morphology.diamond(est_footprint_diameter // 2)
                 del est_footprint_diameter
@@ -98,9 +157,9 @@ class WatershedDetector(ThresholdDetector):
                 # Not enough information with a normal image to infer
                 footprint = None
         else:
-            # Use the footprint as defined in __init__ (None, ndarray, or processed int)
+            # Use the shape as defined in __init__ (None, ndarray, or processed int)
             footprint = self.footprint
-        self._log_memory_usage("determining footprint")
+        self._log_memory_usage("determining shape")
 
         # Prepare values for threshold calculation
         if self.ignore_zeros:
@@ -123,7 +182,7 @@ class WatershedDetector(ThresholdDetector):
         self._log_memory_usage("threshold calculation and binary mask creation")
 
         binary = morphology.remove_small_objects(
-            binary, min_size=self.min_size
+                binary, min_size=self.min_size
         )  # clean to reduce runtime
 
         # Ensure binary is contiguous for memory-efficient operations (only if needed)
@@ -131,14 +190,16 @@ class WatershedDetector(ThresholdDetector):
             binary = np.ascontiguousarray(binary)
 
         # Memory-intensive distance transform operation
-        self._log_memory_usage("before distance transform", include_tracemalloc=True)
+        self._log_memory_usage("before distance transform",
+                               include_tracemalloc=True)
         # Allocate float32 output directly to avoid intermediate float64 array
         dist_matrix = np.empty(binary.shape, dtype=np.float64)
         distance_transform_edt(binary, distances=dist_matrix)
-        self._log_memory_usage("after distance transform", include_tracemalloc=True)
+        self._log_memory_usage("after distance transform",
+                               include_tracemalloc=True)
 
         max_peak_indices = feature.peak_local_max(
-            image=dist_matrix, footprint=footprint, labels=binary
+                image=dist_matrix, footprint=footprint, labels=binary
         )
 
         del footprint, dist_matrix
@@ -157,27 +218,28 @@ class WatershedDetector(ThresholdDetector):
         # Convert to float32 and ensure contiguity in one step if needed
         if gradient.dtype != np.float32 or not gradient.flags["C_CONTIGUOUS"]:
             gradient = np.asarray(gradient, dtype=np.float32, order="C")
-        self._log_memory_usage("Sobel filter for gradient", include_tracemalloc=True)
+        self._log_memory_usage("Sobel filter for gradient",
+                               include_tracemalloc=True)
 
         # Memory-intensive watershed operation - detailed tracking
         self._log_memory_usage(
-            "before watershed segmentation",
-            include_process=True,
-            include_tracemalloc=True,
+                "before watershed segmentation",
+                include_process=True,
+                include_tracemalloc=True,
         )
 
         objmap = segmentation.watershed(
-            image=gradient,
-            markers=max_peaks,
-            compactness=self.compactness,
-            connectivity=self.connectivity,
-            mask=binary,
+                image=gradient,
+                markers=max_peaks,
+                compactness=self.compactness,
+                connectivity=self.connectivity,
+                mask=binary,
         )
 
         self._log_memory_usage(
-            "after watershed segmentation",
-            include_process=True,
-            include_tracemalloc=True,
+                "after watershed segmentation",
+                include_process=True,
+                include_tracemalloc=True,
         )
         if objmap.dtype != np.uint16:
             objmap = objmap.astype(image._OBJMAP_DTYPE)
@@ -191,9 +253,9 @@ class WatershedDetector(ThresholdDetector):
 
         # Final comprehensive memory report
         self._log_memory_usage(
-            "final cleanup and relabeling",
-            include_process=True,
-            include_tracemalloc=True,
+                "final cleanup and relabeling",
+                include_process=True,
+                include_tracemalloc=True,
         )
 
         return image

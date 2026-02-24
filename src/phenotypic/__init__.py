@@ -1,7 +1,7 @@
 """
 A library for processing and analyzing images of microbe colonies on solid media agar.
 
-This module provides tools and classes for the manipulation, analysis, and
+This module provides tools_ and classes for the manipulation, analysis, and
 enhancement of images, specifically tailored for biological applications,
 including detecting features of colonies, quantifying growth, and refining image
 qualities. Classes such as `Image` and `GridImage` enable flexibility in managing
@@ -14,16 +14,16 @@ to study microbial growth patterns.
 
 """
 
-__version__ = "0.12.0"
+__version__ = "0.13.0"
 __author__ = "Alexander Nguyen"
 __email__ = "anguy344@ucr.edu"
 
-from .core._grid_image import GridImage
-from .core._image import Image
-from .core._image_pipeline import ImagePipeline
+from ._core._grid_image import GridImage
+from ._core._image import Image
+from ._core._image_pipeline import ImagePipeline
 
 # commented out until complete
-# from .core._image_set import ImageSet
+# from ._core._image_set import ImageSet
 
 from . import (
     abc_,
@@ -35,13 +35,15 @@ from . import (
     grid,
     measure,
     refine,
-    tools,
+    settings_,
+    sweep,
+    tools_,
     prefab,
 )
 
 __all__ = [
-    "Image",  # Class imported from core
-    "GridImage",  # Class imported from core
+    "Image",  # Class imported from _core
+    "GridImage",  # Class imported from _core
     "ImagePipeline",
     # "ImageSet",
     "abc_",
@@ -54,5 +56,7 @@ __all__ = [
     "prefab",
     "correction",
     "enhance",
-    "tools",
+    "tools_",
+    "settings_",
+    "sweep",
 ]

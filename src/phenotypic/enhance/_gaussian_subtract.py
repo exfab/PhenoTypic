@@ -51,12 +51,12 @@ class GaussianSubtract(ImageEnhancer):
     """
 
     def __init__(
-        self,
-        sigma: float = 50.0,
-        mode: str = "reflect",
-        cval: float = 0.0,
-        truncate: float = 4.0,
-        preserve_range: bool = True,
+            self,
+            sigma: float = 50.0,
+            mode: str = "reflect",
+            cval: float = 0.0,
+            truncate: float = 4.0,
+            preserve_range: bool = True,
     ):
         """
         Parameters:
@@ -76,12 +76,15 @@ class GaussianSubtract(ImageEnhancer):
 
     def _operate(self, image: Image):
         background = gaussian(
-            image=image.enh_gray[:],
-            sigma=self.sigma,
-            mode=self.mode,
-            cval=self.cval,
-            truncate=self.truncate,
-            preserve_range=self.preserve_range,
+                image=image.detect_mat[:],
+                sigma=self.sigma,
+                mode=self.mode,
+                cval=self.cval,
+                truncate=self.truncate,
+                preserve_range=self.preserve_range,
         )
-        image.enh_gray[:] = image.enh_gray[:].copy() - background
+        image.detect_mat[:] = np.clip((image.detect_mat[:].copy() - background),
+                                    a_min=0.0,
+                                    a_max=1.0)
+
         return image

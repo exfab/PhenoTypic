@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from phenotypic.tools.constants_ import OBJECT
+from phenotypic.tools_.constants_ import OBJECT
 
 if TYPE_CHECKING:
     from phenotypic import Image
@@ -10,26 +10,8 @@ if TYPE_CHECKING:
 import pandas as pd
 import numpy as np
 
-from phenotypic.abc_ import MeasurementInfo, MeasureFeatures
-
-
-class SIZE(MeasurementInfo):
-    """The labels and descriptions of the size measurements."""
-
-    @classmethod
-    def category(cls):
-        return "Size"
-
-    AREA = (
-        "Area",
-        "Total number of pixels occupied by the microbial colony."
-        "Larger areas typically indicate more robust growth or longer incubation times.",
-    )
-    INTEGRATED_INTENSITY = (
-        "IntegratedIntensity",
-        r"The sum of the object\'s grayscale pixels. Calculated as"
-        r"$\sum{pixel values}*area$",
-    )
+from phenotypic.abc_ import MeasureFeatures
+from ..tools_.measurement_info_ import SIZE
 
 
 class MeasureSize(MeasureFeatures):
@@ -70,61 +52,53 @@ class MeasureSize(MeasureFeatures):
             - IntegratedIntensity: Sum of grayscale pixel values in the colony (proxy for biomass/OD).
 
     Examples:
-        .. dropdown:: Quick size assessment and filtering
+        Quick size assessment and filtering:
 
-            .. code-block:: python
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.measure import MeasureSize
+        >>> # Load and detect colonies
+        >>> image = Image("colony_plate.jpg")  # doctest: +SKIP
+        >>> detector = OtsuDetector()
+        >>> image = detector.operate(image)  # doctest: +SKIP
+        >>> # Measure size
+        >>> sizer = MeasureSize()
+        >>> sizes = sizer.operate(image)  # doctest: +SKIP
+        >>> # Filter colonies by size (exclude very small or very large)
+        >>> min_area, max_area = 50, 5000  # pixels
+        >>> good_colonies = sizes[
+        ...     (sizes['Size_Area'] >= min_area) &
+        ...     (sizes['Size_Area'] <= max_area)
+        ... ]  # doctest: +SKIP
+        >>> print(f"Colonies within size range: {len(good_colonies)}/{len(sizes)}")  # doctest: +SKIP
 
-                from phenotypic import Image
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.measure import MeasureSize
+        Track colony growth over time:
 
-                # Load and detect colonies
-                image = Image.from_image_path("colony_plate.jpg")
-                detector = OtsuDetector()
-                image = detector.operate(image)
-
-                # Measure size
-                sizer = MeasureSize()
-                sizes = sizer.operate(image)
-
-                # Filter colonies by size (exclude very small or very large)
-                min_area, max_area = 50, 5000  # pixels
-                good_colonies = sizes[
-                    (sizes['Size_Area'] >= min_area) &
-                    (sizes['Size_Area'] <= max_area)
-                ]
-                print(f"Colonies within size range: {len(good_colonies)}/{len(sizes)}")
-
-        .. dropdown:: Track colony growth over time
-
-            .. code-block:: python
-
-                # Load images from multiple time points
-                import pandas as pd
-                from phenotypic import Image
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.measure import MeasureSize
-
-                detector = OtsuDetector()
-                sizer = MeasureSize()
-
-                # Simulate time-series measurements
-                growth_data = []
-                for timepoint_h in [0, 6, 12, 24, 48]:
-                    img_path = f"plate_t{timepoint_h}h.jpg"
-                    image = Image.from_image_path(img_path)
-                    image = detector.operate(image)
-                    sizes = sizer.operate(image)
-                    sizes['TimePoint_h'] = timepoint_h
-                    growth_data.append(sizes)
-
-                # Combine and analyze
-                growth_df = pd.concat(growth_data, ignore_index=True)
-                # Track individual colonies and compute growth rate (simplified)
-                avg_area = growth_df.groupby('TimePoint_h')['Size_Area'].mean()
-                print("Average colony area over time:")
-                print(avg_area)
+        >>> # Load images from multiple time points
+        >>> import pandas as pd
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.measure import MeasureSize
+        >>> detector = OtsuDetector()
+        >>> sizer = MeasureSize()
+        >>> # Simulate time-series measurements
+        >>> growth_data = []
+        >>> for timepoint_h in [0, 6, 12, 24, 48]:  # doctest: +SKIP
+        ...     img_path = f"plate_t{timepoint_h}h.jpg"
+        ...     image = Image(img_path)
+        ...     image = detector.operate(image)
+        ...     sizes = sizer.operate(image)
+        ...     sizes['TimePoint_h'] = timepoint_h
+        ...     growth_data.append(sizes)
+        >>> # Combine and analyze
+        >>> growth_df = pd.concat(growth_data, ignore_index=True)  # doctest: +SKIP
+        >>> # Track individual colonies and compute growth rate (simplified)
+        >>> avg_area = growth_df.groupby('TimePoint_h')['Size_Area'].mean()  # doctest: +SKIP
+        >>> print("Average colony area over time:")  # doctest: +SKIP
+        >>> print(avg_area)  # doctest: +SKIP
     """
+
+    _measurement_info_class = SIZE
 
     def _operate(self, image: Image) -> pd.DataFrame:
         # Create empty numpy arrays to store measurements
@@ -139,15 +113,15 @@ class MeasureSize(MeasureFeatures):
         objmap = image.objmap[:].copy()
 
         measurements[SIZE.AREA] = self._calculate_sum(
-            array=image.objmask[:], objmap=objmap
+                array=image.objmask[:], objmap=objmap
         )
         measurements[SIZE.INTEGRATED_INTENSITY] = self._calculate_sum(
-            array=intensity_matrix, objmap=objmap
+                array=intensity_matrix, objmap=objmap
         )
 
         measurements = pd.DataFrame(measurements)
         measurements.insert(
-            loc=0, column=OBJECT.LABEL, value=image.objects.labels2series()
+                loc=0, column=OBJECT.LABEL, value=image.objects.labels2series()
         )
         return measurements
 

@@ -7,16 +7,14 @@ from phenotypic.enhance import (
     CLAHE,
     GaussianBlur,
     MedianFilter,
-    ContrastStretching,
     SobelFilter,
 )
-from phenotypic.detect import OtsuDetector, WatershedDetector
+from phenotypic.detect import OtsuDetector
 from phenotypic.correction import GridAligner
-from phenotypic.refine import MinResidualErrorReducer, GridOversizedObjectRemover
+from phenotypic.refine import ReduceMultipleGridObjects, GridOversizedObjectRemover
 from phenotypic.refine import (
     BorderObjectRemover,
     SmallObjectRemover,
-    LowCircularityRemover,
 )
 from phenotypic.refine import MaskFill, MaskOpener
 from phenotypic.measure import (
@@ -54,19 +52,19 @@ class HeavyOtsuPipeline(PrefabPipeline):
     """
 
     def __init__(
-        self,
-        gaussian_sigma: int = 5,
-        gaussian_mode: str = "reflect",
-        gaussian_truncate: float = 4.0,
-        otsu_ignore_zeros: bool = True,
-        otsu_ignore_borders: bool = True,
-        mask_opener_footprint: Literal["auto"] | int | np.ndarray | None = "auto",
-        border_remover_size: int = 1,
-        small_object_min_size: int = 50,
-        texture_scale: int = 5,
-        texture_warn: bool = False,
-        benchmark: bool = False,
-        verbose: bool = False,
+            self,
+            gaussian_sigma: int = 5,
+            gaussian_mode: str = "reflect",
+            gaussian_truncate: float = 4.0,
+            otsu_ignore_zeros: bool = True,
+            otsu_ignore_borders: bool = True,
+            mask_opener_footprint: Literal["auto"] | int | np.ndarray | None = "auto",
+            border_remover_size: int = 1,
+            small_object_min_size: int = 50,
+            texture_scale: int = 5,
+            texture_warn: bool = False,
+            benchmark: bool = False,
+            verbose: bool = False,
     ):
         """
         Initializes the object with a sequence of operations and measurements for image
@@ -86,24 +84,24 @@ class HeavyOtsuPipeline(PrefabPipeline):
             small_object_min_size (int): Minimum size of objects to retain.
             texture_scale (int): Scale parameter for Haralick texture features.
             texture_warn (bool): Whether to warn on texture computation errors.
-            footprint: Deprecated, use mask_opener_footprint.
+            shape: Deprecated, use mask_opener_footprint.
             min_size: Deprecated, use small_object_min_size.
             border_size: Deprecated, use border_remover_size.
         """
         border_remover = BorderObjectRemover(border_size=border_remover_size)
-        min_residual_reducer = MinResidualErrorReducer()
+        min_residual_reducer = ReduceMultipleGridObjects()
 
         ops = [
             GaussianBlur(
-                sigma=gaussian_sigma, mode=gaussian_mode, truncate=gaussian_truncate
+                    sigma=gaussian_sigma, mode=gaussian_mode, truncate=gaussian_truncate
             ),
             CLAHE(),
             MedianFilter(),
             SobelFilter(),
             OtsuDetector(
-                ignore_zeros=otsu_ignore_zeros, ignore_borders=otsu_ignore_borders
+                    ignore_zeros=otsu_ignore_zeros, ignore_borders=otsu_ignore_borders
             ),
-            MaskOpener(footprint=mask_opener_footprint),
+            MaskOpener(shape=mask_opener_footprint),
             border_remover,
             SmallObjectRemover(min_size=small_object_min_size),
             MaskFill(),
@@ -111,9 +109,9 @@ class HeavyOtsuPipeline(PrefabPipeline):
             min_residual_reducer,
             GridAligner(),
             OtsuDetector(
-                ignore_zeros=otsu_ignore_zeros, ignore_borders=otsu_ignore_borders
+                    ignore_zeros=otsu_ignore_zeros, ignore_borders=otsu_ignore_borders
             ),
-            MaskOpener(footprint=None),
+            MaskOpener(shape=None),
             border_remover,
             SmallObjectRemover(min_size=small_object_min_size),
             GridOversizedObjectRemover(),

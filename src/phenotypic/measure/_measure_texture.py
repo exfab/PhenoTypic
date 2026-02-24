@@ -7,145 +7,17 @@ if TYPE_CHECKING:
     from phenotypic import Image
 
 import warnings
+
+warnings.filterwarnings('ignore', category=SyntaxWarning, module='mahotas')
+
 import mahotas as mh
 import numpy as np
 import pandas as pd
 from skimage import exposure
 
 from phenotypic.abc_ import MeasureFeatures
-from phenotypic.tools.constants_ import OBJECT
-from phenotypic.abc_ import MeasurementInfo
-
-
-class TEXTURE(MeasurementInfo):
-    """Second-order texture features derived from the gray-level co-occurrence matrix (GLCM).
-
-    All features assume normalized GLCMs computed at one or more pixel offsets and averaged
-    across directions unless otherwise noted. Values depend on quantization, window size,
-    and scale; interpret ranges comparatively within the same imaging setup.
-    """
-
-    @classmethod
-    def category(cls) -> str:
-        return "Texture"
-
-    ANGULAR_SECOND_MOMENT = (
-        "AngularSecondMoment",
-        """Angular second moment (energy / uniformity). Measures the degree of local homogeneity
-        (Σ p(i,j)²). High values → uniform texture (e.g., smooth, yeast-like colonies with consistent
-        mycelial density). Low values → heterogeneous surfaces (e.g., sectored, wrinkled, or mixed
-        sporulation zones). Reflects colony surface regularity rather than brightness.""",
-    )
-
-    CONTRAST = (
-        "Contrast",
-        """Contrast (local intensity variation; Σ (i–j)² p(i,j)). High values indicate strong gray-level
-        differences (e.g., sharply defined rings, radial sectors, raised or folded regions). Low values
-        indicate gradual tonal changes or uniformly pigmented colonies. Quantifies visual roughness
-        and zonation amplitude.""",
-    )
-
-    CORRELATION = (
-        "Correlation",
-        """Linear gray-level correlation between neighboring pixels. Positive, high values suggest
-        structured spatial dependence (e.g., oriented radial hyphae or concentric patterns); near-zero
-        values indicate uncorrelated, disordered growth (e.g., diffuse cottony mycelium). Sensitive to
-        illumination gradients and directional GLCM computation.""",
-    )
-
-    VARIANCE = (
-        "HaralickVariance",
-        """GLCM variance (Σ (i–μ)² p(i,j)). Captures spread of co-occurring gray-level pairs, distinct
-        from raw intensity variance. High values → complex, multi-zone textures with variable
-        hyphal/spore densities. Low values → consistent gray-level relationships and simpler colony
-        surfaces.""",
-    )
-
-    INVERSE_DIFFERENCE_MOMENT = (
-        "InverseDifferenceMoment",
-        """Homogeneity (Σ p(i,j) / (1 + (i–j)²)). High values → smooth, locally uniform textures
-        (e.g., glabrous colonies, uniform aerial mycelium). Low values → abrupt gray-level changes
-        (e.g., granular sporulation, wrinkled surfaces). Typically inversely correlated with Contrast.""",
-    )
-
-    SUM_AVERAGE = (
-        "SumAverage",
-        """Mean of gray-level sums (Σ k·p_{x+y}(k)). Reflects the average intensity combination of
-        neighboring pixels. In fungal colonies, can loosely parallel mean colony brightness when
-        illumination and exposure are controlled, but remains a second-order rather than first-order
-        intensity metric.""",
-    )
-
-    SUM_VARIANCE = (
-        "SumVariance",
-        """Variance of gray-level sum distribution. High values → heterogeneous brightness zones
-        (e.g., alternating dense/sparse or pigmented/non-pigmented regions). Low values → uniform
-        tone across the colony. Often correlated with Contrast; use comparatively within one setup.""",
-    )
-
-    SUM_ENTROPY = (
-        "SumEntropy",
-        """Entropy of the gray-level sum distribution. High values → diverse brightness combinations
-        and irregular zonation. Low values → repetitive or periodic brightness patterns (e.g., evenly
-        spaced rings). Indicates spatial unpredictability of summed intensities.""",
-    )
-
-    ENTROPY = (
-        "Entropy",
-        """Global GLCM entropy (–Σ p(i,j)·log p(i,j)). Measures total texture disorder and information
-        content. High values → complex, irregular colony surfaces (powdery, fuzzy, or sectored growth).
-        Low values → simple, smooth, predictable patterns (glabrous or uniform colonies). Sensitive to
-        gray-level quantization and image dynamic range.""",
-    )
-
-    DIFFERENCE_VARIANCE = (
-        "DiffVariance",
-        """Variance of gray-level difference distribution. High values → mixture of smooth and textured
-        regions (e.g., smooth margins with wrinkled centers). Low values → consistent edge content.
-        Highlights heterogeneity in edge magnitude across the colony.""",
-    )
-
-    DIFFERENCE_ENTROPY = (
-        "DiffEntropy",
-        """Entropy of gray-level difference distribution. High values → irregular, unpredictable
-        intensity transitions (e.g., random sporulation or uneven mycelial networks). Low values →
-        regular periodic transitions (e.g., concentric zonation). Reflects randomness of local contrast
-        rather than its magnitude.""",
-    )
-
-    IMC1 = (
-        "InfoCorrelation1",
-        """Information measure of correlation 1. Compares joint vs marginal entropies to quantify
-        mutual dependence between gray levels. Positive values → structured, predictable textures
-        (e.g., organized radial growth); near-zero → independence between adjacent regions.
-        Direction of sign varies with implementation.""",
-    )
-
-    IMC2 = (
-        "InfoCorrelation2",
-        """Information measure of correlation 2 (√[1 – exp(–2 (H_xy2–H_xy))]). Always ≥ 0.
-        Values approaching 1 → strong spatial dependence and organized architecture (e.g., symmetric
-        rings, radial structure). Values near 0 → random, independent patterns. Captures nonlinear
-        organization missed by linear correlation.""",
-    )
-
-    @classmethod
-    def get_headers(cls, scale: int, matrix_name) -> list[str]:
-        """Return full texture labels with angles in order 0, 45, 90, 135 for each feature and the
-        average across degrees of each feature at the end."""
-        angles = [0, 45, 90, 135]
-        labels: list[str] = []
-        for member in cls.get_labels():
-            for angle in angles:
-                labels.append(
-                    f"{cls.category()}{matrix_name}_{member}-deg{angle:03d}-scale{scale:02d}"
-                )
-
-        for member in cls.get_labels():
-            labels.append(
-                f"{cls.category()}{matrix_name}_{member}-avg-scale{scale:02d}"
-            )
-        return labels
+from phenotypic.tools_.constants_ import OBJECT
+from ..tools_.measurement_info_ import TEXTURE
 
 
 class MeasureTexture(MeasureFeatures):
@@ -209,53 +81,47 @@ class MeasureTexture(MeasureFeatures):
             doi: 10.1109/TSMC.1973.4309314.
 
     Examples:
-        .. dropdown:: Measure texture to distinguish morphotypes
+        Measure texture to distinguish morphotypes:
 
-            .. code-block:: python
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.measure import MeasureTexture
+        >>> # Load plate with smooth and wrinkled colonies
+        >>> image = Image.imread("morphotype_plate.jpg")  # doctest: +SKIP
+        >>> detector = OtsuDetector()
+        >>> image = detector.operate(image)  # doctest: +SKIP
+        >>> # Measure texture at a single scale with default quantization
+        >>> measurer = MeasureTexture(scale=3, quant_lvl=32, enhance=False)
+        >>> texture = measurer.operate(image)  # doctest: +SKIP
+        >>> # High contrast and energy indicate wrinkled/rough morphology
+        >>> wrinkled = texture[
+        ...     texture['TextureGray_Contrast-avg-scale03'] > texture['TextureGray_Contrast-avg-scale03'].quantile(0.75)
+        ... ]  # doctest: +SKIP
+        >>> print(f"Wrinkled colonies: {len(wrinkled)}")  # doctest: +SKIP
 
-                from phenotypic import Image
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.measure import MeasureTexture
+        Multi-scale texture analysis for fine/coarse features:
 
-                # Load plate with smooth and wrinkled colonies
-                image = Image.from_image_path("morphotype_plate.jpg")
-                detector = OtsuDetector()
-                image = detector.operate(image)
-
-                # Measure texture at a single scale with default quantization
-                measurer = MeasureTexture(scale=3, quant_lvl=32, enhance=False)
-                texture = measurer.operate(image)
-
-                # High contrast and energy indicate wrinkled/rough morphology
-                wrinkled = texture[
-                    texture['TextureGray_Contrast-avg-scale03'] > texture['TextureGray_Contrast-avg-scale03'].quantile(0.75)
-                ]
-                print(f"Wrinkled colonies: {len(wrinkled)}")
-
-        .. dropdown:: Multi-scale texture analysis for fine/coarse features
-
-            .. code-block:: python
-
-                # Use multiple scales to capture fine and coarse texture
-                measurer = MeasureTexture(scale=[1, 3, 5], quant_lvl=32, enhance=True, warn=False)
-                texture = measurer.operate(image)
-
-                # Compare entropy across scales to assess texture organization
-                # Fine texture (scale 1): high entropy -> many small features
-                # Coarse texture (scale 5): low entropy -> organized large structures
-                for scale in [1, 3, 5]:
-                    col = f'TextureGray_Entropy-avg-scale0{scale}'
-                    if col in texture.columns:
-                        avg_entropy = texture[col].mean()
-                        print(f"Scale {scale}px: avg entropy = {avg_entropy:.2f}")
+        >>> # Use multiple scales to capture fine and coarse texture
+        >>> measurer = MeasureTexture(scale=[1, 3, 5], quant_lvl=32, enhance=True, warn=False)
+        >>> texture = measurer.operate(image)  # doctest: +SKIP
+        >>> # Compare entropy across scales to assess texture organization
+        >>> # Fine texture (scale 1): high entropy -> many small features
+        >>> # Coarse texture (scale 5): low entropy -> organized large structures
+        >>> for scale in [1, 3, 5]:  # doctest: +SKIP
+        ...     col = f'TextureGray_Entropy-avg-scale0{scale}'
+        ...     if col in texture.columns:
+        ...         avg_entropy = texture[col].mean()
+        ...         print(f"Scale {scale}px: avg entropy = {avg_entropy:.2f}")
     """
 
+    _measurement_info_class = TEXTURE
+
     def __init__(
-        self,
-        scale: int | List[int] = 5,
-        quant_lvl: Literal[8, 16, 32, 64] = 32,
-        enhance: bool = False,
-        warn: bool = False,
+            self,
+            scale: int | List[int] = 5,
+            quant_lvl: Literal[8, 16, 32, 64] = 32,
+            enhance: bool = False,
+            warn: bool = False,
     ):
         """
         Initializes an object with specific configurations for scale, quantization level,
@@ -297,13 +163,13 @@ class MeasureTexture(MeasureFeatures):
                 The nrows are indexed by object labels, and columns represent different texture features.
         """
         compute_haralick = functools.partial(
-            self._compute_haralick,
-            image=image,
-            foreground_array=image.gray.foreground(),
-            foreground_name="Gray",
-            quant_lvl=self.quant_lvl,
-            enhance=self.enhance,
-            warn=self.warn,
+                self._compute_haralick,
+                image=image,
+                foreground_array=image.gray.foreground(),
+                foreground_name="Gray",
+                quant_lvl=self.quant_lvl,
+                enhance=self.enhance,
+                warn=self.warn,
         )
 
         meas = compute_haralick(scale=self.scale[0])
@@ -314,13 +180,13 @@ class MeasureTexture(MeasureFeatures):
 
     @staticmethod
     def _compute_haralick(
-        image: Image,
-        foreground_array: np.ndarray,
-        foreground_name: str,
-        scale: int,
-        quant_lvl: int,
-        enhance: bool,
-        warn: bool,
+            image: Image,
+            foreground_array: np.ndarray,
+            foreground_name: str,
+            scale: int,
+            quant_lvl: int,
+            enhance: bool,
+            warn: bool,
     ) -> pd.DataFrame:
         """
         Computes texture feature measurements using Haralick features for objects in a given image. The method
@@ -360,11 +226,11 @@ class MeasureTexture(MeasureFeatures):
         ]  # there are 13 haralick features so we separate the avgs out
         avg_measurement_names = measurement_names[-13:]
         deg_meas = np.empty(
-            shape=(
-                image.num_objects,
-                len(deg_measurement_names),
-            ),
-            dtype=np.float64,
+                shape=(
+                    image.num_objects,
+                    len(deg_measurement_names),
+                ),
+                dtype=np.float64,
         )
         for idx, label in enumerate(image.objects.labels):
             slices = props[idx].slice
@@ -384,14 +250,15 @@ class MeasureTexture(MeasureFeatures):
                         # this can improve texture detail, but can
                         # add bias when the variance of the original range is small
                         obj_fg = exposure.rescale_intensity(
-                            obj_fg, in_range="image", out_range=(0.0, 1.0)
+                                obj_fg, in_range="image", out_range=(0.0, 1.0)
                         )
 
                     texture_statistics = mh.features.haralick(
-                        MeasureTexture._quantize_arr(arr=obj_fg, quant_lvl=quant_lvl),
-                        distance=scale,
-                        ignore_zeros=True,
-                        return_mean=False,
+                            MeasureTexture._quantize_arr(arr=obj_fg,
+                                                         quant_lvl=quant_lvl),
+                            distance=scale,
+                            ignore_zeros=True,
+                            return_mean=False,
                     )
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
@@ -399,24 +266,24 @@ class MeasureTexture(MeasureFeatures):
                 # 4 for each direction, 13 for each texture feature
                 if warn:
                     warnings.warn(
-                        f"Error in computing Haralick features for object {label}: {e}"
+                            f"Error in computing Haralick features for object {label}: {e}"
                     )
                 texture_statistics = np.full((4, 13), np.nan, dtype=np.float64)
 
             deg_meas[idx, :] = texture_statistics.T.ravel()
 
         avg_meas = np.empty(
-            shape=(
-                image.num_objects,
-                len(avg_measurement_names),
-            ),
-            dtype=np.float64,
+                shape=(
+                    image.num_objects,
+                    len(avg_measurement_names),
+                ),
+                dtype=np.float64,
         )
 
         # step through each feature and avg across degrees
         for avg_col_idx, deg_start_idx in enumerate(range(0, deg_meas.shape[1], 4)):
             avg_meas[:, avg_col_idx] = np.average(
-                deg_meas[:, deg_start_idx : deg_start_idx + 4], axis=1
+                    deg_meas[:, deg_start_idx: deg_start_idx + 4], axis=1
             )
 
         meas = pd.DataFrame(np.hstack([deg_meas, avg_meas]), columns=measurement_names)

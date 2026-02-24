@@ -8,49 +8,9 @@ if TYPE_CHECKING:
 import pandas as pd
 from scipy.spatial.distance import euclidean
 
-from phenotypic.abc_ import GridMeasureFeatures, MeasurementInfo
-from phenotypic.tools.constants_ import OBJECT, BBOX, GRID
-
-
-class GRID_LINREG_STATS(MeasurementInfo):
-    """Grid linear regression statistics and residual errors.
-
-    Provides measurements for evaluating grid alignment quality and detecting off-grid
-    colonies in arrayed microbial assays.
-    """
-
-    @classmethod
-    def category(cls):
-        return "GridLinReg"
-
-    ROW_LINREG_M = (
-        "RowM",
-        "Slope of row-wise linear regression fit across column positions. Measures systematic drift in row alignment. Values near 0 indicate horizontal rows; non-zero values suggest rotational misalignment or systematic row curvature across the plate.",
-    )
-    ROW_LINREG_B = (
-        "RowB",
-        "Intercept of row-wise linear regression fit. Represents the expected row coordinate when column position is 0. Combined with slope, defines the expected row trend line for quality assessment and position prediction.",
-    )
-    COL_LINREG_M = (
-        "ColM",
-        "Slope of column-wise linear regression fit across row positions. Measures systematic drift in column alignment. Values near 0 indicate vertical columns; non-zero values suggest rotational misalignment or systematic column curvature across the plate.",
-    )
-    COL_LINREG_B = (
-        "ColB",
-        "Intercept of column-wise linear regression fit. Represents the expected column coordinate when row position is 0. Combined with slope, defines the expected column trend line for quality assessment and position prediction.",
-    )
-    PRED_RR = (
-        "PredRR",
-        "Predicted row coordinate from column-wise linear regression. Uses the column position and column regression parameters (ColM, ColB) to estimate where the row coordinate should be if the grid were perfectly aligned. Used for calculating residual errors and detecting misaligned colonies.",
-    )
-    PRED_CC = (
-        "PredCC",
-        "Predicted column coordinate from row-wise linear regression. Uses the row position and row regression parameters (RowM, RowB) to estimate where the column coordinate should be if the grid were perfectly aligned. Used for calculating residual errors and detecting misaligned colonies.",
-    )
-    RESIDUAL_ERR = (
-        "ResidualError",
-        "Euclidean distance between the actual colony centroid and the predicted position from linear regression. Quantifies how far each colony deviates from the expected grid pattern. High values indicate misdetections, off-grid growth, or local plate warping. Used by refinement operations to filter outliers and select the most plausible colony per grid cell.",
-    )
+from phenotypic.abc_ import GridMeasureFeatures
+from phenotypic.tools_.constants_ import OBJECT
+from phenotypic.tools_.measurement_info_ import BBOX, GRID, GRID_LINREG_STATS
 
 
 class MeasureGridLinRegStats(GridMeasureFeatures):
@@ -96,39 +56,33 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
             - ResidualError: Euclidean distance between actual and predicted centroid.
 
     Examples:
-        .. dropdown:: Measure grid alignment for an arrayed plate
+        Measure grid alignment for an arrayed plate:
 
-            .. code-block:: python
+        >>> from phenotypic import GridImage
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.measure import MeasureGridLinRegStats
+        >>> # Load a plate image with grid information
+        >>> grid_image = GridImage.imread("plate_96well.jpg", nrows=8, ncols=12)  # doctest: +SKIP
+        >>> # Detect colonies
+        >>> detector = OtsuDetector()
+        >>> grid_image = detector.operate(grid_image)  # doctest: +SKIP
+        >>> # Measure grid alignment quality
+        >>> measurer = MeasureGridLinRegStats()
+        >>> results = measurer.operate(grid_image)  # doctest: +SKIP
+        >>> # Identify off-grid colonies
+        >>> outliers = results[results['GridLinReg_ResidualError'] > 10.0]  # doctest: +SKIP
+        >>> print(f"Found {len(outliers)} colonies with high misalignment")  # doctest: +SKIP
 
-                from phenotypic import GridImage
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.measure import MeasureGridLinRegStats
+        Measure alignment within a single section/well:
 
-                # Load a plate image with grid information
-                grid_image = GridImage.from_image_path("plate_96well.jpg", grid_shape=(8, 12))
-
-                # Detect colonies
-                detector = OtsuDetector()
-                grid_image = detector.operate(grid_image)
-
-                # Measure grid alignment quality
-                measurer = MeasureGridLinRegStats()
-                results = measurer.operate(grid_image)
-
-                # Identify off-grid colonies
-                outliers = results[results['GridLinReg_ResidualError'] > 10.0]
-                print(f"Found {len(outliers)} colonies with high misalignment")
-
-        .. dropdown:: Measure alignment within a single section/well
-
-            .. code-block:: python
-
-                # Measure only colonies in section 5 (useful for troubleshooting
-                # a specific well or region)
-                measurer = MeasureGridLinRegStats(section_num=5)
-                section_results = measurer.operate(grid_image)
-                # Results contain grid stats and residual errors only for section 5
+        >>> # Measure only colonies in section 5 (useful for troubleshooting
+        >>> # a specific well or region)
+        >>> measurer = MeasureGridLinRegStats(section_num=5)
+        >>> section_results = measurer.operate(grid_image)  # doctest: +SKIP
+        >>> # Results contain grid stats and residual errors only for section 5
     """
+
+    _measurement_info_class = GRID_LINREG_STATS
 
     def __init__(self, section_num: Optional[int] = None):
         super().__init__()
@@ -141,7 +95,7 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
         else:
             grid_info = image.grid.info().reset_index(drop=False)
             section_info = grid_info.loc[
-                grid_info.loc[:, str(GRID.SECTION_NUM)] == self.section_num, :
+                grid_info.loc[:, str(GRID.ROW_MAJOR_IDX)] == self.section_num, :
             ]
 
         # Get the current row-wise linreg info
@@ -149,25 +103,25 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
 
         # Convert arrays to dataframe for join operation
         row_linreg_info = pd.DataFrame(
-            data={
-                str(GRID_LINREG_STATS.ROW_LINREG_M): row_m,
-                str(GRID_LINREG_STATS.ROW_LINREG_B): row_b,
-            },
-            index=pd.Index(data=range(image.grid.nrows), name=str(GRID.ROW_NUM)),
+                data={
+                    str(GRID_LINREG_STATS.ROW_LINREG_M): row_m,
+                    str(GRID_LINREG_STATS.ROW_LINREG_B): row_b,
+                },
+                index=pd.Index(data=range(image.grid.nrows), name=str(GRID.ROW_NUM)),
         )
 
         section_info = pd.merge(
-            left=section_info,
-            right=row_linreg_info,
-            left_on=str(GRID.ROW_NUM),
-            right_on=str(GRID.ROW_NUM),
+                left=section_info,
+                right=row_linreg_info,
+                left_on=str(GRID.ROW_NUM),
+                right_on=str(GRID.ROW_NUM),
         )
 
         # NOTE: Row linear regression(CC) -> pred RR
         section_info.loc[:, str(GRID_LINREG_STATS.PRED_RR)] = (
-            section_info.loc[:, str(BBOX.CENTER_CC)]
-            * section_info.loc[:, str(GRID_LINREG_STATS.ROW_LINREG_M)]
-            + section_info.loc[:, str(GRID_LINREG_STATS.ROW_LINREG_B)]
+                section_info.loc[:, str(BBOX.CENTER_CC)]
+                * section_info.loc[:, str(GRID_LINREG_STATS.ROW_LINREG_M)]
+                + section_info.loc[:, str(GRID_LINREG_STATS.ROW_LINREG_B)]
         )
 
         # Get the current column linreg info
@@ -175,42 +129,43 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
 
         # convert array to dataframe for join operation
         col_linreg_info = pd.DataFrame(
-            data={
-                str(GRID_LINREG_STATS.COL_LINREG_M): col_m,
-                str(GRID_LINREG_STATS.COL_LINREG_B): col_b,
-            },
-            index=pd.Index(data=range(image.grid.ncols), name=str(GRID.COL_NUM)),
+                data={
+                    str(GRID_LINREG_STATS.COL_LINREG_M): col_m,
+                    str(GRID_LINREG_STATS.COL_LINREG_B): col_b,
+                },
+                index=pd.Index(data=range(image.grid.ncols), name=str(GRID.COL_NUM)),
         )
 
         section_info = pd.merge(
-            left=section_info,
-            right=col_linreg_info,
-            left_on=str(GRID.COL_NUM),
-            right_on=str(GRID.COL_NUM),
+                left=section_info,
+                right=col_linreg_info,
+                left_on=str(GRID.COL_NUM),
+                right_on=str(GRID.COL_NUM),
         )
 
         # NOTE: Col linear regression(RR) -> pred CC
         section_info.loc[:, str(GRID_LINREG_STATS.PRED_CC)] = (
-            section_info.loc[:, str(BBOX.CENTER_RR)]
-            * section_info.loc[:, str(GRID_LINREG_STATS.COL_LINREG_M)]
-            + section_info.loc[:, str(GRID_LINREG_STATS.COL_LINREG_B)]
+                section_info.loc[:, str(BBOX.CENTER_RR)]
+                * section_info.loc[:, str(GRID_LINREG_STATS.COL_LINREG_M)]
+                + section_info.loc[:, str(GRID_LINREG_STATS.COL_LINREG_B)]
         )
 
         # Calculate the distance each object is from it's predicted center. This is the residual error
         section_info.loc[:, str(GRID_LINREG_STATS.RESIDUAL_ERR)] = (
             section_info.apply(
-                lambda row: euclidean(
-                    u=[row[str(BBOX.CENTER_CC)], row[str(BBOX.CENTER_RR)]],
-                    v=[
-                        row[str(GRID_LINREG_STATS.PRED_CC)],
-                        row[str(GRID_LINREG_STATS.PRED_RR)],
-                    ],
-                ),
-                axis=1,
+                    lambda row: euclidean(
+                            u=[row[str(BBOX.CENTER_CC)], row[str(BBOX.CENTER_RR)]],
+                            v=[
+                                row[str(GRID_LINREG_STATS.PRED_CC)],
+                                row[str(GRID_LINREG_STATS.PRED_RR)],
+                            ],
+                    ),
+                    axis=1,
             )
         )
 
         return section_info.set_index(OBJECT.LABEL)
 
 
-MeasureGridLinRegStats.__doc__ = GRID_LINREG_STATS.append_rst_to_doc(MeasureGridLinRegStats)
+MeasureGridLinRegStats.__doc__ = GRID_LINREG_STATS.append_rst_to_doc(
+        MeasureGridLinRegStats)

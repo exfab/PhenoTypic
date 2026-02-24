@@ -25,7 +25,7 @@ class GaussianBlur(ImageEnhancer):
     - Slightly smooth within colonies to make segmentation more compact.
 
     Tuning and effects:
-    - sigma: Controls blur strength. Choose below the typical colony radius to
+    - sigma: Controls blur strength. Choose below the typical colony width to
       avoid merging close colonies. Too large sigma will wash out small colonies
       and narrow gaps between neighbors.
     - mode/cval: Define how edges are handled. For plates, 'reflect' usually
@@ -48,22 +48,20 @@ class GaussianBlur(ImageEnhancer):
     """
 
     def __init__(
-        self, sigma: int = 2, *, mode: str = "reflect", cval=0.0, truncate: float = 4.0
+            self, sigma: float = 2.0, *, mode: str = "reflect", cval=0.0,
+            truncate: float = 4.0
     ):
         """
         Parameters:
-            sigma (int): Blur strength; start near 1–3 for high-resolution scans.
-                Keep below the colony radius to avoid merging colonies.
+            sigma (float): Blur strength; start near 1–3 for high-resolution scans.
+                Keep below the colony width to avoid merging colonies.
             mode (str): Boundary handling. 'reflect' is a safe default for plates;
                 'constant' may require setting `cval` close to background.
             cval (float): Constant fill value when `mode='constant'`.
             truncate (float): Kernel extent in standard deviations. Rarely needs
                 adjustment; larger values slightly widen the effective kernel.
         """
-        if isinstance(sigma, int):
-            self.sigma = sigma
-        else:
-            raise TypeError("sigma must be an integer")
+        self.sigma = sigma
 
         if mode in ["reflect", "constant", "nearest"]:
             self.mode = mode
@@ -75,12 +73,12 @@ class GaussianBlur(ImageEnhancer):
         self.truncate = truncate
 
     def _operate(self, image: Image) -> Image:
-        image.enh_gray[:] = gaussian(
-            image=image.enh_gray[:],
-            sigma=self.sigma,
-            mode=self.mode,
-            truncate=self.truncate,
-            cval=self.cval,
-            channel_axis=-1,
+        image.detect_mat[:] = gaussian(
+                image=image.detect_mat[:],
+                sigma=self.sigma,
+                mode=self.mode,
+                truncate=self.truncate,
+                cval=self.cval,
+                channel_axis=-1,
         )
         return image

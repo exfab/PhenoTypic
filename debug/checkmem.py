@@ -61,7 +61,6 @@ def auto_profile_package(pkg):
             auto_profile_module(module)
 
 
-import types
 
 
 def auto_profile_module_ram(module):

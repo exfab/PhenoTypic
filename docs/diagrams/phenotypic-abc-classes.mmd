@@ -123,7 +123,7 @@ classDiagram
     class Image {
         +rgb: ImageRGB
         +gray: Grayscale
-        +enh_gray: EnhancedGrayscale
+        +detect_mat: DetectMatAccessor
         +objmask: ObjectMask
         +objmap: ObjectMap
         +metadata: MetadataAccessor
@@ -180,7 +180,7 @@ classDiagram
 %% Notes
     note for ImageOperation "All image operations inherit from ImageOperation.\nThey apply transformations to Image objects and support inplace operations.\nAbstract _operate() method must be implemented by subclasses."
     note for MeasureFeatures "All measurement classes inherit from MeasureFeatures.\nThey calculate statistical properties of detected objects.\nReturns pandas DataFrames with measurement results."
-    note for ImageEnhancer "Enhances image quality to improve subsequent detection.\nExamples: denoising, contrast enhancement, edge sharpening.\nWorks on enh_gray attribute of Image."
+    note for ImageEnhancer "Enhances image quality to improve subsequent detection.\nExamples: denoising, contrast enhancement, edge sharpening.\nWorks on detect_mat attribute of Image."
     note for ObjectDetector "Detects objects and creates objmask/objmap.\nExamples: threshold-based detection, blob detection, segmentation.\nFundamental step before measurements can be taken."
     note for ObjectRefiner "Refines detected objects after initial detection.\nExamples: size filtering, morphological operations, object merging.\nWorks on existing objmask/objmap."
     note for GridFinder "Analyzes object positions to detect grid layouts.\nCalculates row/column edges and assigns section numbers.\nWorks on regular Image objects (not just GridImage)."

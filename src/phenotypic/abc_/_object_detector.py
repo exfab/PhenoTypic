@@ -1,17 +1,11 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic import Image, GridImage
 
-import numpy as np
 from ._image_operation import ImageOperation
-from phenotypic.tools.exceptions_ import (
-    OperationFailedError,
-    DataIntegrityError,
-    InterfaceError,
-)
-from phenotypic.tools.funcs_ import validate_operation_integrity
+from phenotypic.tools_.funcs_ import validate_operation_integrity
 from abc import ABC
 
 
@@ -23,6 +17,23 @@ class ObjectDetector(ImageOperation, ABC):
     colonies (or other objects) in image data. Detection is a critical step in the PhenoTypic
     image processing pipeline: it bridges image preprocessing (enhancement) and downstream
     analysis (measurement, refinement, and statistical analysis).
+
+    **Quick Decision Guide**
+
+    Use this guide to choose the right operation for your task:
+
+    - **ObjectDetector:** Implementing a novel detection algorithm? Produces both objmask
+      (binary) and objmap (labeled).
+    - **ThresholdDetector:** Your algorithm converts intensity to binary via thresholding?
+      Subclass ThresholdDetector for specialized threshold strategies.
+    - **ImageEnhancer:** Need to preprocess image data (blur, contrast, denoise) before
+      detection? Use enhancement to prepare detect_mat for better detection.
+    - **ObjectRefiner:** Need to clean up *existing* masks (size filter, morphology, merge)?
+      Refiner operates on objmask/objmap without analyzing image data.
+    - **Threshold vs Edge vs Peak:** Threshold works when intensity separates colonies from
+      background; edge-based (Canny) finds boundaries; peak-based assumes circular shapes.
+    - **Grid-aware analysis:** Processing arrayed plates? Use GridObjectRefiner or
+      GridFinder for well-plate-specific logic.
 
     **What does ObjectDetector do?**
 
@@ -42,10 +53,10 @@ class ObjectDetector(ImageOperation, ABC):
 
     ObjectDetector operations:
 
-    - **Read** ``image.enh_gray[:]`` (enhanced grayscale), ``image.rgb[:]``, and optionally
+    - **Read** ``image.detect_mat[:]`` (detection matrix), ``image.rgb[:]``, and optionally
       other image data to inform detection.
     - **Write** only ``image.objmask[:]`` and ``image.objmap[:]``.
-    - **Protect** ``image.rgb``, ``image.gray``, and ``image.enh_gray`` via automatic integrity
+    - **Protect** ``image.rgb``, ``image.gray``, and ``image.detect_mat`` via automatic integrity
       validation (``@validate_operation_integrity`` decorator).
 
     Any attempt to modify protected image components raises ``OperationIntegrityError`` when
@@ -82,12 +93,14 @@ class ObjectDetector(ImageOperation, ABC):
     **When to use ObjectDetector vs ThresholdDetector vs ObjectRefiner**
 
     - **ObjectDetector (this class):** Implement when you have a novel algorithm that produces
-      both objmask and objmap from image data. Examples: Otsu thresholding, Canny edges,
-      peak detection (RoundPeaks), watershed.
+      both objmask and objmap from image data. Examples: [OtsuDetector](src/phenotypic/detect/_otsu_detector.py),
+      [CannyDetector](src/phenotypic/detect/_canny_detector.py), [RoundPeaksDetector](src/phenotypic/detect/_round_peaks_detector.py),
+      [WatershedDetector](src/phenotypic/detect/_watershed_detector.py).
 
     - **ThresholdDetector (ObjectDetector subclass):** Inherit from this if your detection
-      relies on a threshold value. Provides common patterns and may offer utility methods.
-      Examples: OtsuDetector, TriangleDetector, LocalThresholdDetector.
+      relies on a threshold value. Provides common patterns and signals intent. Examples:
+      [OtsuDetector](src/phenotypic/detect/_otsu_detector.py), [LiDetector](src/phenotypic/detect/_li_detector.py),
+      [YenDetector](src/phenotypic/detect/_yen_detector.py), [TriangleDetector](src/phenotypic/detect/_triangle_detector.py).
 
     - **ObjectRefiner (different ABC):** Use when modifying existing masks/maps without
       analyzing image data. Examples: size filtering, morphological cleanup, erosion/dilation,
@@ -115,17 +128,17 @@ class ObjectDetector(ImageOperation, ABC):
 
     2. **Within _operate(), read image data carefully:**
 
-       - Access via accessors: ``image.enh_gray[:]``, ``image.gray[:]``, ``image.rgb[:]``
+       - Access via accessors: ``image.detect_mat[:]``, ``image.gray[:]``, ``image.rgb[:]``
        - Never modify these; integrity validation will catch it
        - Consider the data type and range (uint8, uint16, float, etc.)
 
     3. **Perform detection:** Use your algorithm to create a binary mask and labeled map.
        Typical approaches:
 
-       - **Thresholding-based:** Global or local threshold → binary mask → label
-       - **Edge-based:** Edge detector (Canny) → invert edges → label regions
-       - **Peak-based:** Detect intensity peaks → grow regions → label
-       - **Region-based:** Watershed or morphological operations
+       - **Thresholding-based:** Global or local threshold → binary mask → label (see [OtsuDetector](src/phenotypic/detect/_otsu_detector.py))
+       - **Edge-based:** Edge detector (Canny) → invert edges → label regions (see [CannyDetector](src/phenotypic/detect/_canny_detector.py))
+       - **Peak-based:** Detect intensity peaks → grow regions → label (see [RoundPeaksDetector](src/phenotypic/detect/_round_peaks_detector.py))
+       - **Region-based:** Watershed or morphological operations (see [WatershedDetector](src/phenotypic/detect/_watershed_detector.py))
 
     4. **Create and set the binary mask and labeled map:**
 
@@ -135,7 +148,7 @@ class ObjectDetector(ImageOperation, ABC):
            import numpy as np
 
            # Example: simple Otsu thresholding
-           enh = image.enh_gray[:]
+           enh = image.detect_mat[:]
            threshold = skimage.filters.threshold_otsu(enh)
            binary_mask = enh > threshold
 
@@ -153,10 +166,11 @@ class ObjectDetector(ImageOperation, ABC):
 
     5. **Post-processing (optional):** Some detectors include additional cleanup:
 
+       - **Morphological operations:** Apply erosion, dilation, opening, or closing to refine
+         mask topology (remove noise, bridge fragments, smooth boundaries).
        - **Clear borders:** Use ``skimage.segmentation.clear_border()`` to remove objects
          touching image edges.
-       - **Remove small/large objects:** Use
-         ``skimage.morphology.remove_small_objects()`` or
+       - **Remove small/large objects:** Use ``skimage.morphology.remove_small_objects()`` or
          ``skimage.morphology.remove_large_objects()`` to filter by area.
        - **Relabel:** Call ``image.objmap.relabel(connectivity=...)`` to ensure consecutive
          labels.
@@ -181,7 +195,7 @@ class ObjectDetector(ImageOperation, ABC):
       plate boundaries may be partially cut off).
 
     - **skimage.morphology.binary_opening():** Erosion followed by dilation; removes small
-      noise while preserving larger objects. Use with a suitable footprint (disk, square, or
+      noise while preserving larger objects. Use with a suitable shape (disk, square, or
       diamond).
 
     - **scipy.ndimage.binary_dilation() / binary_erosion():** Expand or shrink objects
@@ -190,120 +204,19 @@ class ObjectDetector(ImageOperation, ABC):
     - **skimage.feature.canny():** Multi-stage edge detection (Gaussian → gradient → non-max
       suppression → hysteresis). Robust but requires threshold tuning.
 
-    **Examples of different detection strategies**
+    **Reference implementations in PhenoTypic**
 
-    .. dropdown:: Otsu thresholding (simple, fast, global intensity)
+    Study these implementations to learn detection patterns:
 
-        .. code-block:: python
-
-            from phenotypic.abc_ import ObjectDetector
-            from phenotypic import Image
-            from skimage import filters
-            from scipy import ndimage
-            import numpy as np
-
-            class SimpleOtsuDetector(ObjectDetector):
-                \"\"\"Detects colonies using global Otsu thresholding.\"\"\"
-
-                def __init__(self):
-                    super().__init__()
-
-                @staticmethod
-                def _operate(image: Image) -> Image:
-                    enh = image.enh_gray[:]
-                    # Compute threshold
-                    thresh = filters.threshold_otsu(enh)
-                    # Create binary mask
-                    mask = enh > thresh
-                    # Label connected components
-                    labeled, num = ndimage.label(mask)
-                    # Set results
-                    image.objmask[:] = mask
-                    image.objmap[:] = labeled
-                    return image
-
-                # Usage:
-                # detector = SimpleOtsuDetector()
-                # plate = Image.from_image_path("plate.jpg")
-                # result = detector.apply(plate)
-                # colonies = result.objects  # Access detected colonies
-
-    .. dropdown:: Edge-based detection with Canny and post-processing
-
-        .. code-block:: python
-
-            from phenotypic.abc_ import ObjectDetector
-            from phenotypic import Image
-            from skimage import feature, morphology
-            from scipy import ndimage
-            import numpy as np
-
-            class EdgeDetector(ObjectDetector):
-                \"\"\"Detects colonies by finding edges and labeling enclosed regions.\"\"\"
-
-                def __init__(self, sigma: float = 1.5, min_size: int = 50):
-                    super().__init__()
-                    self.sigma = sigma
-                    self.min_size = min_size
-
-                @staticmethod
-                def _operate(image: Image, sigma: float = 1.5,
-                             min_size: int = 50) -> Image:
-                    enh = image.enh_gray[:]
-                    # Detect edges using Canny
-                    edges = feature.canny(enh, sigma=sigma)
-                    # Invert to get regions (not edges)
-                    regions = ~edges
-                    # Label connected regions
-                    labeled, num = ndimage.label(regions)
-                    # Remove small objects
-                    labeled = morphology.remove_small_objects(
-                        labeled, min_size=min_size)
-                    # Create binary mask from labeled map
-                    mask = labeled > 0
-                    # Set results
-                    image.objmask[:] = mask
-                    image.objmap[:] = labeled
-                    return image
-
-                # Usage:
-                # detector = EdgeDetector(sigma=1.0, min_size=100)
-                # result = detector.apply(plate)
-
-    .. dropdown:: Peak detection with cleanup (RoundPeaks-inspired approach)
-
-        .. code-block:: python
-
-            from phenotypic.abc_ import ObjectDetector
-            from phenotypic import Image
-            from scipy import ndimage
-            from scipy.signal import find_peaks
-            import numpy as np
-
-            class PeakColumnDetector(ObjectDetector):
-                \"\"\"Detects colonies via 1D peak finding on intensity profiles.\"\"\"
-
-                def __init__(self, min_distance: int = 15, threshold_abs: int = 100):
-                    super().__init__()
-                    self.min_distance = min_distance
-                    self.threshold_abs = threshold_abs
-
-                @staticmethod
-                def _operate(image: Image, min_distance: int = 15,
-                             threshold_abs: int = 100) -> Image:
-                    enh = image.enh_gray[:]
-                    # Sum intensity along rows to get column profile
-                    col_sums = np.sum(enh, axis=0)
-                    # Find peaks in profile
-                    peaks, _ = find_peaks(col_sums, distance=min_distance,
-                                          height=threshold_abs)
-                    # Simple approach: threshold and label
-                    # (Production code would do more sophisticated grid inference)
-                    mask = enh > np.median(enh)  # Placeholder threshold
-                    labeled, num = ndimage.label(mask)
-                    image.objmask[:] = mask
-                    image.objmap[:] = labeled
-                    return image
+    - [OtsuDetector](src/phenotypic/detect/_otsu_detector.py): Simple thresholding with global
+      Otsu method
+    - [HysteresisDetector](src/phenotypic/detect/_hysteresis_detector.py): Advanced dual-threshold
+      with edge tracking (excellent reference for complex detection)
+    - [CannyDetector](src/phenotypic/detect/_canny_detector.py): Edge-based detection with
+      connectivity cleanup
+    - [RoundPeaksDetector](src/phenotypic/detect/_round_peaks_detector.py): Peak-based approach
+      for round colonies
+    - [WatershedDetector](src/phenotypic/detect/_watershed_detector.py): Region-based segmentation
 
     **When and how to refine detections (post-processing)**
 
@@ -336,7 +249,7 @@ class ObjectDetector(ImageOperation, ABC):
         pipeline.add(ClearBorderRefiner())  # Remove edge-touching objects
         pipeline.add(RemoveSmallObjectsRefiner(min_size=100))  # Filter noise
 
-        image = Image.from_image_path("plate.jpg")
+        image = Image("plate.jpg")
         result = pipeline.operate([image])[0]
         # result now has clean, labeled colonies ready for measurement
 
@@ -351,7 +264,7 @@ class ObjectDetector(ImageOperation, ABC):
 
     Notes:
         - **Integrity protection:** The @validate_operation_integrity decorator on apply()
-          ensures image.rgb, image.gray, and image.enh_gray are not modified. Violations
+          ensures image.rgb, image.gray, and image.detect_mat are not modified. Violations
           raise OperationIntegrityError during development (VALIDATE_OPS=True).
 
         - **Binary mask is often intermediate:** Many implementations create objmask first,
@@ -369,96 +282,53 @@ class ObjectDetector(ImageOperation, ABC):
           All parameters (except image) must be instance attributes.
 
     Examples:
-        .. dropdown:: Detect colonies in a plate image and access results
+        Detect colonies in a plate image and access results:
 
-            .. code-block:: python
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> # Load a plate image
+        >>> plate = Image("agar_plate.jpg")
+        >>> # Apply detection
+        >>> detector = OtsuDetector()
+        >>> detected = detector.apply(plate)
+        >>> # Access binary mask
+        >>> mask = detected.objmask[:]  # numpy array
+        >>> print(f"Mask shape: {mask.shape}, True pixels: {mask.sum()}")
+        >>> # Access labeled map
+        >>> objmap = detected.objmap[:]
+        >>> print(f"Detected {objmap.max()} colonies")
+        >>> # Iterate over colonies and measure properties
+        >>> for colony in detected.objects:
+        ...     print(f"Colony area: {colony.area} px, "
+        ...           f"centroid: {colony.centroid}")
 
-                from phenotypic import Image
-                from phenotypic.detect import OtsuDetector
+        Detection in a full pipeline with enhancement and refinement:
 
-                # Load a plate image
-                plate = Image.from_image_path("agar_plate.jpg")
-
-                # Apply detection
-                detector = OtsuDetector()
-                detected = detector.apply(plate)
-
-                # Access binary mask
-                mask = detected.objmask[:]  # numpy array
-                print(f"Mask shape: {mask.shape}, True pixels: {mask.sum()}")
-
-                # Access labeled map
-                objmap = detected.objmap[:]
-                print(f"Detected {objmap.max()} colonies")
-
-                # Iterate over colonies and measure properties
-                for colony in detected.objects:
-                    print(f"Colony area: {colony.area} px, "
-                          f"centroid: {colony.centroid}")
-
-        .. dropdown:: Custom detector with parameter tuning
-
-            .. code-block:: python
-
-                from phenotypic.abc_ import ObjectDetector
-                from phenotypic import Image
-                from skimage import filters
-                from scipy import ndimage
-
-                class LocalThresholdDetector(ObjectDetector):
-                    \"\"\"Detects colonies using adaptive local thresholding.\"\"\"
-
-                    def __init__(self, block_size: int = 31):
-                        super().__init__()
-                        self.block_size = block_size
-
-                    @staticmethod
-                    def _operate(image: Image, block_size: int = 31) -> Image:
-                        enh = image.enh_gray[:]
-                        # Ensure block_size is odd
-                        if block_size % 2 == 0:
-                            block_size += 1
-                        # Apply local threshold
-                        threshold = filters.threshold_local(enh, block_size=block_size)
-                        mask = enh > threshold
-                        # Label
-                        labeled, num = ndimage.label(mask)
-                        # Set results
-                        image.objmask[:] = mask
-                        image.objmap[:] = labeled
-                        return image
-
-                # Usage
-                detector = LocalThresholdDetector(block_size=51)
-                result = detector.apply(plate)
-                print(f"Found {result.objmap[:].max()} colonies")
-
-        .. dropdown:: Detection in a full pipeline with enhancement and refinement
-
-            .. code-block:: python
-
-                from phenotypic import Image, ImagePipeline
-                from phenotypic.enhance import GaussianBlur
-                from phenotypic.detect import CannyDetector
-                from phenotypic.refine import RemoveSmallObjectsRefiner
-                from phenotypic.measure import MeasureColor
-
-                # Create a processing pipeline
-                pipeline = ImagePipeline()
-                pipeline.add(GaussianBlur(sigma=2.0))  # Preprocessing
-                pipeline.add(CannyDetector(sigma=1.5))  # Detection
-                pipeline.add(RemoveSmallObjectsRefiner(min_size=50))  # Cleanup
-                pipeline.add(MeasureColor())  # Downstream analysis
-
-                # Load image and process
-                image = Image.from_image_path("plate.jpg")
-                result = pipeline.operate([image])[0]
-
-                # Results include enhanced image, detected/refined colonies, and measurements
-                print(f"Colonies: {result.objmap[:].max()}")
-                print(f"Measurements: {result.measurements.shape}")
+        >>> from phenotypic import Image, ImagePipeline
+        >>> from phenotypic.enhance import GaussianBlur
+        >>> from phenotypic.detect import CannyDetector
+        >>> from phenotypic.refine import RemoveSmallObjectsRefiner
+        >>> from phenotypic.measure import MeasureColor
+        >>> # Create a processing pipeline
+        >>> pipeline = ImagePipeline()
+        >>> pipeline.add(GaussianBlur(sigma=2.0))  # Preprocessing
+        >>> pipeline.add(CannyDetector(sigma=1.5))  # Detection
+        >>> pipeline.add(RemoveSmallObjectsRefiner(min_size=50))  # Cleanup
+        >>> pipeline.add(MeasureColor())  # Downstream analysis
+        >>> # Load image and process
+        >>> image = Image("plate.jpg")
+        >>> result = pipeline.operate([image])[0]
+        >>> # Results include enhanced image, detected/refined colonies, and measurements
+        >>> print(f"Colonies: {result.objmap[:].max()}")
+        >>> print(f"Measurements: {result.measurements.shape}")
     """
 
-    @validate_operation_integrity("image.rgb", "image.gray", "image.enh_gray")
+    @overload
+    def apply(self, image: Image, inplace: bool = False) -> Image: ...
+
+    @overload
+    def apply(self, image: GridImage, inplace: bool = False) -> GridImage: ...
+
+    @validate_operation_integrity("image.rgb", "image.gray", "image.detect_mat")
     def apply(self, image: Image, inplace=False) -> Image:
         return super().apply(image=image, inplace=inplace)

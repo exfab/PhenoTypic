@@ -13,13 +13,14 @@
 {% set class_map = {
     "rgb": "ImageRGB",
     "gray": "Grayscale",
-    "enh_gray": "EnhancedGrayscale",
+    "detect_mat": "DetectMatAccessor",
     "objmap": "ObjectMap",
     "objmask": "ObjectMask",
     "objects": "ObjectsAccessor",
     "grid": "GridAccessor",
     "metadata": "MetadataAccessor",
-    "color": "ColorAccessor"
+    "color": "ColorAccessor",
+    "plot": "PlotAccessor"
 } %}
 
 {% if accessor_class in class_map %}
