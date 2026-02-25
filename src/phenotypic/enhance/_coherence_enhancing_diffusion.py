@@ -173,9 +173,10 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
         if dt <= 0:
             raise ValueError("dt must be > 0")
 
-        if dt > 0.25:
+        if dt > 0.125:
             raise ValueError(
-                    "dt > 0.25 may cause numerical instability; use smaller values"
+                    "dt > 0.125 exceeds the 2D forward-Euler stability bound (1/8); "
+                    "use smaller values"
             )
 
         if sigma <= 0:
