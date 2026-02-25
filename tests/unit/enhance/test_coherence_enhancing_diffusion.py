@@ -35,8 +35,8 @@ class TestParameterValidation:
             CoherenceEnhancingDiffusion(dt=-0.1)
 
     def test_dt_too_large_raises(self):
-        with pytest.raises(ValueError, match="dt > 0.25"):
-            CoherenceEnhancingDiffusion(dt=0.3)
+        with pytest.raises(ValueError, match="dt > 0.125"):
+            CoherenceEnhancingDiffusion(dt=0.15)
 
     def test_sigma_zero_raises(self):
         with pytest.raises(ValueError, match="sigma must be > 0"):

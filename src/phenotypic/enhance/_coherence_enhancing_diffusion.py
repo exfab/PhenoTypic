@@ -39,10 +39,10 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
       with fast execution. Medium values (15-30) balance enhancement and speed for
       typical use. Large values (50-100) yield heavy smoothing, useful for very noisy
       images but may over-smooth fine details. Computational cost scales linearly.
-    - dt: Time step for each diffusion iteration. Must be small enough for numerical
-      stability (typically 0.05-0.2). Smaller values (0.05-0.1) are more stable but
-      require more iterations for the same effect. Larger values (0.15-0.25) converge
-      faster but risk instability. Recommended: 0.1 for most cases.
+    - dt: Time step for each diffusion iteration. Must satisfy the 2D forward-Euler
+      stability bound dt <= 1/8 (0.125). Smaller values (0.05-0.1) are more stable but
+      require more iterations for the same effect. Larger values (0.1-0.125) converge
+      faster but approach the stability limit. Recommended: 0.1 for most cases.
     - sigma: Gaussian smoothing scale for structure tensor computation. Controls the
       scale at which local orientation is estimated. Small values (0.5-1.5) detect
       fine structures but are more sensitive to noise. Medium values (1.5-3.0) provide
@@ -66,8 +66,8 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
     - Computational cost: CED is iterative and computes structure tensors per iteration.
       For large images or many iterations, processing can be slow. Consider downsampling
       for initial parameter tuning, then apply to full resolution.
-    - Numerical stability: Large dt values (>0.25) may cause instability (oscillations,
-      artifacts). If output looks noisy or has ringing, reduce dt.
+    - Numerical stability: dt values above the stability bound (0.125) are rejected.
+      If output looks noisy or has ringing, reduce dt further.
     - Structure scale: The sigma parameter must match the scale of features to enhance.
       Hyphae width of ~3 pixels works well with sigma=1.5; adjust proportionally.
     - Not for isotropic features: CED enhances elongated structures. For round colonies
@@ -155,10 +155,10 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
                 computation. Controls the scale at which local orientation is estimated.
                 Match to the width of structures you want to enhance: ~1.5 for fine
                 hyphae (~3px wide), ~3.0 for coarser structures. Recommended: 1.5.
-            dt (float): Time step for each diffusion iteration. Must be small enough
-                for numerical stability. Values above 0.25 may cause artifacts or
-                instability. Smaller values require more iterations for equivalent
-                smoothing. Recommended: 0.1 for stable, efficient diffusion.
+            dt (float): Time step for each diffusion iteration. Must satisfy the
+                2D forward-Euler stability bound of 1/8 (0.125). Smaller values
+                require more iterations for equivalent smoothing. Recommended:
+                0.1 for stable, efficient diffusion.
             alpha (float): Minimum diffusivity parameter (0 < alpha < 1). Ensures some
                 diffusion even in uniform regions, preventing numerical issues. Small
                 values (0.001) maximize anisotropy; larger values (0.01-0.1) add more
