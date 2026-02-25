@@ -39,6 +39,50 @@ class IntermediateStep:
     index: int              # 0, 1, 2, ...
     operation_name: str     # "GaussianBlur"
     h5_path: Path           # absolute path to HDF5
+    layers: tuple[str, ...] = ()    # which datasets this file contains
+    is_base: bool = False           # whether this is a base snapshot
+
+
+@dataclass(frozen=True)
+class ResolvedLayerSources:
+    """For a given step, maps each layer name to its source HDF5 path."""
+
+    rgb: Path | None = None
+    gray: Path | None = None
+    detect_mat: Path | None = None
+    objmap: Path | None = None
+
+
+def build_layer_resolution_index(
+    steps: list[IntermediateStep],
+) -> dict[int, ResolvedLayerSources]:
+    """Build a mapping from step index to resolved layer sources.
+
+    For each step, determines which HDF5 file contains the most recent
+    version of each layer by scanning forward through the step list.
+
+    Args:
+        steps: Sorted list of intermediate steps.
+
+    Returns:
+        Dict mapping step index to :class:`ResolvedLayerSources`.
+    """
+    if not steps:
+        return {}
+
+    # Running "latest source" for each layer
+    latest: dict[str, Path | None] = {
+        "rgb": None, "gray": None, "detect_mat": None, "objmap": None,
+    }
+    index: dict[int, ResolvedLayerSources] = {}
+
+    for step in steps:
+        for layer_name in step.layers:
+            if layer_name in latest:
+                latest[layer_name] = step.h5_path
+        index[step.index] = ResolvedLayerSources(**latest)
+
+    return index
 
 
 @dataclass
@@ -217,7 +261,7 @@ class SweepOutputScanner:
                 # Extract operations from pipe_cfgs
                 operations: List[Dict] = []
                 pipe_cfgs = pipe_dict.get("pipe_cfgs", {})
-                for op_key in sorted(pipe_cfgs.keys()):
+                for op_key in pipe_cfgs:
                     op_data = pipe_cfgs[op_key]
                     operations.append(
                         {
@@ -232,7 +276,7 @@ class SweepOutputScanner:
                 # Extract measurement operations
                 measurements: List[Dict] = []
                 meas_cfgs = pipe_dict.get("meas_cfgs", {})
-                for meas_key in sorted(meas_cfgs.keys()):
+                for meas_key in meas_cfgs:
                     meas_data = meas_cfgs[meas_key]
                     measurements.append(
                         {
@@ -316,6 +360,7 @@ class SweepOutputScanner:
         Expected structure::
 
             results/<image_stem>/<pipeline>/intermediates/00_OpName.h5
+            results/<image_stem>/<pipeline>/intermediates/base_00.h5
 
         Args:
             results_dir: The ``results/`` directory inside the sweep output.
@@ -324,6 +369,9 @@ class SweepOutputScanner:
             Nested dict: ``intermediates[image_stem][pipeline_name]`` -> sorted
             list of :class:`IntermediateStep`.
         """
+        import h5py
+
+        _LAYER_KEYS = {"rgb", "gray", "detect_mat", "objmap"}
         intermediates: Dict[str, Dict[str, List[IntermediateStep]]] = {}
 
         for stem_dir in sorted(results_dir.iterdir()):
@@ -347,30 +395,60 @@ class SweepOutputScanner:
                     if h5_path.suffix.lower() not in _HDF5_EXTENSIONS:
                         continue
 
-                    # Parse filename: "00_GaussianBlur.h5" -> (0, "GaussianBlur")
                     name_no_ext = h5_path.stem
-                    parts = name_no_ext.split("_", 1)
-                    if len(parts) != 2:
-                        logger.warning(
-                            "Skipping unparseable intermediate: %s",
-                            h5_path.name,
-                        )
-                        continue
+                    is_base = False
+
+                    # Parse base files: "base_00.h5"
+                    if name_no_ext.startswith("base_"):
+                        try:
+                            idx = int(name_no_ext[5:])
+                        except ValueError:
+                            logger.warning(
+                                "Skipping unparseable base intermediate: %s",
+                                h5_path.name,
+                            )
+                            continue
+                        op_name = "base"
+                        is_base = True
+                    else:
+                        # Parse delta files: "00_GaussianBlur.h5"
+                        parts = name_no_ext.split("_", 1)
+                        if len(parts) != 2:
+                            logger.warning(
+                                "Skipping unparseable intermediate: %s",
+                                h5_path.name,
+                            )
+                            continue
+                        try:
+                            idx = int(parts[0])
+                        except ValueError:
+                            logger.warning(
+                                "Skipping intermediate with non-integer"
+                                " index: %s",
+                                h5_path.name,
+                            )
+                            continue
+                        op_name = parts[1]
+
+                    # Probe HDF5 for layer datasets
                     try:
-                        idx = int(parts[0])
-                    except ValueError:
+                        with h5py.File(h5_path, "r") as f:
+                            layers = tuple(
+                                k for k in _LAYER_KEYS if k in f
+                            )
+                    except Exception:
                         logger.warning(
-                            "Skipping intermediate with non-integer"
-                            " index: %s",
+                            "Could not probe HDF5 file: %s",
                             h5_path.name,
                         )
-                        continue
-                    op_name = parts[1]
+                        layers = ()
 
                     steps.append(IntermediateStep(
                         index=idx,
                         operation_name=op_name,
                         h5_path=h5_path,
+                        layers=layers,
+                        is_base=is_base,
                     ))
 
                 if steps:

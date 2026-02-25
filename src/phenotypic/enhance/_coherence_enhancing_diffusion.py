@@ -54,6 +54,13 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
       (0.001-0.01) maximize anisotropy, strongly favoring directional smoothing. Larger
       values (0.01-0.1) add more isotropic smoothing, useful for noisy images where
       orientation estimates are unreliable.
+    - C: Contrast threshold for the diffusivity function. Controls the transition
+      between isotropic and anisotropic diffusion based on local coherence. When
+      coherence (lambda1 - lambda2)^2 is much larger than C, diffusion is strongly
+      anisotropic (along structures). When coherence is much smaller than C, diffusion
+      is nearly isotropic. Increase C for noisier images to require stronger coherence
+      before enhancing. Decrease C to enhance weaker structures. Recommended: 1.0
+      for typical colony plates, 0.1-0.5 for faint structures, 2-10 for noisy images.
 
     Caveats:
     - Computational cost: CED is iterative and computes structure tensors per iteration.
@@ -75,6 +82,7 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
         sigma (float): Gaussian scale for structure tensor smoothing. Controls the scale
             of detected orientations.
         alpha (float): Minimum diffusivity. Prevents complete smoothing in uniform regions.
+        C (float): Contrast threshold for coherence-based diffusivity.
 
     Examples:
         Enhancing filamentous fungal hyphae before ridge detection:
@@ -134,6 +142,7 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
             dt: float = 0.1,
             *,
             alpha: float = 0.001,
+            C: float = 1.0,
     ):
         """
         Parameters:
@@ -154,6 +163,9 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
                 diffusion even in uniform regions, preventing numerical issues. Small
                 values (0.001) maximize anisotropy; larger values (0.01-0.1) add more
                 isotropic smoothing. Recommended: 0.001 for strong directional bias.
+            C (float): Contrast threshold for the diffusivity function (C > 0).
+                Controls the coherence level at which diffusion transitions from
+                isotropic to anisotropic. Recommended: 1.0 for typical plates.
         """
         if num_iter < 1:
             raise ValueError("num_iter must be >= 1")
@@ -172,58 +184,65 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
         if not (0 < alpha < 1):
             raise ValueError("alpha must be in (0, 1)")
 
+        if C <= 0:
+            raise ValueError("C must be > 0")
+
         self.num_iterations = int(num_iter)
         self.dt = float(dt)
         self.sigma = float(sigma)
         self.alpha = float(alpha)
+        self.C = float(C)
 
     def _operate(self, image: Image) -> Image:
         """Apply coherence-enhancing diffusion to enhance filamentous structures."""
         # Finite difference operators for gradient computation
-        dx = FinDiff(1, 1.0, 1)  # d/dx (column direction)
-        dy = FinDiff(0, 1.0, 1)  # d/dy (row direction)
+        dx = FinDiff(1, 1.0, 1)  # d/dcol (column direction)
+        dy = FinDiff(0, 1.0, 1)  # d/drow (row direction)
 
         # Work with float64 for numerical stability
         img = image.detect_mat[:].astype(np.float64)
 
         for _ in range(self.num_iterations):
-            # Compute structure tensor components
-            Axx, Axy, Ayy = structure_tensor(img, sigma=self.sigma, order="rc")
-            lambda1, lambda2 = structure_tensor_eigenvalues([Axx, Axy, Ayy])
+            # Compute structure tensor components (row, col order)
+            S_rr, S_rc, S_cc = structure_tensor(
+                img, sigma=self.sigma, order="rc",
+            )
+            lambda1, lambda2 = structure_tensor_eigenvalues(
+                [S_rr, S_rc, S_cc],
+            )
 
-            # Coherence measure: how elongated/directional the local structure is
-            denom = lambda1 + lambda2 + 1e-10
-            coherence = ((lambda1 - lambda2) / denom) ** 2
+            # Coherence measure (unnormalized, per Weickert IJCV 1999)
+            coherence = (lambda1 - lambda2) ** 2
 
             # Diffusion coefficients based on coherence
             # c1: diffusion perpendicular to structure (small, preserves edges)
             # c2: diffusion along structure (large where coherent)
             c1 = self.alpha
-            c2 = self.alpha + (1 - self.alpha) * (
-                    1 - np.exp(-3.315 / (coherence + 1e-10))
+            c2 = self.alpha + (1 - self.alpha) * np.exp(
+                -self.C / (coherence + 1e-10)
             )
 
             # Local orientation from structure tensor
-            theta = 0.5 * np.arctan2(2 * Axy, Axx - Ayy)
+            theta = 0.5 * np.arctan2(2 * S_rc, S_rr - S_cc)
 
-            # Diffusion tensor components in image coordinates
+            # Diffusion tensor components in (row, col) coordinates
             cos2 = np.cos(theta) ** 2
             sin2 = np.sin(theta) ** 2
             cossin = np.cos(theta) * np.sin(theta)
 
-            Dxx = c1 * cos2 + c2 * sin2
-            Dxy = (c1 - c2) * cossin
-            Dyy = c1 * sin2 + c2 * cos2
+            D_rr = c1 * cos2 + c2 * sin2
+            D_rc = (c1 - c2) * cossin
+            D_cc = c1 * sin2 + c2 * cos2
 
             # Compute gradients using finite differences
-            gx = dx(img)
-            gy = dy(img)
+            gx = dx(img)  # du/dcol
+            gy = dy(img)  # du/drow
 
-            # flux computation
-            Fx = Dxx * gx + Dxy * gy
-            Fy = Dxy * gx + Dyy * gy
+            # Flux: pair D_cc with du/dcol, D_rr with du/drow
+            Fx = D_cc * gx + D_rc * gy
+            Fy = D_rc * gx + D_rr * gy
 
-            # flux divergence
+            # Flux divergence
             div = dx(Fx) + dy(Fy)
 
             # Update image with diffusion step

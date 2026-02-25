@@ -12,7 +12,7 @@ The ``register`` submodule provides registry utilities for extensible components
 like plotters and dashboards.
 """
 
-from . import constants_, exceptions_, colourspace, slurm_
+from . import constants_, exceptions_, colourspace, slurm_, slurm
 from .funcs_ import timed_execution, is_binary_mask
 from .hdf_ import HDF
 from .mixin import GridInferenceMixin, LazyWidgetMixin, FootprintMixin, ClipControlMixin
@@ -29,6 +29,7 @@ __all__ = [
     "exceptions_",
     "is_binary_mask",
     "register",
+    "slurm",
     "slurm_",
     "timed_execution",
 ]

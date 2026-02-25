@@ -15,9 +15,11 @@ from __future__ import annotations
 from ._sweep_data_model import (
     IntermediateStep,
     PipelineConfig,
+    ResolvedLayerSources,
     SweepHDF5File,
     SweepOutputData,
     SweepOutputScanner,
+    build_layer_resolution_index,
 )
 
 __all__ = [
@@ -28,7 +30,11 @@ __all__ = [
     "PipelineConfig",
     "SweepHDF5File",
     "IntermediateStep",
+    "ResolvedLayerSources",
+    "build_layer_resolution_index",
     "StepSliderWidget",
+    "ParameterExplorerWidget",
+    "PipelineConfigBar",
 ]
 
 
@@ -46,4 +52,12 @@ def __getattr__(name: str):
         from ._step_slider_widget import StepSliderWidget
 
         return StepSliderWidget
+    if name == "ParameterExplorerWidget":
+        from ._parameter_explorer_widget import ParameterExplorerWidget
+
+        return ParameterExplorerWidget
+    if name == "PipelineConfigBar":
+        from ._pipeline_config_bar import PipelineConfigBar
+
+        return PipelineConfigBar
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

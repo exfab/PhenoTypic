@@ -354,10 +354,17 @@ class TestDetectMode:
         rgb_image.set_detect_mode("gray")
         np.testing.assert_array_equal(original, rgb_image.detect_mat[:])
 
-    @pytest.mark.parametrize("mode", ["red", "green", "blue", "MinRGB"])
+    @pytest.mark.parametrize("mode", ["red", "green", "blue", "MinRGB", "InvS"])
     def test_rgb_modes_produce_float32(self, rgb_image, mode):
         rgb_image.set_detect_mode(mode)
         assert rgb_image.detect_mat.dtype == np.float32
+
+    def test_inv_saturation_is_complement_of_saturation(self, rgb_image):
+        rgb_image.set_detect_mode("HsvS")
+        sat = rgb_image.detect_mat[:].copy()
+        rgb_image.set_detect_mode("InvS")
+        inv_sat = rgb_image.detect_mat[:]
+        np.testing.assert_array_almost_equal(inv_sat, 1.0 - sat)
 
     def test_invalid_mode_raises(self, rgb_image):
         with pytest.raises(ValueError, match="Unknown detect_mode"):

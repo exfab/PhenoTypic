@@ -12,8 +12,8 @@ import shlex
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from phenotypic._cli._cli_slurm_config import calculate_optimal_array_chunks
-from phenotypic._cli._cli_slurm_scripts import generate_slurm_directives
+from phenotypic.tools_.slurm._config import calculate_optimal_array_chunks
+from phenotypic.tools_.slurm._sbatch import format_sbatch_directives as generate_slurm_directives
 from phenotypic._cli._cli_utils import get_python_command
 
 

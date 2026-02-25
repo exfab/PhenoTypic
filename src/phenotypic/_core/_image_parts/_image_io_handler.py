@@ -627,6 +627,71 @@ class ImageIOHandler(ImageColorSpace):
                     compression_opts=compression_opts,
             )
 
+    def save_intermediate_layers(
+        self,
+        filename,
+        layers: tuple[str, ...],
+        compression="gzip",
+        compression_opts=4,
+    ):
+        """Save only the specified image layers to an HDF5 file.
+
+        Args:
+            filename: Path to the HDF5 file to create.
+            layers: Tuple of layer names to save. Valid names are
+                ``"rgb"``, ``"gray"``, ``"detect_mat"``, ``"objmap"``.
+            compression: Compression filter. Defaults to ``"gzip"``.
+            compression_opts: Compression level (1-9). Defaults to 4.
+        """
+        with h5py.File(filename, mode="w") as f:
+            for layer in layers:
+                if layer == "rgb":
+                    if not self.rgb.isempty():
+                        array = self.rgb[:]
+                        HDF.save_array2hdf5(
+                            group=f, array=array, name="rgb",
+                            dtype=array.dtype,
+                            compression=compression,
+                            compression_opts=compression_opts,
+                        )
+                elif layer == "gray":
+                    array = self.gray[:]
+                    HDF.save_array2hdf5(
+                        group=f, array=array, name="gray",
+                        dtype=array.dtype,
+                        compression=compression,
+                        compression_opts=compression_opts,
+                    )
+                elif layer == "detect_mat":
+                    array = self.detect_mat[:]
+                    HDF.save_array2hdf5(
+                        group=f, array=array, name="detect_mat",
+                        dtype=array.dtype,
+                        compression=compression,
+                        compression_opts=compression_opts,
+                    )
+                    f["detect_mat"].attrs["detect_mode"] = (
+                        self._data.detect_mode
+                    )
+                elif layer == "objmap":
+                    array = self.objmap[:]
+                    HDF.save_array2hdf5(
+                        group=f, array=array, name="objmap",
+                        dtype=array.dtype,
+                        compression=compression,
+                        compression_opts=compression_opts,
+                    )
+
+            f.attrs["version"] = phenotypic.__version__
+
+            prot = f.require_group("protected_metadata")
+            for key, val in self._metadata.protected.items():
+                prot.attrs.modify(key, str(val))
+
+            pub = f.require_group("public_metadata")
+            for key, val in self._metadata.public.items():
+                pub.attrs.modify(key, str(val))
+
     @classmethod
     def _load_from_hdf5_group(cls, group, **kwargs) -> Image:
         # Instantiate a blank handler and populate internals

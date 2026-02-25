@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    import napari
     from phenotypic import GridImage
 
 import numpy as np
@@ -1230,3 +1231,195 @@ class GridAccessor:
         section_info = grid_info.loc[
             grid_info.loc[:, str(GRID.ROW_MAJOR_IDX)] == idx, :]
         return section_info[OBJECT.LABEL].to_list()
+
+    def _build_gridline_shapes(self) -> list[np.ndarray]:
+        """Build line shape arrays for all grid boundaries.
+
+        Returns:
+            list[np.ndarray]: List of 2x2 arrays ``[[row_start, col_start],
+                [row_end, col_end]]``, one per grid edge. Produces
+                ``(ncols + 1) + (nrows + 1)`` lines total.
+        """
+        row_edges = self.get_row_edges()
+        col_edges = self.get_col_edges()
+        lines: list[np.ndarray] = []
+
+        # Vertical lines span from first row edge to last row edge
+        for c in col_edges:
+            lines.append(np.array([[row_edges[0], c], [row_edges[-1], c]]))
+
+        # Horizontal lines span from first col edge to last col edge
+        for r in row_edges:
+            lines.append(np.array([[r, col_edges[0]], [r, col_edges[-1]]]))
+
+        return lines
+
+    def _build_section_box_shapes(
+        self,
+    ) -> tuple[list[np.ndarray], list[np.ndarray]]:
+        """Build rectangle shapes and per-section colors for all grid sections.
+
+        Uses grid edge positions so every section gets a box regardless of
+        whether colonies are detected. Colors cycle through the ``tab20``
+        colormap.
+
+        Returns:
+            tuple[list[np.ndarray], list[np.ndarray]]: A tuple of
+                ``(rectangles, colors)`` where each rectangle is a 4x2 array
+                of corner vertices and each color is an RGBA array.
+        """
+        row_edges = self.get_row_edges()
+        col_edges = self.get_col_edges()
+        cmap = plt.get_cmap("tab20")
+
+        rectangles: list[np.ndarray] = []
+        colors: list[np.ndarray] = []
+        idx = 0
+        for ri in range(len(row_edges) - 1):
+            r0 = row_edges[ri]
+            r1 = row_edges[ri + 1]
+            for ci in range(len(col_edges) - 1):
+                c0 = col_edges[ci]
+                c1 = col_edges[ci + 1]
+                rectangles.append(
+                    np.array([[r0, c0], [r0, c1], [r1, c1], [r1, c0]])
+                )
+                colors.append(np.asarray(cmap(idx % 20)))
+                idx += 1
+
+        return rectangles, colors
+
+    def napari(
+        self,
+        name: str | None = None,
+        reset: bool = False,
+        *,
+        show_gridlines: bool = True,
+        show_section_boxes: bool = True,
+        gridline_color: str = "cyan",
+        gridline_edge_width: float = 2.0,
+        section_box_edge_width: float = 2.0,
+        opacity: float = 1.0,
+    ) -> napari.Viewer:
+        """Add grid overlay layers to a persistent global napari viewer.
+
+        Creates or reuses a single napari viewer instance and adds Shapes
+        layers for gridlines and/or section boxes. Each layer can be toggled
+        independently inside the napari GUI.
+
+        Args:
+            name: Optional custom name used in layer naming. If None, uses the
+                image's ``name`` attribute. Defaults to None.
+            reset: If True, closes the current napari viewer and creates a
+                fresh one. Defaults to False.
+            show_gridlines: If True, add a Shapes layer with lines at every
+                grid boundary. Defaults to True.
+            show_section_boxes: If True, add a Shapes layer with colored
+                rectangles for each grid section. Defaults to True.
+            gridline_color: Edge color for gridlines (any napari color spec).
+                Defaults to ``"cyan"``.
+            gridline_edge_width: Stroke width in pixels for gridlines.
+                Defaults to 2.0.
+            section_box_edge_width: Stroke width in pixels for section box
+                edges. Defaults to 2.0.
+            opacity: Layer opacity from 0.0 (transparent) to 1.0 (opaque).
+                Defaults to 1.0.
+
+        Returns:
+            napari.Viewer: The global napari viewer instance with grid layers.
+
+        Raises:
+            ImportError: If napari is not installed.
+            ValueError: If opacity is not in [0.0, 1.0].
+
+        Examples:
+            Overlay grid on a grayscale image:
+
+            >>> from phenotypic.data import load_synth_yeast_plate
+            >>> gi = load_synth_yeast_plate()
+            >>> viewer = gi.gray.napari()
+            >>> viewer = gi.grid.napari()
+
+            Show only gridlines without section boxes:
+
+            >>> viewer = gi.grid.napari(show_section_boxes=False)
+        """
+        if not 0.0 <= opacity <= 1.0:
+            raise ValueError(f"opacity must be in range [0.0, 1.0], got {opacity}")
+
+        from phenotypic._core._image_parts.accessor_abstracts._image_accessor_base import (
+            _HAS_NAPARI,
+            _viewer_is_alive,
+        )
+        from phenotypic._core._image_parts.accessor_abstracts import (
+            _image_accessor_base,
+        )
+
+        if not _HAS_NAPARI:
+            raise ImportError(
+                "napari is required for interactive visualization. "
+                "Install with: pip install phenotypic[gui]"
+            )
+        import napari as _napari
+
+        viewer = _image_accessor_base._global_napari_viewer
+
+        # Reset viewer if requested
+        if reset and _viewer_is_alive(viewer):
+            viewer.close()
+            _image_accessor_base._global_napari_viewer = None
+            viewer = None
+
+        # Create new viewer if needed
+        if not _viewer_is_alive(viewer):
+            viewer = _napari.Viewer()
+            _image_accessor_base._global_napari_viewer = viewer
+
+        # Resolve layer name prefix
+        if name is not None:
+            image_name = name
+        else:
+            image_name = getattr(self._root_image, "name", "image")
+
+        # --- Gridlines layer ---
+        if show_gridlines:
+            gridline_layer_name = f"grid_{image_name}_gridlines"
+            gridline_shapes = self._build_gridline_shapes()
+            try:
+                layer = viewer.layers[gridline_layer_name]
+                layer.data = gridline_shapes
+                layer.edge_color = gridline_color
+                layer.edge_width = gridline_edge_width
+                layer.opacity = opacity
+            except KeyError:
+                viewer.add_shapes(
+                    gridline_shapes,
+                    shape_type="line",
+                    edge_color=gridline_color,
+                    edge_width=gridline_edge_width,
+                    name=gridline_layer_name,
+                    opacity=opacity,
+                )
+
+        # --- Section boxes layer ---
+        if show_section_boxes:
+            section_layer_name = f"grid_{image_name}_sections"
+            section_rectangles, section_colors = self._build_section_box_shapes()
+            try:
+                layer = viewer.layers[section_layer_name]
+                layer.data = section_rectangles
+                layer.edge_color = section_colors
+                layer.edge_width = section_box_edge_width
+                layer.opacity = opacity
+            except KeyError:
+                viewer.add_shapes(
+                    section_rectangles,
+                    shape_type="rectangle",
+                    edge_color=section_colors,
+                    face_color="transparent",
+                    edge_width=section_box_edge_width,
+                    name=section_layer_name,
+                    opacity=opacity,
+                )
+
+        return viewer

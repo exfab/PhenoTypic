@@ -1,5 +1,4 @@
-"""
-SLURM bash script generation for the PhenoTypic CLI.
+"""SLURM bash script generation for the PhenoTypic CLI.
 
 This module generates standalone bash scripts for autonomous SLURM execution.
 """
@@ -13,85 +12,35 @@ import shlex
 
 from ._cli_types import Dataset, ExecutionConfig
 from ._cli_utils import get_python_command
+from phenotypic.tools_.slurm._sbatch import (
+    format_sbatch_directives as _format_sbatch_directives,
+)
 
 logger = logging.getLogger(__name__)
-
-# SBATCH directive names that are managed by script generators and must not
-# be overridden by user ``--slurm`` arguments.
-_RESERVED_SBATCH_KEYS = frozenset({"array", "output", "error", "job-name"})
 
 
 def generate_slurm_directives(
     job_name: str, slurm_args: Dict[str, Any], output_log: Path, error_log: Path
 ) -> str:
-    """
-    Generate SBATCH directive lines for SLURM script.
+    """Generate SBATCH directive lines for SLURM script.
 
-    Converts CLI SLURM parameters to SBATCH directives with proper formatting.
+    Delegates to ``phenotypic.tools_.slurm._sbatch.format_sbatch_directives``.
 
     Args:
-        job_name: Job name
-        slurm_args: SLURM parameters dict
-        output_log: Path for stdout log
-        error_log: Path for stderr log
+        job_name: Job name.
+        slurm_args: SLURM parameters dict.
+        output_log: Path for stdout log.
+        error_log: Path for stderr log.
 
     Returns:
-        String with all #SBATCH directives
-
-    Notes:
-        - Time parameters (time, slurm_time) should be integers (minutes)
-        - They are converted to HH:MM:SS format for SBATCH directives
-        - Memory parameters (mem_gb) are converted to SLURM format
-        - Reserved keys (array, output, error, job-name) are silently
-          skipped with a warning log because they are managed by the
-          script generators.
+        String with all ``#SBATCH`` directives.
     """
-    directives = [f"#SBATCH --job-name={job_name}"]
-
-    # Add output/error logs
-    directives.append(f"#SBATCH --output={output_log}")
-    directives.append(f"#SBATCH --error={error_log}")
-
-    # Add user-provided SLURM parameters
-    for key, value in slurm_args.items():
-        # Convert CLI-style keys to SBATCH directive names
-        directive_name = key.replace("slurm_", "").replace("_", "-")
-
-        # Skip reserved keys that are managed by the script generators
-        if directive_name in _RESERVED_SBATCH_KEYS:
-            logger.warning(
-                "Ignoring user --slurm %s=%s: '%s' is managed by PhenoTypic",
-                key,
-                value,
-                directive_name,
-            )
-            continue
-
-        # Handle special cases
-        if key in ("time", "slurm_time"):
-            # Convert integer minutes to HH:MM:SS format for SBATCH
-            # (CLI passes integer minutes, SBATCH needs HH:MM:SS)
-            if isinstance(value, int):
-                hours = value // 60
-                minutes = value % 60
-                value = f"{hours:02d}:{minutes:02d}:00"
-            # If already a string, assume it's properly formatted
-            directive_name = "time"
-        elif key == "mem_gb":
-            value = f"{value}G"
-            directive_name = "mem"
-        elif key == "slurm_mem":
-            directive_name = "mem"
-        elif key == "slurm_mem_per_cpu":
-            directive_name = "mem-per-cpu"
-        elif key == "slurm_cpus_per_task":
-            directive_name = "cpus-per-task"
-        elif key == "slurm_gpus_per_node":
-            directive_name = "gpus-per-node"
-
-        directives.append(f"#SBATCH --{directive_name}={value}")
-
-    return "\n".join(directives)
+    return _format_sbatch_directives(
+        job_name=job_name,
+        slurm_args=slurm_args,
+        output_log=output_log,
+        error_log=error_log,
+    )
 
 
 def generate_image_processing_script(

@@ -23,8 +23,6 @@ from phenotypic._cli._cli_slurm_array_scripts import (
     generate_all_array_job_scripts,
 )
 from phenotypic._cli._cli_types import Dataset, ExecutionConfig
-from phenotypic._cli._cli_execution_strategies import AutonomousSLURMStrategy
-from phenotypic._cli._cli_output_manager import OutputManager
 
 
 class TestSLURMArrayLimitParsing:
@@ -407,109 +405,80 @@ class TestSbatchJobIDParsing:
 
 
 class TestSLURMSubmissionErrors:
-    """Tests for SLURM job submission error handling."""
+    """Tests for shared submit_script error handling."""
 
-    @pytest.fixture
-    def mock_config(self, tmp_path):
-        """Create a mock ExecutionConfig for testing."""
-        return ExecutionConfig(
-            pipeline_json=tmp_path / "pipeline.json",
-            input_path=tmp_path / "images",
-            output_dir=tmp_path / "output",
-            image_type="GridImage",
-            nrows=8,
-            ncols=12,
-            bit_depth=None,
-            n_jobs=-1,
-            slurm_args={},
-            force_local=False,
-            wait=False,
-            save_rgb=False,
-            save_gray=False,
-            save_detect_mat=False,
-            save_objmask=False,
-            save_objmap=False,
-            save_objmap_overlay=False,
-            save_detect_mat_overlay=False,
-            save_objmask_overlay=False,
-            rgb_ext="tiff",
-            gray_ext="tiff",
-            detect_mat_ext="tiff",
-            objmask_ext="tiff",
-            objmap_ext="tiff",
-            objmap_overlay_ext="tiff",
-            overlay_mode="image",
-            overlay_alpha=0.3,
-            include_dataset_column=False,
-            dry_run=False,
-            sample=None,
-            resume=False,
-            retry_failures=False,
-            skip_validation=False,
-        )
-
-    @pytest.fixture
-    def mock_output_manager(self, tmp_path):
-        """Create a mock OutputManager for testing."""
-        return OutputManager(
-            base_dir=tmp_path / "output",
-            save_layers={},
-            extensions={},
-            include_dataset_column=False,
-        )
-
-    @patch("subprocess.run")
-    def test_submit_array_job_sbatch_not_found(self, mock_run, mock_config, mock_output_manager):
+    @patch("phenotypic.tools_.slurm._sbatch.subprocess.run")
+    def test_submit_script_sbatch_not_found(self, mock_run):
         """Test handling when sbatch command is not found."""
+        from phenotypic.tools_.slurm._sbatch import submit_script
+
         mock_run.side_effect = FileNotFoundError("sbatch not found")
 
-        strategy = AutonomousSLURMStrategy(mock_config, mock_output_manager)
         with pytest.raises(RuntimeError, match="sbatch"):
-            strategy._submit_array_job_direct(Path("script.sh"), dependency_job_id=None)
+            submit_script(Path("script.sh"))
 
-    @patch("subprocess.run")
-    def test_submit_array_job_sbatch_failure(self, mock_run, mock_config, mock_output_manager):
+    @patch("phenotypic.tools_.slurm._sbatch.subprocess.run")
+    def test_submit_script_sbatch_failure(self, mock_run):
         """Test handling when sbatch returns non-zero exit code."""
+        from phenotypic.tools_.slurm._sbatch import submit_script
+
         mock_run.side_effect = subprocess.CalledProcessError(
             1, "sbatch", stderr="Invalid partition specified"
         )
 
-        strategy = AutonomousSLURMStrategy(mock_config, mock_output_manager)
         with pytest.raises(RuntimeError, match="submission failed"):
-            strategy._submit_array_job_direct(Path("script.sh"), dependency_job_id=None)
+            submit_script(Path("script.sh"))
 
-    @patch("subprocess.run")
-    def test_submit_array_job_unparseable_output(self, mock_run, mock_config, mock_output_manager):
-        """Test handling when sbatch output doesn't contain job ID."""
+    @patch("phenotypic.tools_.slurm._sbatch.subprocess.run")
+    def test_submit_script_parsable_output(self, mock_run):
+        """Test successful submission with --parsable output."""
+        from phenotypic.tools_.slurm._sbatch import submit_script
+
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout="Some other output\n"  # No "Submitted batch job" line
+            stdout="12345\n"
         )
 
-        strategy = AutonomousSLURMStrategy(mock_config, mock_output_manager)
-        with pytest.raises(RuntimeError, match="Could not parse job ID"):
-            strategy._submit_array_job_direct(Path("script.sh"), dependency_job_id=None)
-
-    @patch("subprocess.run")
-    def test_submit_array_job_with_dependency_success(self, mock_run, mock_config, mock_output_manager):
-        """Test successful submission with dependency."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="Submitted batch job 12345\n"
-        )
-
-        strategy = AutonomousSLURMStrategy(mock_config, mock_output_manager)
-        job_id = strategy._submit_array_job_direct(Path("script.sh"), dependency_job_id="11111")
+        job_id = submit_script(Path("script.sh"))
         assert job_id == "12345"
 
-    @patch("subprocess.run")
-    def test_array_limit_validation_negative(self, mock_run, mock_config, mock_output_manager):
+    @patch("phenotypic.tools_.slurm._sbatch.subprocess.run")
+    def test_submit_script_parsable_with_cluster(self, mock_run):
+        """Test --parsable output with cluster name (id;cluster)."""
+        from phenotypic.tools_.slurm._sbatch import submit_script
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="67890;cluster_name\n"
+        )
+
+        job_id = submit_script(Path("script.sh"))
+        assert job_id == "67890"
+
+    @patch("phenotypic.tools_.slurm._sbatch.subprocess.run")
+    def test_submit_script_with_dependency(self, mock_run):
+        """Test submission with dependency flag."""
+        from phenotypic.tools_.slurm._sbatch import submit_script
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="12345\n"
+        )
+
+        job_id = submit_script(Path("script.sh"), dependency_job_id="11111")
+        assert job_id == "12345"
+
+        # Verify --dependency was passed
+        call_args = mock_run.call_args[0][0]
+        assert "--dependency" in call_args
+        assert "afterany:11111" in call_args
+
+    def test_array_limit_validation_negative(self):
         """Test that negative array limit raises error."""
         with pytest.raises(ValueError, match="array_limit must be positive"):
             calculate_optimal_array_chunks(100, -1)
 
-    @patch("subprocess.run")
-    def test_array_limit_validation_zero(self, mock_run, mock_config, mock_output_manager):
+    def test_array_limit_validation_zero(self):
         """Test that zero array limit raises error."""
         with pytest.raises(ValueError, match="array_limit must be positive"):
             calculate_optimal_array_chunks(100, 0)

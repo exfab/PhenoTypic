@@ -9,6 +9,11 @@ this repository.
 
 All commands should be run from the repository root using `uv`.
 
+**`uv` is the sole package manager and runner for this project.** Use it for everything:
+- **Run commands:** `uv run <cmd>` (never bare `python` or `pip`)
+- **Add dependencies:** `uv add <package>` (or `uv add --group dev <package>` for dev deps)
+- **Sync environments:** `uv sync` (always run after checkout or in new worktrees)
+
 ### Testing
 
 reference @tests/CLAUDE.md for testing details
@@ -20,7 +25,7 @@ reference @tests/CLAUDE.md for testing details
 uv run mypy src/phenotypic
 
 # Format and lint
-uc run ruff check --fix
+uv run ruff check --fix
 
 # Follow Google-style docstrings
 ```

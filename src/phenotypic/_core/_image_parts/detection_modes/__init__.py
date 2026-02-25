@@ -32,6 +32,9 @@ from phenotypic._core._image_parts.detection_modes._hsv_channel_modes import (
     HsvSaturationMode,
     HsvValueMode,
 )
+from phenotypic._core._image_parts.detection_modes._inv_saturation_mode import (
+    InverseSaturationMode,
+)
 
 __all__ = [
     "DetectionMode",
@@ -48,4 +51,5 @@ __all__ = [
     "LabBMode",
     "HsvSaturationMode",
     "HsvValueMode",
+    "InverseSaturationMode",
 ]

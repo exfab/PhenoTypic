@@ -26,6 +26,35 @@ from phenotypic.tools_.mixin import LazyWidgetMixin
 logger = logging.getLogger("ImagePipeline")
 
 
+def _layers_modified_by(operation) -> tuple[str, ...] | None:
+    """Return layer names modified by this operation, or None for read-only ops.
+
+    Args:
+        operation: An operation instance from the pipeline.
+
+    Returns:
+        Tuple of layer name strings that this operation modifies,
+        or ``None`` if the operation is read-only (e.g. measurements).
+    """
+    from phenotypic.abc_ import (
+        ImageCorrector,
+        ImageEnhancer,
+        MeasureFeatures,
+        ObjectDetector,
+        ObjectRefiner,
+    )
+
+    if isinstance(operation, MeasureFeatures):
+        return None
+    if isinstance(operation, ImageCorrector):
+        return ("rgb", "gray", "detect_mat", "objmap")
+    if isinstance(operation, ImageEnhancer):
+        return ("detect_mat",)
+    if isinstance(operation, (ObjectDetector, ObjectRefiner)):
+        return ("objmap",)
+    return ("rgb", "gray", "detect_mat", "objmap")
+
+
 class IntermediateResult(NamedTuple):
     """Result of ``apply_with_intermediates``.
 
@@ -410,10 +439,36 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
         intermediates: Dict[str, Optional[Image]] = {}
 
+        # Build indexed list of operations so the callback can look up by index
+        ops_list = list(self._ops.values())
+
+        if output_dir is not None:
+            # Save initial base with all layers (pre-pipeline state)
+            _all_layers = ("rgb", "gray", "detect_mat", "objmap")
+            img.copy().save_intermediate_layers(
+                output_dir / "base_00.h5", layers=_all_layers,
+            )
+
         def _capture(i: int, key: str, current: Image) -> None:
             if output_dir is not None:
-                current.copy().save2hdf5(output_dir / f"{i:02d}_{key}.h5")
-                intermediates[key] = None
+                operation = ops_list[i]
+                layers = _layers_modified_by(operation)
+
+                if layers is None:
+                    # Read-only op (MeasureFeatures, GridFinder): no file
+                    intermediates[key] = None
+                elif len(layers) == 4:
+                    # Corrector: emit a new base with all layers
+                    current.copy().save_intermediate_layers(
+                        output_dir / f"base_{i:02d}.h5", layers=layers,
+                    )
+                    intermediates[key] = None
+                else:
+                    # Delta: save only modified layers
+                    current.copy().save_intermediate_layers(
+                        output_dir / f"{i:02d}_{key}.h5", layers=layers,
+                    )
+                    intermediates[key] = None
             else:
                 intermediates[key] = current.copy()
 

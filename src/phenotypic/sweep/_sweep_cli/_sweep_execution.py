@@ -6,9 +6,6 @@ of parameter sweep processing.
 
 from __future__ import annotations
 
-import math
-import re
-import subprocess
 import time
 import logging
 from abc import ABC, abstractmethod
@@ -210,39 +207,23 @@ class SLURMSweepStrategy(SweepExecutionStrategy):
         )
 
         # Generate chunked array job scripts (respects MaxArraySize)
-        from phenotypic._cli._cli_slurm_config import (
+        from phenotypic.tools_.slurm import (
             get_slurm_array_limit,
-            get_slurm_max_submit_jobs,
+            generate_dispatcher_chain,
+            submit_drip_feed_start,
         )
         from ._sweep_slurm_scripts import generate_sweep_array_scripts_chunked
 
         num_pipelines = len(self.pipeline_json_strs)
         total_tasks = total_images * num_pipelines
         array_limit = get_slurm_array_limit()
-        max_submit = get_slurm_max_submit_jobs() or 50
         pipeline_names = list(self.pipeline_json_strs.keys())
-
-        # Auto-calculate batch size so chunks fit within max_submit
-        max_schedulable = array_limit * max_submit
-        batch_size = max(1, math.ceil(total_tasks / max_schedulable))
-        effective_tasks = math.ceil(total_tasks / batch_size)
-        num_chunks = math.ceil(effective_tasks / array_limit)
 
         console.print(
             f"  SLURM array limit: {array_limit}\n"
-            f"  MaxSubmitJobs: {max_submit}\n"
-            f"  Batch size: {batch_size} pair(s)/task\n"
-            f"  Effective array tasks: {effective_tasks}\n"
-            f"  Array scripts needed: {num_chunks}"
+            f"  Array scripts needed: "
+            f"{max(1, -(-total_tasks // array_limit))}"
         )
-
-        # Warn if chunks still exceed the submission limit
-        if num_chunks > max_submit:
-            console.print(
-                f"  [yellow]Warning: {num_chunks} chunks needed but "
-                f"MaxSubmitJobs={max_submit}. Some submissions may be "
-                f"rejected by the scheduler.[/yellow]"
-            )
 
         script_paths = generate_sweep_array_scripts_chunked(
             image_paths=image_paths,
@@ -254,49 +235,48 @@ class SLURMSweepStrategy(SweepExecutionStrategy):
             slurm_args=self.slurm_args,
             array_limit=array_limit,
             verbose=self.verbose,
-            batch_size=batch_size,
             save_intermediates=self.save_intermediates,
         )
 
-        # Submit chunk scripts with dependency chain
-        job_ids: List[str] = []
-        failed_submissions: List[str] = []
-        prev_job_id: Optional[str] = None
+        # Generate dispatcher chain for drip-feed submission
+        log_dir = output_dir / "logs" / "slurm"
+        dispatcher_scripts = generate_dispatcher_chain(
+            chunk_scripts=script_paths,
+            output_dir=output_dir,
+            slurm_args=self.slurm_args,
+            log_dir=log_dir,
+        )
 
-        for idx, script_path in enumerate(script_paths):
-            dep_str = f", depends on {prev_job_id}" if prev_job_id else ""
-            console.print(
-                f"  [{idx + 1}/{len(script_paths)}] {script_path.name}{dep_str}",
-                end="",
-            )
-
-            try:
-                job_id = self._submit(
-                    script_path, dependency_job_id=prev_job_id
-                )
-                job_ids.append(job_id)
-                prev_job_id = job_id
-                console.print(f" -> [green]Job {job_id}[/green]")
-            except RuntimeError as e:
-                console.print(f" -> [red]Failed: {e}[/red]")
-                failed_submissions.append(str(script_path))
-                # Don't update prev_job_id — next chunk can still try
-
-        if failed_submissions:
-            console.print(
-                f"\n  [yellow]Warning: {len(failed_submissions)} chunk(s) "
-                f"failed to submit[/yellow]"
-            )
-
-        if not job_ids:
+        if not script_paths:
             raise RuntimeError(
-                "No SLURM jobs were submitted successfully. "
-                "Check cluster configuration and sbatch availability."
+                "No array job scripts were generated. "
+                "Check that images and pipelines are non-empty."
             )
+
+        # Submit first chunk + first dispatcher only
+        console.print("[bold cyan]Submitting jobs to SLURM...[/bold cyan]")
+
+        job_ids, warning = submit_drip_feed_start(
+            chunk_scripts=script_paths,
+            dispatcher_scripts=dispatcher_scripts,
+        )
+
+        console.print(f"  Chunk 0: [green]Job {job_ids[0]}[/green]")
+        if len(job_ids) > 1:
+            console.print(
+                f"  Dispatcher 1: [green]Job {job_ids[1]}[/green] "
+                f"(depends on {job_ids[0]})"
+            )
+            console.print(
+                f"  Remaining {len(script_paths) - 1} chunk(s) will be "
+                f"auto-submitted as each completes"
+            )
+        if warning:
+            console.print(f"  [yellow]Warning: {warning}[/yellow]")
 
         console.print(
-            f"\n  [green]Submitted {len(job_ids)} job(s) "
-            f"with dependency chain[/green]"
+            f"\n  [green]Submitted {len(job_ids)} initial job(s) "
+            f"(drip-feed dispatcher)[/green]"
         )
 
         if self.wait:
@@ -317,56 +297,6 @@ class SLURMSweepStrategy(SweepExecutionStrategy):
             "end_time": end_time,
             "job_ids": job_ids,
         }
-
-    def _submit(
-        self,
-        script_path: Path,
-        dependency_job_id: Optional[str] = None,
-    ) -> str:
-        """Submit array job via sbatch with optional dependency.
-
-        Args:
-            script_path: Path to the SLURM batch script.
-            dependency_job_id: When set, adds
-                ``--dependency=afterany:<id>`` so this chunk only starts
-                after the previous one finishes.
-
-        Returns:
-            SLURM job ID string.
-
-        Raises:
-            RuntimeError: If sbatch is unavailable or submission fails.
-        """
-        cmd = ["sbatch"]
-        if dependency_job_id:
-            cmd.extend(["--dependency", f"afterany:{dependency_job_id}"])
-        cmd.append(str(script_path))
-
-        try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                check=True,
-                timeout=30,
-            )
-        except FileNotFoundError:
-            raise RuntimeError(
-                "sbatch not found. SLURM not available. Use --force-local."
-            )
-        except subprocess.TimeoutExpired:
-            raise RuntimeError(
-                f"sbatch submission timed out for script: {script_path.name}"
-            )
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"sbatch failed for {script_path.name}:\n{e.stderr}")
-
-        match = re.search(r"Submitted batch job (\d+)", result.stdout)
-        if not match:
-            raise RuntimeError(
-                f"Could not parse job ID from sbatch output:\n{result.stdout}"
-            )
-        return match.group(1)
 
     def _monitor(self, output_dir: Path, total_tasks: int) -> None:
         """Monitor progress via event log."""
