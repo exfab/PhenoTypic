@@ -580,15 +580,16 @@ class ImageIOHandler(ImageColorSpace):
                 compression_opts=compression_opts,
         )
 
-        # Store version info
+        self._save_hdf5_metadata(grp)
+
+    def _save_hdf5_metadata(self, grp) -> None:
+        """Write version info and metadata subgroups into an HDF5 group."""
         grp.attrs["version"] = phenotypic.__version__
 
-        # Store protected metadata in its own subgroup
         prot = grp.require_group("protected_metadata")
         for key, val in self._metadata.protected.items():
             prot.attrs.modify(key, str(val))
 
-        # Store public metadata in its own subgroup
         pub = grp.require_group("public_metadata")
         for key, val in self._metadata.public.items():
             pub.attrs.modify(key, str(val))
@@ -642,7 +643,15 @@ class ImageIOHandler(ImageColorSpace):
                 ``"rgb"``, ``"gray"``, ``"detect_mat"``, ``"objmap"``.
             compression: Compression filter. Defaults to ``"gzip"``.
             compression_opts: Compression level (1-9). Defaults to 4.
+
+        Raises:
+            ValueError: If *layers* contains unknown layer names.
         """
+        _valid = {"rgb", "gray", "detect_mat", "objmap"}
+        unknown = set(layers) - _valid
+        if unknown:
+            raise ValueError(f"Unknown layer names: {unknown}")
+
         with h5py.File(filename, mode="w") as f:
             for layer in layers:
                 if layer == "rgb":
@@ -682,15 +691,7 @@ class ImageIOHandler(ImageColorSpace):
                         compression_opts=compression_opts,
                     )
 
-            f.attrs["version"] = phenotypic.__version__
-
-            prot = f.require_group("protected_metadata")
-            for key, val in self._metadata.protected.items():
-                prot.attrs.modify(key, str(val))
-
-            pub = f.require_group("public_metadata")
-            for key, val in self._metadata.public.items():
-                pub.attrs.modify(key, str(val))
+            self._save_hdf5_metadata(f)
 
     @classmethod
     def _load_from_hdf5_group(cls, group, **kwargs) -> Image:

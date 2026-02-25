@@ -658,15 +658,12 @@ class NapariSweepViewer:
 
         # Read datasets from each unique file
         loaded: dict[str, np.ndarray] = {}
-        detect_mode = "gray"
         for path, layer_names in file_layers.items():
             try:
                 with h5py.File(path, "r") as f:
                     for ln in layer_names:
                         if ln in f:
                             loaded[ln] = f[ln][()]
-                            if ln == "detect_mat" and "detect_mode" in f[ln].attrs:
-                                detect_mode = f[ln].attrs["detect_mode"]
             except Exception as exc:
                 logger.warning(
                     "Failed to read %s from %s: %s",
@@ -759,14 +756,14 @@ class NapariSweepViewer:
         # Use resolution index if available
         if resolution_index and step_index in resolution_index:
             resolved = resolution_index[step_index]
-            # If all layers point to the same file, use simple path
-            sources = {
-                getattr(resolved, ln)
-                for ln in _LAYER_ORDER
-                if getattr(resolved, ln) is not None
-            }
-            if len(sources) == 1:
-                return str(sources.pop())
+            # If all layers are resolved and point to the same file,
+            # use simple single-file path (avoids composited loading)
+            sources = [
+                getattr(resolved, ln) for ln in _LAYER_ORDER
+            ]
+            non_none = {s for s in sources if s is not None}
+            if len(non_none) == 1 and all(s is not None for s in sources):
+                return str(non_none.pop())
             return resolved
 
         # Fallback: direct file path (backward compat with old snapshots)

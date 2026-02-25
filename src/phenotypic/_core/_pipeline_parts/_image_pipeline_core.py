@@ -26,7 +26,7 @@ from phenotypic.tools_.mixin import LazyWidgetMixin
 logger = logging.getLogger("ImagePipeline")
 
 
-def _layers_modified_by(operation) -> tuple[str, ...] | None:
+def _layers_modified_by(operation: BaseOperation) -> tuple[str, ...] | None:
     """Return layer names modified by this operation, or None for read-only ops.
 
     Args:
@@ -289,14 +289,14 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     def _run_operations(
         self,
         img: Image,
-        on_op_complete: Optional[Callable[[int, str, Image], None]] = None,
+        on_op_complete: Optional[Callable[[int, str, Image, ImageOperation], None]] = None,
     ) -> None:
         """Execute all queued operations on *img* in order.
 
         Args:
             img: The image to process (modified in place).
             on_op_complete: Optional callback invoked after each successful
-                operation with ``(index, op_name, img)``.
+                operation with ``(index, op_name, img, operation)``.
         """
         # Reset operation times for new apply run if benchmarking is enabled
         if self._benchmark:
@@ -359,7 +359,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                             )
 
                 if on_op_complete is not None:
-                    on_op_complete(i, key, img)
+                    on_op_complete(i, key, img, operation)
 
             except Exception:
                 if self._benchmark and self._verbose and has_tqdm:
@@ -439,9 +439,6 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
         intermediates: Dict[str, Optional[Image]] = {}
 
-        # Build indexed list of operations so the callback can look up by index
-        ops_list = list(self._ops.values())
-
         if output_dir is not None:
             # Save initial base with all layers (pre-pipeline state)
             _all_layers = ("rgb", "gray", "detect_mat", "objmap")
@@ -449,9 +446,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 output_dir / "base_00.h5", layers=_all_layers,
             )
 
-        def _capture(i: int, key: str, current: Image) -> None:
+        def _capture(i: int, key: str, current: Image, operation: ImageOperation) -> None:
             if output_dir is not None:
-                operation = ops_list[i]
                 layers = _layers_modified_by(operation)
 
                 if layers is None:
