@@ -59,7 +59,7 @@ class FrangiVesselness(ImageEnhancer):
         beta (float): Structuredness parameter (0 to 1). Default 0.5.
         gamma (float): Background suppression threshold. Default 15.
         black_ridges (bool): If True, detect dark structures on bright background;
-            if False, detect bright structures on dark background. Default True.
+            if False, detect bright structures on dark background. Default False.
     """
 
     def __init__(
@@ -85,7 +85,7 @@ class FrangiVesselness(ImageEnhancer):
             black_ridges (bool): If True, detect dark ridges (colonies) on bright
                 background. If False, detect bright ridges on dark background.
                 For agar plates with dark colonies on light background, use True.
-                Default True.
+                Default False.
         """
         self.sigmas = sigmas
         self.alpha = alpha

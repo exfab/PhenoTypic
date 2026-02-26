@@ -68,7 +68,7 @@ class MeijeringRidgeFilter(ImageEnhancer):
         alpha (float | None): Shape parameter for elongated feature sensitivity.
             Default None uses -1/(ndim+1) for 2D images.
         black_ridges (bool): If True, detect dark structures on bright background;
-            if False, detect bright structures on dark background. Default True.
+            if False, detect bright structures on dark background. Default False.
         mode (str): Boundary handling mode ('constant', 'reflect', 'wrap',
             'nearest', 'mirror'). Default 'reflect'.
         cval (float): Fill value for 'constant' mode. Default 0.
@@ -78,7 +78,7 @@ class MeijeringRidgeFilter(ImageEnhancer):
             self,
             sigmas: Iterable[float] = (1, 2, 3),
             alpha: Optional[float] = None,
-            black_ridges: bool = True,
+            black_ridges: bool = False,
             mode: str = 'reflect',
             cval: float = 0,
     ):
@@ -93,7 +93,7 @@ class MeijeringRidgeFilter(ImageEnhancer):
             black_ridges (bool): If True, detect dark ridges (colonies) on bright
                 background. If False, detect bright ridges on dark background.
                 For agar plates with dark colonies on light background, use True.
-                Default True.
+                Default False.
             mode (str): How to handle image boundaries. Options: 'constant'
                 (pad with cval), 'reflect' (mirror), 'wrap' (tile), 'nearest'
                 (replicate edge), 'mirror' (symmetric mirror). Default 'reflect'.

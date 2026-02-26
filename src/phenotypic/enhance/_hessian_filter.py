@@ -67,7 +67,7 @@ class HessianFilter(ImageEnhancer):
         beta (float): Blob-like structure sensitivity (0 to 1). Default 0.5.
         gamma (float): Background suppression threshold. Default 15.
         black_ridges (bool): If True, detect dark structures on bright background;
-            if False, detect bright structures on dark background. Default True.
+            if False, detect bright structures on dark background. Default False.
         mode (str): Boundary handling mode for Gaussian convolution. Default 'reflect'.
         cval (float): Constant value for 'constant' mode boundary handling. Default 0.
     """
@@ -78,7 +78,7 @@ class HessianFilter(ImageEnhancer):
             alpha: float = 0.5,
             beta: float = 0.5,
             gamma: float = 15,
-            black_ridges: bool = True,
+            black_ridges: bool = False,
             mode: str = 'reflect',
             cval: float = 0,
     ):
@@ -97,7 +97,7 @@ class HessianFilter(ImageEnhancer):
             black_ridges (bool): If True, detect dark ridges (colonies) on bright
                 background. If False, detect bright ridges on dark background.
                 For agar plates with dark colonies on light background, use True.
-                Default True.
+                Default False.
             mode (str): Boundary handling mode ('reflect', 'constant', 'nearest',
                 'mirror', 'wrap'). Default 'reflect'.
             cval (float): Constant value used if mode='constant'. Default 0.
