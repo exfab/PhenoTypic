@@ -20,36 +20,32 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def archive_previous_run(output_dir: Path) -> Optional[Path]:
-    """Move existing sweep results into ``prev_sweeps/<timestamp>/``.
+def clear_previous_run(output_dir: Path) -> bool:
+    """Delete existing sweep results from the output directory.
 
     Detects a previous run by checking if ``output_dir/results`` exists
-    and is non-empty. If so, moves all contents of ``output_dir``
-    (except ``prev_sweeps/`` itself) into ``prev_sweeps/YYYYMMDD_HHMMSS/``.
+    and is non-empty. If so, deletes all contents of ``output_dir``.
 
     Args:
         output_dir: Base sweep output directory.
 
     Returns:
-        Path to the archive directory if archiving occurred, else ``None``.
+        ``True`` if clearing occurred, ``False`` otherwise.
     """
     output_dir = Path(output_dir)
     results_dir = output_dir / "results"
 
     if not results_dir.is_dir() or not any(results_dir.iterdir()):
-        return None
-
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    archive_dir = output_dir / "prev_sweeps" / timestamp
-    archive_dir.mkdir(parents=True, exist_ok=True)
+        return False
 
     for item in output_dir.iterdir():
-        if item.name == "prev_sweeps":
-            continue
-        shutil.move(str(item), str(archive_dir / item.name))
+        if item.is_dir():
+            shutil.rmtree(item)
+        else:
+            item.unlink()
 
-    logger.info(f"Archived previous sweep results to {archive_dir}")
-    return archive_dir
+    logger.info(f"Cleared previous sweep results from {output_dir}")
+    return True
 
 
 class SweepOutputManager:

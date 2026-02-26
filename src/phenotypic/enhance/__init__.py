@@ -29,6 +29,7 @@ from ._median_filter import MedianFilter
 from ._phase_congruency import PhaseCongruencyEnhancer
 from ._meijering_ridge_filter import MeijeringRidgeFilter
 from ._non_local_means import NonLocalMeansDenoiser
+from ._opening_subtract_bg import OpeningSubtractBg
 from ._rank_median_enhancer import RankMedianEnhancer
 from ._rolling_ball_remove_bg import RollingBallRemoveBG
 from ._sato_ridge_filter import SatoRidgeFilter
@@ -59,6 +60,7 @@ __all__ = [
     "MedianFilter",
     "MeijeringRidgeFilter",
     "NonLocalMeansDenoiser",
+    "OpeningSubtractBg",
     "PhaseCongruencyEnhancer",
     "RankMedianEnhancer",
     "RollingBallRemoveBG",

@@ -369,12 +369,11 @@ def sweep_cli(
             output_dir = generate_timestamped_output_dir()
             click.echo(f"Auto-generated output directory: {output_dir}")
 
-        # Archive previous run if output directory has existing results
-        from ._sweep_output import archive_previous_run
+        # Clear previous run if output directory has existing results
+        from ._sweep_output import clear_previous_run
 
-        archive_path = archive_previous_run(output_dir)
-        if archive_path:
-            click.echo(f"Previous run archived to: {archive_path}")
+        if clear_previous_run(output_dir):
+            click.echo(f"Cleared previous results from: {output_dir}")
 
         # Display config
         _display_sweep_config(
