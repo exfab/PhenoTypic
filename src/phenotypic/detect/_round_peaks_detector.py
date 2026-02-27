@@ -35,8 +35,13 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
         remove_noise: If True (default), apply morphological opening to remove small
             noise artifacts from the binary mask.
 
-        footprint_width: Radius in pixels for morphological kernels (noise removal,
-            background subtraction). Default 6. Larger values remove larger noise.
+        footprint_width: Width in pixels for the background subtraction kernel.
+            Default 6. When a GridImage is provided, an adaptive kernel sized to
+            1.5x colony spacing is used instead.
+
+        noise_radius: Radius for the diamond structuring element used in
+            morphological noise removal. Default 1 (3x3 diamond, matching gitter).
+            Increase for larger noise artifacts.
 
         smoothing_sigma: Gaussian smoothing of row/column intensity profiles before
             peak detection. Default 2.0. Higher values smooth noise but may merge peaks.
@@ -52,7 +57,8 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
 
     Attributes:
         thresh_method, subtract_background, remove_noise, footprint_radius,
-        smoothing_sigma, min_peak_distance, peak_prominence, edge_refinement
+        noise_radius, smoothing_sigma, min_peak_distance, peak_prominence,
+        edge_refinement
 
     Returns:
         Image: Input image with objmask (binary colony mask) and objmap (labeled
@@ -131,6 +137,7 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
             subtract_background: bool = True,
             remove_noise: bool = True,
             footprint_width: int = 6,
+            noise_radius: int = 1,
             smoothing_sigma: float = 2.0,
             min_peak_distance: int | None = None,
             peak_prominence: float | None = None,
@@ -147,8 +154,12 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
                 background variations before thresholding.
             remove_noise: If True, apply morphological opening to remove small
                 noise artifacts from the binary mask.
-            footprint_width: width in pixels for morphological operations.
-                Larger values remove larger noise but may erode colony edges.
+            footprint_width: Width in pixels for the background subtraction kernel.
+                When a GridImage is provided, an adaptive kernel sized to 1.5x
+                colony spacing is used instead, making this a fallback.
+            noise_radius: Radius for the diamond structuring element used in
+                morphological noise removal. Default 1 (3x3 diamond, matching
+                gitter). Increase for larger noise artifacts.
             smoothing_sigma: Standard deviation for Gaussian smoothing of intensity
                 profiles before peak detection. Set to 0 to disable smoothing.
             min_peak_distance: Minimum allowed distance between detected peaks.
@@ -163,23 +174,31 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
         self.thresh_method = thresh_method
         self.subtract_background = subtract_background
         self.footprint_radius = footprint_width
+        self.noise_radius = noise_radius
         self.remove_noise = remove_noise
         self.smoothing_sigma = smoothing_sigma
         self.min_peak_distance = min_peak_distance
         self.peak_prominence = peak_prominence
         self.edge_refinement = edge_refinement
 
+    @staticmethod
+    def _round_odd(n: int) -> int:
+        """Round to nearest odd integer (minimum 3)."""
+        n = max(n, 3)
+        return n if n % 2 == 1 else n + 1
+
     def _operate(self, image: Image) -> Image:
         """
         Detect colonies in the image using the gitter algorithm.
 
         This method performs the _core detection workflow:
-        1. Threshold the detection matrix image
-        2. Remove noise if requested
-        3. Label connected components
-        4. Determine or estimate grid edges
-        5. Assign dominant colonies to grid cells
-        6. Create final object map
+        1. Extract grid dimensions (if GridImage)
+        2. Threshold the detection matrix with adaptive kernel sizing
+        3. Remove noise if requested
+        4. Label connected components
+        5. Determine or estimate grid edges
+        6. Assign dominant colonies to grid cells
+        7. Create final object map
 
         Args:
             image: Image object to process. Can be a regular Image or GridImage.
@@ -192,12 +211,18 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
         enh_matrix = image.detect_mat[:]
         self._log_memory_usage("getting detection matrix")
 
-        objmask = self._thresholding(enh_matrix)
+        # Extract grid dimensions early for adaptive kernel sizing
+        if isinstance(image, GridImage):
+            nrows, ncols = image.nrows, image.ncols
+        else:
+            nrows = ncols = None
+
+        objmask = self._thresholding(enh_matrix, nrows=nrows, ncols=ncols)
         self._log_memory_usage("thresholding")
 
         if self.remove_noise:
             objmask = morphology.opening(
-                    objmask, footprint=morphology.diamond(radius=self.footprint_radius)
+                    objmask, footprint=morphology.diamond(radius=self.noise_radius)
             )
             self._log_memory_usage("noise removal")
 
@@ -215,9 +240,7 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
         if isinstance(image, GridImage):
             row_edges = np.round(image.grid.get_row_edges()).astype(int)
             col_edges = np.round(image.grid.get_col_edges()).astype(int)
-            nrows, ncols = image.nrows, image.ncols
         else:
-            nrows = ncols = None
             row_edges = col_edges = None
 
         if row_edges is None or col_edges is None:
@@ -291,7 +314,12 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
 
         return image
 
-    def _thresholding(self, matrix: np.ndarray) -> np.ndarray:
+    def _thresholding(
+            self,
+            matrix: np.ndarray,
+            nrows: int | None = None,
+            ncols: int | None = None,
+    ) -> np.ndarray:
         """
         Threshold the image to create a binary mask of foreground colonies.
 
@@ -300,6 +328,12 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
 
         Args:
             matrix: 2D detection matrix array with pixel intensities.
+            nrows: Number of grid rows (from GridImage). When provided, the
+                background subtraction kernel is adaptively sized to 1.5x
+                the colony spacing along the row axis.
+            ncols: Number of grid columns (from GridImage). When provided,
+                the background subtraction kernel is adaptively sized to 1.5x
+                the colony spacing along the column axis.
 
         Returns:
             np.ndarray: Binary mask where True/1 indicates colony pixels,
@@ -308,15 +342,20 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
         Raises:
             ValueError: If an invalid thresholding method is specified.
         """
-        kernel = morphology.footprint_rectangle(
-                (self.footprint_radius * 2, self.footprint_radius * 2)
-        )
+        # Adaptive kernel sizing: use grid spacing when available, fallback otherwise
+        if nrows is not None:
+            bg_h = self._round_odd(round((matrix.shape[0] / nrows) * 1.5))
+            bg_w = self._round_odd(round((matrix.shape[1] / (ncols or nrows)) * 1.5))
+            kernel = morphology.footprint_rectangle((bg_h, bg_w))
+        else:
+            dim = self._round_odd(self.footprint_radius * 2)
+            kernel = morphology.footprint_rectangle((dim, dim))
+
         enh_matrix = matrix.copy()  # Work on a copy to avoid modifying input
 
-        # Subtract background using white tophat to handle uneven illumination
+        # Isolate bright foreground colonies via white tophat (image - opening)
         if self.subtract_background:
-            tophat_res = morphology.white_tophat(enh_matrix, kernel)
-            enh_matrix = enh_matrix - tophat_res
+            enh_matrix = morphology.white_tophat(enh_matrix, kernel)
 
         # Apply selected thresholding method
         match self.thresh_method:
