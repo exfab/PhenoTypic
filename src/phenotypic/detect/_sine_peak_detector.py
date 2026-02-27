@@ -529,8 +529,9 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
         local_sum_sq = fftconvolve(signal ** 2, ones_kernel, mode="same")
 
         local_mean = local_sum / k
-        local_var = np.maximum(local_sum_sq / k - local_mean ** 2, 0)
-        local_std = np.sqrt(local_var)
+        # Use sum-of-squares form: sqrt(sum((x-mean)^2)) to match template_norm scale
+        local_energy = np.maximum(local_sum_sq - local_sum ** 2 / k, 0)
+        local_std = np.sqrt(local_energy)
 
         # Normalize (suppress divide-by-zero where denom is near-zero)
         denom = local_std * template_norm

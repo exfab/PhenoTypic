@@ -123,7 +123,7 @@ class TestSinePeakDetectorParameterEffects:
 
     @timeit
     @pytest.mark.parametrize(
-        "thresh_method", ["otsu", "mean", "triangle", "isodata", "li"]
+        "thresh_method", ["otsu", "mean", "local", "triangle", "isodata", "li"]
     )
     def test_threshold_methods(self, thresh_method):
         """Different thresholding methods all produce detections."""
