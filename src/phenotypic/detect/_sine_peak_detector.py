@@ -9,6 +9,9 @@ from typing import Literal
 
 import numpy as np
 import scipy.ndimage as ndimage
+from scipy.ndimage import gaussian_filter1d
+from scipy.signal import find_peaks, fftconvolve, medfilt
+from scipy.stats import rankdata
 
 from phenotypic.abc_ import ObjectDetector
 from phenotypic.tools_.mixin import GridInferenceMixin
@@ -16,14 +19,20 @@ import skimage.filters as filters
 import skimage.morphology as morphology
 
 
-class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
-    """Grid-based colony detector using row/column peak detection (gitter algorithm).
+class SinePeakDetector(GridInferenceMixin, ObjectDetector):
+    """Grid-based colony detector using sinusoidal cross-correlation peak detection.
 
-    RoundPeaksDetector identifies colonies in gridded plate images by analyzing
-    row and column intensity profiles to detect periodic peaks, estimating grid
-    edges, and assigning colonies to grid cells. This implements the gitter algorithm
-    originally developed for R, optimized for pinned microbial culture plates with
-    circular colonies arranged in regular patterns.
+    SinePeakDetector identifies colonies in gridded plate images by generating a
+    sinusoidal template matching expected colony periodicity, computing FFT-based
+    normalized cross-correlation against projection signals, and selecting peaks
+    from the correlation output. This implements a gitter-faithful approach
+    (Wagih & Parts, 2014) that is more robust to irregular colony intensities
+    than simple peak finding, because rank-based correlation is insensitive to
+    outliers and monotonic intensity transformations.
+
+    The detector builds on the RoundPeaksDetector workflow (threshold, label,
+    grid assignment) but replaces the mixin's static ``_estimate_edges`` with an
+    instance method that uses sinusoidal cross-correlation for edge estimation.
 
     Args:
         thresh_method: Thresholding method ('otsu', 'mean', 'local', 'triangle',
@@ -44,7 +53,8 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
             Increase for larger noise artifacts.
 
         smoothing_sigma: Gaussian smoothing of row/column intensity profiles before
-            peak detection. Default 2.0. Higher values smooth noise but may merge peaks.
+            cross-correlation. Default 2.0. Higher values smooth noise but may
+            merge peaks.
 
         min_peak_distance: Minimum pixel distance between detected peaks. If None,
             automatically estimated from grid dimensions.
@@ -55,10 +65,15 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
         edge_refinement: If True (default), refine grid edges using local intensity
             profiles for improved accuracy.
 
+        correlation_threshold: Minimum normalized cross-correlation value for a
+            peak to be considered valid. Default 0.3. Correlation values below this
+            threshold are zeroed before peak detection. Lower values accept weaker
+            matches; higher values are more selective.
+
     Attributes:
         thresh_method, subtract_background, remove_noise, footprint_radius,
         noise_radius, smoothing_sigma, min_peak_distance, peak_prominence,
-        edge_refinement
+        edge_refinement, correlation_threshold
 
     Returns:
         Image: Input image with objmask (binary colony mask) and objmap (labeled
@@ -70,12 +85,14 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
     **Use cases**
 
     - **Gridded plate images:** Colonies arranged in regular arrays (96-well, 384-well
-      plates, pinned cultures). Peak detection exploits this structure.
-    - **Circular colonies:** Works best for yeast-like spherical growth. Less suitable
-      for filamentous fungi or irregular morphologies.
-    - **Batch processing:** Efficient grid inference enables high-throughput analysis
-      without manual grid specification (though GridImage with explicit dimensions
-      is more accurate).
+      plates, pinned cultures). Sinusoidal cross-correlation exploits periodic structure
+      more robustly than direct peak finding.
+    - **Variable colony intensity:** Rank-based (Spearman) correlation is insensitive
+      to outlier colonies or uneven growth, making this detector suitable for plates
+      with heterogeneous colony sizes.
+    - **Batch processing:** Efficient FFT-based correlation enables high-throughput
+      analysis without manual grid specification (though GridImage with explicit
+      dimensions is more accurate).
 
     **Limitations**
 
@@ -85,26 +102,29 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
       missing grid positions.
     - Best for yeast-like morphologies. Less suitable for filamentous, spreading, or
       irregular colony shapes.
-    - Computational cost: Peak detection and edge refinement add overhead vs simple
-      thresholding.
+    - Slightly higher computational cost than RoundPeaksDetector due to FFT-based
+      cross-correlation.
 
     **Parameter effects on colony detection**
 
     - **thresh_method:** Different histogram assumptions (Otsu=variance, mean=simple,
-      local=adaptive). Affects mask quality and downstream peak detection.
+      local=adaptive). Affects mask quality and downstream correlation.
     - **subtract_background, remove_noise:** Remove preprocessing artifacts (vignetting,
-      dust, noise) that can create spurious peaks.
+      dust, noise) that can create spurious correlation peaks.
     - **smoothing_sigma:** Balances noise robustness vs peak resolution. Higher values
       smooth noise but may merge adjacent colonies.
+    - **correlation_threshold:** Controls sensitivity to weak matches. Lower values
+      detect more peaks (including false positives); higher values are more selective
+      but may miss faint colonies.
 
     Examples:
-        Basic grid detection with default parameters::
+        Basic grid detection with sinusoidal cross-correlation::
 
             from phenotypic import Image
-            from phenotypic.detect import RoundPeaksDetector
+            from phenotypic.detect import SinePeakDetector
 
             plate = Image.imread("plate_grid.jpg")
-            detector = RoundPeaksDetector()
+            detector = SinePeakDetector()
             detected = detector.apply(plate)
             num_colonies = detected.objects.count
             print(f"Detected {num_colonies} colonies in grid")
@@ -113,12 +133,16 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
 
             from phenotypic import ImagePipeline
             from phenotypic.enhance import GaussianBlur, CLAHE
-            from phenotypic.detect import RoundPeaksDetector
+            from phenotypic.detect import SinePeakDetector
 
             pipeline = ImagePipeline([
                 GaussianBlur(sigma=1.5),
                 CLAHE(clip_limit=2.0),
-                RoundPeaksDetector(thresh_method='otsu', smoothing_sigma=2.0)
+                SinePeakDetector(
+                    thresh_method='otsu',
+                    smoothing_sigma=2.0,
+                    correlation_threshold=0.25,
+                )
             ])
 
             image = Image.imread("plate_grid.jpg")
@@ -142,9 +166,10 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
             min_peak_distance: int | None = None,
             peak_prominence: float | None = None,
             edge_refinement: bool = True,
+            correlation_threshold: float = 0.3,
     ):
         """
-        Initialize the RoundPeaksDetector with specified parameters.
+        Initialize the SinePeakDetector with specified parameters.
 
         Args:
             thresh_method: Method for thresholding the image. Options are:
@@ -161,13 +186,16 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
                 morphological noise removal. Default 1 (3x3 diamond, matching
                 gitter). Increase for larger noise artifacts.
             smoothing_sigma: Standard deviation for Gaussian smoothing of intensity
-                profiles before peak detection. Set to 0 to disable smoothing.
+                profiles before cross-correlation. Set to 0 to disable smoothing.
             min_peak_distance: Minimum allowed distance between detected peaks.
                 If None, automatically estimated from grid dimensions.
             peak_prominence: Minimum prominence required for peak detection.
                 If None, automatically calculated as 0.1 * signal range.
             edge_refinement: If True, refine grid edges using weighted intensity
                 profiles for improved accuracy.
+            correlation_threshold: Minimum normalized cross-correlation value for
+                a peak to be considered valid. Default 0.3. Values below this
+                threshold are zeroed before peak detection.
         """
         super().__init__()
 
@@ -180,6 +208,7 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
         self.min_peak_distance = min_peak_distance
         self.peak_prominence = peak_prominence
         self.edge_refinement = edge_refinement
+        self.correlation_threshold = correlation_threshold
 
     @staticmethod
     def _round_odd(n: int) -> int:
@@ -189,14 +218,14 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
 
     def _operate(self, image: Image) -> Image:
         """
-        Detect colonies in the image using the gitter algorithm.
+        Detect colonies using sinusoidal cross-correlation grid estimation.
 
-        This method performs the _core detection workflow:
+        This method performs the core detection workflow:
         1. Extract grid dimensions (if GridImage)
         2. Threshold the detection matrix with adaptive kernel sizing
         3. Remove noise if requested
         4. Label connected components
-        5. Determine or estimate grid edges
+        5. Determine or estimate grid edges (via sinusoidal cross-correlation)
         6. Assign dominant colonies to grid cells
         7. Create final object map
 
@@ -244,26 +273,12 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
             row_edges = col_edges = None
 
         if row_edges is None or col_edges is None:
-            # Estimate edges using peak finding on row/col sums
+            # Estimate edges using sinusoidal cross-correlation on row/col sums
             nrows, ncols = self._infer_grid_shape(objmask)
             self._log_memory_usage(f"inferred grid shape: {nrows}x{ncols}")
 
-            row_edges = self._estimate_edges(
-                    objmask,
-                    axis=0,
-                    n_bins=nrows,
-                    smoothing_sigma=self.smoothing_sigma,
-                    min_peak_distance=self.min_peak_distance,
-                    peak_prominence=self.peak_prominence,
-            )
-            col_edges = self._estimate_edges(
-                    objmask,
-                    axis=1,
-                    n_bins=ncols,
-                    smoothing_sigma=self.smoothing_sigma,
-                    min_peak_distance=self.min_peak_distance,
-                    peak_prominence=self.peak_prominence,
-            )
+            row_edges = self._estimate_edges(objmask, axis=0, n_bins=nrows)
+            col_edges = self._estimate_edges(objmask, axis=1, n_bins=ncols)
             self._log_memory_usage("edge estimation")
 
             # Refine edges if requested
@@ -381,3 +396,153 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
                 thresh = filters.threshold_otsu(enh_matrix)
 
         return enh_matrix >= thresh
+
+    def _estimate_edges(self, binary_image: np.ndarray, axis: int, n_bins: int, **kwargs: object) -> np.ndarray:  # type: ignore[override]
+        """Estimate grid edges using sinusoidal cross-correlation.
+
+        Overrides GridInferenceMixin._estimate_edges with a gitter-faithful
+        approach: generates a sine template matching expected colony periodicity,
+        computes FFT-based normalized cross-correlation against the projection
+        signal, and selects peaks from the correlation output. Rank-based
+        (Spearman) correlation provides robustness to outliers and monotonic
+        intensity transformations.
+
+        Args:
+            binary_image: Binary mask of detected colonies.
+            axis: Direction for edge detection (0 for row edges, 1 for column edges).
+            n_bins: Expected number of grid bins (rows or columns).
+
+        Returns:
+            np.ndarray: Array of edge positions including image borders.
+                Length is n_bins + 1.
+
+        Note:
+            Unlike the mixin's static ``_estimate_edges``, this instance method
+            reads ``smoothing_sigma``, ``min_peak_distance``, ``peak_prominence``,
+            and ``correlation_threshold`` from ``self``.
+        """
+        # 1. Clean projection sums (from mixin)
+        sums = GridInferenceMixin._clean_and_sum_binary(binary_image, axis=axis)
+
+        # 2. Gaussian smooth
+        if self.smoothing_sigma > 0:
+            sums = gaussian_filter1d(sums, sigma=self.smoothing_sigma)
+
+        # 3. Signal enhancement: multiply by median-filtered version
+        image_size = binary_image.shape[1 - axis]
+        expected_spacing = max(image_size // max(n_bins, 1), 1)
+        window_size = max(expected_spacing, 3)
+        medfilt_kernel = max(window_size // 3, 3)
+        if medfilt_kernel % 2 == 0:
+            medfilt_kernel += 1
+        enhanced = sums * medfilt(sums, kernel_size=medfilt_kernel)
+
+        # 4. Rank transform for Spearman robustness
+        ranked_signal = rankdata(enhanced).astype(np.float64)
+
+        # 5. Rank sine template
+        template = np.sin(np.linspace(-np.pi, 2 * np.pi, window_size))
+        ranked_template = rankdata(template).astype(np.float64)
+
+        # 6. FFT normalized cross-correlation
+        ncc = self._normalized_cross_correlation(ranked_signal, ranked_template)
+
+        # 7. Threshold low correlations
+        ncc[ncc < self.correlation_threshold] = 0
+
+        # 8. Find peaks
+        min_distance = (
+            self.min_peak_distance if self.min_peak_distance is not None
+            else max(expected_spacing // 2, 1)
+        )
+        if self.peak_prominence is not None:
+            prominence: float | None = self.peak_prominence
+        else:
+            signal_range = np.max(ncc) - np.min(ncc)
+            prominence = 0.1 * signal_range if signal_range > 0 else None
+
+        peaks, _ = find_peaks(ncc, distance=min_distance, prominence=prominence)
+
+        # 9. Select best n_bins peaks by correlation height, sorted by position
+        if peaks.size > n_bins:
+            peak_heights = ncc[peaks]
+            top_indices = np.argsort(peak_heights)[-n_bins:]
+            peaks = np.sort(peaks[top_indices])
+        elif peaks.size < n_bins:
+            # Fallback: evenly spaced peaks
+            peaks = np.linspace(
+                start=expected_spacing // 2,
+                stop=image_size - expected_spacing // 2,
+                num=n_bins,
+                dtype=int,
+            )
+
+        # 10. Derive edges at midpoints
+        if len(peaks) > 1:
+            midpoints = ((peaks[:-1] + peaks[1:]) / 2).astype(int)
+            edges = np.concatenate(([0], midpoints, [image_size]))
+        else:
+            edges = np.linspace(0, image_size, n_bins + 1, dtype=int)
+
+        # Ensure exactly n_bins + 1 edges
+        if edges.size > n_bins + 1:
+            edges = edges[:n_bins + 1]
+        elif edges.size < n_bins + 1:
+            missing = (n_bins + 1) - edges.size
+            edges = np.concatenate((edges, np.full(missing, image_size)))
+
+        return edges.astype(int)
+
+    @staticmethod
+    def _normalized_cross_correlation(signal: np.ndarray, template: np.ndarray) -> np.ndarray:
+        """FFT-based normalized cross-correlation.
+
+        Computes the normalized cross-correlation between a signal and a
+        template using FFT convolution for O(N log N) performance. The
+        result is clipped to [-1, 1].
+
+        Args:
+            signal: 1D input signal array.
+            template: 1D template array (typically shorter than signal).
+
+        Returns:
+            np.ndarray: Normalized cross-correlation values, same length as
+                signal, clipped to [-1, 1].
+        """
+        n = len(signal)
+        k = len(template)
+
+        # Zero-mean template
+        template_mean = np.mean(template)
+        template_zm = template - template_mean
+        template_norm = np.sqrt(np.sum(template_zm ** 2))
+
+        if template_norm < 1e-10:
+            return np.zeros(n)
+
+        # Cross-correlation via FFT
+        xcorr = fftconvolve(signal, template_zm[::-1], mode="same")
+
+        # Local statistics via FFT with ones kernel
+        ones_kernel = np.ones(k)
+        local_sum = fftconvolve(signal, ones_kernel, mode="same")
+        local_sum_sq = fftconvolve(signal ** 2, ones_kernel, mode="same")
+
+        local_mean = local_sum / k
+        # Use sum-of-squares form: sqrt(sum((x-mean)^2)) to match template_norm scale
+        local_energy = np.maximum(local_sum_sq - local_sum ** 2 / k, 0)
+        local_std = np.sqrt(local_energy)
+
+        # Normalize (suppress divide-by-zero where denom is near-zero)
+        denom = local_std * template_norm
+        safe_denom = np.where(denom > 1e-10, denom, 1.0)
+        ncc = np.where(
+            denom > 1e-10,
+            (xcorr - local_mean * np.sum(template_zm)) / safe_denom,
+            0.0,
+        )
+
+        return np.clip(ncc, -1.0, 1.0)
+
+
+SinePeakDetector.apply.__doc__ = SinePeakDetector._operate.__doc__
