@@ -1,4 +1,9 @@
-from typing import Union, Tuple, Optional
+from __future__ import annotations
+
+from typing import Union, Tuple, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import napari
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -262,6 +267,35 @@ class ImageGridHandler(Image):
         subimage.objmap[:] = self.objmap[key]
         return subimage
 
+    def napari(
+            self, name: str | None = None, reset: bool = False
+    ) -> napari.Viewer:
+        """Add all image layers and grid overlay to a persistent napari viewer.
+
+        Extends the base :meth:`Image.napari` by automatically adding
+        gridline and section-box overlay layers via
+        :meth:`GridAccessor.napari`.
+
+        Args:
+            name: Optional custom name for layers. Defaults to image name.
+            reset: If True, close and recreate the viewer. Defaults to False.
+
+        Returns:
+            The global napari viewer with image and grid layers.
+
+        Raises:
+            ImportError: If napari is not installed.
+
+        Examples:
+            >>> from phenotypic.data import load_synth_yeast_plate
+            >>> gi = load_synth_yeast_plate()
+            >>> viewer = gi.napari()  # doctest: +SKIP
+        """
+        viewer = super().napari(name=name, reset=reset)
+        if self.num_objects > 0:
+            viewer = self.grid.napari(name=name)
+        return viewer
+
     def _draw_gridlines_on_overlay(
             self,
             overlay_arr: np.ndarray,
@@ -400,9 +434,9 @@ class ImageGridHandler(Image):
             for offset in range(-line_width // 2, line_width // 2 + 1):
                 try:
                     rr, cc = rectangle_perimeter(
-                        start=(min_rr + offset, min_cc + offset),
-                        end=(max_rr - offset, max_cc - offset),
-                        shape=(h, w),
+                            start=(min_rr + offset, min_cc + offset),
+                            end=(max_rr - offset, max_cc - offset),
+                            shape=(h, w),
                     )
                     valid = (rr >= 0) & (rr < h) & (cc >= 0) & (cc < w)
                     arr[rr[valid], cc[valid]] = color

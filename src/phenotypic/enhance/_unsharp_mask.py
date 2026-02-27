@@ -61,6 +61,9 @@ class UnsharpMask(ImageEnhancer):
             of edge enhancement.
         preserve_range (bool): Whether to keep the original range of pixel values
             (False by default).
+        n_iter (int): Number of successive unsharp mask passes to apply. One pass applies
+            the filter once; multiple passes (2+) compound the sharpening effect for more
+            aggressive enhancement. Defaults to 1.
 
     Examples:
         Sharpening low-contrast fungal colonies before detection:
@@ -122,6 +125,7 @@ class UnsharpMask(ImageEnhancer):
             radius: float = 2.0,
             amount: float = 1.0,
             preserve_range: bool = False,
+            n_iter: int = 1,
     ):
         """
         Parameters:
@@ -143,21 +147,29 @@ class UnsharpMask(ImageEnhancer):
             preserve_range (bool): If False (default), output may be rescaled if
                 necessary. If True, the original range of input values is preserved.
                 Keep as False for consistency with other enhancers.
+            n_iter (int): Number of successive unsharp mask passes to apply. Must be >= 1.
+                One pass (default) applies the filter once. Multiple passes (2+) compound
+                the sharpening effect for progressively more aggressive enhancement, but
+                at increased risk of noise amplification and halo artifacts.
         """
         if radius <= 0:
             raise ValueError("width must be > 0")
+        if n_iter < 1:
+            raise ValueError("n_iter must be >= 1")
 
         self.radius = float(radius)
         self.amount = float(amount)
         self.preserve_range = bool(preserve_range)
+        self.n_iter = int(n_iter)
 
     def _operate(self, image: Image) -> Image:
         """Apply unsharp masking to enhance colony edges in the detection matrix channel."""
-        image.detect_mat[:] = unsharp_mask(
-                image=image.detect_mat[:],
-                radius=self.radius,
-                amount=self.amount,
-                preserve_range=self.preserve_range,
-                channel_axis=None,
-        )
+        for _ in range(self.n_iter):
+            image.detect_mat[:] = unsharp_mask(
+                    image=image.detect_mat[:],
+                    radius=self.radius,
+                    amount=self.amount,
+                    preserve_range=self.preserve_range,
+                    channel_axis=None,
+            )
         return image

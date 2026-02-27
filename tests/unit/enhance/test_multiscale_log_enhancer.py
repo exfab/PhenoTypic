@@ -9,10 +9,7 @@ import numpy as np
 import pytest
 
 from phenotypic import Image, ImagePipeline
-from phenotypic.enhance._multiscale_log_enhancer import (
-    MultiscaleLoGEnhancer,
-    multiscale_log_enhance,
-)
+from phenotypic.enhance._multiscale_log_enhancer import MultiscaleLoGEnhancer
 
 
 # -- Helpers -----------------------------------------------------------------
@@ -125,29 +122,29 @@ class TestOutputInvariants:
 
 
 class TestModuleLevelFunction:
-    """multiscale_log_enhance() works directly on arrays."""
+    """MultiscaleLoGEnhancer._enhance() works directly on arrays."""
 
     def test_returns_array_same_shape(self):
         rng = np.random.default_rng(42)
         arr = rng.random((64, 64)).astype(np.float64)
-        result = multiscale_log_enhance(arr)
+        result = MultiscaleLoGEnhancer._enhance(arr)
         assert result.shape == arr.shape
 
     def test_returns_float_dtype(self):
         rng = np.random.default_rng(42)
         arr = rng.random((64, 64)).astype(np.float64)
-        result = multiscale_log_enhance(arr)
+        result = MultiscaleLoGEnhancer._enhance(arr)
         assert np.issubdtype(result.dtype, np.floating)
 
     def test_min_ge_max_raises(self):
         arr = np.zeros((16, 16))
         with pytest.raises(ValueError, match="min_radius"):
-            multiscale_log_enhance(arr, min_radius=10.0, max_radius=5.0)
+            MultiscaleLoGEnhancer._enhance(arr, min_radius=10.0, max_radius=5.0)
 
     def test_num_scales_zero_raises(self):
         arr = np.zeros((16, 16))
         with pytest.raises(ValueError, match="num_scales"):
-            multiscale_log_enhance(arr, num_scales=0)
+            MultiscaleLoGEnhancer._enhance(arr, num_scales=0)
 
 
 # -- Non-negative output -----------------------------------------------------
@@ -167,7 +164,7 @@ class TestNonNegativeOutput:
     def test_function_output_non_negative(self):
         rng = np.random.default_rng(99)
         arr = rng.random((64, 64)).astype(np.float64)
-        result = multiscale_log_enhance(arr)
+        result = MultiscaleLoGEnhancer._enhance(arr)
         assert result.min() >= 0.0
 
 
@@ -189,7 +186,7 @@ class TestUniformImage:
 
     def test_function_uniform_yields_near_zero(self):
         arr = np.full((64, 64), 0.5, dtype=np.float64)
-        result = multiscale_log_enhance(arr)
+        result = MultiscaleLoGEnhancer._enhance(arr)
         assert result.max() < 0.005
 
 
@@ -215,7 +212,7 @@ class TestBlobResponse:
 
     def test_blob_centre_is_local_max(self):
         blob_img = _make_blob_image(size=128, radius=6.0, amplitude=0.8)
-        result = multiscale_log_enhance(blob_img, min_radius=3.0, max_radius=12.0)
+        result = MultiscaleLoGEnhancer._enhance(blob_img, min_radius=3.0, max_radius=12.0)
 
         cy, cx = 64, 64
         centre_val = result[cy, cx]
@@ -240,10 +237,10 @@ class TestScaleSelectivity:
         large_blob = _make_blob_image(size=128, radius=10.0, amplitude=0.8)
 
         # Enhance each with a range that covers both radii
-        small_result = multiscale_log_enhance(
+        small_result = MultiscaleLoGEnhancer._enhance(
             small_blob, min_radius=2.0, max_radius=15.0, num_scales=20,
         )
-        large_result = multiscale_log_enhance(
+        large_result = MultiscaleLoGEnhancer._enhance(
             large_blob, min_radius=2.0, max_radius=15.0, num_scales=20,
         )
 
@@ -258,11 +255,11 @@ class TestScaleSelectivity:
         blob = _make_blob_image(size=128, radius=8.0, amplitude=0.8)
 
         # Correct range includes radius=8
-        good_result = multiscale_log_enhance(
+        good_result = MultiscaleLoGEnhancer._enhance(
             blob, min_radius=5.0, max_radius=12.0, num_scales=10,
         )
         # Mismatched range: only very small scales
-        poor_result = multiscale_log_enhance(
+        poor_result = MultiscaleLoGEnhancer._enhance(
             blob, min_radius=1.0, max_radius=2.0, num_scales=10,
         )
 

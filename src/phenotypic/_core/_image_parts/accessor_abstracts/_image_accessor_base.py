@@ -1260,6 +1260,8 @@ class ImageAccessorBase(ABC):
         # Create new viewer if needed
         if not _viewer_is_alive(_global_napari_viewer):
             _global_napari_viewer = _napari.Viewer()
+            from phenotypic.gui._smart_grid import install_smart_grid
+            install_smart_grid(_global_napari_viewer)
 
         # Generate descriptive layer name
         if name is not None:
@@ -1277,6 +1279,12 @@ class ImageAccessorBase(ABC):
             existing_layer = _global_napari_viewer.layers[layer_name]
             existing_layer.data = imdata
         except KeyError:
-            _global_napari_viewer.add_image(imdata, name=layer_name)
+            _global_napari_viewer.add_image(
+                imdata, name=layer_name,
+                contrast_limits=(0, int(np.iinfo(imdata.dtype).max))
+                    if np.issubdtype(imdata.dtype, np.integer)
+                    else (float(imdata.min()), float(imdata.max())),
+                gamma=1.0,
+            )
 
         return _global_napari_viewer

@@ -60,6 +60,8 @@ class NapariSweepViewer:
         self._viewer = napari.Viewer(
             title=f"Sweep Viewer — {self._sweep_dir.name}",
         )
+        from phenotypic.gui._smart_grid import install_smart_grid
+        install_smart_grid(self._viewer)
 
         # Lazy-import widgets (they need qtpy which is available once napari
         # has been imported).
@@ -176,8 +178,13 @@ class NapariSweepViewer:
                         name=layer["name"],
                     )
                 else:
+                    _data = layer["data"]
                     self._viewer.add_image(
-                        layer["data"], name=layer["name"],
+                        _data, name=layer["name"],
+                        contrast_limits=(0, int(np.iinfo(_data.dtype).max))
+                            if np.issubdtype(_data.dtype, np.integer)
+                            else (float(_data.min()), float(_data.max())),
+                        gamma=1.0,
                     )
                 self._current_layer_names.append(layer["name"])
                 loaded_entries.append(
@@ -440,8 +447,13 @@ class NapariSweepViewer:
                     layer["data"].astype(np.intp), name=layer["name"],
                 )
             else:
+                _data = layer["data"]
                 self._viewer.add_image(
-                    layer["data"], name=layer["name"],
+                    _data, name=layer["name"],
+                    contrast_limits=(0, int(np.iinfo(_data.dtype).max))
+                        if np.issubdtype(_data.dtype, np.integer)
+                        else (float(_data.min()), float(_data.max())),
+                    gamma=1.0,
                 )
             self._current_layer_names.append(layer["name"])
             loaded_entries.append(

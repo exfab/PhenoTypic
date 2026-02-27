@@ -7,12 +7,7 @@ import pytest
 
 from phenotypic import Image, ImagePipeline
 from phenotypic.detect import OtsuDetector
-from phenotypic.refine._gmm_core_extractor import (
-    GMMCoreExtractor,
-    extract_gmm_cores,
-    _normalized_separation,
-    _build_ellipse_kernel,
-)
+from phenotypic.refine._gmm_core_extractor import GMMCoreExtractor
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +98,7 @@ class TestExtractGMMCores:
         intensity = np.random.default_rng(0).random((50, 50))
         label_map = np.zeros((50, 50), dtype=np.int32)
 
-        result = extract_gmm_cores(intensity, label_map)
+        result = GMMCoreExtractor._extract_cores(intensity, label_map)
 
         assert result.shape == label_map.shape
         assert result.dtype == label_map.dtype
@@ -113,7 +108,7 @@ class TestExtractGMMCores:
         """A region with a strong bright centre should be shrunk to its core."""
         intensity, label_map = bright_core_data
 
-        result = extract_gmm_cores(
+        result = GMMCoreExtractor._extract_cores(
             intensity,
             label_map,
             separation_threshold=0.5,
@@ -145,7 +140,7 @@ class TestExtractGMMCores:
         label_map = np.zeros((50, 50), dtype=np.int32)
         label_map[10:40, 10:40] = 1
 
-        result = extract_gmm_cores(intensity, label_map)
+        result = GMMCoreExtractor._extract_cores(intensity, label_map)
 
         np.testing.assert_array_equal(result, label_map)
 
@@ -159,7 +154,7 @@ class TestExtractGMMCores:
         intensity[20:23, 20:23] = 0.3
         intensity[21, 21] = 0.9
 
-        result = extract_gmm_cores(intensity, label_map, min_core_area=30)
+        result = GMMCoreExtractor._extract_cores(intensity, label_map, min_core_area=30)
 
         np.testing.assert_array_equal(result, label_map)
 
@@ -167,7 +162,7 @@ class TestExtractGMMCores:
         """Each label should be refined independently."""
         intensity, label_map = multi_label_data
 
-        result = extract_gmm_cores(
+        result = GMMCoreExtractor._extract_cores(
             intensity,
             label_map,
             separation_threshold=0.5,
@@ -190,7 +185,7 @@ class TestExtractGMMCores:
         """Setting morph_open_radius=0 should skip morphological opening."""
         intensity, label_map = bright_core_data
 
-        result_with = extract_gmm_cores(
+        result_with = GMMCoreExtractor._extract_cores(
             intensity,
             label_map,
             separation_threshold=0.5,
@@ -198,7 +193,7 @@ class TestExtractGMMCores:
             morph_open_radius=2,
             morph_close_radius=0,
         )
-        result_without = extract_gmm_cores(
+        result_without = GMMCoreExtractor._extract_cores(
             intensity,
             label_map,
             separation_threshold=0.5,
@@ -214,7 +209,7 @@ class TestExtractGMMCores:
         """Setting morph_close_radius=0 should skip morphological closing."""
         intensity, label_map = bright_core_data
 
-        result_with = extract_gmm_cores(
+        result_with = GMMCoreExtractor._extract_cores(
             intensity,
             label_map,
             separation_threshold=0.5,
@@ -222,7 +217,7 @@ class TestExtractGMMCores:
             morph_open_radius=0,
             morph_close_radius=3,
         )
-        result_without = extract_gmm_cores(
+        result_without = GMMCoreExtractor._extract_cores(
             intensity,
             label_map,
             separation_threshold=0.5,
@@ -237,13 +232,13 @@ class TestExtractGMMCores:
     def test_output_dtype_matches_input(self, bright_core_data):
         """Output label map should have the same dtype as input."""
         intensity, label_map = bright_core_data
-        result = extract_gmm_cores(intensity, label_map)
+        result = GMMCoreExtractor._extract_cores(intensity, label_map)
         assert result.dtype == label_map.dtype
 
     def test_output_shape_matches_input(self, bright_core_data):
         """Output label map should have the same shape as input."""
         intensity, label_map = bright_core_data
-        result = extract_gmm_cores(intensity, label_map)
+        result = GMMCoreExtractor._extract_cores(intensity, label_map)
         assert result.shape == label_map.shape
 
 
@@ -256,16 +251,16 @@ class TestHelpers:
     """Tests for module-level helper functions."""
 
     def test_build_ellipse_kernel_positive_radius(self):
-        kernel = _build_ellipse_kernel(2)
+        kernel = GMMCoreExtractor._build_ellipse_kernel(2)
         assert kernel is not None
         assert kernel.shape == (5, 5)
         assert kernel.dtype == np.uint8
 
     def test_build_ellipse_kernel_zero_radius(self):
-        assert _build_ellipse_kernel(0) is None
+        assert GMMCoreExtractor._build_ellipse_kernel(0) is None
 
     def test_build_ellipse_kernel_negative_radius(self):
-        assert _build_ellipse_kernel(-1) is None
+        assert GMMCoreExtractor._build_ellipse_kernel(-1) is None
 
     def test_normalized_separation_well_separated(self):
         """Two well-separated Gaussians should have high separation."""
@@ -278,7 +273,7 @@ class TestHelpers:
         ]).reshape(-1, 1)
         gmm = GaussianMixture(n_components=2, random_state=42)
         gmm.fit(data)
-        sep = _normalized_separation(gmm)
+        sep = GMMCoreExtractor._normalized_separation(gmm)
         assert sep > 2.0, "Well-separated means should give high separation"
 
     def test_normalized_separation_overlapping(self):
@@ -289,7 +284,7 @@ class TestHelpers:
         data = rng.normal(0.5, 0.2, 1000).reshape(-1, 1)
         gmm = GaussianMixture(n_components=2, random_state=42)
         gmm.fit(data)
-        sep = _normalized_separation(gmm)
+        sep = GMMCoreExtractor._normalized_separation(gmm)
         assert sep < 1.0, "Overlapping distributions should give low separation"
 
 

@@ -59,12 +59,36 @@ class TestParameterValidation:
             CoherenceEnhancingDiffusion(alpha=-0.1)
 
     def test_C_zero_raises(self):
-        with pytest.raises(ValueError, match="C must be > 0"):
+        with pytest.raises(ValueError, match=r"C must be in \(0, 100\]"):
             CoherenceEnhancingDiffusion(C=0)
 
     def test_C_negative_raises(self):
-        with pytest.raises(ValueError, match="C must be > 0"):
+        with pytest.raises(ValueError, match=r"C must be in \(0, 100\]"):
             CoherenceEnhancingDiffusion(C=-1.0)
+
+    def test_C_above_100_raises(self):
+        with pytest.raises(ValueError, match=r"C must be in \(0, 100\]"):
+            CoherenceEnhancingDiffusion(C=101)
+
+    def test_C_100_ok(self):
+        ced = CoherenceEnhancingDiffusion(C=100)
+        assert ced.C == 100.0
+
+    def test_rho_zero_raises(self):
+        with pytest.raises(ValueError, match="rho must be > 0"):
+            CoherenceEnhancingDiffusion(rho=0)
+
+    def test_rho_negative_raises(self):
+        with pytest.raises(ValueError, match="rho must be > 0"):
+            CoherenceEnhancingDiffusion(rho=-1.0)
+
+    def test_rho_less_than_sigma_raises(self):
+        with pytest.raises(ValueError, match="rho .* must be >= sigma"):
+            CoherenceEnhancingDiffusion(sigma=2.0, rho=1.0)
+
+    def test_rho_equal_to_sigma_ok(self):
+        ced = CoherenceEnhancingDiffusion(sigma=2.0, rho=2.0)
+        assert ced.rho == 2.0
 
 
 # -- Default values ----------------------------------------------------------
@@ -77,19 +101,21 @@ class TestDefaults:
         ced = CoherenceEnhancingDiffusion()
         assert ced.num_iterations == 20
         assert ced.sigma == 1.5
+        assert ced.rho is None
         assert ced.dt == 0.1
         assert ced.alpha == 0.001
-        assert ced.C == 1.0
+        assert ced.C == 99.0
 
     def test_custom_values(self):
         ced = CoherenceEnhancingDiffusion(
-            num_iter=10, sigma=2.0, dt=0.05, alpha=0.01, C=5.0,
+            num_iter=10, sigma=2.0, rho=4.0, dt=0.05, alpha=0.01, C=75.0,
         )
         assert ced.num_iterations == 10
         assert ced.sigma == 2.0
+        assert ced.rho == 4.0
         assert ced.dt == 0.05
         assert ced.alpha == 0.01
-        assert ced.C == 5.0
+        assert ced.C == 75.0
 
 
 # -- Output shape/dtype preserved -------------------------------------------
@@ -140,6 +166,53 @@ class TestOutputInvariants:
         assert result.detect_mat[:].max() <= 1.0
 
 
+# -- Rho integration scale --------------------------------------------------
+
+
+class TestRhoIntegrationScale:
+    """Verify rho=None matches rho=sigma, and rho>sigma differs."""
+
+    def test_rho_none_matches_rho_equal_sigma(self):
+        """rho=None should produce identical output to rho=sigma."""
+        rng = np.random.default_rng(42)
+        arr = rng.random((64, 64)).astype(np.float64) * 0.5 + 0.25
+        image_a = Image(arr=arr.copy())
+        image_b = Image(arr=arr.copy())
+
+        ced_none = CoherenceEnhancingDiffusion(
+            num_iter=5, sigma=1.5, rho=None,
+        )
+        ced_equal = CoherenceEnhancingDiffusion(
+            num_iter=5, sigma=1.5, rho=1.5,
+        )
+        result_a = ced_none.apply(image_a)
+        result_b = ced_equal.apply(image_b)
+
+        np.testing.assert_array_equal(
+            result_a.detect_mat[:], result_b.detect_mat[:],
+        )
+
+    def test_larger_rho_produces_different_output(self):
+        """rho > sigma should give a different result than rho = sigma."""
+        rng = np.random.default_rng(42)
+        arr = rng.random((64, 64)).astype(np.float64) * 0.5 + 0.25
+        image_a = Image(arr=arr.copy())
+        image_b = Image(arr=arr.copy())
+
+        ced_small = CoherenceEnhancingDiffusion(
+            num_iter=5, sigma=1.5, rho=1.5,
+        )
+        ced_large = CoherenceEnhancingDiffusion(
+            num_iter=5, sigma=1.5, rho=4.0,
+        )
+        result_a = ced_small.apply(image_a)
+        result_b = ced_large.apply(image_b)
+
+        assert not np.array_equal(
+            result_a.detect_mat[:], result_b.detect_mat[:],
+        )
+
+
 # -- Anisotropic diffusion correctness --------------------------------------
 
 
@@ -154,7 +227,7 @@ class TestAnisotropy:
         image = Image(arr=img)
 
         ced = CoherenceEnhancingDiffusion(
-            num_iter=10, sigma=2.0, dt=0.1, alpha=0.001, C=1.0,
+            num_iter=10, sigma=2.0, dt=0.1, alpha=0.001, C=50.0,
         )
         result = ced.apply(image)
         result_mat = result.detect_mat[:]
@@ -230,7 +303,7 @@ class TestSerialization:
     def test_roundtrip_preserves_params(self):
         pipeline = ImagePipeline([
             CoherenceEnhancingDiffusion(
-                num_iter=15, sigma=2.5, dt=0.08, alpha=0.01, C=3.0,
+                num_iter=15, sigma=2.5, rho=5.0, dt=0.08, alpha=0.01, C=85.0,
             ),
         ])
         json_str = pipeline.to_json()
@@ -242,9 +315,10 @@ class TestSerialization:
         assert isinstance(ced, CoherenceEnhancingDiffusion)
         assert ced.num_iterations == 15
         assert ced.sigma == 2.5
+        assert ced.rho == 5.0
         assert ced.dt == 0.08
         assert ced.alpha == 0.01
-        assert ced.C == 3.0
+        assert ced.C == 85.0
 
     def test_default_params_roundtrip(self):
         pipeline = ImagePipeline([CoherenceEnhancingDiffusion()])
@@ -253,4 +327,5 @@ class TestSerialization:
 
         ced = list(loaded._ops.values())[0]
         assert ced.num_iterations == 20
-        assert ced.C == 1.0
+        assert ced.rho is None
+        assert ced.C == 99.0

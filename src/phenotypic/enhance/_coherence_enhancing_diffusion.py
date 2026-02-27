@@ -7,7 +7,8 @@ if TYPE_CHECKING:
 
 import numpy as np
 from findiff import FinDiff
-from skimage.feature import structure_tensor, structure_tensor_eigenvalues
+from scipy.ndimage import gaussian_filter
+from skimage.feature import structure_tensor_eigenvalues
 
 from ..abc_ import ImageEnhancer
 
@@ -43,24 +44,31 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
       stability bound dt <= 1/8 (0.125). Smaller values (0.05-0.1) are more stable but
       require more iterations for the same effect. Larger values (0.1-0.125) converge
       faster but approach the stability limit. Recommended: 0.1 for most cases.
-    - sigma: Gaussian smoothing scale for structure tensor computation. Controls the
-      scale at which local orientation is estimated. Small values (0.5-1.5) detect
-      fine structures but are more sensitive to noise. Medium values (1.5-3.0) provide
-      robust orientation estimation for typical colony features. Large values (3-5)
-      detect coarse structures but may miss fine hyphae. Match to the width of the
-      structures you want to enhance.
+    - sigma: Noise/derivative scale for structure tensor computation (Gaussian derivative
+      σ). Controls the scale at which image gradients are computed. Small values
+      (0.5-1.5) detect fine structures but are more sensitive to noise. Medium values
+      (1.5-3.0) provide robust gradient estimation for typical colony features.
+      Large values (3-5) detect coarse structures but may miss fine hyphae. Match
+      to the width of the structures you want to enhance.
+    - rho: Integration scale for structure tensor smoothing. Controls the neighborhood
+      over which gradient orientation is averaged. Must be >= sigma. When None (default),
+      equals sigma (single-scale mode). Larger rho values produce smoother orientation
+      fields, which is useful when structures span many pixels or when gradient estimates
+      are noisy. Typical values: rho = 2*sigma to 3*sigma. Literature defaults:
+      DIPlib sigma=1, rho=3; ITK sigma=0.5, rho=2.
     - alpha: Minimum diffusivity parameter (0 < alpha < 1). Prevents complete smoothing
       in uniform regions by ensuring some isotropic diffusion everywhere. Small values
       (0.001-0.01) maximize anisotropy, strongly favoring directional smoothing. Larger
       values (0.01-0.1) add more isotropic smoothing, useful for noisy images where
       orientation estimates are unreliable.
-    - C: Contrast threshold for the diffusivity function. Controls the transition
-      between isotropic and anisotropic diffusion based on local coherence. When
-      coherence (lambda1 - lambda2)^2 is much larger than C, diffusion is strongly
-      anisotropic (along structures). When coherence is much smaller than C, diffusion
-      is nearly isotropic. Increase C for noisier images to require stronger coherence
-      before enhancing. Decrease C to enhance weaker structures. Recommended: 1.0
-      for typical colony plates, 0.1-0.5 for faint structures, 2-10 for noisy images.
+    - C: Contrast percentile for the diffusivity function (0 < C <= 100). The actual
+      contrast threshold is computed as the Cth percentile of the coherence histogram
+      (lambda1 - lambda2)^2 from the original image, making the parameter adaptive to
+      image content. Weickert (1999) uses the 99th percentile. Higher values (e.g. 99)
+      set a high threshold so only the most coherent structures get strong anisotropic
+      diffusion. Lower values (e.g. 50) enhance weaker structures too. Recommended:
+      99 (Weickert default) for typical colony plates, 50-70 for faint structures,
+      95-99 for noisy images where only the strongest coherence should drive anisotropy.
 
     Caveats:
     - Computational cost: CED is iterative and computes structure tensors per iteration.
@@ -75,14 +83,20 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
     - Boundary effects: Edge pixels may show artifacts from gradient computation.
       Consider cropping edges after processing if artifacts appear.
 
+    References:
+        Weickert, J. (1999). Coherence-enhancing diffusion filtering.
+        International Journal of Computer Vision, 31(2/3), 111-127.
+        https://doi.org/10.1023/A:1008009714131
+
     Attributes:
         num_iterations (int): Number of diffusion iterations. More iterations produce
             stronger directional smoothing.
         dt (float): Time step for diffusion. Must be small for stability (typically 0.1).
-        sigma (float): Gaussian scale for structure tensor smoothing. Controls the scale
-            of detected orientations.
+        sigma (float): Noise/derivative scale for Gaussian gradient computation.
+        rho (float | None): Integration scale for structure tensor smoothing. None means
+            single-scale mode (rho = sigma).
         alpha (float): Minimum diffusivity. Prevents complete smoothing in uniform regions.
-        C (float): Contrast threshold for coherence-based diffusivity.
+        C (float): Contrast percentile (0, 100] for adaptive coherence threshold.
 
     Examples:
         Enhancing filamentous fungal hyphae before ridge detection:
@@ -107,7 +121,7 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
         >>> # Build pipeline for filamentous structure detection
         >>> pipeline = ImagePipeline([
         ...     # Step 1: Enhance coherent structures (hyphae, streaks)
-        ...     CoherenceEnhancingDiffusion(num_iter=15, sigma=2.0, dt=0.1),
+        ...     CoherenceEnhancingDiffusion(num_iter=15, sigma=2.0, rho=5.0, dt=0.1),
         ...     # Step 2: Detect tubular/ridge-like structures
         ...     FrangiVesselness(sigmas=range(1, 4), black_ridges=False),
         ...     # Step 3: Threshold to binary mask
@@ -139,10 +153,11 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
             self,
             num_iter: int = 20,
             sigma: float = 1.5,
+            rho: float | None = None,
             dt: float = 0.1,
             *,
             alpha: float = 0.001,
-            C: float = 1.0,
+            C: float = 99.0,
     ):
         """
         Parameters:
@@ -151,10 +166,14 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
                 medium values (15-30) are typical; large values (50-100) provide heavy
                 smoothing. Computational cost scales linearly with iterations.
                 Recommended: 20 for balanced enhancement.
-            sigma (float): Standard deviation for Gaussian smoothing in structure tensor
-                computation. Controls the scale at which local orientation is estimated.
+            sigma (float): Noise/derivative scale (Gaussian derivative σ). Controls the
+                scale at which image gradients are computed for orientation estimation.
                 Match to the width of structures you want to enhance: ~1.5 for fine
                 hyphae (~3px wide), ~3.0 for coarser structures. Recommended: 1.5.
+            rho (float | None): Integration scale for structure tensor smoothing. Controls
+                the neighborhood over which gradient products are averaged. Must be
+                >= sigma. When None (default), equals sigma (single-scale mode). Larger
+                values produce smoother orientation fields. Typical: 2-3x sigma.
             dt (float): Time step for each diffusion iteration. Must satisfy the
                 2D forward-Euler stability bound of 1/8 (0.125). Smaller values
                 require more iterations for equivalent smoothing. Recommended:
@@ -163,9 +182,12 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
                 diffusion even in uniform regions, preventing numerical issues. Small
                 values (0.001) maximize anisotropy; larger values (0.01-0.1) add more
                 isotropic smoothing. Recommended: 0.001 for strong directional bias.
-            C (float): Contrast threshold for the diffusivity function (C > 0).
-                Controls the coherence level at which diffusion transitions from
-                isotropic to anisotropic. Recommended: 1.0 for typical plates.
+            C (float): Contrast percentile for the diffusivity function
+                (0 < C <= 100). The Cth percentile of the coherence histogram
+                (lambda1 - lambda2)^2 from the original image is used as the
+                contrast threshold, adapting to image content. Higher values
+                restrict anisotropy to the most coherent structures.
+                Default: 99 (Weickert 1999).
         """
         if num_iter < 1:
             raise ValueError("num_iter must be >= 1")
@@ -182,15 +204,25 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
         if sigma <= 0:
             raise ValueError("sigma must be > 0")
 
+        if rho is not None:
+            if rho <= 0:
+                raise ValueError("rho must be > 0")
+            if rho < sigma:
+                raise ValueError(
+                        f"rho ({rho}) must be >= sigma ({sigma}); the integration "
+                        "scale cannot be smaller than the noise scale"
+                )
+
         if not (0 < alpha < 1):
             raise ValueError("alpha must be in (0, 1)")
 
-        if C <= 0:
-            raise ValueError("C must be > 0")
+        if not (0 < C <= 100):
+            raise ValueError("C must be in (0, 100]")
 
         self.num_iterations = int(num_iter)
         self.dt = float(dt)
         self.sigma = float(sigma)
+        self.rho = float(rho) if rho is not None else None
         self.alpha = float(alpha)
         self.C = float(C)
 
@@ -203,11 +235,34 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
         # Work with float64 for numerical stability
         img = image.detect_mat[:].astype(np.float64)
 
+        # Resolve integration scale (rho defaults to sigma for single-scale mode)
+        rho = self.rho if self.rho is not None else self.sigma
+
+        # Compute contrast threshold from the original image's coherence
+        # histogram (Cth percentile), so it adapts to image content
+        u_r0 = gaussian_filter(img, sigma=self.sigma, order=[1, 0])
+        u_c0 = gaussian_filter(img, sigma=self.sigma, order=[0, 1])
+        S_rr0 = gaussian_filter(u_r0 * u_r0, sigma=rho)
+        S_rc0 = gaussian_filter(u_r0 * u_c0, sigma=rho)
+        S_cc0 = gaussian_filter(u_c0 * u_c0, sigma=rho)
+        l1_0, l2_0 = structure_tensor_eigenvalues(
+                [S_rr0, S_rc0, S_cc0],
+        )
+        contrast_threshold = np.percentile(
+                (l1_0 - l2_0) ** 2, self.C,
+        )
+
         for _ in range(self.num_iterations):
-            # Compute structure tensor components (row, col order)
-            S_rr, S_rc, S_cc = structure_tensor(
-                    img, sigma=self.sigma, order="rc",
-            )
+            # Two-scale structure tensor (Weickert IJCV 1999)
+            # Gaussian derivatives at noise scale sigma
+            u_r = gaussian_filter(img, sigma=self.sigma, order=[1, 0])
+            u_c = gaussian_filter(img, sigma=self.sigma, order=[0, 1])
+
+            # Outer product, integrated at scale rho
+            S_rr = gaussian_filter(u_r * u_r, sigma=rho)
+            S_rc = gaussian_filter(u_r * u_c, sigma=rho)
+            S_cc = gaussian_filter(u_c * u_c, sigma=rho)
+
             lambda1, lambda2 = structure_tensor_eigenvalues(
                     [S_rr, S_rc, S_cc],
             )
@@ -219,9 +274,10 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
             # c1: diffusion perpendicular to structure (small, preserves edges)
             # c2: diffusion along structure (large where coherent)
             c1 = self.alpha
-            c2 = self.alpha + (1 - self.alpha) * np.exp(
-                    -self.C / (coherence + 1e-10)
-            )
+            c2 = (self.alpha
+                  + (1 - self.alpha)
+                  * np.exp(-contrast_threshold / (coherence + 1e-10)
+                           ))
 
             # Local orientation from structure tensor
             theta = 0.5 * np.arctan2(2 * S_rc, S_rr - S_cc)

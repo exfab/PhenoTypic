@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 
 from phenotypic import Image, ImagePipeline
-from phenotypic.enhance._homomorphic_filter import HomomorphicFilter, homomorphic_filter
+from phenotypic.enhance._homomorphic_filter import HomomorphicFilter
 
 
 # -- Defaults ----------------------------------------------------------------
@@ -119,26 +119,26 @@ class TestModuleLevelFunction:
     def test_returns_ndarray(self):
         rng = np.random.default_rng(42)
         arr = rng.random((64, 64)).astype(np.float32)
-        result = homomorphic_filter(arr, sigma=10.0)
+        result = HomomorphicFilter._filter(arr, sigma=10.0)
         assert isinstance(result, np.ndarray)
 
     def test_output_shape_matches_input(self):
         rng = np.random.default_rng(42)
         arr = rng.random((80, 100)).astype(np.float32)
-        result = homomorphic_filter(arr, sigma=10.0)
+        result = HomomorphicFilter._filter(arr, sigma=10.0)
         assert result.shape == arr.shape
 
     def test_output_range(self):
         rng = np.random.default_rng(42)
         arr = rng.random((64, 64)).astype(np.float32)
-        result = homomorphic_filter(arr, sigma=10.0)
+        result = HomomorphicFilter._filter(arr, sigma=10.0)
         assert result.min() >= 0.0
         assert result.max() <= 1.0
 
     def test_accepts_float64(self):
         rng = np.random.default_rng(42)
         arr = rng.random((64, 64)).astype(np.float64)
-        result = homomorphic_filter(arr, sigma=10.0)
+        result = HomomorphicFilter._filter(arr, sigma=10.0)
         assert result.shape == arr.shape
 
 
@@ -150,7 +150,7 @@ class TestUniformImage:
 
     def test_uniform_stays_approximately_uniform(self):
         arr = np.full((64, 64), 0.5, dtype=np.float64)
-        result = homomorphic_filter(arr, sigma=10.0)
+        result = HomomorphicFilter._filter(arr, sigma=10.0)
         # All output values should be very close to each other
         assert result.std() < 1e-6
 
@@ -178,7 +178,7 @@ class TestMathematicalCorrectness:
         gamma_high = 1.8
         eps = 1e-6
 
-        result = homomorphic_filter(
+        result = HomomorphicFilter._filter(
             arr, sigma=sigma, gamma_low=gamma_low, gamma_high=gamma_high, eps=eps,
         )
 
@@ -201,7 +201,7 @@ class TestMathematicalCorrectness:
         rng = np.random.default_rng(42)
         arr = rng.random((64, 64)).astype(np.float32) * 0.8 + 0.1  # avoid clipping
 
-        result = homomorphic_filter(
+        result = HomomorphicFilter._filter(
             arr, sigma=10.0, gamma_low=1.0, gamma_high=1.0,
         )
         # Should be very close to the original (only eps rounding)

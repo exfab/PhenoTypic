@@ -229,6 +229,7 @@ class DetectMatAccessor(SingleChannelAccessor):
             except KeyError:
                 viewer.add_image(
                     rgb_data, name="rgb", visible=False, rgb=True,
+                    contrast_limits=(0, int(np.iinfo(rgb_data.dtype).max)), gamma=1.0,
                 )
 
         gray_data = self._root_image.gray[:]
@@ -237,6 +238,7 @@ class DetectMatAccessor(SingleChannelAccessor):
         except KeyError:
             viewer.add_image(
                 gray_data, name="[ref] gray", visible=False,
+                contrast_limits=(0.0, 1.0), gamma=1.0,
             )
 
         # Add each registered mode as a layer
@@ -251,6 +253,7 @@ class DetectMatAccessor(SingleChannelAccessor):
             except KeyError:
                 viewer.add_image(
                     matrix, name=mode_name, visible=False,
+                    contrast_limits=(0.0, 1.0), gamma=1.0,
                 )
 
         # Add the current (possibly enhanced) detect_mat
@@ -263,6 +266,8 @@ class DetectMatAccessor(SingleChannelAccessor):
         except KeyError:
             viewer.add_image(
                 current_mat, name=current_label, visible=True,
+                contrast_limits=(float(current_mat.min()), float(current_mat.max())),
+                gamma=1.0,
             )
 
         return viewer

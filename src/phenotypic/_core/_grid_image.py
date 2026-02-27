@@ -7,7 +7,7 @@ import numpy as np
 from phenotypic.abc_ import GridFinder
 from phenotypic.tools_.constants_ import GAMMA_ENCODINGS
 from ._image import Image
-from ._image_parts._image_grid_handler import ImageGridHandler
+from ._image_parts._grid_image_handler import ImageGridHandler
 
 
 class GridImage(ImageGridHandler):

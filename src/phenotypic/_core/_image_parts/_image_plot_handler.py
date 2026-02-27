@@ -27,7 +27,7 @@ class ImagePlotHandler(ImageObjectsHandler):
         return self._accessors.plot
 
     def napari(
-        self, name: str | None = None, reset: bool = False
+            self, name: str | None = None, reset: bool = False
     ) -> napari.Viewer:
         """Add all available image layers to a persistent global napari viewer.
 
@@ -51,14 +51,14 @@ class ImagePlotHandler(ImageObjectsHandler):
             >>> image = OtsuDetector().apply(load_synth_yeast_plate())
             >>> viewer = image.napari()  # doctest: +SKIP
         """
-        from phenotypic._core._image_parts.accessor_abstracts._image_accessor_base import (
+        from .accessor_abstracts._image_accessor_base import (
             _HAS_NAPARI,
         )
 
         if not _HAS_NAPARI:
             raise ImportError(
-                "napari is required for interactive visualization. "
-                "Install with: pip install phenotypic[gui]"
+                    "napari is required for interactive visualization. "
+                    "Install with: pip install phenotypic[gui]"
             )
 
         first = True
