@@ -15,6 +15,7 @@ by merging nearby detections based on spatial proximity and size thresholds.
 from ._border_object_modifier import BorderObjectRemover
 from ._center_deviation_reducer import CenterDeviationReducer
 from ._circularity_modifier import LowCircularityRemover
+from ._gmm_core_extractor import GMMCoreExtractor
 from ._grid_alignment_refiner import GridAlignmentRefiner
 from ._grid_oversized_object_remover import GridOversizedObjectRemover
 from ._mask_closer import MaskCloser
@@ -38,6 +39,7 @@ from ._separate_objects import SeparateObjects
 __all__ = [
     "BorderObjectRemover",
     "CenterDeviationReducer",
+    "GMMCoreExtractor",
     "GridAlignmentRefiner",
     "GridOversizedObjectRemover",
     "LowCircularityRemover",

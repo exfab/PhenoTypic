@@ -206,10 +206,10 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
         for _ in range(self.num_iterations):
             # Compute structure tensor components (row, col order)
             S_rr, S_rc, S_cc = structure_tensor(
-                img, sigma=self.sigma, order="rc",
+                    img, sigma=self.sigma, order="rc",
             )
             lambda1, lambda2 = structure_tensor_eigenvalues(
-                [S_rr, S_rc, S_cc],
+                    [S_rr, S_rc, S_cc],
             )
 
             # Coherence measure (unnormalized, per Weickert IJCV 1999)
@@ -220,7 +220,7 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
             # c2: diffusion along structure (large where coherent)
             c1 = self.alpha
             c2 = self.alpha + (1 - self.alpha) * np.exp(
-                -self.C / (coherence + 1e-10)
+                    -self.C / (coherence + 1e-10)
             )
 
             # Local orientation from structure tensor
@@ -250,5 +250,6 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
             img = img + self.dt * div
 
         # Store result back to detection matrix, clipping to valid range
-        image.detect_mat[:] = np.clip(img, 0.0, 1.0).astype(image.detect_mat.dtype)
+        image.detect_mat[:] = (np.clip(img, 0.0, 1.0)
+                               .astype(image.detect_mat.dtype))
         return image

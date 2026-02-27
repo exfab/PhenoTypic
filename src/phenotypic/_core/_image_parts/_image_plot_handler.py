@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    import napari
     from phenotypic import Image
 
 import numpy as np
@@ -24,3 +25,49 @@ class ImagePlotHandler(ImageObjectsHandler):
     @property
     def plot(self) -> PlotAccessor:
         return self._accessors.plot
+
+    def napari(
+        self, name: str | None = None, reset: bool = False
+    ) -> napari.Viewer:
+        """Add all available image layers to a persistent global napari viewer.
+
+        Args:
+            name: Optional custom name for image layers. Each layer is named
+                ``{accessor}_{name}``. Defaults to the image's name attribute.
+            reset: If True, closes the current viewer and creates a fresh one
+                before adding layers. Defaults to False.
+
+        Returns:
+            The global napari viewer instance with all layers added.
+
+        Raises:
+            ImportError: If napari is not installed.
+
+        Examples:
+            Quickly inspect all layers after detection:
+
+            >>> from phenotypic.data import load_synth_yeast_plate
+            >>> from phenotypic.detect import OtsuDetector
+            >>> image = OtsuDetector().apply(load_synth_yeast_plate())
+            >>> viewer = image.napari()  # doctest: +SKIP
+        """
+        from phenotypic._core._image_parts.accessor_abstracts._image_accessor_base import (
+            _HAS_NAPARI,
+        )
+
+        if not _HAS_NAPARI:
+            raise ImportError(
+                "napari is required for interactive visualization. "
+                "Install with: pip install phenotypic[gui]"
+            )
+
+        first = True
+        if not self.rgb.isempty():
+            viewer = self.rgb.napari(name, reset=reset if first else False)
+            first = False
+        viewer = self.gray.napari(name, reset=reset if first else False)
+        first = False
+        viewer = self.detect_mat.napari(name)
+        if self.num_objects > 0:
+            viewer = self.objmap.napari(name)
+        return viewer

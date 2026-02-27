@@ -10,6 +10,7 @@ segmentation for clustered colonies.
 from ._canny_detector import CannyDetector
 from ._chan_vese_detector import ChanVeseDetector
 from ._hysteresis_detector import HysteresisDetector
+from ._mad_hysteresis_detector import MadHysteresisDetector
 from ._round_peaks_detector import RoundPeaksDetector
 from ._isodata_detector import IsodataDetector
 from ._li_detector import LiDetector
@@ -24,6 +25,7 @@ from ._rank_otsu import RankOtsuDetector
 from ._secondary_otsu import SecondaryOtsuDetector
 from ._composite_detector import CompositeDetector
 from ._filamentous_fungi_detector import FilamentousFungiDetector
+from ._inoculum_detector import InoculumDetector
 
 __all__ = [
     "CannyDetector",
@@ -31,6 +33,8 @@ __all__ = [
     "CompositeDetector",
     "FilamentousFungiDetector",
     "HysteresisDetector",
+    "InoculumDetector",
+    "MadHysteresisDetector",
     "IsodataDetector",
     "LiDetector",
     "ManualDetector",

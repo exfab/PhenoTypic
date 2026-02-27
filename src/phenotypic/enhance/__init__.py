@@ -39,6 +39,8 @@ from ._visushrink_enhancer import VisuShrinkEnhancer
 from ._white_tophat_subtract import WhiteTophatSubtract
 from ._white_tophat_enhance import WhiteTophatEnhance
 from ._gray_opening import GrayOpening
+from ._homomorphic_filter import HomomorphicFilter
+from ._multiscale_log_enhancer import MultiscaleLoGEnhancer
 from ._set_detect_mode import SetDetectMode
 
 __all__ = [
@@ -55,10 +57,12 @@ __all__ = [
     "GaussianSubtract",
     "GrayOpening",
     "HessianFilter",
+    "HomomorphicFilter",
     "ImageInverter",
     "LaplaceEnhancer",
     "MedianFilter",
     "MeijeringRidgeFilter",
+    "MultiscaleLoGEnhancer",
     "NonLocalMeansDenoiser",
     "OpeningSubtractBg",
     "PhaseCongruencyEnhancer",
