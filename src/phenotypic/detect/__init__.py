@@ -22,6 +22,7 @@ from ._watershed_detector import WatershedDetector
 from ._yen_detector import YenDetector
 from ._rank_otsu import RankOtsuDetector
 from ._secondary_otsu import SecondaryOtsuDetector
+from ._sine_peak_detector import SinePeakDetector
 from ._composite_detector import CompositeDetector
 from ._filamentous_fungi_detector import FilamentousFungiDetector
 
@@ -40,6 +41,7 @@ __all__ = [
     "RankOtsuDetector",
     "RoundPeaksDetector",
     "SecondaryOtsuDetector",
+    "SinePeakDetector",
     "TriangleDetector",
     "WatershedDetector",
     "YenDetector",
