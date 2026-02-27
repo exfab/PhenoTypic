@@ -85,7 +85,7 @@ class TestRoundPeaksDetectorPeakDetection:
 
     @timeit
     @pytest.mark.parametrize(
-            "thresh_method", ["otsu", "mean", "triangle", "isodata", "li"]
+            "thresh_method", ["otsu", "mean", "local", "triangle", "isodata", "li"]
     )
     def test_different_thresholding_methods(self, thresh_method):
         """Test that different thresholding methods all work."""
