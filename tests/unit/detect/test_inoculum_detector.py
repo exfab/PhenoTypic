@@ -1,8 +1,8 @@
 """Tests for InoculumDetector.
 
 Covers default parameters, custom parameters, detection on synthetic data,
-threshold methods, background subtraction, GMM toggle, GridImage support,
-pipeline integration, serialization roundtrip, and detect_mat immutability.
+threshold methods, GMM toggle, GridImage support, pipeline integration,
+serialization roundtrip, detect_mat immutability, and derived parameter logic.
 """
 
 import pytest
@@ -42,16 +42,10 @@ def _make_test_image(size=200):
     return Image((arr * 255).astype(np.uint8))
 
 
-# Smaller parameter values for speed in tests
+# Smaller diameter range for speed in tests
 _FAST_PARAMS = dict(
-    homomorphic_sigma=30.0,
-    opening_width=5,
-    log_min_radius=5.0,
-    log_max_radius=20.0,
-    log_num_scales=3,
-    background_tophat_width=30,
-    gmm_morph_open_radius=1,
-    gmm_min_core_area=5,
+    min_diameter=10.0,
+    max_diameter=30.0,
 )
 
 
@@ -65,61 +59,43 @@ class TestInoculumDetectorDefaults:
 
     def test_default_parameters(self):
         det = InoculumDetector()
+        assert det.min_diameter == 30.0
+        assert det.max_diameter == 100.0
         assert det.thresh_method == "otsu"
-        assert det.subtract_background is False
-        assert det.background_tophat_width == 300
-        assert det.homomorphic_sigma == 300.0
-        assert det.homomorphic_gamma_low == 0.5
-        assert det.homomorphic_gamma_high == 1.5
-        assert det.opening_shape == "disk"
-        assert det.opening_width == 50
-        assert det.log_min_radius == 25.0
-        assert det.log_max_radius == 50.0
-        assert det.log_num_scales == 5
         assert det.enable_gmm is True
         assert det.gmm_n_components == 2
         assert det.gmm_separation_threshold == 0.9
-        assert det.gmm_min_core_area == 30
-        assert det.gmm_morph_open_radius == 10
-        assert det.gmm_morph_close_radius == 2
+        assert det.validate_obj_count is True
 
     def test_custom_parameters(self):
         det = InoculumDetector(
+            min_diameter=15.0,
+            max_diameter=200.0,
             thresh_method="triangle",
-            subtract_background=True,
-            background_tophat_width=100,
-            homomorphic_sigma=150.0,
-            homomorphic_gamma_low=0.3,
-            homomorphic_gamma_high=2.0,
-            opening_shape="square",
-            opening_width=30,
-            log_min_radius=10.0,
-            log_max_radius=40.0,
-            log_num_scales=8,
             enable_gmm=False,
             gmm_n_components=3,
             gmm_separation_threshold=0.5,
-            gmm_min_core_area=50,
-            gmm_morph_open_radius=5,
-            gmm_morph_close_radius=3,
+            validate_obj_count=False,
         )
+        assert det.min_diameter == 15.0
+        assert det.max_diameter == 200.0
         assert det.thresh_method == "triangle"
-        assert det.subtract_background is True
-        assert det.background_tophat_width == 100
-        assert det.homomorphic_sigma == 150.0
-        assert det.homomorphic_gamma_low == 0.3
-        assert det.homomorphic_gamma_high == 2.0
-        assert det.opening_shape == "square"
-        assert det.opening_width == 30
-        assert det.log_min_radius == 10.0
-        assert det.log_max_radius == 40.0
-        assert det.log_num_scales == 8
         assert det.enable_gmm is False
         assert det.gmm_n_components == 3
         assert det.gmm_separation_threshold == 0.5
-        assert det.gmm_min_core_area == 50
-        assert det.gmm_morph_open_radius == 5
-        assert det.gmm_morph_close_radius == 3
+        assert det.validate_obj_count is False
+
+    def test_min_diameter_nonpositive_raises(self):
+        with pytest.raises(ValueError, match="min_diameter must be positive"):
+            InoculumDetector(min_diameter=0.0)
+
+    def test_max_diameter_nonpositive_raises(self):
+        with pytest.raises(ValueError, match="max_diameter must be positive"):
+            InoculumDetector(max_diameter=-5.0)
+
+    def test_min_ge_max_diameter_raises(self):
+        with pytest.raises(ValueError, match="must be less than"):
+            InoculumDetector(min_diameter=100.0, max_diameter=50.0)
 
 
 # ---------------------------------------------------------------------------
@@ -161,16 +137,6 @@ class TestInoculumDetectorDetection:
         result = det.apply(image, inplace=False)
 
         assert result.objmap[:].max() > 0
-
-    def test_detection_with_background_subtraction(self):
-        """Detection with subtract_background=True runs without error."""
-        image = _make_test_image()
-        det = InoculumDetector(
-            subtract_background=True, enable_gmm=False, **_FAST_PARAMS,
-        )
-        result = det.apply(image, inplace=False)
-
-        assert result.objmask[:].shape == image.detect_mat[:].shape
 
 
 # ---------------------------------------------------------------------------
@@ -261,23 +227,13 @@ class TestInoculumDetectorSerialization:
 
     def test_json_roundtrip(self):
         original = InoculumDetector(
+            min_diameter=15.0,
+            max_diameter=200.0,
             thresh_method="triangle",
-            subtract_background=True,
-            background_tophat_width=100,
-            homomorphic_sigma=150.0,
-            homomorphic_gamma_low=0.3,
-            homomorphic_gamma_high=2.0,
-            opening_shape="square",
-            opening_width=30,
-            log_min_radius=10.0,
-            log_max_radius=40.0,
-            log_num_scales=8,
             enable_gmm=False,
             gmm_n_components=3,
             gmm_separation_threshold=0.5,
-            gmm_min_core_area=50,
-            gmm_morph_open_radius=5,
-            gmm_morph_close_radius=3,
+            validate_obj_count=False,
         )
         pipeline = ImagePipeline([original])
         json_str = pipeline.to_json()
@@ -285,23 +241,13 @@ class TestInoculumDetectorSerialization:
 
         restored = list(restored_pipeline._ops.values())[0]
         assert isinstance(restored, InoculumDetector)
+        assert restored.min_diameter == original.min_diameter
+        assert restored.max_diameter == original.max_diameter
         assert restored.thresh_method == original.thresh_method
-        assert restored.subtract_background == original.subtract_background
-        assert restored.background_tophat_width == original.background_tophat_width
-        assert restored.homomorphic_sigma == original.homomorphic_sigma
-        assert restored.homomorphic_gamma_low == original.homomorphic_gamma_low
-        assert restored.homomorphic_gamma_high == original.homomorphic_gamma_high
-        assert restored.opening_shape == original.opening_shape
-        assert restored.opening_width == original.opening_width
-        assert restored.log_min_radius == original.log_min_radius
-        assert restored.log_max_radius == original.log_max_radius
-        assert restored.log_num_scales == original.log_num_scales
         assert restored.enable_gmm == original.enable_gmm
         assert restored.gmm_n_components == original.gmm_n_components
         assert restored.gmm_separation_threshold == original.gmm_separation_threshold
-        assert restored.gmm_min_core_area == original.gmm_min_core_area
-        assert restored.gmm_morph_open_radius == original.gmm_morph_open_radius
-        assert restored.gmm_morph_close_radius == original.gmm_morph_close_radius
+        assert restored.validate_obj_count == original.validate_obj_count
 
     def test_serialization_functional_equivalence(self):
         """Serialized and restored detector produces identical results."""
@@ -339,21 +285,39 @@ class TestInoculumDetectorReproducibility:
 
 
 # ---------------------------------------------------------------------------
-# Opening shapes
+# Derived parameter logic
 # ---------------------------------------------------------------------------
 
 
-class TestInoculumDetectorOpeningShapes:
-    """All opening shapes should work without error."""
+class TestInoculumDetectorDerivedParams:
+    """Verify internal parameter derivation from diameter range."""
 
-    @pytest.mark.parametrize("shape", ["square", "diamond", "disk"])
-    def test_opening_shape(self, shape):
-        image = _make_test_image()
-        det = InoculumDetector(
-            opening_shape=shape, enable_gmm=False, **_FAST_PARAMS,
-        )
-        result = det.apply(image, inplace=False)
-        assert result.objmask[:].shape == image.detect_mat[:].shape
+    def test_derived_sigma(self):
+        """SubtractGaussian sigma should be max_diameter * 2."""
+        det = InoculumDetector(max_diameter=100.0)
+        assert det.max_diameter * 2 == 200.0
+
+    def test_derived_log_radii(self):
+        """LoG radii should be diameter / 2."""
+        det = InoculumDetector(min_diameter=30.0, max_diameter=100.0)
+        assert det.min_diameter / 2 == 15.0
+        assert det.max_diameter / 2 == 50.0
+
+    def test_derived_gmm_morph_open(self):
+        """GMM morph open radius = max(1, round(min_diameter / 30))."""
+        det = InoculumDetector(min_diameter=30.0)
+        assert max(1, round(det.min_diameter / 30)) == 1
+
+        det2 = InoculumDetector(min_diameter=90.0)
+        assert max(1, round(det2.min_diameter / 30)) == 3
+
+    def test_derived_gmm_min_core_area(self):
+        """GMM min core area = max(5, round(min_diameter * 0.8))."""
+        det = InoculumDetector(min_diameter=30.0)
+        assert max(5, round(det.min_diameter * 0.8)) == 24
+
+        det2 = InoculumDetector(min_diameter=3.0)
+        assert max(5, round(det2.min_diameter * 0.8)) == 5
 
 
 if __name__ == "__main__":
