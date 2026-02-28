@@ -9,7 +9,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import GridImage, Image
+    from phenotypic._core._grid_image import GridImage
+    from phenotypic._core._image import Image
 
 import gc
 import numpy as np
@@ -347,8 +348,8 @@ class SeparateObjects(ObjectRefiner):
 
         if is_gridimage:
             # Use grid boundaries to constrain peaks (one per cell)
-            row_edges = np.round(image.grid.get_row_edges()).astype(int)
-            col_edges = np.round(image.grid.get_col_edges()).astype(int)
+            row_edges = np.round(image.grid.get_row_edges()).astype(int)  # type: ignore[attr-defined]
+            col_edges = np.round(image.grid.get_col_edges()).astype(int)  # type: ignore[attr-defined]
             logger.info(
                     f"SeparateObjects: grid={len(row_edges) - 1}x{len(col_edges) - 1} cells")
             peaks = self._find_peaks_gridimage(score_map, objmask, row_edges, col_edges)
