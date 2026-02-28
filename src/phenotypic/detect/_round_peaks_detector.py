@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 import gc
 from typing import Literal
@@ -54,6 +54,12 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
 
         edge_refinement: If True (default), refine grid edges using local intensity
             profiles for improved accuracy.
+
+        selection_mode: Strategy for choosing one object per grid cell. ``"dominant"``
+            (default) keeps the largest object by pixel count. ``"centered"`` keeps
+            the object whose centroid is closest to the cell center. ``"regularized"``
+            uses a two-pass approach that fits a global regular-grid model from median
+            row/column centroids, then re-selects per cell. Best for pinned arrays.
 
     Attributes:
         thresh_method, subtract_background, remove_noise, footprint_radius,
@@ -142,6 +148,7 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
             min_peak_distance: int | None = None,
             peak_prominence: float | None = None,
             edge_refinement: bool = True,
+            selection_mode: Literal["dominant", "centered", "regularized"] = "dominant",
     ):
         """
         Initialize the RoundPeaksDetector with specified parameters.
@@ -168,6 +175,9 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
                 If None, automatically calculated as 0.1 * signal range.
             edge_refinement: If True, refine grid edges using weighted intensity
                 profiles for improved accuracy.
+            selection_mode: Strategy for choosing one object per grid cell.
+                'dominant' (default) keeps the largest, 'centered' keeps
+                the most centred, 'regularized' uses a global fit.
         """
         super().__init__()
 
@@ -180,6 +190,7 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
         self.min_peak_distance = min_peak_distance
         self.peak_prominence = peak_prominence
         self.edge_refinement = edge_refinement
+        self.selection_mode = selection_mode
 
     @staticmethod
     def _round_odd(n: int) -> int:
@@ -275,31 +286,13 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
         row_edges = np.clip(np.unique(row_edges), 0, objmask.shape[0])
         col_edges = np.clip(np.unique(col_edges), 0, objmask.shape[1])
 
-        objmap = np.zeros_like(labeled, dtype=image._OBJMAP_DTYPE)
-        label_counter = 1
-
-        # Assign dominant colonies to each grid cell
-        for r in range(len(row_edges) - 1):
-            r0, r1 = row_edges[r], row_edges[r + 1]
-            for c in range(len(col_edges) - 1):
-                c0, c1 = col_edges[c], col_edges[c + 1]
-                region = labeled[r0:r1, c0:c1]
-                if region.size == 0:
-                    continue
-                uniq, counts = np.unique(region, return_counts=True)
-                valid = uniq != 0
-                uniq = uniq[valid]
-                counts = counts[valid]
-                if uniq.size == 0:
-                    continue
-                dominant_label = uniq[np.argmax(counts)]
-                mask = region == dominant_label
-                if np.any(mask):
-                    objmap[r0:r1, c0:c1][mask] = label_counter
-                    label_counter += 1
+        # Assign colonies to grid cells using selection strategy
+        objmap = self._assign_grid_objects(
+            labeled, row_edges, col_edges, self.selection_mode, image._OBJMAP_DTYPE
+        )
 
         # Fallback if no regions were labeled (e.g., grid inference failed)
-        if label_counter == 1:
+        if objmap.max() == 0:
             objmap = labeled.astype(image._OBJMAP_DTYPE, copy=False)
 
         self._log_memory_usage("grid cell assignment")

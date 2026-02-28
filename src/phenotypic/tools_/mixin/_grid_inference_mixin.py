@@ -7,6 +7,8 @@ and ObjectRefiner (GridAlignmentRefiner) subclasses.
 
 from __future__ import annotations
 
+from typing import Any, Literal
+
 import numpy as np
 import scipy.ndimage as ndimage
 from scipy.signal import find_peaks
@@ -276,3 +278,182 @@ class GridInferenceMixin:
             # Square-ish layout
             approx_side = int(np.ceil(np.sqrt(num)))
             return approx_side, max(approx_side, 1)
+
+    @staticmethod
+    def _select_cell_object(
+        region: np.ndarray,
+        selection_mode: Literal["dominant", "centered"],
+    ) -> int | None:
+        """Select a single object label from a grid cell region.
+
+        Args:
+            region: 2D labeled array for a single grid cell (0 = background).
+            selection_mode: Strategy for choosing the object.
+                ``"dominant"`` picks the label with the most pixels.
+                ``"centered"`` picks the label whose centroid is closest
+                to the cell center.
+
+        Returns:
+            The selected label, or ``None`` if the region contains no
+            foreground objects.
+
+        Raises:
+            ValueError: If *selection_mode* is not ``"dominant"`` or
+                ``"centered"``.
+        """
+        uniq, counts = np.unique(region, return_counts=True)
+        valid = uniq != 0
+        if not np.any(valid):
+            return None
+        uniq = uniq[valid]
+        counts = counts[valid]
+
+        if selection_mode == "dominant":
+            return int(uniq[np.argmax(counts)])
+
+        if selection_mode == "centered":
+            center_r = region.shape[0] / 2.0
+            center_c = region.shape[1] / 2.0
+            centroids = ndimage.center_of_mass(
+                np.ones_like(region), region, uniq.tolist()
+            )
+            best_label = None
+            best_dist = np.inf
+            for label, (cr, cc) in zip(uniq, centroids):
+                dist = (cr - center_r) ** 2 + (cc - center_c) ** 2
+                if dist < best_dist:
+                    best_dist = dist
+                    best_label = int(label)
+            return best_label
+
+        raise ValueError(
+            f"Unknown selection_mode {selection_mode!r}. "
+            "Use 'dominant' or 'centered'."
+        )
+
+    @staticmethod
+    def _assign_grid_objects(
+        labeled: np.ndarray,
+        row_edges: np.ndarray,
+        col_edges: np.ndarray,
+        selection_mode: Literal["dominant", "centered", "regularized"],
+        dtype: np.dtype[Any] | type,
+    ) -> np.ndarray:
+        """Assign one object per grid cell using the chosen selection strategy.
+
+        Args:
+            labeled: Full labeled array (0 = background, >0 = objects).
+            row_edges: Sorted array of row boundary positions.
+            col_edges: Sorted array of column boundary positions.
+            selection_mode: ``"dominant"`` keeps the largest object per cell,
+                ``"centered"`` keeps the most centred object, and
+                ``"regularized"`` uses a two-pass global fit to recover
+                expected colony positions from median row/column centroids.
+            dtype: NumPy dtype for the output array.
+
+        Returns:
+            A new labeled array with sequential labels (1, 2, 3, ...).
+        """
+        nrows = len(row_edges) - 1
+        ncols = len(col_edges) - 1
+        refined_map = np.zeros_like(labeled, dtype=dtype)
+
+        if selection_mode in ("dominant", "centered"):
+            per_cell_mode: Literal["dominant", "centered"] = (
+                "dominant" if selection_mode == "dominant" else "centered"
+            )
+            label_counter = 1
+            for r in range(nrows):
+                r0, r1 = row_edges[r], row_edges[r + 1]
+                for c in range(ncols):
+                    c0, c1 = col_edges[c], col_edges[c + 1]
+                    region = labeled[r0:r1, c0:c1]
+                    if region.size == 0:
+                        continue
+                    chosen = GridInferenceMixin._select_cell_object(
+                        region, per_cell_mode
+                    )
+                    if chosen is not None:
+                        mask = region == chosen
+                        if np.any(mask):
+                            refined_map[r0:r1, c0:c1][mask] = label_counter
+                            label_counter += 1
+            return refined_map
+
+        # --- regularized: two-pass global approach ---
+
+        # Pass 1: collect initial candidates using dominant selection
+        candidates: list[tuple[int, int, float, float]] = []  # (row_idx, col_idx, abs_r, abs_c)
+        for r in range(nrows):
+            r0, r1 = row_edges[r], row_edges[r + 1]
+            for c in range(ncols):
+                c0, c1 = col_edges[c], col_edges[c + 1]
+                region = labeled[r0:r1, c0:c1]
+                if region.size == 0:
+                    continue
+                chosen = GridInferenceMixin._select_cell_object(region, "dominant")
+                if chosen is not None:
+                    # Centroid in local coords
+                    local_coords = ndimage.center_of_mass(
+                        (region == chosen).astype(np.uint8)
+                    )
+                    abs_r = local_coords[0] + r0
+                    abs_c = local_coords[1] + c0
+                    candidates.append((r, c, abs_r, abs_c))
+
+        # Fit global grid model: median row/column positions
+        expected_r = np.empty(nrows)
+        expected_c = np.empty(ncols)
+
+        for i in range(nrows):
+            row_vals = [abs_r for (ri, _, abs_r, _) in candidates if ri == i]
+            if row_vals:
+                expected_r[i] = float(np.median(row_vals))
+            else:
+                # Fallback: cell center
+                expected_r[i] = (row_edges[i] + row_edges[i + 1]) / 2.0
+
+        for j in range(ncols):
+            col_vals = [abs_c for (_, cj, _, abs_c) in candidates if cj == j]
+            if col_vals:
+                expected_c[j] = float(np.median(col_vals))
+            else:
+                expected_c[j] = (col_edges[j] + col_edges[j + 1]) / 2.0
+
+        # Pass 2: re-select using expected positions
+        label_counter = 1
+        for r in range(nrows):
+            r0, r1 = row_edges[r], row_edges[r + 1]
+            for c in range(ncols):
+                c0, c1 = col_edges[c], col_edges[c + 1]
+                region = labeled[r0:r1, c0:c1]
+                if region.size == 0:
+                    continue
+
+                uniq, counts = np.unique(region, return_counts=True)
+                valid = uniq != 0
+                if not np.any(valid):
+                    continue
+                uniq = uniq[valid]
+
+                # Compute centroid of each object and pick closest to expected
+                centroids = ndimage.center_of_mass(
+                    np.ones_like(region), region, uniq.tolist()
+                )
+                best_label = None
+                best_dist = np.inf
+                for lbl, (cr, cc) in zip(uniq, centroids):
+                    abs_cr = cr + r0
+                    abs_cc = cc + c0
+                    dist = (abs_cr - expected_r[r]) ** 2 + (abs_cc - expected_c[c]) ** 2
+                    if dist < best_dist:
+                        best_dist = dist
+                        best_label = int(lbl)
+
+                if best_label is not None:
+                    mask = region == best_label
+                    if np.any(mask):
+                        refined_map[r0:r1, c0:c1][mask] = label_counter
+                        label_counter += 1
+
+        return refined_map

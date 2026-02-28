@@ -6,10 +6,10 @@ useful for removing off-grid artifacts and enforcing grid structure on detection
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 import gc
 import numpy as np
@@ -37,6 +37,11 @@ class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
             auto-calculated as 10% of signal range.
         edge_refinement: If True (default), refine grid edges using local intensity minima
             to improve grid alignment accuracy.
+        selection_mode: Strategy for choosing one object per grid cell. ``"dominant"``
+            (default) keeps the largest object by pixel count. ``"centered"`` keeps
+            the object whose centroid is closest to the cell center. ``"regularized"``
+            uses a two-pass approach that fits a global regular-grid model from median
+            row/column centroids, then re-selects per cell. Best for pinned arrays.
 
     Returns:
         Image: Input image with filtered objmap containing only grid-aligned objects.
@@ -126,6 +131,7 @@ class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
             min_peak_distance: int | None = None,
             peak_prominence: float | None = None,
             edge_refinement: bool = True,
+            selection_mode: Literal["dominant", "centered", "regularized"] = "dominant",
     ):
         """Initialize GridAlignmentRefiner with grid inference parameters.
 
@@ -134,12 +140,16 @@ class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
             min_peak_distance: Minimum distance between grid peaks.
             peak_prominence: Minimum prominence for peak detection.
             edge_refinement: Enable edge refinement via local intensity minima.
+            selection_mode: Strategy for choosing the object per grid cell.
+                'dominant' (default) keeps the largest, 'centered' keeps
+                the most centred, 'regularized' uses a global fit.
         """
         super().__init__()
         self.smoothing_sigma = smoothing_sigma
         self.min_peak_distance = min_peak_distance
         self.peak_prominence = peak_prominence
         self.edge_refinement = edge_refinement
+        self.selection_mode = selection_mode
 
     @validate_operation_integrity("image.rgb", "image.gray", "image.detect_mat")
     def apply(self, image: Image, inplace: bool = False) -> Image:
@@ -196,38 +206,10 @@ class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
         row_edges = np.clip(np.unique(row_edges), 0, objmap.shape[0])
         col_edges = np.clip(np.unique(col_edges), 0, objmap.shape[1])
 
-        # Assign dominant object per grid cell
-        refined_map = np.zeros_like(objmap, dtype=image._OBJMAP_DTYPE)
-        label_counter = 1
-
-        for r in range(len(row_edges) - 1):
-            r0, r1 = row_edges[r], row_edges[r + 1]
-            for c in range(len(col_edges) - 1):
-                c0, c1 = col_edges[c], col_edges[c + 1]
-
-                # Get region in this grid cell
-                region = objmap[r0:r1, c0:c1]
-
-                if region.size == 0:
-                    continue
-
-                # Find all unique labels (except background 0)
-                uniq, counts = np.unique(region, return_counts=True)
-                valid = uniq != 0
-
-                if not np.any(valid):
-                    continue
-
-                uniq = uniq[valid]
-                counts = counts[valid]
-
-                # Keep dominant label (most pixels in cell)
-                dominant_label = uniq[np.argmax(counts)]
-                mask = region == dominant_label
-
-                if np.any(mask):
-                    refined_map[r0:r1, c0:c1][mask] = label_counter
-                    label_counter += 1
+        # Assign objects per grid cell using selection strategy
+        refined_map = self._assign_grid_objects(
+            objmap, row_edges, col_edges, self.selection_mode, image._OBJMAP_DTYPE
+        )
 
         # Update image with refined map
         image.objmap[:] = refined_map
