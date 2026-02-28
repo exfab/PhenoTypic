@@ -14,7 +14,8 @@ from typing import Iterable, TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    from phenotypic import Image, GridImage
+    from phenotypic._core._image import Image
+    from phenotypic._core._grid_image import GridImage
 
 
 def _image_loader(

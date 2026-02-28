@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 from phenotypic._core._image_parts.detection_modes._detection_mode import (
     DetectionMode,

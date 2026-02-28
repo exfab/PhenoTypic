@@ -4,7 +4,8 @@ from typing import TYPE_CHECKING, Union, NamedTuple, Optional
 
 if TYPE_CHECKING:
     import napari
-    from phenotypic import Image, GridImage
+    from phenotypic._core._grid_image import GridImage
+    from phenotypic._core._image import Image
 
 from phenotypic.abc_ import BaseOperation
 from ._image_pipeline_core import ImagePipelineCore

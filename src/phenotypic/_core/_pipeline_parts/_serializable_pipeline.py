@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Dict, Union, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import ImagePipeline
+    from phenotypic._core._image_pipeline import ImagePipeline
 
 import pandas as pd
 import warnings

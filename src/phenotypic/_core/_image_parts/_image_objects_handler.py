@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from ...tools_.exceptions_ import IllegalAssignmentError, NoObjectsError
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 import numpy as np
 

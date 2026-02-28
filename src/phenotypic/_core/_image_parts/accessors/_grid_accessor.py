@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import napari
-    from phenotypic import GridImage
+    from phenotypic._core._grid_image import GridImage
 
 import numpy as np
 import matplotlib.pyplot as plt

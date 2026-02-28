@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 from skimage.filters import threshold_mean
 from skimage.segmentation import clear_border
 

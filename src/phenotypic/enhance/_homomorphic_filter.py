@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 from ..abc_ import ImageEnhancer
 

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
-    from phenotypic import ImagePipeline
+    from phenotypic._core._image_pipeline import ImagePipeline
     from phenotypic._cli._cli_types import ExecutionConfig, Dataset
 
 logger = logging.getLogger(__name__)

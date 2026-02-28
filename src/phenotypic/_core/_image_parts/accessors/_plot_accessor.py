@@ -13,7 +13,7 @@ from phenotypic.tools_.register import available_plotters, get_plotter
 import phenotypic._core._image_parts.plot_accessor  # noqa: F401
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 
 class PlotAccessor(ImageAccessorBase):

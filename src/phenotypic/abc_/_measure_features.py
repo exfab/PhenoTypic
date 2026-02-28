@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from typing_extensions import Callable
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 import numpy as np
 from numpy.typing import ArrayLike

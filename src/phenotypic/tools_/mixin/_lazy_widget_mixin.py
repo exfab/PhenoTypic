@@ -6,7 +6,7 @@ import typing
 from typing import TYPE_CHECKING, Any, Optional, get_args, get_origin, Literal
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
     from ipywidgets import Widget
 
 

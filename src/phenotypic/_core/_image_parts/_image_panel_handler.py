@@ -8,7 +8,7 @@ from .accessors import PanelAccessor
 from ._image_plot_handler import ImagePlotHandler
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 
 class ImagePanelHandler(ImagePlotHandler):

@@ -18,7 +18,7 @@ from numpy.fft import fft2, ifft2, ifftshift
 from ..abc_ import ImageEnhancer
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 
 @dataclass

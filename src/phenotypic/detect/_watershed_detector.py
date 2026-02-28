@@ -2,7 +2,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import Image, GridImage
+    from phenotypic._core._grid_image import GridImage
+    from phenotypic._core._image import Image
 
 from typing import Literal
 import gc

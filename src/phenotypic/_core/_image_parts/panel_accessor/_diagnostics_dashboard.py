@@ -17,7 +17,7 @@ except ImportError:
     pn = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 
 def _format_description(desc: Any) -> str:

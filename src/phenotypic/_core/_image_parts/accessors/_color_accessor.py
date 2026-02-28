@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 from ..color_space_accessors._xyz_accessor import XyzAccessor
 from ..color_space_accessors._xyz_d65_accessor import XyzD65Accessor

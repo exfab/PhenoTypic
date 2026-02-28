@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from phenotypic.abc_ import ImageEnhancer
-    from phenotypic import ImagePipeline
+    from phenotypic._core._image_pipeline import ImagePipeline
 
 
 class ClipControlMixin:

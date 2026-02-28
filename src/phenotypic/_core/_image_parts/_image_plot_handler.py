@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import napari
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 import numpy as np
 

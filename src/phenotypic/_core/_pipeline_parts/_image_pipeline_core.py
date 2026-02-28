@@ -12,7 +12,8 @@ import numpy as np
 from phenotypic.tools_.constants_ import OBJECT
 
 if TYPE_CHECKING:
-    from phenotypic import Image, GridImage
+    from phenotypic._core._grid_image import GridImage
+    from phenotypic._core._image import Image
 
 import pandas as pd
 from typing import Dict, List

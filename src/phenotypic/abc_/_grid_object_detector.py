@@ -4,7 +4,7 @@ import abc
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import GridImage
+    from phenotypic._core._grid_image import GridImage
 
 from phenotypic.abc_ import ObjectDetector, GridOperation
 from phenotypic.tools_.funcs_ import validate_operation_integrity

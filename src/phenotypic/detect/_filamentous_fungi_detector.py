@@ -4,7 +4,8 @@ import numpy as np
 import gc
 
 if TYPE_CHECKING:
-    from phenotypic import Image, ImagePipeline  # type: ignore
+    from phenotypic._core._image import Image
+    from phenotypic._core._image_pipeline import ImagePipeline# type: ignore
 
 from scipy.ndimage import center_of_mass
 from skimage.morphology import disk, erosion

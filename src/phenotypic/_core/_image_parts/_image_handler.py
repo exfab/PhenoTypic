@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Literal, TYPE_CHECKING, Tuple, Type
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 import numpy as np
 import skimage as ski

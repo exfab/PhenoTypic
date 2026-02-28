@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Iterable, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 from skimage.filters import meijering
 

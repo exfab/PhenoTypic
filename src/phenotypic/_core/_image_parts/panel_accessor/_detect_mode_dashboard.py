@@ -12,7 +12,7 @@ from phenotypic.tools_.register import register_dashboard
 from ._base_dashboard import BaseDashboard
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 
 @register_dashboard

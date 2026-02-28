@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-from typing import Literal, TYPE_CHECKING
+from typing import Literal
 
 import numpy as np
-
-if TYPE_CHECKING:
-    from phenotypic import Image
 
 from phenotypic.tools_.constants_ import GAMMA_ENCODINGS
 from ._image_parts._image_io_handler import ImageIOHandler

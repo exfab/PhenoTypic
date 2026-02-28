@@ -15,7 +15,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 from ._cli_types import Dataset
 

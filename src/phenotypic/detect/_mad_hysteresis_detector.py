@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 from skimage.filters import apply_hysteresis_threshold
 from skimage.morphology import remove_small_objects

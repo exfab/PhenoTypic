@@ -11,7 +11,7 @@ from scipy.sparse import csc_matrix
 from skimage.color import rgb2gray, rgba2rgb
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 from phenotypic.tools_.constants_ import IMAGE_MODE, METADATA, IMAGE_TYPES
 

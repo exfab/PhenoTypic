@@ -15,7 +15,7 @@ from typing import Dict, List, Optional, TYPE_CHECKING
 import pandas as pd
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 logger = logging.getLogger(__name__)
 

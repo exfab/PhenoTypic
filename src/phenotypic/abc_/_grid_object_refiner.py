@@ -3,7 +3,7 @@ import abc
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import GridImage
+    from phenotypic._core._grid_image import GridImage
 
 from phenotypic.abc_ import ObjectRefiner
 from phenotypic.abc_ import GridOperation

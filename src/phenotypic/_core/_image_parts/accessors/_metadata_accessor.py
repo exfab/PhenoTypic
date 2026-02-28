@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 from phenotypic.tools_.constants_ import METADATA
 from collections import ChainMap
 

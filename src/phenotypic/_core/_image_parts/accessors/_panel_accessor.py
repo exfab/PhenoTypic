@@ -13,7 +13,7 @@ from phenotypic.tools_.register import available_dashboards, get_dashboard
 import phenotypic._core._image_parts.panel_accessor  # noqa: F401
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 
 class PanelAccessor(ImageAccessorBase):

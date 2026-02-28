@@ -4,7 +4,8 @@ import numpy as np
 from scipy.ndimage import label
 
 if TYPE_CHECKING:
-    from phenotypic import Image, ImagePipeline
+    from phenotypic._core._image import Image
+    from phenotypic._core._image_pipeline import ImagePipeline
 
 from phenotypic.abc_ import ObjectDetector
 from phenotypic.detect import OtsuDetector, RoundPeaksDetector

@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import GridImage
+    from phenotypic._core._grid_image import GridImage
 
 import numpy as np
 from typing import Optional
