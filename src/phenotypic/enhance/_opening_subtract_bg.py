@@ -5,7 +5,7 @@ from typing import Literal, TYPE_CHECKING
 import cv2
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 from phenotypic.abc_ import ImageEnhancer
 from phenotypic.tools_.mixin import FootprintMixin
@@ -28,6 +28,8 @@ class OpeningSubtractBg(ImageEnhancer, FootprintMixin):
         width (int): Diameter of the structuring element in pixels. Must be
             larger than colony diameter to avoid subtracting colony signal.
             Typical agar-plate values: 31-101 depending on resolution.
+        n_iter (int): Number of times to apply the morphological operation.
+            Higher values intensify background removal. Default: 1.
 
     Returns:
         Image: Modified image with ``detect_mat`` containing only foreground
@@ -91,14 +93,17 @@ class OpeningSubtractBg(ImageEnhancer, FootprintMixin):
             self,
             shape: Literal["square", "diamond", "disk"] = "disk",
             width: int = 51,
+            n_iter: int = 1,
     ):
         self.shape = shape
         self.width = width
+        self.n_iter = n_iter
 
     def _operate(self, image: Image) -> Image:
         image.detect_mat[:] = cv2.morphologyEx(
                 src=image.detect_mat[:],
                 op=cv2.MORPH_TOPHAT,
                 kernel=self._make_footprint(shape=self.shape, width=self.width),
+                iterations=self.n_iter,
         )
         return image

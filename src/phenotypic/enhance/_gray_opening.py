@@ -5,7 +5,7 @@ from typing import Literal, TYPE_CHECKING
 from skimage import morphology
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 from phenotypic.abc_ import ImageEnhancer
 from phenotypic.tools_.mixin import FootprintMixin
@@ -37,7 +37,7 @@ class GrayOpening(ImageEnhancer, FootprintMixin):
     """
 
     def __init__(self, shape: Literal["square", "diamond", "disk"] = "square",
-                 width: int = 5):
+                 width: int = 5, n_iter: int = 1):
         """
         A kernel configuration class for image processing tasks, particularly suited for applications
         such as analyzing and processing images of microbe colonies on solid media agar. This class
@@ -59,16 +59,20 @@ class GrayOpening(ImageEnhancer, FootprintMixin):
                 noise but potentially merge closely spaced microbe colonies into larger regions. Smaller
                 values offer finer detail and greater distinction between colonies but may leave noise
                 unprocessed or small artifacts unchanged.
+
+            n_iter (int): Number of times to apply the opening operation.
+                Repeated opening with a small element produces smoother results
+                than a single pass with a larger element. Default: 1.
         """
         self.shape = shape
         self.width = width
+        self.n_iter = n_iter
 
     def _operate(self, image: Image) -> Image:
-        image.detect_mat[:] = morphology.opening(
-                image=image.detect_mat[:],
-                footprint=self._make_footprint(
-                        shape=self.shape,
-                        width=self.width,
-                ),
-        )
+        footprint = self._make_footprint(shape=self.shape, width=self.width)
+        for _ in range(self.n_iter):
+            image.detect_mat[:] = morphology.opening(
+                    image=image.detect_mat[:],
+                    footprint=footprint,
+            )
         return image

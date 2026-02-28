@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 from phenotypic.abc_ import ObjectRefiner
 from phenotypic.tools_.mixin import FootprintMixin
@@ -71,7 +71,8 @@ class MaskCloser(ObjectRefiner, FootprintMixin):
             self,
             shape: Literal[
                            "auto", "square", "diamond", "disk"] | np.ndarray | None = None,
-            width: int = 5
+            width: int = 5,
+            n_iter: int = 1,
     ):
         """Initialize the closer.
 
@@ -89,10 +90,14 @@ class MaskCloser(ObjectRefiner, FootprintMixin):
                 but risk merging adjacent colonies and losing edge sharpness.
             width (int): Footprint width in pixels when using named shapes
                 or auto-scaling. Default: 5 pixels (moderate gap-filling).
+            n_iter (int): Number of times to apply closing. Repeated closing
+                with a small element produces smoother results than a single
+                pass with a larger element. Default: 1.
         """
         super().__init__()
         self.shape = shape
         self.width = width
+        self.n_iter = n_iter
 
     def _operate(self, image: Image) -> Image:
         if self.shape == "auto":
@@ -108,5 +113,6 @@ class MaskCloser(ObjectRefiner, FootprintMixin):
         else:
             raise AttributeError("Invalid shape type")
 
-        image.objmask[:] = closing(image.objmask[:], footprint=footprint)
+        for _ in range(self.n_iter):
+            image.objmask[:] = closing(image.objmask[:], footprint=footprint)
         return image

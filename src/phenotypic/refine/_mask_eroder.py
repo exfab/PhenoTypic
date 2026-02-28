@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 from phenotypic.abc_ import ObjectRefiner
 from phenotypic.tools_.mixin import FootprintMixin
@@ -76,7 +76,8 @@ class MaskEroder(ObjectRefiner, FootprintMixin):
             self,
             shape: Literal[
                            "auto", "square", "diamond", "disk"] | np.ndarray | None = None,
-            width: int = 3
+            width: int = 3,
+            n_iter: int = 1,
     ):
         """Initialize the eroder.
 
@@ -95,10 +96,14 @@ class MaskEroder(ObjectRefiner, FootprintMixin):
                 of area measurements.
             width (int): Footprint width in pixels when using named shapes
                 or auto-scaling. Default: 3 pixels (moderate erosion).
+            n_iter (int): Number of times to apply erosion. Repeated erosion
+                with a small element produces smoother results than a single
+                pass with a larger element. Default: 1.
         """
         super().__init__()
         self.shape = shape
         self.width = width
+        self.n_iter = n_iter
 
     def _operate(self, image: Image) -> Image:
         if self.shape == "auto":
@@ -114,5 +119,6 @@ class MaskEroder(ObjectRefiner, FootprintMixin):
         else:
             raise AttributeError("Invalid shape type")
 
-        image.objmask[:] = erosion(image.objmask[:], footprint=footprint)
+        for _ in range(self.n_iter):
+            image.objmask[:] = erosion(image.objmask[:], footprint=footprint)
         return image

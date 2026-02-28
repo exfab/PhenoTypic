@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 from phenotypic.abc_ import ObjectRefiner
 from phenotypic.tools_.mixin import FootprintMixin
@@ -57,7 +57,8 @@ class MaskOpener(ObjectRefiner, FootprintMixin):
     def __init__(
             self,
             shape: Literal["auto"] | FootprintShape | np.ndarray | None = None,
-            width: int = 5
+            width: int = 5,
+            n_iter: int = 1,
     ):
         """Initialize the opener.
 
@@ -72,10 +73,14 @@ class MaskOpener(ObjectRefiner, FootprintMixin):
 
                 Larger widths disconnect wider bridges and suppress more
                 speckles, but erode edges and can remove small colonies.
+            n_iter (int): Number of times to apply opening. Repeated opening
+                with a small element produces smoother results than a single
+                pass with a larger element. Default: 1.
         """
         super().__init__()
         self.shape: Literal["auto"] | FootprintShape | np.ndarray | None = shape
         self.width = width
+        self.n_iter = n_iter
 
     def _operate(self, image: Image) -> Image:
         if self.shape == "auto":
@@ -92,5 +97,6 @@ class MaskOpener(ObjectRefiner, FootprintMixin):
         else:
             raise AttributeError("Invalid shape type")
 
-        image.objmask[:] = opening(image.objmask[:], footprint=footprint)
+        for _ in range(self.n_iter):
+            image.objmask[:] = opening(image.objmask[:], footprint=footprint)
         return image
