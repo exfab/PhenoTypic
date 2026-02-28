@@ -25,8 +25,21 @@ def install_smart_grid(viewer: napari.Viewer) -> None:
     _orig_actual_shape = _cls.actual_shape
     _orig_position = _cls.position
 
-    # --- Cached visibility map (rebuilt once per scenegraph update) ---
+    # --- Cached visibility map and overlay state ---
     _vis_map: dict[int, int] = {}  # {layer_index: visible_position}
+    _overlay_enabled = False
+    _overlay_clones: list = []
+
+    def _get_overlay_enabled():
+        return _overlay_enabled
+
+    def _set_overlay_enabled(enabled):
+        nonlocal _overlay_enabled
+        _overlay_enabled = enabled
+        _ensure_scenegraph_wrapped()
+        c = _get_canvas()
+        if c is not None:
+            c._update_scenegraph()
 
     def _rebuild_vis_map():
         nonlocal _vis_map
@@ -34,9 +47,13 @@ def install_smart_grid(viewer: napari.Viewer) -> None:
         if v is None:
             _vis_map = {}
             return
+        from phenotypic.gui._smart_grid._overlay_visuals import is_overlay_layer
+
         _vis_map = {
             i: pos for pos, (i, _layer) in enumerate(
-                (i, layer) for i, layer in enumerate(v.layers) if layer.visible
+                (i, layer) for i, layer in enumerate(v.layers)
+                if layer.visible
+                and not (_overlay_enabled and is_overlay_layer(layer))
             )
         }
 
@@ -51,6 +68,7 @@ def install_smart_grid(viewer: napari.Viewer) -> None:
     def patched_position(index, nlayers):
         if not grid.enabled:
             return (0, 0)
+        _rebuild_vis_map()
         vis_pos = _vis_map.get(index)
         if vis_pos is None:
             return (-1, -1)
@@ -83,19 +101,32 @@ def install_smart_grid(viewer: napari.Viewer) -> None:
         _scenegraph_wrapped = True
 
         from phenotypic.gui._smart_grid._grid_labels import add_grid_labels
+        from phenotypic.gui._smart_grid._overlay_visuals import (
+            cleanup_clones,
+            create_overlay_clones,
+        )
 
         _orig_update_scenegraph = c._update_scenegraph
 
         def _smart_update_scenegraph(event=None):
+            cleanup_clones(_overlay_clones, c)
             _orig_update_scenegraph(event)
             v = viewer_ref()
             if v is not None:
+                if _overlay_enabled and grid.enabled:
+                    _overlay_clones[:] = create_overlay_clones(c, v)
                 try:
                     add_grid_labels(c, v)
                 except Exception:
                     logger.debug("Grid label update failed", exc_info=True)
 
         c._update_scenegraph = _smart_update_scenegraph
+
+        from phenotypic.gui._smart_grid._grid_popup import patch_grid_popup
+
+        v = viewer_ref()
+        if v is not None:
+            patch_grid_popup(v, _get_overlay_enabled, _set_overlay_enabled)
 
     # Connect visibility events to trigger grid rebuild
     def _on_visibility_change(event=None):
@@ -110,6 +141,7 @@ def install_smart_grid(viewer: napari.Viewer) -> None:
 
     def _on_layer_inserted(event):
         _connect_layer(event.value)
+        _ensure_scenegraph_wrapped()
 
     def _on_layer_removed(event):
         layer = event.value
@@ -124,6 +156,9 @@ def install_smart_grid(viewer: napari.Viewer) -> None:
     # Connect future layers
     viewer.layers.events.inserted.connect(_on_layer_inserted)
     viewer.layers.events.removed.connect(_on_layer_removed)
+
+    # Eagerly wrap scenegraph if canvas is already available
+    _ensure_scenegraph_wrapped()
 
     # Mark as installed
     viewer.__dict__[_INSTALLED_FLAG] = True
