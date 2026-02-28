@@ -12,7 +12,7 @@ import pandas as pd
 import warnings
 
 from phenotypic.abc_ import ImageOperation, MeasureFeatures
-from ._image_pipeline_core import ImagePipelineCore
+from ._napari_pipeline_viewer import NapariPipelineViewer
 
 # Import version for serialization - must be after other phenotypic imports to avoid circular import
 import phenotypic
@@ -20,7 +20,7 @@ import phenotypic
 __version__ = phenotypic.__version__
 
 
-class SerializablePipeline(ImagePipelineCore):
+class SerializablePipeline(NapariPipelineViewer):
     """
     An extension of ImagePipelineCore that adds JSON serialization capabilities.
 

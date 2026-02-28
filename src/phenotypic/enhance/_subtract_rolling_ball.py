@@ -11,7 +11,7 @@ from skimage.restoration import rolling_ball
 from phenotypic.abc_ import ImageEnhancer
 
 
-class RollingBallRemoveBG(ImageEnhancer):
+class SubtractRollingBall(ImageEnhancer):
     """
     Rolling-ball background removal (ImageJ-style) for agar plates.
 

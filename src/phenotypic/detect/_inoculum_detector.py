@@ -87,6 +87,10 @@ class InoculumDetector(ObjectDetector):
         gmm_morph_close_radius: Morphological closing radius (pixels) applied to the
             core mask. Fills small holes in the core. Typical range: 1–5 pixels.
             Default: 2.
+        validate_obj_count: If True and the input is a ``GridImage``, raise
+            ``ValueError`` when the final detected object count exceeds
+            ``nrows × ncols``. Catches over-segmentation that would assign
+            multiple inocula to a single well. Default: True.
 
     Attributes:
         thresh_method, subtract_background, background_tophat_width,
@@ -94,7 +98,7 @@ class InoculumDetector(ObjectDetector):
         opening_shape, opening_width, log_min_radius, log_max_radius,
         log_num_scales, enable_gmm, gmm_n_components,
         gmm_separation_threshold, gmm_min_core_area, gmm_morph_open_radius,
-        gmm_morph_close_radius
+        gmm_morph_close_radius, validate_obj_count
 
     Returns:
         Image: Input image with ``objmask`` (binary inoculum mask) and
@@ -341,6 +345,7 @@ class InoculumDetector(ObjectDetector):
         gmm_min_core_area: int = 30,
         gmm_morph_open_radius: int = 10,
         gmm_morph_close_radius: int = 2,
+        validate_obj_count: bool = True,
     ):
         """Initialize InoculumDetector with multi-stage blob enhancement parameters.
 
@@ -388,6 +393,9 @@ class InoculumDetector(ObjectDetector):
                 GMM core mask. Pixel-based parameter. Default: 10.
             gmm_morph_close_radius: Morphological closing radius (pixels) applied to
                 GMM core mask. Pixel-based parameter. Default: 2.
+            validate_obj_count: If True and the input is a ``GridImage``, raise
+                ``ValueError`` when the final detected object count exceeds
+                ``nrows × ncols``. Default: True.
         """
         super().__init__()
 
@@ -408,6 +416,7 @@ class InoculumDetector(ObjectDetector):
         self.gmm_min_core_area = gmm_min_core_area
         self.gmm_morph_open_radius = gmm_morph_open_radius
         self.gmm_morph_close_radius = gmm_morph_close_radius
+        self.validate_obj_count = validate_obj_count
 
     def _operate(self, image: Image) -> Image:
         """Detect inoculation sites via multi-step blob enhancement pipeline.
@@ -535,6 +544,17 @@ class InoculumDetector(ObjectDetector):
         image.objmap[:] = labeled.astype(image._OBJMAP_DTYPE, copy=False)
         image.objmap.relabel(connectivity=1)
         del labeled, objmask
+
+        # Step 13 -- validate object count for GridImage
+        if self.validate_obj_count and isinstance(image, GridImage):
+            max_objects = image.nrows * image.ncols
+            num_objects = int(image.objmap[:].max())
+            if num_objects > max_objects:
+                raise ValueError(
+                    f"Detected {num_objects} objects but GridImage has only "
+                    f"{image.nrows}×{image.ncols} = {max_objects} cells. "
+                    f"Set validate_obj_count=False to skip this check."
+                )
 
         gc.collect()
         self._log_memory_usage(

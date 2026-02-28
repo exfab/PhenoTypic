@@ -8,11 +8,14 @@ This module implements the Strategy pattern for different execution modes:
 
 from __future__ import annotations
 
+import json
+import logging
+import subprocess
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 import click
 from joblib import Parallel, delayed
@@ -35,8 +38,14 @@ from phenotypic.tools_.slurm import (
     submit_drip_feed_start,
 )
 from ._cli_slurm_array_scripts import generate_all_array_job_scripts
-from ._cli_update_state import append_completion_event, aggregate_state_from_events
+from ._cli_update_state import append_event, append_completion_event, aggregate_state_from_events
+from ._cli_failure_tracker import append_failure
+from ._cli_manifest_builder import build_manifest
+from ._cli_dashboard_generator import generate_dashboard
+from ._cli_sentinel_scripts import generate_sentinel_script
 from ._cli_constants import MAX_TRACEBACK_LINES
+
+logger = logging.getLogger(__name__)
 
 
 def _truncate_error_message(error_msg: str, max_lines: int = MAX_TRACEBACK_LINES) -> str:
@@ -150,6 +159,21 @@ class LocalParallelStrategy(ExecutionStrategy):
 
         end_time = datetime.now()
 
+        # Generate progress manifest and dashboard (local mode — runs once)
+        try:
+            progress_dir = output_dir / "progress"
+            datasets_totals = {ds.name: len(ds.images) for ds in datasets}
+            build_manifest(
+                output_dir=output_dir,
+                progress_dir=progress_dir,
+                datasets=datasets_totals,
+                execution_mode="local",
+                start_time=start_time.isoformat(timespec="milliseconds"),
+            )
+            generate_dashboard(progress_dir)
+        except Exception:
+            logger.debug("Failed to generate progress dashboard", exc_info=True)
+
         return ExecutionResults(
             datasets=dataset_results,
             total_images=len(all_tasks),
@@ -173,6 +197,9 @@ class LocalParallelStrategy(ExecutionStrategy):
         Returns:
             Tuple of (dataset_name, image_name, success, error_message)
         """
+        # Log "started" event
+        append_event(event_log, dataset.name, image_path.name, "started")
+
         try:
             # Prepare read kwargs
             read_kwargs = {}
@@ -214,6 +241,21 @@ class LocalParallelStrategy(ExecutionStrategy):
             append_completion_event(
                 event_log, dataset.name, image_path.name, "failed", truncated_msg
             )
+
+            # Write structured failure record
+            try:
+                progress_dir = output_dir / "progress"
+                append_failure(
+                    progress_dir,
+                    dataset=dataset.name,
+                    image=image_path.name,
+                    error_type=type(e).__name__,
+                    error_message=error_msg,
+                    traceback=tb,
+                )
+            except Exception:
+                pass  # Don't fail if failure tracking fails
+
             return (dataset.name, image_path.name, False, tb)
 
     def _aggregate_results(
@@ -412,6 +454,89 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             f"(drip-feed dispatcher)[/green]\n"
         )
 
+        # ── Progress dashboard setup ──────────────────────────────────
+        progress_dir = output_dir / "progress"
+        progress_dir.mkdir(parents=True, exist_ok=True)
+
+        # Build image-task mapping: {job_id}_{array_idx} -> [dataset, image]
+        # NOTE: Only chunk 0's job ID is known at submission time. Subsequent
+        # chunk IDs are assigned by the drip-feed dispatcher after each chunk
+        # completes, so OOM detection via sacct is limited to chunk 0 images
+        # until the sentinel discovers later job IDs.
+        image_task_mapping: Dict[str, List[str]] = {}
+        chunk_job_ids: Dict[str, str] = {"0": str(job_ids[0])}
+        array_offset = 0
+        for dataset in datasets:
+            for i, img_path in enumerate(dataset.images):
+                task_key = f"{job_ids[0]}_{array_offset + i}"
+                image_task_mapping[task_key] = [dataset.name, img_path.name]
+            array_offset += len(dataset.images)
+
+        # Write job_metadata.json
+        job_metadata: Dict[str, Any] = {
+            "start_time": start_time.isoformat(timespec="milliseconds"),
+            "execution_mode": "slurm",
+            "datasets": {
+                ds.name: {
+                    "total": len(ds.images),
+                    "images": [img.name for img in ds.images],
+                }
+                for ds in datasets
+            },
+            "chunk_scripts": [str(s) for s in flat_scripts],
+            "chunk_job_ids": chunk_job_ids,
+            "image_task_mapping": image_task_mapping,
+        }
+        metadata_path = progress_dir / "job_metadata.json"
+        metadata_path.write_text(
+            json.dumps(job_metadata, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        console.print(f"[green]✓[/green] Job metadata: [dim]{metadata_path}[/dim]")
+
+        # Generate sentinel script and submit
+        sentinel_script = generate_sentinel_script(
+            output_dir=output_dir,
+            progress_dir=progress_dir,
+            slurm_args=self.config.slurm_args,
+        )
+        console.print(f"[green]✓[/green] Sentinel script: [dim]{sentinel_script}[/dim]")
+
+        try:
+            result = subprocess.run(
+                [
+                    "sbatch",
+                    "--parsable",
+                    f"--dependency=after:{job_ids[0]}",
+                    str(sentinel_script),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode == 0:
+                sentinel_job_id = result.stdout.strip()
+                console.print(
+                    f"  Sentinel: [green]Job {sentinel_job_id}[/green] "
+                    f"(starts after chunk 0)"
+                )
+            else:
+                console.print(
+                    f"  [yellow]Warning: Could not submit sentinel: "
+                    f"{result.stderr.strip()}[/yellow]"
+                )
+        except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+            console.print(
+                f"  [yellow]Warning: Could not submit sentinel: {exc}[/yellow]"
+            )
+
+        # Generate dashboard HTML
+        generate_dashboard(progress_dir)
+        console.print(
+            f"[green]✓[/green] Progress dashboard: "
+            f"[bold]{progress_dir / 'dashboard.html'}[/bold]\n"
+        )
+
         # Wait if requested
         if self.config.wait:
             click.echo(
@@ -420,6 +545,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             final_results = self._monitor_progress(output_dir, datasets)
         else:
             click.echo("\nJobs submitted. Monitor progress with:")
+            click.echo(f"  Open: {progress_dir / 'dashboard.html'}")
             click.echo("  squeue -u $USER --array")
             click.echo(f"  tail -f {output_dir}/processing_events.log")
             final_results = None

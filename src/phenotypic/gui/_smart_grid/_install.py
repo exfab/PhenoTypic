@@ -25,60 +25,84 @@ def install_smart_grid(viewer: napari.Viewer) -> None:
     _orig_actual_shape = _cls.actual_shape
     _orig_position = _cls.position
 
-    def _visible_indices():
+    # --- Cached visibility map (rebuilt once per scenegraph update) ---
+    _vis_map: dict[int, int] = {}  # {layer_index: visible_position}
+
+    def _rebuild_vis_map():
+        nonlocal _vis_map
         v = viewer_ref()
         if v is None:
-            return []
-        return [i for i, layer in enumerate(v.layers) if layer.visible]
+            _vis_map = {}
+            return
+        _vis_map = {
+            i: pos for pos, (i, _layer) in enumerate(
+                (i, layer) for i, layer in enumerate(v.layers) if layer.visible
+            )
+        }
 
     def patched_actual_shape(nlayers=1):
         if not grid.enabled:
             return (1, 1)
-        n_visible = len(_visible_indices())
-        if n_visible == 0:
+        _rebuild_vis_map()
+        if not _vis_map:
             return (1, 1)
-        return _orig_actual_shape(grid, n_visible)
+        return _orig_actual_shape(grid, len(_vis_map))
 
     def patched_position(index, nlayers):
         if not grid.enabled:
             return (0, 0)
-        vis = _visible_indices()
-        if index not in vis:
+        vis_pos = _vis_map.get(index)
+        if vis_pos is None:
             return (-1, -1)
-        vis_idx = vis.index(index)
-        return _orig_position(grid, vis_idx, len(vis))
+        return _orig_position(grid, vis_pos, len(_vis_map))
 
     # Shadow class methods on instance
     grid.__dict__["actual_shape"] = patched_actual_shape
     grid.__dict__["position"] = patched_position
 
-    # Connect visibility events to trigger grid rebuild
-    try:
-        canvas = viewer.window._qt_viewer.canvas
-    except AttributeError:
-        logger.warning("Cannot access napari canvas; smart grid features limited")
-        canvas = None
+    # --- Deferred canvas access and scenegraph wrapping ---
+    _canvas = None
+    _scenegraph_wrapped = False
 
-    # Wrap _update_scenegraph to add grid labels after each rebuild
-    if canvas is not None:
+    def _get_canvas():
+        nonlocal _canvas
+        if _canvas is None:
+            try:
+                _canvas = viewer_ref().window._qt_viewer.canvas
+            except (AttributeError, TypeError):
+                pass
+        return _canvas
+
+    def _ensure_scenegraph_wrapped():
+        nonlocal _scenegraph_wrapped
+        if _scenegraph_wrapped:
+            return
+        c = _get_canvas()
+        if c is None:
+            return
+        _scenegraph_wrapped = True
+
         from phenotypic.gui._smart_grid._grid_labels import add_grid_labels
 
-        _orig_update_scenegraph = canvas._update_scenegraph
+        _orig_update_scenegraph = c._update_scenegraph
 
         def _smart_update_scenegraph(event=None):
             _orig_update_scenegraph(event)
             v = viewer_ref()
             if v is not None:
                 try:
-                    add_grid_labels(canvas, v)
+                    add_grid_labels(c, v)
                 except Exception:
                     logger.debug("Grid label update failed", exc_info=True)
 
-        canvas._update_scenegraph = _smart_update_scenegraph
+        c._update_scenegraph = _smart_update_scenegraph
 
+    # Connect visibility events to trigger grid rebuild
     def _on_visibility_change(event=None):
-        if grid.enabled and canvas is not None:
-            canvas._update_scenegraph()
+        _ensure_scenegraph_wrapped()
+        c = _get_canvas()
+        if grid.enabled and c is not None:
+            c._update_scenegraph()
 
     def _connect_layer(layer):
         layer.events.visible.connect(_on_visibility_change)

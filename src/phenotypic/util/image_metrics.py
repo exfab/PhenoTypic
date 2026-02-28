@@ -31,9 +31,9 @@ from skimage.filters import frangi, hessian, meijering
 
 # Global thresholds for metric interpretation
 THRESHOLDS = {
-    "snr": {"critical": 3.0, "marginal": 7.0},
-    "rms_contrast": {"critical": 0.02, "marginal": 0.05},
-    "coherence": {"critical": 0.15, "marginal": 0.30},
+    "snr"          : {"critical": 3.0, "marginal": 7.0},
+    "rms_contrast" : {"critical": 0.02, "marginal": 0.05},
+    "coherence"    : {"critical": 0.15, "marginal": 0.30},
     "nonuniformity": {"critical": 0.50, "marginal": 0.20},
 }
 
@@ -154,12 +154,13 @@ class ImageMetricsCalculator:
         ch, cw = autocorr.shape[0] // 2, autocorr.shape[1] // 2
         crop_size = min(50, h // 4, w // 4)
         autocorr_cropped = autocorr[
-            ch - crop_size : ch + crop_size, cw - crop_size : cw + crop_size
+            ch - crop_size: ch + crop_size, cw - crop_size: cw + crop_size
         ]
 
         return autocorr_cropped
 
-    def compute_psd(self, img: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
+    def compute_psd(self, img: np.ndarray | None = None) -> tuple[
+        np.ndarray, np.ndarray]:
         """Compute radially averaged power spectral density.
 
         Args:
@@ -194,7 +195,7 @@ class ImageMetricsCalculator:
         return freqs, radial_psd
 
     def compute_local_contrast(
-        self, img: np.ndarray | None = None, window_size: int = 15
+            self, img: np.ndarray | None = None, window_size: int = 15
     ) -> np.ndarray:
         """Compute local Weber contrast map.
 
@@ -219,7 +220,7 @@ class ImageMetricsCalculator:
         return contrast
 
     def compute_local_variance(
-        self, img: np.ndarray | None = None, window_size: int = 15
+            self, img: np.ndarray | None = None, window_size: int = 15
     ) -> np.ndarray:
         """Compute local variance map.
 
@@ -237,10 +238,10 @@ class ImageMetricsCalculator:
 
         # Local mean and mean of squares
         local_mean = uniform_filter(img_float, size=window_size)
-        local_mean_sq = uniform_filter(img_float**2, size=window_size)
+        local_mean_sq = uniform_filter(img_float ** 2, size=window_size)
 
         # Variance = E[X^2] - E[X]^2
-        variance = np.maximum(local_mean_sq - local_mean**2, 0)
+        variance = np.maximum(local_mean_sq - local_mean ** 2, 0)
 
         return variance
 
@@ -291,9 +292,9 @@ class ImageMetricsCalculator:
             correlation_length = 1.0
 
         return NoiseMetrics(
-            snr=float(snr),
-            sigma_mad=float(sigma_mad),
-            correlation_length=float(correlation_length),
+                snr=float(snr),
+                sigma_mad=float(sigma_mad),
+                correlation_length=float(correlation_length),
         )
 
     def compute_contrast_metrics(self) -> ContrastMetrics:
@@ -320,18 +321,18 @@ class ImageMetricsCalculator:
         dynamic_range = (max_val - min_val) / self._max_intensity
 
         return ContrastMetrics(
-            rms_contrast=float(rms_contrast),
-            michelson=float(michelson),
-            dynamic_range=float(dynamic_range),
-            p1=float(p1),
-            p99=float(p99),
+                rms_contrast=float(rms_contrast),
+                michelson=float(michelson),
+                dynamic_range=float(dynamic_range),
+                p1=float(p1),
+                p99=float(p99),
         )
 
     def compute_structure_metrics(
-        self,
-        sigma: float = 1.5,
-        scales: list[float] | None = None,
-        ridge_method: Literal["meijering", "frangi", "hessian"] = "meijering",
+            self,
+            sigma: float = 1.5,
+            scales: list[float] | None = None,
+            ridge_method: Literal["meijering", "frangi", "hessian"] = "meijering",
     ) -> StructureMetrics:
         """Compute structure tensor and ridge detection metrics.
 
@@ -381,13 +382,13 @@ class ImageMetricsCalculator:
             peak_response = 0.0
 
         return StructureMetrics(
-            mean_coherence=mean_coherence,
-            optimal_scale=float(optimal_scale),
-            peak_response=float(peak_response),
-            ridge_responses=ridge_responses,
-            scales=scales,
-            ridge_method=ridge_method,
-            coherence_map=coherence,
+                mean_coherence=mean_coherence,
+                optimal_scale=float(optimal_scale),
+                peak_response=float(peak_response),
+                ridge_responses=ridge_responses,
+                scales=scales,
+                ridge_method=ridge_method,
+                coherence_map=coherence,
         )
 
     def compute_background_metrics(self, sigma: float = 50.0) -> BackgroundMetrics:
@@ -413,21 +414,21 @@ class ImageMetricsCalculator:
         # Mean gradient magnitude of background
         grad_x = np.gradient(background, axis=1)
         grad_y = np.gradient(background, axis=0)
-        grad_mag = np.sqrt(grad_x**2 + grad_y**2)
+        grad_mag = np.sqrt(grad_x ** 2 + grad_y ** 2)
         mean_gradient = float(np.mean(grad_mag))
 
         return BackgroundMetrics(
-            nonuniformity_ratio=float(nonuniformity_ratio),
-            mean_gradient=mean_gradient,
-            background_estimate=background,
+                nonuniformity_ratio=float(nonuniformity_ratio),
+                mean_gradient=mean_gradient,
+                background_estimate=background,
         )
 
     def compute_quality_scores(
-        self,
-        noise: NoiseMetrics,
-        contrast: ContrastMetrics,
-        structure: StructureMetrics,
-        background: BackgroundMetrics,
+            self,
+            noise: NoiseMetrics,
+            contrast: ContrastMetrics,
+            structure: StructureMetrics,
+            background: BackgroundMetrics,
     ) -> QualityScores:
         """Compute normalized 0-1 quality scores for radar chart.
 
@@ -457,11 +458,11 @@ class ImageMetricsCalculator:
         sharpness_score = min(structure["peak_response"] * 5, 1.0)
 
         return QualityScores(
-            SNR=snr_score,
-            Contrast=contrast_score,
-            Coherence=coherence_score,
-            Uniformity=uniformity_score,
-            Sharpness=sharpness_score,
+                SNR=snr_score,
+                Contrast=contrast_score,
+                Coherence=coherence_score,
+                Uniformity=uniformity_score,
+                Sharpness=sharpness_score,
         )
 
     # =========================================================================
@@ -470,8 +471,8 @@ class ImageMetricsCalculator:
 
     @staticmethod
     def generate_interpretation(
-        section: Literal["noise", "contrast", "structure", "background"],
-        metrics: dict[str, Any],
+            section: Literal["noise", "contrast", "structure", "background"],
+            metrics: dict[str, Any],
     ) -> str:
         """Generate human-readable interpretation text.
 
@@ -529,7 +530,7 @@ class ImageMetricsCalculator:
             nonunif = metrics["nonuniformity_ratio"]
             if nonunif > THRESHOLDS["nonuniformity"]["critical"]:
                 quality = "severe"
-                action = "Background correction critical (RollingBallRemoveBG, FlatFieldCorrection)."
+                action = "Background correction critical (SubtractRollingBall, FlatFieldCorrection)."
             elif nonunif > THRESHOLDS["nonuniformity"]["marginal"]:
                 quality = "moderate"
                 action = "Background correction recommended."
@@ -542,10 +543,10 @@ class ImageMetricsCalculator:
 
     @staticmethod
     def generate_recommendations(
-        noise: NoiseMetrics,
-        contrast: ContrastMetrics,
-        structure: StructureMetrics,
-        background: BackgroundMetrics,
+            noise: NoiseMetrics,
+            contrast: ContrastMetrics,
+            structure: StructureMetrics,
+            background: BackgroundMetrics,
     ) -> list[str]:
         """Generate actionable preprocessing recommendations.
 
@@ -565,15 +566,15 @@ class ImageMetricsCalculator:
         corr_len = noise["correlation_length"]
         if snr < THRESHOLDS["snr"]["critical"]:
             recommendations.append(
-                "Apply strong denoising: BilateralDenoise(sigma_spatial=3, sigma_intensity=0.1)"
+                    "Apply strong denoising: BilateralDenoise(sigma_spatial=3, sigma_intensity=0.1)"
             )
         elif snr < THRESHOLDS["snr"]["marginal"]:
             recommendations.append("Apply light denoising: GaussianBlur(sigma=0.5-1.0)")
 
         if corr_len > 5:
             recommendations.append(
-                f"Structured noise detected (xi={corr_len:.1f}px). "
-                "Consider MedianFilter or morphological opening."
+                    f"Structured noise detected (xi={corr_len:.1f}px). "
+                    "Consider MedianFilter or morphological opening."
             )
 
         # Contrast recommendations
@@ -581,31 +582,32 @@ class ImageMetricsCalculator:
         dynamic = contrast["dynamic_range"]
         if rms < THRESHOLDS["rms_contrast"]["critical"]:
             recommendations.append(
-                "Apply contrast enhancement: CLAHE(clip_limit=3.0) or HistogramEqualization"
+                    "Apply contrast enhancement: CLAHE(clip_limit=3.0) or HistogramEqualization"
             )
         elif rms < THRESHOLDS["rms_contrast"]["marginal"]:
-            recommendations.append("Consider CLAHE(clip_limit=2.0) for improved contrast")
+            recommendations.append(
+                "Consider CLAHE(clip_limit=2.0) for improved contrast")
 
         if dynamic < 0.3:
             recommendations.append(
-                "Low dynamic range detected. Consider ContrastStretching or exposure adjustment."
+                    "Low dynamic range detected. Consider ContrastStretching or exposure adjustment."
             )
 
         # Structure recommendations
         opt_scale = structure["optimal_scale"]
         recommendations.append(
-            f"Use sigma_range=[{opt_scale*0.7:.1f}, {opt_scale*1.5:.1f}] for multiscale structure detection"
+                f"Use sigma_range=[{opt_scale * 0.7:.1f}, {opt_scale * 1.5:.1f}] for multiscale structure detection"
         )
 
         # Background recommendations
         nonunif = background["nonuniformity_ratio"]
         if nonunif > THRESHOLDS["nonuniformity"]["critical"]:
             recommendations.append(
-                "Apply background correction: RollingBallRemoveBG(radius=50) or FlatFieldCorrection"
+                    "Apply background correction: SubtractRollingBall(radius=50) or FlatFieldCorrection"
             )
         elif nonunif > THRESHOLDS["nonuniformity"]["marginal"]:
             recommendations.append(
-                "Consider GaussianSubtract(sigma=50) for background uniformity"
+                    "Consider SubtractGaussian(sigma=50) for background uniformity"
             )
 
         return recommendations
@@ -615,12 +617,12 @@ class ImageMetricsCalculator:
     # =========================================================================
 
     def compute_all(
-        self,
-        structure_sigma: float = 1.5,
-        ridge_scales: list[float] | None = None,
-        ridge_method: Literal["meijering", "frangi", "hessian"] = "meijering",
-        background_sigma: float = 50.0,
-        include_non_serializable: bool = False,
+            self,
+            structure_sigma: float = 1.5,
+            ridge_scales: list[float] | None = None,
+            ridge_method: Literal["meijering", "frangi", "hessian"] = "meijering",
+            background_sigma: float = 50.0,
+            include_non_serializable: bool = False,
     ) -> dict[str, Any]:
         """Compute all metrics and return comprehensive dict.
 
@@ -639,26 +641,27 @@ class ImageMetricsCalculator:
         noise = self.compute_noise_metrics()
         contrast = self.compute_contrast_metrics()
         structure = self.compute_structure_metrics(
-            sigma=structure_sigma,
-            scales=ridge_scales,
-            ridge_method=ridge_method,
+                sigma=structure_sigma,
+                scales=ridge_scales,
+                ridge_method=ridge_method,
         )
         background = self.compute_background_metrics(sigma=background_sigma)
 
         # Compute quality scores
-        quality_scores = self.compute_quality_scores(noise, contrast, structure, background)
+        quality_scores = self.compute_quality_scores(noise, contrast, structure,
+                                                     background)
 
         # Generate interpretations
         interpretations = {
-            "noise": self.generate_interpretation("noise", noise),
-            "contrast": self.generate_interpretation("contrast", contrast),
-            "structure": self.generate_interpretation("structure", structure),
+            "noise"     : self.generate_interpretation("noise", noise),
+            "contrast"  : self.generate_interpretation("contrast", contrast),
+            "structure" : self.generate_interpretation("structure", structure),
             "background": self.generate_interpretation("background", background),
         }
 
         # Generate recommendations
         recommendations = self.generate_recommendations(
-            noise, contrast, structure, background
+                noise, contrast, structure, background
         )
 
         # Clean non-serializable items if requested
@@ -672,12 +675,12 @@ class ImageMetricsCalculator:
             }
 
         return {
-            "bit_depth": self.bit_depth,
-            "noise": dict(noise),
-            "contrast": dict(contrast),
-            "structure": structure_out,
-            "background": background_out,
-            "quality_scores": dict(quality_scores),
+            "bit_depth"      : self.bit_depth,
+            "noise"          : dict(noise),
+            "contrast"       : dict(contrast),
+            "structure"      : structure_out,
+            "background"     : background_out,
+            "quality_scores" : dict(quality_scores),
             "interpretations": interpretations,
             "recommendations": recommendations,
         }

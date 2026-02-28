@@ -65,7 +65,7 @@ class BilateralDenoise(ImageEnhancer):
       or merge nearby colonies into connected regions, breaking segmentation.
     - Not a substitute for proper illumination correction: Bilateral denoising smooths
       background variations but does not remove large-scale illumination gradients
-      (vignetting, shadows). Use RollingBallRemoveBG or GaussianSubtract for that.
+      (vignetting, shadows). Use SubtractRollingBall or SubtractGaussian for that.
 
     Attributes:
         sigma_color (float | None): Standard deviation of intensity/color difference for

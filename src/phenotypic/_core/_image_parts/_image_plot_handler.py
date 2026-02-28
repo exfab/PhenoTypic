@@ -27,7 +27,8 @@ class ImagePlotHandler(ImageObjectsHandler):
         return self._accessors.plot
 
     def napari(
-            self, name: str | None = None, reset: bool = False
+            self, name: str | None = None, reset: bool = False,
+            *, viewer: napari.Viewer | None = None,
     ) -> napari.Viewer:
         """Add all available image layers to a persistent global napari viewer.
 
@@ -36,6 +37,9 @@ class ImagePlotHandler(ImageObjectsHandler):
                 ``{accessor}_{name}``. Defaults to the image's name attribute.
             reset: If True, closes the current viewer and creates a fresh one
                 before adding layers. Defaults to False.
+            viewer: Optional external napari viewer instance to use instead of the
+                global viewer. When provided, global viewer management is bypassed
+                and all layers are added to this viewer. Defaults to None.
 
         Returns:
             The global napari viewer instance with all layers added.
@@ -63,11 +67,11 @@ class ImagePlotHandler(ImageObjectsHandler):
 
         first = True
         if not self.rgb.isempty():
-            viewer = self.rgb.napari(name, reset=reset if first else False)
+            result = self.rgb.napari(name, reset=reset if first else False, viewer=viewer)
             first = False
-        viewer = self.gray.napari(name, reset=reset if first else False)
+        result = self.gray.napari(name, reset=reset if first else False, viewer=viewer)
         first = False
-        viewer = self.detect_mat.napari(name)
+        result = self.detect_mat.napari(name, viewer=viewer)
         if self.num_objects > 0:
-            viewer = self.objmap.napari(name)
-        return viewer
+            result = self.objmap.napari(name, viewer=viewer)
+        return result

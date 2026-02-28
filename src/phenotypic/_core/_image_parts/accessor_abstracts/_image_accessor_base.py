@@ -1186,7 +1186,14 @@ class ImageAccessorBase(ABC):
     def nbytes(self) -> int:
         return self._subject_arr.nbytes
 
-    def napari(self, name: str | None = None, reset: bool = False) -> napari.Viewer:
+    def napari(
+        self,
+        name: str | None = None,
+        reset: bool = False,
+        *,
+        viewer: napari.Viewer | None = None,
+        layer_name: str | None = None,
+    ) -> napari.Viewer:
         """Add image to a persistent global napari viewer for Jupyter workflows.
 
         Creates or reuses a single napari viewer instance that persists across
@@ -1205,6 +1212,12 @@ class ImageAccessorBase(ABC):
             reset: If True, closes the current napari viewer and creates a fresh
                 one. This is useful for starting a new visualization session
                 without lingering layers from previous calls. Defaults to False.
+            viewer: Optional external napari viewer instance to use instead of the
+                global viewer. When provided, global viewer management (creation,
+                reset, smart-grid installation) is bypassed entirely. Defaults to
+                None.
+            layer_name: Optional full layer name to use instead of the auto-generated
+                ``{accessor}_{image_name}`` pattern. Defaults to None.
 
         Returns:
             napari.Viewer: The global napari viewer instance with the current
@@ -1250,25 +1263,34 @@ class ImageAccessorBase(ABC):
             )
         import napari as _napari
 
-        global _global_napari_viewer
+        # Determine active viewer
+        if viewer is not None:
+            active_viewer = viewer
+        else:
+            global _global_napari_viewer
 
-        # Reset viewer if requested
-        if reset and _viewer_is_alive(_global_napari_viewer):
-            _global_napari_viewer.close()
-            _global_napari_viewer = None
+            # Reset viewer if requested
+            if reset and _viewer_is_alive(_global_napari_viewer):
+                _global_napari_viewer.close()
+                _global_napari_viewer = None
 
-        # Create new viewer if needed
-        if not _viewer_is_alive(_global_napari_viewer):
-            _global_napari_viewer = _napari.Viewer()
-            from phenotypic.gui._smart_grid import install_smart_grid
-            install_smart_grid(_global_napari_viewer)
+            # Create new viewer if needed
+            if not _viewer_is_alive(_global_napari_viewer):
+                _global_napari_viewer = _napari.Viewer()
+                from phenotypic.gui._smart_grid import install_smart_grid
+                install_smart_grid(_global_napari_viewer)
+
+            active_viewer = _global_napari_viewer
 
         # Generate descriptive layer name
-        if name is not None:
+        if layer_name is not None:
+            resolved_layer_name = layer_name
+        elif name is not None:
             image_name = name
+            resolved_layer_name = f"{self._accessor_property_name}_{image_name}"
         else:
             image_name = getattr(self._root_image, "name", "image")
-        layer_name = f"{self._accessor_property_name}_{image_name}"
+            resolved_layer_name = f"{self._accessor_property_name}_{image_name}"
 
         # Replace layer if it exists, otherwise add new layer
 
@@ -1276,15 +1298,15 @@ class ImageAccessorBase(ABC):
         if imdata.ndim == 3:
             imdata = normalize_rgb_bitdepth(imdata)
         try:
-            existing_layer = _global_napari_viewer.layers[layer_name]
+            existing_layer = active_viewer.layers[resolved_layer_name]
             existing_layer.data = imdata
         except KeyError:
-            _global_napari_viewer.add_image(
-                imdata, name=layer_name,
+            active_viewer.add_image(
+                imdata, name=resolved_layer_name,
                 contrast_limits=(0, int(np.iinfo(imdata.dtype).max))
                     if np.issubdtype(imdata.dtype, np.integer)
                     else (float(imdata.min()), float(imdata.max())),
                 gamma=1.0,
             )
 
-        return _global_napari_viewer
+        return active_viewer

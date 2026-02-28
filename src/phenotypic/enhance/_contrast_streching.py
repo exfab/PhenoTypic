@@ -39,7 +39,7 @@ class ContrastStretching(ImageEnhancer):
     - If outliers are biological signals (very bright colonies), heavy clipping can
       reduce their apparent intensity and bias measurements.
     - Contrast stretching is global; it will not fix spatially varying illumination
-      on its own (consider `GaussianSubtract` or `RollingBallRemoveBG`).
+      on its own (consider `SubtractGaussian` or `SubtractRollingBall`).
 
     Parameters:
         lower_percentile (int): Lower percentile used to define the input range
@@ -63,11 +63,11 @@ class ContrastStretching(ImageEnhancer):
 
     def _operate(self, image: Image) -> Image:
         p_lower, p_upper = np.percentile(
-            image.detect_mat[:], (self.lower_percentile, self.upper_percentile)
+                image.detect_mat[:], (self.lower_percentile, self.upper_percentile)
         )
         image.detect_mat[:] = rescale_intensity(
-            image=image.detect_mat[:],
-            in_range=(p_lower, p_upper),
-            out_range=(0, 1),
+                image=image.detect_mat[:],
+                in_range=(p_lower, p_upper),
+                out_range=(0, 1),
         )
         return image

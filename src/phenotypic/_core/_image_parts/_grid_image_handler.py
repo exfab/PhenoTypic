@@ -268,7 +268,8 @@ class ImageGridHandler(Image):
         return subimage
 
     def napari(
-            self, name: str | None = None, reset: bool = False
+            self, name: str | None = None, reset: bool = False,
+            *, viewer: napari.Viewer | None = None,
     ) -> napari.Viewer:
         """Add all image layers and grid overlay to a persistent napari viewer.
 
@@ -279,6 +280,9 @@ class ImageGridHandler(Image):
         Args:
             name: Optional custom name for layers. Defaults to image name.
             reset: If True, close and recreate the viewer. Defaults to False.
+            viewer: Optional external napari viewer instance to use instead of
+                the global viewer. When provided, global viewer management is
+                bypassed. Defaults to None.
 
         Returns:
             The global napari viewer with image and grid layers.
@@ -291,10 +295,10 @@ class ImageGridHandler(Image):
             >>> gi = load_synth_yeast_plate()
             >>> viewer = gi.napari()  # doctest: +SKIP
         """
-        viewer = super().napari(name=name, reset=reset)
+        result = super().napari(name=name, reset=reset, viewer=viewer)
         if self.num_objects > 0:
-            viewer = self.grid.napari(name=name)
-        return viewer
+            result = self.grid.napari(name=name, viewer=viewer)
+        return result
 
     def _draw_gridlines_on_overlay(
             self,

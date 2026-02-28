@@ -27,14 +27,20 @@ class DatasetState:
     """Processing state for a single dataset."""
     completed: Set[str] = field(default_factory=set)  # Completed image filenames
     failed: Set[str] = field(default_factory=set)  # Failed image filenames
+    started: Set[str] = field(default_factory=set)  # Started image filenames
     errors: Dict[str, str] = field(default_factory=dict)  # filename -> error message
     initial_images: Set[str] = field(default_factory=set)  # Initial image set for resume validation
-    
+
+    @property
+    def in_progress(self) -> Set[str]:
+        """Images that have started but not yet completed or failed."""
+        return self.started - self.completed - self.failed
+
     @property
     def total_processed(self) -> int:
         """Total number of images processed (completed + failed)."""
         return len(self.completed) + len(self.failed)
-    
+
     @property
     def success_rate(self) -> float:
         """Success rate as a fraction (0.0 to 1.0)."""

@@ -1294,6 +1294,7 @@ class GridAccessor:
         name: str | None = None,
         reset: bool = False,
         *,
+        viewer: napari.Viewer | None = None,
         show_gridlines: bool = True,
         show_section_boxes: bool = True,
         gridline_color: str = "cyan",
@@ -1312,6 +1313,9 @@ class GridAccessor:
                 image's ``name`` attribute. Defaults to None.
             reset: If True, closes the current napari viewer and creates a
                 fresh one. Defaults to False.
+            viewer: Optional external napari viewer instance to use instead of
+                the global viewer. When provided, global viewer management is
+                bypassed. Defaults to None.
             show_gridlines: If True, add a Shapes layer with lines at every
                 grid boundary. Defaults to True.
             show_section_boxes: If True, add a Shapes layer with colored
@@ -1362,18 +1366,22 @@ class GridAccessor:
             )
         import napari as _napari
 
-        viewer = _image_accessor_base._global_napari_viewer
+        # Determine active viewer
+        if viewer is not None:
+            active_viewer = viewer
+        else:
+            active_viewer = _image_accessor_base._global_napari_viewer
 
-        # Reset viewer if requested
-        if reset and _viewer_is_alive(viewer):
-            viewer.close()
-            _image_accessor_base._global_napari_viewer = None
-            viewer = None
+            # Reset viewer if requested
+            if reset and _viewer_is_alive(active_viewer):
+                active_viewer.close()
+                _image_accessor_base._global_napari_viewer = None
+                active_viewer = None
 
-        # Create new viewer if needed
-        if not _viewer_is_alive(viewer):
-            viewer = _napari.Viewer()
-            _image_accessor_base._global_napari_viewer = viewer
+            # Create new viewer if needed
+            if not _viewer_is_alive(active_viewer):
+                active_viewer = _napari.Viewer()
+                _image_accessor_base._global_napari_viewer = active_viewer
 
         # Resolve layer name prefix
         if name is not None:
@@ -1386,13 +1394,13 @@ class GridAccessor:
             gridline_layer_name = f"grid_{image_name}_gridlines"
             gridline_shapes = self._build_gridline_shapes()
             try:
-                layer = viewer.layers[gridline_layer_name]
+                layer = active_viewer.layers[gridline_layer_name]
                 layer.data = gridline_shapes
                 layer.edge_color = gridline_color
                 layer.edge_width = gridline_edge_width
                 layer.opacity = opacity
             except KeyError:
-                viewer.add_shapes(
+                active_viewer.add_shapes(
                     gridline_shapes,
                     shape_type="line",
                     edge_color=gridline_color,
@@ -1406,13 +1414,13 @@ class GridAccessor:
             section_layer_name = f"grid_{image_name}_sections"
             section_rectangles, section_colors = self._build_section_box_shapes()
             try:
-                layer = viewer.layers[section_layer_name]
+                layer = active_viewer.layers[section_layer_name]
                 layer.data = section_rectangles
                 layer.edge_color = section_colors
                 layer.edge_width = section_box_edge_width
                 layer.opacity = opacity
             except KeyError:
-                viewer.add_shapes(
+                active_viewer.add_shapes(
                     section_rectangles,
                     shape_type="rectangle",
                     edge_color=section_colors,
@@ -1422,4 +1430,4 @@ class GridAccessor:
                     opacity=opacity,
                 )
 
-        return viewer
+        return active_viewer

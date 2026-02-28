@@ -125,6 +125,9 @@ class NapariLabelsMixin:
         colormap: dict | None = None,
         opacity: float = 0.7,
         contour: int = 0,
+        *,
+        viewer: napari.Viewer | None = None,
+        layer_name: str | None = None,
     ) -> napari.Viewer:
         """Add labeled regions to a persistent global napari viewer.
 
@@ -156,6 +159,12 @@ class NapariLabelsMixin:
             contour: Contour thickness in pixels. When > 0, renders only the outline
                 of each labeled region rather than filled regions. Useful for overlaying
                 object boundaries on other layers. Must be >= 0. Defaults to 0 (filled).
+            viewer: Optional external napari viewer instance to use instead of the
+                global viewer. When provided, global viewer management (creation,
+                reset, smart-grid installation) is bypassed entirely. Defaults to
+                None.
+            layer_name: Optional full layer name to use instead of the auto-generated
+                ``{accessor}_{image_name}`` pattern. Defaults to None.
 
         Returns:
             napari.Viewer: The global napari viewer instance with the labeled regions
@@ -241,25 +250,32 @@ class NapariLabelsMixin:
             )
         import napari as _napari
 
-        viewer = _image_accessor_base._global_napari_viewer
+        # Determine active viewer
+        if viewer is not None:
+            active_viewer = viewer
+        else:
+            active_viewer = _image_accessor_base._global_napari_viewer
 
-        # Reset viewer if requested
-        if reset and _viewer_is_alive(viewer):
-            viewer.close()
-            _image_accessor_base._global_napari_viewer = None
-            viewer = None
+            # Reset viewer if requested
+            if reset and _viewer_is_alive(active_viewer):
+                active_viewer.close()
+                _image_accessor_base._global_napari_viewer = None
+                active_viewer = None
 
-        # Create new viewer if needed
-        if not _viewer_is_alive(viewer):
-            viewer = _napari.Viewer()
-            _image_accessor_base._global_napari_viewer = viewer
+            # Create new viewer if needed
+            if not _viewer_is_alive(active_viewer):
+                active_viewer = _napari.Viewer()
+                _image_accessor_base._global_napari_viewer = active_viewer
 
         # Generate descriptive layer name (same pattern as base class)
-        if name is not None:
+        if layer_name is not None:
+            resolved_layer_name = layer_name
+        elif name is not None:
             image_name = name
+            resolved_layer_name = f"{self._accessor_property_name}_{image_name}"
         else:
             image_name = getattr(self._root_image, "name", "image")
-        layer_name = f"{self._accessor_property_name}_{image_name}"
+            resolved_layer_name = f"{self._accessor_property_name}_{image_name}"
 
         # Get label data - no RGB normalization needed for integer labels
         label_data = self._subject_arr
@@ -270,7 +286,7 @@ class NapariLabelsMixin:
 
         # Replace layer if it exists, otherwise add new labels layer
         try:
-            existing_layer = viewer.layers[layer_name]
+            existing_layer = active_viewer.layers[resolved_layer_name]
             # Update existing labels layer data
             existing_layer.data = label_data
             # Update visual properties
@@ -280,13 +296,13 @@ class NapariLabelsMixin:
             existing_layer.contour = contour
         except KeyError:
             # Add new labels layer with specified properties
-            viewer.add_labels(
+            active_viewer.add_labels(
                 label_data,
-                name=layer_name,
+                name=resolved_layer_name,
                 colormap=colormap,
                 opacity=opacity,
             )
             # Set contour property after layer creation
-            viewer.layers[layer_name].contour = contour
+            active_viewer.layers[resolved_layer_name].contour = contour
 
-        return viewer
+        return active_viewer

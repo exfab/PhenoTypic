@@ -20,7 +20,7 @@ from phenotypic.enhance import (
     CLAHE,
     GrayOpening,
     GaussianBlur,
-    GaussianSubtract
+    SubtractGaussian
 )
 
 from phenotypic.detect import OtsuDetector, RoundPeaksDetector, SecondaryOtsuDetector
@@ -181,7 +181,7 @@ class FilamentousFungiDetector(ObjectDetector):
     __center_pipe = ImagePipeline(
             ops=[
                 GaussianBlur(sigma=5),
-                GaussianSubtract(sigma=500),
+                SubtractGaussian(sigma=500),
                 RoundPeaksDetector(thresh_method="triangle"),
                 SecondaryOtsuDetector(ignore_zeros=True),
                 MaskOpener(),

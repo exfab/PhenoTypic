@@ -1,0 +1,76 @@
+"""SLURM batch script generation for the sentinel job.
+
+This module generates the bash script that runs the sentinel Click command
+as a self-resubmitting SLURM job.
+"""
+
+from __future__ import annotations
+
+import logging
+import stat
+from pathlib import Path
+from typing import Any, Dict
+
+from ._cli_utils import get_python_command
+
+logger = logging.getLogger(__name__)
+
+
+def generate_sentinel_script(
+    output_dir: Path,
+    progress_dir: Path,
+    slurm_args: Dict[str, Any],
+    interval: int = 60,
+    max_runtime: int = 1800,
+) -> Path:
+    """Generate a SLURM batch script for the sentinel job.
+
+    Args:
+        output_dir: Base output directory.
+        progress_dir: Directory for progress files.
+        slurm_args: SLURM arguments dict (may contain ``slurm_partition``,
+            ``slurm_account``, etc.).
+        interval: Seconds between manifest rebuilds.
+        max_runtime: Max sentinel runtime in seconds.
+
+    Returns:
+        Path to the generated sentinel script.
+    """
+    partition = slurm_args.get("slurm_partition", "batch")
+    account = slurm_args.get("slurm_account")
+
+    script_dir = output_dir / "slurm_scripts"
+    script_dir.mkdir(parents=True, exist_ok=True)
+    script_path = script_dir / "sentinel.sh"
+
+    # Use the same Python command as array job scripts (sys.executable on SLURM)
+    python_cmd, _ = get_python_command(for_slurm=True)
+    python_str = " ".join(python_cmd)
+
+    account_line = ""
+    if account:
+        account_line = f"#SBATCH --account={account}\n"
+
+    script_content = f"""\
+#!/bin/bash
+#SBATCH --job-name=pheno-sentinel
+#SBATCH --partition={partition}
+#SBATCH --time=00:35:00
+#SBATCH --mem=512M
+#SBATCH --cpus-per-task=1
+#SBATCH --output={progress_dir}/sentinel_%j.log
+{account_line}
+{python_str} -m phenotypic._cli._cli_sentinel \\
+    --output-dir {output_dir} \\
+    --progress-dir {progress_dir} \\
+    --interval {interval} \\
+    --max-runtime {max_runtime} \\
+    --sentinel-script {script_path} \\
+    --slurm-partition {partition}
+"""
+
+    script_path.write_text(script_content)
+    script_path.chmod(script_path.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+
+    logger.info("Generated sentinel script: %s", script_path)
+    return script_path

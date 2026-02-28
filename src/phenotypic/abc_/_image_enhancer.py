@@ -200,7 +200,7 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
 
         # Example pipeline: handle uneven illumination + noise
         # Step 1: Remove background gradients
-        result = RollingBallRemoveBG(width=50).apply(image)
+        result = SubtractRollingBall(width=50).apply(image)
 
         # Step 2: Boost local contrast for faint colonies
         result = CLAHE(kernel_size=50, clip_limit=0.02).apply(result)
@@ -227,11 +227,11 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
     .. code-block:: python
 
         from phenotypic import Image, ImagePipeline
-        from phenotypic.enhance import RollingBallRemoveBG, CLAHE, GaussianBlur
+        from phenotypic.enhance import SubtractRollingBall, CLAHE, GaussianBlur
         from phenotypic.detect import OtsuDetector
 
         pipeline = ImagePipeline()
-        pipeline.add(RollingBallRemoveBG(width=50))
+        pipeline.add(SubtractRollingBall(width=50))
         pipeline.add(CLAHE(kernel_size=50, clip_limit=0.02))
         pipeline.add(GaussianBlur(sigma=2))
         pipeline.add(OtsuDetector())

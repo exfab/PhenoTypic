@@ -22,7 +22,7 @@ from ._contrast_streching import ContrastStretching
 from ._frangi_vesselness import FrangiVesselness
 from ._gaussian_blur import GaussianBlur
 from ._hessian_filter import HessianFilter
-from ._gaussian_subtract import GaussianSubtract
+from ._subtract_gaussian import SubtractGaussian
 from ._image_inverter import ImageInverter
 from ._laplace_enhancer import LaplaceEnhancer
 from ._median_filter import MedianFilter
@@ -31,12 +31,12 @@ from ._meijering_ridge_filter import MeijeringRidgeFilter
 from ._non_local_means import NonLocalMeansDenoiser
 from ._opening_subtract_bg import OpeningSubtractBg
 from ._rank_median_enhancer import RankMedianEnhancer
-from ._rolling_ball_remove_bg import RollingBallRemoveBG
+from ._subtract_rolling_ball import SubtractRollingBall
 from ._sato_ridge_filter import SatoRidgeFilter
 from ._sobel_filter import SobelFilter
 from ._unsharp_mask import UnsharpMask
 from ._visushrink_enhancer import VisuShrinkEnhancer
-from ._white_tophat_subtract import WhiteTophatSubtract
+from ._subtract_white_tophat import SubtractWhiteTophat
 from ._white_tophat_enhance import WhiteTophatEnhance
 from ._gray_opening import GrayOpening
 from ._homomorphic_filter import HomomorphicFilter
@@ -54,7 +54,7 @@ __all__ = [
     "ContrastStretching",
     "FrangiVesselness",
     "GaussianBlur",
-    "GaussianSubtract",
+    "SubtractGaussian",
     "GrayOpening",
     "HessianFilter",
     "HomomorphicFilter",
@@ -67,12 +67,12 @@ __all__ = [
     "OpeningSubtractBg",
     "PhaseCongruencyEnhancer",
     "RankMedianEnhancer",
-    "RollingBallRemoveBG",
+    "SubtractRollingBall",
     "SatoRidgeFilter",
     "SobelFilter",
     "UnsharpMask",
     "VisuShrinkEnhancer",
     "WhiteTophatEnhance",
-    "WhiteTophatSubtract",
+    "SubtractWhiteTophat",
     "SetDetectMode",
 ]

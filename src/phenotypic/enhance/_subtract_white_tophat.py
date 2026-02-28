@@ -11,7 +11,7 @@ from skimage.morphology import white_tophat
 from phenotypic.abc_ import ImageEnhancer
 
 
-class WhiteTophatSubtract(ImageEnhancer):
+class SubtractWhiteTophat(ImageEnhancer):
     """
     White top-hat transform to suppress small bright structures.
 

@@ -42,7 +42,7 @@ class VisuShrinkEnhancer(ImageEnhancer):
     - Not suitable for images with spatially varying noise levels (use
       BayesShrinkEnhancer instead for adaptive thresholding).
     - Does not correct illumination gradients; combine with background
-      subtraction (GaussianSubtract, RollingBallRemoveBG) if needed.
+      subtraction (GaussianSubtract, SubtractRollingBall) if needed.
     - Slower than Gaussian blur but faster than BM3D or non-local means.
 
     Attributes:
@@ -84,13 +84,13 @@ class VisuShrinkEnhancer(ImageEnhancer):
 
         >>> from phenotypic import Image, ImagePipeline
         >>> from phenotypic.enhance import (
-        ...     VisuShrinkEnhancer, CLAHE, GaussianSubtract
+        ...     VisuShrinkEnhancer, CLAHE, SubtractGaussian
         ... )
         >>> from phenotypic.detect import OtsuDetector
         >>> image = Image.imread('plate.jpg')  # doctest: +SKIP
         >>> # Build preprocessing pipeline
         >>> pipeline = ImagePipeline()
-        >>> pipeline.add(GaussianSubtract(sigma=50))  # Remove background
+        >>> pipeline.add(SubtractGaussian(sigma=50))  # Remove background
         >>> pipeline.add(VisuShrinkEnhancer(sigma=0.03))  # Denoise
         >>> pipeline.add(CLAHE(clip_limit=0.02))  # Enhance local contrast
         >>> pipeline.add(OtsuDetector())  # Detect colonies

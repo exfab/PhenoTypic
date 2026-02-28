@@ -40,7 +40,7 @@ class OpeningSubtractBg(ImageEnhancer, FootprintMixin):
         - Fast background subtraction for high-throughput plate screening.
         - Remove uneven illumination gradients and agar shading before
           colony detection.
-        - Drop-in performance upgrade over ``RollingBallRemoveBG`` when a
+        - Drop-in performance upgrade over ``SubtractRollingBall`` when a
           flat structuring element (rather than parabolic ball) is acceptable.
         - Pre-processing step in pipelines where speed matters (large batches,
           parameter sweeps).
@@ -88,17 +88,17 @@ class OpeningSubtractBg(ImageEnhancer, FootprintMixin):
     """
 
     def __init__(
-        self,
-        shape: Literal["square", "diamond", "disk"] = "disk",
-        width: int = 51,
+            self,
+            shape: Literal["square", "diamond", "disk"] = "disk",
+            width: int = 51,
     ):
         self.shape = shape
         self.width = width
 
     def _operate(self, image: Image) -> Image:
         image.detect_mat[:] = cv2.morphologyEx(
-            src=image.detect_mat[:],
-            op=cv2.MORPH_TOPHAT,
-            kernel=self._make_footprint(shape=self.shape, width=self.width),
+                src=image.detect_mat[:],
+                op=cv2.MORPH_TOPHAT,
+                kernel=self._make_footprint(shape=self.shape, width=self.width),
         )
         return image

@@ -37,7 +37,7 @@ class GaussianBlur(ImageEnhancer):
     Caveats:
     - Excessive blur merges adjacent colonies and reduces edge sharpness.
     - Do not rely on blur to fix illumination gradients; prefer background
-      subtraction (e.g., `GaussianSubtract` or `RollingBallRemoveBG`).
+      subtraction (e.g., `SubtractGaussian` or `SubtractRollingBall`).
 
     Attributes:
         sigma (int): Standard deviation of the Gaussian kernel (blur strength).

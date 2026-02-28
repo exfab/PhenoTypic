@@ -7,6 +7,7 @@ designed to be called by SLURM batch scripts for autonomous execution.
 
 from __future__ import annotations
 
+import os
 import sys
 import logging
 import click
@@ -20,7 +21,8 @@ matplotlib.use("Agg")  # Non-interactive backend
 
 from phenotypic import Image, GridImage, ImagePipeline
 from ._cli_output_manager import OutputManager
-from ._cli_update_state import append_completion_event
+from ._cli_update_state import append_event, append_completion_event
+from ._cli_failure_tracker import append_failure
 from ._cli_utils import normalize_extension
 
 logger = logging.getLogger(__name__)
@@ -264,6 +266,17 @@ def main(
             overlay_alpha=overlay_alpha,
         )
 
+        # Log "started" event (with SLURM env vars when available)
+        if event_log is not None:
+            append_event(
+                event_log=event_log,
+                dataset=dataset_name,
+                image=image.name,
+                status="started",
+                slurm_job_id=os.environ.get("SLURM_JOB_ID", ""),
+                slurm_array_task_id=os.environ.get("SLURM_ARRAY_TASK_ID", ""),
+            )
+
         # Process image
         click.echo(f"Processing {image.name}...")
         success = process_single_image_core(
@@ -308,6 +321,28 @@ def main(
                 )
             except Exception:
                 pass  # Don't fail if logging fails
+
+        # Write structured failure record
+        try:
+            progress_dir = output_dir / "progress"
+            slurm_job_id = os.environ.get("SLURM_JOB_ID", "")
+            slurm_task_id = os.environ.get("SLURM_ARRAY_TASK_ID", "")
+            full_slurm_id = (
+                f"{slurm_job_id}_{slurm_task_id}"
+                if slurm_job_id and slurm_task_id
+                else slurm_job_id
+            )
+            append_failure(
+                progress_dir,
+                dataset=dataset_name,
+                image=image.name,
+                error_type=type(e).__name__,
+                error_message=str(e),
+                traceback=tb,
+                slurm_job_id=full_slurm_id,
+            )
+        except Exception:
+            pass  # Don't fail if failure tracking fails
 
         sys.exit(1)
 

@@ -46,7 +46,7 @@ class BM3DDenoiser(ImageEnhancer):
       None for auto-estimation or test multiple values to avoid under/over-
       denoising. Noise magnitude differs between 8-bit and 16-bit originals.
     - Does not correct illumination gradients; combine with background
-      subtraction (e.g., `GaussianSubtract`, `RollingBallRemoveBG`) if needed.
+      subtraction (e.g., `SubtractGaussian`, `SubtractRollingBall`) if needed.
     - May slightly blur very fine colony features if sigma_psd is too high.
 
     Attributes:
