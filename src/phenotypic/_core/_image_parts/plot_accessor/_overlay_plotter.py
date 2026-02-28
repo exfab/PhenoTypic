@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from itertools import cycle
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.patches import Rectangle
 
 from phenotypic.tools_.register import register_plotter
 
@@ -153,100 +151,13 @@ class OverlayPlotter(BasePlotter):
         # Grid-specific features (duck typing check)
         is_grid_image = hasattr(self._root_image, 'grid_finder')
 
-        if is_grid_image and self._root_image.num_objects > 0:
+        if is_grid_image:
             if show_gridlines:
                 self._add_gridlines(ax)
-
-            if show_section_boxes:
+            if show_section_boxes and self._root_image.num_objects > 0:
                 self._add_section_boxes(ax)
 
         return fig, ax
-
-    def _add_gridlines(self, ax: plt.Axes) -> None:
-        """Add grid lines and secondary axes for GridImage.
-
-        Draws cyan dashed gridlines at row/column boundaries and adds
-        secondary axes on top and right showing grid row/column numbers.
-
-        Args:
-            ax: Matplotlib axes to draw gridlines on.
-        """
-        col_edges = self._root_image.grid.get_col_edges()
-        row_edges = self._root_image.grid.get_row_edges()
-
-        if len(col_edges) == 0 or len(row_edges) == 0:
-            return
-
-        # Secondary x-axis with column numbers
-        secax_x = ax.secondary_xaxis("top")
-        secax_x.set_xlabel("Grid Column Number")
-        upper_col_edges = col_edges[1:]
-        lower_col_edges = col_edges[:-1]
-        col_centers = ((upper_col_edges - lower_col_edges) // 2) + lower_col_edges
-        secax_x.set_xticks(col_centers)
-        secax_x.set_xticklabels(np.arange(self._root_image.ncols))
-
-        # Secondary y-axis with row numbers
-        secax_y = ax.secondary_yaxis("right")
-        secax_y.set_ylabel("Grid Row Number", rotation=270, labelpad=10)
-        upper_row_edges = row_edges[1:]
-        lower_row_edges = row_edges[:-1]
-        row_centers = ((upper_row_edges - lower_row_edges) // 2) + lower_row_edges
-        secax_y.set_yticks(row_centers)
-        secax_y.set_yticklabels(np.arange(self._root_image.nrows))
-
-        # Draw grid lines
-        ax.vlines(
-                x=col_edges,
-                ymin=row_edges.min(),
-                ymax=row_edges.max(),
-                colors="c",
-                linestyles="--",
-        )
-        ax.hlines(
-                y=row_edges,
-                xmin=col_edges.min(),
-                xmax=col_edges.max(),
-                color="c",
-                linestyles="--",
-        )
-
-    def _add_section_boxes(self, ax: plt.Axes) -> None:
-        """Add colored bounding boxes around grid sections.
-
-        Draws colored rectangle patches around each grid section using
-        the tab20 colormap. Useful for visualizing which objects belong
-        to which wells in a plate layout.
-
-        Args:
-            ax: Matplotlib axes to draw section boxes on.
-        """
-        from phenotypic.measure import MeasureBounds
-        from phenotypic.tools_.measurement_info_ import BBOX
-
-        cmap = plt.get_cmap("tab20")
-        cmap_cycle = cycle(cmap(i) for i in range(cmap.N))
-
-        img = self._root_image.copy()
-        img.objmap = self._root_image.grid.get_section_map()
-        gs_table = MeasureBounds().measure(img)
-
-        for obj_label in gs_table.index.unique():
-            subtable = gs_table.loc[obj_label, :]
-            min_rr = subtable.loc[str(BBOX.MIN_RR)]
-            max_rr = subtable.loc[str(BBOX.MAX_RR)]
-            min_cc = subtable.loc[str(BBOX.MIN_CC)]
-            max_cc = subtable.loc[str(BBOX.MAX_CC)]
-
-            ax.add_patch(
-                    Rectangle(
-                            (min_cc, min_rr),
-                            width=max_cc - min_cc,
-                            height=max_rr - min_rr,
-                            edgecolor=next(cmap_cycle),
-                            facecolor="none",
-                    ),
-            )
 
 
 __all__ = ["OverlayPlotter"]

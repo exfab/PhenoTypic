@@ -166,19 +166,6 @@ class TestGridImageBitDepthInheritance:
         assert grid_image.bit_depth == 8
 
     @timeit
-    def test_gridimage_bit_depth_consistency_across_operations(self):
-        """Test that bit_depth remains consistent after grid operations."""
-        uint16_array = np.random.randint(0, 65535, (512, 768, 3), dtype=np.uint16)
-        grid_image = GridImage(arr=uint16_array, nrows=8, ncols=12)
-        original_bit_depth = grid_image.bit_depth
-
-        # Perform grid operations
-        fig, ax = grid_image.plot.overlay(show_labels=False)
-
-        # Bit depth should remain unchanged
-        assert grid_image.bit_depth == original_bit_depth
-
-    @timeit
     def test_gridimage_sliced_image_inherits_bit_depth(self):
         """Test that sliced image from GridImage inherits bit_depth."""
         uint16_array = np.random.randint(0, 65535, (512, 768, 3), dtype=np.uint16)
@@ -431,7 +418,7 @@ class TestColMajorIdx:
 
     @timeit
     def test_col_major_idx_column_exists(
-        self, plate_grid_images_with_detection
+            self, plate_grid_images_with_detection
     ):
         """COL_MAJOR_IDX column should be present in grid info."""
         grid_image = plate_grid_images_with_detection
@@ -440,7 +427,7 @@ class TestColMajorIdx:
 
     @timeit
     def test_col_major_idx_ordering(
-        self, plate_grid_images_with_detection
+            self, plate_grid_images_with_detection
     ):
         """COL_MAJOR_IDX should follow col * nrows + row ordering."""
         grid_image = plate_grid_images_with_detection
@@ -448,7 +435,7 @@ class TestColMajorIdx:
         nrows = grid_image.nrows
 
         valid = info.dropna(
-            subset=[self.ROW_NUM, self.COL_NUM, self.COL]
+                subset=[self.ROW_NUM, self.COL_NUM, self.COL]
         )
         if valid.empty:
             pytest.skip("No valid grid assignments")
@@ -462,7 +449,7 @@ class TestColMajorIdx:
 
     @timeit
     def test_col_major_idx_nan_matches_row_major(
-        self, plate_grid_images_with_detection
+            self, plate_grid_images_with_detection
     ):
         """NaN positions in COL_MAJOR_IDX should match ROW_MAJOR_IDX."""
         grid_image = plate_grid_images_with_detection

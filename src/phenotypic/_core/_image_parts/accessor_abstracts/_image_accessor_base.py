@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import warnings
 from abc import ABC, abstractmethod
+from itertools import cycle
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Tuple
 
@@ -12,6 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import skimage as ski
+from matplotlib.patches import Rectangle
 from PIL import Image as PIL_Image
 
 import phenotypic
@@ -20,7 +22,7 @@ from phenotypic.tools_.funcs_ import normalize_rgb_bitdepth
 
 if TYPE_CHECKING:
     import napari
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 import importlib.util
 
@@ -448,8 +450,7 @@ class ImageAccessorBase(ABC):
         Args:
             arr (np.ndarray): The image data to plot. Can be 2D or 3D array representing the image.
             figsize ((int, int), optional): A tuple specifying the figure size in inches. If None, the figure size
-                is automatically calculated based on image resolution (at 100 DPI) to ensure all detail is visible
-                while maintaining reasonable plot dimensions (max 12 inches per dimension).
+                is automatically calculated as integer dimensions in [6, 30] that best match the image aspect ratio.
             title (None | str, optional): Plot title. If None, defaults to the name of the parent image. Defaults to None.
             cmap (str, optional): The colormap to be applied when the array is 2D. Defaults to 'gray'.
             ax (None | plt.Axes, optional): Existing Matplotlib axes to plot into. If None, a new figure is created. Defaults to None.
@@ -460,33 +461,21 @@ class ImageAccessorBase(ABC):
 
         """
         if figsize is None:
-            # Calculate dynamic figsize based on image resolution
-            # Matplotlib default DPI is 100 pixels per inch
             height, width = arr.shape[:2]
-
-            # Calculate figsize to show image at full resolution, but cap at reasonable maximums
-            max_display_size = 30.0  # Maximum inches for any dimension
-            min_display_size = 6.0  # Minimum inches for any dimension
-            pixels_per_inch = 30.0
-
-            # Calculate required figsize for full resolution
-            figsize_width = min(width / pixels_per_inch, max_display_size)
-            figsize_height = min(height / pixels_per_inch, max_display_size)
-
-            # If image is very large, scale down while maintaining aspect ratio
             aspect_ratio = width / height
-            if figsize_width / figsize_height > aspect_ratio:
-                figsize_width = figsize_height * aspect_ratio
-            else:
-                figsize_height = figsize_width / aspect_ratio
 
-            # Ensure minimum size constraint while maintaining aspect ratio
-            if figsize_width < min_display_size or figsize_height < min_display_size:
-                scale_factor = min_display_size / min(figsize_width, figsize_height)
-                figsize_width *= scale_factor
-                figsize_height *= scale_factor
+            best_figsize = (6, 6)
+            best_error = float("inf")
 
-            figsize = (figsize_width, figsize_height)
+            for h in range(6, 31):
+                w = round(h * aspect_ratio)
+                w = max(6, min(30, w))
+                error = abs(w / h - aspect_ratio)
+                if error < best_error or (error == best_error and w * h < best_figsize[0] * best_figsize[1]):
+                    best_error = error
+                    best_figsize = (w, h)
+
+            figsize = best_figsize
 
         fig, ax = (ax.get_figure(), ax) if ax else plt.subplots(figsize=figsize)
 
@@ -666,6 +655,8 @@ class ImageAccessorBase(ABC):
         show_labels: bool = False,
         ax: plt.Axes = None,
         *,
+        show_gridlines: bool = True,
+        show_section_boxes: bool = True,
         label_settings: None | dict = None,
         overlay_settings: None | dict = None,
         imshow_settings: None | dict = None,
@@ -685,11 +676,17 @@ class ImageAccessorBase(ABC):
                 is used.
             show_labels (bool): If True, displays annotations for object labels on the
                 object centroids.
+            ax (plt.Axes): Optional Matplotlib Axes object. If None, a new Axes is
+                created.
+            show_gridlines: For GridImage only. If True, draws cyan dashed
+                gridlines at row/column boundaries and adds secondary axes
+                showing grid row/column numbers. Ignored for regular Image.
+            show_section_boxes: For GridImage only. If True, draws colored
+                bounding boxes around each grid section. Requires detected
+                objects. Ignored for regular Image.
             label_settings (None | dict): Additional parameters for customization of the
                 object annotations. Defaults: size=12, color='white', facecolor='red'. Other kwargs
                 are passed to the matplotlib.axes.text () method.
-            ax (plt.Axes): Optional Matplotlib Axes object. If None, a new Axes is
-                created.
             overlay_settings (None | dict): Additional parameters for customization of the
                 overlay.
             imshow_settings (None|dict): Additional Matplotlib imshow configuration parameters
@@ -724,7 +721,102 @@ class ImageAccessorBase(ABC):
                 facecolor=label_settings.get("facecolor", "red"),
                 object_label=object_label,
             )
+
+        # Grid-specific features (duck typing check)
+        is_grid_image = hasattr(self._root_image, 'grid_finder')
+        if is_grid_image:
+            if show_gridlines:
+                self._add_gridlines(ax)
+            if show_section_boxes and self._root_image.num_objects > 0:
+                self._add_section_boxes(ax)
+
         return fig, ax
+
+    def _add_gridlines(self, ax: plt.Axes) -> None:
+        """Add grid lines and secondary axes for GridImage.
+
+        Draws cyan dashed gridlines at row/column boundaries and adds
+        secondary axes on top and right showing grid row/column numbers.
+
+        Args:
+            ax: Matplotlib axes to draw gridlines on.
+        """
+        col_edges = self._root_image.grid.get_col_edges()  # type: ignore[attr-defined]
+        row_edges = self._root_image.grid.get_row_edges()  # type: ignore[attr-defined]
+
+        if len(col_edges) == 0 or len(row_edges) == 0:
+            return
+
+        # Secondary x-axis with column numbers
+        secax_x = ax.secondary_xaxis("top")
+        secax_x.set_xlabel("Grid Column Number")
+        upper_col_edges = col_edges[1:]
+        lower_col_edges = col_edges[:-1]
+        col_centers = ((upper_col_edges - lower_col_edges) // 2) + lower_col_edges
+        secax_x.set_xticks(col_centers)
+        secax_x.set_xticklabels(np.arange(self._root_image.ncols))  # type: ignore[attr-defined]
+
+        # Secondary y-axis with row numbers
+        secax_y = ax.secondary_yaxis("right")
+        secax_y.set_ylabel("Grid Row Number", rotation=270, labelpad=10)
+        upper_row_edges = row_edges[1:]
+        lower_row_edges = row_edges[:-1]
+        row_centers = ((upper_row_edges - lower_row_edges) // 2) + lower_row_edges
+        secax_y.set_yticks(row_centers)
+        secax_y.set_yticklabels(np.arange(self._root_image.nrows))  # type: ignore[attr-defined]
+
+        # Draw grid lines
+        ax.vlines(
+                x=col_edges,
+                ymin=row_edges.min(),
+                ymax=row_edges.max(),
+                colors="c",
+                linestyles="--",
+        )
+        ax.hlines(
+                y=row_edges,
+                xmin=col_edges.min(),
+                xmax=col_edges.max(),
+                color="c",
+                linestyles="--",
+        )
+
+    def _add_section_boxes(self, ax: plt.Axes) -> None:
+        """Add colored bounding boxes around grid sections.
+
+        Draws colored rectangle patches around each grid section using
+        the tab20 colormap. Useful for visualizing which objects belong
+        to which wells in a plate layout.
+
+        Args:
+            ax: Matplotlib axes to draw section boxes on.
+        """
+        from phenotypic.measure import MeasureBounds
+        from phenotypic.tools_.measurement_info_ import BBOX
+
+        cmap = plt.get_cmap("tab20")
+        cmap_cycle = cycle(cmap(i) for i in range(cmap.N))
+
+        img = self._root_image.copy()
+        img.objmap = self._root_image.grid.get_section_map()  # type: ignore[attr-defined]
+        gs_table = MeasureBounds().measure(img)
+
+        for obj_label in gs_table.index.unique():
+            subtable = gs_table.loc[obj_label, :]
+            min_rr = subtable.loc[str(BBOX.MIN_RR)]
+            max_rr = subtable.loc[str(BBOX.MAX_RR)]
+            min_cc = subtable.loc[str(BBOX.MIN_CC)]
+            max_cc = subtable.loc[str(BBOX.MAX_CC)]
+
+            ax.add_patch(
+                    Rectangle(
+                            (min_cc, min_rr),
+                            width=max_cc - min_cc,
+                            height=max_rr - min_rr,
+                            edgecolor=next(cmap_cycle),
+                            facecolor="none",
+                    ),
+            )
 
     def _generate_overlay_array(
         self,
