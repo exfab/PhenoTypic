@@ -17,6 +17,7 @@ from ._center_deviation_reducer import CenterDeviationReducer
 from ._circularity_modifier import LowCircularityRemover
 from ._gmm_core_extractor import GMMCoreExtractor
 from ._grid_alignment_refiner import GridAlignmentRefiner
+from ._sine_alignment_refiner import SineAlignmentRefiner
 from ._grid_oversized_object_remover import GridOversizedObjectRemover
 from ._mask_closer import MaskCloser
 from ._mask_dilator import MaskDilator
@@ -53,6 +54,7 @@ __all__ = [
     "NearestNeighborMerger",
     "ResidualOutlierRemover",
     "SeparateObjects",
+    "SineAlignmentRefiner",
     "Skeletonize",
     "SmallObjectRemover",
     "SmallToLargeMerger",
