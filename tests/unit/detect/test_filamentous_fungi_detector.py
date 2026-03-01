@@ -7,15 +7,14 @@ from phenotypic.detect import (
     FilamentousFungiDetector,
 )
 from phenotypic.enhance import GaussianBlur, CLAHE
-from phenotypic.data import load_synth_yeast_plate
 
 
 class TestFilamentousFungiDetector:
     """Test suite for FilamentousFungiDetector functionality and edge cases."""
 
-    def test_basic_detection(self):
+    def test_basic_detection(self, synth_plate):
         """Test basic detection with two detectors produces valid result."""
-        image = load_synth_yeast_plate()
+        image = synth_plate.copy()
 
         detector = FilamentousFungiDetector(
                 inoculum_detector=OtsuDetector(ignore_zeros=True),
@@ -29,9 +28,9 @@ class TestFilamentousFungiDetector:
         assert result.objmask[:].sum() > 0
         assert result.objmap[:].max() > 0
 
-    def test_objmask_objmap_consistency(self):
+    def test_objmask_objmap_consistency(self, synth_plate):
         """Test that objmask and objmap are consistent after detection."""
-        image = load_synth_yeast_plate()
+        image = synth_plate.copy()
 
         detector = FilamentousFungiDetector(
                 inoculum_detector=OtsuDetector(),
@@ -45,9 +44,9 @@ class TestFilamentousFungiDetector:
         # All non-zero pixels in objmap should be True in objmask
         assert np.all((objmap > 0) == objmask)
 
-    def test_no_centers_detected_raises(self):
+    def test_no_centers_detected_raises(self, synth_plate):
         """Test that error is raised when inoculum_detector finds nothing."""
-        image = load_synth_yeast_plate()
+        image = synth_plate.copy()
 
         # Create a custom detector that always returns empty mask
         class EmptyCenterDetector(OtsuDetector):
@@ -64,9 +63,9 @@ class TestFilamentousFungiDetector:
         with pytest.raises(RuntimeError, match="No centers detected"):
             detector.apply(image)
 
-    def test_no_overall_detected_raises(self):
+    def test_no_overall_detected_raises(self, synth_plate):
         """Test that error is raised when overall_detector finds nothing."""
-        image = load_synth_yeast_plate()
+        image = synth_plate.copy()
 
         # Create a custom detector that always returns empty mask
         class EmptyOverallDetector(TriangleDetector):
@@ -83,9 +82,9 @@ class TestFilamentousFungiDetector:
         with pytest.raises(RuntimeError, match="No overall structure detected"):
             detector.apply(image)
 
-    def test_center_and_overall_produce_results(self):
+    def test_center_and_overall_produce_results(self, synth_plate):
         """Test that both center and overall detectors produce results."""
-        image = load_synth_yeast_plate()
+        image = synth_plate.copy()
 
         detector = FilamentousFungiDetector(
                 inoculum_detector=OtsuDetector(),
@@ -115,9 +114,9 @@ class TestFilamentousFungiDetector:
                     overall_detector=123,
             )
 
-    def test_erosion_radius_effects(self):
+    def test_erosion_radius_effects(self, synth_plate):
         """Test that erosion_radius parameter affects boundary computation."""
-        image = load_synth_yeast_plate()
+        image = synth_plate.copy()
 
         detector_radius1 = FilamentousFungiDetector(
                 inoculum_detector=OtsuDetector(),
@@ -139,9 +138,9 @@ class TestFilamentousFungiDetector:
         assert result1.objmap[:].max() > 0
         assert result2.objmap[:].max() > 0
 
-    def test_boundary_cost_effects(self):
+    def test_boundary_cost_effects(self, synth_plate):
         """Test that boundary_cost parameter affects segmentation."""
-        image = load_synth_yeast_plate()
+        image = synth_plate.copy()
 
         detector_high_cost = FilamentousFungiDetector(
                 inoculum_detector=OtsuDetector(),
@@ -162,9 +161,9 @@ class TestFilamentousFungiDetector:
         assert result_high.objmap[:].max() > 0
         assert result_low.objmap[:].max() > 0
 
-    def test_connectivity_effects(self):
+    def test_connectivity_effects(self, synth_plate):
         """Test that connectivity parameter affects labeling."""
-        image = load_synth_yeast_plate()
+        image = synth_plate.copy()
 
         detector_4conn = FilamentousFungiDetector(
                 inoculum_detector=OtsuDetector(),
@@ -186,9 +185,9 @@ class TestFilamentousFungiDetector:
         assert result_4.objmap[:].max() > 0
         assert result_8.objmap[:].max() > 0
 
-    def test_inplace_false_preserves_original(self):
+    def test_inplace_false_preserves_original(self, synth_plate):
         """Test that inplace=False preserves original image."""
-        image = load_synth_yeast_plate()
+        image = synth_plate.copy()
         original_rgb = image.rgb[:].copy()
 
         detector = FilamentousFungiDetector(
@@ -204,9 +203,9 @@ class TestFilamentousFungiDetector:
         # Result should have detection
         assert result.objmap[:].max() > 0
 
-    def test_inplace_true_modifies_original(self):
+    def test_inplace_true_modifies_original(self, synth_plate):
         """Test that inplace=True modifies the original image."""
-        image = load_synth_yeast_plate()
+        image = synth_plate.copy()
 
         detector = FilamentousFungiDetector(
                 inoculum_detector=OtsuDetector(),
@@ -219,9 +218,9 @@ class TestFilamentousFungiDetector:
         # Should have detection
         assert image.objmap[:].max() > 0
 
-    def test_with_imagepipeline_center_detector(self):
+    def test_with_imagepipeline_center_detector(self, synth_plate):
         """Test that ImagePipeline works as inoculum_detector."""
-        image = load_synth_yeast_plate()
+        image = synth_plate.copy()
 
         # Create pipeline for center detection with preprocessing
         center_pipeline = ImagePipeline([
@@ -239,9 +238,9 @@ class TestFilamentousFungiDetector:
         assert result.objmap[:].max() > 0
         assert result.objmask[:].sum() > 0
 
-    def test_with_imagepipeline_overall_detector(self):
+    def test_with_imagepipeline_overall_detector(self, synth_plate):
         """Test that ImagePipeline works as overall_detector."""
-        image = load_synth_yeast_plate()
+        image = synth_plate.copy()
 
         # Create pipeline for overall detection with preprocessing
         overall_pipeline = ImagePipeline([
@@ -259,9 +258,9 @@ class TestFilamentousFungiDetector:
         assert result.objmap[:].max() > 0
         assert result.objmask[:].sum() > 0
 
-    def test_with_both_imagepipeline_detectors(self):
+    def test_with_both_imagepipeline_detectors(self, synth_plate):
         """Test that ImagePipeline works for both detectors."""
-        image = load_synth_yeast_plate()
+        image = synth_plate.copy()
 
         center_pipeline = ImagePipeline([
             GaussianBlur(sigma=0.5),
@@ -308,9 +307,9 @@ class TestFilamentousFungiDetector:
         assert isinstance(restored_detector.inoculum_detector, OtsuDetector)
         assert isinstance(restored_detector.overall_detector, TriangleDetector)
 
-    def test_serialization_functional_equivalence(self):
+    def test_serialization_functional_equivalence(self, synth_plate):
         """Test that serialized/deserialized detector produces identical results."""
-        image = load_synth_yeast_plate()
+        image = synth_plate.copy()
 
         # Original detector
         detector = FilamentousFungiDetector(
@@ -337,9 +336,9 @@ class TestFilamentousFungiDetector:
                 restored_result.objmap[:]
         )
 
-    def test_pipeline_integration(self):
+    def test_pipeline_integration(self, synth_plate):
         """Test that detector integrates into full processing pipeline."""
-        image = load_synth_yeast_plate()
+        image = synth_plate.copy()
 
         # Build pipeline with enhancement, detection, and cleanup
         pipeline = ImagePipeline([
@@ -356,9 +355,9 @@ class TestFilamentousFungiDetector:
         assert result.objmap[:].max() > 0
         assert result.objmask[:].sum() > 0
 
-    def test_different_detector_combinations(self):
+    def test_different_detector_combinations(self, synth_plate):
         """Test various detector combinations work correctly."""
-        image = load_synth_yeast_plate()
+        image = synth_plate.copy()
 
         combinations = [
             (OtsuDetector(), TriangleDetector()),
@@ -377,14 +376,14 @@ class TestFilamentousFungiDetector:
             assert result.objmap[:].max() > 0
             assert result.objmask[:].sum() > 0
 
-    def test_consecutive_labels(self):
+    def test_consecutive_labels(self, synth_plate):
         """Test that watershed produces valid non-background labels.
 
         Watershed segmentation doesn't guarantee consecutive labels due to how
         the algorithm allocates marker IDs. We check that labels are present
         and represent distinct objects rather than checking for consecutiveness.
         """
-        image = load_synth_yeast_plate()
+        image = synth_plate.copy()
 
         detector = FilamentousFungiDetector(
                 inoculum_detector=OtsuDetector(),
@@ -412,9 +411,9 @@ class TestFilamentousFungiDetector:
         assert num_missing <= max_allowed_missing, \
             f"Too many missing labels: {num_missing} missing (max {max_allowed_missing} allowed)"
 
-    def test_no_memory_leaks(self):
+    def test_no_memory_leaks(self, synth_plate):
         """Test that operation cleans up memory properly."""
-        image = load_synth_yeast_plate()
+        image = synth_plate.copy()
 
         detector = FilamentousFungiDetector(
                 inoculum_detector=OtsuDetector(),
@@ -428,9 +427,9 @@ class TestFilamentousFungiDetector:
 
         # If we get here without memory errors, test passes
 
-    def test_reproducibility(self):
+    def test_reproducibility(self, synth_plate):
         """Test that same input produces same output."""
-        image = load_synth_yeast_plate()
+        image = synth_plate.copy()
 
         detector = FilamentousFungiDetector(
                 inoculum_detector=OtsuDetector(ignore_zeros=True),
