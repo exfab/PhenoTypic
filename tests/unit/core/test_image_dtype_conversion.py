@@ -113,22 +113,13 @@ class TestBitDepthInference:
         assert bit_depth == 16
 
     @timeit
-    def test_infer_unknown_dtype_warns_and_returns_16(self):
-        """Test that unknown dtype (int32) warns and returns bit_depth=16."""
-        int32_array = np.random.randint(0, 255, (100, 100), dtype=np.int32)
+    @pytest.mark.parametrize("dtype", [np.int32, np.int64])
+    def test_infer_unknown_dtype_warns_and_returns_16(self, dtype):
+        """Test that unknown dtypes warn and return bit_depth=16."""
+        array = np.array([[1, 2], [3, 4]], dtype=dtype)
 
         with pytest.warns(UserWarning, match="unknown dtype"):
-            bit_depth = ImageDataManager._infer_bit_depth(int32_array)
-
-        assert bit_depth == 16
-
-    @timeit
-    def test_infer_int64_warns_and_returns_16(self):
-        """Test that int64 dtype warns and returns bit_depth=16."""
-        int64_array = np.array([[1, 2], [3, 4]], dtype=np.int64)
-
-        with pytest.warns(UserWarning, match="unknown dtype"):
-            bit_depth = ImageDataManager._infer_bit_depth(int64_array)
+            bit_depth = ImageDataManager._infer_bit_depth(array)
 
         assert bit_depth == 16
 
@@ -190,20 +181,13 @@ class TestFloatArrayConversion:
             ImageDataManager._convert_float_array_to_int(float_array, bit_depth=8)
 
     @timeit
-    def test_convert_invalid_bit_depth_32_raises_valueerror(self):
-        """Test that bit_depth=32 raises ValueError."""
+    @pytest.mark.parametrize("bit_depth", [12, 32])
+    def test_convert_invalid_bit_depth_raises_valueerror(self, bit_depth):
+        """Test that unsupported bit_depth values raise ValueError."""
         float_array = np.random.rand(10, 10, 3).astype(np.float32)
 
         with pytest.raises(ValueError, match="bit_depth must be 8 or 16"):
-            ImageDataManager._convert_float_array_to_int(float_array, bit_depth=32)
-
-    @timeit
-    def test_convert_invalid_bit_depth_12_raises_valueerror(self):
-        """Test that bit_depth=12 raises ValueError."""
-        float_array = np.random.rand(10, 10, 3).astype(np.float32)
-
-        with pytest.raises(ValueError, match="bit_depth must be 8 or 16"):
-            ImageDataManager._convert_float_array_to_int(float_array, bit_depth=12)
+            ImageDataManager._convert_float_array_to_int(float_array, bit_depth=bit_depth)
 
     @timeit
     def test_convert_edge_case_very_small_float(self):
@@ -249,52 +233,33 @@ class TestImageFormatDetection:
         assert format_enum == IMAGE_MODE.RGBA
 
     @timeit
-    def test_detect_unsupported_5_channels_raises_valueerror(self):
-        """Test that 5-channel arrays raise ValueError."""
-        array_5ch = np.random.randint(0, 255, (100, 100, 5), dtype=np.uint8)
+    @pytest.mark.parametrize("channels", [2, 5])
+    def test_detect_unsupported_channels_raises_valueerror(self, channels):
+        """Test that unsupported channel counts raise ValueError."""
+        array = np.random.randint(0, 255, (100, 100, channels), dtype=np.uint8)
 
         with pytest.raises(ValueError, match="channels.*unknown format"):
-            ImageDataManager._guess_image_format(array_5ch)
+            ImageDataManager._guess_image_format(array)
 
     @timeit
-    def test_detect_unsupported_2_channels_raises_valueerror(self):
-        """Test that 2-channel arrays raise ValueError."""
-        array_2ch = np.random.randint(0, 255, (100, 100, 2), dtype=np.uint8)
-
-        with pytest.raises(ValueError, match="channels.*unknown format"):
-            ImageDataManager._guess_image_format(array_2ch)
-
-    @timeit
-    def test_detect_1d_array_raises_valueerror(self):
-        """Test that 1D arrays raise ValueError."""
-        array_1d = np.array([1, 2, 3])
-
+    @pytest.mark.parametrize("array", [
+        np.array([1, 2, 3]),
+        np.random.randint(0, 255, (10, 100, 100, 3), dtype=np.uint8),
+    ], ids=["1d", "4d"])
+    def test_detect_unsupported_dimensions_raises_valueerror(self, array):
+        """Test that arrays with unsupported dimensionality raise ValueError."""
         with pytest.raises(ValueError, match="unsupported number of dimensions"):
-            ImageDataManager._guess_image_format(array_1d)
+            ImageDataManager._guess_image_format(array)
 
     @timeit
-    def test_detect_4d_array_raises_valueerror(self):
-        """Test that 4D arrays raise ValueError."""
-        array_4d = np.random.randint(0, 255, (10, 100, 100, 3), dtype=np.uint8)
-
-        with pytest.raises(ValueError, match="unsupported number of dimensions"):
-            ImageDataManager._guess_image_format(array_4d)
-
-    @timeit
-    def test_detect_non_numpy_raises_typeerror(self):
-        """Test that non-numpy input raises TypeError."""
-        python_list = [[1, 2], [3, 4]]
-
+    @pytest.mark.parametrize("non_array", [
+        [[1, 2], [3, 4]],
+        ((1, 2), (3, 4)),
+    ], ids=["list", "tuple"])
+    def test_detect_non_numpy_raises_typeerror(self, non_array):
+        """Test that non-numpy inputs raise TypeError."""
         with pytest.raises(TypeError, match="must be a numpy array"):
-            ImageDataManager._guess_image_format(python_list)
-
-    @timeit
-    def test_detect_tuple_raises_typeerror(self):
-        """Test that tuple input raises TypeError."""
-        python_tuple = ((1, 2), (3, 4))
-
-        with pytest.raises(TypeError, match="must be a numpy array"):
-            ImageDataManager._guess_image_format(python_tuple)
+            ImageDataManager._guess_image_format(non_array)
 
 
 # ============================================================================================
@@ -473,28 +438,17 @@ class TestErrorHandling:
     """Tests for error handling in dtype conversion and input validation."""
 
     @timeit
-    def test_set_image_with_list_raises_valueerror(self):
-        """Test that setting image with a list raises ValueError."""
+    @pytest.mark.parametrize("invalid_input", [
+        [1, 2, 3],
+        "not_an_image",
+        {"data": "value"},
+    ], ids=["list", "string", "dict"])
+    def test_set_image_with_non_array_raises_valueerror(self, invalid_input):
+        """Test that setting image with non-array types raises ValueError."""
         img = Image()
 
         with pytest.raises(ValueError, match="must be a NumPy array"):
-            img.set_image([1, 2, 3])
-
-    @timeit
-    def test_set_image_with_string_raises_valueerror(self):
-        """Test that setting image with a string raises ValueError."""
-        img = Image()
-
-        with pytest.raises(ValueError, match="must be a NumPy array"):
-            img.set_image("not_an_image")
-
-    @timeit
-    def test_set_image_with_dict_raises_valueerror(self):
-        """Test that setting image with a dict raises ValueError."""
-        img = Image()
-
-        with pytest.raises(ValueError, match="must be a NumPy array"):
-            img.set_image({"data": np.zeros((10, 10))})
+            img.set_image(invalid_input)
 
     @timeit
     def test_float_rgb_out_of_range_negative(self):

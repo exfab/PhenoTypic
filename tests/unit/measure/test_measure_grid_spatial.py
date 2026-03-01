@@ -13,7 +13,7 @@ from phenotypic.tools_.measurement_info_ import GRID_SPATIAL, GRID
 class TestMeasureGridSpatial:
     """Tests for MeasureGridSpatial measurement operation."""
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def sample_image(self):
         """Load synthetic yeast plate image for testing."""
         return load_synth_yeast_plate()

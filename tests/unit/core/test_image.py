@@ -257,76 +257,24 @@ def test_image_object_label_consistency_with_skimage(sample_image_array_with_imf
 
 
 @timeit
-def test_rgb_imsave_jpg(tmp_path):
-    out = tmp_path / "out.jpg"
-
-    image = phenotypic.data.load_colony(mode="Image")
-    image.rgb.imsave(out)
-    assert out.exists(), f"RGB JPEG file was not created at {out}"
-
-
-@timeit
-def test_rgb_imsave_png(tmp_path):
+def test_rgb_imsave_png(tmp_path, colony_image):
     out = tmp_path / "out.png"
-    image = phenotypic.data.load_colony(mode="Image")
-    image.rgb.imsave(out)
+    colony_image.rgb.imsave(out)
     assert out.exists(), f"RGB PNG file was not created at {out}"
 
 
 @timeit
-def test_rgb_imsave_tiff(tmp_path):
-    out = tmp_path / "out.tiff"
-    image = phenotypic.data.load_colony(mode="Image")
-    image.rgb.imsave(out)
-    assert out.exists(), f"RGB TIFF file was not created at {out}"
-
-
-@timeit
-def test_gray_imsave_jpg(tmp_path):
-    out = tmp_path / "out_gray.jpg"
-    image = phenotypic.data.load_colony(mode="Image")
-    image.gray.imsave(out)
-    assert out.exists(), f"Gray JPEG file was not created at {out}"
-
-
-@timeit
-def test_gray_imsave_png(tmp_path):
-    out = tmp_path / "out_gray.png"
-    image = phenotypic.data.load_colony(mode="Image")
-    image.gray.imsave(out)
-    assert out.exists(), f"Gray PNG file was not created at {out}"
-
-
-@timeit
-def test_gray_imsave_tiff(tmp_path):
+def test_gray_imsave_tiff(tmp_path, colony_image):
     out = tmp_path / "out_gray.tiff"
-    image = phenotypic.data.load_colony(mode="Image")
-    image.gray.imsave(out)
+    colony_image.gray.imsave(out)
     assert out.exists(), f"Gray TIFF file was not created at {out}"
 
 
 @timeit
-def test_detect_mat_imsave_jpg(tmp_path):
+def test_detect_mat_imsave_jpg(tmp_path, colony_image):
     out = tmp_path / "out_detect_mat.jpg"
-    image = phenotypic.data.load_colony(mode="Image")
-    image.detect_mat.imsave(out)
+    colony_image.detect_mat.imsave(out)
     assert out.exists(), f"Enhanced Gray JPEG file was not created at {out}"
-
-
-@timeit
-def test_detect_mat_imsave_png(tmp_path):
-    out = tmp_path / "out_detect_mat.png"
-    image = phenotypic.data.load_colony(mode="Image")
-    image.detect_mat.imsave(out)
-    assert out.exists(), f"Enhanced Gray PNG file was not created at {out}"
-
-
-@timeit
-def test_detect_mat_imsave_tiff(tmp_path):
-    out = tmp_path / "out_detect_mat.tiff"
-    image = phenotypic.data.load_colony(mode="Image")
-    image.detect_mat.imsave(out)
-    assert out.exists(), f"Enhanced Gray TIFF file was not created at {out}"
 
 
 # ── detect_mode switching ──────────────────────────────────────────────

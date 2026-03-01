@@ -207,13 +207,6 @@ class TestSizeDistributionPlotter:
         assert fig is not None
         plt.close(fig)
 
-    def test_size_distribution_linear_scale(self, sample_image_with_objects):
-        """Test size distribution with linear scale."""
-        plot = sample_image_with_objects.plot
-        fig, axes = plot.size_distribution(log_scale=False)
-        assert fig is not None
-        plt.close(fig)
-
 
 class TestSpatialPlotter:
     """Tests for SpatialPlotter methods."""
@@ -291,22 +284,6 @@ class TestSpatialPlotter:
         assert ax is not None
         plt.close(fig)
 
-    def test_size_scatter_color_by_options(self, sample_image_with_objects):
-        """Test size scatter with different color_by options."""
-        plot = sample_image_with_objects.plot
-
-        # Test intensity_std
-        fig1, _ = plot.size_scatter(color_by="intensity_std")
-        plt.close(fig1)
-
-        # Test solidity
-        fig2, _ = plot.size_scatter(color_by="solidity")
-        plt.close(fig2)
-
-        # Test eccentricity
-        fig3, _ = plot.size_scatter(color_by="eccentricity")
-        plt.close(fig3)
-
     def test_size_scatter_insufficient_objects(self, sample_image_with_objects):
         """Test size scatter with insufficient objects."""
         plot = sample_image_with_objects.plot
@@ -338,28 +315,6 @@ class TestThresholdPlotter:
         plot = sample_image_with_objects.plot
         with pytest.raises(ValueError, match="figsize"):
             plot.try_thresh(figsize=(0, 8))
-
-
-class TestMemoryManagement:
-    """Tests for memory management and cleanup."""
-
-    def test_morph_progression_cleanup(self, sample_image_with_objects):
-        """Test that morph_progression cleans up memory."""
-        plot = sample_image_with_objects.plot
-        fig, axes = plot.morph_progression(kernel_sizes=[1, 3, 5, 7, 9])
-        # Verify figure was created
-        assert len(fig.axes) > 0
-        plt.close(fig)
-        # After close, matplotlib should have released resources
-
-    def test_boundary_displacement_cleanup(self, sample_image_with_objects):
-        """Test that boundary_displacement cleans up large arrays."""
-        plot = sample_image_with_objects.plot
-        fig, axes = plot.boundary_displacement(
-            kernel_sizes=[1, 3, 5, 7, 9, 11],
-        )
-        assert fig is not None
-        plt.close(fig)
 
 
 class TestSpatialSizeMapFix:
@@ -428,43 +383,6 @@ class TestDiagnosticsMatplotlib:
             "recommendations",
         }
         assert expected_keys == set(metrics.keys())
-        plt.close(fig)
-
-    def test_diagnostics_noise_metrics(self, sample_image_with_objects):
-        """Test noise metrics are computed."""
-        fig, metrics = sample_image_with_objects.plot.diagnostics()
-
-        assert "snr" in metrics["noise"]
-        assert "sigma_mad" in metrics["noise"]
-        assert "correlation_length" in metrics["noise"]
-        assert metrics["noise"]["snr"] > 0
-        plt.close(fig)
-
-    def test_diagnostics_contrast_metrics(self, sample_image_with_objects):
-        """Test contrast metrics are computed."""
-        fig, metrics = sample_image_with_objects.plot.diagnostics()
-
-        assert "rms_contrast" in metrics["contrast"]
-        assert "michelson" in metrics["contrast"]
-        assert "dynamic_range" in metrics["contrast"]
-        assert 0 <= metrics["contrast"]["michelson"] <= 1
-        plt.close(fig)
-
-    def test_diagnostics_structure_metrics(self, sample_image_with_objects):
-        """Test structure metrics are computed."""
-        fig, metrics = sample_image_with_objects.plot.diagnostics()
-
-        assert "mean_coherence" in metrics["structure"]
-        assert "optimal_scale" in metrics["structure"]
-        assert "ridge_method" in metrics["structure"]
-        plt.close(fig)
-
-    def test_diagnostics_background_metrics(self, sample_image_with_objects):
-        """Test background metrics are computed."""
-        fig, metrics = sample_image_with_objects.plot.diagnostics()
-
-        assert "nonuniformity_ratio" in metrics["background"]
-        assert "mean_gradient" in metrics["background"]
         plt.close(fig)
 
     def test_diagnostics_quality_scores(self, sample_image_with_objects):

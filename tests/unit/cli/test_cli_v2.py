@@ -66,7 +66,7 @@ def temp_output_dir():
         yield Path(tmpdir)
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def temp_input_dir():
     """Create a temporary input directory with sample images."""
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -85,7 +85,7 @@ def temp_input_dir():
         yield tmpdir
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def temp_recursive_input_dir():
     """Create temporary input directory with recursive structure (subdirectories only)."""
     with tempfile.TemporaryDirectory() as tmpdir:

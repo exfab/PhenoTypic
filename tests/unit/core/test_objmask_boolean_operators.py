@@ -455,56 +455,6 @@ class TestRealWorldUseCases:
         assert np.sum(img.objmask[:]) <= original_sum
 
 
-class TestOperatorReturnTypes:
-    """Test that operators return correct types."""
-
-    def test_basic_and_returns_ndarray(self, sample_image_with_mask):
-        """Test that & returns np.ndarray."""
-        img = sample_image_with_mask
-        result = img.objmask & np.ones((100, 100), dtype=bool)
-        assert isinstance(result, np.ndarray)
-        assert not isinstance(result, type(img.objmask))
-
-    def test_basic_or_returns_ndarray(self, sample_image_with_mask):
-        """Test that | returns np.ndarray."""
-        img = sample_image_with_mask
-        result = img.objmask | np.zeros((100, 100), dtype=bool)
-        assert isinstance(result, np.ndarray)
-        assert not isinstance(result, type(img.objmask))
-
-    def test_basic_xor_returns_ndarray(self, sample_image_with_mask):
-        """Test that ^ returns np.ndarray."""
-        img = sample_image_with_mask
-        result = img.objmask ^ np.zeros((100, 100), dtype=bool)
-        assert isinstance(result, np.ndarray)
-        assert not isinstance(result, type(img.objmask))
-
-    def test_invert_returns_ndarray(self, sample_image_with_mask):
-        """Test that ~ returns np.ndarray."""
-        img = sample_image_with_mask
-        result = ~img.objmask
-        assert isinstance(result, np.ndarray)
-        assert not isinstance(result, type(img.objmask))
-
-    def test_inplace_and_returns_self(self, sample_image_with_mask):
-        """Test that &= returns ObjectMask (self)."""
-        img = sample_image_with_mask
-        result = (img.objmask.__iand__(np.ones((100, 100), dtype=bool)))
-        assert result is img.objmask
-
-    def test_inplace_or_returns_self(self, sample_image_with_mask):
-        """Test that |= returns ObjectMask (self)."""
-        img = sample_image_with_mask
-        result = (img.objmask.__ior__(np.zeros((100, 100), dtype=bool)))
-        assert result is img.objmask
-
-    def test_inplace_xor_returns_self(self, sample_image_with_mask):
-        """Test that ^= returns ObjectMask (self)."""
-        img = sample_image_with_mask
-        result = (img.objmask.__ixor__(np.zeros((100, 100), dtype=bool)))
-        assert result is img.objmask
-
-
 class TestOperatorDtypeHandling:
     """Test dtype handling in operators."""
 

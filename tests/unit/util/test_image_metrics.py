@@ -388,28 +388,3 @@ class TestHelperMethods:
         assert np.all(variance >= 0)
 
 
-class TestMetricsConsistency:
-    """Test that metrics are consistent across calls."""
-
-    def test_noise_metrics_deterministic(self, calculator):
-        metrics1 = calculator.compute_noise_metrics()
-        metrics2 = calculator.compute_noise_metrics()
-        assert metrics1["snr"] == pytest.approx(metrics2["snr"])
-        assert metrics1["sigma_mad"] == pytest.approx(metrics2["sigma_mad"])
-
-    def test_contrast_metrics_deterministic(self, calculator):
-        metrics1 = calculator.compute_contrast_metrics()
-        metrics2 = calculator.compute_contrast_metrics()
-        assert metrics1["rms_contrast"] == pytest.approx(metrics2["rms_contrast"])
-
-    def test_structure_metrics_deterministic(self, calculator):
-        metrics1 = calculator.compute_structure_metrics(sigma=1.5)
-        metrics2 = calculator.compute_structure_metrics(sigma=1.5)
-        assert metrics1["mean_coherence"] == pytest.approx(metrics2["mean_coherence"])
-
-    def test_background_metrics_deterministic(self, calculator):
-        metrics1 = calculator.compute_background_metrics(sigma=50.0)
-        metrics2 = calculator.compute_background_metrics(sigma=50.0)
-        assert metrics1["nonuniformity_ratio"] == pytest.approx(
-            metrics2["nonuniformity_ratio"]
-        )

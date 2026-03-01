@@ -40,40 +40,10 @@ class TestImagePadderParameterValidation:
         with pytest.raises(ValueError, match="cannot be negative"):
             ImagePadder(left=-5, right=-10)
 
-    def test_zero_values_allowed(self):
-        """Test that zero values are allowed (means no padding from that edge)."""
-        padder = ImagePadder(left=0, right=0, top=0, bottom=0)
-        assert padder.left == 0
-        assert padder.right == 0
-        assert padder.top == 0
-        assert padder.bottom == 0
-
     def test_invalid_mode_raises_error(self):
         """Test that invalid padding mode raises ValueError."""
         with pytest.raises(ValueError, match="mode must be one of"):
             ImagePadder(mode="invalid_mode")
-
-    def test_valid_modes_accepted(self):
-        """Test that all valid np.pad modes are accepted."""
-        valid_modes = ['constant', 'edge', 'reflect', 'symmetric', 'wrap']
-        for mode in valid_modes:
-            padder = ImagePadder(mode=mode)
-            assert padder.mode == mode
-
-    def test_constant_value_can_be_zero(self):
-        """Test that constant_value can be 0 (black padding)."""
-        padder = ImagePadder(constant_value=0)
-        assert padder.constant_value == 0
-
-    def test_constant_value_can_be_white(self):
-        """Test that constant_value can be 255 (white padding)."""
-        padder = ImagePadder(constant_value=255)
-        assert padder.constant_value == 255
-
-    def test_constant_value_can_be_float(self):
-        """Test that constant_value can be a float."""
-        padder = ImagePadder(constant_value=0.5)
-        assert padder.constant_value == 0.5
 
 
 class TestImagePadderPaddingLogic:

@@ -3,7 +3,6 @@ import logging
 from phenotypic import Image, GridImage, ImagePipeline
 from phenotypic._core._pipeline_parts import IntermediateResult
 from phenotypic.correction import GridAligner
-from phenotypic.data import load_plate_12hr
 from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import CLAHE, ContrastStretching, GaussianBlur, MedianFilter
 from phenotypic.measure import (
@@ -30,9 +29,9 @@ logging.basicConfig(
 
 
 @timeit
-def test_empty_pipeline():
+def test_empty_pipeline(plate_12hr_grid_image):
     empty_pipeline = ImagePipeline({})
-    assert empty_pipeline.apply(GridImage(load_plate_12hr())).num_objects == 0
+    assert empty_pipeline.apply(plate_12hr_grid_image.copy()).num_objects == 0
 
 
 @timeit
@@ -147,9 +146,9 @@ def _make_three_op_pipeline():
 
 
 @timeit
-def test_apply_with_intermediates_in_memory():
+def test_apply_with_intermediates_in_memory(plate_12hr_grid_image):
     pipe = _make_three_op_pipeline()
-    image = GridImage(load_plate_12hr())
+    image = plate_12hr_grid_image.copy()
 
     result = pipe.apply_with_intermediates(image)
 
@@ -171,9 +170,9 @@ def test_apply_with_intermediates_in_memory():
 
 
 @timeit
-def test_apply_with_intermediates_to_disk(tmp_path):
+def test_apply_with_intermediates_to_disk(tmp_path, plate_12hr_grid_image):
     pipe = _make_three_op_pipeline()
-    image = GridImage(load_plate_12hr())
+    image = plate_12hr_grid_image.copy()
 
     out_dir = tmp_path / "intermediates"
     result = pipe.apply_with_intermediates(image, output_dir=out_dir)
@@ -198,9 +197,9 @@ def test_apply_with_intermediates_to_disk(tmp_path):
 
 
 @timeit
-def test_apply_with_intermediates_preserves_gridimage():
+def test_apply_with_intermediates_preserves_gridimage(plate_12hr_grid_image):
     pipe = _make_three_op_pipeline()
-    image = GridImage(load_plate_12hr())
+    image = plate_12hr_grid_image.copy()
 
     result = pipe.apply_with_intermediates(image)
 
@@ -211,9 +210,9 @@ def test_apply_with_intermediates_preserves_gridimage():
 
 
 @timeit
-def test_apply_with_intermediates_empty_pipeline():
+def test_apply_with_intermediates_empty_pipeline(plate_12hr_grid_image):
     pipe = ImagePipeline({})
-    image = GridImage(load_plate_12hr())
+    image = plate_12hr_grid_image.copy()
 
     result = pipe.apply_with_intermediates(image)
 
@@ -226,9 +225,9 @@ def test_apply_with_intermediates_empty_pipeline():
 
 
 @timeit
-def test_apply_with_intermediates_inplace_false():
+def test_apply_with_intermediates_inplace_false(plate_12hr_grid_image):
     pipe = _make_three_op_pipeline()
-    image = GridImage(load_plate_12hr())
+    image = plate_12hr_grid_image.copy()
 
     num_objects_before = image.num_objects
 

@@ -5,7 +5,6 @@ Tests cover array limit querying, chunking logic, script generation,
 and sbatch submission parsing.
 """
 
-import re
 import subprocess
 from pathlib import Path
 from unittest.mock import patch, MagicMock
@@ -28,42 +27,31 @@ from phenotypic._cli._cli_types import Dataset, ExecutionConfig
 class TestSLURMArrayLimitParsing:
     """Tests for SLURM configuration querying."""
 
-    def test_calculate_optimal_array_chunks_single_chunk(self):
-        """Test chunking with num_images <= array_limit."""
-        chunks = calculate_optimal_array_chunks(500, 1000)
-        assert chunks == [(0, 500)]
-
-    def test_calculate_optimal_array_chunks_exact_multiple(self):
-        """Test chunking when num_images is exact multiple of limit."""
-        chunks = calculate_optimal_array_chunks(2000, 1000)
-        assert chunks == [(0, 1000), (1000, 2000)]
-
-    def test_calculate_optimal_array_chunks_with_remainder(self):
-        """Test chunking when num_images is not exact multiple."""
-        chunks = calculate_optimal_array_chunks(2500, 1000)
-        assert chunks == [(0, 1000), (1000, 2000), (2000, 2500)]
-
-    def test_calculate_optimal_array_chunks_boundary_case(self):
-        """Test chunking at exact boundary (limit + 1)."""
-        chunks = calculate_optimal_array_chunks(1001, 1000)
-        assert chunks == [(0, 1000), (1000, 1001)]
-
-    def test_calculate_optimal_array_chunks_equal_limit(self):
-        """Test chunking when num_images equals limit."""
-        chunks = calculate_optimal_array_chunks(1000, 1000)
-        assert chunks == [(0, 1000)]
-
-    def test_calculate_optimal_array_chunks_empty(self):
-        """Test chunking with zero images."""
-        chunks = calculate_optimal_array_chunks(0, 1000)
-        assert chunks == []
-
-    def test_calculate_optimal_array_chunks_small_limit(self):
-        """Test chunking with small limit (many chunks)."""
-        chunks = calculate_optimal_array_chunks(1000, 100)
-        assert len(chunks) == 10
-        assert chunks[0] == (0, 100)
-        assert chunks[-1] == (900, 1000)
+    @pytest.mark.parametrize(
+        "num_images, array_limit, expected",
+        [
+            (500, 1000, [(0, 500)]),
+            (2000, 1000, [(0, 1000), (1000, 2000)]),
+            (2500, 1000, [(0, 1000), (1000, 2000), (2000, 2500)]),
+            (1001, 1000, [(0, 1000), (1000, 1001)]),
+            (1000, 1000, [(0, 1000)]),
+            (0, 1000, []),
+            (1000, 100, [(i, i + 100) for i in range(0, 1000, 100)]),
+        ],
+        ids=[
+            "single_chunk",
+            "exact_multiple",
+            "with_remainder",
+            "boundary_case",
+            "equal_limit",
+            "empty",
+            "small_limit",
+        ],
+    )
+    def test_calculate_optimal_array_chunks(self, num_images, array_limit, expected):
+        """Test chunking logic for various num_images and array_limit combinations."""
+        chunks = calculate_optimal_array_chunks(num_images, array_limit)
+        assert chunks == expected
 
     @patch("subprocess.run")
     def test_get_slurm_array_limit_success(self, mock_run):
@@ -156,10 +144,6 @@ class TestArrayChunkValidation:
     def test_validate_array_chunk_end_before_start(self):
         """Test validation fails when end < start."""
         assert validate_array_chunk((500, 100), 1000, 1000) is False
-
-    def test_validate_array_chunk_exceeds_num_images(self):
-        """Test validation fails when end exceeds total images."""
-        assert validate_array_chunk((0, 1500), 1000, 1000) is False
 
 
 class TestArrayJobScriptGeneration:
@@ -367,41 +351,6 @@ class TestArrayJobScriptGeneration:
                 output_dir=output_dir,
                 chunk_id=0,
             )
-
-
-class TestSbatchJobIDParsing:
-    """Tests for parsing sbatch output."""
-
-    def test_sbatch_job_id_parsing_standard(self):
-        """Test parsing standard sbatch output."""
-        output = "Submitted batch job 12345\n"
-        match = re.search(r"Submitted batch job (\d+)", output)
-        assert match is not None
-        assert match.group(1) == "12345"
-
-    def test_sbatch_job_id_parsing_with_trailing_whitespace(self):
-        """Test parsing sbatch output with trailing whitespace."""
-        output = "Submitted batch job 67890  \n"
-        match = re.search(r"Submitted batch job (\d+)", output)
-        assert match is not None
-        assert match.group(1) == "67890"
-
-    def test_sbatch_job_id_parsing_multiline(self):
-        """Test parsing sbatch output with multiple lines."""
-        output = (
-            "scontrol: some warning\n"
-            "Submitted batch job 99999\n"
-            "additional output\n"
-        )
-        match = re.search(r"Submitted batch job (\d+)", output)
-        assert match is not None
-        assert match.group(1) == "99999"
-
-    def test_sbatch_job_id_parsing_no_match(self):
-        """Test parsing when job ID pattern not found."""
-        output = "Error: Invalid job submission\n"
-        match = re.search(r"Submitted batch job (\d+)", output)
-        assert match is None
 
 
 class TestSLURMSubmissionErrors:

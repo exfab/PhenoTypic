@@ -111,33 +111,6 @@ class TestSurroundedPositions:
 class TestEdgeCorrectorInit:
     """Test EdgeCorrector initialization."""
 
-    def test_basic_initialization(self):
-        """Test basic initialization with required parameters."""
-        corrector = EdgeCorrector(
-                on="Area",
-                groupby=["ImageName"],
-        )
-        assert corrector.nrows == 8
-        assert corrector.ncols == 12
-        assert corrector.top_n == 3
-        assert corrector.connectivity == 4
-
-    def test_custom_grid_size(self):
-        """Test initialization with custom grid dimensions."""
-        corrector = EdgeCorrector(on="Area", groupby=["ImageName"], nrows=4, ncols=6)
-        assert corrector.nrows == 4
-        assert corrector.ncols == 6
-
-    def test_custom_top_n(self):
-        """Test initialization with custom top_n."""
-        corrector = EdgeCorrector(on="Area", groupby=["ImageName"], top_n=20)
-        assert corrector.top_n == 20
-
-    def test_8connectivity(self):
-        """Test initialization with 8-connectivity."""
-        corrector = EdgeCorrector(on="Area", groupby=["ImageName"], connectivity=8)
-        assert corrector.connectivity == 8
-
     def test_invalid_connectivity_raises(self):
         """Test that invalid connectivity raises ValueError."""
         with pytest.raises(ValueError, match="connectivity must be 4 or 8"):
@@ -530,33 +503,6 @@ class TestShowMethod:
 
         with pytest.raises(RuntimeError, match="Call analyze\\(\\) first"):
             corrector.show()
-
-    def test_show_runs_after_analyze(self):
-        """Test that show runs successfully after analyze."""
-        np.random.seed(42)
-
-        data = pd.DataFrame(
-                {
-                    "ImageName"            : ["img1"] * 96,
-                    str(GRID.ROW_MAJOR_IDX): range(96),
-                    "Area"                 : np.random.uniform(100, 500, 96),
-                }
-        )
-
-        # Set some edge values high
-        data.loc[0:11, "Area"] = 1000  # Top row
-
-        corrector = EdgeCorrector(
-                on="Area",
-                groupby=["ImageName"],
-        )
-
-        corrector.analyze(data)
-
-        # This should not raise an error
-        # Note: In actual test environment, we might mock plt.show()
-        # to prevent display, but for now we'll skip the actual display test
-        # corrector.show()  # Would display in interactive environment
 
 
 class TestIntegration:

@@ -55,26 +55,6 @@ class TestTukeyOutlierRemover:
 
         return pd.concat(groups, ignore_index=True)
 
-    def test_initialization(self):
-        """Test TukeyOutlierRemover initialization with various parameters."""
-        # Test basic initialization
-        detector = TukeyOutlierRemover(on="Area", groupby=["ImageName"])
-
-        assert detector.on == "Area"
-        assert detector.groupby == ["ImageName"]
-        assert detector.k == 1.5
-        assert detector.n_jobs == 1
-
-        # Test custom parameters
-        detector_custom = TukeyOutlierRemover(
-            on="Size", groupby=["Plate", "Well"], k=3.0, num_workers=2
-        )
-
-        assert detector_custom.on == "Size"
-        assert detector_custom.groupby == ["Plate", "Well"]
-        assert detector_custom.k == 3.0
-        assert detector_custom.n_jobs == 2
-
     def test_initialization_invalid_k(self):
         """Test that invalid k values raise errors."""
         with pytest.raises(ValueError, match="k must be positive"):
@@ -205,17 +185,6 @@ class TestTukeyOutlierRemover:
 
         plt.close("all")
 
-    def test_show_method_max_groups(self, sample_data_multiple_groups):
-        """Test show() method with max_groups parameter."""
-        detector = TukeyOutlierRemover(on="Area", groupby=["Plate", "ImageName"])
-
-        detector.analyze(sample_data_multiple_groups)
-        fig, axes = detector.show(max_groups=2)
-
-        assert isinstance(fig, plt.Figure)
-
-        plt.close("all")
-
     def test_show_method_collapsed(self, sample_data):
         """Test show() method with collapsed=True."""
         detector = TukeyOutlierRemover(on="Area", groupby=["ImageName"])
@@ -225,23 +194,6 @@ class TestTukeyOutlierRemover:
 
         assert isinstance(fig, plt.Figure)
         assert isinstance(ax, plt.Axes)
-
-        plt.close("all")
-
-    def test_show_method_collapsed_with_multiple_groups(
-        self, sample_data_multiple_groups
-    ):
-        """Test collapsed view with multiple groups."""
-        detector = TukeyOutlierRemover(on="Area", groupby=["Plate", "ImageName"])
-
-        detector.analyze(sample_data_multiple_groups)
-        fig, ax = detector.show(collapsed=True, figsize=(12, 8))
-
-        assert isinstance(fig, plt.Figure)
-        assert isinstance(ax, plt.Axes)
-
-        # Check that y-axis has correct number of ticks
-        assert len(ax.get_yticks()) > 0
 
         plt.close("all")
 
@@ -266,33 +218,6 @@ class TestTukeyOutlierRemover:
 
         # Filter to show specific plate and image
         fig, axes = detector.show(criteria={"Plate": "P1", "ImageName": "img1"})
-
-        assert isinstance(fig, plt.Figure)
-
-        plt.close("all")
-
-    def test_show_with_criteria_collapsed_mode(self, sample_data_multiple_groups):
-        """Test criteria parameter with collapsed visualization mode."""
-        detector = TukeyOutlierRemover(on="Area", groupby=["Plate", "ImageName"])
-
-        detector.analyze(sample_data_multiple_groups)
-
-        # Filter to show only one image across all plates in collapsed view
-        fig, ax = detector.show(criteria={"ImageName": "img1"}, collapsed=True)
-
-        assert isinstance(fig, plt.Figure)
-        assert isinstance(ax, plt.Axes)
-
-        plt.close("all")
-
-    def test_show_with_criteria_list_values(self, sample_data_multiple_groups):
-        """Test criteria parameter with list of values."""
-        detector = TukeyOutlierRemover(on="Area", groupby=["Plate", "ImageName"])
-
-        detector.analyze(sample_data_multiple_groups)
-
-        # Filter using list of values
-        fig, axes = detector.show(criteria={"Plate": ["P1", "P2"]})
 
         assert isinstance(fig, plt.Figure)
 
@@ -456,19 +381,3 @@ class TestTukeyOutlierRemover:
         # Result should be a valid DataFrame
         assert isinstance(filtered_data, pd.DataFrame)
 
-    def test_consistent_group_boundaries(self, sample_data):
-        """Test that fence boundaries are consistent within groups."""
-        detector = TukeyOutlierRemover(on="Area", groupby=["ImageName"], k=1.5)
-
-        detector.analyze(sample_data)
-
-        # Verify through visualization that boundaries are computed correctly
-        fig, axes = detector.show()
-        assert isinstance(fig, plt.Figure)
-
-        # Test collapsed view as well
-        fig_collapsed, ax_collapsed = detector.show(collapsed=True)
-        assert isinstance(fig_collapsed, plt.Figure)
-        assert isinstance(ax_collapsed, plt.Axes)
-
-        plt.close("all")

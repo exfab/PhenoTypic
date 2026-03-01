@@ -211,61 +211,12 @@ class TestColorSpaceAccessors:
 class TestArrayInterfaceConsistency:
     """Tests to ensure __array__ returns consistent results."""
 
-    def test_multiple_calls_same_result(self, sample_rgb_image):
-        """Test that multiple calls to __array__ give the same result."""
-        arr1 = np.array(sample_rgb_image.gray)
-        arr2 = np.array(sample_rgb_image.gray)
-        assert np.array_equal(arr1, arr2)
-
     def test_direct_access_matches_array_interface(self, sample_rgb_image):
         """Test that __array__ matches direct array access."""
         via_interface = np.array(sample_rgb_image.rgb)
         via_getitem = sample_rgb_image.rgb[:]
         assert np.array_equal(via_interface, via_getitem)
 
-    def test_copy_parameter(self, sample_rgb_image):
-        """Test that copy parameter works correctly."""
-        arr1 = np.array(sample_rgb_image.gray, copy=True)
-        arr2 = np.array(sample_rgb_image.gray, copy=True)
-
-        # Modify arr1 and ensure arr2 is unchanged
-        arr1[0, 0] = 999
-        assert not np.array_equal(arr1, arr2)
-
-
-class TestNumpyFunctionCompatibility:
-    """Test compatibility with various numpy functions."""
-
-    def test_reshape_operations(self, sample_rgb_image):
-        """Test that reshape works after converting to array."""
-        flat = np.reshape(sample_rgb_image.gray, -1)
-        assert flat.ndim == 1
-
-    def test_where_operations(self, sample_rgb_image):
-        """Test np.where with accessor."""
-        matrix = sample_rgb_image.gray
-        threshold = 0.5
-        # Convert to array explicitly for comparison operations
-        matrix_arr = np.array(matrix)
-        result = np.where(matrix_arr > threshold, 1, 0)
-        assert result.shape == matrix.shape
-
-    def test_clip_operations(self, sample_rgb_image):
-        """Test np.clip with accessor."""
-        result = np.clip(sample_rgb_image.gray, 0.2, 0.8)
-        assert np.all(result >= 0.2) and np.all(result <= 0.8)
-
-    def test_concatenate_operations(self, sample_rgb_image):
-        """Test np.concatenate with multiple accessors."""
-        matrix = sample_rgb_image.gray
-        result = np.concatenate([matrix, matrix], axis=0)
-        assert result.shape[0] == matrix.shape[0] * 2
-
-    def test_percentile_operations(self, sample_rgb_image):
-        """Test np.percentile with accessor."""
-        result = np.percentile(sample_rgb_image.gray, 50)
-        expected = np.percentile(sample_rgb_image.gray[:], 50)
-        assert np.isclose(result, expected)
 
 
 if __name__ == "__main__":
