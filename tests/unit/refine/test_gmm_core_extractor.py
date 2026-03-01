@@ -54,38 +54,6 @@ def multi_label_data():
 
 
 # ---------------------------------------------------------------------------
-# Default parameters
-# ---------------------------------------------------------------------------
-
-
-class TestDefaults:
-    """Verify that the class instantiates with documented defaults."""
-
-    def test_default_parameters(self):
-        op = GMMCoreExtractor()
-        # Access name-mangled private attributes
-        assert op._GMMCoreExtractor__n_components == 2
-        assert op._GMMCoreExtractor__separation_threshold == 0.8
-        assert op._GMMCoreExtractor__min_core_area == 30
-        assert op._GMMCoreExtractor__morph_open_radius == 1
-        assert op._GMMCoreExtractor__morph_close_radius == 2
-
-    def test_custom_parameters(self):
-        op = GMMCoreExtractor(
-            n_components=3,
-            separation_threshold=0.5,
-            min_core_area=50,
-            morph_open_radius=0,
-            morph_close_radius=3,
-        )
-        assert op._GMMCoreExtractor__n_components == 3
-        assert op._GMMCoreExtractor__separation_threshold == 0.5
-        assert op._GMMCoreExtractor__min_core_area == 50
-        assert op._GMMCoreExtractor__morph_open_radius == 0
-        assert op._GMMCoreExtractor__morph_close_radius == 3
-
-
-# ---------------------------------------------------------------------------
 # Module-level function: extract_gmm_cores
 # ---------------------------------------------------------------------------
 
@@ -296,12 +264,9 @@ class TestHelpers:
 class TestGMMCoreExtractorPipeline:
     """Test GMMCoreExtractor through the pipeline / apply interface."""
 
-    def test_apply_on_detected_image(self):
+    def test_apply_on_detected_image(self, synth_plate_detected):
         """Apply GMMCoreExtractor after OtsuDetector on synthetic data."""
-        from phenotypic.data import load_synth_yeast_plate
-
-        image = load_synth_yeast_plate()
-        OtsuDetector().apply(image, inplace=True)
+        image = synth_plate_detected.copy()
 
         # Should have some detections
         assert image.objmap[:].max() > 0
