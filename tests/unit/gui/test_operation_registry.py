@@ -17,13 +17,13 @@ class TestParamInfo:
     def test_param_info_creation(self):
         """Test creating ParamInfo."""
         info = ParamInfo(
-            name="sigma",
-            type_hint=float,
-            default=1.0,
-            has_default=True,
-            is_operation=False,
-            is_pipeline=False,
-            is_optional=False,
+                name="sigma",
+                type_hint=float,
+                default=1.0,
+                has_default=True,
+                is_operation=False,
+                is_pipeline=False,
+                is_optional=False,
         )
         assert info.name == "sigma"
         assert info.type_hint is float
@@ -37,12 +37,12 @@ class TestOperationInfo:
     def test_operation_info_creation(self):
         """Test creating OperationInfo."""
         info = OperationInfo(
-            cls=GaussianBlur,
-            name="GaussianBlur",
-            category="Enhancer",
-            module="phenotypic.enhance",
-            docstring="Test docstring",
-            parameters={},
+                cls=GaussianBlur,
+                name="GaussianBlur",
+                category="Enhancer",
+                module="phenotypic.enhance",
+                docstring="Test docstring",
+                parameters={},
         )
         assert info.cls is GaussianBlur
         assert info.name == "GaussianBlur"
@@ -133,8 +133,8 @@ class TestOperationRegistry:
         # FilamentousFungiDetector has operation parameters
         info = registry.get("FilamentousFungiDetector")
         if info:  # Only test if this detector exists
-            assert "center_detector" in info.parameters
-            param = info.parameters["center_detector"]
+            assert "inoculum_detector" in info.parameters
+            param = info.parameters["inoculum_detector"]
             assert param.is_operation or param.is_pipeline
             assert param.is_optional  # It's Union[..., None]
 

@@ -104,6 +104,7 @@ def install_smart_grid(viewer: napari.Viewer) -> None:
         from phenotypic.gui._smart_grid._overlay_visuals import (
             cleanup_clones,
             create_overlay_clones,
+            is_overlay_layer,
         )
 
         _orig_update_scenegraph = c._update_scenegraph
@@ -114,6 +115,13 @@ def install_smart_grid(viewer: napari.Viewer) -> None:
             v = viewer_ref()
             if v is not None:
                 if _overlay_enabled and grid.enabled:
+                    # Detach original overlay visuals — they'd otherwise remain
+                    # parented to the canvas-wide self.view (order=100, drawn on
+                    # top) because patched_position returns (-1,-1) and napari's
+                    # _setup_layer_views_in_grid never re-parents them.
+                    for layer in v.layers:
+                        if is_overlay_layer(layer) and layer in c.layer_to_visual:
+                            c.layer_to_visual[layer].node.parent = None
                     _overlay_clones[:] = create_overlay_clones(c, v)
                 try:
                     add_grid_labels(c, v)

@@ -18,7 +18,7 @@ class TestFilamentousFungiDetector:
         image = load_synth_yeast_plate()
 
         detector = FilamentousFungiDetector(
-                center_detector=OtsuDetector(ignore_zeros=True),
+                inoculum_detector=OtsuDetector(ignore_zeros=True),
                 overall_detector=TriangleDetector(),
                 erosion_radius=1,
                 boundary_cost=1e6
@@ -34,7 +34,7 @@ class TestFilamentousFungiDetector:
         image = load_synth_yeast_plate()
 
         detector = FilamentousFungiDetector(
-                center_detector=OtsuDetector(),
+                inoculum_detector=OtsuDetector(),
                 overall_detector=TriangleDetector(),
         )
         result = detector.apply(image)
@@ -46,7 +46,7 @@ class TestFilamentousFungiDetector:
         assert np.all((objmap > 0) == objmask)
 
     def test_no_centers_detected_raises(self):
-        """Test that error is raised when center_detector finds nothing."""
+        """Test that error is raised when inoculum_detector finds nothing."""
         image = load_synth_yeast_plate()
 
         # Create a custom detector that always returns empty mask
@@ -56,7 +56,7 @@ class TestFilamentousFungiDetector:
                 return img
 
         detector = FilamentousFungiDetector(
-                center_detector=EmptyCenterDetector(),
+                inoculum_detector=EmptyCenterDetector(),
                 overall_detector=TriangleDetector(),
         )
 
@@ -75,7 +75,7 @@ class TestFilamentousFungiDetector:
                 return img
 
         detector = FilamentousFungiDetector(
-                center_detector=OtsuDetector(),
+                inoculum_detector=OtsuDetector(),
                 overall_detector=EmptyOverallDetector(),
         )
 
@@ -88,7 +88,7 @@ class TestFilamentousFungiDetector:
         image = load_synth_yeast_plate()
 
         detector = FilamentousFungiDetector(
-                center_detector=OtsuDetector(),
+                inoculum_detector=OtsuDetector(),
                 overall_detector=TriangleDetector(),
         )
 
@@ -100,10 +100,10 @@ class TestFilamentousFungiDetector:
         assert result.objmask[:].sum() > 0
 
     def test_invalid_center_detector_type_raises(self):
-        """Test that TypeError is raised for invalid center_detector type."""
-        with pytest.raises(TypeError, match="center_detector must be"):
+        """Test that TypeError is raised for invalid inoculum_detector type."""
+        with pytest.raises(TypeError, match="inoculum_detector must be"):
             FilamentousFungiDetector(
-                    center_detector="not_a_detector",
+                    inoculum_detector="not_a_detector",
                     overall_detector=TriangleDetector(),
             )
 
@@ -111,7 +111,7 @@ class TestFilamentousFungiDetector:
         """Test that TypeError is raised for invalid overall_detector type."""
         with pytest.raises(TypeError, match="overall_detector must be"):
             FilamentousFungiDetector(
-                    center_detector=OtsuDetector(),
+                    inoculum_detector=OtsuDetector(),
                     overall_detector=123,
             )
 
@@ -120,13 +120,13 @@ class TestFilamentousFungiDetector:
         image = load_synth_yeast_plate()
 
         detector_radius1 = FilamentousFungiDetector(
-                center_detector=OtsuDetector(),
+                inoculum_detector=OtsuDetector(),
                 overall_detector=TriangleDetector(),
                 erosion_radius=1,
         )
 
         detector_radius2 = FilamentousFungiDetector(
-                center_detector=OtsuDetector(),
+                inoculum_detector=OtsuDetector(),
                 overall_detector=TriangleDetector(),
                 erosion_radius=2,
         )
@@ -144,13 +144,13 @@ class TestFilamentousFungiDetector:
         image = load_synth_yeast_plate()
 
         detector_high_cost = FilamentousFungiDetector(
-                center_detector=OtsuDetector(),
+                inoculum_detector=OtsuDetector(),
                 overall_detector=TriangleDetector(),
                 boundary_cost=1e8,  # Very high cost
         )
 
         detector_low_cost = FilamentousFungiDetector(
-                center_detector=OtsuDetector(),
+                inoculum_detector=OtsuDetector(),
                 overall_detector=TriangleDetector(),
                 boundary_cost=1e3,  # Lower cost
         )
@@ -167,13 +167,13 @@ class TestFilamentousFungiDetector:
         image = load_synth_yeast_plate()
 
         detector_4conn = FilamentousFungiDetector(
-                center_detector=OtsuDetector(),
+                inoculum_detector=OtsuDetector(),
                 overall_detector=TriangleDetector(),
                 connectivity=1,  # 4-connected
         )
 
         detector_8conn = FilamentousFungiDetector(
-                center_detector=OtsuDetector(),
+                inoculum_detector=OtsuDetector(),
                 overall_detector=TriangleDetector(),
                 connectivity=2,  # 8-connected
         )
@@ -192,7 +192,7 @@ class TestFilamentousFungiDetector:
         original_rgb = image.rgb[:].copy()
 
         detector = FilamentousFungiDetector(
-                center_detector=OtsuDetector(),
+                inoculum_detector=OtsuDetector(),
                 overall_detector=TriangleDetector(),
         )
         result = detector.apply(image, inplace=False)
@@ -209,7 +209,7 @@ class TestFilamentousFungiDetector:
         image = load_synth_yeast_plate()
 
         detector = FilamentousFungiDetector(
-                center_detector=OtsuDetector(),
+                inoculum_detector=OtsuDetector(),
                 overall_detector=TriangleDetector(),
         )
         result = detector.apply(image, inplace=True)
@@ -220,7 +220,7 @@ class TestFilamentousFungiDetector:
         assert image.objmap[:].max() > 0
 
     def test_with_imagepipeline_center_detector(self):
-        """Test that ImagePipeline works as center_detector."""
+        """Test that ImagePipeline works as inoculum_detector."""
         image = load_synth_yeast_plate()
 
         # Create pipeline for center detection with preprocessing
@@ -230,7 +230,7 @@ class TestFilamentousFungiDetector:
         ])
 
         detector = FilamentousFungiDetector(
-                center_detector=center_pipeline,
+                inoculum_detector=center_pipeline,
                 overall_detector=TriangleDetector(),
         )
         result = detector.apply(image)
@@ -250,7 +250,7 @@ class TestFilamentousFungiDetector:
         ])
 
         detector = FilamentousFungiDetector(
-                center_detector=OtsuDetector(),
+                inoculum_detector=OtsuDetector(),
                 overall_detector=overall_pipeline,
         )
         result = detector.apply(image)
@@ -273,7 +273,7 @@ class TestFilamentousFungiDetector:
         ])
 
         detector = FilamentousFungiDetector(
-                center_detector=center_pipeline,
+                inoculum_detector=center_pipeline,
                 overall_detector=overall_pipeline,
         )
         result = detector.apply(image)
@@ -285,7 +285,7 @@ class TestFilamentousFungiDetector:
     def test_serialization_roundtrip(self):
         """Test that detector serializes and deserializes correctly."""
         detector = FilamentousFungiDetector(
-                center_detector=OtsuDetector(ignore_zeros=True),
+                inoculum_detector=OtsuDetector(ignore_zeros=True),
                 overall_detector=TriangleDetector(),
                 erosion_radius=1,
                 boundary_cost=1e6,
@@ -305,7 +305,7 @@ class TestFilamentousFungiDetector:
         assert len(restored_pipeline._ops) == 1
         restored_detector = list(restored_pipeline._ops.values())[0]
         assert isinstance(restored_detector, FilamentousFungiDetector)
-        assert isinstance(restored_detector.center_detector, OtsuDetector)
+        assert isinstance(restored_detector.inoculum_detector, OtsuDetector)
         assert isinstance(restored_detector.overall_detector, TriangleDetector)
 
     def test_serialization_functional_equivalence(self):
@@ -314,7 +314,7 @@ class TestFilamentousFungiDetector:
 
         # Original detector
         detector = FilamentousFungiDetector(
-                center_detector=OtsuDetector(),
+                inoculum_detector=OtsuDetector(),
                 overall_detector=TriangleDetector(),
         )
         original_result = detector.apply(image, inplace=False)
@@ -345,7 +345,7 @@ class TestFilamentousFungiDetector:
         pipeline = ImagePipeline([
             GaussianBlur(sigma=1.0),
             FilamentousFungiDetector(
-                    center_detector=OtsuDetector(),
+                    inoculum_detector=OtsuDetector(),
                     overall_detector=TriangleDetector(),
             ),
         ])
@@ -368,7 +368,7 @@ class TestFilamentousFungiDetector:
 
         for center, overall in combinations:
             detector = FilamentousFungiDetector(
-                    center_detector=center,
+                    inoculum_detector=center,
                     overall_detector=overall,
             )
             result = detector.apply(image.copy())
@@ -387,7 +387,7 @@ class TestFilamentousFungiDetector:
         image = load_synth_yeast_plate()
 
         detector = FilamentousFungiDetector(
-                center_detector=OtsuDetector(),
+                inoculum_detector=OtsuDetector(),
                 overall_detector=TriangleDetector(),
         )
         result = detector.apply(image)
@@ -417,7 +417,7 @@ class TestFilamentousFungiDetector:
         image = load_synth_yeast_plate()
 
         detector = FilamentousFungiDetector(
-                center_detector=OtsuDetector(),
+                inoculum_detector=OtsuDetector(),
                 overall_detector=TriangleDetector(),
         )
 
@@ -433,7 +433,7 @@ class TestFilamentousFungiDetector:
         image = load_synth_yeast_plate()
 
         detector = FilamentousFungiDetector(
-                center_detector=OtsuDetector(ignore_zeros=True),
+                inoculum_detector=OtsuDetector(ignore_zeros=True),
                 overall_detector=TriangleDetector(),
                 erosion_radius=1,
                 boundary_cost=1e6,

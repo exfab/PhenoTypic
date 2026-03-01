@@ -58,7 +58,7 @@ def add_grid_labels(canvas, viewer: napari.Viewer) -> None:
         th = font_size * 1.8
         inner_pad = 4
         bg = Rectangle(
-            center=(tw / 2 + inner_pad, th / 2),
+            center=(tw / 2 + inner_pad, -th / 2),
             width=tw + inner_pad * 2,
             height=th + inner_pad * 2,
             color=(0, 0, 0, 0.3),

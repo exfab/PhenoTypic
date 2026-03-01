@@ -630,11 +630,11 @@ class ImageIOHandler(ImageColorSpace):
             )
 
     def save_intermediate_layers(
-        self,
-        filename,
-        layers: tuple[str, ...],
-        compression="gzip",
-        compression_opts=4,
+            self,
+            filename,
+            layers: tuple[str, ...],
+            compression="gzip",
+            compression_opts=4,
     ):
         """Save only the specified image layers to an HDF5 file.
 
@@ -659,26 +659,26 @@ class ImageIOHandler(ImageColorSpace):
                     if not self.rgb.isempty():
                         array = self.rgb[:]
                         HDF.save_array2hdf5(
-                            group=f, array=array, name="rgb",
-                            dtype=array.dtype,
-                            compression=compression,
-                            compression_opts=compression_opts,
+                                group=f, array=array, name="rgb",
+                                dtype=array.dtype,
+                                compression=compression,
+                                compression_opts=compression_opts,
                         )
                 elif layer == "gray":
                     array = self.gray[:]
                     HDF.save_array2hdf5(
-                        group=f, array=array, name="gray",
-                        dtype=array.dtype,
-                        compression=compression,
-                        compression_opts=compression_opts,
+                            group=f, array=array, name="gray",
+                            dtype=array.dtype,
+                            compression=compression,
+                            compression_opts=compression_opts,
                     )
                 elif layer == "detect_mat":
                     array = self.detect_mat[:]
                     HDF.save_array2hdf5(
-                        group=f, array=array, name="detect_mat",
-                        dtype=array.dtype,
-                        compression=compression,
-                        compression_opts=compression_opts,
+                            group=f, array=array, name="detect_mat",
+                            dtype=array.dtype,
+                            compression=compression,
+                            compression_opts=compression_opts,
                     )
                     f["detect_mat"].attrs["detect_mode"] = (
                         self._data.detect_mode
@@ -686,10 +686,10 @@ class ImageIOHandler(ImageColorSpace):
                 elif layer == "objmap":
                     array = self.objmap[:]
                     HDF.save_array2hdf5(
-                        group=f, array=array, name="objmap",
-                        dtype=array.dtype,
-                        compression=compression,
-                        compression_opts=compression_opts,
+                            group=f, array=array, name="objmap",
+                            dtype=array.dtype,
+                            compression=compression,
+                            compression_opts=compression_opts,
                     )
 
             self._save_hdf5_metadata(f)
@@ -741,17 +741,25 @@ class ImageIOHandler(ImageColorSpace):
         return img
 
     @classmethod
-    def load_hdf5(cls, filename) -> Image:
-        """Load an image from an HDF5 file saved with ``save2hdf5``.
+    def load_hdf5(cls, filename, **kwargs) -> Image:
+        """
+        Loads an image object from an HDF5 file.
 
         Args:
-            filename: Path to the HDF5 file to load.
+            filename (str): The path to the HDF5 file containing the image data. Providing an incorrect or
+                improperly structured file may result in incomplete or corrupted image data being loaded.
+            **kwargs: Additional keyword arguments that may alter the image import and processing behavior.
+                These settings may include options for subsampling, resizing, or preprocessing specific
+                to the characteristics of the microbe images. Proper configurations can optimize the
+                processing performance while preserving essential colony features critical to analysis.
 
         Returns:
-            Reconstructed image with all data and metadata.
+            Image: An image object constructed from the data stored in the HDF5 file. The fidelity
+            of this object depends on both the input file's quality and the parameters provided
+            through kwargs, as they affect the image's suitability for detailed microbe colony studies.
         """
         with h5py.File(filename, "r") as filehandler:
-            img = cls._load_from_hdf5_group(filehandler)
+            img = cls._load_from_hdf5_group(filehandler, **kwargs)
 
         return img
 

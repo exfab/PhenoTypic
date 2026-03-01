@@ -5,7 +5,7 @@ import gc
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
-    from phenotypic._core._image_pipeline import ImagePipeline# type: ignore
+    from phenotypic._core._image_pipeline import ImagePipeline  # type: ignore
 
 from scipy.ndimage import center_of_mass
 from skimage.morphology import disk, erosion
@@ -32,7 +32,7 @@ class FilamentousFungiDetector(ObjectDetector):
     """Detects and separates filamentous fungi using two-stage detection and watershed.
 
     FilamentousFungiDetector uses two detection strategies to segment filamentous fungi:
-    (1) center_detector identifies compact fungal centers/nuclei, (2) overall_detector captures
+    (1) inoculum_detector identifies compact fungal centers/nuclei, (2) overall_detector captures
     the complete fungal structure including spreading hyphae. The detector combines these
     by filtering centers to those overlapping with the overall structure, then uses the
     filtered centers as seed markers for watershed segmentation with boundary-constrained
@@ -40,14 +40,14 @@ class FilamentousFungiDetector(ObjectDetector):
     irregular, spreading morphology.
 
     Args:
-        center_detector: ObjectDetector or ImagePipeline that identifies fungal centers/nuclei.
+        inoculum_detector: ObjectDetector or ImagePipeline that identifies fungal centers/nuclei.
             Should produce small, compact regions at center points. Examples: OtsuDetector(),
             RoundPeaksDetector(), or preprocessing pipeline with GaussianBlur() + detector.
 
         overall_detector: ObjectDetector or ImagePipeline that captures complete fungal
             structures including hyphae and spreading edges. Should produce full fungal body
             masks. Examples: TriangleDetector(), CannyDetector(), or custom detector with
-            lower threshold than center_detector.
+            lower threshold than inoculum_detector.
 
         erosion_radius: Radius in pixels for morphological erosion to compute boundaries
             (default 1). Boundaries computed as: objmask - erosion(objmask, disk(radius)).
@@ -70,7 +70,7 @@ class FilamentousFungiDetector(ObjectDetector):
             centers. objmask is True for all fungal pixels within watershed regions.
 
     Raises:
-        TypeError: If center_detector or overall_detector are not ObjectDetector or
+        TypeError: If inoculum_detector or overall_detector are not ObjectDetector or
             ImagePipeline instances.
         ValueError: If no centers detected, no overall structure detected, or no centers
             overlap with overall structure after filtering.
@@ -127,7 +127,7 @@ class FilamentousFungiDetector(ObjectDetector):
         >>>
         >>> # Create detector: centers detected via OtsuDetector, overall via TriangleDetector
         >>> detector = FilamentousFungiDetector(
-        ...     center_detector=OtsuDetector(ignore_zeros=True),
+        ...     inoculum_detector=OtsuDetector(ignore_zeros=True),
         ...     overall_detector=TriangleDetector(),
         ...     erosion_radius=1,
         ...     boundary_cost=1e6
@@ -151,7 +151,7 @@ class FilamentousFungiDetector(ObjectDetector):
         ...     GaussianBlur(sigma=1.5),
         ...     CLAHE(clip_limit=2.0),
         ...     FilamentousFungiDetector(
-        ...         center_detector=ImagePipeline([
+        ...         inoculum_detector=ImagePipeline([
         ...             GaussianBlur(sigma=0.5),
         ...             OtsuDetector()
         ...         ]),
@@ -192,7 +192,7 @@ class FilamentousFungiDetector(ObjectDetector):
 
     def __init__(
             self,
-            center_detector: Union[ObjectDetector, 'ImagePipeline', None] = None,
+            inoculum_detector: Union[ObjectDetector, 'ImagePipeline', None] = None,
             overall_detector: Union[ObjectDetector, 'ImagePipeline', None] = None,
             erosion_radius: int = 1,
             boundary_cost: float = 1e6,
@@ -204,12 +204,12 @@ class FilamentousFungiDetector(ObjectDetector):
         # Type validation (allow None for serialization/deserialization)
         from phenotypic import ImagePipeline
 
-        if center_detector is not None and not isinstance(center_detector,
-                                                          (ObjectDetector,
-                                                           ImagePipeline)):
+        if inoculum_detector is not None and not isinstance(inoculum_detector,
+                                                            (ObjectDetector,
+                                                             ImagePipeline)):
             raise TypeError(
-                    "center_detector must be an ObjectDetector or ImagePipeline instance, "
-                    f"got {type(center_detector).__name__}"
+                    "inoculum_detector must be an ObjectDetector or ImagePipeline instance, "
+                    f"got {type(inoculum_detector).__name__}"
             )
         if overall_detector is not None and not isinstance(overall_detector,
                                                            (ObjectDetector,
@@ -219,7 +219,7 @@ class FilamentousFungiDetector(ObjectDetector):
                     f"got {type(overall_detector).__name__}"
             )
 
-        self.center_detector = center_detector if center_detector \
+        self.inoculum_detector = inoculum_detector if inoculum_detector \
             else self.__center_pipe
 
         self.overall_detector = overall_detector if overall_detector \
@@ -234,7 +234,7 @@ class FilamentousFungiDetector(ObjectDetector):
         """Detect and separate filamentous fungi using two-stage detection and watershed.
 
         Algorithm:
-        1. Run center_detector to find fungal centers
+        1. Run inoculum_detector to find fungal centers
         2. Run overall_detector to capture complete fungal structures
         3. Compute boundaries via morphological erosion
         4. Filter centers to keep only those overlapping with overall structure
@@ -247,9 +247,9 @@ class FilamentousFungiDetector(ObjectDetector):
         from phenotypic import ImagePipeline
 
         # Validate that detectors are set before operation
-        if self.center_detector is None:
+        if self.inoculum_detector is None:
             raise ValueError(
-                    "center_detector is required but not set. "
+                    "inoculum_detector is required but not set. "
                     "Provide a detector when creating FilamentousFungiDetector."
             )
         if self.overall_detector is None:
@@ -258,20 +258,20 @@ class FilamentousFungiDetector(ObjectDetector):
                     "Provide a detector when creating FilamentousFungiDetector."
             )
 
-        # Step 1: Apply center_detector
-        if isinstance(self.center_detector, ImagePipeline):
-            center_result = self.center_detector.apply(image, inplace=False,
-                                                       reset=False)
+        # Step 1: Apply inoculum_detector
+        if isinstance(self.inoculum_detector, ImagePipeline):
+            center_result = self.inoculum_detector.apply(image, inplace=False,
+                                                         reset=False)
         else:
-            center_result = self.center_detector.apply(image, inplace=False)
+            center_result = self.inoculum_detector.apply(image, inplace=False)
         center_objmask = center_result.objmask[:]
         center_objmap = center_result.objmap[:]
 
         # Validate centers detected
         if center_objmap.max() == 0:
             raise ValueError(
-                    "No centers detected by center_detector. Cannot perform watershed "
-                    "separation. Try adjusting center_detector parameters or using a "
+                    "No centers detected by inoculum_detector. Cannot perform watershed "
+                    "separation. Try adjusting inoculum_detector parameters or using a "
                     "different detection strategy."
             )
 
@@ -315,7 +315,7 @@ class FilamentousFungiDetector(ObjectDetector):
         if num_centers == 0:
             raise ValueError(
                     "No centers overlap with overall structure after filtering. "
-                    "Check that center_detector and overall_detector are compatible "
+                    "Check that inoculum_detector and overall_detector are compatible "
                     "(detecting the same objects)."
             )
 

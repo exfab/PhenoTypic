@@ -14,6 +14,7 @@ from phenotypic.tools_.constants_ import OBJECT
 if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
     from phenotypic._core._image import Image
+    from phenotypic._core._image_pipeline import ImagePipeline
 
 import pandas as pd
 from typing import Dict, List
@@ -97,7 +98,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
     def __init__(
             self,
-            ops: List[ImageOperation] | Dict[str, ImageOperation] | None = None,
+            ops: List[ImageOperation | ImagePipeline] | Dict[str, ImageOperation | ImagePipeline] | None = None,
             meas: List[MeasureFeatures] | Dict[str, MeasureFeatures] | None = None,
             benchmark: bool = False,
             verbose: bool = False,
@@ -111,9 +112,10 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         on the provided dictionaries.
 
         Args:
-            ops: A dictionary where the keys are operation names (strings)
-                and the values are ImageOperation objects responsible for performing
-                specific Image processing tasks.
+            ops: A list or dictionary of ImageOperation or ImagePipeline objects.
+                If a list, class names are used as keys. If a dictionary, keys are
+                operation names (strings) and values are ImageOperation or ImagePipeline
+                objects responsible for performing specific Image processing tasks.
             meas: An optional dictionary where the keys are feature names
                 (strings) and the values are FeatureExtractor objects responsible for
                 extracting specific features.
@@ -167,16 +169,17 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         """Set pipeline description."""
         self._desc = value
 
-    def set_ops(self, ops: List[ImageOperation] | Dict[str, ImageOperation]):
+    def set_ops(self, ops: List[ImageOperation | ImagePipeline] | Dict[str, ImageOperation | ImagePipeline]):
         """
         Sets the operations to be performed. The operations can be passed as either a list of
-        ImageOperation instances or a dictionary mapping operation names to ImageOperation instances.
-        This method ensures that each operation in the list has a unique name. Raises a TypeError
-        if the input is neither a list nor a dictionary.
+        ImageOperation or ImagePipeline instances or a dictionary mapping operation names to
+        ImageOperation or ImagePipeline instances. This method ensures that each operation in
+        the list has a unique name. Raises a TypeError if the input is neither a list nor a dictionary.
 
         Args:
-            ops (List[ImageOperation] | Dict[str, ImageOperation]): A list of ImageOperation objects
-                or a dictionary where keys are operation names and values are ImageOperation objects.
+            ops (List[ImageOperation | ImagePipeline] | Dict[str, ImageOperation | ImagePipeline]):
+                A list of ImageOperation or ImagePipeline objects, or a dictionary where keys are
+                operation names and values are ImageOperation or ImagePipeline objects.
 
         Raises:
             TypeError: If the input is not a list or a dictionary.
