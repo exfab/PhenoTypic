@@ -1,5 +1,12 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING, overload
+from abc import ABC, abstractmethod
+
+if TYPE_CHECKING:
+    from phenotypic._core._image import Image
+    from phenotypic._core._grid_image import GridImage
+
 from ._object_detector import ObjectDetector
-from abc import ABC
 
 
 # <<Interface>>
@@ -183,7 +190,7 @@ class ThresholdDetector(ObjectDetector, ABC):
     Subclasses of ThresholdDetector must:
 
     1. Inherit from ThresholdDetector (which provides ObjectDetector's interface).
-    2. Implement ``_operate(image: Image) -> Image`` as a static method.
+    2. Implement ``_operate(image: Image) -> Image`` as an instance method.
     3. Within ``_operate()``:
 
        - Read ``image.detect_mat[:]`` (and optionally ``image.rgb[:], image.gray[:]``).
@@ -282,4 +289,14 @@ class ThresholdDetector(ObjectDetector, ABC):
         >>> print(f"Selected: {type(best_detector).__name__}")
     """
 
-    pass
+    @overload
+    @abstractmethod
+    def _operate(self, image: Image) -> Image: ...
+
+    @overload
+    @abstractmethod
+    def _operate(self, image: GridImage) -> GridImage: ...
+
+    @abstractmethod
+    def _operate(self, image: Image) -> Image:
+        return image

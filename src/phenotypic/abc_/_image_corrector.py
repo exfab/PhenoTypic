@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
 
 from ._image_operation import ImageOperation
-from abc import ABC
+from abc import ABC, abstractmethod
 
 
 class ImageCorrector(ImageOperation, ABC):
@@ -92,9 +92,8 @@ class ImageCorrector(ImageOperation, ABC):
 
     **How to Implement a Custom ImageCorrector**
 
-    Inherit from ImageCorrector and implement the ``_operate()`` static method. The static method
-    requirement enables parallel execution in pipelines—operations can be serialized and sent to
-    worker processes without instance state.
+    Inherit from ImageCorrector and implement the ``_operate()`` instance method. Access
+    parameters via ``self`` attributes within the method body.
 
     .. code-block:: python
 
@@ -118,8 +117,8 @@ class ImageCorrector(ImageOperation, ABC):
 
     **Key Implementation Rules**
 
-    1. ``_operate()`` must be a **@staticmethod** (no instance access, enables serialization).
-    2. All parameters (except ``image``) must match instance attributes by name exactly.
+    1. ``_operate()`` must be an **instance method** (access parameters via ``self``).
+    2. All parameters must be stored as instance attributes.
     3. The method must transform **all components equally** (rgb, gray, detect_mat, objmask, objmap).
     4. Never modify only one component—this breaks the "whole-image transformation" contract.
     5. Use the Image class's helper methods (``image.rotate()``) whenever possible for consistency.
@@ -254,7 +253,7 @@ class ImageCorrector(ImageOperation, ABC):
 
     **Notes**
 
-    - **Static method requirement:** ``_operate()`` must be static to enable parallel execution in ImagePipeline.
+    - **Instance method:** ``_operate()`` is an instance method; access parameters via ``self``.
     - **Parameter matching:** All ``_operate()`` parameters (except ``image``) must exist as instance attributes.
     - **No copy by default:** Operations return modified copies by default (inplace=False).
     - **Coordinate system changes:** Downstream operations may need re-detection after transformation.
@@ -313,3 +312,15 @@ class ImageCorrector(ImageOperation, ABC):
 
     def apply(self, image: Image, inplace: bool = False) -> Image:
         return super().apply(image=image, inplace=inplace)
+
+    @overload
+    @abstractmethod
+    def _operate(self, image: Image) -> Image: ...
+
+    @overload
+    @abstractmethod
+    def _operate(self, image: GridImage) -> GridImage: ...
+
+    @abstractmethod
+    def _operate(self, image: Image) -> Image:
+        return image

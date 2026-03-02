@@ -57,7 +57,7 @@ class Image(ImageIOHandler):
             name: str | None = None,
             bit_depth: Literal[8, 16] | None = None,
             gamma: GAMMA_ENCODINGS | str | None = GAMMA_ENCODINGS.SRGB,
-            illuminant: str | None = "D65",
+            illuminant: Literal["D65", "D50"] | None = "D65",
     ):
         """Initialize an Image instance with optional image data and color properties.
 

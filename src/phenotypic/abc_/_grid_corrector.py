@@ -258,7 +258,7 @@ class GridCorrector(ImageCorrector, GridOperation, ABC):
         from phenotypic import GridImage
 
         if not isinstance(image, GridImage):
-            raise GridImageInputError
+            raise GridImageInputError()
         output = super().apply(image, inplace=inplace)
         if not isinstance(output, GridImage):
             raise OutputValueError("GridImage")

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import abc
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 from typing_extensions import Callable
@@ -20,7 +20,6 @@ from ._base_operation import BaseOperation
 from phenotypic.tools_.exceptions_ import OperationFailedError
 from phenotypic.tools_.funcs_ import validate_measure_integrity
 from phenotypic.tools_.constants_ import OBJECT
-from abc import ABC
 
 
 def catch_warnings_decorator(func):
@@ -398,7 +397,7 @@ class MeasureFeatures(BaseOperation, ABC):
             )
 
     @staticmethod
-    @abc.abstractmethod
+    @abstractmethod
     def _operate(image: Image) -> pd.DataFrame:
         return pd.DataFrame()
 

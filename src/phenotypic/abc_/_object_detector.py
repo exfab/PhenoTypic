@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
 from ._image_operation import ImageOperation
 from phenotypic.tools_.funcs_ import validate_operation_integrity
-from abc import ABC
+from abc import ABC, abstractmethod
 
 
 # <<Interface>>
@@ -260,7 +260,7 @@ class ObjectDetector(ImageOperation, ABC):
     Methods:
         apply(image, inplace=False): User-facing method to apply detection to an image.
             Handles copy/inplace logic and parameter matching.
-        _operate(image, **kwargs): Abstract static method implemented by subclasses
+        _operate(image, **kwargs): Abstract instance method implemented by subclasses
             with detection logic. Must set image.objmask and image.objmap.
 
     Notes:
@@ -279,8 +279,7 @@ class ObjectDetector(ImageOperation, ABC):
           Consider inplace=True in pipelines processing many images, or use sparse
           representations (objmap uses scipy.sparse internally).
 
-        - **Static _operate() method:** Required for parallel execution in ImagePipeline.
-          All parameters (except image) must be instance attributes.
+        - **Instance _operate() method:** Access parameters via ``self`` attributes.
 
     Examples:
         Detect colonies in a plate image and access results:
@@ -333,3 +332,15 @@ class ObjectDetector(ImageOperation, ABC):
     @validate_operation_integrity("image.rgb", "image.gray", "image.detect_mat")
     def apply(self, image: Image, inplace=False) -> Image:
         return super().apply(image=image, inplace=inplace)
+
+    @overload
+    @abstractmethod
+    def _operate(self, image: Image) -> Image: ...
+
+    @overload
+    @abstractmethod
+    def _operate(self, image: GridImage) -> GridImage: ...
+
+    @abstractmethod
+    def _operate(self, image: Image) -> Image:
+        return image

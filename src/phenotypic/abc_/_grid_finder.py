@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import abc
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -11,7 +11,6 @@ import numpy as np
 
 from phenotypic.abc_ import GridMeasureFeatures
 from phenotypic.tools_.measurement_info_ import BBOX, GRID
-from abc import ABC
 
 
 class GridFinder(GridMeasureFeatures, ABC):
@@ -132,40 +131,33 @@ class GridFinder(GridMeasureFeatures, ABC):
     - **Additional columns:** Object metadata (centroid, bounding box, morphology) from
       image.objects.info()
 
-    Objects that fall outside all grid cells (due to edge clipping or misalignment)
-    have NaN values in ROW_NUM, COL_NUM, and ROW_MAJOR_IDX columns.
+    Objects whose centers fall outside the grid edges are clamped to the nearest
+    edge cell (row 0 or nrows-1, col 0 or ncols-1).
 
     **Concrete Implementations**
 
     PhenoTypic provides two built-in GridFinder implementations:
 
-    - [AutoGridFinder](src/phenotypic/grid/_auto_grid_finder.py): Automatically optimizes
-      row and column edge positions using scipy.optimize.minimize_scalar. Minimizes MSE
-      between object centroids and grid bin midpoints. Use when grid position is unknown.
+    - [AutoGridFinder](src/phenotypic/grid/_auto_grid_finder.py): Deterministic robust fit
+      using weighted object centers. Estimates pitch from center range, fits grid indices
+      via least-squares, rejects outliers, and refits. Robust to protruding colonies
+      (e.g., filamentous fungi). Use when grid position is unknown.
     - [ManualGridFinder](src/phenotypic/grid/_manual_grid_finder.py): User specifies exact
       row and column edge coordinates from calibration or measurement. Use when grid geometry
       is known and fixed.
 
-    **Optimization Strategy (for AutoGridFinder)**
+    **Fitting Strategy (for AutoGridFinder)**
 
-    AutoGridFinder uses an iterative optimization approach:
+    AutoGridFinder uses a deterministic center-based robust fit:
 
-    - **Objective function:** Minimize mean squared error (MSE) between object centroids
-      and their nearest grid bin midpoints
-    - **Optimization method:** scipy.optimize.minimize_scalar with bounded search
-    - **Starting point:** Heuristic estimates from object distribution (dividing image
-      into nrows/ncols regions)
-    - **Convergence:** Stops when relative tolerance is met or max iterations reached
-    - **Result:** Optimal row_edges and col_edges that best align detected colonies to
-      grid structure
-
-    Example optimization pattern:
-
-        >>> from scipy.optimize import minimize_scalar
-        >>> # Pseudo-code for optimization loop
-        >>> # def objective(edges): return mse(colony_positions, grid_bins(edges))
-        >>> # result = minimize_scalar(objective, bounds=(min_edge, max_edge), method='bounded')
-        >>> # optimal_edges = result.x
+    - **Centers:** Extract weighted centroids from detected objects, sorted along each axis
+    - **Pitch estimate:** ``(max_center - min_center) / (n_expected - 1)`` (robust to multiple objects per cell)
+    - **Grid indices:** ``round((center - min_center) / pitch)``
+    - **Least-squares fit:** ``center = pitch * idx + offset`` via closed-form normal equations
+    - **Outlier rejection:** Remove centers where ``|residual| > pitch * residual_fraction``
+    - **Refit:** Refined pitch and offset from inliers only
+    - **Symmetry anchoring:** When detected span < expected, center the grid in the image
+    - **Edges:** ``offset + pitch * i - pitch/2`` for ``i = 0..n``, clipped to image bounds
 
     **Notes**
 
@@ -193,7 +185,7 @@ class GridFinder(GridMeasureFeatures, ABC):
         >>> detector = OtsuDetector()
         >>> image_with_objects = detector.apply(image)
         >>> # AutoGridFinder optimizes edge positions to align with colonies
-        >>> grid_finder = AutoGridFinder(nrows=8, ncols=12, tol=0.01)
+        >>> grid_finder = AutoGridFinder(nrows=8, ncols=12)
         >>> grid_df = grid_finder.measure(image_with_objects)
         >>> # Access well assignments
         >>> print(f"Found {len(grid_df)} colonies assigned to grid")
@@ -251,17 +243,18 @@ class GridFinder(GridMeasureFeatures, ABC):
     """
 
     def __init__(self, nrows: int, ncols: int) -> None:
+        super().__init__()
         self.nrows = nrows
         self.ncols = ncols
 
-    @abc.abstractmethod
+    @abstractmethod
     def _operate(self, image: Image) -> pd.DataFrame:
         return pd.DataFrame()
 
-    @abc.abstractmethod
+    @abstractmethod
     def get_row_edges(self, image: Image) -> np.ndarray:
         """
-        This method is to returns the row edges of the grid as numpy rgb.
+        This method is to returns the row edges of the grid as a numpy array.
         Args:
             image (Image): Image object.
         Returns:
@@ -269,10 +262,10 @@ class GridFinder(GridMeasureFeatures, ABC):
         """
         pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def get_col_edges(self, image: Image) -> np.ndarray:
         """
-        This method is to returns the column edges of the grid as numpy rgb.
+        This method is to returns the column edges of the grid as a numpy array.
         Args:
             image:
 
@@ -283,45 +276,65 @@ class GridFinder(GridMeasureFeatures, ABC):
         pass
 
     @staticmethod
-    def _clip_row_edges(row_edges, imshape: (int, int, ...)) -> np.ndarray:
+    def _clip_row_edges(row_edges, imshape: tuple[int, ...]) -> np.ndarray:
         return np.clip(a=row_edges, a_min=0, a_max=imshape[0])
 
     def _add_row_number_info(
-            self, table: pd.DataFrame, row_edges: np.array, imshape: (int, int)
+            self, table: pd.DataFrame, row_edges: np.ndarray, imshape: tuple[int, ...]
     ) -> pd.DataFrame:
         row_edges = self._clip_row_edges(row_edges=row_edges, imshape=imshape)
+        col = str(BBOX.CENTER_RR)
         table.loc[:, str(GRID.ROW_NUM)] = pd.cut(
-                table.loc[:, str(BBOX.CENTER_RR)],
+                table.loc[:, col],
                 bins=row_edges,
                 labels=range(self.nrows),
                 include_lowest=True,
                 right=True,
         )
+        # Clamp out-of-bounds objects to nearest edge cell
+        nan_mask = table[str(GRID.ROW_NUM)].isna()
+        if nan_mask.any():
+            centers = table.loc[nan_mask, col].values.astype(float)
+            nearest = np.clip(
+                np.searchsorted(row_edges, centers, side="right") - 1,
+                0, self.nrows - 1,
+            )
+            table.loc[nan_mask, str(GRID.ROW_NUM)] = nearest
         return table
 
     @staticmethod
-    def _clip_col_edges(col_edges, imshape: (int, int, ...)) -> np.ndarray:
+    def _clip_col_edges(col_edges, imshape: tuple[int, ...]) -> np.ndarray:
         return np.clip(a=col_edges, a_min=0, a_max=imshape[1] - 1)
 
     def _add_col_number_info(
-            self, table: pd.DataFrame, col_edges: np.array, imshape: (int, int)
+            self, table: pd.DataFrame, col_edges: np.ndarray, imshape: tuple[int, ...]
     ) -> pd.DataFrame:
         col_edges = self._clip_col_edges(col_edges=col_edges, imshape=imshape)
+        col = str(BBOX.CENTER_CC)
         table.loc[:, str(GRID.COL_NUM)] = pd.cut(
-                table.loc[:, str(BBOX.CENTER_CC)],
+                table.loc[:, col],
                 bins=col_edges,
                 labels=range(self.ncols),
                 include_lowest=True,
                 right=True,
         )
+        # Clamp out-of-bounds objects to nearest edge cell
+        nan_mask = table[str(GRID.COL_NUM)].isna()
+        if nan_mask.any():
+            centers = table.loc[nan_mask, col].values.astype(float)
+            nearest = np.clip(
+                np.searchsorted(col_edges, centers, side="right") - 1,
+                0, self.ncols - 1,
+            )
+            table.loc[nan_mask, str(GRID.COL_NUM)] = nearest
         return table
 
     def _add_section_number_info(
             self,
             table: pd.DataFrame,
-            row_edges: np.array,
-            col_edges: np.array,
-            imshape: (int, int),
+            row_edges: np.ndarray,
+            col_edges: np.ndarray,
+            imshape: tuple[int, ...],
     ) -> pd.DataFrame:
         # Ensure ROW_NUM and COL_NUM exist
         if str(GRID.ROW_NUM) not in table.columns:
@@ -351,7 +364,7 @@ class GridFinder(GridMeasureFeatures, ABC):
         section_series = pd.Series(section_nums, index=table.index)
         # Convert to nullable integer type first to handle NaN, then to categorical
         table[str(GRID.ROW_MAJOR_IDX)] = (
-            section_series.astype("Int64").astype(np.uint16).astype("category")
+            section_series.astype("Int64").astype("UInt16").astype("category")
         )
 
         # Column-major index (col * nrows + row)
@@ -368,7 +381,7 @@ class GridFinder(GridMeasureFeatures, ABC):
             ]
         col_major_series = pd.Series(col_major_nums, index=table.index)
         table[str(GRID.COL_MAJOR_IDX)] = (
-            col_major_series.astype("Int64").astype(np.uint16).astype("category")
+            col_major_series.astype("Int64").astype("UInt16").astype("category")
         )
         return table
 

@@ -23,7 +23,7 @@ class ImageData:
     rgb: np.ndarray | None = None
     gray: np.ndarray | None = None
     detect_mat: np.ndarray | None = None
-    sparse_object_map: csc_matrix = None
+    sparse_object_map: csc_matrix | None = None
     detect_mode: str = "gray"
 
     def clear(self):
@@ -58,13 +58,13 @@ class ImageMetadata:
     """
 
     private: dict[str, Any] = field(default_factory=dict)
-    protected: dict[str, Union[int, str, float, bool, np.nan]] = field(
+    protected: dict[str, Union[int, str, float, bool]] = field(
             default_factory=dict
     )
-    public: dict[str, Union[int, str, float, bool, np.nan]] = field(
+    public: dict[str, Union[int, str, float, bool]] = field(
             default_factory=dict
     )
-    imported: dict[str, Union[int, str, float, bool, np.nan]] = field(
+    imported: dict[str, Union[int, str, float, bool]] = field(
             default_factory=dict
     )
 

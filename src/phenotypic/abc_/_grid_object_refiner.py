@@ -1,5 +1,5 @@
 from __future__ import annotations
-import abc
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -9,7 +9,6 @@ from phenotypic.abc_ import ObjectRefiner
 from phenotypic.abc_ import GridOperation
 from phenotypic.tools_.exceptions_ import GridImageInputError
 from phenotypic.tools_.funcs_ import validate_operation_integrity
-from abc import ABC
 
 
 class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
@@ -134,7 +133,7 @@ class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
 
     **Key Rules**
 
-    1. ``_operate()`` must be static (for parallel execution in pipelines).
+    1. ``_operate()`` must be an instance method (access parameters via ``self``).
     2. All parameters except ``image`` must exist as instance attributes.
     3. Only modify ``image.objmask[:]`` and ``image.objmap[:]``.
     4. Access grid via ``image.grid`` methods: get_row_edges(), get_col_edges(), info().
@@ -189,7 +188,7 @@ class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
         - **Grid structure assumption:** Your algorithm should assume a valid, registered grid.
           If grid metadata is unreliable, refinement may fail or produce wrong results.
 
-        - **Static _operate() requirement:** Must be static for parallel execution in pipelines.
+        - **Instance _operate() method:** ``_operate()`` is an instance method; access parameters via ``self``.
 
         - **Parameter matching:** All ``_operate()`` parameters except ``image`` must exist
           as instance attributes for automatic parameter matching.
@@ -305,6 +304,6 @@ class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
         output = super().apply(image=image, inplace=inplace)
         return output
 
-    @abc.abstractmethod
-    def _operate(self, image: GridImage) -> GridImage:
+    @abstractmethod
+    def _operate(self, image: GridImage) -> GridImage:  # type: ignore[override]
         return image

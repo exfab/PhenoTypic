@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 from ._image_operation import ImageOperation
 from phenotypic.tools_.funcs_ import validate_operation_integrity
-from abc import ABC
+from abc import ABC, abstractmethod
 
 
 # <<Interface>>
@@ -229,7 +229,7 @@ class ObjectRefiner(ImageOperation, ABC):
 
     **Key Rules for Implementation:**
 
-    1. ``_operate()`` must be **static** (required for parallel execution in pipelines).
+    1. ``_operate()`` must be an **instance method** (access parameters via ``self``).
     2. All parameters except `image` must exist as instance attributes with matching names
        (enables automatic parameter matching via `_get_matched_operation_args()`).
     3. **Only modify ``image.objmask[:]`` and ``image.objmap[:]``**—all other components are
@@ -369,9 +369,8 @@ class ObjectRefiner(ImageOperation, ABC):
         apply(image, inplace=False): Applies the refinement to an image. Returns a modified
             Image with refined `objmask` and `objmap` but unchanged RGB/gray/detect_mat. Handles
             copy/inplace logic and validates data integrity.
-        _operate(image, **kwargs): Abstract static method implemented by subclasses.
-            Performs the actual refinement algorithm. Parameters are automatically matched
-            to instance attributes.
+        _operate(image, **kwargs): Abstract instance method implemented by subclasses.
+            Performs the actual refinement algorithm. Access parameters via ``self``.
         _make_footprint(shape, width): Static utility that creates a binary morphological
             shape (disk, square, or diamond) for use in morphological operations.
 
@@ -383,8 +382,8 @@ class ObjectRefiner(ImageOperation, ABC):
         - **Immutability by default:** ``apply(image)`` returns a modified copy by default.
           Set ``inplace=True`` for memory-efficient in-place modification.
 
-        - **Static _operate() requirement:** The ``_operate()`` method must be static to
-          support parallel execution in pipelines.
+        - **Instance _operate() method:** The ``_operate()`` method is an instance method;
+          access parameters via ``self``.
 
         - **Parameter matching for parallelization:** All ``_operate()`` parameters except
           ``image`` must exist as instance attributes. When ``apply()`` is called, these
@@ -628,3 +627,15 @@ class ObjectRefiner(ImageOperation, ABC):
     @validate_operation_integrity("image.rgb", "image.gray", "image.detect_mat")
     def apply(self, image: Image, inplace: bool = False) -> Image:
         return super().apply(image=image, inplace=inplace)
+
+    @overload
+    @abstractmethod
+    def _operate(self, image: Image) -> Image: ...
+
+    @overload
+    @abstractmethod
+    def _operate(self, image: GridImage) -> GridImage: ...
+
+    @abstractmethod
+    def _operate(self, image: Image) -> Image:
+        return image
