@@ -357,7 +357,7 @@ class ImageDataManager:
         """
         self._data.gray = matrix
         self._data.sparse_object_map = csc_matrix(
-                np.zeros(matrix.shape, dtype=self._OBJMAP_DTYPE)
+                matrix.shape, dtype=self._OBJMAP_DTYPE
         )
 
         # Respect current detect_mode (e.g. "red") instead of always using gray.

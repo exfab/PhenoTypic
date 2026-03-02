@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 import numpy as np
 
-from scipy.sparse import csc_matrix, coo_matrix
+from scipy.sparse import csc_matrix, coo_matrix, issparse
 import matplotlib.pyplot as plt
 from skimage.measure import label
 from skimage.color import label2rgb
@@ -86,9 +86,11 @@ class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
             np.ndarray: A 1D array of unique non-zero labels, sorted in ascending
                 order. An empty array is returned if no objects are present.
         """
-        objmap = self._backend.toarray()
-        labels = np.unique(objmap)
-        return labels[labels != 0]
+        backend = self._backend
+        backend.eliminate_zeros()
+        if backend.nnz == 0:
+            return np.array([], dtype=backend.dtype)
+        return np.unique(backend.data)
 
     def __array__(self, dtype=None, copy=None):
         """Implement the array interface for NumPy compatibility.
@@ -198,6 +200,24 @@ class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
             >>> region_labels = np.array([[1, 1], [1, 1]])
             >>> objmap[10:12, 30:32] = region_labels
         """
+        # Fast path: full-slice replacement avoids dense round-trip
+        _is_full = isinstance(key, slice) and key == slice(None)
+        if _is_full:
+            if issparse(value):
+                new_sparse = csc_matrix(value, dtype=self._backend.dtype)
+                new_sparse.eliminate_zeros()
+                self._root_image._data.sparse_object_map = new_sparse
+                return
+            if isinstance(value, np.ndarray):
+                backend_dtype = self._backend.dtype
+                value = value.astype(backend_dtype)
+                if self._backend.shape != value.shape:
+                    raise ArrayKeyValueShapeMismatchError
+                new_sparse = self._dense_to_sparse(value)
+                new_sparse.eliminate_zeros()
+                self._root_image._data.sparse_object_map = new_sparse
+                return
+
         # Get current backend and convert to dense once
         dense = self._backend.toarray()
         backend_dtype = self._backend.dtype
