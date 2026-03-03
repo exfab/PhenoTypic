@@ -189,9 +189,6 @@ class GatBM3D(ImageCorrector):
         """
         scale_factor = self._get_scale_factor(image)
         image._data.gray = self._denoise_channel(image._data.gray, scale_factor)
-        image._data.detect_mat = self._denoise_channel(
-                image._data.detect_mat, scale_factor
-        )
         return image
 
     @staticmethod

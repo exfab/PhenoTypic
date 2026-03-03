@@ -6,6 +6,7 @@ from phenotypic import ImagePipeline
 from phenotypic.abc_ import PrefabPipeline, ObjectDetector
 from phenotypic.correction import GatBM3D
 from phenotypic.detect import FilamentousFungiDetector
+from phenotypic.enhance import HomomorphicFilter
 from phenotypic.detect._inoculum_detector import InoculumDetector
 from phenotypic.measure import (
     MeasureGridSpatial,
@@ -25,7 +26,9 @@ class FilamentousFungiPipeline(PrefabPipeline):
     Pipeline Steps:
         1. ``GatBM3D`` -- Variance-stabilized BM3D denoising for Poisson-Gaussian
            noise removal on gray and detect_mat channels.
-        2. ``FilamentousFungiDetector`` -- Two-stage detection (inoculum +
+        2. ``HomomorphicFilter`` -- Illumination normalization via
+           frequency-domain filtering on detect_mat.
+        3. ``FilamentousFungiDetector`` -- Two-stage detection (inoculum +
            dual-mask reconnection) with Voronoi watershed assignment and
            Dijkstra branch reconnection (enabled by default).
 
@@ -39,6 +42,9 @@ class FilamentousFungiPipeline(PrefabPipeline):
         bm3d_block_size: BM3D patch size for denoising. Default 8.
         bm3d_stage_arg: BM3D processing mode. ``'all_stages'`` gives best
             quality; ``'hard_thresholding'`` is faster.
+        homo_sigma: Gaussian cutoff sigma for the homomorphic filter.
+        homo_gamma_low: Gain for low-frequency (illumination) components.
+        homo_gamma_high: Gain for high-frequency (reflectance) components.
         inoculum_min_diameter: Smallest expected inoculum diameter in pixels
             for the default InoculumDetector. Ignored when ``inoculum_detector``
             is provided. Default 30.0.
@@ -112,6 +118,9 @@ class FilamentousFungiPipeline(PrefabPipeline):
             self,
             bm3d_block_size: int = 4,
             bm3d_stage_arg: Literal["all_stages", "hard_thresholding"] = "all_stages",
+            homo_sigma: float = 300.0,
+            homo_gamma_low: float = 0.5,
+            homo_gamma_high: float = 1.5,
             inoculum_min_diameter: float = 30.0,
             inoculum_max_diameter: float = 100.0,
             inoculum_detector: Union[ObjectDetector, ImagePipeline, None] = None,
@@ -158,6 +167,11 @@ class FilamentousFungiPipeline(PrefabPipeline):
             GatBM3D(
                     block_size=bm3d_block_size,
                     stage_arg=bm3d_stage_arg,
+            ),
+            HomomorphicFilter(
+                    sigma=homo_sigma,
+                    gamma_low=homo_gamma_low,
+                    gamma_high=homo_gamma_high,
             ),
             FilamentousFungiDetector(
                     inoculum_detector=inoculum_detector,
