@@ -5,6 +5,9 @@ Re-exports key functions so the main detector can import with a single line.
 """
 
 from ._cost_surface import (
+    _apply_border_penalty_inplace,
+    _apply_distance_gap_penalty_inplace,
+    _apply_structure_mask_inplace,
     apply_border_penalty,
     apply_distance_gap_penalty,
     apply_structure_mask,
@@ -31,6 +34,7 @@ from ._dijkstra_kernels import (
     run_multisource_dijkstra,
 )
 from ._fragment_prescreening import (
+    _compute_screening_envelope,
     calibrate_screening_threshold,
     compute_min_cost_envelope,
     prescreen_fragments,
@@ -41,6 +45,10 @@ from ._path_quality import (
     compute_path_metrics,
     extract_calibration_branches,
     filter_paths,
+)
+from ._voronoi_partition import (
+    connectivity_correct_labels,
+    euclidean_voronoi_assign,
 )
 
 __all__ = [
@@ -77,4 +85,7 @@ __all__ = [
     "compute_path_metrics",
     "extract_calibration_branches",
     "filter_paths",
+    # Voronoi partition
+    "connectivity_correct_labels",
+    "euclidean_voronoi_assign",
 ]

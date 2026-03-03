@@ -383,15 +383,13 @@ def assign_fragments_to_colonies(
     Returns:
         Dict mapping fragment_id to FragmentAssignment.
     """
-    frag_ids = np.unique(fragment_labels)
-    frag_ids = frag_ids[frag_ids > 0]
-
     assignments: dict[int, FragmentAssignment] = {}
-    for fid in frag_ids:
-        fid = int(fid)
-        mask = fragment_labels == fid
-        pixel_colony_ids = colony_id_map[mask]
-        pixel_costs = cost_distance[mask]
+    for prop in regionprops(fragment_labels):
+        fid = prop.label
+        coords = prop.coords  # (N, 2) global coords
+        rows, cols = coords[:, 0], coords[:, 1]
+        pixel_colony_ids = colony_id_map[rows, cols]
+        pixel_costs = cost_distance[rows, cols]
 
         # Filter out unreached pixels (colony_id == -1)
         valid = pixel_colony_ids >= 0
@@ -508,6 +506,9 @@ def extract_fragment_paths(
         fragment_id to FragmentPath and unconnected_ids lists fragments
         that failed path extraction.
     """
+    # Pre-build coords dict via regionprops (avoids per-fragment O(H×W) masks)
+    frag_coords = {p.label: p.coords for p in regionprops(fragment_labels)}
+
     paths: dict[int, FragmentPath] = {}
     unconnected: list[int] = []
 
@@ -516,8 +517,11 @@ def extract_fragment_paths(
             unconnected.append(fid)
             continue
 
-        mask = fragment_labels == fid
-        rows, cols = np.where(mask)
+        coords = frag_coords.get(fid)
+        if coords is None:
+            unconnected.append(fid)
+            continue
+        rows, cols = coords[:, 0], coords[:, 1]
         frag_costs = dijkstra.cost_distance[rows, cols]
 
         # Find minimum-cost pixel in this fragment

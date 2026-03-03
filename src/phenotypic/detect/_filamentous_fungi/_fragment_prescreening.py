@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import numpy as np
 from scipy.ndimage import minimum_filter
+from skimage.measure import regionprops
 from skimage.segmentation import find_boundaries
 
 from ._dataclasses import PrescreenResult
@@ -44,11 +45,50 @@ def compute_min_cost_envelope(
     return minimum_filter(cost_surface, size=kernel_size)
 
 
+def _compute_screening_envelope(
+    cost_surface: np.ndarray,
+    colony_branch_mask: np.ndarray,
+    r_screen: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Compute the screening envelope and filtered cost surface.
+
+    Shared helper for :func:`calibrate_screening_threshold` and
+    :func:`prescreen_fragments` to avoid duplicate ``minimum_filter``
+    passes.
+
+    Args:
+        cost_surface: Composite cost array, shape ``(H, W)``.
+        colony_branch_mask: Inoculum+branch mask, shape ``(H, W)``.
+            Nonzero values indicate colony pixels.
+        r_screen: Screening radius in pixels.
+
+    Returns:
+        Tuple of ``(min_cost_envelope, cost_for_filter)`` where
+        *min_cost_envelope* is the minimum-filtered cost and
+        *cost_for_filter* is the modified cost surface with colony
+        pixels replaced by background median.
+    """
+    cost_for_filter = cost_surface.copy()
+    colony_pixels = colony_branch_mask > 0
+    non_colony_mask = ~colony_pixels
+
+    if np.any(non_colony_mask):
+        fill_value = float(np.percentile(cost_surface[non_colony_mask], 50))
+    else:
+        fill_value = 1.0
+
+    cost_for_filter[colony_pixels] = fill_value
+    min_cost_envelope = compute_min_cost_envelope(cost_for_filter, r_screen)
+
+    return min_cost_envelope, cost_for_filter
+
+
 def calibrate_screening_threshold(
     cost_surface: np.ndarray,
     colony_branch_mask: np.ndarray,
     r_screen: int = 30,
     percentile: float = 99.0,
+    min_cost_envelope: np.ndarray | None = None,
 ) -> tuple[float, np.ndarray]:
     """Derive the screening threshold from known-good branch endpoints.
 
@@ -70,6 +110,9 @@ def calibrate_screening_threshold(
         percentile: Threshold percentile.  Default 99.0 (very
             permissive: only the worst 1% of known-good environments
             would be rejected).
+        min_cost_envelope: Pre-computed minimum cost envelope from
+            :func:`_compute_screening_envelope`. If ``None``, computed
+            internally.
 
     Returns:
         Tuple of ``(tau_screen, calibration_values)`` where
@@ -83,17 +126,12 @@ def calibrate_screening_threshold(
         ValueError: If no boundary pixels are found in
             *colony_branch_mask*.
     """
-    cost_for_filter = cost_surface.copy()
+    if min_cost_envelope is None:
+        min_cost_envelope, _ = _compute_screening_envelope(
+            cost_surface, colony_branch_mask, r_screen
+        )
+
     colony_pixels = colony_branch_mask > 0
-    non_colony_mask = ~colony_pixels
-
-    if np.any(non_colony_mask):
-        fill_value = float(np.percentile(cost_surface[non_colony_mask], 50))
-    else:
-        fill_value = 1.0
-
-    cost_for_filter[colony_pixels] = fill_value
-    min_cost_envelope = compute_min_cost_envelope(cost_for_filter, r_screen)
 
     # Outer boundary of the colony mask: pixels at tips/edges of
     # known-good branches representing worst-case connected environment.
@@ -134,30 +172,31 @@ def _extract_fragment_boundaries(
         Dict mapping ``fragment_id`` to an ``(N, 2)`` array of
         ``(row, col)`` boundary pixel coordinates.
     """
-    fragment_ids = np.unique(fragment_labels)
-    fragment_ids = fragment_ids[fragment_ids > 0]
-
     # Single-pass boundary detection across all fragments
     all_boundaries = find_boundaries(fragment_labels, mode="inner")
 
     boundaries: dict[int, np.ndarray] = {}
-    for fid in fragment_ids:
-        mask = fragment_labels == fid
-        pixel_count = np.count_nonzero(mask)
+    for prop in regionprops(fragment_labels):
+        fid = prop.label
+        pixel_count = prop.area
 
         if pixel_count < 4:
             # Very small fragments: all pixels are boundary.
-            coords = np.argwhere(mask)
+            boundaries[int(fid)] = prop.coords
         else:
-            frag_boundary = all_boundaries & mask
-            coords = np.argwhere(frag_boundary)
+            r0, c0, r1, c1 = prop.bbox
+            local_labels = fragment_labels[r0:r1, c0:c1]
+            local_bounds = all_boundaries[r0:r1, c0:c1]
+            local_mask = (local_labels == fid) & local_bounds
+            local_coords = np.argwhere(local_mask)
 
-            # Fallback: if find_boundaries returns nothing (single-pixel
-            # fragments that inner mode misses), use all pixels.
-            if coords.size == 0:
-                coords = np.argwhere(mask)
-
-        boundaries[int(fid)] = coords
+            if local_coords.size == 0:
+                # Fallback: if find_boundaries returns nothing
+                boundaries[int(fid)] = prop.coords
+            else:
+                # Offset local coords to global
+                coords = local_coords + np.array([r0, c0])
+                boundaries[int(fid)] = coords
 
     return boundaries
 
@@ -170,6 +209,7 @@ def prescreen_fragments(
     calibration_cost_values: np.ndarray | None = None,
     calibration_percentile: float = 99.0,
     colony_branch_mask: np.ndarray | None = None,
+    min_cost_envelope: np.ndarray | None = None,
 ) -> PrescreenResult:
     """Pre-screen fragments against the local cost environment.
 
@@ -208,6 +248,12 @@ def prescreen_fragments(
             the minimum-filtered cost map so that fragment screening
             reflects the gap environment, not the free-traversal zone
             inside colonies.  Shape ``(H, W)``.
+        min_cost_envelope: Pre-computed minimum cost envelope from
+            :func:`_compute_screening_envelope`. If ``None``, computed
+            internally. Passing a pre-computed envelope avoids a
+            duplicate ``minimum_filter`` pass when both
+            :func:`calibrate_screening_threshold` and this function
+            are called on the same cost surface.
 
     Returns:
         :class:`PrescreenResult` containing the filtered fragment
@@ -244,18 +290,13 @@ def prescreen_fragments(
         )
 
     # --- Precompute minimum cost envelope ---
-    # If colony mask provided, temporarily set colony pixels to median
-    # background cost so the minimum filter reflects gap environment,
-    # not free-traversal zones.
-    if colony_branch_mask is not None:
-        cost_for_filter = cost_surface.copy()
-        colony_pixels = colony_branch_mask > 0
-        fill_value = np.percentile(cost_surface[~colony_pixels], 50)
-        cost_for_filter[colony_pixels] = fill_value
-    else:
-        cost_for_filter = cost_surface
-
-    min_cost_envelope = compute_min_cost_envelope(cost_for_filter, r_screen)
+    if min_cost_envelope is None:
+        if colony_branch_mask is not None:
+            min_cost_envelope, _ = _compute_screening_envelope(
+                cost_surface, colony_branch_mask, r_screen
+            )
+        else:
+            min_cost_envelope = compute_min_cost_envelope(cost_surface, r_screen)
 
     # --- Extract fragment boundaries ---
     boundaries = _extract_fragment_boundaries(fragment_labels)

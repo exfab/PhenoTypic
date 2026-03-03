@@ -217,14 +217,14 @@ class CompositeDetector(ObjectDetector):
     @staticmethod
     def _filter_mask_by_overlap(mask_to_clean, reference_mask):
         """
-        Retain only objects in mask_to_clean that overlap with reference_mask.
+        Retain only objects in mask that overlap with reference_mask.
 
         Args:
             mask_to_clean (np.ndarray): Binary mask to filter (2D boolean or uint8)
             reference_mask (np.ndarray): Binary mask defining valid regions (2D boolean or uint8)
 
         Returns:
-            np.ndarray: Filtered binary mask with same shape as mask_to_clean
+            np.ndarray: Filtered binary mask with same shape as mask
 
         Raises:
             ValueError: If masks don't have compatible spatial overlap

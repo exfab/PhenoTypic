@@ -219,3 +219,73 @@ def apply_distance_gap_penalty(
     penalty = 1.0 + alpha * d_norm * gap
 
     return (cost * penalty).astype(np.float32)
+
+
+def _apply_distance_gap_penalty_inplace(
+    cost: np.ndarray,
+    pct_energy: np.ndarray,
+    colony_labels: np.ndarray,
+    alpha: float = 5.0,
+) -> None:
+    """In-place distance-gap penalty. Mutates *cost*.
+
+    Equivalent to :func:`apply_distance_gap_penalty` but avoids
+    allocating a new array.
+
+    Args:
+        cost: Float32 (H, W) cost surface, modified in place.
+        pct_energy: Float (H, W) PCT energy map, range [0, 1].
+        colony_labels: Int32 (H, W) labeled colony mask. 0 is background.
+        alpha: Penalty strength.
+    """
+    colony_mask = colony_labels > 0
+    dist = np.asarray(distance_transform_edt(~colony_mask), dtype=np.float32)
+    d_norm = dist / (dist.max() + 1e-6)
+    gap = (1.0 - np.clip(pct_energy, 0, 1)).astype(np.float32)
+    penalty = 1.0 + alpha * d_norm * gap
+    cost *= penalty
+
+
+def _apply_border_penalty_inplace(
+    cost: np.ndarray,
+    edge_margin: int = 50,
+) -> None:
+    """In-place border penalty. Mutates *cost*.
+
+    Equivalent to :func:`apply_border_penalty` but avoids allocating
+    a new array.
+
+    Args:
+        cost: Float32 (H, W) cost surface, modified in place.
+        edge_margin: Width in pixels of the penalized border zone.
+    """
+    H, W = cost.shape
+    max_cost = float(cost.max())
+    rows = np.arange(H)[:, None]
+    cols = np.arange(W)[None, :]
+    dist_to_edge = np.minimum(
+        np.minimum(rows, H - 1 - rows),
+        np.minimum(cols, W - 1 - cols),
+    ).astype(np.float32)
+    in_margin = dist_to_edge < edge_margin
+    ramp = max_cost * (1.0 - dist_to_edge / edge_margin)
+    np.maximum(cost, ramp, out=cost, where=in_margin)
+
+
+def _apply_structure_mask_inplace(
+    cost: np.ndarray,
+    colony_mask: np.ndarray,
+    eps_free: float = 1e-6,
+) -> None:
+    """In-place structure mask. Mutates *cost*.
+
+    Equivalent to :func:`apply_structure_mask` but avoids allocating
+    a new array.
+
+    Args:
+        cost: Float32 (H, W) cost surface, modified in place.
+        colony_mask: Binary or labeled mask where positive values indicate
+            known colony pixels.
+        eps_free: Cost assigned to known-structure pixels.
+    """
+    cost[colony_mask > 0] = eps_free

@@ -18,6 +18,7 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+from scipy.ndimage import convolve
 from skimage.morphology import disk, skeletonize
 
 from ._dataclasses import (
@@ -35,6 +36,7 @@ def _sample_dilated_band(
     coords: np.ndarray,
     image: np.ndarray,
     dilation_radius: int,
+    offsets: np.ndarray | None = None,
 ) -> np.ndarray:
     """Sample values in a dilated band around path coordinates.
 
@@ -42,13 +44,16 @@ def _sample_dilated_band(
         coords: (N, 2) int32 array of (row, col) path coordinates.
         image: (H, W) array to sample from.
         dilation_radius: Radius of the structuring element (disk).
+        offsets: Pre-computed (K, 2) relative offsets from ``disk(dilation_radius)``.
+            If None, computed on the fly.
 
     Returns:
         1-D float64 array of all sampled values in the dilated band.
     """
     H, W = image.shape
-    selem = disk(dilation_radius)
-    offsets = np.argwhere(selem) - dilation_radius  # (K, 2) relative offsets
+    if offsets is None:
+        selem = disk(dilation_radius)
+        offsets = np.argwhere(selem) - dilation_radius  # (K, 2) relative offsets
 
     # Broadcast: (N, 1) + (1, K) -> (N, K)
     rows = coords[:, 0:1] + offsets[:, 0:1].T
@@ -67,6 +72,8 @@ def _compute_local_snr(
     inner_radius: int,
     outer_radius: int,
     pct_noise_ceil: float,
+    inner_offsets: np.ndarray | None = None,
+    outer_offsets: np.ndarray | None = None,
 ) -> float:
     """Compute local SNR with PCT-masked background ring.
 
@@ -88,15 +95,16 @@ def _compute_local_snr(
     """
     H, W = grayscale.shape
 
-    def _linear_indices(radius: int) -> np.ndarray:
-        selem = disk(radius)
-        offsets = np.argwhere(selem) - radius
+    def _linear_indices(radius: int, offsets: np.ndarray | None = None) -> np.ndarray:
+        if offsets is None:
+            selem = disk(radius)
+            offsets = np.argwhere(selem) - radius
         rows = np.clip(coords[:, 0:1] + offsets[:, 0:1].T, 0, H - 1).ravel()
         cols = np.clip(coords[:, 1:2] + offsets[:, 1:2].T, 0, W - 1).ravel()
         return np.unique(rows * W + cols)
 
-    inner_idx = _linear_indices(inner_radius)
-    outer_idx = _linear_indices(outer_radius)
+    inner_idx = _linear_indices(inner_radius, inner_offsets)
+    outer_idx = _linear_indices(outer_radius, outer_offsets)
 
     # Ring = outer - inner
     ring_idx = np.setdiff1d(outer_idx, inner_idx)
@@ -132,6 +140,8 @@ def compute_path_metrics(
     grayscale: np.ndarray | None = None,
     snr_margin: int = 3,
     pct_noise_ceil: float = 0.0,
+    band_offsets: np.ndarray | None = None,
+    outer_offsets: np.ndarray | None = None,
 ) -> PathMetrics:
     """Compute structure-based quality metrics for a single path.
 
@@ -162,19 +172,21 @@ def compute_path_metrics(
     if len(raw_costs) <= window_cost:
         max_window_cost = median_raw_cost
     else:
-        n_windows = len(raw_costs) - window_cost + 1
-        window_medians = np.array(
-            [np.median(raw_costs[i : i + window_cost]) for i in range(n_windows)]
-        )
+        windows = np.lib.stride_tricks.sliding_window_view(raw_costs, window_cost)
+        window_medians = np.median(windows, axis=1)
         max_window_cost = float(np.max(window_medians))
 
     # F3: band cost variance
-    band_values = _sample_dilated_band(path.coords, cost_surface, dilation_radius)
+    band_values = _sample_dilated_band(
+        path.coords, cost_surface, dilation_radius, offsets=band_offsets
+    )
     band_cost_variance = float(np.var(band_values))
 
     # F4: PCT energy band median (low is bad)
     if pct_energy is not None:
-        pct_band = _sample_dilated_band(path.coords, pct_energy, dilation_radius)
+        pct_band = _sample_dilated_band(
+            path.coords, pct_energy, dilation_radius, offsets=band_offsets
+        )
         pct_energy_band_median = float(np.median(pct_band))
     else:
         pct_energy_band_median = 0.0
@@ -188,6 +200,8 @@ def compute_path_metrics(
             inner_radius=dilation_radius,
             outer_radius=dilation_radius + snr_margin,
             pct_noise_ceil=pct_noise_ceil,
+            inner_offsets=band_offsets,
+            outer_offsets=outer_offsets,
         )
     else:
         gray_band_snr = 0.0
@@ -259,6 +273,9 @@ def _trace_skeleton_segment(
 # ── Calibration from colony skeleton ─────────────────────────────────
 
 
+_NEIGHBOR_KERNEL = np.array([[1, 1, 1], [1, 0, 1], [1, 1, 1]], dtype=np.int32)
+
+
 def _count_8connected_neighbors(mask: np.ndarray) -> np.ndarray:
     """Count 8-connected neighbors for each pixel in a boolean mask.
 
@@ -268,20 +285,7 @@ def _count_8connected_neighbors(mask: np.ndarray) -> np.ndarray:
     Returns:
         Int32 array (H, W) with neighbor counts (0-8) at each pixel.
     """
-    h, w = mask.shape
-    neighbor_count = np.zeros((h, w), dtype=np.int32)
-    for dr in [-1, 0, 1]:
-        for dc in [-1, 0, 1]:
-            if dr == 0 and dc == 0:
-                continue
-            shifted = np.zeros_like(mask)
-            r_src = slice(max(0, -dr), min(h, h - dr))
-            c_src = slice(max(0, -dc), min(w, w - dc))
-            r_dst = slice(max(0, dr), min(h, h + dr))
-            c_dst = slice(max(0, dc), min(w, w + dc))
-            shifted[r_dst, c_dst] = mask[r_src, c_src]
-            neighbor_count += shifted.astype(np.int32)
-    return neighbor_count
+    return convolve(mask.astype(np.int32), _NEIGHBOR_KERNEL, mode="constant", cval=0)
 
 
 def extract_calibration_branches(
@@ -344,6 +348,12 @@ def extract_calibration_branches(
     # per-segment, because branch points have already been removed.
     seg_neighbor_count = _count_8connected_neighbors(skel_segments)
 
+    # Pre-compute disk offsets for band sampling (avoid per-branch disk() calls)
+    _band_selem = disk(dilation_radius)
+    _band_offsets = np.argwhere(_band_selem) - dilation_radius
+    _outer_selem = disk(dilation_radius + snr_margin)
+    _outer_offsets = np.argwhere(_outer_selem) - (dilation_radius + snr_margin)
+
     median_cost_list: list[float] = []
     window_cost_list: list[float] = []
     band_variance_list: list[float] = []
@@ -385,24 +395,21 @@ def extract_calibration_branches(
         if len(raw_costs) <= window_cost:
             max_win_cost = median_cost
         else:
-            n_windows = len(raw_costs) - window_cost + 1
-            window_medians = np.array(
-                [
-                    np.median(raw_costs[i : i + window_cost])
-                    for i in range(n_windows)
-                ]
-            )
+            windows = np.lib.stride_tricks.sliding_window_view(raw_costs, window_cost)
+            window_medians = np.median(windows, axis=1)
             max_win_cost = float(np.max(window_medians))
 
         # F3: band cost variance
         band_values = _sample_dilated_band(
-            coords, unmasked_cost_surface, dilation_radius
+            coords, unmasked_cost_surface, dilation_radius, offsets=_band_offsets
         )
         band_var = float(np.var(band_values))
 
         # F4: PCT energy band median
         if pct_energy is not None:
-            pct_band = _sample_dilated_band(coords, pct_energy, dilation_radius)
+            pct_band = _sample_dilated_band(
+                coords, pct_energy, dilation_radius, offsets=_band_offsets
+            )
             pct_energy_median_list.append(float(np.median(pct_band)))
         else:
             pct_energy_median_list.append(0.0)
@@ -416,6 +423,8 @@ def extract_calibration_branches(
                 inner_radius=dilation_radius,
                 outer_radius=dilation_radius + snr_margin,
                 pct_noise_ceil=pct_noise_ceil,
+                inner_offsets=_band_offsets,
+                outer_offsets=_outer_offsets,
             )
             gray_snr_list.append(snr)
         else:
@@ -517,6 +526,12 @@ def apply_filter_cascade(
         - **F4** PCT energy band median (low is bad)
         - **F5** local grayscale SNR (low is bad)
     """
+    # Pre-compute disk offsets for band sampling
+    _band_selem = disk(dilation_radius)
+    _band_offsets = np.argwhere(_band_selem) - dilation_radius
+    _outer_selem = disk(dilation_radius + snr_margin)
+    _outer_offsets = np.argwhere(_outer_selem) - (dilation_radius + snr_margin)
+
     # Compute metrics for all paths up front
     all_metrics: dict[int, PathMetrics] = {}
     for fid, path in paths.items():
@@ -529,6 +544,8 @@ def apply_filter_cascade(
             grayscale=grayscale,
             snr_margin=snr_margin,
             pct_noise_ceil=pct_noise_ceil,
+            band_offsets=_band_offsets,
+            outer_offsets=_outer_offsets,
         )
 
     # Start with all path IDs as candidates

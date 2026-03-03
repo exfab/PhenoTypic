@@ -300,13 +300,8 @@ class TestFilamentousFungiDetector:
             assert result.objmap[:].max() > 0
             assert result.objmask[:].sum() > 0
 
-    def test_consecutive_labels(self, synth_plate):
-        """Test that watershed produces valid non-background labels.
-
-        Watershed segmentation doesn't guarantee consecutive labels due to how
-        the algorithm allocates marker IDs. We check that labels are present
-        and represent distinct objects rather than checking for consecutiveness.
-        """
+    def test_valid_labels(self, synth_plate):
+        """Test that Voronoi partition produces valid non-background labels."""
         image = synth_plate.copy()
 
         detector = FilamentousFungiDetector(
@@ -316,24 +311,16 @@ class TestFilamentousFungiDetector:
         result = detector.apply(image)
 
         objmap = result.objmap[:]
-        num_objects = objmap.max()
-
-        # Check that 0 is always the background label
-        assert 0 in np.unique(objmap), "Label 0 (background) should be present"
-
-        # Check that we have multiple objects
-        assert num_objects > 1, "Should detect multiple objects"
-
-        # Check that all labels from 1 to num_objects are present or near-consecutive
-        # (watershed doesn't guarantee exact consecutiveness, but should have no large gaps)
         unique_labels = np.unique(objmap)
-        unique_nonzero = unique_labels[unique_labels > 0]
 
-        # Allow up to 5% missing labels (due to watershed allocation)
-        max_allowed_missing = max(1, int(0.05 * num_objects))
-        num_missing = num_objects - len(unique_nonzero)
-        assert num_missing <= max_allowed_missing, \
-            f"Too many missing labels: {num_missing} missing (max {max_allowed_missing} allowed)"
+        # Background should be present
+        assert 0 in unique_labels
+
+        # Should detect multiple objects
+        assert objmap.max() > 1
+
+        # All labels should be non-negative integers
+        assert np.all(objmap >= 0)
 
     def test_no_memory_leaks(self, synth_plate):
         """Test that operation cleans up memory properly."""

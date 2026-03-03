@@ -15,7 +15,7 @@ from ..enhance._anscombe_inverse import AnscombeInverse
 
 
 class GatBM3D(ImageCorrector):
-    """Variance-stabilized BM3D denoising for gray and detect_mat.
+    """Variance-stabilized BM3D denoising for grayscale via accessor cascade.
 
     Combines the Generalized Anscombe Transform (GAT) with BM3D collaborative
     filtering into a single corrector step. The GAT stabilizes Poisson-Gaussian
@@ -42,8 +42,9 @@ class GatBM3D(ImageCorrector):
       plate scanners and cameras.
 
     Caveats:
-    - Modifies gray and detect_mat irreversibly. RGB is unchanged (BM3D is a
-      2D grayscale algorithm).
+    - Modifies gray irreversibly via accessor cascade (triggers detect_mat
+      reset for detect_mode="gray"). RGB is unchanged (BM3D is a 2D
+      grayscale algorithm).
     - Computationally expensive, especially with 'all_stages' on large images.
     - The internal noise PSD is fixed at 1.0 (the theoretically correct value
       for GAT-domain Poisson noise per Makitalo & Foi 2013). Do not confuse
@@ -182,13 +183,18 @@ class GatBM3D(ImageCorrector):
         return (recovered / scale_factor).clip(0.0, 1.0)
 
     def _operate(self, image: Image) -> Image:
-        """Apply GAT-stabilized BM3D denoising to gray and detect_mat.
+        """Apply GAT-stabilized BM3D denoising to grayscale channel.
+
+        Writes denoised result via ``image.gray[:]`` accessor, which
+        triggers ``detect_mat.reset()`` so downstream detect_mat reads
+        reflect the denoised grayscale.
 
         Returns:
-            Modified Image with gray and detect_mat denoised. RGB unchanged.
+            Modified Image with gray denoised via accessor cascade.
+            RGB unchanged.
         """
         scale_factor = self._get_scale_factor(image)
-        image._data.gray = self._denoise_channel(image._data.gray, scale_factor)
+        image.gray[:] = self._denoise_channel(image._data.gray, scale_factor)
         return image
 
     @staticmethod

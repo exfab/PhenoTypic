@@ -29,7 +29,7 @@ class FilamentousFungiPipeline(PrefabPipeline):
         2. ``HomomorphicFilter`` -- Illumination normalization via
            frequency-domain filtering on detect_mat.
         3. ``FilamentousFungiDetector`` -- Two-stage detection (inoculum +
-           dual-mask reconnection) with Voronoi watershed assignment and
+           dual-mask reconnection) with Euclidean Voronoi partition and
            Dijkstra branch reconnection (enabled by default).
 
     Measurements:
@@ -67,8 +67,6 @@ class FilamentousFungiPipeline(PrefabPipeline):
         gauss_n_iter: Number of SubtractGaussian iterations.
         morph_width: Disk radius for morphological open/close operations on
             branch masks.
-        elevation_exponent: Exponent applied to the EDT elevation surface for
-            watershed assignment. Higher values steepen basins around inoculums.
         beta: Exponent on anisotropy in the composite cost formula.
         gamma: Weight of MAD penalty in the composite cost numerator.
         r_coherence: Radius for orientation coherence computation.
@@ -132,7 +130,6 @@ class FilamentousFungiPipeline(PrefabPipeline):
             gauss_sigma: float = 300.0,
             gauss_n_iter: int = 2,
             morph_width: int = 5,
-            elevation_exponent: float = 2,
             beta: float = 2.0,
             gamma: float = 1.2,
             r_coherence: int = 12,
@@ -183,7 +180,6 @@ class FilamentousFungiPipeline(PrefabPipeline):
                     gauss_sigma=gauss_sigma,
                     gauss_n_iter=gauss_n_iter,
                     morph_width=morph_width,
-                    elevation_exponent=elevation_exponent,
                     beta=beta,
                     gamma=gamma,
                     r_coherence=r_coherence,

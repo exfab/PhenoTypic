@@ -8,8 +8,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline  # type: ignore
     from phenotypic.enhance._phase_congruency import _PhaseCong3Result
 
-from scipy.ndimage import center_of_mass, distance_transform_edt
-from skimage import segmentation
+from scipy.ndimage import center_of_mass
 from skimage.filters import threshold_otsu
 from skimage.measure import label
 from skimage.morphology import disk, dilation
@@ -17,18 +16,12 @@ from skimage.morphology import disk, dilation
 from phenotypic.abc_ import ObjectDetector
 from phenotypic import ImagePipeline
 from phenotypic.enhance import (
-    MedianFilter,
-    BM3DDenoiser,
-    BayesShrinkEnhancer,
-    CLAHE,
-    GrayOpening,
     SubtractGaussian,
     ContrastStretching,
     PhaseCongruencyEnhancer,
 )
 
 from phenotypic.detect import (
-    OtsuDetector,
     TriangleDetector,
     HysteresisDetector,
 )
@@ -36,13 +29,14 @@ from phenotypic.detect._inoculum_detector import InoculumDetector
 from phenotypic.refine import MaskOpener, MaskCloser, GridSectionLargest
 
 from phenotypic.detect._filamentous_fungi import (
-    apply_border_penalty,
-    apply_distance_gap_penalty,
+    _apply_distance_gap_penalty_inplace,
+    _apply_border_penalty_inplace,
+    _apply_structure_mask_inplace,
+    _compute_screening_envelope,
     compute_anisotropy,
     compute_orientation_coherence,
     compute_local_mad_map,
     assemble_composite_cost,
-    apply_structure_mask,
     calibrate_screening_threshold,
     prescreen_fragments,
     run_multisource_dijkstra,
@@ -51,26 +45,26 @@ from phenotypic.detect._filamentous_fungi import (
     extract_calibration_branches,
     calibrate_thresholds,
     apply_filter_cascade,
+    euclidean_voronoi_assign,
+    connectivity_correct_labels,
 )
 
 
 class FilamentousFungiDetector(ObjectDetector):
-    """Detects and separates filamentous fungi using two-stage detection and inoculum-distance watershed.
+    """Detects and separates filamentous fungi using two-stage detection and Euclidean Voronoi partition.
 
     FilamentousFungiDetector uses two detection strategies to segment filamentous fungi:
     (1) inoculum_detector identifies compact fungal centers/nuclei, (2) overall_detector captures
     the complete fungal structure including spreading hyphae. The detector filters centers to
-    those overlapping with the overall structure, then uses the full inoculum regions as seed
-    markers for watershed on an inoculum-distance EDT elevation surface. The EDT gives each
-    pixel its Euclidean distance to the nearest inoculum region, so each inoculum sits at
-    elevation 0 (deepest basin) and the flood fills outward. Boundaries form where two floods
-    meet. This keeps branches assigned to their origin colony: the origin flood reaches a
-    branch's base before a neighbor's flood can traverse through the connection zone.
+    those overlapping with the overall structure, then computes geometric centroids of each
+    inoculum region as seed markers for Euclidean Voronoi partition. Each mask pixel is assigned
+    to its nearest seed by Euclidean distance, with connectivity-based correction ensuring that
+    single-seed connected components are uniformly labeled.
 
     When ``enable_reconnection=True``, the detector replaces the legacy ``overall_detector``
     path with a dual-mask branch detection pipeline (ContrastStretching + Gaussian subtraction
     + phase congruency) followed by Dijkstra-based branch reconnection. Fragmented hyphal
-    branches that fall outside the initial Voronoi watershed are reconnected to their parent
+    branches that fall outside the initial Voronoi partition are reconnected to their parent
     colonies via minimum-cost paths through a composite cost surface derived from phase
     congruency features. Path quality is validated against calibration metrics from known-good
     colony skeleton branches using a five-filter structure-based cascade.
@@ -108,9 +102,6 @@ class FilamentousFungiDetector(ObjectDetector):
         quality_k: IQR multiplier for path quality threshold calibration.
             Higher values are more permissive.
         window_cost: Sliding window size in pixels for the windowed cost metric.
-        elevation_exponent: Exponent applied to the EDT elevation surface for
-            watershed assignment. Higher values steepen basins around inoculums,
-            favoring nearer assignments. Defaults to 2.
         edge_margin: Border penalty width in pixels. Prevents edge-routing paths.
         gap_penalty_alpha: Distance-gap penalty strength. Higher values impose
             stronger distance gating on PCT energy gaps.
@@ -204,20 +195,6 @@ class FilamentousFungiDetector(ObjectDetector):
         >>> result = pipeline.apply(image)
         >>> print(f"Final separated fungi: {result.objmap[:].max()}")
     """
-    __overall_pipe = ImagePipeline(
-            ops=[
-                MedianFilter(),
-                BM3DDenoiser(),
-                CLAHE(kernel_size=500),
-                GrayOpening(),
-                BayesShrinkEnhancer(
-                        wavelet="db4",
-                        mode="hard"
-                ),
-                OtsuDetector(ignore_zeros=True),
-            ]
-    )
-
     __center_pipe = ImagePipeline(
             ops=[InoculumDetector(), GridSectionLargest()]
     )
@@ -234,7 +211,6 @@ class FilamentousFungiDetector(ObjectDetector):
             gauss_sigma: float = 300.0,
             gauss_n_iter: int = 2,
             morph_width: int = 5,
-            elevation_exponent: float = 2,
             beta: float = 2.0,
             gamma: float = 1.2,
             r_coherence: int = 12,
@@ -273,8 +249,29 @@ class FilamentousFungiDetector(ObjectDetector):
         self.inoculum_detector = inoculum_detector if inoculum_detector \
             else self.__center_pipe
 
-        self.overall_detector = overall_detector if overall_detector \
-            else self.__overall_pipe
+        if overall_detector is None:
+            overall_detector = ImagePipeline(
+                    ops=[
+                        ContrastStretching(),
+                        SubtractGaussian(
+                                sigma=gauss_sigma, n_iter=gauss_n_iter,
+                        ),
+                        TriangleDetector(),
+                        MaskOpener(
+                                shape="disk", width=morph_width, n_iter=1,
+                        ),
+                        MaskCloser(
+                                shape="disk", width=morph_width, n_iter=2,
+                        ),
+                        MaskOpener(
+                                shape="disk", width=morph_width, n_iter=1,
+                        ),
+                        MaskCloser(
+                                shape="disk", width=morph_width, n_iter=2,
+                        ),
+                    ]
+            )
+        self.overall_detector = overall_detector
 
         # Reconnection parameters
         self.enable_reconnection = enable_reconnection
@@ -284,7 +281,6 @@ class FilamentousFungiDetector(ObjectDetector):
         self.gauss_sigma = gauss_sigma
         self.gauss_n_iter = gauss_n_iter
         self.morph_width = morph_width
-        self.elevation_exponent = elevation_exponent
         self.beta = beta
         self.gamma = gamma
         self.r_coherence = r_coherence
@@ -301,15 +297,15 @@ class FilamentousFungiDetector(ObjectDetector):
         self.tile_overlap = tile_overlap
 
     def _operate(self, image: 'Image') -> 'Image':
-        """Detect and separate filamentous fungi using two-stage detection and inoculum-distance watershed.
+        """Detect and separate filamentous fungi using two-stage detection and Euclidean Voronoi partition.
 
         Algorithm:
         1. Run inoculum_detector to find fungal centers (full labeled regions)
         2. Detect branches via dual-mask pipeline (reconnection) or overall_detector (legacy)
         3. Filter centers to keep only those overlapping with overall structure
-        4. Use full inoculum regions as watershed markers (masked to overall structure)
-        5. Watershed on inoculum-distance EDT assigns each mask pixel to nearest inoculum
-        6. Dijkstra reconnection of fragmented branches (reconnection mode only)
+        4. Euclidean Voronoi partition assigns each mask pixel to nearest seed centroid
+        5. Dijkstra reconnection of fragmented branches (reconnection mode only)
+        6. Final Voronoi partition with connectivity-based fragment correction
         7. Set objmap with assignment results
         """
 
@@ -346,9 +342,11 @@ class FilamentousFungiDetector(ObjectDetector):
             enhanced_work = image.copy()
             ContrastStretching().apply(enhanced_work, inplace=True)
             enhanced_arr = enhanced_work.detect_mat[:]
+            enhanced_gray = enhanced_work.gray[:]  # capture before destructive call
 
-            # Mask A: Gauss branches
+            # Mask A: Gauss branches (destructive: modifies enhanced_work in place)
             gauss_labels = self._detect_gauss_branches(enhanced_work)
+            del enhanced_work  # no longer valid after destructive call
 
             # Mask B: PCT branches
             pct_mask, pct_result = self._detect_pct_branches(enhanced_arr)
@@ -384,8 +382,8 @@ class FilamentousFungiDetector(ObjectDetector):
             self._log_memory_usage("after overall detection")
 
         # ── PHASE 3: CENTER FILTERING + WATERSHED ───────────────────
-        filtered_center_objmask = self._filter_centers_by_overlap(
-                center_mask=center_objmask, overall_mask=overall_objmask
+        filtered_center_objmask = self._filter_mask_by_overlap(
+                mask=center_objmask, reference_mask=overall_objmask
         )
         overlap_objmap = label(filtered_center_objmask)
 
@@ -398,17 +396,15 @@ class FilamentousFungiDetector(ObjectDetector):
 
         self._log_memory_usage("after overlap filtering")
 
-        region_markers = center_objmap.copy()
-        region_markers[~overall_objmask] = 0
+        region_markers = self._create_markers_from_centers(center_objmap)
 
-        colony_labels = self._voronoi_assign(
-                region_markers, overall_objmask, self.elevation_exponent
-        )
+        mask_m = overall_objmask | filtered_center_objmask
+        colony_labels = euclidean_voronoi_assign(region_markers, mask_m)
 
         if colony_labels.max() == 0:
             raise RuntimeError(
                     "Voronoi assignment produced empty result. "
-                    "Marker centroids may not overlap with the overall mask."
+                    "Marker centroids may not overlap with the foreground mask."
             )
 
         self._log_memory_usage(
@@ -430,7 +426,7 @@ class FilamentousFungiDetector(ObjectDetector):
             colony_labels = self._reconnect_fragments_tiled(
                     colony_labels, fragment_labels, cost_surface, unmasked_cost,
                     pct_energy=pct_result.pc_sum.astype(np.float32),
-                    grayscale=enhanced_work.gray[:],
+                    grayscale=enhanced_gray,
             )
 
             self._log_memory_usage(
@@ -439,13 +435,14 @@ class FilamentousFungiDetector(ObjectDetector):
                     include_tracemalloc=True,
             )
 
-            # Watershed separate again
-            colony_labels = self._voronoi_assign(
-                    markers=region_markers, mask=colony_labels,
-                    elevation_exponent=self.elevation_exponent,
-            )
+        # ── PHASE 5: FINAL VORONOI + CONNECTIVITY CORRECTION ─────────
+        final_mask = (colony_labels > 0) | filtered_center_objmask
+        colony_labels = euclidean_voronoi_assign(region_markers, final_mask)
+        colony_labels = connectivity_correct_labels(
+                colony_labels, final_mask, region_markers,
+        )
 
-        # ── PHASE 5: WRITE RESULT ───────────────────────────────────
+        # ── PHASE 6: WRITE RESULT ───────────────────────────────────
         if colony_labels.dtype != image._OBJMAP_DTYPE:
             colony_labels = colony_labels.astype(image._OBJMAP_DTYPE)
 
@@ -464,33 +461,36 @@ class FilamentousFungiDetector(ObjectDetector):
     # ── Phase 2 helpers ─────────────────────────────────────────────
 
     def _detect_gauss_branches(self, enhanced_work: 'Image') -> np.ndarray:
-        """Apply SubtractGaussian, TriangleDetector, and morphology on copy.
+        """Apply SubtractGaussian, TriangleDetector, and morphology.
+
+        Modified destructively; caller must extract needed data beforehand.
+        All operations here only modify detect_mat/objmask/objmap, not gray
+        or rgb (one-directional cascade), so capturing gray[:] before this
+        call is safe.
 
         Args:
-            enhanced_work: Contrast-stretched image (will not be modified;
-                operates on a copy).
+            enhanced_work: Contrast-stretched image (modified in place).
 
         Returns:
             Labeled array of detected Gaussian branches.
         """
-        work = enhanced_work.copy()
         SubtractGaussian(sigma=self.gauss_sigma, n_iter=self.gauss_n_iter).apply(
-                work, inplace=True
+                enhanced_work, inplace=True
         )
-        TriangleDetector().apply(work, inplace=True)
+        TriangleDetector().apply(enhanced_work, inplace=True)
         MaskOpener(shape="disk", width=self.morph_width, n_iter=1).apply(
-                work, inplace=True
+                enhanced_work, inplace=True
         )
         MaskCloser(shape="disk", width=self.morph_width, n_iter=2).apply(
-                work, inplace=True
+                enhanced_work, inplace=True
         )
         MaskOpener(shape="disk", width=self.morph_width, n_iter=1).apply(
-                work, inplace=True
+                enhanced_work, inplace=True
         )
         MaskCloser(shape="disk", width=self.morph_width, n_iter=2).apply(
-                work, inplace=True
+                enhanced_work, inplace=True
         )
-        return work.objmap[:]
+        return enhanced_work.objmap[:]
 
     def _detect_pct_branches(
             self, enhanced_arr: np.ndarray
@@ -573,26 +573,23 @@ class FilamentousFungiDetector(ObjectDetector):
 
         return central_mask, fragment_labels
 
-    def _apply_penalties(
+    def _apply_penalties_inplace(
             self,
             cost: np.ndarray,
             pct_energy: np.ndarray,
             colony_labels: np.ndarray,
-    ) -> np.ndarray:
-        """Apply distance-gap and border penalties to a cost surface.
+    ) -> None:
+        """Apply distance-gap and border penalties in place.
 
         Args:
-            cost: 2D cost array to penalize.
+            cost: 2D cost array to penalize (modified in place).
             pct_energy: 2D PCT energy map for gap penalty gating.
             colony_labels: Labeled colony assignment from watershed.
-
-        Returns:
-            Penalized cost array.
         """
-        cost = apply_distance_gap_penalty(
+        _apply_distance_gap_penalty_inplace(
                 cost, pct_energy, colony_labels, self.gap_penalty_alpha,
         )
-        return apply_border_penalty(cost, self.edge_margin)
+        _apply_border_penalty_inplace(cost, self.edge_margin)
 
     def _build_cost_surface(
             self,
@@ -602,6 +599,9 @@ class FilamentousFungiDetector(ObjectDetector):
             central_mask: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Build composite cost surface from PCT features.
+
+        Reuses base_cost allocation: copies once for unmasked, then mutates
+        the original for the masked surface.
 
         Args:
             pct_result: Phase congruency result containing M, m, orientation,
@@ -627,19 +627,19 @@ class FilamentousFungiDetector(ObjectDetector):
                 self.beta, self.gamma,
         )
 
-        unmasked_cost = self._apply_penalties(
-                base_cost, pct_result.pc_sum, colony_labels
+        # Copy once for unmasked cost, then mutate original for masked
+        unmasked_cost = base_cost.copy()
+        self._apply_penalties_inplace(
+                unmasked_cost, pct_result.pc_sum, colony_labels
         )
 
         colony_mask = (colony_labels > 0) | central_mask
-        cost_surface = apply_structure_mask(
-                base_cost, colony_mask.astype(np.int32)
-        )
-        cost_surface = self._apply_penalties(
-                cost_surface, pct_result.pc_sum, colony_labels
+        _apply_structure_mask_inplace(base_cost, colony_mask.astype(np.int32))
+        self._apply_penalties_inplace(
+                base_cost, pct_result.pc_sum, colony_labels
         )
 
-        return unmasked_cost, cost_surface
+        return unmasked_cost, base_cost
 
     def _reconnect_fragments_tiled(
             self,
@@ -666,10 +666,14 @@ class FilamentousFungiDetector(ObjectDetector):
         if fragment_labels.max() == 0:
             return colony_labels
 
-        # Prescreen fragments: calibrate threshold from colony boundaries
+        # Prescreen fragments: compute envelope once, share across calibration + screening
         colony_branch_mask = (colony_labels > 0).astype(np.int32)
+        min_cost_envelope, _ = _compute_screening_envelope(
+                cost_surface, colony_branch_mask, self.r_screen
+        )
         tau_screen, _ = calibrate_screening_threshold(
-                cost_surface, colony_branch_mask, r_screen=self.r_screen
+                cost_surface, colony_branch_mask, r_screen=self.r_screen,
+                min_cost_envelope=min_cost_envelope,
         )
 
         screen_result = prescreen_fragments(
@@ -677,6 +681,7 @@ class FilamentousFungiDetector(ObjectDetector):
                 r_screen=self.r_screen,
                 tau_screen=tau_screen,
                 colony_branch_mask=colony_branch_mask,
+                min_cost_envelope=min_cost_envelope,
         )
         screened_frags = screen_result.screened_fragment_labels
 
@@ -891,12 +896,12 @@ class FilamentousFungiDetector(ObjectDetector):
     # ── Existing static methods (unchanged) ─────────────────────────
 
     @staticmethod
-    def _filter_mask_by_overlap(mask_to_clean, reference_mask):
+    def _filter_mask_by_overlap(mask, reference_mask):
         """
         Retain only objects in mask_to_clean that overlap with reference_mask.
 
         Args:
-            mask_to_clean (np.ndarray): Binary mask to filter (2D boolean or uint8)
+            mask (np.ndarray): Binary mask to filter (2D boolean or uint8)
             reference_mask (np.ndarray): Binary mask defining valid regions (2D boolean or uint8)
 
         Returns:
@@ -906,11 +911,12 @@ class FilamentousFungiDetector(ObjectDetector):
             ValueError: If masks don't have compatible spatial overlap
         """
         # Label connected components in mask to clean
-        labeled = label(mask_to_clean)
+        if (mask.dtype != np.bool) and (mask.max() == 1):
+            labeled = label(mask)
 
         # Handle potential size mismatch by finding overlapping region
-        min_h = min(mask_to_clean.shape[0], reference_mask.shape[0])
-        min_w = min(mask_to_clean.shape[1], reference_mask.shape[1])
+        min_h = min(mask.shape[0], reference_mask.shape[0])
+        min_w = min(mask.shape[1], reference_mask.shape[1])
 
         # Compute intersection in overlapping region
         intersection = labeled[:min_h, :min_w] * reference_mask[:min_h, :min_w]
@@ -924,119 +930,39 @@ class FilamentousFungiDetector(ObjectDetector):
         keep[overlapping_labels] = overlapping_labels
         labeled[:] = keep[labeled]
 
-        return labeled.astype(mask_to_clean.dtype)
+        return labeled.astype(mask.dtype)
 
     @staticmethod
-    def _filter_centers_by_overlap(
-            center_mask: np.ndarray, overall_mask: np.ndarray
+    def _create_markers_from_centers(
+        center_objmap: np.ndarray,
     ) -> np.ndarray:
-        """Filter center mask to keep only centers overlapping with overall structure.
+        """Create assignment markers from center objects using geometric centroids.
+
+        Computes the geometric centroid of each labeled center region and places
+        a unique marker at that position.
 
         Args:
-            center_mask: Binary mask of detected centers (2D boolean or uint8)
-            overall_mask: Binary mask of overall structure (2D boolean or uint8)
+            center_objmap: Labeled map of center objects (2D integer array).
 
         Returns:
-            Filtered binary mask containing only overlapping centers
-
-        Raises:
-            ValueError: If masks have incompatible shapes
+            Marker array with unique integers at centroid positions (2D int32).
         """
-
-        # Label centers
-        labeled_centers = label(center_mask)  # type: ignore
-        labeled_centers = labeled_centers.astype(np.uint16)
-
-        # Handle size mismatch by cropping to overlapping region
-        min_h: int = min(center_mask.shape[0], overall_mask.shape[0])
-        min_w: int = min(center_mask.shape[1], overall_mask.shape[1])
-
-        labeled_centers_crop = labeled_centers[:min_h, :min_w]
-        overall_mask_crop = overall_mask[:min_h, :min_w]
-
-        # Find center labels that overlap with overall structure
-        overlap_region = (labeled_centers_crop > 0) & (overall_mask_crop > 0)
-        overlapping_labels_all = np.unique(labeled_centers_crop[overlap_region])
-        overlapping_labels: np.ndarray = overlapping_labels_all[
-            overlapping_labels_all > 0]
-
-        # Create filtered binary mask keeping only overlapping centers
-        filtered_mask = np.isin(labeled_centers, overlapping_labels)
-
-        return filtered_mask.astype(center_mask.dtype)
-
-    @staticmethod
-    def _create_markers_from_centers(center_objmap: np.ndarray) -> np.ndarray:
-        """Create assignment markers from center objects using centroids.
-
-        Computes centroid of each labeled center region and places a unique
-        marker at that position. Ensures exactly one marker per center object.
-
-        Args:
-            center_objmap: Labeled map of center objects (2D integer array)
-
-        Returns:
-            Marker array with unique integers at centroid positions (2D int32)
-
-        Note:
-            Uses scipy.ndimage.center_of_mass() for accurate centroid computation.
-            Rounds to integers for pixel coordinates.
-        """
-
-        # Create empty markers array
         markers = np.zeros_like(center_objmap, dtype=np.int32)
 
-        # Get unique center labels (excluding background 0)
         center_labels_all = np.unique(center_objmap)
         center_labels: np.ndarray = center_labels_all[center_labels_all > 0]
 
-        # Place marker at centroid of each center
-        for marker_id, label_val in enumerate(center_labels, start=1):
-            # Compute centroid
-            mask = center_objmap == label_val
-            centroid = center_of_mass(mask)
+        # center_of_mass returns list[tuple] when index is an array;
+        # scipy stubs incorrectly type this as a single tuple.
+        centroids: list[tuple[float, ...]] = center_of_mass(  # type: ignore[assignment]
+                center_objmap > 0, center_objmap, center_labels
+        )
 
-            # Round to integer coordinates
+        for marker_id, centroid in enumerate(centroids, start=1):
             row = int(round(centroid[0]))
             col = int(round(centroid[1]))
 
-            # Bounds checking to ensure marker is placed inside the image
             if 0 <= row < markers.shape[0] and 0 <= col < markers.shape[1]:
                 markers[row, col] = marker_id
 
         return markers
-
-    @staticmethod
-    def _voronoi_assign(markers: np.ndarray, mask: np.ndarray,
-                        elevation_exponent: float = 1) -> np.ndarray:
-        """Assign each masked pixel to its nearest inoculum region via distance-weighted watershed.
-
-        Computes a Euclidean distance transform from the inoculum marker regions
-        (``markers != 0`` gives all non-inoculum pixels). Each inoculum region
-        sits at elevation 0 (deepest basin); the watershed floods outward from
-        each inoculum through the mask. Boundaries form where two floods meet
-        at equidistant points from their respective inoculums.
-
-        This keeps branches with their origin colony: the origin flood fills
-        a branch from its base (low elevation, near inoculum) before a
-        neighbor's flood can reach the branch tip through the connection zone.
-
-        Disconnected mask regions with no marker remain unlabeled (0).
-
-        Args:
-            markers: 2D integer array with labeled inoculum regions as seeds.
-                Non-zero values are colony labels; zero is background.
-            mask: Binary mask constraining the watershed flood region
-                (overall fungal structure).
-            elevation_exponent: Exponent of the basins around the fungal regions.
-
-        Returns:
-            Labeled 2D array where each masked pixel has the label of its
-            nearest inoculum region by Euclidean distance, constrained to
-            the mask.
-        """
-        elevation = distance_transform_edt(markers != 0) ** elevation_exponent
-
-        return segmentation.watershed(
-                image=elevation, markers=markers, mask=mask, connectivity=2
-        )
