@@ -48,7 +48,7 @@ def add_grid_labels(canvas, viewer: napari.Viewer) -> None:
         )
         text_node.anchors = ("left", "top")
         text_node.transform = STTransform(
-            translate=(padding, padding * 3, 0, 0),
+            translate=(padding, padding * 3 + 2, 0, 0),
         )
 
         # Semi-transparent background sized from font metrics
@@ -56,9 +56,9 @@ def add_grid_labels(canvas, viewer: napari.Viewer) -> None:
         # ~0.75 em avg character width for proportional font (OpenSans)
         tw = len(label) * font_size * 0.85
         th = font_size * 1.8
-        inner_pad = 4
+        inner_pad = 3
         bg = Rectangle(
-            center=(tw / 2 + inner_pad, -th / 2),
+            center=(tw / 2, -th / 2),
             width=tw + inner_pad * 2,
             height=th + inner_pad * 2,
             color=(0, 0, 0, 0.3),
@@ -66,7 +66,7 @@ def add_grid_labels(canvas, viewer: napari.Viewer) -> None:
             parent=viewbox,
         )
         bg.transform = STTransform(
-            translate=(padding, padding * 3, 0, 0),
+            translate=(padding, padding * 3 + 2, 0, 0),
         )
         bg.order = 0       # drawn first (behind)
         text_node.order = 1  # drawn second (in front)
