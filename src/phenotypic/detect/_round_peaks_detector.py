@@ -61,6 +61,12 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
             uses a two-pass approach that fits a global regular-grid model from median
             row/column centroids, then re-selects per cell. Best for pinned arrays.
 
+        split_merged: If True (default), pre-split merged colonies that span
+            multiple grid cells using EDT watershed before grid assignment. This
+            detects two colonies that have grown into each other by finding
+            multiple EDT peaks in different grid cells. Set to False to skip
+            splitting (e.g., when colonies are well-separated).
+
     Attributes:
         thresh_method, subtract_background, remove_noise, footprint_radius,
         noise_radius, smoothing_sigma, min_peak_distance, peak_prominence,
@@ -149,6 +155,7 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
             peak_prominence: float | None = None,
             edge_refinement: bool = True,
             selection_mode: Literal["dominant", "centered", "regularized"] = "dominant",
+            split_merged: bool = True,
     ):
         """
         Initialize the RoundPeaksDetector with specified parameters.
@@ -178,6 +185,8 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
             selection_mode: Strategy for choosing one object per grid cell.
                 'dominant' (default) keeps the largest, 'centered' keeps
                 the most centred, 'regularized' uses a global fit.
+            split_merged: If True (default), pre-split merged colonies that
+                span multiple grid cells using EDT watershed before assignment.
         """
         super().__init__()
 
@@ -191,6 +200,7 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
         self.peak_prominence = peak_prominence
         self.edge_refinement = edge_refinement
         self.selection_mode = selection_mode
+        self.split_merged = split_merged
 
     @staticmethod
     def _round_odd(n: int) -> int:
@@ -288,7 +298,8 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
 
         # Assign colonies to grid cells using selection strategy
         objmap = self._assign_grid_objects(
-            labeled, row_edges, col_edges, self.selection_mode, image._OBJMAP_DTYPE
+            labeled, row_edges, col_edges, self.selection_mode, image._OBJMAP_DTYPE,
+            intensity=enh_matrix, split_merged=self.split_merged,
         )
 
         # Fallback if no regions were labeled (e.g., grid inference failed)

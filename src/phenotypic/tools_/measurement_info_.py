@@ -4,7 +4,7 @@ This module contains all MeasurementInfo subclasses used across the library,
 standardizing measurement naming conventions, metadata, and documentation.
 """
 
-from phenotypic._shared_modules._measurement_info import MeasurementInfo
+from phenotypic.abc_._measurement_info import MeasurementInfo
 
 
 class TEXTURE(MeasurementInfo):

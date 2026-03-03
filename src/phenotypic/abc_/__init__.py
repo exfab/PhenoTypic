@@ -6,7 +6,7 @@ tailored to agar plate imaging, building on `MeasurementInfo`, `MeasureFeatures`
 `ImageOperation`, `GridOperation`, and the prefab pipeline foundation.
 """
 
-from phenotypic._shared_modules._measurement_info import MeasurementInfo
+from ._measurement_info import MeasurementInfo
 from phenotypic.tools_ import FootprintMixin
 from ._measure_features import MeasureFeatures
 from ._image_operation import ImageOperation

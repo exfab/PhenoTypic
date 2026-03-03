@@ -153,6 +153,7 @@ class SineAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
             edge_refinement: bool = True,
             correlation_threshold: float = 0.3,
             selection_mode: Literal["dominant", "centered", "regularized"] = "dominant",
+            split_merged: bool = False,
     ):
         """Initialize SineAlignmentRefiner with grid inference and correlation parameters.
 
@@ -165,6 +166,10 @@ class SineAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
             selection_mode: Strategy for choosing the object per grid cell.
                 'dominant' (default) keeps the largest, 'centered' keeps
                 the most centred, 'regularized' uses a global fit.
+            split_merged: If True, pre-split merged colonies that span
+                multiple grid cells using EDT watershed before assignment.
+                Default False for refiners (splitting is more useful during
+                initial detection).
         """
         super().__init__()
         self.smoothing_sigma = smoothing_sigma
@@ -173,6 +178,7 @@ class SineAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
         self.edge_refinement = edge_refinement
         self.correlation_threshold = correlation_threshold
         self.selection_mode = selection_mode
+        self.split_merged = split_merged
 
     @validate_operation_integrity("image.rgb", "image.gray", "image.detect_mat")
     def apply(self, image: Image, inplace: bool = False) -> Image:
@@ -223,7 +229,8 @@ class SineAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
 
         # Assign objects per grid cell using selection strategy
         refined_map = self._assign_grid_objects(
-            objmap, row_edges, col_edges, self.selection_mode, image._OBJMAP_DTYPE
+            objmap, row_edges, col_edges, self.selection_mode, image._OBJMAP_DTYPE,
+            intensity=image.detect_mat[:], split_merged=self.split_merged,
         )
 
         # Update image with refined map

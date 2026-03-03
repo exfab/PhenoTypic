@@ -27,7 +27,7 @@ def install_smart_grid(viewer: napari.Viewer) -> None:
 
     # --- Cached visibility map and overlay state ---
     _vis_map: dict[int, int] = {}  # {layer_index: visible_position}
-    _overlay_enabled = False
+    _overlay_enabled = True
     _overlay_clones: list = []
 
     def _get_overlay_enabled():

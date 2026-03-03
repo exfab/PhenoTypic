@@ -132,6 +132,7 @@ class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
             peak_prominence: float | None = None,
             edge_refinement: bool = True,
             selection_mode: Literal["dominant", "centered", "regularized"] = "dominant",
+            split_merged: bool = False,
     ):
         """Initialize GridAlignmentRefiner with grid inference parameters.
 
@@ -143,6 +144,10 @@ class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
             selection_mode: Strategy for choosing the object per grid cell.
                 'dominant' (default) keeps the largest, 'centered' keeps
                 the most centred, 'regularized' uses a global fit.
+            split_merged: If True, pre-split merged colonies that span
+                multiple grid cells using EDT watershed before assignment.
+                Default False for refiners (splitting is more useful during
+                initial detection).
         """
         super().__init__()
         self.smoothing_sigma = smoothing_sigma
@@ -150,6 +155,7 @@ class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
         self.peak_prominence = peak_prominence
         self.edge_refinement = edge_refinement
         self.selection_mode = selection_mode
+        self.split_merged = split_merged
 
     @validate_operation_integrity("image.rgb", "image.gray", "image.detect_mat")
     def apply(self, image: Image, inplace: bool = False) -> Image:
@@ -208,7 +214,8 @@ class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
 
         # Assign objects per grid cell using selection strategy
         refined_map = self._assign_grid_objects(
-            objmap, row_edges, col_edges, self.selection_mode, image._OBJMAP_DTYPE
+            objmap, row_edges, col_edges, self.selection_mode, image._OBJMAP_DTYPE,
+            intensity=image.detect_mat[:], split_merged=self.split_merged,
         )
 
         # Update image with refined map

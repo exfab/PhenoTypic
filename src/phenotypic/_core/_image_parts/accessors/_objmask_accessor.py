@@ -346,7 +346,7 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
         """
         mask = self._backend.toarray() > 0
         if array.ndim == 3:
-            mask = np.dstack([mask for _ in range(array.shape[-1])])
+            mask = np.broadcast_to(mask[:, :, np.newaxis], array.shape)
 
         array[~mask] = bg_label
         return array

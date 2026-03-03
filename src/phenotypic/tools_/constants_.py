@@ -14,8 +14,15 @@ from enum import Enum
 from packaging.version import Version
 from pathlib import Path
 
-from phenotypic._shared_modules._constant_labels import ConstantLabels
-from phenotypic._shared_modules._measurement_info import MeasurementInfo
+from phenotypic.abc_._measurement_info import MeasurementInfo
+
+
+class ConstantLabels(MeasurementInfo):
+    """Base class for constant labels in phenotypic. This class is to distinguish
+    between ConstantLabels and MeasurementInfo usages."""
+
+    def __init__(self, label: str, value: float):
+        super().__init__(label, value)
 
 
 # Image format constants

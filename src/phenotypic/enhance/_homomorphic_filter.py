@@ -155,9 +155,9 @@ class HomomorphicFilter(ImageEnhancer):
       before filtering.
 
     - **Edge effects:** Gaussian blur at image borders may produce artifacts
-      (implicit reflection in cv2.GaussianBlur). Illumination field estimation
-      near edges is less reliable; avoid placing critical colonies very close
-      to plate edges.
+      (cv2.GaussianBlur uses BORDER_REFLECT_101 by default: mirror-reflection
+      excluding the border pixel). Illumination field estimation near edges is
+      less reliable; avoid placing critical colonies very close to plate edges.
 
     - **Non-adaptive:** Fixed sigma and gamma parameters apply uniformly across
       the plate. Plates with spatially varying colony morphology (e.g., dense
@@ -198,8 +198,11 @@ class HomomorphicFilter(ImageEnhancer):
 
         result = exp(filtered_log) clipped to [0, 1]
 
-    See Gonzalez & Woods, "Digital Image Processing" (3rd ed.), Section 3.6.2,
-    for classical homomorphic filtering theory.
+    See Gonzalez & Woods, "Digital Image Processing," Chapter 4 (Frequency
+    Domain Enhancement) for classical homomorphic filtering theory. In the 3rd
+    edition (2008) homomorphic filtering appears as a standalone section in
+    Chapter 4; in the 4th edition (2018) it appears within Section 4.9,
+    pp. 339–341.
     """
 
     def __init__(

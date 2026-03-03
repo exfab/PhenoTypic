@@ -8,12 +8,14 @@ detect_mat).
 """
 
 from ._bayesshrink_corrector import BayesShrinkCorrector
+from ._gat_bm3d import GatBM3D
 from ._grid_aligner import GridAligner
 from ._visushrink_corrector import VisuShrinkCorrector
 from ._image_cropper import ImageCropper
 from ._image_padder import ImagePadder
 
 __all__ = [
+    "GatBM3D",
     "GridAligner",
     "ImageCropper",
     "ImagePadder",

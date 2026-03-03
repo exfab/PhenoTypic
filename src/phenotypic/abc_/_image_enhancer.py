@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 from ._image_operation import ImageOperation
 
 from phenotypic.tools_.funcs_ import validate_operation_integrity
-from abc import ABC
+from abc import ABC, abstractmethod
 from phenotypic.tools_.mixin import FootprintMixin
 
 
@@ -350,3 +350,15 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
     @validate_operation_integrity("image.rgb", "image.gray")
     def apply(self, image: Image, inplace: bool = False) -> Image:
         return super().apply(image=image, inplace=inplace)
+
+    @overload
+    @abstractmethod
+    def _operate(self, image: Image) -> Image: ...
+
+    @overload
+    @abstractmethod
+    def _operate(self, image: GridImage) -> GridImage: ...
+
+    @abstractmethod
+    def _operate(self, image: Image) -> Image:
+        return image

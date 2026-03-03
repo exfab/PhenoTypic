@@ -142,16 +142,16 @@ class InoculumDetector(ObjectDetector):
     """
 
     def __init__(
-        self,
-        min_diameter: float = 30.0,
-        max_diameter: float = 100.0,
-        thresh_method: Literal[
-            "otsu", "mean", "local", "triangle", "minimum", "isodata", "li"
-        ] = "otsu",
-        enable_gmm: bool = True,
-        gmm_n_components: int = 2,
-        gmm_separation_threshold: float = 0.9,
-        validate_obj_count: bool = True,
+            self,
+            min_diameter: float = 30.0,
+            max_diameter: float = 100.0,
+            thresh_method: Literal[
+                "otsu", "mean", "local", "triangle", "minimum", "isodata", "li"
+            ] = "otsu",
+            enable_gmm: bool = True,
+            gmm_n_components: int = 2,
+            gmm_separation_threshold: float = 0.9,
+            validate_obj_count: bool = True,
     ):
         """Initialise InoculumDetector with biology-driven parameters.
 
@@ -176,8 +176,8 @@ class InoculumDetector(ObjectDetector):
             raise ValueError(f"max_diameter must be positive, got {max_diameter}")
         if min_diameter >= max_diameter:
             raise ValueError(
-                f"min_diameter ({min_diameter}) must be less than "
-                f"max_diameter ({max_diameter})"
+                    f"min_diameter ({min_diameter}) must be less than "
+                    f"max_diameter ({max_diameter})"
             )
 
         self.min_diameter = min_diameter
@@ -224,7 +224,7 @@ class InoculumDetector(ObjectDetector):
 
         # --- Step 2: Gaussian background subtraction ---
         SubtractGaussian(sigma=subtract_sigma, n_iter=2).apply(
-            work, inplace=True,
+                work, inplace=True,
         )
         self._log_memory_usage("SubtractGaussian")
 
@@ -234,9 +234,9 @@ class InoculumDetector(ObjectDetector):
 
         # --- Step 4: Multi-scale LoG blob enhancement ---
         MultiscaleLoGEnhancer(
-            min_radius=log_min_radius,
-            max_radius=log_max_radius,
-            num_scales=15,
+                min_radius=log_min_radius,
+                max_radius=log_max_radius,
+                num_scales=15,
         ).apply(work, inplace=True)
         self._log_memory_usage("MultiscaleLoGEnhancer")
 
@@ -246,17 +246,17 @@ class InoculumDetector(ObjectDetector):
 
         # --- Step 6: Gray opening ---
         GrayOpening(width=5, shape="disk", n_iter=2).apply(
-            work, inplace=True,
+                work, inplace=True,
         )
         self._log_memory_usage("GrayOpening")
 
         # --- Step 7: Round peaks detection ---
         RoundPeaksDetector(
-            thresh_method=self.thresh_method,
-            noise_radius=2,
-            smoothing_sigma=0.0,
-            subtract_background=False,
-            edge_refinement=True,
+                thresh_method=self.thresh_method,
+                noise_radius=2,
+                smoothing_sigma=0.0,
+                subtract_background=False,
+                edge_refinement=False,
         ).apply(work, inplace=True)
         self._log_memory_usage("RoundPeaksDetector")
 
@@ -268,11 +268,11 @@ class InoculumDetector(ObjectDetector):
         # --- Step 9: Optional GMM core extraction ---
         if self.enable_gmm:
             GMMCoreExtractor(
-                n_components=self.gmm_n_components,
-                separation_threshold=self.gmm_separation_threshold,
-                min_core_area=gmm_min_area,
-                morph_open_radius=gmm_morph_open,
-                morph_close_radius=2,
+                    n_components=self.gmm_n_components,
+                    separation_threshold=self.gmm_separation_threshold,
+                    min_core_area=gmm_min_area,
+                    morph_open_radius=gmm_morph_open,
+                    morph_close_radius=2,
             ).apply(work, inplace=True)
             self._log_memory_usage("GMMCoreExtractor")
 
@@ -290,12 +290,12 @@ class InoculumDetector(ObjectDetector):
             num_objects = int(image.objmap[:].max())
             if num_objects > max_objects:
                 raise ValueError(
-                    f"Detected {num_objects} objects but GridImage has only "
-                    f"{image.nrows}x{image.ncols} = {max_objects} cells. "
-                    f"Set validate_obj_count=False to skip this check."
+                        f"Detected {num_objects} objects but GridImage has only "
+                        f"{image.nrows}x{image.ncols} = {max_objects} cells. "
+                        f"Set validate_obj_count=False to skip this check."
                 )
 
         self._log_memory_usage(
-            "final cleanup", include_process=True, include_tracemalloc=True,
+                "final cleanup", include_process=True, include_tracemalloc=True,
         )
         return image

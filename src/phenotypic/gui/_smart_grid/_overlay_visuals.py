@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 
 
 def is_overlay_layer(layer) -> bool:
-    """Check if a layer should be treated as an overlay."""
-    from napari.layers import Labels, Shapes
+    """Check if a layer should be treated as an overlay (Labels, Points, or Shapes)."""
+    from napari.layers import Labels, Points, Shapes
 
-    return isinstance(layer, (Labels, Shapes))
+    return isinstance(layer, (Labels, Points, Shapes))
 
 
 def create_overlay_clones(canvas, viewer: napari.Viewer) -> list:

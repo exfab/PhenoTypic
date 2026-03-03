@@ -424,7 +424,7 @@ class ImageDataManager:
         if bit_depth not in (8, 16):
             raise ValueError(f"bit_depth must be 8 or 16, got {bit_depth}")
 
-        if np.any(float_array < 0) or np.any(float_array > 1):
+        if float_array.min() < 0 or float_array.max() > 1:
             raise ValueError(
                     f"Float array contains values outside [0, 1] range. "
                     f"Min: {float_array.min()}, Max: {float_array.max()}"

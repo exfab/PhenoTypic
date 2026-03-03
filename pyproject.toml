@@ -55,6 +55,7 @@ dependencies = [
     "rich>=14.2.0",
     "imagecodecs>=2025.3.30",
     "findiff>=0.12.2",
+    "numba>=0.62.1",
 ]
 
 [project.urls]

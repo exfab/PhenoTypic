@@ -6,7 +6,6 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import numpy as np
-from findiff import FinDiff
 from scipy.ndimage import gaussian_filter
 from skimage.feature import structure_tensor_eigenvalues
 
@@ -64,10 +63,10 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
     - C: Contrast percentile for the diffusivity function (0 < C <= 100). The actual
       contrast threshold is computed as the Cth percentile of the coherence histogram
       (lambda1 - lambda2)^2 from the original image, making the parameter adaptive to
-      image content. Weickert (1999) uses the 99th percentile. Higher values (e.g. 99)
-      set a high threshold so only the most coherent structures get strong anisotropic
-      diffusion. Lower values (e.g. 50) enhance weaker structures too. Recommended:
-      99 (Weickert default) for typical colony plates, 50-70 for faint structures,
+      image content. Higher values (e.g. 99) set a high threshold so only the most
+      coherent structures get strong anisotropic diffusion. Lower values (e.g. 50)
+      enhance weaker structures too. Recommended:
+      99 for typical colony plates, 50-70 for faint structures,
       95-99 for noisy images where only the strongest coherence should drive anisotropy.
 
     Caveats:
@@ -187,7 +186,7 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
                 (lambda1 - lambda2)^2 from the original image is used as the
                 contrast threshold, adapting to image content. Higher values
                 restrict anisotropy to the most coherent structures.
-                Default: 99 (Weickert 1999).
+                Default: 99.
         """
         if num_iter < 1:
             raise ValueError("num_iter must be >= 1")
@@ -226,12 +225,45 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
         self.alpha = float(alpha)
         self.C = float(C)
 
+    @staticmethod
+    def _central_diff(arr: np.ndarray, axis: int) -> np.ndarray:
+        """First derivative via acc=2 central stencil (matches FinDiff(axis, 1.0, 1)).
+
+        Interior points use second-order central differences ``[-0.5, 0, 0.5]``.
+        Boundary points use second-order one-sided stencils identical to
+        ``findiff.FinDiff`` with default ``acc=2``.
+
+        Args:
+            arr: Input array (2D or higher).
+            axis: Axis along which to differentiate.
+
+        Returns:
+            Array of same shape with first derivative along *axis*.
+        """
+        out = np.empty_like(arr)
+        n = arr.shape[axis]
+        s = [slice(None)] * arr.ndim
+
+        def sl(start: int | None, stop: int | None) -> tuple:
+            s[axis] = slice(start, stop)
+            return tuple(s)
+
+        def ix(i: int) -> tuple:
+            s[axis] = i
+            return tuple(s)
+
+        # Interior: second-order central [-0.5, 0, 0.5]
+        out[sl(1, n - 1)] = 0.5 * (arr[sl(2, n)] - arr[sl(0, n - 2)])
+        # Forward boundary (acc=2): [-1.5, 2.0, -0.5]
+        out[ix(0)] = -1.5 * arr[ix(0)] + 2.0 * arr[ix(1)] - 0.5 * arr[ix(2)]
+        # Backward boundary (acc=2): [0.5, -2.0, 1.5]
+        out[ix(n - 1)] = (
+            0.5 * arr[ix(n - 3)] - 2.0 * arr[ix(n - 2)] + 1.5 * arr[ix(n - 1)]
+        )
+        return out
+
     def _operate(self, image: Image) -> Image:
         """Apply coherence-enhancing diffusion to enhance filamentous structures."""
-        # Finite difference operators for gradient computation
-        dx = FinDiff(1, 1.0, 1)  # d/dcol (column direction)
-        dy = FinDiff(0, 1.0, 1)  # d/drow (row direction)
-
         # Work with float64 for numerical stability
         img = image.detect_mat[:].astype(np.float64)
 
@@ -283,24 +315,27 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
             theta = 0.5 * np.arctan2(2 * S_rc, S_rr - S_cc)
 
             # Diffusion tensor components in (row, col) coordinates
-            cos2 = np.cos(theta) ** 2
-            sin2 = np.sin(theta) ** 2
-            cossin = np.cos(theta) * np.sin(theta)
+            # Cache trig to avoid redundant transcendental calls
+            c = np.cos(theta)
+            s = np.sin(theta)
+            cos2 = c * c
+            sin2 = s * s
+            cossin = c * s
 
             D_rr = c1 * cos2 + c2 * sin2
             D_rc = (c1 - c2) * cossin
             D_cc = c1 * sin2 + c2 * cos2
 
-            # Compute gradients using finite differences
-            gx = dx(img)  # du/dcol
-            gy = dy(img)  # du/drow
+            # Compute gradients using acc=2 central finite differences
+            gx = self._central_diff(img, 1)  # du/dcol
+            gy = self._central_diff(img, 0)  # du/drow
 
             # Flux: pair D_cc with du/dcol, D_rr with du/drow
             Fx = D_cc * gx + D_rc * gy
             Fy = D_rc * gx + D_rr * gy
 
             # Flux divergence
-            div = dx(Fx) + dy(Fy)
+            div = self._central_diff(Fx, 1) + self._central_diff(Fy, 0)
 
             # Update image with diffusion step
             img = img + self.dt * div

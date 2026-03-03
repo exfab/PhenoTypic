@@ -19,8 +19,6 @@ class TestFilamentousFungiDetector:
         detector = FilamentousFungiDetector(
                 inoculum_detector=OtsuDetector(ignore_zeros=True),
                 overall_detector=TriangleDetector(),
-                erosion_radius=1,
-                boundary_cost=1e6
         )
         result = detector.apply(image)
 
@@ -113,77 +111,6 @@ class TestFilamentousFungiDetector:
                     inoculum_detector=OtsuDetector(),
                     overall_detector=123,
             )
-
-    def test_erosion_radius_effects(self, synth_plate):
-        """Test that erosion_radius parameter affects boundary computation."""
-        image = synth_plate.copy()
-
-        detector_radius1 = FilamentousFungiDetector(
-                inoculum_detector=OtsuDetector(),
-                overall_detector=TriangleDetector(),
-                erosion_radius=1,
-        )
-
-        detector_radius2 = FilamentousFungiDetector(
-                inoculum_detector=OtsuDetector(),
-                overall_detector=TriangleDetector(),
-                erosion_radius=2,
-        )
-
-        result1 = detector_radius1.apply(image.copy())
-        result2 = detector_radius2.apply(image.copy())
-
-        # Different erosion radii should potentially produce different segmentations
-        # (though we can't guarantee they'll differ due to the nature of boundaries)
-        assert result1.objmap[:].max() > 0
-        assert result2.objmap[:].max() > 0
-
-    def test_boundary_cost_effects(self, synth_plate):
-        """Test that boundary_cost parameter affects segmentation."""
-        image = synth_plate.copy()
-
-        detector_high_cost = FilamentousFungiDetector(
-                inoculum_detector=OtsuDetector(),
-                overall_detector=TriangleDetector(),
-                boundary_cost=1e8,  # Very high cost
-        )
-
-        detector_low_cost = FilamentousFungiDetector(
-                inoculum_detector=OtsuDetector(),
-                overall_detector=TriangleDetector(),
-                boundary_cost=1e3,  # Lower cost
-        )
-
-        result_high = detector_high_cost.apply(image.copy())
-        result_low = detector_low_cost.apply(image.copy())
-
-        # Both should produce valid results
-        assert result_high.objmap[:].max() > 0
-        assert result_low.objmap[:].max() > 0
-
-    def test_connectivity_effects(self, synth_plate):
-        """Test that connectivity parameter affects labeling."""
-        image = synth_plate.copy()
-
-        detector_4conn = FilamentousFungiDetector(
-                inoculum_detector=OtsuDetector(),
-                overall_detector=TriangleDetector(),
-                connectivity=1,  # 4-connected
-        )
-
-        detector_8conn = FilamentousFungiDetector(
-                inoculum_detector=OtsuDetector(),
-                overall_detector=TriangleDetector(),
-                connectivity=2,  # 8-connected
-        )
-
-        result_4 = detector_4conn.apply(image.copy())
-        result_8 = detector_8conn.apply(image.copy())
-
-        # Different connectivity may produce different number of labels
-        # (8-connected may merge more regions)
-        assert result_4.objmap[:].max() > 0
-        assert result_8.objmap[:].max() > 0
 
     def test_inplace_false_preserves_original(self, synth_plate):
         """Test that inplace=False preserves original image."""
@@ -286,9 +213,6 @@ class TestFilamentousFungiDetector:
         detector = FilamentousFungiDetector(
                 inoculum_detector=OtsuDetector(ignore_zeros=True),
                 overall_detector=TriangleDetector(),
-                erosion_radius=1,
-                boundary_cost=1e6,
-                connectivity=1
         )
 
         # Create pipeline
@@ -434,8 +358,6 @@ class TestFilamentousFungiDetector:
         detector = FilamentousFungiDetector(
                 inoculum_detector=OtsuDetector(ignore_zeros=True),
                 overall_detector=TriangleDetector(),
-                erosion_radius=1,
-                boundary_cost=1e6,
         )
 
         result1 = detector.apply(image.copy())

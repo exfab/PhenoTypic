@@ -48,6 +48,11 @@ class BM3DDenoiser(ImageEnhancer):
     - Does not correct illumination gradients; combine with background
       subtraction (e.g., `SubtractGaussian`, `SubtractRollingBall`) if needed.
     - May slightly blur very fine colony features if sigma_psd is too high.
+    - When using between ``AnscombeForward`` / ``AnscombeInverse`` transforms,
+      set ``clip=False``. GAT-domain values fall outside [0, 1] (typically
+      ~1-32 for 8-bit images), and clipping would destroy the transformed
+      signal. For a single-step alternative, see
+      :class:`~phenotypic.correction.GatBM3D`.
 
     Attributes:
         sigma_psd (float): Noise standard deviation in [0, 1] normalized

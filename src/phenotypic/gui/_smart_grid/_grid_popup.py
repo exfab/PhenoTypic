@@ -36,7 +36,7 @@ def patch_grid_popup(viewer, get_enabled, set_enabled) -> None:
         layout = popup.frame.layout()
         row = layout.rowCount()
         layout.addWidget(QLabel("Overlay:"), row, 0)
-        cb = QCheckBox("Labels / Shapes")
+        cb = QCheckBox("Labels / Points / Shapes")
         cb.setChecked(get_enabled())
         cb.toggled.connect(set_enabled)
         layout.addWidget(cb, row, 1)

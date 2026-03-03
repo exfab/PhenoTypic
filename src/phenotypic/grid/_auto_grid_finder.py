@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -7,8 +8,6 @@ if TYPE_CHECKING:
 
 import pandas as pd
 import numpy as np
-from scipy.optimize import minimize_scalar
-from functools import partial
 
 from phenotypic.abc_ import GridFinder
 from phenotypic.tools_.measurement_info_ import BBOX, GRID
@@ -16,329 +15,249 @@ from phenotypic.tools_.measurement_info_ import BBOX, GRID
 
 class AutoGridFinder(GridFinder):
     """
-    Automatically adjusts and processes grid configurations for images based on
-    parameters like row and column counts, tolerance, and iteration constraints.
+    Automatically determines grid row and column edges from detected object
+    centers using a deterministic robust-fit algorithm.
 
-    This class extends `GridFinder` and adds flexibility to define custom grid
-    specifications, compute padding, manage convergence criteria, and optimize
-    grid alignment for image processing tasks.
+    Unlike histogram or optimizer-based approaches, this class fits a regular
+    grid model directly to the weighted centroids of detected objects. Outlier
+    rejection ensures that protruding colonies (e.g., filamentous fungi with
+    extended hyphae) do not pull grid boundaries away from the true positions.
 
-    Attributes:
-        __iter_limit (float): Internal limit for the maximum number of iterations.
-        nrows (int): Number of rows for the grid structure.
-        ncols (int): Number of columns for the grid structure.
-        tol (float): Tolerance level to assess convergence.
-        max_iter (int): Maximum allowable iterations, capped by the internal limit.
+    Args:
+        nrows: Number of rows in the grid (default 8 for 96-well plates).
+        ncols: Number of columns in the grid (default 12 for 96-well plates).
+        residual_fraction: Outlier threshold as a fraction of pitch. Centers
+            whose fit residual exceeds ``pitch * residual_fraction`` are
+            excluded from the refined fit (default 0.25).
+        tol: Deprecated. Accepted for backward compatibility but ignored.
+        max_iter: Deprecated. Accepted for backward compatibility but ignored.
     """
-
-    __iter_limit = 1e5
 
     def __init__(
             self,
             nrows: int = 8,
             ncols: int = 12,
-            tol: float = 0.01,
+            residual_fraction: float = 0.25,
+            *,
+            tol: float | None = None,
             max_iter: int | None = None,
     ):
-        """
-        Represents a configuration object for iterative computations with constraints on
-        the number of nrows, columns, tolerance, and a maximum number of iterations. This
-        provides a flexible structure enabling adjustments to the computation parameters
-        such as matrix dimensions and convergence criteria.
-
-        Attributes:
-            nrows (int): Number of nrows for the computation grid or array.
-            ncols (int): Number of columns for the computation grid or array.
-            tol (float): Tolerance level for the convergence criteria.
-            max_iter (int | None): Maximum number of allowable iterations. Defaults to
-                the predefined internal convergence limit if not provided.
-
-        """
         super().__init__(nrows=nrows, ncols=ncols)
+        self.residual_fraction: float = residual_fraction
 
-        self.tol: float = tol
+        if tol is not None:
+            warnings.warn(
+                "The 'tol' parameter is deprecated and has no effect. "
+                "AutoGridFinder now uses a deterministic robust-fit algorithm.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if max_iter is not None:
+            warnings.warn(
+                "The 'max_iter' parameter is deprecated and has no effect. "
+                "AutoGridFinder now uses a deterministic robust-fit algorithm.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
-        self.max_iter: int = max_iter if max_iter else self.__iter_limit
+    # ------------------------------------------------------------------
+    # Static helper methods
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _extract_axis_centers(info_table: pd.DataFrame, axis: int) -> np.ndarray:
+        """Return sorted weighted centers along *axis* (0=rows, 1=cols)."""
+        if axis == 0:
+            col = str(BBOX.WEIGHTED_CENTER_RR)
+        elif axis == 1:
+            col = str(BBOX.WEIGHTED_CENTER_CC)
+        else:
+            raise ValueError(f"axis must be 0 or 1, got {axis}")
+        centers = info_table.loc[:, col].values.astype(float)
+        centers.sort()
+        return centers
+
+    @staticmethod
+    def _estimate_pitch(centers: np.ndarray, n_expected: int) -> float:
+        """Estimate grid pitch from sorted centers and expected grid count.
+
+        Uses ``(max - min) / (n_expected - 1)`` which is robust when multiple
+        objects share a grid cell (common in colony imaging where fragments or
+        sub-colonies yield many detections per well).
+        """
+        if len(centers) < 2:
+            raise ValueError("Need at least 2 centers to estimate pitch")
+        return float((centers[-1] - centers[0]) / max(n_expected - 1, 1))
+
+    @staticmethod
+    def _assign_grid_indices(centers: np.ndarray, pitch: float) -> np.ndarray:
+        """Assign integer grid indices: ``round((c - min_c) / pitch)``."""
+        return np.rint((centers - centers[0]) / pitch).astype(int)
+
+    @staticmethod
+    def _fit_pitch_and_offset(
+            centers: np.ndarray, indices: np.ndarray,
+    ) -> tuple[float, float]:
+        """Closed-form linear fit ``center = pitch * idx + offset``.
+
+        Returns:
+            Tuple of (pitch, offset).
+        """
+        idx_mean = indices.mean()
+        ctr_mean = centers.mean()
+        idx_dev = indices - idx_mean
+        denom = float(idx_dev @ idx_dev)
+        if denom == 0.0:
+            return 0.0, ctr_mean
+        pitch = float(idx_dev @ (centers - ctr_mean)) / denom
+        offset = ctr_mean - pitch * idx_mean
+        return pitch, offset
+
+    @staticmethod
+    def _identify_inliers(
+            centers: np.ndarray,
+            indices: np.ndarray,
+            pitch: float,
+            offset: float,
+            threshold: float,
+    ) -> np.ndarray:
+        """Return boolean mask where ``|residual| <= threshold``."""
+        predicted = pitch * indices + offset
+        residuals = np.abs(centers - predicted)
+        return residuals <= threshold
+
+    @staticmethod
+    def _compute_grid_edges(
+            pitch: float,
+            offset: float,
+            n_bins: int,
+            image_dim: int,
+    ) -> np.ndarray:
+        """Compute ``n_bins + 1`` edge coordinates clipped to ``[0, image_dim]``.
+
+        Edges are placed at ``offset + pitch * i - pitch / 2`` for
+        ``i = 0 .. n_bins``.
+        """
+        edges = offset + pitch * np.arange(n_bins + 1) - pitch / 2
+        np.clip(edges, 0, image_dim, out=edges)
+        np.round(edges, out=edges)
+        return edges.astype(int)
+
+    # ------------------------------------------------------------------
+    # Axis-level orchestrator
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _uniform_edges(n_expected: int, image_dim: int) -> np.ndarray:
+        """Fallback: uniform spacing centered in image."""
+        pitch = image_dim / n_expected
+        return AutoGridFinder._compute_grid_edges(
+            pitch, pitch / 2, n_expected, image_dim,
+        )
+
+    def _fit_axis_edges(
+            self,
+            info_table: pd.DataFrame,
+            axis: int,
+            n_expected: int,
+            image_dim: int,
+    ) -> np.ndarray:
+        """Full pipeline: extract centers → fit → reject → refit → edges.
+
+        Falls back to uniform spacing when fewer than 2 objects are found.
+        Uses symmetry anchoring when detected span is less than expected.
+        """
+        try:
+            centers = self._extract_axis_centers(info_table, axis)
+        except (KeyError, IndexError):
+            centers = np.array([])
+
+        if len(centers) < 2:
+            return self._uniform_edges(n_expected, image_dim)
+
+        # Step 1: initial pitch estimate
+        pitch = self._estimate_pitch(centers, n_expected)
+        if pitch <= 0:
+            return self._uniform_edges(n_expected, image_dim)
+
+        # Step 2: assign grid indices + initial fit
+        indices = self._assign_grid_indices(centers, pitch)
+        pitch, offset = self._fit_pitch_and_offset(centers, indices)
+        if pitch <= 0:
+            return self._uniform_edges(n_expected, image_dim)
+
+        # Step 3: outlier rejection + refit
+        threshold = pitch * self.residual_fraction
+        inlier_mask = self._identify_inliers(
+            centers, indices, pitch, offset, threshold,
+        )
+        if inlier_mask.sum() >= 2:
+            pitch, offset = self._fit_pitch_and_offset(
+                centers[inlier_mask], indices[inlier_mask],
+            )
+        if pitch <= 0:
+            return self._uniform_edges(n_expected, image_dim)
+
+        # Step 4: symmetry anchoring when detected span < expected
+        span = int(indices.max() - indices.min()) + 1
+        if span < n_expected:
+            image_center = image_dim / 2.0
+            grid_center_idx = (n_expected - 1) / 2.0
+            offset = image_center - pitch * grid_center_idx
+
+        return self._compute_grid_edges(pitch, offset, n_expected, image_dim)
+
+    # ------------------------------------------------------------------
+    # Public interface
+    # ------------------------------------------------------------------
+
+    def get_row_edges(self, image: Image) -> np.ndarray:
+        """Return row edge coordinates for *image*.
+
+        Args:
+            image: Image with detected objects (``image.objects.info()``).
+
+        Returns:
+            Integer array of length ``nrows + 1``.
+        """
+        info_table = image.objects.info(include_metadata=False)
+        return self._fit_axis_edges(
+            info_table, axis=0, n_expected=self.nrows, image_dim=image.shape[0],
+        )
+
+    def get_col_edges(self, image: Image) -> np.ndarray:
+        """Return column edge coordinates for *image*.
+
+        Args:
+            image: Image with detected objects (``image.objects.info()``).
+
+        Returns:
+            Integer array of length ``ncols + 1``.
+        """
+        info_table = image.objects.info(include_metadata=False)
+        return self._fit_axis_edges(
+            info_table, axis=1, n_expected=self.ncols, image_dim=image.shape[1],
+        )
 
     def _operate(self, image: Image) -> pd.DataFrame:
-        """
-        Processes an arr image to calculate and organize grid-based boundaries and centroids using coordinates. This
-        function implements a two-pass approach to refine row and column boundaries with exact precision, ensuring accurate
-        grid labeling and indexing. The function dynamically computes boundary intervals and optimally segments the arr
-        space into grids based on specified nrows and columns.
+        """Compute grid edges and assign each detected object to a grid cell.
 
         Args:
-            image (Image): The arr image to be analyzed and processed.
+            image: Image with detected objects.
 
         Returns:
-            pd.DataFrame: A DataFrame containing the grid results including boundary intervals, grid indices, and section
-            numbers corresponding to the segmented arr image.
+            DataFrame with grid assignments (ROW_NUM, COL_NUM, ROW_MAJOR_IDX).
         """
-        # Calculate optimal edges using optimization
-        row_edges = self.get_row_edges(image)
-        col_edges = self.get_col_edges(image)
-
-        # Use base class helper to assemble complete grid info
+        info_table = image.objects.info(include_metadata=False)
+        row_edges = self._fit_axis_edges(
+            info_table, axis=0, n_expected=self.nrows, image_dim=image.shape[0],
+        )
+        col_edges = self._fit_axis_edges(
+            info_table, axis=1, n_expected=self.ncols, image_dim=image.shape[1],
+        )
         return super()._get_grid_info(
-                image=image, row_edges=row_edges, col_edges=col_edges
+            image=image, row_edges=row_edges, col_edges=col_edges,
         )
-
-    def _find_padding_midpoint_error(
-            self, pad_sz, image, axis, row_pad=0, col_pad=0
-    ) -> float:
-        """
-        Calculate the mean squared error between object midpoints and grid bin midpoints.
-
-        Args:
-            pad_sz: Padding size to test for the specified axis.
-            image: Image object containing objects to be gridded.
-            axis: 0 for rows, 1 for columns.
-            row_pad: Current row padding (used when optimizing columns).
-            col_pad: Current column padding (used when optimizing rows).
-
-        Returns:
-            float: Mean squared error between object and bin midpoints.
-        """
-        obj_info = image.objects.info(include_metadata=False)
-
-        if axis == 0:
-            # Calculate row edges with current padding
-            row_edges = self._get_row_edges(
-                    image=image, row_padding=pad_sz, info_table=obj_info
-            )
-            col_edges = self._get_col_edges(
-                    image=image, column_padding=col_pad, info_table=obj_info
-            )
-
-            # Get grid info with these edges
-            current_grid_info = super()._get_grid_info(
-                    image=image, row_edges=row_edges, col_edges=col_edges
-            )
-            current_obj_midpoints = (
-                current_grid_info.loc[
-                    :, [str(BBOX.WEIGHTED_CENTER_RR), str(GRID.ROW_NUM)]]
-                .groupby(str(GRID.ROW_NUM), observed=False)[
-                    str(BBOX.WEIGHTED_CENTER_RR)]
-                .mean()
-                .values
-            )
-
-            bin_edges = np.histogram_bin_edges(
-                    a=current_grid_info.loc[:, str(BBOX.WEIGHTED_CENTER_RR)].values,
-                    bins=self.nrows,
-                    range=(
-                        current_grid_info.loc[:, str(BBOX.MIN_RR)].min() - pad_sz,
-                        current_grid_info.loc[:, str(BBOX.MAX_RR)].max() + pad_sz,
-                    ),
-            )
-
-        elif axis == 1:
-            # Calculate column edges with current padding
-            row_edges = self._get_row_edges(
-                    image=image, row_padding=row_pad, info_table=obj_info
-            )
-            col_edges = self._get_col_edges(
-                    image=image, column_padding=pad_sz, info_table=obj_info
-            )
-
-            # Get grid info with these edges
-            current_grid_info = super()._get_grid_info(
-                    image=image, row_edges=row_edges, col_edges=col_edges
-            )
-            current_obj_midpoints = (
-                current_grid_info.loc[:, [BBOX.WEIGHTED_CENTER_CC, GRID.COL_NUM]]
-                .groupby(str(GRID.COL_NUM), observed=False)[
-                    str(BBOX.WEIGHTED_CENTER_CC)]
-                .mean()
-                .values
-            )
-
-            bin_edges = np.histogram_bin_edges(
-                    a=current_grid_info.loc[:, BBOX.WEIGHTED_CENTER_CC].values,
-                    bins=self.ncols,
-                    range=(
-                        current_grid_info.loc[:, str(BBOX.MIN_CC)].min() - pad_sz,
-                        current_grid_info.loc[:, str(BBOX.MAX_CC)].max() + pad_sz,
-                    ),
-            )
-        else:
-            raise ValueError(f"Invalid axis other_image: {axis}")
-
-        bin_edges.sort()
-
-        # (larger_point-smaller_point)/2 + smaller_point; Across all axis vectors
-        larger_edges = bin_edges[1:]
-        smaller_edges = bin_edges[:-1]
-        bin_midpoint = (larger_edges - smaller_edges) // 2 + smaller_edges
-
-        return ((current_obj_midpoints - bin_midpoint) ** 2).sum() / len(
-                current_obj_midpoints
-        )
-
-    def _get_optimal_row_pad(self, image: Image) -> int:
-        """
-        Determines the optimal row padding for the given image by analyzing the metadata of the
-        detected objects and finding the maximum allowable padding that adheres to the constraints
-        of the image shape.
-
-        Uses the object information from the image to compute the padding range, which is derived
-        from the minimum and maximum bounding box nrows of the detected objects. Clips the calculated
-        padding size in case it results in a negative value.
-
-        Args:
-            image (Image): The image object containing detected objects and their associated metadata.
-
-        Returns:
-            int: The optimal row padding value based on the image's object information and calculated
-            constraints.
-        """
-        obj_info = image.objects.info(include_metadata=False)
-        min_rr, max_rr = (
-            obj_info.loc[:, str(BBOX.MIN_RR)].min(),
-            obj_info.loc[:, str(BBOX.MAX_RR)].max(),
-        )
-        max_row_pad_size = min(min_rr - 1, abs(image.shape[0] - max_rr - 1))
-        max_row_pad_size = (
-            0 if max_row_pad_size < 0 else max_row_pad_size
-        )  # Clip in case pad size is negative
-
-        partial_row_pad_finder = partial(
-                self._find_padding_midpoint_error, image=image, axis=0, row_pad=0,
-                col_pad=0
-        )
-        return int(
-                self._apply_solver(
-                        partial_row_pad_finder, max_value=max_row_pad_size, min_value=0
-                )
-        )
-
-    def _get_row_edges(self, image: Image, row_padding: int, info_table: pd.DataFrame):
-        """
-        Determine the row edges of an image based on object positions and padding.
-
-        This method calculates the edges defining nrows for objects within an image
-        based on their positions provided in a DataFrame, applying padding and
-        binning logic. The row edges are adjusted to fit within the boundaries
-        of the image.
-
-        Args:
-            image (Image): The image where the row edges will be determined. The
-                shape of the image is used to establish boundaries.
-            row_padding (int): An additional padding applied to object bounds when
-                calculating row edges.
-            info_table (pd.DataFrame): A DataFrame containing object data, including
-                their minimal and maximal row positions and central row coordinates.
-
-        Returns:
-            np.ndarray: An array of row edges sorted in ascending order.
-        """
-        lower_row_bound = round(info_table.loc[:, str(BBOX.MIN_RR)].min() - row_padding)
-        upper_row_bound = round(info_table.loc[:, str(BBOX.MAX_RR)].max() + row_padding)
-        obj_row_range = np.clip(
-                a=[lower_row_bound, upper_row_bound],
-                a_min=0,
-                a_max=image.shape[0] - 1,
-        )
-
-        row_edges = np.histogram_bin_edges(
-                a=info_table.loc[:, str(BBOX.WEIGHTED_CENTER_RR)],
-                bins=self.nrows,
-                range=tuple(obj_row_range),
-        )
-        np.round(a=row_edges, out=row_edges)
-        row_edges.sort()
-
-        return row_edges.astype(int)
-
-    def get_row_edges(self, image: Image):
-        """
-        Extracts and returns the edges of nrows from the given image.
-
-        This method first calculates the optimal row padding for the provided image
-        using an internal utility method and subsequently determines the row edges
-        based on the calculated padding and metadata of the image.
-
-        Args:
-            image (Image): The input image from which the row edges need to
-                be identified.
-
-        Returns:
-            list: A list representing the edges of the nrows in the image.
-        """
-        optimal_row_padding = self._get_optimal_row_pad(image=image)
-        return self._get_row_edges(
-                image=image,
-                row_padding=optimal_row_padding,
-                info_table=image.objects.info(include_metadata=False),
-        )
-
-    def _get_optimal_col_pad(self, image: Image) -> int:
-        obj_info = image.objects.info(include_metadata=False)
-        min_cc, max_cc = (
-            obj_info.loc[:, str(BBOX.MIN_CC)].min(),
-            obj_info.loc[:, str(BBOX.MAX_CC)].max(),
-        )
-        max_col_pad_size = min(min_cc - 1, abs(image.shape[1] - max_cc - 1))
-        max_col_pad_size = (
-            0 if max_col_pad_size < 0 else max_col_pad_size
-        )  # Clip in case pad size is negative
-
-        partial_col_pad_finder = partial(
-                self._find_padding_midpoint_error, image=image, axis=1, row_pad=0,
-                col_pad=0
-        )
-        return self._apply_solver(
-                partial_col_pad_finder, max_value=max_col_pad_size, min_value=0
-        )
-
-    def _get_col_edges(
-            self, image: Image, column_padding: int, info_table: pd.DataFrame
-    ):
-        lower_col_bound = round(
-                info_table.loc[:, str(BBOX.MIN_CC)].min() - column_padding
-        )
-        upper_col_bound = round(
-                info_table.loc[:, str(BBOX.MAX_CC)].max() + column_padding
-        )
-        obj_col_range = np.clip(
-                a=[lower_col_bound, upper_col_bound],
-                a_min=0,
-                a_max=image.shape[1] - 1,
-        )
-        col_edges = np.histogram_bin_edges(
-                a=info_table.loc[:, str(BBOX.WEIGHTED_CENTER_CC)],
-                bins=self.ncols,
-                range=tuple(obj_col_range),
-        )
-        np.round(a=col_edges, out=col_edges)
-        col_edges.sort()
-
-        return col_edges.astype(int)
-
-    def get_col_edges(self, image: Image):
-        optimal_col_padding = self._get_optimal_col_pad(image=image)
-        return self._get_col_edges(
-                image=image,
-                column_padding=optimal_col_padding,
-                info_table=image.objects.info(include_metadata=False),
-        )
-
-    def _apply_solver(self, partial_cost_func, max_value, min_value=0) -> int:
-        """Returns the optimal padding other_image that minimizes the mean squared differences between the object midpoints and grid midpoints."""
-        if max_value == 0:
-            return 0
-
-        else:
-            return round(
-                    minimize_scalar(
-                            partial_cost_func,
-                            bounds=(min_value, max_value),
-                            options={
-                                "maxiter": self.max_iter if self.max_iter else 1000,
-                                "xatol"  : self.tol,
-                            },
-                    ).x,
-            )
 
 
 AutoGridFinder.measure.__doc__ = AutoGridFinder._operate.__doc__

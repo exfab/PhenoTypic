@@ -12,7 +12,9 @@ from typing import Any, Literal
 import numpy as np
 import scipy.ndimage as ndimage
 from scipy.signal import find_peaks
-from scipy.ndimage import gaussian_filter1d
+from scipy.ndimage import gaussian_filter1d, distance_transform_edt
+from skimage.feature import peak_local_max
+from skimage.segmentation import watershed
 
 
 class GridInferenceMixin:
@@ -332,14 +334,165 @@ class GridInferenceMixin:
         )
 
     @staticmethod
+    def _split_merged_objects(
+        labeled: np.ndarray,
+        row_edges: np.ndarray,
+        col_edges: np.ndarray,
+        min_peak_distance: int = 5,
+        relative_peak_threshold: float = 0.5,
+    ) -> np.ndarray:
+        """Split merged colonies that span multiple grid cells using EDT watershed.
+
+        Detects objects touching multiple grid cells with distinct EDT peaks in
+        different cells and splits them via watershed segmentation. Objects with
+        all peaks in a single cell are left intact.
+
+        Args:
+            labeled: Labeled array (0 = background, >0 = objects).
+            row_edges: Sorted array of row boundary positions.
+            col_edges: Sorted array of column boundary positions.
+            min_peak_distance: Minimum pixel distance between EDT peaks.
+            relative_peak_threshold: Fraction of maximum EDT value; peaks below
+                this threshold are discarded.
+
+        Returns:
+            A new labeled array where merged objects have been split into
+            separate labels.
+        """
+        out_labeled = labeled.copy()
+        next_label = int(labeled.max()) + 1
+
+        unique_labels = np.unique(labeled)
+        unique_labels = unique_labels[unique_labels != 0]
+
+        for lbl in unique_labels:
+            # Tight bounding box
+            rows, cols = np.where(labeled == lbl)
+            r_min, r_max = rows.min(), rows.max() + 1
+            c_min, c_max = cols.min(), cols.max() + 1
+
+            # Determine which grid cells this object touches
+            r_cell_min = max(int(np.searchsorted(row_edges, r_min, side="right")) - 1, 0)
+            r_cell_max = max(int(np.searchsorted(row_edges, r_max - 1, side="right")) - 1, 0)
+            c_cell_min = max(int(np.searchsorted(col_edges, c_min, side="right")) - 1, 0)
+            c_cell_max = max(int(np.searchsorted(col_edges, c_max - 1, side="right")) - 1, 0)
+
+            if r_cell_min == r_cell_max and c_cell_min == c_cell_max:
+                continue  # Single cell — skip
+
+            # EDT on the object's binary mask patch
+            mask_patch = labeled[r_min:r_max, c_min:c_max] == lbl
+            edt = distance_transform_edt(mask_patch)
+
+            if edt.max() == 0:
+                continue
+
+            # Find local maxima
+            coords = peak_local_max(
+                edt,
+                min_distance=min_peak_distance,
+                labels=mask_patch.astype(np.uint8),
+            )
+
+            if len(coords) < 2:
+                continue
+
+            # Filter by relative threshold
+            threshold = relative_peak_threshold * edt.max()
+            coords = coords[edt[coords[:, 0], coords[:, 1]] >= threshold]
+
+            if len(coords) < 2:
+                continue
+
+            # Map each peak to its grid cell (absolute coords)
+            peak_cells = set()
+            for pr, pc in coords:
+                abs_r = pr + r_min
+                abs_c = pc + c_min
+                ri = max(int(np.searchsorted(row_edges, abs_r, side="right")) - 1, 0)
+                ci = max(int(np.searchsorted(col_edges, abs_c, side="right")) - 1, 0)
+                peak_cells.add((ri, ci))
+
+            if len(peak_cells) < 2:
+                continue  # All peaks in same cell — single large colony
+
+            # Build markers: one ID per distinct grid cell
+            cell_to_id: dict[tuple[int, int], int] = {}
+            marker_id = 1
+            markers = np.zeros_like(mask_patch, dtype=np.int32)
+            for pr, pc in coords:
+                abs_r = pr + r_min
+                abs_c = pc + c_min
+                ri = max(int(np.searchsorted(row_edges, abs_r, side="right")) - 1, 0)
+                ci = max(int(np.searchsorted(col_edges, abs_c, side="right")) - 1, 0)
+                cell_key = (ri, ci)
+                if cell_key not in cell_to_id:
+                    cell_to_id[cell_key] = marker_id
+                    marker_id += 1
+                markers[pr, pc] = cell_to_id[cell_key]
+
+            # Watershed split
+            ws = watershed(-edt, markers, mask=mask_patch)
+
+            # Write split sub-labels into out_labeled
+            ws_labels = np.unique(ws)
+            ws_labels = ws_labels[ws_labels != 0]
+            for i, ws_lbl in enumerate(ws_labels):
+                sub_mask = ws == ws_lbl
+                abs_rows = np.where(sub_mask)[0] + r_min
+                abs_cols = np.where(sub_mask)[1] + c_min
+                out_labeled[abs_rows, abs_cols] = next_label + i
+            next_label += len(ws_labels)
+
+        return out_labeled
+
+    @staticmethod
+    def _compute_object_centroids(
+        labeled: np.ndarray,
+        intensity: np.ndarray | None = None,
+    ) -> dict[int, tuple[float, float]]:
+        """Compute centroids for all labeled objects.
+
+        Args:
+            labeled: Labeled array (0 = background, >0 = objects).
+            intensity: Optional intensity image for weighted centroids.
+                If provided, computes intensity-weighted center of mass.
+                If None, computes geometric centroids.
+
+        Returns:
+            Dict mapping each label to its (row, col) centroid.
+        """
+        unique_labels = np.unique(labeled)
+        unique_labels = unique_labels[unique_labels != 0]
+
+        if len(unique_labels) == 0:
+            return {}
+
+        if intensity is not None:
+            coms = ndimage.center_of_mass(intensity, labeled, unique_labels.tolist())
+        else:
+            coms = ndimage.center_of_mass(
+                np.ones_like(labeled, dtype=np.uint8), labeled, unique_labels.tolist()
+            )
+
+        return {int(lbl): (float(cr), float(cc)) for lbl, (cr, cc) in zip(unique_labels, coms)}
+
+    @staticmethod
     def _assign_grid_objects(
         labeled: np.ndarray,
         row_edges: np.ndarray,
         col_edges: np.ndarray,
         selection_mode: Literal["dominant", "centered", "regularized"],
         dtype: np.dtype[Any] | type,
+        intensity: np.ndarray | None = None,
+        split_merged: bool = True,
     ) -> np.ndarray:
-        """Assign one object per grid cell using the chosen selection strategy.
+        """Assign one object per grid cell using centroid-based whole-object assignment.
+
+        Each object is assigned to the grid cell containing its centroid. The
+        entire object (all pixels) is written to the output — no boundary
+        cleaving.  When multiple objects map to the same cell the
+        *selection_mode* tie-break determines which one wins.
 
         Args:
             labeled: Full labeled array (0 = background, >0 = objects).
@@ -350,56 +503,84 @@ class GridInferenceMixin:
                 ``"regularized"`` uses a two-pass global fit to recover
                 expected colony positions from median row/column centroids.
             dtype: NumPy dtype for the output array.
+            intensity: Optional intensity image for weighted centroids.
+                If provided, centroids are intensity-weighted.
+            split_merged: If True (default), pre-split merged colonies that
+                span multiple grid cells using EDT watershed before
+                assignment.
 
         Returns:
             A new labeled array with sequential labels (1, 2, 3, ...).
         """
+        # Optional EDT pre-splitting
+        if split_merged:
+            labeled = GridInferenceMixin._split_merged_objects(
+                labeled, row_edges, col_edges
+            )
+
         nrows = len(row_edges) - 1
         ncols = len(col_edges) - 1
         refined_map = np.zeros_like(labeled, dtype=dtype)
 
+        # Compute centroids for all objects
+        centroids = GridInferenceMixin._compute_object_centroids(labeled, intensity)
+
+        # Pre-compute pixel counts
+        uniq_all, counts_all = np.unique(labeled, return_counts=True)
+        label_pixel_counts: dict[int, int] = {
+            int(lbl): int(cnt) for lbl, cnt in zip(uniq_all, counts_all) if lbl != 0
+        }
+
+        # Map each object to a grid cell via its centroid
+        cell_to_labels: dict[tuple[int, int], list[int]] = {}
+        for lbl, (cr, cc) in centroids.items():
+            ri = int(np.clip(
+                np.searchsorted(row_edges, cr, side="right") - 1, 0, nrows - 1
+            ))
+            ci = int(np.clip(
+                np.searchsorted(col_edges, cc, side="right") - 1, 0, ncols - 1
+            ))
+            cell_to_labels.setdefault((ri, ci), []).append(lbl)
+
         if selection_mode in ("dominant", "centered"):
-            per_cell_mode: Literal["dominant", "centered"] = (
-                "dominant" if selection_mode == "dominant" else "centered"
-            )
             label_counter = 1
             for r in range(nrows):
-                r0, r1 = row_edges[r], row_edges[r + 1]
                 for c in range(ncols):
-                    c0, c1 = col_edges[c], col_edges[c + 1]
-                    region = labeled[r0:r1, c0:c1]
-                    if region.size == 0:
+                    labels_in_cell = cell_to_labels.get((r, c))
+                    if not labels_in_cell:
                         continue
-                    chosen = GridInferenceMixin._select_cell_object(
-                        region, per_cell_mode
-                    )
-                    if chosen is not None:
-                        mask = region == chosen
-                        if np.any(mask):
-                            refined_map[r0:r1, c0:c1][mask] = label_counter
-                            label_counter += 1
+
+                    if len(labels_in_cell) == 1:
+                        chosen = labels_in_cell[0]
+                    elif selection_mode == "dominant":
+                        chosen = max(labels_in_cell, key=lambda lb: label_pixel_counts.get(lb, 0))
+                    else:  # centered
+                        cell_center_r = (row_edges[r] + row_edges[r + 1]) / 2.0
+                        cell_center_c = (col_edges[c] + col_edges[c + 1]) / 2.0
+                        chosen = min(
+                            labels_in_cell,
+                            key=lambda lb: (
+                                (centroids[lb][0] - cell_center_r) ** 2
+                                + (centroids[lb][1] - cell_center_c) ** 2
+                            ),
+                        )
+
+                    refined_map[labeled == chosen] = label_counter
+                    label_counter += 1
             return refined_map
 
         # --- regularized: two-pass global approach ---
 
-        # Pass 1: collect initial candidates using dominant selection
-        candidates: list[tuple[int, int, float, float]] = []  # (row_idx, col_idx, abs_r, abs_c)
+        # Pass 1: collect dominant per cell + record centroids
+        candidates: list[tuple[int, int, float, float]] = []
         for r in range(nrows):
-            r0, r1 = row_edges[r], row_edges[r + 1]
             for c in range(ncols):
-                c0, c1 = col_edges[c], col_edges[c + 1]
-                region = labeled[r0:r1, c0:c1]
-                if region.size == 0:
+                labels_in_cell = cell_to_labels.get((r, c))
+                if not labels_in_cell:
                     continue
-                chosen = GridInferenceMixin._select_cell_object(region, "dominant")
-                if chosen is not None:
-                    # Centroid in local coords
-                    local_coords = ndimage.center_of_mass(
-                        (region == chosen).astype(np.uint8)
-                    )
-                    abs_r = local_coords[0] + r0
-                    abs_c = local_coords[1] + c0
-                    candidates.append((r, c, abs_r, abs_c))
+                dominant = max(labels_in_cell, key=lambda lb: label_pixel_counts.get(lb, 0))
+                cr, cc = centroids[dominant]
+                candidates.append((r, c, cr, cc))
 
         # Fit global grid model: median row/column positions
         expected_r = np.empty(nrows)
@@ -410,7 +591,6 @@ class GridInferenceMixin:
             if row_vals:
                 expected_r[i] = float(np.median(row_vals))
             else:
-                # Fallback: cell center
                 expected_r[i] = (row_edges[i] + row_edges[i + 1]) / 2.0
 
         for j in range(ncols):
@@ -420,40 +600,23 @@ class GridInferenceMixin:
             else:
                 expected_c[j] = (col_edges[j] + col_edges[j + 1]) / 2.0
 
-        # Pass 2: re-select using expected positions
+        # Pass 2: re-select closest to expected position
         label_counter = 1
         for r in range(nrows):
-            r0, r1 = row_edges[r], row_edges[r + 1]
             for c in range(ncols):
-                c0, c1 = col_edges[c], col_edges[c + 1]
-                region = labeled[r0:r1, c0:c1]
-                if region.size == 0:
+                labels_in_cell = cell_to_labels.get((r, c))
+                if not labels_in_cell:
                     continue
 
-                uniq, counts = np.unique(region, return_counts=True)
-                valid = uniq != 0
-                if not np.any(valid):
-                    continue
-                uniq = uniq[valid]
-
-                # Compute centroid of each object and pick closest to expected
-                centroids = ndimage.center_of_mass(
-                    np.ones_like(region), region, uniq.tolist()
+                best_label = min(
+                    labels_in_cell,
+                    key=lambda lb: (
+                        (centroids[lb][0] - expected_r[r]) ** 2
+                        + (centroids[lb][1] - expected_c[c]) ** 2
+                    ),
                 )
-                best_label = None
-                best_dist = np.inf
-                for lbl, (cr, cc) in zip(uniq, centroids):
-                    abs_cr = cr + r0
-                    abs_cc = cc + c0
-                    dist = (abs_cr - expected_r[r]) ** 2 + (abs_cc - expected_c[c]) ** 2
-                    if dist < best_dist:
-                        best_dist = dist
-                        best_label = int(lbl)
 
-                if best_label is not None:
-                    mask = region == best_label
-                    if np.any(mask):
-                        refined_map[r0:r1, c0:c1][mask] = label_counter
-                        label_counter += 1
+                refined_map[labeled == best_label] = label_counter
+                label_counter += 1
 
         return refined_map

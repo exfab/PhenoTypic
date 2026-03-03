@@ -19,24 +19,12 @@ See [tests/CLAUDE.md](tests/CLAUDE.md)
 - `uv run mypy src/phenotypic` — type checking
 - `uv run ruff check --fix` — format and lint
 
-### Documentation
-
-- `cd docs && uv run sphinx-build -b html source build` — build docs
-- `uv run sphinx-autobuild source build` — auto-rebuild on changes
-
 ### CLI
 
-- **`python -m phenotypic`** — single pipeline on images/directories (parallel, SLURM, resume)
-- **`python -m phenotypic.sweep`** — parameter sweeps across pipeline variants
+- **`uv run python -m phenotypic`** — single pipeline on images/directories (parallel, SLURM, resume)
+- **`uv run python -m phenotypic.sweep`** — parameter sweeps across pipeline variants
 
-```bash
-uv run python -m phenotypic pipeline.json ./images -o ./results \
-    --image-type GridImage --nrows 8 --ncols 12 --n-jobs -1
-
-uv run python -m phenotypic.sweep manifest.json ./images -o ./sweep_results
-```
-
-See [src/phenotypic/_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) for full CLI docs.
+See [src/phenotypic/_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) and [src/phenotypic/sweep/CLAUDE.md](src/phenotypic/sweep/CLAUDE.md) for full docs.
 
 ---
 
@@ -44,28 +32,21 @@ See [src/phenotypic/_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) for full CLI 
 
 **Purpose:** Modular image processing for arrayed colony phenotyping on solid media (agar plates).
 
+**Philosophy:** Accuracy over speed — prefer correct results even at higher compute cost. However, be mindful of memory usage; images are large and operations copy data, so avoid unnecessary intermediate allocations.
+
 ### Four Layers
 
 1. **Image Data Layer** — `Image`/`GridImage` with accessor pattern, lazy evaluation,
    caching (`image.rgb[:]`, `image.detect_mat[:]`, `image.color.Lab[:]`).
    See [_core/CLAUDE.md](src/phenotypic/_core/CLAUDE.md).
 
-2. **Operation ABCs** — `_operate(image) -> image` interface:
-
-```
-BaseOperation
-├── ImageOperation → ImageEnhancer, ImageCorrector, ObjectDetector
-├── GridOperation → GridFinder, GridCorrector, GridObjectRefiner
-├── MeasureFeatures / GridMeasureFeatures
-└── PrefabPipeline
-```
-
-   See [abc_/CLAUDE.md](src/phenotypic/abc_/CLAUDE.md).
+2. **Operation ABCs** — `_operate(image) -> image` interface.
+   See [abc_/CLAUDE.md](src/phenotypic/abc_/CLAUDE.md) for full hierarchy and reference implementations.
 
 3. **Pipeline Layer** — `ImagePipeline` chains operations, batch execution, YAML/JSON
    serialization, automatic benchmarking.
 
-4. **Enhancement Layer** — 19+ preprocessing ops on `detect_mat`; RGB/gray unchanged.
+4. **Enhancement Layer** — preprocessing ops on `detect_mat`; RGB/gray unchanged.
 
 ### Module Organization
 
@@ -76,13 +57,6 @@ phenotypic/module_name/
 ```
 
 Only `__init__.py` exports are public API.
-
-### Key Modules
-
-- `detect` — 11+ detectors | `enhance` — 19+ preprocessors | `refine` — post-detection
-- `measure` — feature extraction | `grid` — grid detection/alignment
-- `correction` — image quality | `analysis` — statistics | `prefab` — pre-built pipelines
-- `tools_` — mixins/helpers | `settings_` — global config
 
 ### Design Decisions
 
@@ -123,6 +97,8 @@ Only `__init__.py` exports are public API.
 - [src/phenotypic/_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) — CLI, SLURM
 - [src/phenotypic/tools_/CLAUDE.md](src/phenotypic/tools_/CLAUDE.md) — mixins, utilities
 - [src/phenotypic/settings_/CLAUDE.md](src/phenotypic/settings_/CLAUDE.md) — global config
+- [src/phenotypic/enhance/CLAUDE.md](src/phenotypic/enhance/CLAUDE.md) — enhancer conventions
+- [src/phenotypic/sweep/CLAUDE.md](src/phenotypic/sweep/CLAUDE.md) — parameter sweeps
 
 ## Key Files
 
@@ -131,18 +107,7 @@ Only `__init__.py` exports are public API.
 - `src/phenotypic/abc_/` — Operation interfaces
 - `src/phenotypic/__main__.py` — CLI entry point
 
-**Reference implementations:** `detect/_otsu_detector.py` (detector),
-`enhance/_gaussian_blur.py` (enhancer), `enhance/_gray_opening.py` (FootprintMixin)
-
 ## Gotchas
 
 - Some packages excluded on Windows: `rawpy`, `pympler`, `jupyter` — use try/except
 - External tools: ExifTool (raw metadata), Pandoc (doc builds)
-- CI docs: Sphinx → GitHub Pages on release publish or manual dispatch
-
-## Links
-
-- https://github.com/exfab/PhenoTypic
-- https://exfab.github.io/PhenoTypic/
-- https://exfab.engineering.ucsb.edu/
-- https://colour.readthedocs.io/

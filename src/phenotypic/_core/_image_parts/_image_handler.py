@@ -762,36 +762,20 @@ class ImageHandler(ImageDataManager):
         Returns:
             None
         """
+        common_params = dict(
+                angle=angle_of_rotation,
+                mode=mode,
+                clip=True,
+                cval=cval,
+                order=order,
+                preserve_range=preserve_range,
+        )
+
         if not self.rgb.isempty():
-            self._data.rgb = skimage_rotate(
-                    image=self._data.rgb,
-                    angle=angle_of_rotation,
-                    mode=mode,
-                    clip=True,
-                    cval=cval,
-                    order=order,
-                    preserve_range=preserve_range,
-            )
+            self._data.rgb = skimage_rotate(image=self._data.rgb, **common_params)
 
-        self._data.gray = skimage_rotate(
-                image=self._data.gray,
-                angle=angle_of_rotation,
-                mode=mode,
-                clip=True,
-                cval=cval,
-                order=order,
-                preserve_range=preserve_range,
-        )
-
-        self._data.detect_mat = skimage_rotate(
-                image=self._data.detect_mat,
-                angle=angle_of_rotation,
-                mode=mode,
-                clip=True,
-                cval=cval,
-                order=order,
-                preserve_range=preserve_range,
-        )
+        self._data.gray = skimage_rotate(image=self._data.gray, **common_params)
+        self._data.detect_mat = skimage_rotate(image=self._data.detect_mat, **common_params)
 
         # Rotate the object map while preserving the details and using nearest-neighbor interpolation
         # This one must be nearest-neighbor

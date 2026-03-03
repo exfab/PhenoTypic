@@ -248,17 +248,16 @@ class PhaseCongruencyEnhancer(ImageEnhancer):
         image_fft = fft2(img)
 
         # Initialize accumulators
-        pc = np.zeros((self.n_orient, rows, cols), dtype=np.float64)
         cov_x2 = np.zeros((rows, cols), dtype=np.float64)
         cov_y2 = np.zeros((rows, cols), dtype=np.float64)
         cov_xy = np.zeros((rows, cols), dtype=np.float64)
         energy_v = np.zeros((rows, cols, 3), dtype=np.float64)
         pc_sum = np.zeros((rows, cols), dtype=np.float64)
 
-        # Storage for filter responses
-        EO: List[List[np.ndarray]] = [
-            [np.array([]) for _ in range(self.n_orient)] for _ in range(self.n_scale)
-        ]
+        # Per-scale real/imag storage, reused each orientation (replaces
+        # n_scale x n_orient complex128 EO list — saves ~3.8 GB at 3000x4000)
+        eo_real = np.empty((self.n_scale, rows, cols), dtype=np.float64)
+        eo_imag = np.empty((self.n_scale, rows, cols), dtype=np.float64)
 
         # Noise threshold estimation
         T: float = 0.0
@@ -283,15 +282,16 @@ class PhaseCongruencyEnhancer(ImageEnhancer):
                 # Apply filter in frequency domain
                 filtered_fft = image_fft * filter_combined
 
-                # Transform back to spatial domain
-                EO[s][o] = ifft2(filtered_fft)
-
-                # Extract even (real) and odd (imaginary) symmetric responses
-                amplitude = np.abs(EO[s][o])
+                # Transform back to spatial domain — store real/imag separately
+                # to avoid retaining complex128 arrays across orientations
+                eo_complex = ifft2(filtered_fft)
+                amplitude = np.abs(eo_complex)
+                eo_real[s] = eo_complex.real
+                eo_imag[s] = eo_complex.imag
 
                 # Accumulate responses
-                sum_even += np.real(EO[s][o])
-                sum_odd += np.imag(EO[s][o])
+                sum_even += eo_real[s]
+                sum_odd += eo_imag[s]
                 sum_amplitude += amplitude
                 max_amplitude = np.maximum(max_amplitude, amplitude)
 
@@ -327,14 +327,14 @@ class PhaseCongruencyEnhancer(ImageEnhancer):
             mean_odd = sum_odd / x_energy
 
             # Compute energy with cross-term subtraction (Julia reference)
-            # Energy = sum over scales of: E*MeanE + O*MeanO - |E*MeanO - O*MeanE|
+            # Sequential loop avoids large temporaries from vectorized sum
             energy = np.zeros((rows, cols), dtype=np.float64)
             for s in range(self.n_scale):
-                E = np.real(EO[s][o])
-                O = np.imag(EO[s][o])
+                even = eo_real[s]
+                odd = eo_imag[s]
                 energy += (
-                        E * mean_even + O * mean_odd - np.abs(
-                    E * mean_odd - O * mean_even)
+                    even * mean_even + odd * mean_odd
+                    - np.abs(even * mean_odd - odd * mean_even)
                 )
 
             # Accumulate energy vectors for orientation/feature_type (Julia reference)
@@ -347,16 +347,17 @@ class PhaseCongruencyEnhancer(ImageEnhancer):
             width = (sum_amplitude / (max_amplitude + epsilon) - 1) / (self.n_scale - 1)
             weight = 1.0 / (1.0 + np.exp((self.cutoff - width) * self.g))
 
-            # Phase congruency for this orientation
-            pc[o] = weight * np.maximum(energy - T, 0) / (sum_amplitude + epsilon)
+            # Phase congruency for this orientation (local variable, not stored
+            # in a 3D array — saves ~0.58 GB at 3000x4000)
+            pc_o = weight * np.maximum(energy - T, 0) / (sum_amplitude + epsilon)
 
             # Accumulate covariance tensor components
             cos_angle = np.cos(angle)
             sin_angle = np.sin(angle)
-            pc_sum += pc[o]
+            pc_sum += pc_o
 
-            # Square pc[o] for covariance (matches Julia PCo^2)
-            pc_sq = pc[o] ** 2
+            # Square pc_o for covariance (matches Julia PCo^2)
+            pc_sq = pc_o ** 2
             cov_x2 += pc_sq * cos_angle * cos_angle
             cov_y2 += pc_sq * sin_angle * sin_angle
             cov_xy += pc_sq * cos_angle * sin_angle
@@ -472,6 +473,9 @@ class PhaseCongruencyEnhancer(ImageEnhancer):
         """
         log_gabor_list = []
 
+        # Lowpass filter depends only on radius, not scale — compute once
+        lowpass = 1.0 / (1.0 + (radius / 0.45) ** 30)
+
         for s in range(self.n_scale):
             wavelength = self.min_wavelength * (self.mult ** s)
             f0 = 1.0 / wavelength  # Center frequency
@@ -486,13 +490,6 @@ class PhaseCongruencyEnhancer(ImageEnhancer):
 
             # Zero out DC component
             log_gabor[0, 0] = 0
-
-            # Apply lowpass filter to remove high frequency aliasing
-            lowpass_cutoff = 0.45
-            lowpass_order = 15
-            lowpass = 1.0 / (
-                    1.0 + (radius / lowpass_cutoff) ** (2 * lowpass_order)
-            )
 
             log_gabor_list.append(log_gabor * lowpass)
 

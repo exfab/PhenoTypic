@@ -70,10 +70,19 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
             threshold are zeroed before peak detection. Lower values accept weaker
             matches; higher values are more selective.
 
+        selection_mode: Strategy for choosing one object per grid cell. ``"dominant"``
+            (default) keeps the largest object by pixel count. ``"centered"`` keeps
+            the object whose centroid is closest to the cell center. ``"regularized"``
+            uses a two-pass approach that fits a global regular-grid model from median
+            row/column centroids, then re-selects per cell. Best for pinned arrays.
+
+        split_merged: If True (default), pre-split merged colonies that span
+            multiple grid cells using EDT watershed before grid assignment.
+
     Attributes:
         thresh_method, subtract_background, remove_noise, footprint_radius,
         noise_radius, smoothing_sigma, min_peak_distance, peak_prominence,
-        edge_refinement, correlation_threshold
+        edge_refinement, correlation_threshold, selection_mode, split_merged
 
     Returns:
         Image: Input image with objmask (binary colony mask) and objmap (labeled
@@ -167,6 +176,8 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
             peak_prominence: float | None = None,
             edge_refinement: bool = True,
             correlation_threshold: float = 0.3,
+            selection_mode: Literal["dominant", "centered", "regularized"] = "dominant",
+            split_merged: bool = True,
     ):
         """
         Initialize the SinePeakDetector with specified parameters.
@@ -196,6 +207,11 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
             correlation_threshold: Minimum normalized cross-correlation value for
                 a peak to be considered valid. Default 0.3. Values below this
                 threshold are zeroed before peak detection.
+            selection_mode: Strategy for choosing one object per grid cell.
+                'dominant' (default) keeps the largest, 'centered' keeps
+                the most centred, 'regularized' uses a global fit.
+            split_merged: If True (default), pre-split merged colonies that
+                span multiple grid cells using EDT watershed before assignment.
         """
         super().__init__()
 
@@ -209,6 +225,8 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
         self.peak_prominence = peak_prominence
         self.edge_refinement = edge_refinement
         self.correlation_threshold = correlation_threshold
+        self.selection_mode = selection_mode
+        self.split_merged = split_merged
 
     @staticmethod
     def _round_odd(n: int) -> int:
@@ -290,31 +308,14 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
         row_edges = np.clip(np.unique(row_edges), 0, objmask.shape[0])
         col_edges = np.clip(np.unique(col_edges), 0, objmask.shape[1])
 
-        objmap = np.zeros_like(labeled, dtype=image._OBJMAP_DTYPE)
-        label_counter = 1
-
-        # Assign dominant colonies to each grid cell
-        for r in range(len(row_edges) - 1):
-            r0, r1 = row_edges[r], row_edges[r + 1]
-            for c in range(len(col_edges) - 1):
-                c0, c1 = col_edges[c], col_edges[c + 1]
-                region = labeled[r0:r1, c0:c1]
-                if region.size == 0:
-                    continue
-                uniq, counts = np.unique(region, return_counts=True)
-                valid = uniq != 0
-                uniq = uniq[valid]
-                counts = counts[valid]
-                if uniq.size == 0:
-                    continue
-                dominant_label = uniq[np.argmax(counts)]
-                mask = region == dominant_label
-                if np.any(mask):
-                    objmap[r0:r1, c0:c1][mask] = label_counter
-                    label_counter += 1
+        # Assign colonies to grid cells using selection strategy
+        objmap = self._assign_grid_objects(
+            labeled, row_edges, col_edges, self.selection_mode, image._OBJMAP_DTYPE,
+            intensity=enh_matrix, split_merged=self.split_merged,
+        )
 
         # Fallback if no regions were labeled (e.g., grid inference failed)
-        if label_counter == 1:
+        if objmap.max() == 0:
             objmap = labeled.astype(image._OBJMAP_DTYPE, copy=False)
 
         self._log_memory_usage("grid cell assignment")
