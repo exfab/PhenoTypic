@@ -27,8 +27,8 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
     image's `sparse_object_map`, with automatic relabeling via scikit-image's `label()`
     function to maintain consistent object IDs after modifications.
 
-    The object mask distinguishes between foreground (object) pixels (value 1) and
-    background pixels (value 0). Any modification to the mask via `__setitem__` triggers
+    The object mask distinguishes between foreground (object) pixels (True) and
+    background pixels (False). Any modification to the mask via `__setitem__` triggers
     automatic relabeling to ensure object label consistency across the parent image's
     object map.
 
@@ -78,19 +78,19 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
         """Implement the NumPy array interface for seamless integration with NumPy.
 
         Converts the sparse binary mask to a dense NumPy array, enabling direct use
-        of NumPy functions and operations on the ObjectMask. The mask is always returned
-        as binary values (0 for background, 1 for foreground).
+        of NumPy functions and operations on the ObjectMask. The mask is returned
+        as bool (False for background, True for foreground).
 
         Args:
             dtype (type, optional): Target NumPy dtype for the returned array. If None,
-                defaults to int. Defaults to None.
+                defaults to bool. Defaults to None.
             copy (bool, optional): If True, ensures the returned array is a copy.
                 Ignored if dtype is specified. For NumPy 2.0+ compatibility.
                 Defaults to None.
 
         Returns:
-            np.ndarray: A dense binary array of shape matching the parent image with
-                int dtype (0 and 1 values), or the specified dtype.
+            np.ndarray: A dense bool array of shape matching the parent image
+                (True/False values), or the specified dtype.
 
         Examples:
             Using with NumPy functions and type conversion:
@@ -101,7 +101,7 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
             >>> # Explicit type conversion
             >>> mask_float = np.array(objmask, dtype=np.float32)
         """
-        arr = (self._backend.toarray() > 0).astype(int)
+        arr = self._backend.toarray() > 0
         if dtype is not None:
             arr = arr.astype(dtype, copy=False if copy is None else copy)
         elif copy:
@@ -113,14 +113,14 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
 
         Supports all standard NumPy slicing operations (integer indexing, slice objects,
         boolean masks, fancy indexing). The sparse mask is converted to dense form and
-        binary values (0 and 1) are returned.
+        bool values (True/False) are returned.
 
         Args:
             key (int, slice, tuple, np.ndarray): Index or slice to retrieve. Follows
                 NumPy indexing conventions for 2D arrays.
 
         Returns:
-            np.ndarray: Binary array (0 and 1 values) representing the sliced region of
+            np.ndarray: Bool array (True/False values) representing the sliced region of
                 the mask, with the same shape as the indexed region.
 
         Examples:
@@ -135,7 +135,7 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
             >>> # Boolean indexing
             >>> foreground_indices = objmask > 0
         """
-        return (self._backend.toarray()[key] > 0).astype(int)
+        return self._backend.toarray()[key] > 0
 
     def __setitem__(self, key, value: np.ndarray):
         """Update mask values at specified locations with automatic relabeling.
@@ -228,12 +228,12 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
     def copy(self) -> np.ndarray:
         """Return an independent copy of the binary object mask.
 
-        Creates a new array containing the same binary values (0 and 1) as the
+        Creates a new bool array containing the same values (True/False) as the
         current mask. Modifications to the returned array do not affect the original
         mask or the parent image.
 
         Returns:
-            np.ndarray: A dense copy of the binary mask with int dtype, independent
+            np.ndarray: A dense copy of the binary mask with bool dtype, independent
                 of the original sparse representation.
 
         Examples:
@@ -243,7 +243,7 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
             >>> mask_copy = objmask.copy()
             >>> mask_copy[10:50, 20:60] = 0  # Doesn't affect objmask
         """
-        return (self._backend.toarray() > 0).astype(int).copy()
+        return (self._backend.toarray() > 0).copy()
 
     def reset(self):
         """Reset the object mask and linked object map to a cleared state.
@@ -351,39 +351,30 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
         array[~mask] = bg_label
         return array
 
-    def vmax(self) -> int:
-        """Returns the maximum value for the object mask data type.
+    def vmax(self) -> bool:
+        """Returns the maximum value for the object mask (True for foreground)."""
+        return True
 
-        Object masks are stored as uint16 arrays where values represent binary mask
-        (0 for background, 1 for foreground). This returns the theoretical maximum
-        value that the uint16 dtype can represent.
-        """
-        return np.iinfo(self._subject_arr.dtype).max
-
-    def vmin(self) -> int:
-        """Returns the minimum value for the object mask data type.
-
-        Object masks are stored as uint16 arrays where 0 represents background.
-        This returns the theoretical minimum value that the uint16 dtype can represent.
-        """
-        return np.iinfo(self._subject_arr.dtype).min
+    def vmin(self) -> bool:
+        """Returns the minimum value for the object mask (False for background)."""
+        return False
 
     @property
     def _subject_arr(self) -> np.ndarray:
         """Return the dense binary representation of the object mask.
 
         Converts the sparse backend representation to a dense NumPy array with
-        binary values (0 and 1). This property is used internally by parent class
-        methods (e.g., `show()`, `histogram()`) for visualization and analysis.
+        bool values. This property is used internally by parent class methods
+        (e.g., `show()`, `histogram()`) for visualization and analysis.
 
         Returns:
-            np.ndarray: Dense binary array with ``uint8`` dtype, same shape as
-                the parent image. Values are 0 (background) and 1 (foreground).
+            np.ndarray: Dense bool array, same shape as the parent image.
+                Values are False (background) and True (foreground).
         """
-        return (self._backend.toarray() > 0).astype(np.uint8)
+        return self._backend.toarray() > 0
 
     def __and__(self, other) -> np.ndarray:
-        """Perform element-wise bitwise AND with the object mask.
+        """Perform element-wise logical AND with the object mask.
 
         Returns the element-wise logical AND between the mask and another operand.
         This is useful for intersecting masks or filtering foreground regions based
@@ -396,7 +387,7 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
                 - bool: Applied to all mask elements
 
         Returns:
-            np.ndarray: Binary array (dtype int) with AND results (values 0 or 1).
+            np.ndarray: Bool array with AND results (True/False).
 
         Raises:
             ValueError: If array operand shape doesn't match mask shape.
@@ -434,10 +425,10 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
             return NotImplemented
 
         result = self_mask & other_mask
-        return result.astype(int)
+        return result
 
     def __or__(self, other) -> np.ndarray:
-        """Perform element-wise bitwise OR with the object mask.
+        """Perform element-wise logical OR with the object mask.
 
         Returns the element-wise logical OR between the mask and another operand.
         Useful for combining masks from different detections or merging foreground
@@ -450,7 +441,7 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
                 - bool: Applied to all mask elements
 
         Returns:
-            np.ndarray: Binary array (dtype int) with OR results (values 0 or 1).
+            np.ndarray: Bool array with OR results (True/False).
 
         Raises:
             ValueError: If array operand shape doesn't match mask shape.
@@ -486,10 +477,10 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
             return NotImplemented
 
         result = self_mask | other_mask
-        return result.astype(int)
+        return result
 
     def __xor__(self, other) -> np.ndarray:
-        """Perform element-wise bitwise XOR with the object mask.
+        """Perform element-wise logical XOR with the object mask.
 
         Returns the element-wise logical XOR between the mask and another operand.
         Useful for finding symmetric differences between masks or detecting regions
@@ -502,7 +493,7 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
                 - bool: Applied to all mask elements
 
         Returns:
-            np.ndarray: Binary array (dtype int) with XOR results (values 0 or 1).
+            np.ndarray: Bool array with XOR results (True/False).
 
         Raises:
             ValueError: If array operand shape doesn't match mask shape.
@@ -537,22 +528,22 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
             return NotImplemented
 
         result = self_mask ^ other_mask
-        return result.astype(int)
+        return result
 
     def __invert__(self) -> np.ndarray:
-        """Perform bitwise NOT on the object mask.
+        """Perform logical NOT on the object mask.
 
         Returns the logical negation of the mask, inverting foreground and background
         pixels. Useful for selecting background regions or creating inverted masks.
 
         Returns:
-            np.ndarray: Binary array (dtype int) with inverted mask values.
+            np.ndarray: Bool array with inverted mask values.
 
         Examples:
             Get background pixels for analysis:
 
             >>> background_mask = ~image.objmask
-            >>> background_intensity = image.gray[:][background_mask > 0].mean()
+            >>> background_intensity = image.gray[:][background_mask].mean()
 
             Combine with other operations to exclude detected regions:
 
@@ -563,10 +554,10 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
         """
         self_mask: np.ndarray = self._backend.toarray() > 0
         result = ~self_mask
-        return result.astype(int)
+        return result
 
     def __iand__(self, other) -> ObjectMask:
-        """Perform in-place bitwise AND with the object mask.
+        """Perform in-place logical AND with the object mask.
 
         Modifies the mask by performing element-wise logical AND with another operand.
         After modification, automatically relabels the mask to maintain consistent
@@ -629,7 +620,7 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
         return self
 
     def __ior__(self, other) -> ObjectMask:
-        """Perform in-place bitwise OR with the object mask.
+        """Perform in-place logical OR with the object mask.
 
         Modifies the mask by performing element-wise logical OR with another operand.
         Useful for progressively adding detections or manually expanding mask regions.
@@ -691,7 +682,7 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
         return self
 
     def __ixor__(self, other) -> ObjectMask:
-        """Perform in-place bitwise XOR with the object mask.
+        """Perform in-place logical XOR with the object mask.
 
         Modifies the mask by performing element-wise logical XOR with another operand.
         Useful for selectively toggling mask regions or removing specific patterns.

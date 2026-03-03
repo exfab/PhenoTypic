@@ -37,7 +37,7 @@ class TestBasicBooleanOperators:
         result = img.objmask & other
 
         assert isinstance(result, np.ndarray)
-        assert result.dtype == int
+        assert result.dtype == np.bool_
         assert result.shape == (100, 100)
         # Check intersection: region [30:50, 30:50] should be 0
         assert np.sum(result[30:50, 30:50]) == 0
@@ -56,7 +56,7 @@ class TestBasicBooleanOperators:
         result = img1.objmask & img2.objmask
 
         assert isinstance(result, np.ndarray)
-        assert result.dtype == int
+        assert result.dtype == np.bool_
         # Check intersection exists
         assert np.sum(result) > 0
 
@@ -343,7 +343,7 @@ class TestOperatorChaining:
         result = (img.objmask & mask1) | mask2
 
         assert isinstance(result, np.ndarray)
-        assert result.dtype == int
+        assert result.dtype == np.bool_
 
     def test_chain_with_inversion(self, sample_image_with_mask):
         """Test chaining with NOT operator."""
@@ -466,21 +466,45 @@ class TestOperatorDtypeHandling:
         for dtype in [np.uint8, np.float32, np.int32, bool]:
             other = np.ones((100, 100), dtype=dtype)
             result = img.objmask & other
-            assert result.dtype == int
+            assert result.dtype == np.bool_
 
     def test_or_with_float_array(self, sample_image_with_mask):
         """Test OR with float array."""
         img = sample_image_with_mask
         other = np.random.rand(100, 100)
         result = img.objmask | other
-        assert result.dtype == int
+        assert result.dtype == np.bool_
 
     def test_xor_with_uint8_array(self, sample_image_with_mask):
         """Test XOR with uint8 array."""
         img = sample_image_with_mask
         other = np.random.randint(0, 256, (100, 100), dtype=np.uint8)
         result = img.objmask ^ other
-        assert result.dtype == int
+        assert result.dtype == np.bool_
+
+    def test_getitem_returns_bool_dtype(self, sample_image_with_mask):
+        """Test that objmask[:] returns bool dtype."""
+        img = sample_image_with_mask
+        result = img.objmask[:]
+        assert result.dtype == np.bool_
+
+    def test_array_returns_bool_dtype(self, sample_image_with_mask):
+        """Test that np.array(objmask) returns bool dtype."""
+        img = sample_image_with_mask
+        result = np.array(img.objmask)
+        assert result.dtype == np.bool_
+
+    def test_copy_returns_bool_dtype(self, sample_image_with_mask):
+        """Test that objmask.copy() returns bool dtype."""
+        img = sample_image_with_mask
+        result = img.objmask.copy()
+        assert result.dtype == np.bool_
+
+    def test_invert_returns_bool_dtype(self, sample_image_with_mask):
+        """Test that ~objmask returns bool dtype."""
+        img = sample_image_with_mask
+        result = ~img.objmask
+        assert result.dtype == np.bool_
 
 
 if __name__ == "__main__":
