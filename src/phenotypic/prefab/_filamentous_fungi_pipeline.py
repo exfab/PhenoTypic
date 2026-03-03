@@ -110,7 +110,7 @@ class FilamentousFungiPipeline(PrefabPipeline):
 
     def __init__(
             self,
-            bm3d_block_size: int = 8,
+            bm3d_block_size: int = 4,
             bm3d_stage_arg: Literal["all_stages", "hard_thresholding"] = "all_stages",
             inoculum_min_diameter: float = 30.0,
             inoculum_max_diameter: float = 100.0,
@@ -145,45 +145,45 @@ class FilamentousFungiPipeline(PrefabPipeline):
     ) -> None:
         if inoculum_detector is None:
             inoculum_detector = ImagePipeline(
-                ops=[
-                    InoculumDetector(
-                        min_diameter=inoculum_min_diameter,
-                        max_diameter=inoculum_max_diameter,
-                    ),
-                    GridSectionLargest(),
-                ]
+                    ops=[
+                        InoculumDetector(
+                                min_diameter=inoculum_min_diameter,
+                                max_diameter=inoculum_max_diameter,
+                        ),
+                        GridSectionLargest(),
+                    ]
             )
 
         ops = [
             GatBM3D(
-                block_size=bm3d_block_size,
-                stage_arg=bm3d_stage_arg,
+                    block_size=bm3d_block_size,
+                    stage_arg=bm3d_stage_arg,
             ),
             FilamentousFungiDetector(
-                inoculum_detector=inoculum_detector,
-                overall_detector=overall_detector,
-                enable_reconnection=enable_reconnection,
-                pct_n_orient=pct_n_orient,
-                pct_min_wavelength=pct_min_wavelength,
-                pct_k=pct_k,
-                gauss_sigma=gauss_sigma,
-                gauss_n_iter=gauss_n_iter,
-                morph_width=morph_width,
-                elevation_exponent=elevation_exponent,
-                beta=beta,
-                gamma=gamma,
-                r_coherence=r_coherence,
-                mad_window=mad_window,
-                r_screen=r_screen,
-                delta=delta,
-                quality_k=quality_k,
-                window_cost=window_cost,
-                edge_margin=edge_margin,
-                gap_penalty_alpha=gap_penalty_alpha,
-                snr_margin=snr_margin,
-                path_dilation_radius=path_dilation_radius,
-                tile_size=tile_size,
-                tile_overlap=tile_overlap,
+                    inoculum_detector=inoculum_detector,
+                    overall_detector=overall_detector,
+                    enable_reconnection=enable_reconnection,
+                    pct_n_orient=pct_n_orient,
+                    pct_min_wavelength=pct_min_wavelength,
+                    pct_k=pct_k,
+                    gauss_sigma=gauss_sigma,
+                    gauss_n_iter=gauss_n_iter,
+                    morph_width=morph_width,
+                    elevation_exponent=elevation_exponent,
+                    beta=beta,
+                    gamma=gamma,
+                    r_coherence=r_coherence,
+                    mad_window=mad_window,
+                    r_screen=r_screen,
+                    delta=delta,
+                    quality_k=quality_k,
+                    window_cost=window_cost,
+                    edge_margin=edge_margin,
+                    gap_penalty_alpha=gap_penalty_alpha,
+                    snr_margin=snr_margin,
+                    path_dilation_radius=path_dilation_radius,
+                    tile_size=tile_size,
+                    tile_overlap=tile_overlap,
             ),
         ]
 
