@@ -28,6 +28,7 @@ def install_smart_grid(viewer: napari.Viewer) -> None:
     # --- Cached visibility map and overlay state ---
     _vis_map: dict[int, int] = {}  # {layer_index: visible_position}
     _overlay_enabled = True
+    _labels_enabled = True
     _overlay_clones: list = []
 
     def _get_overlay_enabled():
@@ -36,6 +37,17 @@ def install_smart_grid(viewer: napari.Viewer) -> None:
     def _set_overlay_enabled(enabled):
         nonlocal _overlay_enabled
         _overlay_enabled = enabled
+        _ensure_scenegraph_wrapped()
+        c = _get_canvas()
+        if c is not None:
+            c._update_scenegraph()
+
+    def _get_labels_enabled():
+        return _labels_enabled
+
+    def _set_labels_enabled(enabled):
+        nonlocal _labels_enabled
+        _labels_enabled = enabled
         _ensure_scenegraph_wrapped()
         c = _get_canvas()
         if c is not None:
@@ -124,7 +136,8 @@ def install_smart_grid(viewer: napari.Viewer) -> None:
                             c.layer_to_visual[layer].node.parent = None
                     _overlay_clones[:] = create_overlay_clones(c, v)
                 try:
-                    add_grid_labels(c, v)
+                    if _labels_enabled:
+                        add_grid_labels(c, v)
                 except Exception:
                     logger.debug("Grid label update failed", exc_info=True)
 
@@ -134,7 +147,11 @@ def install_smart_grid(viewer: napari.Viewer) -> None:
 
         v = viewer_ref()
         if v is not None:
-            patch_grid_popup(v, _get_overlay_enabled, _set_overlay_enabled)
+            patch_grid_popup(
+                v,
+                _get_overlay_enabled, _set_overlay_enabled,
+                _get_labels_enabled, _set_labels_enabled,
+            )
 
     # Connect visibility events to trigger grid rebuild
     def _on_visibility_change(event=None):

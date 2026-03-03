@@ -6,8 +6,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def patch_grid_popup(viewer, get_enabled, set_enabled) -> None:
-    """Add overlay checkbox to the grid button's right-click popup."""
+def patch_grid_popup(
+    viewer, get_enabled, set_enabled, get_labels_enabled, set_labels_enabled,
+) -> None:
+    """Add overlay and label checkboxes to the grid button's right-click popup."""
     try:
         viewer_buttons = viewer.window._qt_viewer.viewerButtons
     except AttributeError:
@@ -40,6 +42,13 @@ def patch_grid_popup(viewer, get_enabled, set_enabled) -> None:
         cb.setChecked(get_enabled())
         cb.toggled.connect(set_enabled)
         layout.addWidget(cb, row, 1)
+
+        row = layout.rowCount()
+        layout.addWidget(QLabel("Labels:"), row, 0)
+        cb_labels = QCheckBox("Layer Names")
+        cb_labels.setChecked(get_labels_enabled())
+        cb_labels.toggled.connect(set_labels_enabled)
+        layout.addWidget(cb_labels, row, 1)
 
     # Disconnect original slot, connect replacement
     gvb.customContextMenuRequested.disconnect(viewer_buttons._open_grid_popup)
