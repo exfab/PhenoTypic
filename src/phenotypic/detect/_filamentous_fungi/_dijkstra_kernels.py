@@ -66,8 +66,8 @@ def extract_colony_boundaries(
 ) -> np.ndarray:
     """Extract inner boundary pixels of all colonies combined.
 
-    Uses per-colony inner boundaries with 8-connectivity to ensure that
-    boundary pixels are inside the colony mask. These pixels serve as
+    Uses inner boundaries with 8-connectivity on the combined colony mask
+    to ensure boundary pixels are inside colonies. These pixels serve as
     Dijkstra source seeds.
 
     Args:
@@ -77,18 +77,7 @@ def extract_colony_boundaries(
         Boolean mask (H, W) where True indicates a boundary pixel of
         any colony.
     """
-    H, W = colony_labels.shape
-    boundary_mask = np.zeros((H, W), dtype=np.bool_)
-
-    colony_ids = np.unique(colony_labels)
-    colony_ids = colony_ids[colony_ids > 0]
-
-    for cid in colony_ids:
-        mask = colony_labels == cid
-        bnd = find_boundaries(mask, mode="inner", connectivity=2)
-        boundary_mask |= bnd
-
-    return boundary_mask
+    return find_boundaries(colony_labels > 0, mode="inner", connectivity=2)
 
 
 # ── Numba JIT kernels ────────────────────────────────────────────────
@@ -528,15 +517,14 @@ def extract_fragment_paths(
             continue
 
         mask = fragment_labels == fid
-        frag_costs = dijkstra.cost_distance.copy()
-        frag_costs[~mask] = np.inf
+        rows, cols = np.where(mask)
+        frag_costs = dijkstra.cost_distance[rows, cols]
 
         # Find minimum-cost pixel in this fragment
-        seed_flat = np.argmin(frag_costs)
-        seed_r = seed_flat // frag_costs.shape[1]
-        seed_c = seed_flat % frag_costs.shape[1]
+        local_min = np.argmin(frag_costs)
+        seed_r, seed_c = int(rows[local_min]), int(cols[local_min])
 
-        if frag_costs[seed_r, seed_c] == np.inf:
+        if frag_costs[local_min] == np.inf:
             unconnected.append(fid)
             continue
 

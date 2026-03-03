@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Union
+
 from .._core._image_pipeline import ImagePipeline
 
 
@@ -45,6 +50,9 @@ class PrefabPipeline(ImagePipeline):
 
     4. **[GridSectionPipeline](src/phenotypic/prefab/_grid_section_pipeline.py):** Per-well section extraction and fine-grained analysis.
        Moderate cost; enables per-well quality control and segmentation.
+
+    5. **[FilamentousFungiPipeline](src/phenotypic/prefab/_filamentous_fungi_pipeline.py):** Two-stage filamentous fungi detection
+       with optional Dijkstra branch reconnection. For irregular spreading colonies.
 
     **When to use PrefabPipeline vs Custom ImagePipeline**
 
@@ -293,4 +301,31 @@ class PrefabPipeline(ImagePipeline):
         >>> print(f"Prefab: {len(result1.objects)}, Custom: {len(result2.objects)}")
     """
 
-    pass
+    @classmethod
+    def from_json(
+            cls,
+            json_data: Union[str, Path, dict],
+            benchmark: bool = False,
+            verbose: bool = False,
+    ) -> PrefabPipeline:
+        """Deserialize a PrefabPipeline from JSON.
+
+        PrefabPipeline subclasses build their ops/meas inside ``__init__``,
+        so the base ``from_json`` (which passes ``ops=`` directly) would
+        conflict.  This override deserializes via ``ImagePipeline`` and
+        re-tags the instance as the correct PrefabPipeline subclass.
+
+        Args:
+            json_data: A JSON string, path to a JSON file, or a pre-parsed dict.
+            benchmark: Whether to enable benchmarking for the pipeline.
+            verbose: Whether to enable verbose output.
+
+        Returns:
+            A PrefabPipeline (or subclass) instance with the loaded
+            configuration.
+        """
+        instance = ImagePipeline.from_json(
+                json_data, benchmark=benchmark, verbose=verbose,
+        )
+        instance.__class__ = cls
+        return instance  # type: ignore[return-value]

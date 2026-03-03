@@ -11,6 +11,7 @@ from ._heavy_otsu_pipeline import HeavyOtsuPipeline
 from ._grid_section_pipeline import GridSectionPipeline
 from ._heavy_round_peaks_pipeline import HeavyRoundPeaksPipeline
 from ._round_peaks_pipeline import RoundPeaksPipeline
+from ._filamentous_fungi_pipeline import FilamentousFungiPipeline
 
 __all__ = [
     "HeavyWatershedPipeline",
@@ -18,4 +19,5 @@ __all__ = [
     "GridSectionPipeline",
     "HeavyRoundPeaksPipeline",
     "RoundPeaksPipeline",
+    "FilamentousFungiPipeline",
 ]

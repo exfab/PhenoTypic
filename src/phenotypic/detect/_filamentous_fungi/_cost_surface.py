@@ -9,7 +9,7 @@ that reconnects fragmented branches to their parent colonies.
 from __future__ import annotations
 
 import numpy as np
-from scipy.ndimage import median_filter, uniform_filter
+from scipy.ndimage import distance_transform_edt, median_filter, uniform_filter
 
 
 def compute_anisotropy(M: np.ndarray, m: np.ndarray) -> np.ndarray:
@@ -158,3 +158,64 @@ def apply_structure_mask(
     c_final = cost.astype(np.float32, copy=True)
     c_final[colony_mask > 0] = eps_free
     return c_final
+
+
+def apply_border_penalty(
+    cost: np.ndarray,
+    edge_margin: int = 50,
+) -> np.ndarray:
+    """Apply a linear ramp penalty near image borders to prevent edge-routing.
+
+    Args:
+        cost: Float32 (H, W) cost surface.
+        edge_margin: Width in pixels of the penalized border zone.
+
+    Returns:
+        Cost surface with border penalty applied. A copy is returned.
+    """
+    H, W = cost.shape
+    max_cost = float(cost.max())
+
+    rows = np.arange(H)[:, None]
+    cols = np.arange(W)[None, :]
+    dist_to_edge = np.minimum(
+        np.minimum(rows, H - 1 - rows),
+        np.minimum(cols, W - 1 - cols),
+    ).astype(np.float32)
+
+    in_margin = dist_to_edge < edge_margin
+    ramp = max_cost * (1.0 - dist_to_edge / edge_margin)
+    result = cost.copy()
+    result[in_margin] = np.maximum(cost[in_margin], ramp[in_margin])
+    return result
+
+
+def apply_distance_gap_penalty(
+    cost: np.ndarray,
+    pct_energy: np.ndarray,
+    colony_labels: np.ndarray,
+    alpha: float = 5.0,
+) -> np.ndarray:
+    """Penalize gap-crossing proportionally to distance from colonies.
+
+    Near colonies, gaps in PCT energy are cheap (branch crossover is common).
+    Far from colonies, gaps are expensive (growth is radial, gaps indicate noise).
+
+    Args:
+        cost: Float32 (H, W) cost surface.
+        pct_energy: Float (H, W) PCT energy map, range [0, 1].
+        colony_labels: Int32 (H, W) labeled colony mask. 0 is background.
+        alpha: Penalty strength. Higher values impose stronger distance gating.
+
+    Returns:
+        Cost surface with distance-weighted gap penalty applied. A copy is
+        returned.
+    """
+    colony_mask = colony_labels > 0
+    dist = np.asarray(distance_transform_edt(~colony_mask), dtype=np.float32)
+    d_norm = dist / (dist.max() + 1e-6)
+
+    gap = (1.0 - np.clip(pct_energy, 0, 1)).astype(np.float32)
+    penalty = 1.0 + alpha * d_norm * gap
+
+    return (cost * penalty).astype(np.float32)

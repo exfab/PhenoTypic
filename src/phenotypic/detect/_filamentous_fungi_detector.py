@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 
 from scipy.ndimage import center_of_mass, distance_transform_edt
 from skimage import segmentation
+from skimage.filters import threshold_otsu
 from skimage.measure import label
 from skimage.morphology import disk, dilation
 
@@ -21,23 +22,22 @@ from phenotypic.enhance import (
     BayesShrinkEnhancer,
     CLAHE,
     GrayOpening,
-    GaussianBlur,
     SubtractGaussian,
     ContrastStretching,
-    CoherenceEnhancingDiffusion,
     PhaseCongruencyEnhancer,
 )
 
 from phenotypic.detect import (
     OtsuDetector,
-    RoundPeaksDetector,
-    SecondaryOtsuDetector,
     TriangleDetector,
     HysteresisDetector,
 )
+from phenotypic.detect._inoculum_detector import InoculumDetector
 from phenotypic.refine import MaskOpener, MaskCloser, GridSectionLargest
 
 from phenotypic.detect._filamentous_fungi import (
+    apply_border_penalty,
+    apply_distance_gap_penalty,
     compute_anisotropy,
     compute_orientation_coherence,
     compute_local_mad_map,
@@ -49,8 +49,8 @@ from phenotypic.detect._filamentous_fungi import (
     assign_fragments_to_colonies,
     extract_fragment_paths,
     extract_calibration_branches,
-    calibrate_quality_thresholds,
-    apply_quality_filters,
+    calibrate_thresholds,
+    apply_filter_cascade,
 )
 
 
@@ -68,12 +68,12 @@ class FilamentousFungiDetector(ObjectDetector):
     branch's base before a neighbor's flood can traverse through the connection zone.
 
     When ``enable_reconnection=True``, the detector replaces the legacy ``overall_detector``
-    path with a dual-mask branch detection pipeline (CED + Gaussian subtraction + phase
-    congruency) followed by Dijkstra-based branch reconnection. Fragmented hyphal branches
-    that fall outside the initial Voronoi watershed are reconnected to their parent colonies
-    via minimum-cost paths through a composite cost surface derived from phase congruency
-    features. Path quality is validated against calibration metrics from known-good colony
-    skeleton branches.
+    path with a dual-mask branch detection pipeline (ContrastStretching + Gaussian subtraction
+    + phase congruency) followed by Dijkstra-based branch reconnection. Fragmented hyphal
+    branches that fall outside the initial Voronoi watershed are reconnected to their parent
+    colonies via minimum-cost paths through a composite cost surface derived from phase
+    congruency features. Path quality is validated against calibration metrics from known-good
+    colony skeleton branches using a five-filter structure-based cascade.
 
     Args:
         inoculum_detector: ObjectDetector or ImagePipeline that identifies fungal centers/nuclei.
@@ -88,11 +88,6 @@ class FilamentousFungiDetector(ObjectDetector):
         enable_reconnection: When True, use dual-mask branch detection and Dijkstra-based
             reconnection instead of the legacy ``overall_detector`` path.
 
-        ced_num_iter: Number of CED diffusion iterations.
-        ced_sigma: CED noise scale (Gaussian pre-smoothing sigma).
-        ced_rho: CED integration scale (structure tensor smoothing sigma).
-        ced_C: CED contrast parameter controlling diffusion anisotropy.
-
         pct_n_orient: Number of orientations for phase congruency computation.
         pct_min_wavelength: Minimum wavelength for log-Gabor filters.
         pct_k: Noise threshold scaling factor for phase congruency.
@@ -104,12 +99,23 @@ class FilamentousFungiDetector(ObjectDetector):
 
         beta: Exponent on anisotropy in the composite cost formula.
         gamma: Weight of MAD penalty in the composite cost numerator.
+            Defaults to 1.2.
         r_coherence: Radius for orientation coherence computation.
         mad_window: Window size for local MAD computation (must be odd).
 
         r_screen: Screening radius for fragment pre-screening.
         delta: Dijkstra radial penalty factor for retreating steps.
-        quality_percentile: Percentile for calibrating path quality thresholds.
+        quality_k: IQR multiplier for path quality threshold calibration.
+            Higher values are more permissive.
+        window_cost: Sliding window size in pixels for the windowed cost metric.
+        elevation_exponent: Exponent applied to the EDT elevation surface for
+            watershed assignment. Higher values steepen basins around inoculums,
+            favoring nearer assignments. Defaults to 2.
+        edge_margin: Border penalty width in pixels. Prevents edge-routing paths.
+        gap_penalty_alpha: Distance-gap penalty strength. Higher values impose
+            stronger distance gating on PCT energy gaps.
+        snr_margin: Extra radius beyond ``path_dilation_radius`` for the SNR
+            background ring in the grayscale SNR filter.
         path_dilation_radius: Disk radius for dilating reconnection paths.
 
         tile_size: Side length of square tiles for tiled Dijkstra processing.
@@ -213,14 +219,7 @@ class FilamentousFungiDetector(ObjectDetector):
     )
 
     __center_pipe = ImagePipeline(
-            ops=[
-                GaussianBlur(sigma=5),
-                SubtractGaussian(sigma=500),
-                RoundPeaksDetector(thresh_method="triangle"),
-                SecondaryOtsuDetector(ignore_zeros=True),
-                MaskOpener(),
-                GridSectionLargest(),
-            ]
+            ops=[InoculumDetector(), GridSectionLargest()]
     )
 
     def __init__(
@@ -229,23 +228,24 @@ class FilamentousFungiDetector(ObjectDetector):
             overall_detector: Union[ObjectDetector, 'ImagePipeline', None] = None,
             # Reconnection parameters
             enable_reconnection: bool = False,
-            ced_num_iter: int = 50,
-            ced_sigma: float = 3.0,
-            ced_rho: float = 6.0,
-            ced_C: float = 90.0,
             pct_n_orient: int = 8,
             pct_min_wavelength: float = 5.0,
             pct_k: float = 6.0,
             gauss_sigma: float = 300.0,
             gauss_n_iter: int = 2,
             morph_width: int = 5,
+            elevation_exponent: float = 2,
             beta: float = 2.0,
-            gamma: float = 1.0,
+            gamma: float = 1.2,
             r_coherence: int = 12,
             mad_window: int = 7,
             r_screen: int = 10,
             delta: float = 1.0,
-            quality_percentile: float = 95.0,
+            quality_k: float = 3.0,
+            window_cost: int = 30,
+            edge_margin: int = 50,
+            gap_penalty_alpha: float = 4.0,
+            snr_margin: int = 3,
             path_dilation_radius: int = 2,
             tile_size: int = 1200,
             tile_overlap: int = 100,
@@ -278,23 +278,24 @@ class FilamentousFungiDetector(ObjectDetector):
 
         # Reconnection parameters
         self.enable_reconnection = enable_reconnection
-        self.ced_num_iter = ced_num_iter
-        self.ced_sigma = ced_sigma
-        self.ced_rho = ced_rho
-        self.ced_C = ced_C
         self.pct_n_orient = pct_n_orient
         self.pct_min_wavelength = pct_min_wavelength
         self.pct_k = pct_k
         self.gauss_sigma = gauss_sigma
         self.gauss_n_iter = gauss_n_iter
         self.morph_width = morph_width
+        self.elevation_exponent = elevation_exponent
         self.beta = beta
         self.gamma = gamma
         self.r_coherence = r_coherence
         self.mad_window = mad_window
         self.r_screen = r_screen
         self.delta = delta
-        self.quality_percentile = quality_percentile
+        self.quality_k = quality_k
+        self.window_cost = window_cost
+        self.edge_margin = edge_margin
+        self.gap_penalty_alpha = gap_penalty_alpha
+        self.snr_margin = snr_margin
         self.path_dilation_radius = path_dilation_radius
         self.tile_size = tile_size
         self.tile_overlap = tile_overlap
@@ -341,19 +342,16 @@ class FilamentousFungiDetector(ObjectDetector):
 
         # ── PHASE 2: BRANCH DETECTION ───────────────────────────────
         if self.enable_reconnection:
-            # Dual-mask approach on internal copy
-            ced_work = image.copy()
-            CoherenceEnhancingDiffusion(
-                num_iter=self.ced_num_iter, sigma=self.ced_sigma,
-                rho=self.ced_rho, C=self.ced_C, dt=0.125
-            ).apply(ced_work, inplace=True)
-            ced_arr = ced_work.detect_mat[:]
+            # ContrastStretching-enhanced copy for dual-mask detection
+            enhanced_work = image.copy()
+            ContrastStretching().apply(enhanced_work, inplace=True)
+            enhanced_arr = enhanced_work.detect_mat[:]
 
             # Mask A: Gauss branches
-            gauss_labels = self._detect_gauss_branches(ced_work)
+            gauss_labels = self._detect_gauss_branches(enhanced_work)
 
             # Mask B: PCT branches
-            pct_mask, pct_result = self._detect_pct_branches(ced_arr)
+            pct_mask, pct_result = self._detect_pct_branches(enhanced_arr)
 
             # Overlap filter: keep Gauss labels with any PCT overlap
             branch_labels = self._filter_gauss_by_pct_overlap(gauss_labels, pct_mask)
@@ -403,7 +401,9 @@ class FilamentousFungiDetector(ObjectDetector):
         region_markers = center_objmap.copy()
         region_markers[~overall_objmask] = 0
 
-        colony_labels = self._voronoi_assign(region_markers, overall_objmask)
+        colony_labels = self._voronoi_assign(
+                region_markers, overall_objmask, self.elevation_exponent
+        )
 
         if colony_labels.max() == 0:
             raise RuntimeError(
@@ -420,21 +420,29 @@ class FilamentousFungiDetector(ObjectDetector):
         # ── PHASE 4: DIJKSTRA RECONNECTION ──────────────────────────
         if self.enable_reconnection and branch_labels is not None:
             central_mask, fragment_labels = self._separate_central_and_fragments(
-                branch_labels, colony_labels
+                    branch_labels, colony_labels
             )
 
-            raw_cost, cost_surface = self._build_cost_surface(
-                pct_result, ced_arr, colony_labels, central_mask
+            unmasked_cost, cost_surface = self._build_cost_surface(
+                    pct_result, enhanced_arr, colony_labels, central_mask
             )
 
             colony_labels = self._reconnect_fragments_tiled(
-                colony_labels, fragment_labels, cost_surface, raw_cost
+                    colony_labels, fragment_labels, cost_surface, unmasked_cost,
+                    pct_energy=pct_result.pc_sum.astype(np.float32),
+                    grayscale=enhanced_work.gray[:],
             )
 
             self._log_memory_usage(
                     "after Dijkstra reconnection",
                     include_process=True,
                     include_tracemalloc=True,
+            )
+
+            # Watershed separate again
+            colony_labels = self._voronoi_assign(
+                    markers=region_markers, mask=colony_labels,
+                    elevation_exponent=self.elevation_exponent,
             )
 
         # ── PHASE 5: WRITE RESULT ───────────────────────────────────
@@ -455,42 +463,42 @@ class FilamentousFungiDetector(ObjectDetector):
 
     # ── Phase 2 helpers ─────────────────────────────────────────────
 
-    def _detect_gauss_branches(self, ced_work: 'Image') -> np.ndarray:
-        """Apply ContrastStretching, SubtractGaussian, TriangleDetector, and morphology on copy.
+    def _detect_gauss_branches(self, enhanced_work: 'Image') -> np.ndarray:
+        """Apply SubtractGaussian, TriangleDetector, and morphology on copy.
 
         Args:
-            ced_work: CED-enhanced image (will not be modified; operates on a copy).
+            enhanced_work: Contrast-stretched image (will not be modified;
+                operates on a copy).
 
         Returns:
             Labeled array of detected Gaussian branches.
         """
-        work = ced_work.copy()
-        ContrastStretching().apply(work, inplace=True)
+        work = enhanced_work.copy()
         SubtractGaussian(sigma=self.gauss_sigma, n_iter=self.gauss_n_iter).apply(
-            work, inplace=True
+                work, inplace=True
         )
         TriangleDetector().apply(work, inplace=True)
         MaskOpener(shape="disk", width=self.morph_width, n_iter=1).apply(
-            work, inplace=True
+                work, inplace=True
         )
         MaskCloser(shape="disk", width=self.morph_width, n_iter=2).apply(
-            work, inplace=True
+                work, inplace=True
         )
         MaskOpener(shape="disk", width=self.morph_width, n_iter=1).apply(
-            work, inplace=True
+                work, inplace=True
         )
         MaskCloser(shape="disk", width=self.morph_width, n_iter=2).apply(
-            work, inplace=True
+                work, inplace=True
         )
         return work.objmap[:]
 
     def _detect_pct_branches(
-            self, ced_arr: np.ndarray
+            self, enhanced_arr: np.ndarray
     ) -> tuple[np.ndarray, '_PhaseCong3Result']:
-        """Run phase congruency on CED array and apply hysteresis threshold.
+        """Run phase congruency on enhanced array and apply hysteresis threshold.
 
         Args:
-            ced_arr: 2D CED-enhanced detection matrix.
+            enhanced_arr: 2D contrast-stretched detection matrix.
 
         Returns:
             Tuple of (binary_mask, pct_result) where binary_mask is the
@@ -500,15 +508,18 @@ class FilamentousFungiDetector(ObjectDetector):
         from phenotypic._core._image import Image
 
         pct = PhaseCongruencyEnhancer(
-            n_orient=self.pct_n_orient,
-            min_wavelength=self.pct_min_wavelength,
-            k=self.pct_k,
+                n_orient=self.pct_n_orient,
+                min_wavelength=self.pct_min_wavelength,
+                k=self.pct_k,
         )
-        pct_result = pct._phasecong3(ced_arr)
+        pct_result = pct._phasecong3(enhanced_arr)
 
         # Create temporary Image from pc_sum for hysteresis detection
         temp = Image(arr=pct_result.pc_sum)
-        temp = HysteresisDetector(low="triangle", high="otsu").apply(temp)
+        temp = HysteresisDetector(
+                low="triangle", high="otsu",
+                ignore_borders=False, ignore_zeros=False,
+        ).apply(temp)
         pct_mask = temp.objmask[:]
 
         return pct_mask, pct_result
@@ -562,10 +573,31 @@ class FilamentousFungiDetector(ObjectDetector):
 
         return central_mask, fragment_labels
 
+    def _apply_penalties(
+            self,
+            cost: np.ndarray,
+            pct_energy: np.ndarray,
+            colony_labels: np.ndarray,
+    ) -> np.ndarray:
+        """Apply distance-gap and border penalties to a cost surface.
+
+        Args:
+            cost: 2D cost array to penalize.
+            pct_energy: 2D PCT energy map for gap penalty gating.
+            colony_labels: Labeled colony assignment from watershed.
+
+        Returns:
+            Penalized cost array.
+        """
+        cost = apply_distance_gap_penalty(
+                cost, pct_energy, colony_labels, self.gap_penalty_alpha,
+        )
+        return apply_border_penalty(cost, self.edge_margin)
+
     def _build_cost_surface(
             self,
             pct_result: '_PhaseCong3Result',
-            ced_arr: np.ndarray,
+            enhanced_arr: np.ndarray,
             colony_labels: np.ndarray,
             central_mask: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray]:
@@ -574,39 +606,49 @@ class FilamentousFungiDetector(ObjectDetector):
         Args:
             pct_result: Phase congruency result containing M, m, orientation,
                 and pc_sum fields.
-            ced_arr: 2D CED-enhanced detection matrix for MAD computation.
+            enhanced_arr: 2D contrast-stretched detection matrix for MAD
+                computation.
             colony_labels: Labeled colony assignment from watershed.
             central_mask: Boolean mask of branch pixels overlapping colonies.
 
         Returns:
-            Tuple of (raw_cost, cost_surface) where raw_cost is the unmasked
-            composite cost and cost_surface has colony/central pixels set to
-            near-zero traversal cost.
+            Tuple of (unmasked_cost, cost_surface) where unmasked_cost is the
+            composite cost before colony masking and cost_surface has
+            colony/central pixels set to near-zero traversal cost.
         """
         anisotropy = compute_anisotropy(pct_result.M, pct_result.m)
         coherence = compute_orientation_coherence(
-            pct_result.orientation, self.r_coherence
+                pct_result.orientation, self.r_coherence
         )
-        mad = compute_local_mad_map(ced_arr, self.mad_window)
+        mad = compute_local_mad_map(enhanced_arr, self.mad_window)
 
-        raw_cost = assemble_composite_cost(
-            pct_result.pc_sum, anisotropy, coherence, mad,
-            self.beta, self.gamma,
+        base_cost = assemble_composite_cost(
+                pct_result.pc_sum, anisotropy, coherence, mad,
+                self.beta, self.gamma,
+        )
+
+        unmasked_cost = self._apply_penalties(
+                base_cost, pct_result.pc_sum, colony_labels
         )
 
         colony_mask = (colony_labels > 0) | central_mask
         cost_surface = apply_structure_mask(
-            raw_cost, colony_mask.astype(np.int32)
+                base_cost, colony_mask.astype(np.int32)
+        )
+        cost_surface = self._apply_penalties(
+                cost_surface, pct_result.pc_sum, colony_labels
         )
 
-        return raw_cost, cost_surface
+        return unmasked_cost, cost_surface
 
     def _reconnect_fragments_tiled(
             self,
             colony_labels: np.ndarray,
             fragment_labels: np.ndarray,
             cost_surface: np.ndarray,
-            raw_cost: np.ndarray,
+            unmasked_cost: np.ndarray,
+            pct_energy: np.ndarray,
+            grayscale: np.ndarray,
     ) -> np.ndarray:
         """Generate tiles, process each, merge results into output mask.
 
@@ -614,7 +656,9 @@ class FilamentousFungiDetector(ObjectDetector):
             colony_labels: Labeled colony assignment from watershed.
             fragment_labels: Labeled array of disconnected branch fragments.
             cost_surface: Masked composite cost surface for Dijkstra.
-            raw_cost: Unmasked composite cost for quality calibration.
+            unmasked_cost: Unmasked composite cost for quality calibration.
+            pct_energy: Float32 (H, W) PCT energy map for quality filtering.
+            grayscale: Float32 (H, W) enhanced grayscale for SNR filtering.
 
         Returns:
             Updated colony labels with reconnected fragments painted in.
@@ -625,38 +669,44 @@ class FilamentousFungiDetector(ObjectDetector):
         # Prescreen fragments: calibrate threshold from colony boundaries
         colony_branch_mask = (colony_labels > 0).astype(np.int32)
         tau_screen, _ = calibrate_screening_threshold(
-            cost_surface, colony_branch_mask, r_screen=self.r_screen
+                cost_surface, colony_branch_mask, r_screen=self.r_screen
         )
 
         screen_result = prescreen_fragments(
-            cost_surface, fragment_labels,
-            r_screen=self.r_screen,
-            tau_screen=tau_screen,
-            colony_branch_mask=colony_branch_mask,
+                cost_surface, fragment_labels,
+                r_screen=self.r_screen,
+                tau_screen=tau_screen,
+                colony_branch_mask=colony_branch_mask,
         )
         screened_frags = screen_result.screened_fragment_labels
 
         if screened_frags.max() == 0:
             return colony_labels
 
+        # Compute PCT noise ceiling for F5 background masking
+        pct_noise_ceil = float(threshold_otsu(pct_energy))
+
         # Generate tiles
         tiles = self._generate_tiles(
-            colony_labels.shape, self.tile_size, self.tile_overlap
+                colony_labels.shape, self.tile_size, self.tile_overlap
         )
 
         output = colony_labels.copy()
 
         for row_start, row_end, col_start, col_end in tiles:
             tile_cost = cost_surface[row_start:row_end, col_start:col_end]
-            tile_raw = raw_cost[row_start:row_end, col_start:col_end]
-            tile_colony = output[row_start:row_end, col_start:col_end].copy()
-            tile_frags = screened_frags[row_start:row_end, col_start:col_end].copy()
+            tile_raw = unmasked_cost[row_start:row_end, col_start:col_end]
+            tile_colony = output[row_start:row_end, col_start:col_end]
+            tile_frags = screened_frags[row_start:row_end, col_start:col_end]
+            tile_pct = pct_energy[row_start:row_end, col_start:col_end]
+            tile_gray = grayscale[row_start:row_end, col_start:col_end]
 
             tile_result = self._process_tile(
-                tile_cost, tile_raw, tile_colony, tile_frags
+                    tile_cost, tile_raw, tile_colony, tile_frags,
+                    tile_pct, tile_gray, pct_noise_ceil,
             )
             self._merge_tile_into_output(
-                output, tile_result, row_start, col_start
+                    output, tile_result, row_start, col_start
             )
 
         return output
@@ -703,6 +753,9 @@ class FilamentousFungiDetector(ObjectDetector):
             tile_raw: np.ndarray,
             tile_colony: np.ndarray,
             tile_frags: np.ndarray,
+            tile_pct: np.ndarray,
+            tile_gray: np.ndarray,
+            pct_noise_ceil: float,
     ) -> np.ndarray:
         """Process a single tile: Dijkstra, assign, paths, quality filter, assemble.
 
@@ -711,6 +764,9 @@ class FilamentousFungiDetector(ObjectDetector):
             tile_raw: Unmasked cost surface for quality calibration.
             tile_colony: Colony labels for this tile.
             tile_frags: Fragment labels for this tile.
+            tile_pct: PCT energy map for this tile.
+            tile_gray: Grayscale image for this tile.
+            pct_noise_ceil: PCT energy threshold for F5 background masking.
 
         Returns:
             Updated tile colony labels with reconnected fragments.
@@ -723,17 +779,17 @@ class FilamentousFungiDetector(ObjectDetector):
 
         # Run Dijkstra from colony boundaries
         dijkstra = run_multisource_dijkstra(
-            tile_cost, tile_colony, self.delta
+                tile_cost, tile_colony, self.delta
         )
 
         # Assign fragments to colonies by majority vote
         assignments = assign_fragments_to_colonies(
-            tile_frags, dijkstra.colony_id, dijkstra.cost_distance
+                tile_frags, dijkstra.colony_id, dijkstra.cost_distance
         )
 
         # Extract minimum-cost paths from fragments to colonies
         paths, _unconnected = extract_fragment_paths(
-            tile_frags, assignments, dijkstra, tile_cost
+                tile_frags, assignments, dijkstra, tile_cost
         )
 
         if not paths:
@@ -741,16 +797,29 @@ class FilamentousFungiDetector(ObjectDetector):
 
         # Quality filter: calibrate from colony skeleton branches
         calibration = extract_calibration_branches(
-            tile_colony, tile_raw
+                tile_colony, tile_raw,
+                window_cost=self.window_cost,
+                dilation_radius=self.path_dilation_radius,
+                pct_energy=tile_pct,
+                grayscale=tile_gray,
+                snr_margin=self.snr_margin,
+                pct_noise_ceil=pct_noise_ceil,
         )
 
         # Only apply quality filters if we have calibration data
-        if calibration.cpl_values.size > 0:
-            thresholds = calibrate_quality_thresholds(
-                calibration, percentile=self.quality_percentile
+        if calibration.median_cost_values.size > 0:
+            thresholds = calibrate_thresholds(
+                    calibration, k=self.quality_k
             )
-            paths_obj: dict[int, object] = dict(paths)
-            filter_result = apply_quality_filters(paths_obj, thresholds)
+            filter_result = apply_filter_cascade(
+                    paths, tile_raw, thresholds,
+                    window_cost=self.window_cost,
+                    dilation_radius=self.path_dilation_radius,
+                    pct_energy=tile_pct,
+                    grayscale=tile_gray,
+                    snr_margin=self.snr_margin,
+                    pct_noise_ceil=pct_noise_ceil,
+            )
             passed_ids = filter_result.passed_ids
         else:
             # No calibration data: accept all paths
@@ -759,6 +828,9 @@ class FilamentousFungiDetector(ObjectDetector):
         # Build result: paint fragment + dilated path with colony ID
         result = tile_colony.copy()
         selem = disk(self.path_dilation_radius)
+
+        # Group path coords by colony for batched dilation
+        colony_coords: dict[int, list[np.ndarray]] = {}
 
         for fid in passed_ids:
             if fid not in paths or fid not in assignments:
@@ -772,18 +844,24 @@ class FilamentousFungiDetector(ObjectDetector):
             frag_mask = tile_frags == fid
             result[frag_mask] = cid
 
-            # Paint dilated path pixels
-            path_mask = np.zeros_like(result, dtype=np.bool_)
+            # Collect path coords for batched dilation
             rows = path.coords[:, 0]
             cols = path.coords[:, 1]
-            # Clip to tile bounds
             valid = (
-                (rows >= 0) & (rows < result.shape[0]) &
-                (cols >= 0) & (cols < result.shape[1])
+                    (rows >= 0) & (rows < result.shape[0])
+                    & (cols >= 0) & (cols < result.shape[1])
             )
-            path_mask[rows[valid], cols[valid]] = True
-            dilated_path = dilation(path_mask, selem)
-            result[dilated_path & (result == 0)] = cid
+            colony_coords.setdefault(cid, []).append(
+                    path.coords[valid]
+            )
+
+        # Single dilation per colony
+        for cid, coord_list in colony_coords.items():
+            all_coords = np.vstack(coord_list)
+            path_mask = np.zeros(result.shape, dtype=np.bool_)
+            path_mask[all_coords[:, 0], all_coords[:, 1]] = True
+            dilated = dilation(path_mask, selem)
+            result[dilated] = cid
 
         return result
 
@@ -929,11 +1007,12 @@ class FilamentousFungiDetector(ObjectDetector):
         return markers
 
     @staticmethod
-    def _voronoi_assign(markers: np.ndarray, mask: np.ndarray) -> np.ndarray:
+    def _voronoi_assign(markers: np.ndarray, mask: np.ndarray,
+                        elevation_exponent: float = 1) -> np.ndarray:
         """Assign each masked pixel to its nearest inoculum region via distance-weighted watershed.
 
         Computes a Euclidean distance transform from the inoculum marker regions
-        (``markers == 0`` gives all non-inoculum pixels). Each inoculum region
+        (``markers != 0`` gives all non-inoculum pixels). Each inoculum region
         sits at elevation 0 (deepest basin); the watershed floods outward from
         each inoculum through the mask. Boundaries form where two floods meet
         at equidistant points from their respective inoculums.
@@ -949,13 +1028,15 @@ class FilamentousFungiDetector(ObjectDetector):
                 Non-zero values are colony labels; zero is background.
             mask: Binary mask constraining the watershed flood region
                 (overall fungal structure).
+            elevation_exponent: Exponent of the basins around the fungal regions.
 
         Returns:
             Labeled 2D array where each masked pixel has the label of its
             nearest inoculum region by Euclidean distance, constrained to
             the mask.
         """
-        elevation = distance_transform_edt(markers == 0)
+        elevation = distance_transform_edt(markers != 0) ** elevation_exponent
+
         return segmentation.watershed(
-                elevation, markers, mask=mask, connectivity=2
+                image=elevation, markers=markers, mask=mask, connectivity=2
         )

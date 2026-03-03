@@ -16,6 +16,8 @@ from phenotypic.detect._filamentous_fungi import (
     compute_local_mad_map,
     assemble_composite_cost,
     apply_structure_mask,
+    apply_border_penalty,
+    apply_distance_gap_penalty,
     # Fragment prescreening
     compute_min_cost_envelope,
     calibrate_screening_threshold,
@@ -23,8 +25,8 @@ from phenotypic.detect._filamentous_fungi import (
     # Path quality
     compute_path_metrics,
     extract_calibration_branches,
-    calibrate_quality_thresholds,
-    apply_quality_filters,
+    calibrate_thresholds,
+    apply_filter_cascade,
     # Dijkstra kernels
     run_multisource_dijkstra,
     assign_fragments_to_colonies,
@@ -362,106 +364,94 @@ class TestPathQuality:
 
     # -- compute_path_metrics --
 
-    def test_straight_path_efficiency_near_one(self):
-        """A perfectly straight path has efficiency ~1.0."""
+    def test_uniform_cost_path_median(self):
+        """Path on uniform cost surface has median_raw_cost equal to that cost."""
+        cost_surface = np.full((100, 100), 5.0, dtype=np.float32)
         coords = np.column_stack([np.arange(50), np.zeros(50)]).astype(np.int32)
-        cost_profile = np.linspace(50, 0, 50)
-        path = _DuckPath(coords, cost_profile, total_cost=50.0, path_length=50)
-        metrics = compute_path_metrics(path, window_disp=40, window_var=20)
-        assert_allclose(metrics.efficiency, 49.0 / 50.0, atol=0.02)
+        path = _DuckPath(coords, np.ones(50), total_cost=50.0, path_length=50)
+        metrics = compute_path_metrics(path, cost_surface, window_cost=30)
+        assert_allclose(metrics.median_raw_cost, 5.0)
 
-    def test_short_path_displacement_inf(self):
-        """Path shorter than window_disp gets inf displacement."""
+    def test_short_path_window_cost_equals_median(self):
+        """Path shorter than window_cost uses whole-path median."""
+        cost_surface = np.full((100, 100), 3.0, dtype=np.float32)
         coords = np.column_stack([np.arange(10), np.zeros(10)]).astype(np.int32)
-        cost_profile = np.ones(10)
-        path = _DuckPath(coords, cost_profile, total_cost=10.0, path_length=10)
-        metrics = compute_path_metrics(path, window_disp=40, window_var=20)
-        assert metrics.min_windowed_displacement == float("inf")
+        path = _DuckPath(coords, np.ones(10), total_cost=10.0, path_length=10)
+        metrics = compute_path_metrics(path, cost_surface, window_cost=30)
+        assert_allclose(metrics.max_window_cost, metrics.median_raw_cost)
 
-    def test_short_path_variance_zero(self):
-        """Path shorter than window_var gets zero variance."""
-        coords = np.column_stack([np.arange(5), np.zeros(5)]).astype(np.int32)
-        cost_profile = np.ones(5)
-        path = _DuckPath(coords, cost_profile, total_cost=5.0, path_length=5)
-        metrics = compute_path_metrics(path, window_disp=40, window_var=20)
-        assert metrics.max_windowed_variance == 0.0
-
-    def test_cost_per_length_calculation(self):
-        """Cost per length is total_cost / path_length."""
+    def test_metrics_returns_all_five_fields(self):
+        """PathMetrics has all five structure-based fields."""
+        cost_surface = np.ones((100, 100), dtype=np.float32)
         coords = np.column_stack([np.arange(20), np.zeros(20)]).astype(np.int32)
-        path = _DuckPath(coords, np.ones(20), total_cost=100.0, path_length=20)
-        metrics = compute_path_metrics(path)
-        assert_allclose(metrics.cost_per_length, 5.0)
+        path = _DuckPath(coords, np.ones(20), total_cost=20.0, path_length=20)
+        metrics = compute_path_metrics(path, cost_surface)
+        assert hasattr(metrics, "median_raw_cost")
+        assert hasattr(metrics, "max_window_cost")
+        assert hasattr(metrics, "band_cost_variance")
+        assert hasattr(metrics, "pct_energy_band_median")
+        assert hasattr(metrics, "gray_band_snr")
 
-    # -- calibrate_quality_thresholds --
+    def test_pct_energy_zero_when_not_provided(self):
+        """PCT energy band median is 0 when pct_energy is None."""
+        cost_surface = np.ones((100, 100), dtype=np.float32)
+        coords = np.column_stack([np.arange(20), np.zeros(20)]).astype(np.int32)
+        path = _DuckPath(coords, np.ones(20), total_cost=20.0, path_length=20)
+        metrics = compute_path_metrics(path, cost_surface, pct_energy=None)
+        assert metrics.pct_energy_band_median == 0.0
+        assert metrics.gray_band_snr == 0.0
+
+    # -- calibrate_thresholds --
 
     def test_calibrate_thresholds_from_data(self):
         """Produces valid FilterThresholds from calibration data."""
         cal = CalibrationData(
-            cpl_values=np.array([1.0, 2.0, 3.0, 4.0, 5.0]),
-            efficiency_values=np.array([0.5, 0.6, 0.7, 0.8, 0.9]),
-            displacement_values=np.array([0.2, 0.3, 0.4, 0.5, 0.6]),
-            variance_values=np.array([0.01, 0.02, 0.05, 0.1, 0.2]),
+            median_cost_values=np.array([1.0, 2.0, 3.0, 4.0, 5.0]),
+            max_window_cost_values=np.array([1.5, 2.5, 3.5, 4.5, 5.5]),
+            band_variance_values=np.array([0.01, 0.02, 0.05, 0.1, 0.2]),
+            pct_energy_median_values=np.array([0.5, 0.6, 0.7, 0.8, 0.9]),
+            gray_snr_values=np.array([1.0, 2.0, 3.0, 4.0, 5.0]),
         )
-        thresholds = calibrate_quality_thresholds(cal, percentile=95.0)
+        thresholds = calibrate_thresholds(cal, k=3.0)
         assert isinstance(thresholds, FilterThresholds)
-        assert thresholds.tau_cpl > 0
-        assert 0.0 < thresholds.tau_efficiency < 1.0
-        assert thresholds.percentile == 95.0
+        assert thresholds.tau_median_cost > 0
+        assert thresholds.tau_window_cost > 0
+        assert thresholds.k_iqr == 3.0
 
-    # -- apply_quality_filters --
+    # -- apply_filter_cascade --
 
     def test_filter_rejects_high_cost_path(self):
-        """Path with very high cost_per_length is rejected by F1."""
+        """Path on high-cost surface is rejected by F1."""
+        cost_surface = np.full((100, 100), 1000.0, dtype=np.float32)
         coords = np.column_stack([np.arange(50), np.zeros(50)]).astype(np.int32)
         path = _DuckPath(coords, np.ones(50), total_cost=5000.0, path_length=50)
         thresholds = FilterThresholds(
-            tau_cpl=10.0,
-            tau_efficiency=0.1,
-            tau_displacement=0.0,
-            tau_variance=1e6,
-            percentile=95.0,
+            tau_median_cost=10.0,
+            tau_window_cost=10.0,
+            tau_band_variance=1e6,
+            tau_pct_energy_median=-1e6,
+            tau_gray_snr=-1e6,
+            k_iqr=3.0,
         )
-        result = apply_quality_filters({1: path}, thresholds)
+        result = apply_filter_cascade({1: path}, cost_surface, thresholds)
         assert 1 in result.rejected_ids
-        assert "F1_cost_per_length" in result.per_filter_rejections
-        assert 1 in result.per_filter_rejections["F1_cost_per_length"]
+        assert "F1_median_cost" in result.per_filter_rejections
+        assert 1 in result.per_filter_rejections["F1_median_cost"]
 
-    def test_filter_rejects_low_efficiency_path(self):
-        """Tortuous path (low efficiency) rejected by F2."""
-        # Path that goes right 50px then comes back 50px: endpoints close,
-        # arc length long -> low efficiency.
-        n = 100
-        rows = np.zeros(n, dtype=np.int32)
-        cols_out = np.arange(50, dtype=np.int32)
-        cols_back = np.arange(49, -1, -1, dtype=np.int32)
-        cols = np.concatenate([cols_out, cols_back]).astype(np.int32)
-        path = _DuckPath(
-            np.column_stack([rows, cols]), np.ones(n),
-            total_cost=100.0, path_length=n,
-        )
-        thresholds = FilterThresholds(
-            tau_cpl=1e6,
-            tau_efficiency=0.9,
-            tau_displacement=0.0,
-            tau_variance=1e6,
-            percentile=95.0,
-        )
-        result = apply_quality_filters({1: path}, thresholds)
-        assert 1 in result.rejected_ids
-
-    def test_filter_passes_good_path(self):
-        """Well-behaved path passes all filters."""
+    def test_filter_passes_low_cost_path(self):
+        """Path on low-cost surface passes all filters."""
+        cost_surface = np.full((100, 100), 0.1, dtype=np.float32)
         coords = np.column_stack([np.arange(50), np.zeros(50)]).astype(np.int32)
         path = _DuckPath(coords, np.ones(50), total_cost=50.0, path_length=50)
         thresholds = FilterThresholds(
-            tau_cpl=100.0,
-            tau_efficiency=0.01,
-            tau_displacement=0.0,
-            tau_variance=1e6,
-            percentile=95.0,
+            tau_median_cost=100.0,
+            tau_window_cost=100.0,
+            tau_band_variance=1e6,
+            tau_pct_energy_median=-1e6,
+            tau_gray_snr=-1e6,
+            k_iqr=3.0,
         )
-        result = apply_quality_filters({1: path}, thresholds)
+        result = apply_filter_cascade({1: path}, cost_surface, thresholds)
         assert 1 in result.passed_ids
         assert 1 not in result.rejected_ids
 
@@ -685,42 +675,45 @@ class TestDataclasses:
     def test_path_metrics_creation(self):
         """PathMetrics can be created with valid data."""
         pm = PathMetrics(
-            cost_per_length=1.5,
-            efficiency=0.9,
-            min_windowed_displacement=0.3,
-            max_windowed_variance=0.05,
+            median_raw_cost=1.5,
+            max_window_cost=2.0,
+            band_cost_variance=0.05,
+            pct_energy_band_median=0.7,
+            gray_band_snr=3.0,
         )
-        assert pm.efficiency == 0.9
+        assert pm.median_raw_cost == 1.5
 
     def test_calibration_data_creation(self):
         """CalibrationData can be created with valid data."""
         cd = CalibrationData(
-            cpl_values=np.array([1.0, 2.0]),
-            efficiency_values=np.array([0.8, 0.9]),
-            displacement_values=np.array([0.3, 0.4]),
-            variance_values=np.array([0.01, 0.02]),
+            median_cost_values=np.array([1.0, 2.0]),
+            max_window_cost_values=np.array([1.5, 2.5]),
+            band_variance_values=np.array([0.01, 0.02]),
+            pct_energy_median_values=np.array([0.8, 0.9]),
+            gray_snr_values=np.array([3.0, 4.0]),
         )
-        assert len(cd.cpl_values) == 2
+        assert len(cd.median_cost_values) == 2
 
     def test_filter_thresholds_creation(self):
         """FilterThresholds can be created with valid data."""
         ft = FilterThresholds(
-            tau_cpl=5.0,
-            tau_efficiency=0.3,
-            tau_displacement=0.1,
-            tau_variance=0.5,
-            percentile=95.0,
+            tau_median_cost=5.0,
+            tau_window_cost=6.0,
+            tau_band_variance=0.5,
+            tau_pct_energy_median=0.1,
+            tau_gray_snr=0.5,
+            k_iqr=3.0,
         )
-        assert ft.percentile == 95.0
+        assert ft.k_iqr == 3.0
 
     def test_filter_result_creation(self):
         """FilterResult can be created with valid data."""
         fr = FilterResult(
             passed_ids={1, 2},
             rejected_ids={3},
-            per_filter_rejections={"F1_cost_per_length": {3}},
+            per_filter_rejections={"F1_median_cost": {3}},
             metrics={},
-            thresholds=FilterThresholds(5.0, 0.3, 0.1, 0.5, 95.0),
+            thresholds=FilterThresholds(5.0, 6.0, 0.5, 0.1, 0.5, 3.0),
         )
         assert 3 in fr.rejected_ids
 
@@ -753,7 +746,7 @@ class TestExtractCalibrationBranches:
         cal = extract_calibration_branches(
             colony, cost, min_branch_length=100
         )
-        assert cal.cpl_values.size == 0
+        assert cal.median_cost_values.size == 0
 
 
 # =====================================================================

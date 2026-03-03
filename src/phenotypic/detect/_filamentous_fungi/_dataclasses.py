@@ -97,43 +97,53 @@ class PrescreenResult:
 
 @dataclass
 class PathMetrics:
-    """Per-path quality metrics for filtering.
+    """Per-path structure-based quality metrics for filtering.
 
     Attributes:
-        cost_per_length: Mean cost per pixel along the path. Lower values
-            indicate the path follows low-cost (high-evidence) terrain.
-        efficiency: Ratio of Euclidean distance to path length.
-            1.0 is a perfectly straight path; lower values indicate
-            meandering.
-        min_windowed_displacement: Minimum net displacement over a
-            sliding window along the path. Near-zero values indicate
-            the path doubles back on itself.
-        max_windowed_variance: Maximum directional variance over a
-            sliding window. High values indicate erratic direction
-            changes.
+        median_raw_cost: Median of raw cost surface values along the path.
+            Low values indicate the path follows real structure; high
+            values indicate the path crosses background.
+        max_window_cost: Maximum of windowed median raw cost along the
+            path. Catches paths that are mostly on structure but have
+            one segment crossing background.
+        band_cost_variance: Variance of cost values in a dilated band
+            around the path. Low values indicate uniform cost (real
+            structure); high values indicate lucky low-cost pixels
+            surrounded by high-cost noise.
+        pct_energy_band_median: Median PCT energy in the dilated band.
+            High values indicate real structure with strong PCT response
+            across full width; low values indicate the path threads
+            through a weak-PCT region.
+        gray_band_snr: Local grayscale SNR using PCT-masked
+            double-dilation background. High values indicate the path
+            stands out from unstructured surroundings; low values
+            indicate the path intensity matches background noise.
     """
 
-    cost_per_length: float
-    efficiency: float
-    min_windowed_displacement: float
-    max_windowed_variance: float
+    median_raw_cost: float
+    max_window_cost: float
+    band_cost_variance: float
+    pct_energy_band_median: float
+    gray_band_snr: float
 
 
 @dataclass
 class CalibrationData:
-    """Calibration metric arrays collected from known-good paths.
+    """Calibration metric arrays collected from known-good colony skeleton branches.
 
     Attributes:
-        cpl_values: Cost-per-length values from calibration paths.
-        efficiency_values: Efficiency values from calibration paths.
-        displacement_values: Minimum windowed displacement values.
-        variance_values: Maximum windowed variance values.
+        median_cost_values: Median raw cost for each calibration branch.
+        max_window_cost_values: Max windowed cost for each calibration branch.
+        band_variance_values: Band cost variance for each calibration branch.
+        pct_energy_median_values: PCT energy band median for each branch.
+        gray_snr_values: Local grayscale SNR for each branch.
     """
 
-    cpl_values: np.ndarray
-    efficiency_values: np.ndarray
-    displacement_values: np.ndarray
-    variance_values: np.ndarray
+    median_cost_values: np.ndarray
+    max_window_cost_values: np.ndarray
+    band_variance_values: np.ndarray
+    pct_energy_median_values: np.ndarray
+    gray_snr_values: np.ndarray
 
 
 @dataclass
@@ -141,19 +151,22 @@ class FilterThresholds:
     """Threshold values for each path quality filter.
 
     Attributes:
-        tau_cpl: Maximum acceptable cost-per-length.
-        tau_efficiency: Minimum acceptable path efficiency.
-        tau_displacement: Minimum acceptable windowed displacement.
-        tau_variance: Maximum acceptable windowed variance.
-        percentile: Percentile used to derive thresholds from
-            calibration data.
+        tau_median_cost: Maximum allowed median raw cost.
+        tau_window_cost: Maximum allowed max windowed cost.
+        tau_band_variance: Maximum allowed band cost variance.
+        tau_pct_energy_median: Minimum allowed PCT energy band median.
+            Paths below this lack sufficient PCT response.
+        tau_gray_snr: Minimum allowed local grayscale SNR.
+            Paths below this don't stand out from background.
+        k_iqr: IQR multiplier used for calibration (0 if overridden).
     """
 
-    tau_cpl: float
-    tau_efficiency: float
-    tau_displacement: float
-    tau_variance: float
-    percentile: float
+    tau_median_cost: float
+    tau_window_cost: float
+    tau_band_variance: float
+    tau_pct_energy_median: float
+    tau_gray_snr: float
+    k_iqr: float
 
 
 @dataclass

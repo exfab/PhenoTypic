@@ -137,6 +137,9 @@ def _extract_fragment_boundaries(
     fragment_ids = np.unique(fragment_labels)
     fragment_ids = fragment_ids[fragment_ids > 0]
 
+    # Single-pass boundary detection across all fragments
+    all_boundaries = find_boundaries(fragment_labels, mode="inner")
+
     boundaries: dict[int, np.ndarray] = {}
     for fid in fragment_ids:
         mask = fragment_labels == fid
@@ -146,8 +149,8 @@ def _extract_fragment_boundaries(
             # Very small fragments: all pixels are boundary.
             coords = np.argwhere(mask)
         else:
-            boundary_mask = find_boundaries(mask, mode="inner")
-            coords = np.argwhere(boundary_mask)
+            frag_boundary = all_boundaries & mask
+            coords = np.argwhere(frag_boundary)
 
             # Fallback: if find_boundaries returns nothing (single-pixel
             # fragments that inner mode misses), use all pixels.

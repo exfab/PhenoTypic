@@ -5,6 +5,8 @@ Re-exports key functions so the main detector can import with a single line.
 """
 
 from ._cost_surface import (
+    apply_border_penalty,
+    apply_distance_gap_penalty,
     apply_structure_mask,
     assemble_composite_cost,
     compute_anisotropy,
@@ -34,10 +36,11 @@ from ._fragment_prescreening import (
     prescreen_fragments,
 )
 from ._path_quality import (
-    apply_quality_filters,
-    calibrate_quality_thresholds,
+    apply_filter_cascade,
+    calibrate_thresholds,
     compute_path_metrics,
     extract_calibration_branches,
+    filter_paths,
 )
 
 __all__ = [
@@ -51,6 +54,8 @@ __all__ = [
     "PathMetrics",
     "PrescreenResult",
     # Cost surface
+    "apply_border_penalty",
+    "apply_distance_gap_penalty",
     "apply_structure_mask",
     "assemble_composite_cost",
     "compute_anisotropy",
@@ -67,8 +72,9 @@ __all__ = [
     "compute_min_cost_envelope",
     "prescreen_fragments",
     # Path quality
-    "apply_quality_filters",
-    "calibrate_quality_thresholds",
+    "apply_filter_cascade",
+    "calibrate_thresholds",
     "compute_path_metrics",
     "extract_calibration_branches",
+    "filter_paths",
 ]
