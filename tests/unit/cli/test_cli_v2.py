@@ -49,7 +49,7 @@ from phenotypic._cli._cli_update_state import (
     append_completion_event,
 )
 from phenotypic.data import load_synth_yeast_plate
-from phenotypic.phenotypicCLI import phenotypic_cli
+from phenotypic.phenotypicCLI import _copy_pipeline_to_output, phenotypic_cli
 from phenotypic.prefab import RoundPeaksPipeline
 
 
@@ -428,6 +428,44 @@ class TestOutputManager:
         assert not (temp_output_dir / "dataset1").exists()
         assert not (temp_output_dir / "measurements").exists()
         assert not (temp_output_dir / "overlays").exists()
+
+    def test_pipeline_json_copied_to_output(self, temp_output_dir):
+        """Test pipeline JSON is copied to output directory for reproducibility."""
+        source_dir = temp_output_dir / "source"
+        source_dir.mkdir()
+        pipeline_path = source_dir / "my_pipeline.json"
+        pipeline_content = '{"operations": []}'
+        pipeline_path.write_text(pipeline_content)
+
+        output_dir = temp_output_dir / "output"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        result = _copy_pipeline_to_output(pipeline_path, output_dir)
+
+        assert result is not None
+        assert result.exists()
+        assert result.read_text() == pipeline_content
+
+    def test_pipeline_json_not_overwritten_on_resume(self, temp_output_dir):
+        """Test pipeline JSON is not overwritten if it already exists (resume)."""
+        output_dir = temp_output_dir / "output"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Pre-existing pipeline copy (from first run)
+        pipeline_copy_path = output_dir / "pipeline.json"
+        original_content = '{"operations": [{"name": "original"}]}'
+        pipeline_copy_path.write_text(original_content)
+
+        # New pipeline with different content
+        source_dir = temp_output_dir / "source"
+        source_dir.mkdir()
+        new_pipeline = source_dir / "pipeline.json"
+        new_pipeline.write_text('{"operations": [{"name": "modified"}]}')
+
+        result = _copy_pipeline_to_output(new_pipeline, output_dir)
+
+        assert result is None
+        assert pipeline_copy_path.read_text() == original_content
 
 
 class TestHTMLReportGenerator:

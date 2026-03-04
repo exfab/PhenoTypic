@@ -205,6 +205,22 @@ class SerializablePipeline(NapariPipelineViewer):
             # Get class name
             class_name = op.__class__.__name__
 
+            # Handle operations that are themselves pipelines (e.g., PrefabPipeline as op)
+            if isinstance(op, SerializablePipeline):
+                serialized[name] = {
+                    "class": class_name,
+                    "__type__": "pipeline_operation",
+                    "config": {
+                        "version": __version__,
+                        "name": op.name,
+                        "desc": op._desc,
+                        "reset": op._reset,
+                        "pipe_cfgs": SerializablePipeline._serialize_operations(op._ops),
+                        "meas": SerializablePipeline._serialize_operations(op._meas),
+                    },
+                }
+                continue
+
             # Get instance parameters, excluding internal state and DataFrames
             params = {}
             for key, value in op.__dict__.items():
@@ -462,6 +478,18 @@ class SerializablePipeline(NapariPipelineViewer):
 
         for name, op_data in serialized.items():
             class_name = op_data["class"]
+
+            # Handle pipeline-as-operation entries
+            if op_data.get("__type__") == "pipeline_operation":
+                from phenotypic._core._image_pipeline import ImagePipeline
+                pipeline = ImagePipeline.from_json(op_data["config"])
+                # Re-tag to specific subclass if found
+                op_class = SerializablePipeline._find_class_in_phenotypic(class_name)
+                if op_class is not None and op_class is not ImagePipeline:
+                    pipeline.__class__ = op_class
+                operations[name] = pipeline
+                continue
+
             params = op_data["params"]
 
             # Try to find the class in phenotypic namespace
@@ -591,6 +619,7 @@ class SerializablePipeline(NapariPipelineViewer):
             "phenotypic.grid",
             "phenotypic.correction",
             "phenotypic.analysis",
+            "phenotypic.prefab",
         ]
 
         for module_name in submodules:

@@ -105,8 +105,9 @@ SLURM Execution (Autonomous HPC Cluster Processing):
             --dry-run
 """
 
-import sys
 import logging
+import shutil
+import sys
 from pathlib import Path
 from typing import Optional, Sequence
 
@@ -1084,6 +1085,15 @@ def phenotypic_cli(
         )
         output_manager.create_structure(datasets)
 
+        # Copy pipeline JSON to output directory for reproducibility
+        try:
+            copied = _copy_pipeline_to_output(config.pipeline_json, output_dir)
+            if copied:
+                click.echo(f"  Pipeline: {copied}")
+        except OSError as e:
+            logger.warning(f"Failed to copy pipeline JSON: {e}")
+            click.echo(f"⚠ Warning: Could not copy pipeline JSON ({e})", err=True)
+
         # Create execution strategy
         strategy = create_execution_strategy(config, output_manager)
 
@@ -1147,6 +1157,27 @@ def phenotypic_cli(
 
         traceback.print_exc()
         sys.exit(1)
+
+
+def _copy_pipeline_to_output(
+    pipeline_path: Path, output_dir: Path
+) -> Optional[Path]:
+    """Copy pipeline JSON to output directory if not already present.
+
+    Args:
+        pipeline_path: Path to the source pipeline JSON file.
+        output_dir: Output directory to copy into.
+
+    Returns:
+        Path to the copy if created, None if skipped.
+    """
+    dest = output_dir / pipeline_path.name
+    if dest.exists():
+        return None
+    if pipeline_path.resolve() == dest.resolve():
+        return None
+    shutil.copy2(pipeline_path, dest)
+    return dest
 
 
 def _format_duration(seconds: float) -> str:

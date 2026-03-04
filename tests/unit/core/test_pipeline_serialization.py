@@ -6,6 +6,7 @@ import pytest
 import pandas as pd
 
 from phenotypic import ImagePipeline, Image
+from phenotypic._core._pipeline_parts._serializable_pipeline import SerializablePipeline
 from phenotypic.data import load_colony
 from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import GaussianBlur, CLAHE
@@ -499,5 +500,130 @@ class TestNameAndDescAttributes:
             version_warnings = [warn for warn in w if
                                 "version" in str(warn.message).lower()]
             assert len(version_warnings) == 0
+
+
+class TestPipelineAsOperationSerialization:
+    """Test serialization of pipelines nested as operations inside other pipelines."""
+
+    def test_plain_pipeline_nested_roundtrip(self):
+        """Test that a plain ImagePipeline nested as operation roundtrips correctly."""
+        inner = ImagePipeline(ops=[GaussianBlur(sigma=5), OtsuDetector()])
+        outer = ImagePipeline(ops=[inner])
+
+        json_str = outer.to_json()
+        loaded = ImagePipeline.from_json(json_str)
+
+        inner_loaded = list(loaded._ops.values())[0]
+        assert isinstance(inner_loaded, ImagePipeline)
+        inner_ops = list(inner_loaded._ops.values())
+        assert len(inner_ops) == 2
+        assert isinstance(inner_ops[0], GaussianBlur)
+        assert inner_ops[0].sigma == 5
+        assert isinstance(inner_ops[1], OtsuDetector)
+
+    def test_serialization_format_uses_pipeline_operation_type(self):
+        """Test that serialized format uses __type__: pipeline_operation."""
+        inner = ImagePipeline(ops=[OtsuDetector()])
+        outer = ImagePipeline(ops=[inner])
+
+        config = json.loads(outer.to_json())
+        inner_data = list(config["pipe_cfgs"].values())[0]
+        assert inner_data["__type__"] == "pipeline_operation"
+        assert "config" in inner_data
+        assert "pipe_cfgs" in inner_data["config"]
+
+    def test_nested_pipeline_with_measurements_preserved(self):
+        """Test that measurements inside a nested pipeline are preserved."""
+        inner = ImagePipeline(
+            ops=[OtsuDetector()],
+            meas=[MeasureShape(), MeasureIntensity()],
+        )
+        outer = ImagePipeline(ops=[inner])
+
+        loaded = ImagePipeline.from_json(outer.to_json())
+        inner_loaded = list(loaded._ops.values())[0]
+        assert len(inner_loaded._meas) == 2
+        meas_classes = {type(m).__name__ for m in inner_loaded._meas.values()}
+        assert meas_classes == {"MeasureShape", "MeasureIntensity"}
+
+    def test_deeply_nested_pipelines(self):
+        """Test three levels of pipeline nesting."""
+        level1 = ImagePipeline(ops=[GaussianBlur(sigma=3)])
+        level2 = ImagePipeline(ops=[level1, OtsuDetector()])
+        level3 = ImagePipeline(ops=[level2])
+
+        loaded = ImagePipeline.from_json(level3.to_json())
+        l2_loaded = list(loaded._ops.values())[0]
+        assert isinstance(l2_loaded, ImagePipeline)
+
+        l2_ops = list(l2_loaded._ops.values())
+        assert len(l2_ops) == 2
+        l1_loaded = l2_ops[0]
+        assert isinstance(l1_loaded, ImagePipeline)
+
+        l1_ops = list(l1_loaded._ops.values())
+        assert isinstance(l1_ops[0], GaussianBlur)
+        assert l1_ops[0].sigma == 3
+
+    def test_mixed_regular_ops_and_pipeline_ops(self):
+        """Test pipeline containing both regular operations and nested pipelines."""
+        inner = ImagePipeline(ops=[OtsuDetector()])
+        outer = ImagePipeline(
+            ops=[GaussianBlur(sigma=2), inner, SmallObjectRemover(min_size=50)]
+        )
+
+        loaded = ImagePipeline.from_json(outer.to_json())
+        ops = list(loaded._ops.values())
+        assert len(ops) == 3
+        assert isinstance(ops[0], GaussianBlur)
+        assert isinstance(ops[1], ImagePipeline)
+        assert isinstance(ops[2], SmallObjectRemover)
+
+    def test_inner_pipeline_name_and_desc_preserved(self):
+        """Test that inner pipeline name and desc are preserved."""
+        inner = ImagePipeline(
+            ops=[OtsuDetector()],
+            name="inner_pipe",
+            desc="Inner pipeline description",
+        )
+        outer = ImagePipeline(ops=[inner])
+
+        loaded = ImagePipeline.from_json(outer.to_json())
+        inner_loaded = list(loaded._ops.values())[0]
+        assert inner_loaded.name == "inner_pipe"
+        assert inner_loaded.desc == "Inner pipeline description"
+
+    def test_find_class_discovers_prefab_classes(self):
+        """Test that _find_class_in_phenotypic discovers prefab classes."""
+        from phenotypic.prefab import FilamentousFungiPipeline
+
+        found = SerializablePipeline._find_class_in_phenotypic(
+            "FilamentousFungiPipeline"
+        )
+        assert found is FilamentousFungiPipeline
+
+    def test_prefab_pipeline_nested_roundtrip_preserves_class(self):
+        """Test that a PrefabPipeline nested as operation is re-tagged on roundtrip."""
+        from phenotypic.prefab import HeavyOtsuPipeline
+
+        inner = HeavyOtsuPipeline()
+        outer = ImagePipeline(ops=[inner])
+        loaded = ImagePipeline.from_json(outer.to_json())
+        inner_loaded = list(loaded._ops.values())[0]
+        assert type(inner_loaded).__name__ == "HeavyOtsuPipeline"
+
+    def test_find_class_discovers_all_prefab_pipelines(self):
+        """Test that all prefab pipeline classes are discoverable."""
+        prefab_names = [
+            "HeavyWatershedPipeline",
+            "HeavyOtsuPipeline",
+            "GridSectionPipeline",
+            "HeavyRoundPeaksPipeline",
+            "RoundPeaksPipeline",
+            "FilamentousFungiPipeline",
+        ]
+        for name in prefab_names:
+            found = SerializablePipeline._find_class_in_phenotypic(name)
+            assert found is not None, f"{name} not found in phenotypic namespace"
 
 
