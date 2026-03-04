@@ -136,7 +136,7 @@ class FilamentousFungiPipeline(PrefabPipeline):
             mad_window: int = 7,
             r_screen: int = 10,
             delta: float = 1.0,
-            quality_k: float = 3.0,
+            quality_k: float = 2.5,
             window_cost: int = 30,
             edge_margin: int = 50,
             gap_penalty_alpha: float = 4.0,

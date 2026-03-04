@@ -4,16 +4,19 @@ import numpy as np
 import gc
 
 if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
+
     from phenotypic._core._image import Image
+    from phenotypic._core._grid_image import GridImage
     from phenotypic._core._image_pipeline import ImagePipeline  # type: ignore
     from phenotypic.enhance._phase_congruency import _PhaseCong3Result
 
-from scipy.ndimage import center_of_mass
+from scipy.ndimage import center_of_mass, label as ndi_label
 from skimage.filters import threshold_otsu
 from skimage.measure import label
 from skimage.morphology import disk, dilation
 
-from phenotypic.abc_ import ObjectDetector
+from phenotypic.abc_ import GridObjectDetector, ObjectDetector
 from phenotypic import ImagePipeline
 from phenotypic.enhance import (
     SubtractGaussian,
@@ -46,11 +49,11 @@ from phenotypic.detect._filamentous_fungi import (
     calibrate_thresholds,
     apply_filter_cascade,
     euclidean_voronoi_assign,
-    connectivity_correct_labels,
+    connectivity_correct_labels
 )
 
 
-class FilamentousFungiDetector(ObjectDetector):
+class FilamentousFungiDetector(GridObjectDetector):
     """Detects and separates filamentous fungi using two-stage detection and Euclidean Voronoi partition.
 
     FilamentousFungiDetector uses two detection strategies to segment filamentous fungi:
@@ -217,7 +220,7 @@ class FilamentousFungiDetector(ObjectDetector):
             mad_window: int = 7,
             r_screen: int = 10,
             delta: float = 1.0,
-            quality_k: float = 3.0,
+            quality_k: float = 2.5,
             window_cost: int = 30,
             edge_margin: int = 50,
             gap_penalty_alpha: float = 4.0,
@@ -296,16 +299,85 @@ class FilamentousFungiDetector(ObjectDetector):
         self.tile_size = tile_size
         self.tile_overlap = tile_overlap
 
-    def _operate(self, image: 'Image') -> 'Image':
-        """Detect and separate filamentous fungi using two-stage detection and Euclidean Voronoi partition.
+    def diagnostic(self, image: 'Image') -> dict[str, 'plt.Figure']:
+        """Run detection and return diagnostic figures for pathfinding and filtering.
+
+        Re-runs the full detection pipeline (Phases 1-4) on the input image
+        without tiling, capturing all intermediates for visualization.  This
+        is expensive — roughly equivalent to calling ``apply`` once — and is
+        intended for interactive parameter tuning, not production use.
+
+        Args:
+            image: Input image.  Not modified.
+
+        Returns:
+            Dict with six figures keyed by name:
+
+            ``"cost_distance"``
+                1x3 panel: log1p cost-distance, colony territory, clipped cost.
+            ``"fragment_overlay"``
+                Colony / fragment / path overlay on enhanced image.
+            ``"path_metrics"``
+                Histograms of total cost, path length, and cost per pixel.
+            ``"cost_profiles"``
+                Line plots of cumulative cost along cheapest and most expensive paths.
+            ``"filter_dashboard"``
+                2x3 scatter and bar charts of filter metrics and rejections.
+            ``"filter_spatial"``
+                Per-filter spatial rejection maps with summary panel.
+
+        Raises:
+            ValueError: If ``enable_reconnection`` is False (legacy path has
+                no pathfinding to diagnose).
+
+        Longer description:
+            Figures use explicit matplotlib (no pyplot state).  Callers should
+            call ``plt.close(fig)`` on each returned figure after use to free
+            memory.
+
+        Examples:
+            >>> from phenotypic.detect import FilamentousFungiDetector
+            >>> d = FilamentousFungiDetector(enable_reconnection=True)
+            >>> print(hasattr(d, 'diagnostic'))
+            True
+        """
+        if not self.enable_reconnection:
+            raise ValueError(
+                    "diagnostic() requires enable_reconnection=True. "
+                    "The legacy detection path has no pathfinding to diagnose."
+            )
+
+        from phenotypic.detect._filamentous_fungi._diagnostic import (
+            collect_diagnostic_state,
+            plot_cost_distance,
+            plot_cost_profiles,
+            plot_filter_dashboard,
+            plot_filter_spatial,
+            plot_fragment_overlay,
+            plot_path_metrics,
+        )
+
+        state = collect_diagnostic_state(self, image)
+
+        return {
+            "cost_distance"   : plot_cost_distance(state),
+            "fragment_overlay": plot_fragment_overlay(state),
+            "path_metrics"    : plot_path_metrics(state),
+            "cost_profiles"   : plot_cost_profiles(state),
+            "filter_dashboard": plot_filter_dashboard(state),
+            "filter_spatial"  : plot_filter_spatial(state),
+        }
+
+    def _operate(self, image: 'GridImage') -> 'GridImage':
+        """Detect and separate filamentous fungi using grid-based Voronoi partition.
 
         Algorithm:
         1. Run inoculum_detector to find fungal centers (full labeled regions)
         2. Detect branches via dual-mask pipeline (reconnection) or overall_detector (legacy)
-        3. Filter centers to keep only those overlapping with overall structure
-        4. Euclidean Voronoi partition assigns each mask pixel to nearest seed centroid
-        5. Dijkstra reconnection of fragmented branches (reconnection mode only)
-        6. Final Voronoi partition with connectivity-based fragment correction
+        3. Filter centers, create grid markers, Voronoi assign with grid seeds
+        4. Identify pseudo-fragments (per-label CCs not overlapping inoculum)
+        5. Dijkstra reconnection of pseudo-fragments (reconnection mode only)
+        6. Final Voronoi partition with grid markers
         7. Set objmap with assignment results
         """
 
@@ -320,14 +392,13 @@ class FilamentousFungiDetector(ObjectDetector):
 
         # ── PHASE 1: INOCULUM DETECTION ─────────────────────────────
         if isinstance(self.inoculum_detector, ImagePipeline):
-            center_result = self.inoculum_detector.apply(image, inplace=False,
-                                                         reset=False)
+            inoculum_img = self.inoculum_detector.apply(image, inplace=False,
+                                                        reset=False)
         else:
-            center_result = self.inoculum_detector.apply(image, inplace=False)
-        center_objmask = center_result.objmask[:]
-        center_objmap = center_result.objmap[:]
+            inoculum_img = self.inoculum_detector.apply(image, inplace=False)
+        inoculum_objmask = inoculum_img.objmask[:]
 
-        if center_objmap.max() == 0:
+        if inoculum_img.objmap[:].max() == 0:
             raise ValueError(
                     "No centers detected by inoculum_detector. Cannot perform "
                     "separation. Try adjusting inoculum_detector parameters or using a "
@@ -381,11 +452,13 @@ class FilamentousFungiDetector(ObjectDetector):
 
             self._log_memory_usage("after overall detection")
 
-        # ── PHASE 3: CENTER FILTERING + WATERSHED ───────────────────
-        filtered_center_objmask = self._filter_mask_by_overlap(
-                mask=center_objmask, reference_mask=overall_objmask
+        # ── PHASE 3: CENTER FILTERING + GRID VORONOI ─────────────────
+
+        # The filtered structure that overlaps with the inoculum centers
+        inoculum_structure_mask = self._filter_mask_by_overlap(
+                mask=overall_objmask, reference_mask=inoculum_objmask,
         )
-        overlap_objmap = label(filtered_center_objmask)
+        overlap_objmap = label(inoculum_structure_mask)
 
         if overlap_objmap.max() == 0:
             raise ValueError(
@@ -396,15 +469,15 @@ class FilamentousFungiDetector(ObjectDetector):
 
         self._log_memory_usage("after overlap filtering")
 
-        region_markers = self._create_markers_from_centers(center_objmap)
+        centroid_markers = self._create_markers_from_centroids(inoculum_img.objmap[:])
 
-        mask_m = overall_objmask | filtered_center_objmask
-        colony_labels = euclidean_voronoi_assign(region_markers, mask_m)
+        inoculum_structure_map = self._separate_colonies(centroid_markers,
+                                                         inoculum_structure_mask)
 
-        if colony_labels.max() == 0:
+        if inoculum_structure_map.max() == 0:
             raise RuntimeError(
                     "Voronoi assignment produced empty result. "
-                    "Marker centroids may not overlap with the foreground mask."
+                    "Centroid markers may not overlap any foreground mask pixels."
             )
 
         self._log_memory_usage(
@@ -414,17 +487,26 @@ class FilamentousFungiDetector(ObjectDetector):
         )
 
         # ── PHASE 4: DIJKSTRA RECONNECTION ──────────────────────────
+        colony_labels = inoculum_structure_map
+
         if self.enable_reconnection and branch_labels is not None:
-            central_mask, fragment_labels = self._separate_central_and_fragments(
-                    branch_labels, colony_labels
+            central_mask, fragment_labels = self._identify_pseudo_fragments(
+                    colony_labels=colony_labels,
+                    center_objmask=inoculum_objmask,
             )
 
             unmasked_cost, cost_surface = self._build_cost_surface(
-                    pct_result, enhanced_arr, colony_labels, central_mask
+                    pct_result=pct_result,
+                    enhanced_arr=enhanced_arr,
+                    colony_labels=colony_labels,
+                    central_mask=central_mask,
             )
 
             colony_labels = self._reconnect_fragments_tiled(
-                    colony_labels, fragment_labels, cost_surface, unmasked_cost,
+                    colony_labels=colony_labels,
+                    fragment_labels=fragment_labels,
+                    cost_surface=cost_surface,
+                    unmasked_cost=unmasked_cost,
                     pct_energy=pct_result.pc_sum.astype(np.float32),
                     grayscale=enhanced_gray,
             )
@@ -435,12 +517,9 @@ class FilamentousFungiDetector(ObjectDetector):
                     include_tracemalloc=True,
             )
 
-        # ── PHASE 5: FINAL VORONOI + CONNECTIVITY CORRECTION ─────────
-        final_mask = (colony_labels > 0) | filtered_center_objmask
-        colony_labels = euclidean_voronoi_assign(region_markers, final_mask)
-        colony_labels = connectivity_correct_labels(
-                colony_labels, final_mask, region_markers,
-        )
+        # ── PHASE 5: FINAL VORONOI ────────────────────────────────────
+        final_mask = (colony_labels > 0) | inoculum_structure_mask
+        colony_labels = self._separate_colonies(centroid_markers, final_mask)
 
         # ── PHASE 6: WRITE RESULT ───────────────────────────────────
         if colony_labels.dtype != image._OBJMAP_DTYPE:
@@ -549,27 +628,45 @@ class FilamentousFungiDetector(ObjectDetector):
     # ── Phase 4 helpers ─────────────────────────────────────────────
 
     @staticmethod
-    def _separate_central_and_fragments(
-            branch_labels: np.ndarray, colony_labels: np.ndarray
+    def _identify_pseudo_fragments(
+            colony_labels: np.ndarray,
+            center_objmask: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray]:
-        """Separate branch pixels into central (overlapping colony) and fragments.
+        """Identify pseudo-fragments: per-label CCs that don't overlap inoculum.
+
+        After grid Voronoi, every mask pixel has a label. CCs that overlap
+        with the inoculum detection are "central" (main colony mass). CCs
+        that don't are pseudo-fragments — blobs assigned to a section by
+        proximity but not physically connected to the section's colony body.
 
         Args:
-            branch_labels: Labeled array of detected branches.
-            colony_labels: Labeled colony assignment from watershed.
+            colony_labels: Grid Voronoi label map.
+            center_objmask: Inoculum detection binary mask.
 
         Returns:
-            Tuple of (central_mask, fragment_labels) where central_mask is a
-            boolean mask of branch pixels overlapping assigned colonies, and
-            fragment_labels is a labeled array of disconnected branch fragments.
+            (central_mask, fragment_labels) where central_mask is the main
+            colony mass and fragment_labels is a labeled map of
+            pseudo-fragments.
         """
-        central_mask = (branch_labels > 0) & (colony_labels > 0)
-        fragment_mask = (branch_labels > 0) & (colony_labels == 0)
+        foreground = colony_labels > 0
+        cc_map, n_cc = ndi_label(foreground)
 
-        if np.any(fragment_mask):
-            fragment_labels = label(fragment_mask)
+        if n_cc == 0:
+            return (np.zeros_like(foreground),
+                    np.zeros(foreground.shape, dtype=np.int32))
+
+        # For each global CC: does it overlap inoculum?
+        seeded_ccs = np.unique(cc_map[center_objmask & foreground])
+        is_central = np.zeros(n_cc + 1, dtype=bool)
+        is_central[seeded_ccs] = True
+
+        central_mask = is_central[cc_map]
+        fragment_mask = foreground & ~central_mask
+
+        if fragment_mask.any():
+            fragment_labels = label(fragment_mask).astype(np.int32)
         else:
-            fragment_labels = np.zeros_like(branch_labels, dtype=np.int32)
+            fragment_labels = np.zeros(foreground.shape, dtype=np.int32)
 
         return central_mask, fragment_labels
 
@@ -911,8 +1008,7 @@ class FilamentousFungiDetector(ObjectDetector):
             ValueError: If masks don't have compatible spatial overlap
         """
         # Label connected components in mask to clean
-        if (mask.dtype != np.bool) and (mask.max() == 1):
-            labeled = label(mask)
+        labeled = label(mask)
 
         # Handle potential size mismatch by finding overlapping region
         min_h = min(mask.shape[0], reference_mask.shape[0])
@@ -928,41 +1024,78 @@ class FilamentousFungiDetector(ObjectDetector):
         max_label = int(labeled.max())
         keep = np.zeros(max_label + 1, dtype=labeled.dtype)
         keep[overlapping_labels] = overlapping_labels
-        labeled[:] = keep[labeled]
 
-        return labeled.astype(mask.dtype)
+        return keep[labeled].astype(mask.dtype, copy=False)
 
     @staticmethod
-    def _create_markers_from_centers(
-        center_objmap: np.ndarray,
-    ) -> np.ndarray:
-        """Create assignment markers from center objects using geometric centroids.
-
-        Computes the geometric centroid of each labeled center region and places
-        a unique marker at that position.
+    def _create_markers_from_centroids(objmap: np.ndarray) -> np.ndarray:
+        """Create Voronoi seed markers at detected inoculum centroids.
 
         Args:
-            center_objmap: Labeled map of center objects (2D integer array).
+            objmap: Labeled integer array where each detected inoculum
+                has a unique positive ID (from ``inoculum_img.objmap[:]``).
 
         Returns:
-            Marker array with unique integers at centroid positions (2D int32).
+            2D int32 marker array with one seed per inoculum centroid.
         """
-        markers = np.zeros_like(center_objmap, dtype=np.int32)
+        labels = np.unique(objmap)
+        labels = labels[labels > 0]
 
-        center_labels_all = np.unique(center_objmap)
-        center_labels: np.ndarray = center_labels_all[center_labels_all > 0]
-
-        # center_of_mass returns list[tuple] when index is an array;
-        # scipy stubs incorrectly type this as a single tuple.
-        centroids: list[tuple[float, ...]] = center_of_mass(  # type: ignore[assignment]
-                center_objmap > 0, center_objmap, center_labels
-        )
-
-        for marker_id, centroid in enumerate(centroids, start=1):
-            row = int(round(centroid[0]))
-            col = int(round(centroid[1]))
-
-            if 0 <= row < markers.shape[0] and 0 <= col < markers.shape[1]:
-                markers[row, col] = marker_id
+        markers = np.zeros(objmap.shape, dtype=np.int32)
+        for marker_id, lbl in enumerate(labels, start=1):
+            com = center_of_mass(objmap == lbl)
+            r = min(int(round(com[0])), objmap.shape[0] - 1)
+            c = min(int(round(com[1])), objmap.shape[1] - 1)
+            markers[r, c] = marker_id
 
         return markers
+
+    @staticmethod
+    def _create_markers_from_grid(image: 'GridImage') -> np.ndarray:
+        """Create Voronoi seed markers from grid section centers.
+
+        .. deprecated::
+            Use :meth:`_create_markers_from_centroids` instead, which
+            anchors seeds to detected inoculum positions rather than
+            geometric grid centers.
+
+        Args:
+            image: GridImage with detected objects (needed by the grid
+                accessor to compute row/column edges).
+
+        Returns:
+            2D int32 marker array with one seed per grid section.
+        """
+        h, w = image.gray[:].shape[:2]
+        row_edges = image.grid.get_row_edges()
+        col_edges = image.grid.get_col_edges()
+
+        markers = np.zeros((h, w), dtype=np.int32)
+
+        label_id = 1
+        for r_idx in range(image.nrows):
+            rr = min(int(round((row_edges[r_idx] + row_edges[r_idx + 1]) / 2)), h - 1)
+            for c_idx in range(image.ncols):
+                cc = min(int(round((col_edges[c_idx] + col_edges[c_idx + 1]) / 2)),
+                         w - 1)
+                markers[rr, cc] = label_id
+                label_id += 1
+
+        return markers
+
+    @staticmethod
+    def _separate_colonies(
+            markers: np.ndarray,
+            mask: np.ndarray,
+    ) -> np.ndarray:
+        """Voronoi-partition mask pixels and correct fragment connectivity."""
+        voronoi_map = euclidean_voronoi_assign(
+                markers=markers,
+                mask=mask,
+                restrict_to_seeded_cc=False,
+        )
+        return connectivity_correct_labels(
+                voronoi_labels=voronoi_map,
+                mask=mask,
+                markers=markers,
+        )

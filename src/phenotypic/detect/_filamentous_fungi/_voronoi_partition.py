@@ -10,31 +10,44 @@ from __future__ import annotations
 
 import numpy as np
 from scipy.ndimage import distance_transform_edt, label as ndi_label
+from scipy.sparse import coo_matrix
+from skimage.measure import label as skimage_label
+from skimage.segmentation import expand_labels
 
 
 def euclidean_voronoi_assign(
         markers: np.ndarray,
         mask: np.ndarray,
+        restrict_to_seeded_cc: bool = True,
 ) -> np.ndarray:
     """Assign masked pixels to nearest marker via Euclidean Voronoi partition.
-
-    Only mask connected components that contain at least one seed are
-    labeled.  Disconnected mask regions with no seed remain 0, matching
-    the connectivity-aware behavior of watershed.
 
     Args:
         markers: 2D int32 array with seed labels at marker positions.
         mask: Binary mask restricting the assignment region.
+        restrict_to_seeded_cc: When True (default), only mask connected
+            components that contain at least one seed are labeled;
+            disconnected mask regions with no seed remain 0.  When False,
+            seeds are used globally — every mask pixel gets the label of
+            its nearest seed regardless of connectivity.
 
     Returns:
         2D int32 labeled array. Each masked pixel has the label of its
-        nearest marker by Euclidean distance. Pixels outside mask or in
-        seedless connected components are 0.
+        nearest marker by Euclidean distance. Pixels outside mask are 0.
+        When *restrict_to_seeded_cc* is True, pixels in seedless
+        connected components are also 0.
     """
-    effective_markers = markers.copy()
-    effective_markers[~mask > 0] = 0
+    if mask.dtype != np.bool_:
+        mask = mask > 0
 
-    seed_mask = effective_markers > 0
+    seed_mask = markers > 0
+    if restrict_to_seeded_cc:
+        effective_markers = markers.copy()
+        effective_markers[~mask] = 0
+        seed_mask = effective_markers > 0
+    else:
+        effective_markers = markers
+
     if not seed_mask.any():
         return np.zeros(mask.shape, dtype=np.int32)
 
@@ -45,14 +58,21 @@ def euclidean_voronoi_assign(
     ].astype(np.int32)
     voronoi_labels[~mask] = 0
 
-    # Zero out labels in mask CCs that contain no seeds
-    cc_map, n_cc = ndi_label(mask)  # type: ignore[misc]
-    seeded_ccs = np.unique(cc_map[seed_mask])
-    has_seed = np.zeros(n_cc + 1, dtype=bool)
-    has_seed[seeded_ccs] = True
-    voronoi_labels[~has_seed[cc_map]] = 0
+    if restrict_to_seeded_cc:
+        cc_map, n_cc = ndi_label(mask)  # type: ignore[misc]
+        seeded_ccs = np.unique(cc_map[seed_mask])
+        has_seed = np.zeros(n_cc + 1, dtype=bool)
+        has_seed[seeded_ccs] = True
+        voronoi_labels[~has_seed[cc_map]] = 0
 
     return voronoi_labels
+
+
+def _mode(arr: np.ndarray) -> int:
+    """Return the most frequent value in a 1-D integer array (ignoring 0)."""
+    counts = np.bincount(arr)
+    counts[0] = 0
+    return int(np.argmax(counts))
 
 
 def connectivity_correct_labels(
@@ -60,14 +80,11 @@ def connectivity_correct_labels(
         mask: np.ndarray,
         markers: np.ndarray,
 ) -> np.ndarray:
-    """Correct Voronoi misassignments using foreground connectivity.
+    """Correct Voronoi misassignments using fragment-based iterative fill.
 
-    Runs connected-component analysis on the foreground mask and checks
-    which seeds each component contains:
-
-    - **Case A** (single seed): reassign entire component to that seed.
-    - **Case B** (multiple seeds): keep Voronoi labels unchanged.
-    - **Case C** (no seed): keep Voronoi labels (nearest-seed by EDT).
+    Separates seed pixels from unseeded fragments, then iteratively
+    assigns each fragment the mode label of its neighborhood until
+    convergence.
 
     Args:
         voronoi_labels: Label map from ``euclidean_voronoi_assign``.
@@ -77,26 +94,62 @@ def connectivity_correct_labels(
     Returns:
         Corrected label map with fragment reassignments applied.
     """
-    corrected = voronoi_labels.copy()
+    if mask.dtype != np.bool_:
+        mask = mask > 0
 
-    cc_map, n_cc = ndi_label(mask)  # type: ignore[misc]
+    seed_mask = markers > 0
 
-    seed_rows, seed_cols = np.nonzero(markers > 0)
-    cc_to_seeds: dict[int, set[int]] = {}
-    for r, c in zip(seed_rows, seed_cols):
-        cc_id = int(cc_map[r, c])
-        if cc_id > 0:
-            cc_to_seeds.setdefault(cc_id, set()).add(int(markers[r, c]))
+    # Fragment map — per-voronoi-value CC labeling.
+    # skimage.measure.label connects only same-value neighbors; 0 is bg.
+    fragment_voronoi = np.where(seed_mask, 0, voronoi_labels)
+    fragment_map = skimage_label(fragment_voronoi, connectivity=1)
+    n_frags = int(fragment_map.max())
 
-    for cc_id in range(1, n_cc + 1):
-        seeds = cc_to_seeds.get(cc_id, set())
+    # Seeded map — labels only at seed pixels; fragments zeroed.
+    seeded_map = voronoi_labels.copy()
+    seeded_map[fragment_map > 0] = 0
+    # Anchor seeds even outside mask (voronoi_labels is 0 there).
+    seeded_map[seed_mask] = markers[seed_mask]
 
-        if len(seeds) == 1:
-            # Case A: entire CC belongs to the single reachable seed
-            cc_pixels = cc_map == cc_id
-            corrected[cc_pixels] = next(iter(seeds))
+    if n_frags == 0:
+        seeded_map[~mask] = 0
+        return seeded_map
 
-        # Case B (multiple seeds): keep Voronoi labels unchanged
-        # Case C (no seed): keep Voronoi labels (nearest by EDT)
+    # COO index of all fragment pixels (built once).
+    frag_coo = coo_matrix(fragment_map)
+    frag_label = np.zeros(n_frags + 1, dtype=np.int32)  # LUT: frag_id → label
 
-    return corrected
+    unfilled = set(range(1, n_frags + 1))
+
+    while unfilled:
+        # Expand filled regions by 1 pixel.
+        expanded = expand_labels(seeded_map, distance=1)
+
+        # Look up expanded values at all fragment pixel positions.
+        expanded_at_frags = expanded[frag_coo.row, frag_coo.col]
+
+        filled_this_pass = []
+        for frag_id in sorted(unfilled):
+            frag_px = frag_coo.data == frag_id
+            vals = expanded_at_frags[frag_px]
+            nonzero = vals[vals > 0]
+            if nonzero.size == 0:
+                continue
+            frag_label[frag_id] = _mode(nonzero)
+            filled_this_pass.append(frag_id)
+
+        if not filled_this_pass:
+            break
+
+        # LUT paint all newly-filled fragments in one vectorized step.
+        newly_filled_px = np.isin(frag_coo.data, filled_this_pass)
+        assigned = frag_label[frag_coo.data[newly_filled_px]]
+        seeded_map[
+            frag_coo.row[newly_filled_px],
+            frag_coo.col[newly_filled_px],
+        ] = assigned
+
+        unfilled -= set(filled_this_pass)
+
+    seeded_map[~mask] = 0
+    return seeded_map

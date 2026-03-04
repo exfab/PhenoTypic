@@ -243,7 +243,7 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
             >>> mask_copy = objmask.copy()
             >>> mask_copy[10:50, 20:60] = 0  # Doesn't affect objmask
         """
-        return (self._backend.toarray() > 0).copy()
+        return self._backend.toarray() > 0
 
     def reset(self):
         """Reset the object mask and linked object map to a cleared state.
