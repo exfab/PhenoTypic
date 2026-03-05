@@ -320,7 +320,7 @@ def main(
                     error_msg=error_msg,
                 )
             except Exception:
-                pass  # Don't fail if logging fails
+                logger.warning("Failed to write event log", exc_info=True)
 
         # Write structured failure record
         try:
@@ -342,7 +342,7 @@ def main(
                 slurm_job_id=full_slurm_id,
             )
         except Exception:
-            pass  # Don't fail if failure tracking fails
+            logger.warning("Failed to write failure record", exc_info=True)
 
         sys.exit(1)
 

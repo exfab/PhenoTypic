@@ -39,7 +39,7 @@ from phenotypic.tools_.slurm import (
 )
 from ._cli_slurm_array_scripts import generate_all_array_job_scripts
 from ._cli_update_state import append_event, append_completion_event, aggregate_state_from_events
-from ._cli_failure_tracker import append_failure
+from ._cli_failure_tracker import append_failure, read_failures
 from ._cli_manifest_builder import build_manifest
 from ._cli_dashboard_generator import generate_dashboard
 from ._cli_sentinel_scripts import generate_sentinel_script
@@ -254,7 +254,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                     traceback=tb,
                 )
             except Exception:
-                pass  # Don't fail if failure tracking fails
+                logger.warning("Failed to write failure record", exc_info=True)
 
             return (dataset.name, image_path.name, False, tb)
 
@@ -626,6 +626,14 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         end_time = datetime.now()
         datasets_state = aggregate_state_from_events(event_log)
 
+        # Enrich with structured failure data from failures.jsonl
+        progress_dir = output_dir / "progress"
+        failure_records = read_failures(progress_dir)
+        failure_lookup: dict[tuple[str, str], dict] = {}
+        for rec in failure_records:
+            key = (rec.get("dataset", ""), rec.get("image", ""))
+            failure_lookup[key] = rec  # Last record wins (retries)
+
         # Convert to DatasetResults
         dataset_results = {}
         for dataset in datasets:
@@ -636,13 +644,14 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             failures = []
             for img_name in ds_state.get("failed", set()):
                 error_msg = ds_state.get("errors", {}).get(img_name, "Unknown error")
+                rec = failure_lookup.get((dataset.name, img_name), {})
                 failures.append(
                     ImageFailure(
                         dataset=dataset.name,
                         image_filename=img_name,
-                        error_type="Exception",
-                        error_message=error_msg,
-                        traceback="",
+                        error_type=rec.get("error_type", "Exception"),
+                        error_message=rec.get("error_message", error_msg),
+                        traceback=rec.get("traceback", ""),
                         timestamp=datetime.now(),
                     )
                 )

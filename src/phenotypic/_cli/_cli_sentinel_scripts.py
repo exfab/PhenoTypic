@@ -7,6 +7,7 @@ as a self-resubmitting SLURM job.
 from __future__ import annotations
 
 import logging
+import shlex
 import stat
 from pathlib import Path
 from typing import Any, Dict
@@ -51,6 +52,10 @@ def generate_sentinel_script(
     if account:
         account_line = f"#SBATCH --account={account}\n"
 
+    q_output_dir = shlex.quote(str(output_dir))
+    q_progress_dir = shlex.quote(str(progress_dir))
+    q_script_path = shlex.quote(str(script_path))
+
     script_content = f"""\
 #!/bin/bash
 #SBATCH --job-name=pheno-sentinel
@@ -61,11 +66,11 @@ def generate_sentinel_script(
 #SBATCH --output={progress_dir}/sentinel_%j.log
 {account_line}
 {python_str} -m phenotypic._cli._cli_sentinel \\
-    --output-dir {output_dir} \\
-    --progress-dir {progress_dir} \\
+    --output-dir {q_output_dir} \\
+    --progress-dir {q_progress_dir} \\
     --interval {interval} \\
     --max-runtime {max_runtime} \\
-    --sentinel-script {script_path} \\
+    --sentinel-script {q_script_path} \\
     --slurm-partition {partition}
 """
 

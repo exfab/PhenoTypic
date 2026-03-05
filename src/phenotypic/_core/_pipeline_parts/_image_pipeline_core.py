@@ -155,6 +155,12 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         self._operation_times: Dict[str, float] = {}
         self._measurement_times: Dict[str, float] = {}
 
+        # Initialize dictionaries to store memory usage
+        self._operation_memory: Dict[str, float] = {}
+        self._measurement_memory: Dict[str, float] = {}
+        self._operation_rss: Dict[str, float] = {}
+        self._measurement_rss: Dict[str, float] = {}
+
     @property
     def desc(self) -> str:
         """Get pipeline description. Returns class docstring if no description set."""
@@ -290,6 +296,19 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
         return result
 
+    @staticmethod
+    def _get_process_rss_mb() -> float:
+        """Return current process RSS in megabytes.
+
+        Returns:
+            float: Resident set size in MB, or ``nan`` if unavailable.
+        """
+        try:
+            import psutil
+            return psutil.Process().memory_info().rss / (1024 * 1024)
+        except Exception:
+            return float("nan")
+
     def _run_operations(
         self,
         img: Image,
@@ -302,9 +321,11 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             on_op_complete: Optional callback invoked after each successful
                 operation with ``(index, op_name, img, operation)``.
         """
-        # Reset operation times for new apply run if benchmarking is enabled
+        # Reset operation times and memory for new apply run if benchmarking
         if self._benchmark:
             self._operation_times = {}
+            self._operation_memory = {}
+            self._operation_rss = {}
 
         # Create progress bar if verbose and benchmark are enabled
         if self._benchmark and self._verbose:
@@ -331,8 +352,9 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                     else:
                         print(f"  Applying operation: {key}")
 
-                # Measure execution time if benchmarking is enabled
+                # Measure execution time and memory if benchmarking is enabled
                 if self._benchmark:
+                    rss_before = self._get_process_rss_mb()
                     start_time = time.time()
 
                 sig = inspect.signature(operation.apply)
@@ -346,20 +368,39 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                         False  # Prevents intermediate pipelines from resetting progress
                     )
 
+                # Propagate benchmark flag to nested pipelines
+                nested_was_benchmarking = None
+                if self._benchmark and isinstance(operation, ImagePipelineCore):
+                    nested_was_benchmarking = operation._benchmark
+                    operation._benchmark = True
+
                 # Apply actual operation
                 operation.apply(img, **apply_params)
 
-                # Store execution time if benchmarking is enabled
+                # Restore nested pipeline benchmark flag
+                if nested_was_benchmarking is not None:
+                    operation._benchmark = nested_was_benchmarking
+
+                # Store execution time and memory if benchmarking is enabled
                 if self._benchmark:
                     self._operation_times[key] = time.time() - start_time
+                    rss_after = self._get_process_rss_mb()
+                    self._operation_memory[key] = rss_after - rss_before
+                    self._operation_rss[key] = rss_after
 
                     if self._verbose:
+                        delta = self._operation_memory[key]
+                        delta_str = f"{delta:+.1f} MB"
                         if has_tqdm:
-                            pbar.set_postfix(time=f"{self._operation_times[key]:.4f}s")
+                            pbar.set_postfix(
+                                time=f"{self._operation_times[key]:.4f}s",
+                                mem=delta_str,
+                            )
                             pbar.update(1)
                         else:
                             print(
                                 f"    Completed in {self._operation_times[key]:.4f} seconds"
+                                f" ({delta_str})"
                             )
 
                 if on_op_complete is not None:
@@ -497,24 +538,32 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             Exception: An exception is raised if a measurement operation fails while being
                 applied to the image.
         """
-        # Reset measurement times for new measure run if benchmarking is enabled
+        # Reset measurement times and memory for new measure run if benchmarking
         if self._benchmark:
             self._measurement_times = {}
+            self._measurement_memory = {}
+            self._measurement_rss = {}
 
         # Print message if verbose and benchmark are enabled
         if self._benchmark and self._verbose:
             print("Measuring image properties...")
 
-        # Get image info and measure time if benchmarking is enabled
+        # Get image info and measure time/memory if benchmarking is enabled
         if self._benchmark:
+            rss_before = self._get_process_rss_mb()
             start_time = time.time()
             measurements = [image.info(include_metadata=include_metadata)]
             self._measurement_times["image_info"] = time.time() - start_time
+            rss_after = self._get_process_rss_mb()
+            self._measurement_memory["image_info"] = rss_after - rss_before
+            self._measurement_rss["image_info"] = rss_after
 
             # Print execution time if verbose and benchmark are enabled
             if self._verbose:
+                delta = self._measurement_memory["image_info"]
                 print(
                         f"  Image info: {self._measurement_times['image_info']:.4f} seconds"
+                        f" ({delta:+.1f} MB)"
                 )
         else:
             measurements = [
@@ -553,24 +602,32 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                     else:
                         print(f"  Applying measurement: {key}")
 
-                # Measure execution time for each measurement if benchmarking is enabled
+                # Measure execution time and memory if benchmarking is enabled
                 if self._benchmark:
+                    rss_before = self._get_process_rss_mb()
                     start_time = time.time()
 
                     # Measurement is taken here
                     measurements.append(measurement.measure(image))
                     self._measurement_times[key] = time.time() - start_time
+                    rss_after = self._get_process_rss_mb()
+                    self._measurement_memory[key] = rss_after - rss_before
+                    self._measurement_rss[key] = rss_after
 
                     # Print execution time if verbose and benchmark are enabled
                     if self._verbose:
+                        delta = self._measurement_memory[key]
+                        delta_str = f"{delta:+.1f} MB"
                         if has_tqdm:
                             pbar.set_postfix(
-                                    time=f"{self._measurement_times[key]:.4f}s"
+                                    time=f"{self._measurement_times[key]:.4f}s",
+                                    mem=delta_str,
                             )
                             pbar.update(1)
                         else:
                             print(
                                     f"    Completed in {self._measurement_times[key]:.4f} seconds"
+                                    f" ({delta_str})"
                             )
                 else:
                     measurements.append(measurement.measure(image))
@@ -618,57 +675,93 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         return self.measure(image=img, include_metadata=include_metadata)
 
     def benchmark_results(self) -> pd.DataFrame:
-        """
-        Returns a table of execution times for operations and measurements.
+        """Return execution times and memory usage for operations and measurements.
 
         This method should be called after applying the pipeline on an image to get
-        the execution times of the different processes.
+        the execution times and memory consumption of the different processes.
+
+        When an operation is itself an ``ImagePipelineCore`` (nested pipeline),
+        its sub-operations are expanded as indented sub-rows beneath the parent
+        entry with names like ``"ParentOp > ChildOp"``.
 
         Returns:
-            pd.DataFrame: A DataFrame containing execution times for each operation and measurement.
+            pd.DataFrame: A DataFrame with columns ``Process Type``,
+                ``Process Name``, ``Execution Time (s)``, ``Memory Delta (MB)``,
+                and ``RSS After (MB)``.
         """
-        # Create a list to store the data
-        data = []
+        columns = [
+            "Process Type",
+            "Process Name",
+            "Execution Time (s)",
+            "Memory Delta (MB)",
+            "RSS After (MB)",
+        ]
 
-        # Add operation times
+        data: List[Dict[str, object]] = []
+
+        # Add operation rows (with nested expansion)
         for op_name, op_time in self._operation_times.items():
-            data.append(
-                    {
+            data.append({
+                "Process Type"      : "Operation",
+                "Process Name"      : op_name,
+                "Execution Time (s)": op_time,
+                "Memory Delta (MB)" : self._operation_memory.get(op_name, float("nan")),
+                "RSS After (MB)"    : self._operation_rss.get(op_name, float("nan")),
+            })
+
+            # Expand nested pipeline sub-operations
+            operation = self._ops.get(op_name)
+            if (
+                isinstance(operation, ImagePipelineCore)
+                and operation._operation_times
+            ):
+                for sub_name, sub_time in operation._operation_times.items():
+                    data.append({
                         "Process Type"      : "Operation",
-                        "Process Name"      : op_name,
-                        "Execution Time (s)": op_time,
-                    }
-            )
+                        "Process Name"      : f"  {op_name} > {sub_name}",
+                        "Execution Time (s)": sub_time,
+                        "Memory Delta (MB)" : operation._operation_memory.get(
+                            sub_name, float("nan")
+                        ),
+                        "RSS After (MB)"    : operation._operation_rss.get(
+                            sub_name, float("nan")
+                        ),
+                    })
 
-        # Add measurement times
-        for measure_name, measure_time in self._measurement_times.items():
-            data.append(
-                    {
-                        "Process Type"      : "Measurement",
-                        "Process Name"      : measure_name,
-                        "Execution Time (s)": measure_time,
-                    }
-            )
+        # Add measurement rows
+        for meas_name, meas_time in self._measurement_times.items():
+            data.append({
+                "Process Type"      : "Measurement",
+                "Process Name"      : meas_name,
+                "Execution Time (s)": meas_time,
+                "Memory Delta (MB)" : self._measurement_memory.get(
+                    meas_name, float("nan")
+                ),
+                "RSS After (MB)"    : self._measurement_rss.get(
+                    meas_name, float("nan")
+                ),
+            })
 
-        # Create DataFrame
         if not data:
-            return pd.DataFrame(
-                    columns=["Process Type", "Process Name", "Execution Time (s)"]
-            )
+            return pd.DataFrame(columns=columns)
 
         df = pd.DataFrame(data)
 
-        # Calculate total time
-        total_time = df["Execution Time (s)"].sum()
-        total_row = pd.DataFrame(
-                [
-                    {
-                        "Process Type"      : "Total",
-                        "Process Name"      : "All Processes",
-                        "Execution Time (s)": total_time,
-                    }
-                ]
-        )
+        # Total row: sum top-level times and deltas only (exclude sub-rows)
+        top_level_mask = ~df["Process Name"].str.startswith("  ")
+        total_time = df.loc[top_level_mask, "Execution Time (s)"].sum()
+        total_delta = df.loc[top_level_mask, "Memory Delta (MB)"].sum()
+        # RSS After for total: last top-level RSS value
+        top_level_rss = df.loc[top_level_mask, "RSS After (MB)"]
+        final_rss = top_level_rss.iloc[-1] if len(top_level_rss) > 0 else float("nan")
+
+        total_row = pd.DataFrame([{
+            "Process Type"      : "Total",
+            "Process Name"      : "All Processes",
+            "Execution Time (s)": total_time,
+            "Memory Delta (MB)" : total_delta,
+            "RSS After (MB)"    : final_rss,
+        }])
         df = pd.concat([df, total_row], ignore_index=True)
 
         return df

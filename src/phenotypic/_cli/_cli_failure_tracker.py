@@ -85,7 +85,7 @@ def read_failures(progress_dir: Path) -> List[Dict[str, Any]]:
 
     Returns:
         List of failure record dicts, one per JSONL line.  Malformed lines
-        are silently skipped.
+        are skipped with a warning.
     """
     failures_path = progress_dir / "failures.jsonl"
     if not failures_path.exists():
@@ -100,7 +100,7 @@ def read_failures(progress_dir: Path) -> List[Dict[str, Any]]:
             try:
                 records.append(json.loads(line))
             except json.JSONDecodeError:
-                logger.debug(
+                logger.warning(
                     "Skipping malformed JSONL line %d in %s", line_num, failures_path
                 )
     return records

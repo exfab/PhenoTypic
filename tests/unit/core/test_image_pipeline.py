@@ -241,3 +241,102 @@ def test_apply_with_intermediates_inplace_false(plate_12hr_grid_image):
 
     # The result image has been processed (pipeline includes a detector)
     assert isinstance(result.image, Image)
+
+
+# ---------------------------------------------------------------------------
+# Benchmark memory tracking tests
+# ---------------------------------------------------------------------------
+
+
+@timeit
+def test_benchmark_memory_columns(plate_12hr_grid_image):
+    """benchmark_results() DataFrame contains the new memory columns."""
+    pipe = ImagePipeline(
+        ops=[GaussianBlur(sigma=5), OtsuDetector()],
+        benchmark=True,
+    )
+    pipe.apply(plate_12hr_grid_image)
+    df = pipe.benchmark_results()
+
+    expected_cols = {
+        "Process Type",
+        "Process Name",
+        "Execution Time (s)",
+        "Memory Delta (MB)",
+        "RSS After (MB)",
+    }
+    assert expected_cols == set(df.columns), (
+        f"Expected columns {expected_cols}, got {set(df.columns)}"
+    )
+
+
+@timeit
+def test_benchmark_memory_populated(plate_12hr_grid_image):
+    """_operation_memory and _operation_rss are filled when benchmark=True."""
+    pipe = ImagePipeline(
+        ops={"blur": GaussianBlur(sigma=5), "detect": OtsuDetector()},
+        benchmark=True,
+    )
+    pipe.apply(plate_12hr_grid_image)
+
+    assert len(pipe._operation_memory) == 2
+    assert len(pipe._operation_rss) == 2
+    assert "blur" in pipe._operation_memory
+    assert "detect" in pipe._operation_rss
+
+    # RSS values should be positive (process always uses some memory)
+    for rss in pipe._operation_rss.values():
+        assert rss > 0, f"RSS should be positive, got {rss}"
+
+
+@timeit
+def test_benchmark_nested_pipeline_expansion(plate_12hr_grid_image):
+    """Sub-rows appear for nested ImagePipeline operations."""
+    inner = ImagePipeline(
+        ops={"inner_blur": GaussianBlur(sigma=3), "inner_detect": OtsuDetector()},
+    )
+    outer = ImagePipeline(
+        ops={"outer_blur": GaussianBlur(sigma=5), "nested": inner},
+        benchmark=True,
+    )
+    outer.apply(plate_12hr_grid_image)
+    df = outer.benchmark_results()
+
+    names = df["Process Name"].tolist()
+
+    # Top-level rows
+    assert "outer_blur" in names
+    assert "nested" in names
+
+    # Expanded sub-rows from the nested pipeline
+    assert "  nested > inner_blur" in names
+    assert "  nested > inner_detect" in names
+
+    # Sub-rows have memory values populated
+    sub_rows = df[df["Process Name"].str.startswith("  ")]
+    assert len(sub_rows) == 2
+    for _, row in sub_rows.iterrows():
+        assert row["RSS After (MB)"] > 0
+
+    # Total row should not double-count sub-rows
+    total_row = df[df["Process Type"] == "Total"]
+    assert len(total_row) == 1
+    top_level = df[
+        (df["Process Type"] == "Operation") & ~df["Process Name"].str.startswith("  ")
+    ]
+    assert abs(
+        total_row["Execution Time (s)"].iloc[0] - top_level["Execution Time (s)"].sum()
+    ) < 1e-9
+
+
+@timeit
+def test_benchmark_no_memory_when_disabled(plate_12hr_grid_image):
+    """Memory dicts stay empty when benchmark=False."""
+    pipe = ImagePipeline(
+        ops=[GaussianBlur(sigma=5), OtsuDetector()],
+        benchmark=False,
+    )
+    pipe.apply(plate_12hr_grid_image)
+
+    assert len(pipe._operation_memory) == 0
+    assert len(pipe._operation_rss) == 0
