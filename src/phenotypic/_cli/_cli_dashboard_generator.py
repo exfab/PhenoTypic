@@ -3,7 +3,7 @@ Dashboard HTML generator for PhenoTypic CLI processing progress.
 
 Generates a single self-contained HTML+CSS+JS dashboard file that monitors
 processing progress by polling ``manifest.json`` and ``failures.jsonl`` in
-the same ``progress/`` directory.
+the ``progress/`` subdirectory.
 """
 
 from __future__ import annotations
@@ -11,21 +11,21 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from ._cli_vendor_js import MARKED_MIN_JS
+
 logger = logging.getLogger(__name__)
 
 
-def generate_dashboard(progress_dir: Path) -> None:
-    """Write ``dashboard.html`` to the progress directory.
+def generate_dashboard(output_dir: Path, *, execution_mode: str = "local") -> None:
+    """Write ``dashboard.html`` to the output directory root.
 
     Args:
-        progress_dir: Directory containing ``manifest.json`` and
-            ``failures.jsonl``.  The generated dashboard is written as
-            ``dashboard.html`` in this same directory so that relative
-            ``fetch()`` calls resolve correctly.
+        output_dir: Root output directory.
+        execution_mode: ``"local"`` or ``"slurm"``.
     """
-    progress_dir.mkdir(parents=True, exist_ok=True)
-    dashboard_path = progress_dir / "dashboard.html"
-    dashboard_path.write_text(_build_html(), encoding="utf-8")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    dashboard_path = output_dir / "dashboard.html"
+    dashboard_path.write_text(_build_html(execution_mode), encoding="utf-8")
     logger.info("Dashboard written to %s", dashboard_path)
 
 
@@ -34,7 +34,7 @@ def generate_dashboard(progress_dir: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _build_html() -> str:
+def _build_html(execution_mode: str) -> str:
     """Assemble the complete self-contained HTML document."""
     return (
         "<!DOCTYPE html>\n"
@@ -46,8 +46,9 @@ def _build_html() -> str:
         f"  <style>\n{_build_css()}\n  </style>\n"
         "</head>\n"
         "<body>\n"
-        f"{_build_body()}\n"
-        f"  <script>\n{_build_js()}\n  </script>\n"
+        f"{_build_body(execution_mode)}\n"
+        f"  <script>\n{MARKED_MIN_JS}\n  </script>\n"
+        f"  <script>\n{_build_js(execution_mode)}\n  </script>\n"
         "</body>\n"
         "</html>\n"
     )
@@ -479,10 +480,104 @@ def _build_css() -> str:
       .cards { grid-template-columns: repeat(2, 1fr); gap: 8px; }
       .card { padding: 12px 10px; }
       .card-value { font-size: 1.5rem; }
-    }"""
+    }
+
+    /* ── Tabs ────────────────────────────────────────────────── */
+    .tab-bar {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 24px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 0;
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--sans);
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 10px 20px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .tab-btn:hover { color: var(--text-bright); }
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── README ──────────────────────────────────────────────── */
+    .readme-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 32px 40px;
+      line-height: 1.7;
+      color: var(--text);
+    }
+    .readme-container h1 { font-size: 1.6rem; color: var(--text-bright); margin: 24px 0 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    .readme-container h2 { font-size: 1.25rem; color: var(--text-bright); margin: 20px 0 10px; }
+    .readme-container h3 { font-size: 1.05rem; color: var(--text-bright); margin: 16px 0 8px; }
+    .readme-container code { background: var(--bg); padding: 2px 6px; border-radius: 4px; font-family: var(--mono); font-size: 0.88em; }
+    .readme-container pre { background: var(--bg); padding: 16px; border-radius: 8px; overflow-x: auto; margin: 12px 0; }
+    .readme-container pre code { background: none; padding: 0; }
+    .readme-container table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+    .readme-container th, .readme-container td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+    .readme-container th { background: var(--bg); font-weight: 600; color: var(--text-bright); }
+    .readme-loading { color: var(--text-muted); font-size: 0.9rem; }
+
+    /* ── Download ────────────────────────────────────────────── */
+    .download-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 32px 40px;
+    }
+    .download-container h2 { font-size: 1.25rem; color: var(--text-bright); margin-bottom: 16px; }
+    .download-note {
+      background: var(--blue-bg);
+      color: var(--text);
+      border: 1px solid rgba(76,154,255,0.25);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 24px;
+      font-size: 0.88rem;
+      line-height: 1.6;
+    }
+    .download-section-title { font-weight: 600; color: var(--text-bright); margin: 20px 0 6px; font-size: 0.95rem; }
+    .download-cmd {
+      background: var(--bg);
+      padding: 14px 18px;
+      border-radius: 8px;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      color: var(--text);
+      user-select: all;
+      margin: 8px 0 16px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .download-input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      margin: 4px 0 12px;
+    }
+    .download-input:focus { outline: none; border-color: var(--accent); }"""
 
 
-def _build_body() -> str:
+def _build_body(execution_mode: str) -> str:
     """Return the HTML body content (no <body> tags)."""
     return """\
   <div class="container">
@@ -497,68 +592,128 @@ def _build_body() -> str:
       </div>
     </div>
 
-    <!-- Summary cards -->
-    <div class="cards" id="cards"></div>
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('progress')">Progress</button>
+      <button class="tab-btn" onclick="switchTab('readme')">README</button>
+      <button class="tab-btn" id="download-tab-btn" onclick="switchTab('download')"
+              style="display:none">Download</button>
+    </div>
 
-    <!-- Overall progress bar -->
-    <div class="progress-section">
-      <div class="progress-header">
-        <span class="progress-title">Overall Progress</span>
-        <span class="progress-pct" id="progress-pct">0%</span>
+    <div class="tab-content active" id="tab-progress">
+      <!-- Summary cards -->
+      <div class="cards" id="cards"></div>
+
+      <!-- Overall progress bar -->
+      <div class="progress-section">
+        <div class="progress-header">
+          <span class="progress-title">Overall Progress</span>
+          <span class="progress-pct" id="progress-pct">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+        </div>
       </div>
-      <div class="progress-track">
-        <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+
+      <!-- Active batch / SLURM -->
+      <div class="slurm-section" id="slurm-section" style="display:none">
+        <h2>SLURM Batch Status</h2>
+        <div class="chunk-grid" id="chunk-grid"></div>
+      </div>
+
+      <!-- Per-dataset breakdown -->
+      <div class="datasets-section">
+        <h2>Datasets</h2>
+        <div id="datasets-list"></div>
+      </div>
+
+      <!-- Failure category chart -->
+      <div class="chart-section">
+        <h2>Failure Categories</h2>
+        <div id="failure-chart"></div>
+      </div>
+
+      <!-- Recent failures table -->
+      <div class="failures-section">
+        <h2>Recent Failures</h2>
+        <div id="failures-table-container"></div>
       </div>
     </div>
 
-    <!-- Active batch / SLURM -->
-    <div class="slurm-section" id="slurm-section" style="display:none">
-      <h2>SLURM Batch Status</h2>
-      <div class="chunk-grid" id="chunk-grid"></div>
+    <div class="tab-content" id="tab-readme">
+      <div class="readme-container" id="readme-content">
+        <div class="readme-loading">Loading README...</div>
+      </div>
     </div>
 
-    <!-- Per-dataset breakdown -->
-    <div class="datasets-section">
-      <h2>Datasets</h2>
-      <div id="datasets-list"></div>
-    </div>
+    <div class="tab-content" id="tab-download">
+      <div class="download-container">
+        <h2>Download Results</h2>
+        <div class="download-note">
+          Direct browser downloads are not available due to Apache directory
+          permissions and HPCC security policies. Use the command-line tools
+          below to download results to your local machine.
+        </div>
 
-    <!-- Failure category chart -->
-    <div class="chart-section">
-      <h2>Failure Categories</h2>
-      <div id="failure-chart"></div>
-    </div>
+        <p class="download-section-title">Server URL</p>
+        <p>Auto-detected from your browser. Edit if needed:</p>
+        <input type="text" id="dl-url" class="download-input"
+               placeholder="https://your-hpcc.edu/path/to/output/"
+               oninput="updateCommands()">
 
-    <!-- Recent failures table -->
-    <div class="failures-section">
-      <h2>Recent Failures</h2>
-      <div id="failures-table-container"></div>
+        <p class="download-section-title">Authentication (if required)</p>
+        <div style="display:flex;gap:12px">
+          <input type="text" id="dl-user" class="download-input"
+                 placeholder="Username" oninput="updateCommands()">
+          <input type="password" id="dl-pass" class="download-input"
+                 placeholder="Password" oninput="updateCommands()">
+        </div>
+
+        <input type="hidden" id="dl-cutdirs" value="N">
+
+        <p class="download-section-title">Full recursive download</p>
+        <p>Downloads the entire output directory:</p>
+        <div class="download-cmd" id="cmd-full"></div>
+
+        <p class="download-section-title">Download measurements only</p>
+        <div class="download-cmd" id="cmd-csv"></div>
+
+        <p class="download-section-title">Download overlays only</p>
+        <div class="download-cmd" id="cmd-png"></div>
+
+        <p class="download-section-title">Using rsync (if SSH access available)</p>
+        <div class="download-cmd">rsync -avz user@hpcc:/path/to/output/ ./local_output/</div>
+
+        <p style="color:var(--text-muted);font-size:0.82rem;margin-top:24px">
+          Adjust <code>--cut-dirs</code> to control local directory nesting.
+        </p>
+      </div>
     </div>
   </div>"""
 
 
-def _build_js() -> str:
+def _build_js(execution_mode: str) -> str:
     """Return the inline JavaScript for the dashboard."""
-    return """\
+    return f"""\
     // ── State ──────────────────────────────────────────────────
+    const EXECUTION_MODE = "{execution_mode}";
     let refreshTimer = null;
     const REFRESH_MS = 10000;
 
     // ── Helpers ────────────────────────────────────────────────
-    function esc(s) {
+    function esc(s) {{
       const d = document.createElement('div');
       d.textContent = s;
       return d.innerHTML;
-    }
+    }}
 
-    function fmtTs(iso) {
+    function fmtTs(iso) {{
       if (!iso) return '';
       const d = new Date(iso);
       if (isNaN(d)) return esc(iso);
       return d.toLocaleString();
-    }
+    }}
 
-    function shortTs(iso) {
+    function shortTs(iso) {{
       if (!iso) return '';
       const d = new Date(iso);
       if (isNaN(d)) return esc(iso);
@@ -566,16 +721,76 @@ def _build_js() -> str:
       const mm = String(d.getMinutes()).padStart(2, '0');
       const ss = String(d.getSeconds()).padStart(2, '0');
       return hh + ':' + mm + ':' + ss;
-    }
+    }}
+
+    // ── Tab Switching ──────────────────────────────────────────
+    let readmeLoaded = false;
+    function switchTab(tabId) {{
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.getElementById('tab-' + tabId).classList.add('active');
+      document.querySelector('[onclick*="' + tabId + '"]').classList.add('active');
+      if (tabId === 'readme' && !readmeLoaded) loadReadme();
+    }}
+
+    // ── README Loading ─────────────────────────────────────────
+    async function loadReadme() {{
+      try {{
+        const resp = await fetch('README.md?' + Date.now());
+        if (!resp.ok) {{
+          document.getElementById('readme-content').innerHTML =
+            '<div class="readme-loading">README.md not found.</div>';
+          return;
+        }}
+        const md = await resp.text();
+        document.getElementById('readme-content').innerHTML = marked.parse(md);
+        readmeLoaded = true;
+      }} catch(e) {{
+        document.getElementById('readme-content').innerHTML =
+          '<div class="readme-loading">Could not load README.md.</div>';
+      }}
+    }}
+
+    // ── Download URL Helpers ───────────────────────────────────
+    function getBaseUrl() {{
+      if (window.location.protocol === 'file:') return '';
+      const path = window.location.pathname;
+      const dir = path.substring(0, path.lastIndexOf('/') + 1);
+      return window.location.origin + dir;
+    }}
+
+    function getCutDirs() {{
+      if (window.location.protocol === 'file:') return 'N';
+      const path = window.location.pathname;
+      const dir = path.substring(0, path.lastIndexOf('/') + 1);
+      return String(dir.split('/').filter(Boolean).length);
+    }}
+
+    function updateCommands() {{
+      const base = document.getElementById('dl-url').value || '<YOUR_SERVER_URL>/path/to/output/';
+      const user = document.getElementById('dl-user').value;
+      const pass = document.getElementById('dl-pass').value;
+      const cutDirs = document.getElementById('dl-cutdirs').value || 'N';
+
+      let auth = '';
+      if (user) auth = ' --user=' + user + (pass ? ' --password=' + pass : '');
+
+      document.getElementById('cmd-full').textContent =
+        'wget -r -np -nH --cut-dirs=' + cutDirs + auth + ' ' + base;
+      document.getElementById('cmd-csv').textContent =
+        'wget -r -np -nH --cut-dirs=' + cutDirs + ' -A "*.csv"' + auth + ' ' + base;
+      document.getElementById('cmd-png').textContent =
+        'wget -r -np -nH --cut-dirs=' + cutDirs + ' -A "*.png"' + auth + ' ' + base + 'results/';
+    }}
 
     // ── Render: Summary Cards ──────────────────────────────────
-    function renderSummary(data) {
+    function renderSummary(data) {{
       const cards = [
-        { label: 'Total',     value: data.total_images ?? 0, cls: '' },
-        { label: 'Completed', value: data.completed ?? 0,    cls: 'completed' },
-        { label: 'Failed',    value: data.failed ?? 0,       cls: 'failed' },
-        { label: 'In Progress', value: data.started ?? 0,    cls: 'running' },
-        { label: 'Pending',   value: data.pending ?? 0,      cls: 'pending' },
+        {{ label: 'Total',     value: data.total_images ?? 0, cls: '' }},
+        {{ label: 'Completed', value: data.completed ?? 0,    cls: 'completed' }},
+        {{ label: 'Failed',    value: data.failed ?? 0,       cls: 'failed' }},
+        {{ label: 'In Progress', value: data.started ?? 0,    cls: 'running' }},
+        {{ label: 'Pending',   value: data.pending ?? 0,      cls: 'pending' }},
       ];
       const el = document.getElementById('cards');
       el.innerHTML = cards.map(c =>
@@ -584,65 +799,65 @@ def _build_js() -> str:
           '<div class="card-label">' + c.label + '</div>' +
         '</div>'
       ).join('');
-    }
+    }}
 
     // ── Render: Overall Progress ───────────────────────────────
-    function renderProgress(data) {
+    function renderProgress(data) {{
       const total = data.total_images || 1;
       const done  = (data.completed ?? 0) + (data.failed ?? 0);
       const pct   = Math.min(100, (done / total) * 100);
       const fill  = document.getElementById('progress-fill');
       fill.style.width = pct.toFixed(1) + '%';
-      if (data.is_complete) {
+      if (data.is_complete) {{
         fill.classList.add('complete');
-      } else {
+      }} else {{
         fill.classList.remove('complete');
-      }
+      }}
       document.getElementById('progress-pct').textContent = pct.toFixed(1) + '%';
-    }
+    }}
 
     // ── Render: SLURM Chunks ───────────────────────────────────
-    function renderSlurm(data) {
+    function renderSlurm(data) {{
       const info = data.slurm_info;
       const section = document.getElementById('slurm-section');
-      if (!info || data.execution_mode !== 'slurm') {
+      if (!info || data.execution_mode !== 'slurm') {{
         section.style.display = 'none';
         return;
-      }
+      }}
       section.style.display = '';
 
       const totalChunks = info.total_chunks || 0;
       const active    = new Set(info.active_chunks    || []);
       const completed = new Set(info.completed_chunks || []);
       const pending   = new Set(info.pending_chunks   || []);
-      const jobIds    = info.chunk_job_ids || {};
+      const jobIds    = info.chunk_job_ids || {{}};
 
       let html = '';
-      for (let i = 0; i < totalChunks; i++) {
+      for (let i = 0; i < totalChunks; i++) {{
         let cls, statusText;
-        if (active.has(i))         { cls = 'chunk-active';    statusText = 'running'; }
-        else if (completed.has(i)) { cls = 'chunk-completed'; statusText = 'done'; }
-        else if (pending.has(i))   { cls = 'chunk-pending';   statusText = 'pending'; }
-        else                       { cls = 'chunk-pending';   statusText = 'unknown'; }
+        if (active.has(i))         {{ cls = 'chunk-active';    statusText = 'running'; }}
+        else if (completed.has(i)) {{ cls = 'chunk-completed'; statusText = 'done'; }}
+        else if (pending.has(i))   {{ cls = 'chunk-pending';   statusText = 'pending'; }}
+        else                       {{ cls = 'chunk-pending';   statusText = 'unknown'; }}
 
         const jid = jobIds[String(i)];
         const idLabel = jid ? ' <span class="chunk-label">(' + esc(String(jid)) + ')</span>' : '';
         html += '<span class="chunk-badge ' + cls + '">' +
                   'Chunk ' + i + idLabel +
                 '</span>';
-      }
+      }}
       document.getElementById('chunk-grid').innerHTML = html;
-    }
+    }}
 
     // ── Render: Datasets ───────────────────────────────────────
-    function renderDatasets(datasets) {
+    function renderDatasets(datasets) {{
       const container = document.getElementById('datasets-list');
-      if (!datasets || Object.keys(datasets).length === 0) {
+      if (!datasets || Object.keys(datasets).length === 0) {{
         container.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem">No dataset information available.</div>';
         return;
-      }
+      }}
       let html = '';
-      for (const [name, ds] of Object.entries(datasets)) {
+      for (const [name, ds] of Object.entries(datasets)) {{
         const total     = ds.total || 1;
         const completed = ds.completed || 0;
         const failed    = ds.failed || 0;
@@ -652,7 +867,7 @@ def _build_js() -> str:
         const uid       = 'ds-' + name.replace(/[^a-zA-Z0-9_-]/g, '_');
 
         html += '<div class="dataset-item">' +
-          '<div class="dataset-header" onclick="toggleDataset(\'' + uid + '\')">' +
+          '<div class="dataset-header" onclick="toggleDataset(\\'' + uid + '\\')">' +
             '<div style="display:flex;align-items:center;gap:10px">' +
               '<span class="dataset-expand" id="' + uid + '-arrow">&#9654;</span>' +
               '<span class="dataset-name">' + esc(name) + '</span>' +
@@ -673,34 +888,34 @@ def _build_js() -> str:
             '</div>' +
           '</div>' +
         '</div>';
-      }
+      }}
       container.innerHTML = html;
-    }
+    }}
 
-    function toggleDataset(uid) {
+    function toggleDataset(uid) {{
       const body  = document.getElementById(uid + '-body');
       const arrow = document.getElementById(uid + '-arrow');
-      if (body.classList.contains('open')) {
+      if (body.classList.contains('open')) {{
         body.classList.remove('open');
         arrow.classList.remove('open');
-      } else {
+      }} else {{
         body.classList.add('open');
         arrow.classList.add('open');
-      }
-    }
+      }}
+    }}
 
     // ── Render: Failure Category Chart ─────────────────────────
-    function renderFailureChart(categories) {
+    function renderFailureChart(categories) {{
       const el = document.getElementById('failure-chart');
-      if (!categories || Object.keys(categories).length === 0) {
+      if (!categories || Object.keys(categories).length === 0) {{
         el.innerHTML = '<div class="chart-empty">No failures recorded.</div>';
         return;
-      }
+      }}
       const entries = Object.entries(categories).sort((a, b) => b[1] - a[1]);
       const maxVal  = entries[0][1] || 1;
 
       let html = '';
-      for (const [cat, count] of entries) {
+      for (const [cat, count] of entries) {{
         const widthPct = ((count / maxVal) * 100).toFixed(1);
         html += '<div class="chart-row">' +
           '<span class="chart-label" title="' + esc(cat) + '">' + esc(cat) + '</span>' +
@@ -709,38 +924,38 @@ def _build_js() -> str:
           '</div>' +
           '<span class="chart-count">' + count + '</span>' +
         '</div>';
-      }
+      }}
       el.innerHTML = html;
-    }
+    }}
 
     // ── Render: Recent Failures Table ──────────────────────────
-    async function renderRecentFailures(data) {
+    async function renderRecentFailures(data) {{
       const container = document.getElementById('failures-table-container');
       let records = [];
-      try {
-        const resp = await fetch('failures.jsonl?' + Date.now());
-        if (resp.ok) {
+      try {{
+        const resp = await fetch('progress/failures.jsonl?' + Date.now());
+        if (resp.ok) {{
           const text = await resp.text();
           const lines = text.trim().split('\\n').filter(Boolean);
-          for (const line of lines) {
-            try { records.push(JSON.parse(line)); } catch(e) { /* skip malformed */ }
-          }
-        }
-      } catch(e) { /* no failures file yet */ }
+          for (const line of lines) {{
+            try {{ records.push(JSON.parse(line)); }} catch(e) {{ /* skip malformed */ }}
+          }}
+        }}
+      }} catch(e) {{ /* no failures file yet */ }}
 
       // Show only last 50
       const recent = records.slice(-50).reverse();
 
-      if (recent.length === 0) {
+      if (recent.length === 0) {{
         container.innerHTML = '<div class="failures-empty">No failures recorded.</div>';
         return;
-      }
+      }}
 
       let html = '<table class="failures-table"><thead><tr>' +
         '<th>Time</th><th>Dataset</th><th>Image</th><th>Error Type</th><th>Details</th>' +
         '</tr></thead><tbody>';
 
-      for (let i = 0; i < recent.length; i++) {
+      for (let i = 0; i < recent.length; i++) {{
         const r = recent[i];
         const msgId = 'fail-msg-' + i;
         const hasMsg = r.error_message || r.traceback;
@@ -754,30 +969,30 @@ def _build_js() -> str:
           '<td class="col-type">' + esc(r.error_type || '') + '</td>' +
           '<td>' +
             (hasMsg
-              ? '<span class="failure-msg-toggle" onclick="toggleFailMsg(\'' + msgId + '\')">show details</span>' +
+              ? '<span class="failure-msg-toggle" onclick="toggleFailMsg(\\'' + msgId + '\\')">show details</span>' +
                 '<div class="failure-msg-body" id="' + msgId + '">' + esc(msgContent) + '</div>'
               : '<span style="color:var(--text-muted)">-</span>') +
           '</td>' +
         '</tr>';
-      }
+      }}
       html += '</tbody></table>';
       container.innerHTML = html;
-    }
+    }}
 
-    function toggleFailMsg(id) {
+    function toggleFailMsg(id) {{
       const el = document.getElementById(id);
       if (!el) return;
       el.classList.toggle('open');
       const toggle = el.previousElementSibling;
-      if (toggle) {
+      if (toggle) {{
         toggle.textContent = el.classList.contains('open') ? 'hide details' : 'show details';
-      }
-    }
+      }}
+    }}
 
     // ── Main Refresh Loop ──────────────────────────────────────
-    async function refresh() {
-      try {
-        const resp = await fetch('manifest.json?' + Date.now());
+    async function refresh() {{
+      try {{
+        const resp = await fetch('progress/manifest.json?' + Date.now());
         if (!resp.ok) return;
         const data = await resp.json();
 
@@ -791,30 +1006,44 @@ def _build_js() -> str:
         document.getElementById('last-updated').textContent =
           'Updated ' + new Date().toLocaleTimeString();
 
-        if (data.is_complete) {
+        if (data.is_complete) {{
           stopRefresh();
           showComplete();
-        }
-      } catch(e) {
+        }}
+      }} catch(e) {{
         // manifest not available yet — keep trying
-      }
-    }
+      }}
+    }}
 
-    function stopRefresh() {
-      if (refreshTimer) {
+    function stopRefresh() {{
+      if (refreshTimer) {{
         clearInterval(refreshTimer);
         refreshTimer = null;
-      }
-    }
+      }}
+    }}
 
-    function showComplete() {
+    function showComplete() {{
       const badge = document.getElementById('status-badge');
       badge.className = 'status-badge status-complete';
       badge.innerHTML = '&#10003; Complete';
       const fill = document.getElementById('progress-fill');
       fill.classList.add('complete');
-    }
+    }}
 
     // ── Boot ───────────────────────────────────────────────────
     refresh();
-    refreshTimer = setInterval(refresh, REFRESH_MS);"""
+    refreshTimer = setInterval(refresh, REFRESH_MS);
+
+    // Show Download tab if SLURM mode
+    if (EXECUTION_MODE === 'slurm') {{
+      const dlBtn = document.getElementById('download-tab-btn');
+      if (dlBtn) dlBtn.style.display = '';
+    }}
+
+    // Auto-populate URL from window.location
+    const detected = getBaseUrl();
+    if (detected) {{
+      document.getElementById('dl-url').value = detected;
+      document.getElementById('dl-cutdirs').value = getCutDirs();
+    }}
+    updateCommands();"""

@@ -170,7 +170,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 execution_mode="local",
                 start_time=start_time.isoformat(timespec="milliseconds"),
             )
-            generate_dashboard(progress_dir)
+            generate_dashboard(output_dir, execution_mode="local")
         except Exception:
             logger.debug("Failed to generate progress dashboard", exc_info=True)
 
@@ -531,10 +531,10 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             )
 
         # Generate dashboard HTML
-        generate_dashboard(progress_dir)
+        generate_dashboard(output_dir, execution_mode="slurm")
         console.print(
             f"[green]✓[/green] Progress dashboard: "
-            f"[bold]{progress_dir / 'dashboard.html'}[/bold]\n"
+            f"[bold]{output_dir / 'dashboard.html'}[/bold]\n"
         )
 
         # Wait if requested
@@ -545,7 +545,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             final_results = self._monitor_progress(output_dir, datasets)
         else:
             click.echo("\nJobs submitted. Monitor progress with:")
-            click.echo(f"  Open: {progress_dir / 'dashboard.html'}")
+            click.echo(f"  Open: {output_dir / 'dashboard.html'}")
             click.echo("  squeue -u $USER --array")
             click.echo(f"  tail -f {output_dir}/processing_events.log")
             final_results = None

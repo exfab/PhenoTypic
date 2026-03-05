@@ -488,24 +488,91 @@ class TestSacctParsing:
 
 class TestDashboard:
 
-    def test_generates_html(self, progress_dir):
-        generate_dashboard(progress_dir)
-        dashboard = progress_dir / "dashboard.html"
+    def test_generates_html(self, tmp_dir):
+        generate_dashboard(tmp_dir)
+        dashboard = tmp_dir / "dashboard.html"
         assert dashboard.exists()
 
-    def test_html_contains_key_elements(self, progress_dir):
-        generate_dashboard(progress_dir)
-        html = (progress_dir / "dashboard.html").read_text()
+    def test_html_contains_key_elements(self, tmp_dir):
+        generate_dashboard(tmp_dir)
+        html = (tmp_dir / "dashboard.html").read_text()
         assert "<!DOCTYPE html>" in html
         assert "PhenoTypic" in html
-        assert "manifest.json" in html
-        assert "failures.jsonl" in html
+        assert "progress/manifest.json" in html
+        assert "progress/failures.jsonl" in html
         assert "setInterval" in html
 
     def test_creates_dir_if_missing(self, tmp_dir):
-        new_dir = tmp_dir / "new_progress"
+        new_dir = tmp_dir / "new_output"
         generate_dashboard(new_dir)
         assert (new_dir / "dashboard.html").exists()
+
+    def test_contains_tab_structure(self, tmp_dir):
+        generate_dashboard(tmp_dir)
+        html = (tmp_dir / "dashboard.html").read_text()
+        assert "tab-progress" in html
+        assert "tab-readme" in html
+        assert "tab-download" in html
+        assert "switchTab" in html
+
+    def test_contains_marked_js(self, tmp_dir):
+        generate_dashboard(tmp_dir)
+        html = (tmp_dir / "dashboard.html").read_text()
+        assert "marked" in html
+
+    def test_local_mode_hides_download_tab(self, tmp_dir):
+        generate_dashboard(tmp_dir, execution_mode="local")
+        html = (tmp_dir / "dashboard.html").read_text()
+        assert 'EXECUTION_MODE = "local"' in html
+
+    def test_slurm_mode_enables_download_tab(self, tmp_dir):
+        generate_dashboard(tmp_dir, execution_mode="slurm")
+        html = (tmp_dir / "dashboard.html").read_text()
+        assert 'EXECUTION_MODE = "slurm"' in html
+
+    def test_readme_fetch_path(self, tmp_dir):
+        generate_dashboard(tmp_dir)
+        html = (tmp_dir / "dashboard.html").read_text()
+        assert "README.md" in html
+
+    def test_download_tab_wget_content(self, tmp_dir):
+        generate_dashboard(tmp_dir, execution_mode="slurm")
+        html = (tmp_dir / "dashboard.html").read_text()
+        assert "wget" in html
+        assert "YOUR_SERVER_URL" in html
+        assert "--cut-dirs" in html
+        assert "--user=" in html
+
+    def test_download_url_autodetect_js(self, tmp_dir):
+        generate_dashboard(tmp_dir)
+        html = (tmp_dir / "dashboard.html").read_text()
+        assert "getBaseUrl" in html
+        assert "window.location" in html
+
+
+# ──────────────────────────────────────────────────────────────────────
+# README Generator ASCII Tree
+# ──────────────────────────────────────────────────────────────────────
+
+class TestREADMEGeneratorASCII:
+
+    def test_no_unicode_box_drawing(self):
+        from phenotypic._cli._cli_readme_generator import READMEGenerator
+
+        config = MagicMock()
+        config.image_type = "Image"
+        pipeline = MagicMock()
+        pipeline._meas = {}
+
+        gen = READMEGenerator(config, pipeline)
+        ds = [MagicMock()]
+        ds[0].name = "plate1"
+        tree = gen._generate_output_structure(ds)
+        assert "\u251c" not in tree  # ├
+        assert "\u2514" not in tree  # └
+        assert "\u2502" not in tree  # │
+        assert "+--" in tree
+        assert "dashboard.html" in tree
 
 
 # ──────────────────────────────────────────────────────────────────────

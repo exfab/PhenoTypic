@@ -79,24 +79,25 @@ Image Type: {self.config.image_type}{grid_info}"""
 
     def _generate_output_structure(self, datasets: List[Dataset]) -> str:
         """Generate output structure documentation."""
-        dataset_list = "\n".join(f"│   ├── {d.name}/" for d in datasets[:5])
+        dataset_list = "\n".join(f"|   +-- {d.name}/" for d in datasets[:5])
         if len(datasets) > 5:
-            dataset_list += f"\n│   └── ... ({len(datasets) - 5} more datasets)"
+            dataset_list += f"\n|   +-- ... ({len(datasets) - 5} more datasets)"
 
         return f"""## Output Structure
 
 ```
 output_folder/
-├── results/                      # All dataset results
++-- results/                      # All dataset results
 {dataset_list}
-│       ├── measurements/         # Per-image CSV measurement files
-│       └── overlays/             # Detection overlay visualizations
-├── master_measurements.csv       # Aggregated measurements (all datasets)
-├── processing_state.json         # Resume/state tracking
-├── processing_report.html        # HTML summary report
-├── logs/                         # Execution logs
-│   └── slurm/                    # SLURM job logs (if applicable)
-└── README.md                     # This file
+|       +-- measurements/         # Per-image CSV measurement files
+|       +-- overlays/             # Detection overlay visualizations
++-- dashboard.html                # Live processing dashboard
++-- master_measurements.csv       # Aggregated measurements (all datasets)
++-- processing_state.json         # Resume/state tracking
++-- processing_report.html        # HTML summary report
++-- logs/                         # Execution logs
+|   +-- slurm/                    # SLURM job logs (if applicable)
++-- README.md                     # This file
 ```"""
 
     def _generate_layers_section(self) -> str:
