@@ -549,6 +549,14 @@ class TestDashboard:
         assert "getBaseUrl" in html
         assert "window.location" in html
 
+    def test_contains_fetch_error_handling(self, tmp_dir):
+        generate_dashboard(tmp_dir)
+        html = (tmp_dir / "dashboard.html").read_text()
+        assert "status-error" in html
+        assert "showFetchError" in html
+        assert "clearFetchError" in html
+        assert "fetchErrors" in html
+
 
 # ──────────────────────────────────────────────────────────────────────
 # README Generator ASCII Tree

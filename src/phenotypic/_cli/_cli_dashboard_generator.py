@@ -140,6 +140,10 @@ def _build_css() -> str:
       background: var(--blue-bg);
       color: var(--blue);
     }
+    .status-error {
+      background: var(--red-bg);
+      color: var(--red);
+    }
     .pulse-dot {
       width: 8px; height: 8px;
       border-radius: 50%;
@@ -698,6 +702,7 @@ def _build_js(execution_mode: str) -> str:
     const EXECUTION_MODE = "{execution_mode}";
     let refreshTimer = null;
     const REFRESH_MS = 10000;
+    let fetchErrors = 0;
 
     // ── Helpers ────────────────────────────────────────────────
     function esc(s) {{
@@ -989,11 +994,47 @@ def _build_js(execution_mode: str) -> str:
       }}
     }}
 
+    // ── Fetch Error Display ────────────────────────────────────
+    function showFetchError(reason) {{
+      const badge = document.getElementById('status-badge');
+      badge.className = 'status-badge status-error';
+      badge.innerHTML = '&#9888; Data unavailable';
+      let hint = document.getElementById('fetch-error-hint');
+      if (!hint) {{
+        hint = document.createElement('div');
+        hint.id = 'fetch-error-hint';
+        hint.style.cssText = 'padding:12px 16px;background:var(--red-bg);color:var(--red);' +
+          'border-radius:8px;margin-bottom:16px;font-size:0.85rem';
+        const container = document.querySelector('.tab-content.active');
+        if (container) container.prepend(hint);
+      }}
+      hint.innerHTML = 'Cannot load <code>progress/manifest.json</code> (' + esc(String(reason)) +
+        '). Verify the progress directory exists and is accessible via this web server.' +
+        '<br><small style="opacity:0.7">Retrying every ' + (REFRESH_MS/1000) + 's\u2026</small>';
+    }}
+
+    function clearFetchError() {{
+      const badge = document.getElementById('status-badge');
+      if (badge.classList.contains('status-error')) {{
+        badge.className = 'status-badge status-live';
+        badge.innerHTML = '<span class="pulse-dot"></span> Live';
+      }}
+      const hint = document.getElementById('fetch-error-hint');
+      if (hint) hint.remove();
+    }}
+
     // ── Main Refresh Loop ──────────────────────────────────────
     async function refresh() {{
       try {{
         const resp = await fetch('progress/manifest.json?' + Date.now());
-        if (!resp.ok) return;
+        if (!resp.ok) {{
+          fetchErrors++;
+          console.warn('Dashboard: manifest fetch HTTP ' + resp.status);
+          if (fetchErrors >= 3) showFetchError('HTTP ' + resp.status);
+          return;
+        }}
+        fetchErrors = 0;
+        clearFetchError();
         const data = await resp.json();
 
         renderSummary(data);
@@ -1011,7 +1052,9 @@ def _build_js(execution_mode: str) -> str:
           showComplete();
         }}
       }} catch(e) {{
-        // manifest not available yet — keep trying
+        fetchErrors++;
+        console.warn('Dashboard: fetch error:', e.message || e);
+        if (fetchErrors >= 3) showFetchError(e.message || 'network error');
       }}
     }}
 

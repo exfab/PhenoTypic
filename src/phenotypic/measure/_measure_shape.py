@@ -193,10 +193,10 @@ class MeasureShape(MeasureFeatures):
             measurements[str(SHAPE.EXTENT)][idx] = current_props.extent
             measurements[str(SHAPE.BBOX_AREA)][idx] = current_props.area_bbox
             measurements[str(SHAPE.MAJOR_AXIS_LENGTH)][idx] = (
-                current_props.major_axis_length
+                current_props.axis_major_length
             )
             measurements[str(SHAPE.MINOR_AXIS_LENGTH)][idx] = (
-                current_props.minor_axis_length
+                current_props.axis_minor_length
             )
             measurements[str(SHAPE.ORIENTATION)][idx] = current_props.orientation
 
