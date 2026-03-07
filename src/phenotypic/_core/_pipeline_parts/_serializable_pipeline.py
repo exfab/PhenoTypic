@@ -90,6 +90,7 @@ class SerializablePipeline(NapariPipelineViewer):
             "reset"    : self._reset,
             "pipe_cfgs": self._serialize_operations(self._ops),
             "meas"     : self._serialize_operations(self._meas),
+            "post"     : self._serialize_operations(self._post),
         }
 
         return json.dumps(config, indent=2)
@@ -164,9 +165,10 @@ class SerializablePipeline(NapariPipelineViewer):
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid JSON data: {e}")
 
-        # Deserialize operations and measurements
+        # Deserialize operations, measurements, and post-measurement transforms
         ops = cls._deserialize_operations(config.get("pipe_cfgs", {}))
         meas = cls._deserialize_operations(config.get("meas", {}))
+        post = cls._deserialize_operations(config.get("post", {}))
         name = config.get("name", None)
         desc = config.get("desc", None)
         reset = config.get("reset", False)  # Default False for backwards compatibility
@@ -183,8 +185,8 @@ class SerializablePipeline(NapariPipelineViewer):
             )
 
         # Create and return new pipeline instance
-        return cls(ops=ops, meas=meas, benchmark=benchmark, verbose=verbose, name=name,
-                   desc=desc, reset=reset)
+        return cls(ops=ops, meas=meas, post=post, benchmark=benchmark, verbose=verbose,
+                   name=name, desc=desc, reset=reset)
 
     @staticmethod
     def _serialize_operations(
@@ -620,6 +622,7 @@ class SerializablePipeline(NapariPipelineViewer):
             "phenotypic.correction",
             "phenotypic.analysis",
             "phenotypic.prefab",
+            "phenotypic.post",
         ]
 
         for module_name in submodules:

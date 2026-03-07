@@ -23,6 +23,7 @@ import time
 import sys
 
 from phenotypic.abc_ import MeasureFeatures, BaseOperation, ImageOperation
+from phenotypic.abc_._post_measurement import PostMeasurement
 from phenotypic.tools_.mixin import LazyWidgetMixin
 
 logger = logging.getLogger("ImagePipeline")
@@ -100,6 +101,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             self,
             ops: List[ImageOperation | ImagePipeline] | Dict[str, ImageOperation | ImagePipeline] | None = None,
             meas: List[MeasureFeatures] | Dict[str, MeasureFeatures] | None = None,
+            post: List[PostMeasurement] | Dict[str, PostMeasurement] | None = None,
             benchmark: bool = False,
             verbose: bool = False,
             name: Optional[str] = None,
@@ -139,6 +141,10 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         self._meas: Dict[str, MeasureFeatures] = {}
         if meas is not None:
             self.set_meas(meas)
+
+        self._post: Dict[str, PostMeasurement] = {}
+        if post is not None:
+            self.set_post(post)
 
         # Store benchmark, verbose, and reset flags
         self._benchmark = benchmark
@@ -239,6 +245,33 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             raise TypeError(
                     f"measurements must be a list or a dictionary, got {type(measurements)}"
             )
+
+    def set_post(
+            self, post: List[PostMeasurement] | Dict[str, PostMeasurement]
+    ):
+        """Set the post-measurement transforms.
+
+        Args:
+            post: A list or dictionary of PostMeasurement objects.
+                If a list, class names are used as keys.
+
+        Raises:
+            TypeError: If post is neither a list nor a dictionary.
+        """
+        if isinstance(post, list):
+            post_names = [
+                x.__class__.__name__
+                for x in post
+                if isinstance(x, PostMeasurement)
+            ]
+            post_names = self.__make_unique(post_names)
+            self._post = {
+                post_names[i]: post[i] for i in range(len(post))
+            }
+        elif isinstance(post, dict):
+            self._post = post
+        else:
+            raise TypeError("post must be a list or dictionary")
 
     def get_ops(self) -> Dict[str, ImageOperation]:
         """Get a copy of the operations dictionary.
@@ -640,7 +673,14 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         if self._benchmark and self._verbose and has_tqdm:
             pbar.close()
 
-        return self._merge_on_object_labels(measurements)
+        df = self._merge_on_object_labels(measurements)
+
+        # Apply post-measurement transforms
+        for key, post_op in self._post.items():
+            logger.debug("Running post-measurement transform: %s", key)
+            df = post_op.apply(df)
+
+        return df
 
     def apply_and_measure(
             self,
