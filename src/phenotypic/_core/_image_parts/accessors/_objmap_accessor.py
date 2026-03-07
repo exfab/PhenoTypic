@@ -381,19 +381,15 @@ class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
             Displaying the object map with various options:
 
             >>> # Basic visualization
-            >>> fig, ax = image.objmap.show()
+            >>> fig = image.objmap.show()
             >>> # Custom figure size and title
-            >>> fig, ax = image.objmap.show(figsize=(10, 8), title='Labeled Objects')
+            >>> fig = image.objmap.show(figsize=(10, 8), title='Labeled Objects')
             >>> # Use a different colormap
-            >>> fig, ax = image.objmap.show(cmap='tab20')
-            >>> # Plot on an existing axes
-            >>> fig, ax = plt.subplots(1, 2, figsize=(12, 5))
-            >>> image.objmap.show(ax=ax[0])
-            >>> image.gray.show(ax=ax[1])
+            >>> fig = image.objmap.show(cmap='tab20')
         """
         cmap = plt.get_cmap(cmap)
         cmap.set_bad(color="black")
-        return self._plot(
+        return self._mpl_plot(
                 # Use masked array to make background black
                 arr=np.ma.masked_equal(self._backend.toarray(), value=0),
                 figsize=figsize,

@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 
-
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 from phenotypic._core._image_parts.accessor_abstracts import ImageAccessorBase
 
@@ -33,42 +34,28 @@ class SingleChannelAccessor(ImageAccessorBase, ABC):
             self,
             figsize: tuple[int, int] | None = None,
             title: str | None = None,
-            ax: plt.Axes | None = None,
             cmap: str | None = "gray",
             foreground_only: bool = False,
             *,
-            mpl_settings: dict | None = None,
-    ) -> tuple[plt.Figure, plt.Axes]:
-        """
-        Displays a visual representation of the current object using matplotlib.
-
-        This method generates and displays an image or a plot of the object's data
-        using matplotlib. It provides options to customize the figure size, title,
-        color map, and other visual properties. It also allows focusing on specific
-        foreground elements if desired.
+            plotly_settings: dict | None = None,
+    ) -> go.Figure:
+        """Display the single-channel image data using Plotly.
 
         Args:
-            figsize (tuple[int, int] | None): A tuple specifying the size of the
-                matplotlib figure in inches (width, height). If None, default
-                settings are used.
-            title (str | None): The title of the plot. If None, no title is displayed.
-            ax (plt.Axes | None): A matplotlib Axes object on which the plot will be
-                drawn. If None, a new Axes object is created.
-            cmap (str | None): The name of the colormap to use. Defaults to 'gray'.
-            foreground_only (bool): A flag indicating whether to display only the
-                foreground elements of the data. Defaults to False.
-            mpl_settings (dict | None): A dictionary of matplotlib settings to apply
-                to the figure or Axes. If None, no additional settings are applied.
+            figsize: Figure size in inches (width, height). If None,
+                auto-calculated from array aspect ratio.
+            title: Title of the plot. If None, no title is displayed.
+            cmap: Colormap name. Defaults to ``"gray"``.
+            foreground_only: If True, display only foreground elements.
+            plotly_settings: Additional Plotly layout settings.
 
         Returns:
-            tuple[plt.Figure, plt.Axes]: The matplotlib Figure and Axes objects
-                containing the generated plot.
+            A ``plotly.graph_objects.Figure``.
         """
-        return self._plot(
-                arr=self[:] if not foreground_only else self.foreground(),
-                figsize=figsize,
-                ax=ax,
-                title=title,
-                cmap=cmap,
-                mpl_settings=mpl_settings,
-        )
+        from phenotypic.tools_._plotly_helpers import plotly_imshow
+
+        arr = self[:] if not foreground_only else self.foreground()
+        fig = plotly_imshow(arr=arr, figsize=figsize, title=title, cmap=cmap)
+        if plotly_settings is not None:
+            fig.update_layout(**plotly_settings)
+        return fig

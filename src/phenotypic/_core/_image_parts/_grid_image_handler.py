@@ -326,6 +326,7 @@ class ImageGridHandler(Image):
 
         # Calculate dynamic line width based on image size
         line_width = max(1, int(min(h, w) * self._GRIDLINE_WIDTH_FACTOR))
+        dash_len = max(4, line_width * 6)
 
         # Get grid edges
         col_edges = self.grid.get_col_edges()
@@ -339,25 +340,27 @@ class ImageGridHandler(Image):
         col_min = int(np.clip(col_edges.min(), 0, w - 1))
         col_max = int(np.clip(col_edges.max(), 0, w - 1))
 
-        # Draw vertical lines at column edges
+        # Draw vertical lines at column edges (dashed)
         for x in col_edges:
             x = int(np.clip(x, 0, w - 1))
             for offset in range(-line_width // 2, line_width // 2 + 1):
                 x_off = int(np.clip(x + offset, 0, w - 1))
                 rr, cc = line(row_min, x_off, row_max - 1, x_off)
-                # Clip to valid array bounds
                 valid = (rr >= 0) & (rr < h) & (cc >= 0) & (cc < w)
-                arr[rr[valid], cc[valid]] = gridline_color
+                rr, cc = rr[valid], cc[valid]
+                dash_mask = (rr % (2 * dash_len)) < dash_len
+                arr[rr[dash_mask], cc[dash_mask]] = gridline_color
 
-        # Draw horizontal lines at row edges
+        # Draw horizontal lines at row edges (dashed)
         for y in row_edges:
             y = int(np.clip(y, 0, h - 1))
             for offset in range(-line_width // 2, line_width // 2 + 1):
                 y_off = int(np.clip(y + offset, 0, h - 1))
                 rr, cc = line(y_off, col_min, y_off, col_max - 1)
-                # Clip to valid array bounds
                 valid = (rr >= 0) & (rr < h) & (cc >= 0) & (cc < w)
-                arr[rr[valid], cc[valid]] = gridline_color
+                rr, cc = rr[valid], cc[valid]
+                dash_mask = (cc % (2 * dash_len)) < dash_len
+                arr[rr[dash_mask], cc[dash_mask]] = gridline_color
 
         return arr
 

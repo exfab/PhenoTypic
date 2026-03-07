@@ -297,17 +297,13 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
             Displaying the mask with various options:
 
             >>> # Display with default settings
-            >>> fig, ax = objmask.show()
+            >>> fig = objmask.show()
             >>> # Display with custom size and title
-            >>> fig, ax = objmask.show(figsize=(8, 8), title='Object Mask')
-            >>> # Display on existing axes
-            >>> fig, (ax1, ax2) = plt.subplots(1, 2)
-            >>> objmask.show(ax=ax1, title='Mask')
-            >>> image.gray.show(ax=ax2, title='Original')
+            >>> fig = objmask.show(figsize=(8, 8), title='Object Mask')
         """
         cmap = plt.get_cmap(cmap)
         cmap.set_bad(color="black")
-        return self._plot(
+        return self._mpl_plot(
                 arr=self._subject_arr, figsize=figsize, ax=ax, title=title, cmap=cmap
         )
 

@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import json
 import warnings
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
+import plotly.graph_objects as go
 import skimage as ski
 from PIL import Image as PIL_Image
 from abc import ABC, abstractmethod
@@ -98,51 +100,43 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             self,
             figsize: tuple[int, int] | None = None,
             title: str | None = None,
-            ax: plt.Axes | None = None,
             channel: int | None = None,
             foreground_only: bool = False,
             *,
-            mpl_settings: dict | None = None,
-    ) -> tuple[plt.Figure, plt.Axes]:
-        """
-        Displays the image data, with the option to customize its visualization
-        and plot settings.
+            plotly_settings: dict | None = None,
+    ) -> go.Figure:
+        """Display the multichannel image data using Plotly.
 
         Args:
-            figsize (tuple[int, int] | None): Size of the figure in inches (width, height).
-                If None, a default size is used.
-            title (str | None): Title of the plot. If None, a default title is
+            figsize: Figure size in inches (width, height). If None,
+                auto-calculated from array aspect ratio.
+            title: Title of the plot. If None, a default title is
                 generated based on the image and channel.
-            ax (plt.Axes | None): Matplotlib Axes object. If provided, the image
-                is plotted on this axis. If None, a new axis is created.
-            channel (int | None): Specific channel index to plot. If None, all
-                channels in the image are displayed.
-            foreground_only (bool): If True, only the foreground portion of the
-                image is displayed. If False, the entire image is shown.
-            mpl_settings (dict | None): Optional Matplotlib settings. Allows
-                customization of plot parameters.
+            channel: Specific channel index to plot. If None, all
+                channels are displayed as RGB.
+            foreground_only: If True, only foreground is displayed.
+            plotly_settings: Additional Plotly layout settings.
 
         Returns:
-            tuple[plt.Figure, plt.Axes]: A tuple containing the Matplotlib Figure
-            and Axes objects used for plotting the image.
+            A ``plotly.graph_objects.Figure``.
         """
+        from phenotypic.tools_._plotly_helpers import plotly_imshow
+
         arr = self[:] if not foreground_only else self.foreground()
         if channel is None:
-            return self._plot(
-                    arr=arr, ax=ax, figsize=figsize, title=title,
-                    mpl_settings=mpl_settings
-            )
-
+            fig = plotly_imshow(arr=arr, figsize=figsize, title=title)
         else:
             title = (
                 f"{self._root_image.name} - Channel {channel}"
                 if title is None
                 else f"{title} - Channel {channel}"
             )
-            return self._plot(
+            fig = plotly_imshow(
                     arr=arr[:, :, channel],
-                    ax=ax,
                     figsize=figsize,
                     title=title,
-                    mpl_settings=mpl_settings,
+                    cmap="gray",
             )
+        if plotly_settings is not None:
+            fig.update_layout(**plotly_settings)
+        return fig

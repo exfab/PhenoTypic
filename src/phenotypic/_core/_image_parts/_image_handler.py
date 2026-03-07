@@ -6,8 +6,9 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import numpy as np
+import plotly.graph_objects as go
 import skimage as ski
-import matplotlib.pyplot as plt
+
 from skimage.transform import rotate as skimage_rotate
 import scipy.ndimage as ndimage
 from types import SimpleNamespace
@@ -707,33 +708,26 @@ class ImageHandler(ImageDataManager):
         self._accessors.objmap.reset()
 
     def show(
-            self, ax: plt.Axes = None, figsize: Tuple[int, int] | None = None, **kwargs
-    ) -> (plt.Figure, plt.Axes):
-        """
-        Displays the image data using matplotlib.
+            self, figsize: Tuple[int, int] | None = None, **kwargs
+    ) -> go.Figure:
+        """Display the image using Plotly.
 
-        This method renders either the array or gray property of the instance
-        depending on the image format. It either shows the content on the
-        provided matplotlib axes (`ax`) or creates a
-        new figure and axes for the visualization. Additional display-related
-        customization can be passed using keyword arguments.
+        Delegates to ``self.rgb.show()`` for color images or
+        ``self.gray.show()`` for grayscale images.
 
         Args:
-            ax (plt.Axes, optional): The matplotlib Axes object where the image
-                will be displayed. If None, a new Axes object is created.
-            figsize (Tuple[int, int] | None, optional): The size of the resulting
-                figure if no `ax` is provided. Defaults to None.
-            **kwargs: Additional keyword arguments to customize the rendering
-                behavior when showing the image.
+            figsize: Figure size in inches (width, height). If None,
+                auto-calculated from array aspect ratio.
+            **kwargs: Additional keyword arguments passed to the
+                accessor's ``show()`` method.
 
         Returns:
-            Tuple[plt.Figure, plt.Axes]: A tuple consisting of the matplotlib
-                Figure and Axes that contain the rendered content.
+            A ``plotly.graph_objects.Figure``.
         """
         if not self.rgb.isempty():
-            return self.rgb.show(ax=ax, figsize=figsize, **kwargs)
+            return self.rgb.show(figsize=figsize, **kwargs)
         else:
-            return self.gray.show(ax=ax, figsize=figsize, **kwargs)
+            return self.gray.show(figsize=figsize, **kwargs)
 
     def rotate(
             self,

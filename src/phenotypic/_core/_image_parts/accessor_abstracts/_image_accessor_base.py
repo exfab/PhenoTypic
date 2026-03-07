@@ -20,6 +20,8 @@ import phenotypic
 from phenotypic.tools_.constants_ import IO, METADATA
 from phenotypic.tools_.funcs_ import normalize_rgb_bitdepth
 
+import plotly.graph_objects as go
+
 if TYPE_CHECKING:
     import napari
     from phenotypic._core._image import Image
@@ -389,7 +391,7 @@ class ImageAccessorBase(ABC):
             case 2:
                 fig, axes = plt.subplots(nrows=1, ncols=2, figsize=figsize)
                 axes = axes.ravel()
-                axes[0] = self._plot(
+                axes[0] = self._mpl_plot(
                     arr=self._subject_arr,
                     figsize=figsize,
                     title=self._root_image.name,
@@ -408,7 +410,7 @@ class ImageAccessorBase(ABC):
 
                 for idx, ax in enumerate(axes.flat):
                     if idx == 0:
-                        self._plot(
+                        self._mpl_plot(
                             arr=self._subject_arr[:],
                             figsize=figsize,
                             title=self._root_image.name,
@@ -431,7 +433,7 @@ class ImageAccessorBase(ABC):
                 )
         return fig, axes
 
-    def _plot(
+    def _mpl_plot(
         self,
         arr: np.ndarray,
         figsize: Tuple[int, int] | None = None,
@@ -461,21 +463,8 @@ class ImageAccessorBase(ABC):
 
         """
         if figsize is None:
-            height, width = arr.shape[:2]
-            aspect_ratio = width / height
-
-            best_figsize = (6, 6)
-            best_error = float("inf")
-
-            for h in range(6, 31):
-                w = round(h * aspect_ratio)
-                w = max(6, min(30, w))
-                error = abs(w / h - aspect_ratio)
-                if error < best_error or (error == best_error and w * h < best_figsize[0] * best_figsize[1]):
-                    best_error = error
-                    best_figsize = (w, h)
-
-            figsize = best_figsize
+            from phenotypic.tools_._plotly_helpers import _auto_figsize
+            figsize = _auto_figsize(arr)
 
         fig, ax = (ax.get_figure(), ax) if ax else plt.subplots(figsize=figsize)
 
@@ -594,58 +583,42 @@ class ImageAccessorBase(ABC):
         self,
         arr: np.ndarray,
         objmap: np.ndarray,
-        figsize: (int, int) = (8, 6),
+        figsize: tuple[int, int] | None = None,
         title: str | bool | None = None,
-        cmap: str = "gray",
-        ax: plt.Axes = None,
         *,
         overlay_settings: dict | None = None,
-        mpl_settings: dict | None = None,
-    ) -> (plt.Figure, plt.Axes):
-        """
-        Plots an array with optional object map overlay and customization options.
-
-        Note:
-            - If ax is None, a new figure and axes are created.
+        plotly_settings: dict | None = None,
+    ) -> go.Figure:
+        """Plot an array with object map overlay using Plotly.
 
         Args:
-            arr (np.ndarray): The primary array to be displayed as an image.
-            objmap (np.ndarray, optional): An array containing labels for an object map to
-                overlay on top of the image. Defaults to None.
-            figsize (tuple[int, int], optional): The size of the figure as a tuple of
-                (width, height). Defaults to (8, 6).
-            title (str, optional): Title of the plot to be displayed. If not provided,
-                defaults to the name of the self.image.
-            cmap (str, optional): Colormap to apply to the image. Defaults to 'gray'. Only used if arr arr is 2D.
-            ax (plt.Axes, optional): An existing Matplotlib Axes instance for rendering
-                the image. If None, a new figure and axes are created. Defaults to None.
-            overlay_settings (dict | None, optional): Parameters passed to the
-                `skimage.color.label2rgb` function for overlay customization.
-                Defaults to None.
-            mpl_settings (dict | None, optional): Additional parameters for the
-                `ax.imshow` Matplotlib function to control image rendering.
-                Defaults to None.
+            arr: The primary array to be displayed as an image.
+            objmap: An array containing labels for an object map to
+                overlay on top of the image.
+            figsize: Figure size as (width, height) in inches. If None,
+                auto-calculated from array aspect ratio.
+            title: Title of the plot. If None, defaults to the parent
+                image name.
+            overlay_settings: Parameters passed to
+                ``skimage.color.label2rgb`` for overlay customization.
+            plotly_settings: Additional Plotly layout settings.
 
         Returns:
-            tuple[plt.Figure, plt.Axes]: The Matplotlib Figure and Axes objects used for
-            the display. If an existing Axes is provided, its corresponding Figure is returned.
+            A ``plotly.graph_objects.Figure`` with the overlay rendered.
         """
-        overlay_settings = overlay_settings if overlay_settings else {}
-        overlay_alpha = overlay_settings.get("alpha", 0.15)
+        from phenotypic.tools_._plotly_helpers import plotly_imshow
+
+        overlay_settings = dict(overlay_settings) if overlay_settings else {}
+        overlay_alpha = overlay_settings.pop("alpha", 0.15)
         overlay_arr = ski.color.label2rgb(
             label=objmap, image=arr, bg_label=0, alpha=overlay_alpha, **overlay_settings
         )
 
-        fig, ax = self._plot(
-            arr=overlay_arr,
-            figsize=figsize,
-            title=title,
-            cmap=cmap,
-            ax=ax,
-            mpl_settings=mpl_settings,
-        )
+        fig = plotly_imshow(arr=overlay_arr, figsize=figsize, title=title)
+        if plotly_settings is not None:
+            fig.update_layout(**plotly_settings)
 
-        return fig, ax
+        return fig
 
     def show_overlay(
         self,
@@ -653,84 +626,87 @@ class ImageAccessorBase(ABC):
         figsize: tuple[int, int] | None = None,
         title: str | None = None,
         show_labels: bool = False,
-        ax: plt.Axes = None,
         *,
         show_gridlines: bool = True,
         show_section_boxes: bool = True,
         label_settings: None | dict = None,
         overlay_settings: None | dict = None,
-        imshow_settings: None | dict = None,
-    ) -> tuple[plt.Figure, plt.Axes]:
-        """
-        Displays an overlay of the object map on the parent image with optional annotations.
-
-        This method enables visualization by overlaying object regions on the parent image. It
-                provides options for customization, including the ability to show_labels specific objects
-        and adjust visual styles like figure size, colors, and annotation properties.
+        plotly_settings: None | dict = None,
+    ) -> go.Figure:
+        """Display an overlay of the object map on the parent image using Plotly.
 
         Args:
-            object_label (None | int): Specific object label to be highlighted. If None,
+            object_label: Specific object label to highlight. If None,
                 all objects are displayed.
-            figsize (tuple[int, int]): Size of the figure in inches (width, height).
-            title (None | str): Title for the plot. If None, the parent image's name
+            figsize: Figure size in inches (width, height). If None,
+                auto-calculated from array aspect ratio.
+            title: Title for the plot. If None, the parent image's name
                 is used.
-            show_labels (bool): If True, displays annotations for object labels on the
-                object centroids.
-            ax (plt.Axes): Optional Matplotlib Axes object. If None, a new Axes is
-                created.
-            show_gridlines: For GridImage only. If True, draws cyan dashed
-                gridlines at row/column boundaries and adds secondary axes
-                showing grid row/column numbers. Ignored for regular Image.
-            show_section_boxes: For GridImage only. If True, draws colored
-                bounding boxes around each grid section. Requires detected
-                objects. Ignored for regular Image.
-            label_settings (None | dict): Additional parameters for customization of the
-                object annotations. Defaults: size=12, color='white', facecolor='red'. Other kwargs
-                are passed to the matplotlib.axes.text () method.
-            overlay_settings (None | dict): Additional parameters for customization of the
-                overlay.
-            imshow_settings (None|dict): Additional Matplotlib imshow configuration parameters
-                for customization. If None, default Matplotlib settings will apply.
+            show_labels: If True, displays centroid annotations for
+                detected objects.
+            show_gridlines: For GridImage only. If True, draws cyan
+                dashed gridlines at row/column boundaries with labels.
+                Ignored for regular Image.
+            show_section_boxes: For GridImage only. If True, draws
+                colored bounding boxes around each grid section.
+                Ignored for regular Image.
+            label_settings: Settings for object label annotations.
+                Defaults: size=10, color='white', bgcolor='black'.
+            overlay_settings: Parameters passed to
+                ``skimage.color.label2rgb`` for overlay customization.
+            plotly_settings: Additional Plotly layout settings.
 
         Returns:
-            tuple[plt.Figure, plt.Axes]: Matplotlib Figure and Axes objects containing
-            the generated plot.
-
+            A ``plotly.graph_objects.Figure`` with the overlay rendered.
         """
+        from phenotypic.tools_._plotly_helpers import (
+            add_plotly_gridlines,
+            add_plotly_obj_labels,
+            add_plotly_section_boxes,
+        )
+
         objmap = self._root_image.objmap[:]
         if object_label is not None:
             objmap[objmap != object_label] = 0
         if label_settings is None:
             label_settings = {}
 
-        fig, ax = self._plot_overlay(
+        fig = self._plot_overlay(
             arr=self._subject_arr,
             objmap=objmap,
-            ax=ax,
             figsize=figsize,
             title=title,
-            mpl_settings=imshow_settings,
             overlay_settings=overlay_settings,
+            plotly_settings=plotly_settings,
         )
 
         if show_labels:
-            ax = self._plot_obj_labels(
-                ax=ax,
-                color=label_settings.get("color", "white"),
-                size=label_settings.get("size", 12),
-                facecolor=label_settings.get("facecolor", "red"),
+            add_plotly_obj_labels(
+                fig=fig,
+                root_image=self._root_image,
                 object_label=object_label,
+                color=label_settings.get("color", "white"),
+                size=label_settings.get("size", 10),
+                bgcolor=label_settings.get("bgcolor", "black"),
             )
 
         # Grid-specific features (duck typing check)
         is_grid_image = hasattr(self._root_image, 'grid_finder')
         if is_grid_image:
             if show_gridlines:
-                self._add_gridlines(ax)
+                col_edges = self._root_image.grid.get_col_edges()
+                row_edges = self._root_image.grid.get_row_edges()
+                add_plotly_gridlines(
+                    fig=fig,
+                    col_edges=col_edges,
+                    row_edges=row_edges,
+                    ncols=self._root_image.ncols,
+                    nrows=self._root_image.nrows,
+                )
             if show_section_boxes and self._root_image.num_objects > 0:
-                self._add_section_boxes(ax)
+                add_plotly_section_boxes(fig=fig, root_image=self._root_image)
 
-        return fig, ax
+        return fig
 
     def _add_gridlines(self, ax: plt.Axes) -> None:
         """Add grid lines and secondary axes for GridImage.

@@ -29,7 +29,7 @@ class Grayscale(SingleChannelAccessor):
 
         >>> img = Image("path/to/image.png")
         >>> gray_array = img.gray[:]
-        >>> fig, ax = img.gray.show()
+        >>> fig = img.gray.show()
 
         Modify grayscale data with validation:
 
@@ -39,7 +39,7 @@ class Grayscale(SingleChannelAccessor):
         Visualize histogram and overlay:
 
         >>> fig, axes = img.gray.histogram()
-        >>> fig, ax = img.plot.overlay(show_labels=True)
+        >>> fig = img.plot.overlay(show_labels=True)
     """
 
     @property

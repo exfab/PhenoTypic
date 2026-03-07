@@ -46,7 +46,7 @@ class ImageRGB(MultiChannelAccessor):
         >>> # Modify a region
         >>> rgb_accessor[10:20, 10:20] = [255, 0, 0]
         >>> # Display the image
-        >>> fig, ax = rgb_accessor.show()
+        >>> fig = rgb_accessor.show()
     """
 
     @property

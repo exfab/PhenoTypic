@@ -86,17 +86,29 @@ class AllDataPlotter(BasePlotter):
             fig, axes = plt.subplots(nrows=2, ncols=2, figsize=figsize)
             idxer_helper = 0
             ax = axes.ravel()
-            self._root_image.rgb.show(ax=ax[0], **kwargs)
+            self._root_image.rgb._mpl_plot(
+                    arr=self._root_image.rgb[:], ax=ax[0], **kwargs)
 
-        self._root_image.gray.show(ax=ax[1 - idxer_helper], **kwargs)
-        self._root_image.detect_mat.show(ax=ax[2 - idxer_helper], **kwargs)
+        self._root_image.gray._mpl_plot(
+                arr=self._root_image.gray[:], ax=ax[1 - idxer_helper], **kwargs)
+        self._root_image.detect_mat._mpl_plot(
+                arr=self._root_image.detect_mat[:], ax=ax[2 - idxer_helper], **kwargs)
 
         match mode:
             case "overlay":
-                # Use the root image's plot accessor to call overlay
-                self._root_image.plot.overlay(ax=ax[3 - idxer_helper], **kwargs)
+                import skimage as ski
+                base = (self._root_image.rgb[:]
+                        if not self._root_image.rgb.isempty()
+                        else self._root_image.gray[:])
+                overlay_arr = ski.color.label2rgb(
+                        label=self._root_image.objmap[:], image=base,
+                        bg_label=0, alpha=0.15)
+                self._root_image.rgb._mpl_plot(
+                        arr=overlay_arr, ax=ax[3 - idxer_helper], **kwargs)
             case "objmap":
-                self._root_image.objmap.show(ax=ax[3 - idxer_helper], **kwargs)
+                self._root_image.objmap._mpl_plot(
+                        arr=np.ma.masked_equal(self._root_image.objmap[:], value=0),
+                        ax=ax[3 - idxer_helper], **kwargs)
 
         return fig, axes
 

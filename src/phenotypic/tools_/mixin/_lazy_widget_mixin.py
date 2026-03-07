@@ -626,8 +626,6 @@ class LazyWidgetMixin:
             setattr(self, param_name, change["new"])
 
     def _on_update_view_click(self, b):
-        import matplotlib.pyplot as plt
-
         if self._output_widget is None or self._image_ref is None:
             return
 
@@ -662,22 +660,24 @@ class LazyWidgetMixin:
                     view = self._view_dropdown.value
 
                     if view == "overlay":
-                        img_copy.plot.overlay()
+                        fig = img_copy.plot.overlay()
+                        fig.show()
                     elif view == "rgb":
                         if not img_copy.rgb.isempty():
-                            img_copy.rgb.show()
+                            fig = img_copy.rgb.show()
+                            fig.show()
                         else:
                             print("No RGB data available.")
                     elif view == "gray":
-                        img_copy.gray.show()
+                        fig = img_copy.gray.show()
+                        fig.show()
                     elif view == "detect_mat":
-                        img_copy.detect_mat.show()
-                    elif view == "objmap":
-                        img_copy.objmap.show()
-                    elif view == "objmask":
-                        img_copy.objmask.show()
-
-                    plt.show()
+                        fig = img_copy.detect_mat.show()
+                        fig.show()
+                    elif view in ("objmap", "objmask"):
+                        import matplotlib.pyplot as _plt
+                        getattr(img_copy, view).show()
+                        _plt.show()
 
                 except Exception as e:
                     print(f"Error during visualization: {e}")
