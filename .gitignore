@@ -49,6 +49,7 @@ debug/*.log
 *.h5
 .run/
 *.zip
+tmp/
 
 # Backup files
 **/*.$*.bkp

@@ -90,7 +90,7 @@ class MeasureGridSpatial(GridMeasureFeatures):
         >>> measurer = MeasureGridSpatial()
         >>> spatial_df = measurer.measure(grid_image)
         >>> # Find colonies with close left neighbors (potential interaction)
-        >>> close_pairs = spatial_df[spatial_df['GridSpatial_LeftDistance'] < 10]  # doctest: +SKIP
+        >>> close_pairs = spatial_df[ spatial_df['GridSpatial_LeftDistance'] < 10]  # doctest: +SKIP
         >>> print(f"Closely spaced horizontal pairs: {len(close_pairs)}")  # doctest: +SKIP
     """
 

@@ -99,6 +99,7 @@ Only `__init__.py` exports are public API.
 - [src/phenotypic/settings_/CLAUDE.md](src/phenotypic/settings_/CLAUDE.md) — global config
 - [src/phenotypic/enhance/CLAUDE.md](src/phenotypic/enhance/CLAUDE.md) — enhancer conventions
 - [src/phenotypic/sweep/CLAUDE.md](src/phenotypic/sweep/CLAUDE.md) — parameter sweeps
+- [docs/style_guide/dashboards/CLAUDE.md](docs/style_guide/dashboards/CLAUDE.md) — dashboard & plot style guide
 
 ## Key Files
 
