@@ -112,7 +112,25 @@ def sentinel_main(
             is_complete = manifest.get("is_complete", False)
 
         if is_complete:
-            logger.info("All tasks complete — sentinel exiting.")
+            logger.info("All tasks complete — aggregating measurements.")
+            try:
+                from ._cli_output_manager import aggregate_measurements
+
+                master_path = aggregate_measurements(
+                    output_dir=output_dir,
+                    dataset_names=list(datasets_totals.keys()),
+                    include_dataset_column=job_metadata.get(
+                        "include_dataset_column", True
+                    ),
+                )
+                if master_path:
+                    logger.info("Master CSV written: %s", master_path)
+                else:
+                    logger.warning("No measurements found for aggregation.")
+            except Exception:
+                logger.error("Failed to aggregate master CSV", exc_info=True)
+
+            logger.info("Sentinel exiting.")
             return
 
         # Check elapsed time before sleeping

@@ -51,10 +51,6 @@ Examples:
         --slurm slurm_account=proj \
         --wait
 
-    # Save intermediate layers
-    uv run python -m phenotypic pipeline.json ./images \
-        --save-rgb --save-gray --save-objmask
-
     # GridImage with custom dimensions
     uv run python -m phenotypic pipeline.json ./plates \
         --image-type GridImage --nrows 16 --ncols 24
@@ -398,29 +394,6 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
     table.add_row("Datasets", str(len(datasets)))
     table.add_row("Total Images", str(total_images))
 
-    # Optional layers
-    layers = []
-    if config.save_rgb:
-        layers.append("RGB")
-    if config.save_gray:
-        layers.append("Gray")
-    if config.save_detect_mat:
-        layers.append("Detection Matrix")
-    if config.save_objmask:
-        layers.append("Object Mask")
-    if config.save_objmap:
-        layers.append("Object Map")
-    if config.save_objmap_overlay:
-        layers.append("Object Map Overlay")
-    if config.save_detect_mat_overlay:
-        layers.append("Detection Matrix Overlay")
-    if config.save_objmask_overlay:
-        layers.append("Object Mask Overlay")
-
-    if layers:
-        table.add_row("", "")  # Spacer
-        table.add_row("Saving Layers", ", ".join(layers))
-
     # Processing flags
     if config.sample or config.resume or config.retry_failures:
         table.add_row("", "")  # Spacer
@@ -515,87 +488,10 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
     help="Wait and monitor SLURM jobs (default: return immediately)",
 )
 @click.option(
-    "--save-rgb",
-    is_flag=True,
-    help="Save RGB images to OUTPUT_DIR/rgb/",
-)
-@click.option(
-    "--save-gray",
-    is_flag=True,
-    help="Save grayscale images to OUTPUT_DIR/gray/",
-)
-@click.option(
-    "--save-detect-mat",
-    is_flag=True,
-    help="Save detection matrix to OUTPUT_DIR/detect_mat/",
-)
-@click.option(
-    "--save-objmask",
-    is_flag=True,
-    help="Save object masks to OUTPUT_DIR/objmask/",
-)
-@click.option(
-    "--save-objmap",
-    is_flag=True,
-    help="Save object maps to OUTPUT_DIR/objmap/",
-)
-@click.option(
-    "--save-objmap-overlay",
-    is_flag=True,
-    help="Save object map overlay (colorized labels) to OUTPUT_DIR/objmap_overlay/",
-)
-@click.option(
-    "--save-detect-mat-overlay",
-    is_flag=True,
-    help="Save detection matrix overlay to OUTPUT_DIR/detect_mat_overlay/",
-)
-@click.option(
-    "--save-objmask-overlay",
-    is_flag=True,
-    help="Save object mask overlay to OUTPUT_DIR/objmask_overlay/",
-)
-@click.option(
-    "--rgb-ext",
+    "--ext",
     default="tiff",
     show_default=True,
-    help="File extension for RGB saves",
-)
-@click.option(
-    "--gray-ext",
-    default="tiff",
-    show_default=True,
-    help="File extension for grayscale saves",
-)
-@click.option(
-    "--detect-mat-ext",
-    default="tiff",
-    show_default=True,
-    help="File extension for detection matrix saves",
-)
-@click.option(
-    "--objmask-ext",
-    default="png",
-    show_default=True,
-    help="File extension for object mask saves",
-)
-@click.option(
-    "--objmap-ext",
-    default="png",
-    show_default=True,
-    help="File extension for object map saves",
-)
-@click.option(
-    "--objmap-overlay-ext",
-    default="png",
-    show_default=True,
-    help="File extension for object map overlay saves",
-)
-@click.option(
-    "--overlay-mode",
-    type=click.Choice(["image", "figure"]),
-    default="image",
-    show_default=True,
-    help="Overlay saving mode: 'image' for full-resolution, 'figure' for matplotlib",
+    help="File extension for rgb, gray, detect_mat layers (objmap and overlays always png)",
 )
 @click.option(
     "--overlay-alpha",
@@ -662,21 +558,7 @@ def phenotypic_cli(
     slurm_args: Sequence[str],
     force_local: bool,
     wait: bool,
-    save_rgb: bool,
-    save_gray: bool,
-    save_detect_mat: bool,
-    save_objmask: bool,
-    save_objmap: bool,
-    save_objmap_overlay: bool,
-    save_detect_mat_overlay: bool,
-    save_objmask_overlay: bool,
-    rgb_ext: str,
-    gray_ext: str,
-    detect_mat_ext: str,
-    objmask_ext: str,
-    objmap_ext: str,
-    objmap_overlay_ext: str,
-    overlay_mode: str,
+    ext: str,
     overlay_alpha: float,
     include_dataset_column: bool,
     dry_run: bool,
@@ -697,14 +579,9 @@ def phenotypic_cli(
     try:
         resume_state = None
 
-        # Validate extension arguments
+        # Validate extension argument
         try:
-            rgb_ext = normalize_extension(rgb_ext, ".tiff")
-            gray_ext = normalize_extension(gray_ext, ".tiff")
-            detect_mat_ext = normalize_extension(detect_mat_ext, ".tiff")
-            objmask_ext = normalize_extension(objmask_ext, ".png")
-            objmap_ext = normalize_extension(objmap_ext, ".png")
-            objmap_overlay_ext = normalize_extension(objmap_overlay_ext, ".png")
+            ext = normalize_extension(ext, ".tiff")
         except click.BadParameter as e:
             click.echo(str(e), err=True)
             sys.exit(1)
@@ -800,21 +677,7 @@ def phenotypic_cli(
             slurm_args=slurm_args_dict,
             force_local=force_local,
             wait=wait,
-            save_rgb=save_rgb,
-            save_gray=save_gray,
-            save_detect_mat=save_detect_mat,
-            save_objmask=save_objmask,
-            save_objmap=save_objmap,
-            save_objmap_overlay=save_objmap_overlay,
-            save_detect_mat_overlay=save_detect_mat_overlay,
-            save_objmask_overlay=save_objmask_overlay,
-            rgb_ext=rgb_ext,
-            gray_ext=gray_ext,
-            detect_mat_ext=detect_mat_ext,
-            objmask_ext=objmask_ext,
-            objmap_ext=objmap_ext,
-            objmap_overlay_ext=objmap_overlay_ext,
-            overlay_mode=overlay_mode,
+            ext=ext,
             overlay_alpha=overlay_alpha,
             include_dataset_column=include_dataset_column,
             dry_run=dry_run,
@@ -1043,44 +906,17 @@ def phenotypic_cli(
                 "detect_mode": config.detect_mode,
                 "n_jobs": config.n_jobs,
                 "slurm_args": config.slurm_args,
-                "save_layers": {
-                    "rgb": config.save_rgb,
-                    "gray": config.save_gray,
-                    "detect_mat": config.save_detect_mat,
-                    "objmask": config.save_objmask,
-                    "objmap": config.save_objmap,
-                    "objmap_overlay": config.save_objmap_overlay,
-                    "detect_mat_overlay": config.save_detect_mat_overlay,
-                    "objmask_overlay": config.save_objmask_overlay,
-                },
+                "ext": config.ext,
             }
         else:
             state = create_initial_state(config, datasets, output_dir)
         save_processing_state(state, output_dir)
 
         # Create output manager
-        output_manager = OutputManager(
+        output_manager = OutputManager.from_config(
             base_dir=output_dir,
-            save_layers={
-                "rgb": config.save_rgb,
-                "gray": config.save_gray,
-                "detect_mat": config.save_detect_mat,
-                "objmask": config.save_objmask,
-                "objmap": config.save_objmap,
-                "objmap_overlay": config.save_objmap_overlay,
-                "detect_mat_overlay": config.save_detect_mat_overlay,
-                "objmask_overlay": config.save_objmask_overlay,
-            },
-            extensions={
-                "rgb": config.rgb_ext,
-                "gray": config.gray_ext,
-                "detect_mat": config.detect_mat_ext,
-                "objmask": config.objmask_ext,
-                "objmap": config.objmap_ext,
-                "objmap_overlay": config.objmap_overlay_ext,
-            },
+            ext=config.ext,
             include_dataset_column=config.include_dataset_column,
-            overlay_mode=config.overlay_mode,
             overlay_alpha=config.overlay_alpha,
         )
         output_manager.create_structure(datasets)

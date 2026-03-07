@@ -9,10 +9,12 @@ error logging to prevent silent data loss.
 from __future__ import annotations
 
 import logging
+import os
+import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional, TYPE_CHECKING
+
 import pandas as pd
-import matplotlib.pyplot as plt
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -20,6 +22,105 @@ if TYPE_CHECKING:
 from ._cli_types import Dataset
 
 logger = logging.getLogger(__name__)
+
+
+def aggregate_measurements(
+    output_dir: Path,
+    dataset_names: List[str],
+    include_dataset_column: bool = True,
+) -> Optional[Path]:
+    """Aggregate per-image measurement CSVs into a single master CSV.
+
+    Scans ``results/{name}/measurements/*.csv`` for each dataset, optionally
+    adds a ``Metadata_Dataset`` column, and writes a concatenated
+    ``master_measurements.csv`` to *output_dir* using an atomic write.
+
+    Works without an :class:`OutputManager` instance so it can be called
+    from the SLURM sentinel job.
+
+    Args:
+        output_dir: Base output directory (contains ``results/``).
+        dataset_names: Names of datasets to scan.
+        include_dataset_column: Whether to insert ``Metadata_Dataset``
+            into each CSV that lacks it.
+
+    Returns:
+        Path to ``master_measurements.csv``, or ``None`` if no
+        measurements were found.
+    """
+    results_dir = output_dir / "results"
+    all_measurements: List[pd.DataFrame] = []
+    n_skipped = 0
+
+    for dataset_name in dataset_names:
+        dataset_meas_dir = results_dir / dataset_name / "measurements"
+        if not dataset_meas_dir.is_dir():
+            continue
+
+        for csv_file in sorted(dataset_meas_dir.glob("*.csv")):
+            try:
+                df = pd.read_csv(csv_file)
+                if include_dataset_column and "Metadata_Dataset" not in df.columns:
+                    df = df.copy()
+                    df.insert(0, "Metadata_Dataset", dataset_name)
+                all_measurements.append(df)
+            except Exception as e:
+                logger.warning(
+                    "Failed to read %s: %s: %s",
+                    csv_file,
+                    type(e).__name__,
+                    e,
+                )
+                n_skipped += 1
+
+    if n_skipped:
+        logger.warning(
+            "Skipped %d CSV file(s) due to read errors", n_skipped
+        )
+
+    if not all_measurements:
+        logger.warning("No valid measurements found for aggregation")
+        return None
+
+    try:
+        master_df = pd.concat(all_measurements, axis=0, ignore_index=True)
+    except Exception as e:
+        logger.error("Failed to concatenate measurements: %s", e)
+        return None
+
+    master_path = output_dir / "master_measurements.csv"
+
+    # Atomic write: temp file + os.replace()
+    fd = tempfile.NamedTemporaryFile(
+        mode="w",
+        dir=output_dir,
+        prefix=".master_measurements_",
+        suffix=".tmp",
+        delete=False,
+        encoding="utf-8",
+    )
+    try:
+        master_df.to_csv(fd, index=False)
+        fd.flush()
+        os.fsync(fd.fileno())
+        fd.close()
+        os.replace(fd.name, master_path)
+    except BaseException:
+        fd.close()
+        try:
+            os.unlink(fd.name)
+        except OSError:
+            pass
+        logger.error("Failed to save master CSV")
+        return None
+
+    logger.info(
+        "Aggregated %d CSV files into %s (%d total rows)",
+        len(all_measurements),
+        master_path.name,
+        len(master_df),
+    )
+    return master_path
 
 
 class OutputManager:
@@ -36,7 +137,6 @@ class OutputManager:
         save_layers: Dict[str, bool],
         extensions: Dict[str, str],
         include_dataset_column: bool = True,
-        overlay_mode: str = "image",
         overlay_alpha: float = 0.3,
     ):
         """
@@ -47,14 +147,12 @@ class OutputManager:
             save_layers: Which layers to save {"rgb": True, "gray": False, ...}
             extensions: File extensions for each layer {"rgb": ".tiff", ...}
             include_dataset_column: Whether to add Metadata_Dataset column to CSVs (default: True)
-            overlay_mode: "image" for full-resolution save_overlay(), "figure" for matplotlib (default: "image")
             overlay_alpha: Alpha transparency for label overlay (0.0-1.0, default: 0.3)
         """
         self.base_dir = Path(base_dir)
         self.save_layers = save_layers
         self.extensions = extensions
         self.include_dataset_column = include_dataset_column
-        self.overlay_mode = overlay_mode
         self.overlay_alpha = overlay_alpha
 
         # Results directory for dataset outputs (images, measurements, overlays)
@@ -62,7 +160,31 @@ class OutputManager:
 
         # Logs directory (always at root level)
         self.logs_dir = self.base_dir / "logs"
-    
+
+    @classmethod
+    def from_config(
+        cls,
+        base_dir: Path,
+        ext: str,
+        include_dataset_column: bool = True,
+        overlay_alpha: float = 0.3,
+    ) -> "OutputManager":
+        """Create an OutputManager with the standard fixed layer set.
+
+        Args:
+            base_dir: Base output directory.
+            ext: Extension for rgb/gray/detect_mat (e.g. ".tiff").
+            include_dataset_column: Add Metadata_Dataset to CSVs.
+            overlay_alpha: Alpha for overlay compositing.
+        """
+        return cls(
+            base_dir=base_dir,
+            save_layers={"rgb": True, "gray": True, "detect_mat": True, "objmap": True},
+            extensions={"rgb": ext, "gray": ext, "detect_mat": ext, "objmap": ".png"},
+            include_dataset_column=include_dataset_column,
+            overlay_alpha=overlay_alpha,
+        )
+
     def create_structure(self, datasets: List[Dataset]) -> None:
         """
         Create complete output directory structure.
@@ -158,10 +280,7 @@ class OutputManager:
         """
         Save overlay visualization for a single image.
 
-        Uses the configured overlay_mode:
-        - "image": Full-resolution save using accessor's save_overlay() method
-        - "figure": Matplotlib figure saving (original behavior)
-
+        Uses full-resolution save_overlay() from the image accessor.
         Prefers RGB overlay if available, falls back to grayscale.
 
         Args:
@@ -174,23 +293,16 @@ class OutputManager:
         """
         output_path = self.get_output_path(dataset_name, "overlays", image_stem)
 
-        if self.overlay_mode == "figure":
-            # Use matplotlib (original behavior)
-            fig, ax = image.plot.overlay()
-            fig.savefig(output_path, bbox_inches="tight", dpi=150)
-            plt.close(fig)
+        if not image.rgb.isempty():
+            image.rgb.save_overlay(
+                filepath=output_path,
+                overlay_alpha=self.overlay_alpha
+            )
         else:
-            # Use full-resolution save_overlay (new default)
-            if not image.rgb.isempty():
-                image.rgb.save_overlay(
-                    filepath=output_path,
-                    overlay_alpha=self.overlay_alpha
-                )
-            else:
-                image.gray.save_overlay(
-                    filepath=output_path,
-                    overlay_alpha=self.overlay_alpha
-                )
+            image.gray.save_overlay(
+                filepath=output_path,
+                overlay_alpha=self.overlay_alpha
+            )
 
         return output_path
 
@@ -233,7 +345,7 @@ class OutputManager:
         image_stem: str
     ) -> Dict[str, Path]:
         """
-        Save all requested image layers (rgb, gray, masks, etc.).
+        Save all requested image layers (rgb, gray, detect_mat, objmap).
 
         Args:
             image: Image object with processing results
@@ -245,7 +357,7 @@ class OutputManager:
         """
         saved_paths = {}
 
-        # Save RGB if requested
+        # Save RGB if requested and not empty
         if self.save_layers.get("rgb") and not image.rgb.isempty():
             path = self._save_layer_safely(
                 "rgb", image, dataset_name, image_stem,
@@ -272,15 +384,6 @@ class OutputManager:
             if path:
                 saved_paths["detect_mat"] = path
 
-        # Save object mask if requested
-        if self.save_layers.get("objmask") and not image.objmask.isempty():
-            path = self._save_layer_safely(
-                "objmask", image, dataset_name, image_stem,
-                lambda p: image.objmask.imsave(filepath=p)
-            )
-            if path:
-                saved_paths["objmask"] = path
-
         # Save object map if requested
         if self.save_layers.get("objmap") and not image.objmap.isempty():
             path = self._save_layer_safely(
@@ -290,107 +393,22 @@ class OutputManager:
             if path:
                 saved_paths["objmap"] = path
 
-        # Save object map overlay (label2rgb colorized, renamed from objmap_rgb)
-        # Support both old "objmap_rgb" and new "objmap_overlay" keys for backward compatibility
-        if (self.save_layers.get("objmap_overlay") or self.save_layers.get("objmap_rgb")) and not image.objmap.isempty():
-            layer_name = "objmap_overlay" if self.save_layers.get("objmap_overlay") else "objmap_rgb"
-            path = self._save_layer_safely(
-                layer_name, image, dataset_name, image_stem,
-                lambda p: image.objmap.imsave(filepath=p, use_label2rgb=True)
-            )
-            if path:
-                saved_paths[layer_name] = path
-
-        # Save detection matrix overlay if requested
-        if self.save_layers.get("detect_mat_overlay") and not image.detect_mat.isempty():
-            path = self._save_layer_safely(
-                "detect_mat_overlay", image, dataset_name, image_stem,
-                lambda p: image.detect_mat.save_overlay(filepath=p, overlay_alpha=self.overlay_alpha)
-            )
-            if path:
-                saved_paths["detect_mat_overlay"] = path
-
-        # Save object mask overlay if requested
-        if self.save_layers.get("objmask_overlay") and not image.objmask.isempty():
-            path = self._save_layer_safely(
-                "objmask_overlay", image, dataset_name, image_stem,
-                lambda p: image.objmask.save_overlay(filepath=p, overlay_alpha=self.overlay_alpha)
-            )
-            if path:
-                saved_paths["objmask_overlay"] = path
-
         return saved_paths
     
     def aggregate_master_csv(
         self,
         datasets: List[Dataset]
     ) -> Optional[Path]:
-        """
-        Aggregate all individual measurement CSVs into master CSV.
+        """Aggregate all individual measurement CSVs into master CSV.
 
         Args:
-            datasets: List of all datasets processed
+            datasets: List of all datasets processed.
 
         Returns:
-            Path to master_measurements.csv, or None if no measurements found
+            Path to master_measurements.csv, or None if no measurements found.
         """
-        all_measurements = []
-        skipped_files = []
-
-        for dataset in datasets:
-            # Always use: results/dataset_name/measurements/
-            dataset_meas_dir = self.results_dir / dataset.name / "measurements"
-
-            # Read all CSV files in this dataset's measurement directory
-            csv_files = list(dataset_meas_dir.glob("*.csv"))
-
-            for csv_file in csv_files:
-                try:
-                    df = pd.read_csv(csv_file)
-
-                    # Add dataset column if requested and not already present
-                    if self.include_dataset_column and "Metadata_Dataset" not in df.columns:
-                        df.insert(0, "Metadata_Dataset", dataset.name)
-
-                    all_measurements.append(df)
-
-                except Exception as e:
-                    logger.warning(
-                        f"Failed to read {csv_file.relative_to(self.base_dir)}: "
-                        f"{type(e).__name__}: {e}"
-                    )
-                    skipped_files.append((csv_file, str(e)))
-
-        # Report skipped files
-        if skipped_files:
-            logger.warning(
-                f"Skipped {len(skipped_files)} CSV file(s) due to read errors"
-            )
-            for csv_file, error in skipped_files[:5]:  # Show first 5
-                logger.debug(f"  - {csv_file.name}: {error}")
-            if len(skipped_files) > 5:
-                logger.debug(f"  ... and {len(skipped_files) - 5} more")
-
-        if not all_measurements:
-            logger.warning("No valid measurements found for aggregation")
-            return None
-
-        # Concatenate all measurements
-        try:
-            master_df = pd.concat(all_measurements, axis=0, ignore_index=True)
-        except Exception as e:
-            logger.error(f"Failed to concatenate measurements: {e}")
-            return None
-
-        # Save master CSV
-        master_path = self.base_dir / "master_measurements.csv"
-        try:
-            master_df.to_csv(master_path, index=False)
-            logger.info(
-                f"Aggregated {len(all_measurements)} CSV files "
-                f"into {master_path.name} ({len(master_df)} total rows)"
-            )
-            return master_path
-        except Exception as e:
-            logger.error(f"Failed to save master CSV: {e}")
-            return None
+        return aggregate_measurements(
+            output_dir=self.base_dir,
+            dataset_names=[ds.name for ds in datasets],
+            include_dataset_column=self.include_dataset_column,
+        )

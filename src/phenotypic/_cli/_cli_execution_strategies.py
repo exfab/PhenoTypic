@@ -486,6 +486,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             "chunk_scripts": [str(s) for s in flat_scripts],
             "chunk_job_ids": chunk_job_ids,
             "image_task_mapping": image_task_mapping,
+            "include_dataset_column": self.config.include_dataset_column,
         }
         metadata_path = progress_dir / "job_metadata.json"
         metadata_path.write_text(

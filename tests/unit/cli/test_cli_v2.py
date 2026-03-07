@@ -30,7 +30,7 @@ from phenotypic._cli._cli_execution_strategies import (
 from phenotypic._cli._cli_interactive import (
     get_sample_datasets,
 )
-from phenotypic._cli._cli_output_manager import OutputManager
+from phenotypic._cli._cli_output_manager import OutputManager, aggregate_measurements
 from phenotypic._cli._cli_report_generator import HTMLReportGenerator
 from phenotypic._cli._cli_state_management import (
     create_initial_state,
@@ -240,21 +240,7 @@ class TestStateManagement:
             slurm_args={},
             force_local=False,
             wait=False,
-            save_rgb=False,
-            save_gray=False,
-            save_detect_mat=False,
-            save_objmask=False,
-            save_objmap=False,
-            save_objmap_overlay=False,
-            save_detect_mat_overlay=False,
-            save_objmask_overlay=False,
-            rgb_ext=".tiff",
-            gray_ext=".tiff",
-            detect_mat_ext=".tiff",
-            objmask_ext=".png",
-            objmap_ext=".png",
-            objmap_overlay_ext=".png",
-            overlay_mode="image",
+            ext=".tiff",
             overlay_alpha=0.3,
             include_dataset_column=False,
             dry_run=False,
@@ -293,21 +279,7 @@ class TestStateManagement:
             slurm_args={},
             force_local=False,
             wait=False,
-            save_rgb=False,
-            save_gray=False,
-            save_detect_mat=False,
-            save_objmask=False,
-            save_objmap=False,
-            save_objmap_overlay=False,
-            save_detect_mat_overlay=False,
-            save_objmask_overlay=False,
-            rgb_ext=".tiff",
-            gray_ext=".tiff",
-            detect_mat_ext=".tiff",
-            objmask_ext=".png",
-            objmap_ext=".png",
-            objmap_overlay_ext=".png",
-            overlay_mode="image",
+            ext=".tiff",
             overlay_alpha=0.3,
             include_dataset_column=False,
             dry_run=False,
@@ -428,6 +400,19 @@ class TestOutputManager:
         assert not (temp_output_dir / "dataset1").exists()
         assert not (temp_output_dir / "measurements").exists()
         assert not (temp_output_dir / "overlays").exists()
+
+    def test_from_config_factory(self, temp_output_dir):
+        """Test OutputManager.from_config() produces correct layers and extensions."""
+        manager = OutputManager.from_config(
+            base_dir=temp_output_dir,
+            ext=".tiff",
+            overlay_alpha=0.5,
+        )
+
+        assert manager.save_layers == {"rgb": True, "gray": True, "detect_mat": True, "objmap": True}
+        assert manager.extensions == {"rgb": ".tiff", "gray": ".tiff", "detect_mat": ".tiff", "objmap": ".png"}
+        assert manager.overlay_alpha == 0.5
+        assert manager.include_dataset_column is True
 
     def test_pipeline_json_copied_to_output(self, temp_output_dir):
         """Test pipeline JSON is copied to output directory for reproducibility."""
@@ -567,21 +552,7 @@ class TestExecutionStrategies:
             slurm_args={},  # Empty = local
             force_local=False,
             wait=False,
-            save_rgb=False,
-            save_gray=False,
-            save_detect_mat=False,
-            save_objmask=False,
-            save_objmap=False,
-            save_objmap_overlay=False,
-            save_detect_mat_overlay=False,
-            save_objmask_overlay=False,
-            rgb_ext=".tiff",
-            gray_ext=".tiff",
-            detect_mat_ext=".tiff",
-            objmask_ext=".png",
-            objmap_ext=".png",
-            objmap_overlay_ext=".png",
-            overlay_mode="image",
+            ext=".tiff",
             overlay_alpha=0.3,
             include_dataset_column=False,
             dry_run=False,
@@ -616,21 +587,7 @@ class TestExecutionStrategies:
             slurm_args={"slurm_partition": "compute"},  # Non-empty = SLURM
             force_local=False,
             wait=False,
-            save_rgb=False,
-            save_gray=False,
-            save_detect_mat=False,
-            save_objmask=False,
-            save_objmap=False,
-            save_objmap_overlay=False,
-            save_detect_mat_overlay=False,
-            save_objmask_overlay=False,
-            rgb_ext=".tiff",
-            gray_ext=".tiff",
-            detect_mat_ext=".tiff",
-            objmask_ext=".png",
-            objmap_ext=".png",
-            objmap_overlay_ext=".png",
-            overlay_mode="image",
+            ext=".tiff",
             overlay_alpha=0.3,
             include_dataset_column=False,
             dry_run=False,
@@ -665,21 +622,7 @@ class TestExecutionStrategies:
             slurm_args={"slurm_partition": "compute"},  # Has SLURM args
             force_local=True,  # But force_local is True
             wait=False,
-            save_rgb=False,
-            save_gray=False,
-            save_detect_mat=False,
-            save_objmask=False,
-            save_objmap=False,
-            save_objmap_overlay=False,
-            save_detect_mat_overlay=False,
-            save_objmask_overlay=False,
-            rgb_ext=".tiff",
-            gray_ext=".tiff",
-            detect_mat_ext=".tiff",
-            objmask_ext=".png",
-            objmap_ext=".png",
-            objmap_overlay_ext=".png",
-            overlay_mode="image",
+            ext=".tiff",
             overlay_alpha=0.3,
             include_dataset_column=False,
             dry_run=False,
@@ -716,21 +659,7 @@ class TestExecutionStrategies:
             slurm_args={},
             force_local=False,
             wait=False,
-            save_rgb=False,
-            save_gray=False,
-            save_detect_mat=False,
-            save_objmask=False,
-            save_objmap=False,
-            save_objmap_overlay=False,
-            save_detect_mat_overlay=False,
-            save_objmask_overlay=False,
-            rgb_ext=".tiff",
-            gray_ext=".tiff",
-            detect_mat_ext=".tiff",
-            objmask_ext=".png",
-            objmap_ext=".png",
-            objmap_overlay_ext=".png",
-            overlay_mode="image",
+            ext=".tiff",
             overlay_alpha=0.3,
             include_dataset_column=False,
             dry_run=False,
@@ -1336,21 +1265,7 @@ class TestNewCoverageGaps:
             slurm_args={},
             force_local=True,
             wait=False,
-            save_rgb=False,
-            save_gray=False,
-            save_detect_mat=False,
-            save_objmask=False,
-            save_objmap=False,
-            save_objmap_overlay=False,
-            save_detect_mat_overlay=False,
-            save_objmask_overlay=False,
-            rgb_ext=".tiff",
-            gray_ext=".tiff",
-            detect_mat_ext=".tiff",
-            objmask_ext=".png",
-            objmap_ext=".png",
-            objmap_overlay_ext=".png",
-            overlay_mode="image",
+            ext=".tiff",
             overlay_alpha=0.3,
             include_dataset_column=True,
             dry_run=False,
@@ -1390,21 +1305,7 @@ class TestNewCoverageGaps:
             slurm_args={},
             force_local=True,
             wait=False,
-            save_rgb=False,
-            save_gray=False,
-            save_detect_mat=False,
-            save_objmask=False,
-            save_objmap=False,
-            save_objmap_overlay=False,
-            save_detect_mat_overlay=False,
-            save_objmask_overlay=False,
-            rgb_ext=".tiff",
-            gray_ext=".tiff",
-            detect_mat_ext=".tiff",
-            objmask_ext=".png",
-            objmap_ext=".png",
-            objmap_overlay_ext=".png",
-            overlay_mode="image",
+            ext=".tiff",
             overlay_alpha=0.3,
             include_dataset_column=True,
             dry_run=False,
@@ -1480,21 +1381,7 @@ class TestNewCoverageGaps:
             slurm_args={"partition": "test"},
             force_local=False,
             wait=False,
-            save_rgb=False,
-            save_gray=False,
-            save_detect_mat=False,
-            save_objmask=False,
-            save_objmap=False,
-            save_objmap_overlay=False,
-            save_detect_mat_overlay=False,
-            save_objmask_overlay=False,
-            rgb_ext="tiff",
-            gray_ext="tiff",
-            detect_mat_ext="tiff",
-            objmask_ext="png",
-            objmap_ext="png",
-            objmap_overlay_ext="png",
-            overlay_mode="image",
+            ext=".tiff",
             overlay_alpha=0.3,
             include_dataset_column=True,
             dry_run=False,
@@ -1542,21 +1429,7 @@ class TestNewCoverageGaps:
             slurm_args={"partition": "test"},
             force_local=False,
             wait=False,
-            save_rgb=False,
-            save_gray=False,
-            save_detect_mat=False,
-            save_objmask=False,
-            save_objmap=False,
-            save_objmap_overlay=False,
-            save_detect_mat_overlay=False,
-            save_objmask_overlay=False,
-            rgb_ext="tiff",
-            gray_ext="tiff",
-            detect_mat_ext="tiff",
-            objmask_ext="png",
-            objmap_ext="png",
-            objmap_overlay_ext="png",
-            overlay_mode="image",
+            ext=".tiff",
             overlay_alpha=0.3,
             include_dataset_column=True,
             dry_run=False,
@@ -1622,3 +1495,123 @@ class TestNewCoverageGaps:
         assert SINGLE_IMAGE_DATASET == "single_image"
 
         # This test ensures the constant exists and can be imported
+
+
+class TestAggregateMeasurements:
+    """Tests for the standalone aggregate_measurements() function."""
+
+    def _create_measurement_csvs(self, output_dir, datasets):
+        """Helper to create measurement CSV files in the expected directory structure.
+
+        Args:
+            output_dir: Base output directory.
+            datasets: Dict of {dataset_name: list of (image_stem, dataframe)} tuples.
+        """
+        for ds_name, images in datasets.items():
+            meas_dir = output_dir / "results" / ds_name / "measurements"
+            meas_dir.mkdir(parents=True, exist_ok=True)
+            for stem, df in images:
+                df.to_csv(meas_dir / f"{stem}.csv", index=False)
+
+    def test_aggregate_measurements_standalone(self, temp_output_dir):
+        """Single dataset: master CSV has correct rows and Metadata_Dataset column."""
+        import pandas as pd
+
+        self._create_measurement_csvs(temp_output_dir, {
+            "ds1": [
+                ("img_001", pd.DataFrame({"area": [10, 20], "circularity": [0.9, 0.8]})),
+                ("img_002", pd.DataFrame({"area": [30], "circularity": [0.7]})),
+            ],
+        })
+
+        result = aggregate_measurements(
+            output_dir=temp_output_dir,
+            dataset_names=["ds1"],
+            include_dataset_column=True,
+        )
+
+        assert result is not None
+        assert result.name == "master_measurements.csv"
+        master = pd.read_csv(result)
+        assert len(master) == 3
+        assert "Metadata_Dataset" in master.columns
+        assert list(master["Metadata_Dataset"].unique()) == ["ds1"]
+
+    def test_aggregate_measurements_multi_dataset(self, temp_output_dir):
+        """Two datasets: all rows present with correct dataset labels."""
+        import pandas as pd
+
+        self._create_measurement_csvs(temp_output_dir, {
+            "plate_A": [
+                ("img_001", pd.DataFrame({"area": [10]})),
+            ],
+            "plate_B": [
+                ("img_001", pd.DataFrame({"area": [20]})),
+                ("img_002", pd.DataFrame({"area": [30]})),
+            ],
+        })
+
+        result = aggregate_measurements(
+            output_dir=temp_output_dir,
+            dataset_names=["plate_A", "plate_B"],
+            include_dataset_column=True,
+        )
+
+        assert result is not None
+        master = pd.read_csv(result)
+        assert len(master) == 3
+        assert set(master["Metadata_Dataset"]) == {"plate_A", "plate_B"}
+        assert master.loc[master["Metadata_Dataset"] == "plate_A", "area"].iloc[0] == 10
+
+    def test_aggregate_measurements_no_dataset_column(self, temp_output_dir):
+        """include_dataset_column=False: no Metadata_Dataset column added."""
+        import pandas as pd
+
+        self._create_measurement_csvs(temp_output_dir, {
+            "ds1": [
+                ("img_001", pd.DataFrame({"area": [10]})),
+            ],
+        })
+
+        result = aggregate_measurements(
+            output_dir=temp_output_dir,
+            dataset_names=["ds1"],
+            include_dataset_column=False,
+        )
+
+        assert result is not None
+        master = pd.read_csv(result)
+        assert "Metadata_Dataset" not in master.columns
+
+    def test_aggregate_measurements_empty(self, temp_output_dir):
+        """No CSVs found returns None."""
+        result = aggregate_measurements(
+            output_dir=temp_output_dir,
+            dataset_names=["nonexistent"],
+            include_dataset_column=True,
+        )
+        assert result is None
+
+    def test_aggregate_master_csv_delegates(self, temp_output_dir):
+        """OutputManager.aggregate_master_csv() produces same result as standalone."""
+        import pandas as pd
+
+        self._create_measurement_csvs(temp_output_dir, {
+            "ds1": [
+                ("img_001", pd.DataFrame({"area": [10, 20]})),
+            ],
+        })
+
+        om = OutputManager(
+            base_dir=temp_output_dir,
+            save_layers={},
+            extensions={},
+            include_dataset_column=True,
+        )
+        datasets = [Dataset(name="ds1", images=[], input_dir=temp_output_dir, output_dir=temp_output_dir)]
+        result = om.aggregate_master_csv(datasets)
+
+        assert result is not None
+        master = pd.read_csv(result)
+        assert len(master) == 2
+        assert "Metadata_Dataset" in master.columns

@@ -147,35 +147,13 @@ def generate_array_job_script(
     if config.detect_mode != "gray":
         cmd_parts.extend(["--detect-mode", config.detect_mode])
 
-    # Add save layer flags
-    if config.save_rgb:
-        cmd_parts.append("--save-rgb")
-    if config.save_gray:
-        cmd_parts.append("--save-gray")
-    if config.save_detect_mat:
-        cmd_parts.append("--save-detect-mat")
-    if config.save_objmask:
-        cmd_parts.append("--save-objmask")
-    if config.save_objmap:
-        cmd_parts.append("--save-objmap")
-    if config.save_objmap_overlay:
-        cmd_parts.append("--save-objmap-overlay")
-    if config.save_detect_mat_overlay:
-        cmd_parts.append("--save-detect-mat-overlay")
-    if config.save_objmask_overlay:
-        cmd_parts.append("--save-objmask-overlay")
+    # Add extension if non-default
+    if config.ext != ".tiff":
+        cmd_parts.extend(["--ext", config.ext])
 
-    # Add extensions
-    cmd_parts.extend(["--rgb-ext", config.rgb_ext])
-    cmd_parts.extend(["--gray-ext", config.gray_ext])
-    cmd_parts.extend(["--detect-mat-ext", config.detect_mat_ext])
-    cmd_parts.extend(["--objmask-ext", config.objmask_ext])
-    cmd_parts.extend(["--objmap-ext", config.objmap_ext])
-    cmd_parts.extend(["--objmap-overlay-ext", config.objmap_overlay_ext])
-
-    # Add overlay options
-    cmd_parts.extend(["--overlay-mode", config.overlay_mode])
-    cmd_parts.extend(["--overlay-alpha", str(config.overlay_alpha)])
+    # Add overlay alpha if non-default
+    if config.overlay_alpha != 0.3:
+        cmd_parts.extend(["--overlay-alpha", str(config.overlay_alpha)])
 
     # Add dataset column flag (default is to include, so only add flag to exclude)
     if not config.include_dataset_column:

@@ -97,24 +97,8 @@ class ExecutionConfig:
     wait: bool  # Wait for SLURM jobs to complete
     
     # Output options
-    save_rgb: bool
-    save_gray: bool
-    save_detect_mat: bool
-    save_objmask: bool
-    save_objmap: bool
-    save_objmap_overlay: bool  # Renamed from save_objmap_rgb
-    save_detect_mat_overlay: bool
-    save_objmask_overlay: bool
-    rgb_ext: str
-    gray_ext: str
-    detect_mat_ext: str
-    objmask_ext: str
-    objmap_ext: str
-    objmap_overlay_ext: str  # Renamed from objmap_rgb_ext
-
-    # Overlay options
-    overlay_mode: str  # "image" or "figure"
-    overlay_alpha: float
+    ext: str  # Extension for rgb/gray/detect_mat (e.g. ".tiff")
+    overlay_alpha: float  # Alpha for overlay compositing
     
     # Processing options
     include_dataset_column: bool

@@ -129,39 +129,10 @@ def process_single_image_core(
     default="gray",
     help="Color channel for detection matrix",
 )
-@click.option("--save-rgb", is_flag=True, help="Save RGB layer")
-@click.option("--save-gray", is_flag=True, help="Save grayscale layer")
-@click.option("--save-detect-mat", is_flag=True, help="Save detection matrix layer")
-@click.option("--save-objmask", is_flag=True, help="Save object mask")
-@click.option("--save-objmap", is_flag=True, help="Save object map")
 @click.option(
-    "--save-objmap-overlay",
-    is_flag=True,
-    help="Save object map overlay (colorized labels)",
-)
-@click.option(
-    "--save-detect-mat-overlay", is_flag=True, help="Save detection matrix overlay"
-)
-@click.option("--save-objmask-overlay", is_flag=True, help="Save object mask overlay")
-@click.option("--rgb-ext", default="tiff", help="File extension for RGB saves")
-@click.option("--gray-ext", default="tiff", help="File extension for grayscale saves")
-@click.option(
-    "--detect-mat-ext", default="tiff", help="File extension for detection matrix saves"
-)
-@click.option(
-    "--objmask-ext", default="png", help="File extension for object mask saves"
-)
-@click.option("--objmap-ext", default="png", help="File extension for object map saves")
-@click.option(
-    "--objmap-overlay-ext",
-    default="png",
-    help="File extension for object map overlay saves",
-)
-@click.option(
-    "--overlay-mode",
-    type=click.Choice(["image", "figure"]),
-    default="image",
-    help="Overlay saving mode: 'image' for full-resolution, 'figure' for matplotlib",
+    "--ext",
+    default="tiff",
+    help="File extension for rgb, gray, detect_mat layers",
 )
 @click.option(
     "--overlay-alpha",
@@ -193,21 +164,7 @@ def main(
     ncols: int,
     bit_depth: Optional[int],
     detect_mode: str,
-    save_rgb: bool,
-    save_gray: bool,
-    save_detect_mat: bool,
-    save_objmask: bool,
-    save_objmap: bool,
-    save_objmap_overlay: bool,
-    save_detect_mat_overlay: bool,
-    save_objmask_overlay: bool,
-    rgb_ext: str,
-    gray_ext: str,
-    detect_mat_ext: str,
-    objmask_ext: str,
-    objmap_ext: str,
-    objmap_overlay_ext: str,
-    overlay_mode: str,
+    ext: str,
     overlay_alpha: float,
     include_dataset_column: bool,
     event_log: Optional[Path],
@@ -229,40 +186,19 @@ def main(
         if detect_mode != "gray":
             read_kwargs["detect_mode"] = detect_mode
 
-        # Prepare save layers
-        save_layers = {
-            "rgb": save_rgb,
-            "gray": save_gray,
-            "detect_mat": save_detect_mat,
-            "objmask": save_objmask,
-            "objmap": save_objmap,
-            "objmap_overlay": save_objmap_overlay,
-            "detect_mat_overlay": save_detect_mat_overlay,
-            "objmask_overlay": save_objmask_overlay,
-        }
-
-        # Prepare extensions - validate all before processing
+        # Validate extension
         try:
-            extensions = {
-                "rgb": normalize_extension(rgb_ext, ".tiff"),
-                "gray": normalize_extension(gray_ext, ".tiff"),
-                "detect_mat": normalize_extension(detect_mat_ext, ".tiff"),
-                "objmask": normalize_extension(objmask_ext, ".png"),
-                "objmap": normalize_extension(objmap_ext, ".png"),
-                "objmap_overlay": normalize_extension(objmap_overlay_ext, ".png"),
-            }
+            ext_normalized = normalize_extension(ext, ".tiff")
         except click.BadParameter as e:
             logger.error(f"Invalid extension parameter: {e}")
             click.echo(f"Error: {e}", err=True)
             sys.exit(1)
 
         # Create output manager
-        output_manager = OutputManager(
+        output_manager = OutputManager.from_config(
             base_dir=output_dir,
-            save_layers=save_layers,
-            extensions=extensions,
+            ext=ext_normalized,
             include_dataset_column=include_dataset_column,
-            overlay_mode=overlay_mode,
             overlay_alpha=overlay_alpha,
         )
 

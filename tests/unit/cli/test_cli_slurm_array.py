@@ -184,21 +184,7 @@ class TestArrayJobScriptGeneration:
             slurm_args={"slurm_partition": "short", "mem_gb": 16, "time": 60},
             force_local=False,
             wait=False,
-            save_rgb=True,
-            save_gray=False,
-            save_detect_mat=False,
-            save_objmask=True,
-            save_objmap=False,
-            save_objmap_overlay=False,
-            save_detect_mat_overlay=False,
-            save_objmask_overlay=False,
-            rgb_ext="tiff",
-            gray_ext="tiff",
-            detect_mat_ext="tiff",
-            objmask_ext="png",
-            objmap_ext="png",
-            objmap_overlay_ext="png",
-            overlay_mode="image",
+            ext=".tiff",
             overlay_alpha=0.3,
             include_dataset_column=False,
             dry_run=False,
@@ -247,9 +233,6 @@ class TestArrayJobScriptGeneration:
         assert "8" in content
         assert "--ncols" in content
         assert "12" in content
-        assert "--save-rgb" in content
-        assert "--save-objmask" in content
-
         # Check array indexing logic
         assert "SLURM_ARRAY_TASK_ID" in content
         assert "IMAGE_LIST" in content

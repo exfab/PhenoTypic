@@ -31,11 +31,13 @@ class HTMLReportGenerator:
     def _generate_html(self, results: ExecutionResults) -> str:
         """Generate HTML content."""
         return f"""<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <title>PhenoTypic Processing Report</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
     {self._get_styles()}
 </head>
 <body>
@@ -50,163 +52,234 @@ class HTMLReportGenerator:
     def _get_styles(self) -> str:
         """Inline CSS for self-contained report."""
         return """<style>
-        * {
+        *, *::before, *::after {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
         }
 
+        :root {
+            --color-navy: #003660;
+            --color-blue: #1b75bc;
+            --color-gold: #febc11;
+            --color-white: #ffffff;
+            --color-bg: #f5f7fa;
+            --color-surface: #ffffff;
+            --color-border: #dde3ed;
+            --color-rule: #e8ecf2;
+            --color-muted: #8892a4;
+            --color-body: #2e3a4e;
+            --color-heading: #003660;
+
+            --oi-green: #009E73;
+            --oi-vermilion: #D55E00;
+            --oi-sky: #56B4E9;
+
+            --font-display: 'DM Serif Display', Georgia, serif;
+            --font-body: 'DM Sans', system-ui, sans-serif;
+            --font-mono: 'DM Mono', 'Courier New', monospace;
+
+            --text-xs: 0.6875rem;
+            --text-sm: 0.8125rem;
+            --text-base: 0.9375rem;
+            --text-lg: 1.25rem;
+            --text-xl: 1.5rem;
+            --text-2xl: 1.875rem;
+            --text-3xl: 2.5rem;
+
+            --sp-1: 0.25rem;
+            --sp-2: 0.5rem;
+            --sp-3: 0.75rem;
+            --sp-4: 1rem;
+            --sp-5: 1.25rem;
+            --sp-6: 1.5rem;
+            --sp-8: 2rem;
+            --sp-10: 2.5rem;
+
+            --radius-sm: 3px;
+            --radius: 6px;
+            --radius-md: 10px;
+
+            --shadow-sm: 0 1px 3px rgba(0,54,96,0.07), 0 1px 2px rgba(0,54,96,0.04);
+            --shadow: 0 4px 12px rgba(0,54,96,0.08), 0 1px 3px rgba(0,54,96,0.05);
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 
-                         'Helvetica', 'Arial', sans-serif;
+            font-family: var(--font-body);
             line-height: 1.6;
-            color: #333;
-            background: #f5f7fa;
-            padding: 20px;
+            color: var(--color-body);
+            background: var(--color-bg);
+            padding: var(--sp-5);
+            font-size: var(--text-base);
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            background: var(--color-surface);
+            padding: var(--sp-10);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
         }
 
         h1 {
-            color: #2c3e50;
-            border-bottom: 3px solid #3498db;
-            padding-bottom: 15px;
-            margin-bottom: 30px;
-            font-size: 2.5em;
+            font-family: var(--font-display);
+            color: var(--color-heading);
+            border-bottom: 3px solid var(--color-navy);
+            padding-bottom: var(--sp-4);
+            margin-bottom: var(--sp-8);
+            font-size: var(--text-3xl);
+            font-weight: 400;
         }
 
         h2 {
-            color: #34495e;
-            margin-top: 40px;
-            margin-bottom: 20px;
-            font-size: 1.8em;
-            border-left: 4px solid #3498db;
-            padding-left: 15px;
+            font-family: var(--font-display);
+            color: var(--color-heading);
+            margin-top: var(--sp-10);
+            margin-bottom: var(--sp-5);
+            font-size: var(--text-2xl);
+            font-weight: 400;
+            border-left: 4px solid var(--color-navy);
+            padding-left: var(--sp-4);
         }
 
         h3 {
-            color: #555;
-            margin: 25px 0 15px 0;
-            font-size: 1.4em;
+            font-family: var(--font-display);
+            color: var(--color-heading);
+            margin: var(--sp-6) 0 var(--sp-4) 0;
+            font-size: var(--text-xl);
+            font-weight: 400;
         }
 
         .summary {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 20px;
-            margin: 30px 0;
+            gap: var(--sp-5);
+            margin: var(--sp-8) 0;
         }
 
         .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 25px;
-            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            padding: var(--sp-6);
+            border-radius: var(--radius-md);
             text-align: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: transform 0.2s;
+            box-shadow: var(--shadow-sm);
+            transition: border-color 180ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: var(--color-navy);
         }
 
         .stat-card:hover {
-            transform: translateY(-5px);
+            border-color: var(--color-blue);
         }
 
-        .stat-card.success {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        .stat-card.success::before {
+            background: var(--oi-green);
         }
 
-        .stat-card.failure {
-            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+        .stat-card.failure::before {
+            background: var(--oi-vermilion);
         }
 
-        .stat-card.info {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        .stat-card.info::before {
+            background: var(--oi-sky);
+        }
+
+        .stat-card.rate::before {
+            background: var(--color-gold);
         }
 
         .stat-value {
-            font-size: 2.5em;
-            font-weight: bold;
-            margin-bottom: 5px;
+            font-family: var(--font-display);
+            font-size: var(--text-3xl);
+            font-weight: 400;
+            color: var(--color-heading);
+            margin-bottom: var(--sp-1);
         }
 
         .stat-label {
-            font-size: 0.9em;
-            opacity: 0.9;
+            font-family: var(--font-mono);
+            font-size: var(--text-xs);
+            color: var(--color-muted);
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.12em;
         }
 
-        .success-text { color: #27ae60; font-weight: bold; }
-        .failure-text { color: #e74c3c; font-weight: bold; }
-        .warning-text { color: #f39c12; font-weight: bold; }
+        .success-text { color: #006B4F; font-weight: 600; }
+        .failure-text { color: #D55E00; font-weight: 600; }
+        .warning-text { color: #9A6B00; font-weight: 600; }
 
         progress {
             width: 100%;
-            height: 30px;
-            border-radius: 15px;
+            height: 6px;
+            border-radius: 9999px;
             overflow: hidden;
             border: none;
-            background: #ecf0f1;
+            background: var(--color-rule);
         }
 
         progress::-webkit-progress-bar {
-            background: #ecf0f1;
-            border-radius: 15px;
+            background: var(--color-rule);
+            border-radius: 9999px;
         }
 
         progress::-webkit-progress-value {
-            background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%);
-            border-radius: 15px;
+            background: var(--color-navy);
+            border-radius: 9999px;
         }
 
         progress::-moz-progress-bar {
-            background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%);
-            border-radius: 15px;
+            background: var(--color-navy);
+            border-radius: 9999px;
         }
 
         .dataset {
-            background: #f8f9fa;
-            padding: 25px;
-            border-radius: 8px;
-            margin-bottom: 25px;
-            border: 1px solid #dee2e6;
+            background: var(--color-bg);
+            padding: var(--sp-6);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--sp-6);
+            border: 1px solid var(--color-border);
         }
 
         .progress-container {
-            margin: 20px 0;
+            margin: var(--sp-5) 0;
         }
 
         .progress-label {
-            margin-bottom: 10px;
-            font-size: 1.1em;
-            color: #555;
+            margin-bottom: var(--sp-3);
+            font-size: var(--text-sm);
+            color: var(--color-body);
         }
 
         details {
-            margin: 15px 0;
-            border: 1px solid #ddd;
-            border-radius: 6px;
+            margin: var(--sp-4) 0;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
             overflow: hidden;
         }
 
         summary {
             cursor: pointer;
-            padding: 15px;
-            background: #ecf0f1;
+            padding: var(--sp-4);
+            background: var(--color-bg);
             font-weight: 600;
+            font-family: var(--font-body);
+            color: var(--color-heading);
             user-select: none;
-            transition: background 0.2s;
+            transition: background 180ms;
         }
 
         summary:hover {
-            background: #d5dbdb;
+            background: var(--color-rule);
         }
 
         summary::-webkit-details-marker {
@@ -214,9 +287,9 @@ class HTMLReportGenerator:
         }
 
         summary::before {
-            content: '▶';
+            content: '\\25b6';
             display: inline-block;
-            margin-right: 10px;
+            margin-right: var(--sp-3);
             transition: transform 0.2s;
         }
 
@@ -225,44 +298,46 @@ class HTMLReportGenerator:
         }
 
         .traceback {
-            background: #2c3e50;
-            color: #ecf0f1;
-            padding: 20px;
-            border-radius: 6px;
+            background: var(--color-bg);
+            color: var(--color-body);
+            padding: var(--sp-5);
+            border-radius: var(--radius);
+            border: 1px solid var(--color-border);
             overflow-x: auto;
-            font-family: 'Courier New', 'Consolas', monospace;
-            font-size: 0.85em;
+            font-family: var(--font-mono);
+            font-size: var(--text-xs);
             white-space: pre-wrap;
             word-wrap: break-word;
-            margin: 10px;
+            margin: var(--sp-3);
             line-height: 1.4;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
-            background: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin: var(--sp-5) 0;
+            background: var(--color-surface);
         }
 
         th, td {
-            padding: 15px;
+            padding: 12px 16px;
             text-align: left;
-            border-bottom: 1px solid #e0e0e0;
+            border-bottom: 1px solid var(--color-rule);
         }
 
         th {
-            background: #34495e;
-            color: white;
-            font-weight: 600;
+            background: transparent;
+            color: var(--color-muted);
+            font-family: var(--font-mono);
+            font-size: 0.6875rem;
+            font-weight: 500;
             text-transform: uppercase;
-            font-size: 0.85em;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.08em;
+            border-bottom: 2px solid var(--color-navy);
         }
 
         tr:hover {
-            background: #f8f9fa;
+            background: rgba(27,117,188,0.03);
         }
 
         tr:last-child td {
@@ -270,28 +345,30 @@ class HTMLReportGenerator:
         }
 
         code {
-            background: #f4f4f4;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: 'Courier New', 'Consolas', monospace;
+            background: #edf2f7;
+            color: var(--color-navy);
+            padding: 1px 5px;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
             font-size: 0.9em;
         }
 
         .timestamp {
-            color: #7f8c8d;
-            font-size: 0.9em;
+            color: var(--color-muted);
+            font-size: var(--text-sm);
         }
 
         .metadata {
-            background: #e8f4f8;
-            padding: 15px;
-            border-radius: 6px;
-            margin: 20px 0;
-            border-left: 4px solid #3498db;
+            background: rgba(86,180,233,0.08);
+            padding: var(--sp-4) var(--sp-5);
+            border-radius: var(--radius);
+            margin: var(--sp-5) 0;
+            border-left: 4px solid var(--oi-sky);
+            color: #0B5E87;
         }
 
         .metadata p {
-            margin: 5px 0;
+            margin: var(--sp-1) 0;
         }
 
         @media print {
@@ -330,7 +407,7 @@ class HTMLReportGenerator:
                 <div class="stat-value">{results.total_failed}</div>
                 <div class="stat-label">Failed</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card rate">
                 <div class="stat-value">{success_rate:.1f}%</div>
                 <div class="stat-label">Success Rate</div>
             </div>

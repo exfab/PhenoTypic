@@ -102,50 +102,20 @@ output_folder/
 
     def _generate_layers_section(self) -> str:
         """Generate documentation for saved layers."""
-        layer_descriptions = {
-            "rgb": "Original RGB images",
-            "gray": "Grayscale images",
-            "detect_mat": "Detection matrix (after preprocessing)",
-            "objmask": "Binary object masks",
-            "objmap": "Labeled object maps (integer labels per object)",
-            "objmap_overlay": "Colorized object map overlays",
-            "detect_mat_overlay": "Detection matrix with detection overlay",
-            "objmask_overlay": "Object mask with detection overlay",
-        }
-
-        layers = []
-        if self.config.save_rgb:
-            layers.append(("rgb/", layer_descriptions["rgb"]))
-        if self.config.save_gray:
-            layers.append(("gray/", layer_descriptions["gray"]))
-        if self.config.save_detect_mat:
-            layers.append(("detect_mat/", layer_descriptions["detect_mat"]))
-        if self.config.save_objmask:
-            layers.append(("objmask/", layer_descriptions["objmask"]))
-        if self.config.save_objmap:
-            layers.append(("objmap/", layer_descriptions["objmap"]))
-        if self.config.save_objmap_overlay:
-            layers.append(("objmap_overlay/", layer_descriptions["objmap_overlay"]))
-        if self.config.save_detect_mat_overlay:
-            layers.append(("detect_mat_overlay/", layer_descriptions["detect_mat_overlay"]))
-        if self.config.save_objmask_overlay:
-            layers.append(("objmask_overlay/", layer_descriptions["objmask_overlay"]))
-
-        if not layers:
-            return """## Saved Layers
-
-Only standard outputs (measurements, overlays) were saved.
-Use `--save-*` CLI flags to save additional image layers."""
-
-        layer_table = "| Layer | Description |\n|-------|-------------|\n"
-        for layer_dir, desc in layers:
-            layer_table += f"| `{layer_dir}` | {desc} |\n"
+        ext = self.config.ext.lstrip(".")
 
         return f"""## Saved Layers
 
-The following optional layers were saved:
+Each dataset directory contains the following layers:
 
-{layer_table}"""
+| Layer | Format | Description |
+|-------|--------|-------------|
+| `measurements/` | CSV | Per-object measurements |
+| `overlays/` | PNG | Detection overlay visualizations |
+| `rgb/` | {ext.upper()} | Original RGB images (if available) |
+| `gray/` | {ext.upper()} | Grayscale images |
+| `detect_mat/` | {ext.upper()} | Detection matrix (after preprocessing) |
+| `objmap/` | PNG | Labeled object maps (integer labels per object) |"""
 
     def _generate_measurements_section(self) -> str:
         """Generate measurement documentation from pipeline's MeasureFeatures.

@@ -97,38 +97,18 @@ def _display_output_structure(config: ExecutionConfig, datasets: List[Dataset], 
     click.echo("\nOutput Directory Structure:")
     click.echo(f"  {output_dir}/")
 
-    # Collect optional layers
-    layers_to_create = []
-    if config.save_rgb:
-        layers_to_create.append(("rgb", f"(*.{config.rgb_ext})"))
-    if config.save_gray:
-        layers_to_create.append(("gray", f"(*.{config.gray_ext})"))
-    if config.save_detect_mat:
-        layers_to_create.append(("detect_mat", f"(*.{config.detect_mat_ext})"))
-    if config.save_objmask:
-        layers_to_create.append(("objmask", f"(*.{config.objmask_ext})"))
-    if config.save_objmap:
-        layers_to_create.append(("objmap", f"(*.{config.objmap_ext})"))
-    if config.save_objmap_overlay:
-        layers_to_create.append(("objmap_overlay", f"(*.{config.objmap_overlay_ext})"))
-    if config.save_detect_mat_overlay:
-        layers_to_create.append(("detect_mat_overlay", "(*.png)"))
-    if config.save_objmask_overlay:
-        layers_to_create.append(("objmask_overlay", "(*.png)"))
+    ext = config.ext.lstrip(".")
 
     # Dataset-first mode: dataset folders contain layer subdirectories
     dataset_names = [d.name for d in datasets[:2]]  # Show first 2 datasets
     for i, ds_name in enumerate(dataset_names):
         click.echo(f"    ├── {ds_name}/")
-        click.echo("    │   ├── measurements/")
-        click.echo("    │   │   ├── image1.csv")
-        click.echo("    │   │   └── ...")
-        click.echo("    │   ├── overlays/")
-        click.echo("    │   │   ├── image1.png")
-        click.echo("    │   │   └── ...")
-
-        for layer_name, ext_note in layers_to_create:
-            click.echo(f"    │   ├── {layer_name}/ {ext_note}")
+        click.echo("    │   ├── measurements/ (*.csv)")
+        click.echo("    │   ├── overlays/ (*.png)")
+        click.echo(f"    │   ├── rgb/ (*.{ext})")
+        click.echo(f"    │   ├── gray/ (*.{ext})")
+        click.echo(f"    │   ├── detect_mat/ (*.{ext})")
+        click.echo("    │   ├── objmap/ (*.png)")
 
         if i == 0 and len(datasets) > 1:
             click.echo("    │   └── ...")
@@ -147,33 +127,16 @@ def _display_output_structure(config: ExecutionConfig, datasets: List[Dataset], 
 
 
 def _display_save_configuration(config: ExecutionConfig) -> None:
-    """Display save configuration for optional outputs."""
+    """Display save configuration."""
+    ext = config.ext.lstrip(".")
     click.echo("\nSave Configuration:")
-
-    layers_enabled = []
-    if config.save_rgb:
-        layers_enabled.append(f"RGB (*.{config.rgb_ext})")
-    if config.save_gray:
-        layers_enabled.append(f"Grayscale (*.{config.gray_ext})")
-    if config.save_detect_mat:
-        layers_enabled.append(f"Detection matrix (*.{config.detect_mat_ext})")
-    if config.save_objmask:
-        layers_enabled.append(f"Object masks (*.{config.objmask_ext})")
-    if config.save_objmap:
-        layers_enabled.append(f"Object maps (*.{config.objmap_ext})")
-    if config.save_objmap_overlay:
-        layers_enabled.append(f"Object map overlay (*.{config.objmap_overlay_ext})")
-    if config.save_detect_mat_overlay:
-        layers_enabled.append("Detection matrix overlay (*.png)")
-    if config.save_objmask_overlay:
-        layers_enabled.append("Object mask overlay (*.png)")
-
-    if layers_enabled:
-        click.echo("  Optional layer saves enabled:")
-        for layer in layers_enabled:
-            click.echo(f"    - {layer}")
-    else:
-        click.echo("  No optional layer saves enabled (measurements + overlays will be created)")
+    click.echo("  Layers always saved:")
+    click.echo(f"    - RGB (*.{ext})")
+    click.echo(f"    - Grayscale (*.{ext})")
+    click.echo(f"    - Detection matrix (*.{ext})")
+    click.echo("    - Object map (*.png)")
+    click.echo("    - Overlays (*.png)")
+    click.echo("    - Measurements (*.csv)")
 
     if config.include_dataset_column:
         click.echo("  Master CSV will include 'Metadata_Dataset' column for multi-dataset analysis")
@@ -260,40 +223,20 @@ def execute_dry_run(
 
     # Output size estimate (rough)
     click.echo("\nEstimated Output Size:")
-    est_size_mb = total_images * 2  # ~2MB per image (measurements + overlay)
+    meas_mb = total_images * 0.05
+    overlay_mb = total_images * 0.5
+    rgb_mb = total_images * 8
+    gray_mb = total_images * 2
+    detect_mb = total_images * 2
+    objmap_mb = total_images * 0.5
+    est_size_mb = meas_mb + overlay_mb + rgb_mb + gray_mb + detect_mb + objmap_mb
 
-    click.echo(f"  - Measurements CSVs: ~{total_images * 0.05:.1f} MB")
-    click.echo(f"  - Overlay PNGs: ~{total_images * 0.5:.1f} MB")
-
-    # Add estimates for optional layers
-    if config.save_rgb or config.save_gray or config.save_detect_mat:
-        layer_size_mb = 0
-        if config.save_rgb:
-            layer_size_mb += total_images * 8  # ~8MB per RGB image
-        if config.save_gray:
-            layer_size_mb += total_images * 2  # ~2MB per grayscale
-        if config.save_detect_mat:
-            layer_size_mb += total_images * 2
-
-        est_size_mb += layer_size_mb
-        click.echo(f"  - Optional image layers: ~{layer_size_mb:.1f} MB")
-
-    if config.save_objmask or config.save_objmap or config.save_objmap_overlay:
-        mask_size_mb = 0
-        if config.save_objmask:
-            mask_size_mb += total_images * 0.5
-        if config.save_objmap:
-            mask_size_mb += total_images * 0.5
-        if config.save_objmap_overlay:
-            mask_size_mb += total_images * 2
-        if config.save_detect_mat_overlay:
-            mask_size_mb += total_images * 2
-        if config.save_objmask_overlay:
-            mask_size_mb += total_images * 2
-
-        est_size_mb += mask_size_mb
-        click.echo(f"  - Mask/objmap/overlay layers: ~{mask_size_mb:.1f} MB")
-
+    click.echo(f"  - Measurements CSVs: ~{meas_mb:.1f} MB")
+    click.echo(f"  - Overlay PNGs: ~{overlay_mb:.1f} MB")
+    click.echo(f"  - RGB images: ~{rgb_mb:.1f} MB")
+    click.echo(f"  - Grayscale images: ~{gray_mb:.1f} MB")
+    click.echo(f"  - Detection matrix: ~{detect_mb:.1f} MB")
+    click.echo(f"  - Object maps: ~{objmap_mb:.1f} MB")
     click.echo(f"\n  Estimated total: ~{est_size_mb:.1f} MB")
 
     click.echo("\n" + "=" * 80)

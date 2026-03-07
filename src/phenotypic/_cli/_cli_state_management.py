@@ -168,16 +168,7 @@ def create_initial_state(
             "bit_depth": config.bit_depth,
             "n_jobs": config.n_jobs,
             "slurm_args": config.slurm_args,
-            "save_layers": {
-                "rgb": config.save_rgb,
-                "gray": config.save_gray,
-                "detect_mat": config.save_detect_mat,
-                "objmask": config.save_objmask,
-                "objmap": config.save_objmap,
-                "objmap_overlay": config.save_objmap_overlay,
-                "detect_mat_overlay": config.save_detect_mat_overlay,
-                "objmask_overlay": config.save_objmask_overlay,
-            }
+            "ext": config.ext,
         }
     )
     
