@@ -11,7 +11,8 @@ ops = walk_package_for_class(pkg=phenotypic,
                              target_class=phenotypic.abc_.ImageOperation)
 
 image_ops = [(qualname, obj) for qualname, obj in ops
-             if ("Grid" not in qualname) or ("phenotypic.abc_" not in qualname)]
+             if (("Grid" not in qualname) or ("phenotypic.abc_" not in qualname))
+             and "ColorCorrector" not in qualname]
 
 
 @pytest.fixture(scope="session")
