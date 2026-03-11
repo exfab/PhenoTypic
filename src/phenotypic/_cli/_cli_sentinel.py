@@ -76,6 +76,7 @@ def sentinel_main(
     chunk_scripts = job_metadata.get("chunk_scripts", [])
     chunk_job_ids = job_metadata.get("chunk_job_ids", {})
     image_task_mapping = job_metadata.get("image_task_mapping", {})
+    input_path = job_metadata.get("input_path")
 
     # Build {dataset_name: total_images} mapping
     datasets_totals: dict[str, int] = {
@@ -102,6 +103,7 @@ def sentinel_main(
             start_time=start_time,
             slurm_job_ids=chunk_job_ids,
             chunk_scripts=chunk_scripts,
+            input_path=input_path,
         )
 
         # Check completion status from the freshly-written manifest
@@ -116,12 +118,14 @@ def sentinel_main(
             try:
                 from ._cli_output_manager import aggregate_measurements
 
+                _metadata_csv_str = job_metadata.get("metadata_csv")
                 master_path = aggregate_measurements(
                     output_dir=output_dir,
                     dataset_names=list(datasets_totals.keys()),
                     include_dataset_column=job_metadata.get(
                         "include_dataset_column", True
                     ),
+                    metadata_csv=Path(_metadata_csv_str) if _metadata_csv_str else None,
                 )
                 if master_path:
                     logger.info("Master CSV written: %s", master_path)

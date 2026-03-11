@@ -169,6 +169,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 datasets=datasets_totals,
                 execution_mode="local",
                 start_time=start_time.isoformat(timespec="milliseconds"),
+                input_path=self.config.input_path.stem,
             )
             generate_dashboard(output_dir, execution_mode="local")
         except Exception:
@@ -487,6 +488,8 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             "chunk_job_ids": chunk_job_ids,
             "image_task_mapping": image_task_mapping,
             "include_dataset_column": self.config.include_dataset_column,
+            "metadata_csv": str(self.config.metadata_csv) if self.config.metadata_csv else None,
+            "input_path": self.config.input_path.stem,
         }
         metadata_path = progress_dir / "job_metadata.json"
         metadata_path.write_text(

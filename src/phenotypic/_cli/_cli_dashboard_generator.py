@@ -8,7 +8,9 @@ the ``progress/`` subdirectory.
 
 from __future__ import annotations
 
+import base64
 import logging
+from importlib.resources import files
 from pathlib import Path
 
 from ._cli_vendor_js import MARKED_MIN_JS
@@ -36,6 +38,7 @@ def generate_dashboard(output_dir: Path, *, execution_mode: str = "local") -> No
 
 def _build_html(execution_mode: str) -> str:
     """Assemble the complete self-contained HTML document."""
+    logo_data_uri = _load_logo_data_uri()
     return (
         "<!DOCTYPE html>\n"
         "<html lang=\"en\">\n"
@@ -48,12 +51,27 @@ def _build_html(execution_mode: str) -> str:
         f"  <style>\n{_build_css()}\n  </style>\n"
         "</head>\n"
         "<body>\n"
-        f"{_build_body(execution_mode)}\n"
+        f"{_build_body(execution_mode, logo_data_uri)}\n"
         f"  <script>\n{MARKED_MIN_JS}\n  </script>\n"
         f"  <script>\n{_build_js(execution_mode)}\n  </script>\n"
         "</body>\n"
         "</html>\n"
     )
+
+
+def _load_logo_data_uri() -> str:
+    """Read the logo PNG and return a ``data:`` URI, or empty string on failure."""
+    try:
+        raw = (
+            files("phenotypic._cli")
+            .joinpath("_assets", "light_logo.png")
+            .read_bytes()
+        )
+        b64 = base64.b64encode(raw).decode("ascii")
+        return f"data:image/png;base64,{b64}"
+    except (OSError, ModuleNotFoundError, TypeError):
+        logger.debug("Logo asset not found — skipping")
+        return ""
 
 
 def _build_css() -> str:
@@ -161,12 +179,27 @@ def _build_css() -> str:
       font-weight: 400;
       color: var(--color-heading);
     }
+    .header-logo img {
+      max-height: 48px;
+      width: auto;
+      margin-top: var(--sp-2);
+    }
     .header-right {
       display: flex;
       align-items: center;
       gap: var(--sp-4);
       font-size: var(--text-sm);
       color: var(--color-muted);
+    }
+    .input-path {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--color-muted);
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: 9999px;
+      padding: 0.15rem 0.6rem;
+      letter-spacing: 0.02em;
     }
     .status-badge {
       display: inline-flex;
@@ -675,14 +708,23 @@ def _build_css() -> str:
     }"""
 
 
-def _build_body(execution_mode: str) -> str:
+def _build_body(execution_mode: str, logo_data_uri: str = "") -> str:
     """Return the HTML body content (no <body> tags)."""
-    return """\
+    logo_html = (
+        f'<div class="header-logo"><img src="{logo_data_uri}" alt="PhenoTypic"></div>'
+        if logo_data_uri
+        else ""
+    )
+    return f"""\
   <div class="container">
     <!-- Header -->
     <div class="header">
-      <h1>PhenoTypic Processing Dashboard</h1>
+      <div>
+        <h1>PhenoTypic Processing Dashboard</h1>
+        {logo_html}
+      </div>
       <div class="header-right">
+        <span class="input-path" id="input-path" style="display:none"></span>
         <span id="last-updated"></span>
         <span id="status-badge" class="status-badge status-live">
           <span class="pulse-dot"></span> Live
@@ -1137,6 +1179,12 @@ def _build_js(execution_mode: str) -> str:
         renderDatasets(data.datasets);
         renderFailureChart(data.failure_categories);
         await renderRecentFailures(data);
+
+        const inputEl = document.getElementById('input-path');
+        if (data.input_path) {{
+          inputEl.textContent = data.input_path;
+          inputEl.style.display = '';
+        }}
 
         document.getElementById('last-updated').textContent =
           'Updated ' + new Date().toLocaleTimeString();

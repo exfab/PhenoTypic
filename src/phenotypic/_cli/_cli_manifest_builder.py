@@ -306,6 +306,7 @@ def build_manifest(
     start_time: str,
     slurm_job_ids: Optional[Dict[str, str]] = None,
     chunk_scripts: Optional[List[str]] = None,
+    input_path: Optional[str] = None,
 ) -> None:
     """Build ``progress/manifest.json`` for the live dashboard.
 
@@ -325,6 +326,9 @@ def build_manifest(
             Required for SLURM chunk-state queries and silent-failure
             detection.  Ignored when *execution_mode* is ``"local"``.
         chunk_scripts: List of generated SLURM chunk script paths.
+        input_path: Display name for the input (e.g. folder stem or
+            image filename).  Stored in the manifest so the dashboard
+            can show which input is being processed.
     """
     event_log = output_dir / "processing_events.log"
 
@@ -409,6 +413,7 @@ def build_manifest(
         "success_rate": round(success_rate, 6),
         "is_complete": is_complete,
         "start_time": start_time,
+        "input_path": input_path,
         "datasets": per_dataset,
         "failure_categories": failure_categories,
     }
