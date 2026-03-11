@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-
-import plotly.graph_objects as go
+from typing import TYPE_CHECKING
 
 from phenotypic._core._image_parts.accessor_abstracts import ImageAccessorBase
+
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
+    import plotly.graph_objects as go
 
 
 class SingleChannelAccessor(ImageAccessorBase, ABC):
@@ -38,8 +41,10 @@ class SingleChannelAccessor(ImageAccessorBase, ABC):
             foreground_only: bool = False,
             *,
             plotly_settings: dict | None = None,
-    ) -> go.Figure:
-        """Display the single-channel image data using Plotly.
+    ) -> go.Figure | tuple[plt.Figure, plt.Axes]:
+        """Display the single-channel image data interactively.
+
+        Uses Plotly when available, falling back to matplotlib otherwise.
 
         Args:
             figsize: Figure size in inches (width, height). If None,
@@ -50,11 +55,21 @@ class SingleChannelAccessor(ImageAccessorBase, ABC):
             plotly_settings: Additional Plotly layout settings.
 
         Returns:
-            A ``plotly.graph_objects.Figure``.
+            A ``plotly.graph_objects.Figure`` when plotly is installed,
+            or a ``(plt.Figure, plt.Axes)`` tuple when using matplotlib
+            fallback.
         """
-        from phenotypic.tools_._plotly_helpers import plotly_imshow
+        from phenotypic.tools_._plotly_helpers import PLOTLY_AVAILABLE
 
         arr = self[:] if not foreground_only else self.foreground()
+
+        if not PLOTLY_AVAILABLE:
+            return self._mpl_plot(
+                arr=arr, figsize=figsize, title=title, cmap=cmap or "gray",
+            )
+
+        from phenotypic.tools_._plotly_helpers import plotly_imshow
+
         fig = plotly_imshow(arr=arr, figsize=figsize, title=title, cmap=cmap)
         if plotly_settings is not None:
             fig.update_layout(**plotly_settings)

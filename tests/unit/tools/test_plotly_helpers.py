@@ -5,10 +5,11 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import numpy as np
-import plotly.graph_objects as go
 import pytest
 
-from phenotypic.tools_._plotly_helpers import (
+go = pytest.importorskip("plotly.graph_objects")
+
+from phenotypic.tools_._plotly_helpers import (  # noqa: E402
     PLOTLY_CONFIG,
     _auto_figsize,
     add_plotly_gridlines,

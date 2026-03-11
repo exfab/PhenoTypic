@@ -11,11 +11,17 @@ from itertools import cycle
 from typing import TYPE_CHECKING
 
 import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
+
+try:
+    import plotly.express as px
+    import plotly.graph_objects as go
+
+    PLOTLY_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    PLOTLY_AVAILABLE = False
 
 if TYPE_CHECKING:
-    pass
+    import plotly.graph_objects as go
 
 
 # Mapping from matplotlib colormap names to plotly colorscale names
@@ -34,6 +40,16 @@ _MPL_TO_PLOTLY = {
 PLOTLY_CONFIG = {"scrollZoom": True}
 
 
+def _require_plotly() -> None:
+    """Raise ImportError if plotly is not installed."""
+    if not PLOTLY_AVAILABLE:
+        raise ImportError(
+            "plotly is required for interactive visualization. "
+            "Install it with: pip install plotly>=6.0.0  "
+            "or install the gui extras: pip install phenotypic[gui]"
+        )
+
+
 def mpl_cmap_to_plotly(cmap_name: str) -> str | list:
     """Convert a matplotlib colormap name to a plotly colorscale.
 
@@ -45,6 +61,7 @@ def mpl_cmap_to_plotly(cmap_name: str) -> str | list:
         ``[position, "rgb(r,g,b)"]`` pairs sampled from the matplotlib
         colormap for unknown names.
     """
+    _require_plotly()
     if cmap_name in _MPL_TO_PLOTLY:
         return _MPL_TO_PLOTLY[cmap_name]
 
@@ -108,6 +125,7 @@ def plotly_imshow(
     Returns:
         A ``plotly.graph_objects.Figure`` with zoom-friendly defaults.
     """
+    _require_plotly()
     if figsize is None:
         figsize = _auto_figsize(arr)
 
@@ -148,6 +166,7 @@ def add_plotly_gridlines(
         ncols: Number of grid columns.
         nrows: Number of grid rows.
     """
+    _require_plotly()
     if len(col_edges) == 0 or len(row_edges) == 0:
         return
 
@@ -215,6 +234,7 @@ def add_plotly_section_boxes(fig: go.Figure, root_image) -> None:
         root_image: A ``GridImage`` instance with ``grid`` accessor
             and ``objmap`` support.
     """
+    _require_plotly()
     from phenotypic.measure import MeasureBounds
     from phenotypic.tools_.measurement_info_ import BBOX
 
@@ -264,6 +284,7 @@ def add_plotly_obj_labels(
         size: Label font size.
         bgcolor: Label background color.
     """
+    _require_plotly()
     props = root_image.objects.props
     for i, label in enumerate(root_image.objects.labels):
         if object_label is not None and object_label != label:

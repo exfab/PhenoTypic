@@ -4,21 +4,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import plotly.graph_objects as go
 import skimage as ski
 
-from phenotypic.tools_._plotly_helpers import (
-    add_plotly_gridlines,
-    add_plotly_obj_labels,
-    add_plotly_section_boxes,
-    plotly_imshow,
-)
 from phenotypic.tools_.register import register_plotter
 
 from ._base_plotter import BasePlotter
 
 if TYPE_CHECKING:
-    pass
+    import matplotlib.pyplot as plt
+    import plotly.graph_objects as go
 
 
 @register_plotter
@@ -66,11 +60,12 @@ class OverlayPlotter(BasePlotter):
             label_settings: dict | None = None,
             overlay_settings: dict | None = None,
             plotly_settings: dict | None = None,
-    ) -> go.Figure:
+    ) -> go.Figure | tuple[plt.Figure, plt.Axes]:
         """Display object detection overlay with optional grid visualization.
 
         Creates a visualization showing detected objects overlaid on the image
-        using color-coded labels. For GridImage instances, automatically adds
+        using color-coded labels. Uses Plotly when available, falling back to
+        matplotlib otherwise. For GridImage instances, automatically adds
         grid lines and section bounding boxes when enabled.
 
         Args:
@@ -96,10 +91,12 @@ class OverlayPlotter(BasePlotter):
             overlay_settings: Dict passed to skimage.color.label2rgb. Common key:
                 - alpha (float): Overlay transparency (0-1). Default: 0.15
             plotly_settings: Dict passed to plotly figure layout for additional
-                display customization.
+                display customization. Ignored in matplotlib fallback.
 
         Returns:
-            A ``plotly.graph_objects.Figure`` containing the overlay visualization.
+            A ``plotly.graph_objects.Figure`` when plotly is installed,
+            or a ``(plt.Figure, plt.Axes)`` tuple when using matplotlib
+            fallback.
 
         Raises:
             EmptyImageError: If no image data is set.
@@ -109,6 +106,8 @@ class OverlayPlotter(BasePlotter):
             >>> image = load_synth_yeast_plate()
             >>> fig = image.plot.overlay(show_labels=True)
         """
+        from phenotypic.tools_._plotly_helpers import PLOTLY_AVAILABLE
+
         # Determine which array to use (RGB preferred, fallback to gray)
         if not self._root_image.rgb.isempty():
             base_arr = self._root_image.rgb[:]
@@ -133,13 +132,46 @@ class OverlayPlotter(BasePlotter):
                 alpha=overlay_alpha, **overlay_settings,
         )
 
-        # Build plotly figure
+        is_grid_image = hasattr(self._root_image, 'grid_finder')
+        accessor = (
+            self._root_image.rgb
+            if not self._root_image.rgb.isempty()
+            else self._root_image.gray
+        )
+
+        if not PLOTLY_AVAILABLE:
+            # matplotlib fallback via base class _mpl_plot
+            fig_mpl, ax = accessor._mpl_plot(
+                arr=overlay_arr, figsize=figsize, title=title,
+            )
+            if show_labels:
+                accessor._plot_obj_labels(
+                    ax=ax,
+                    color=label_settings.get("color", "white"),
+                    size=label_settings.get("size", 12),
+                    facecolor=label_settings.get("facecolor", "red"),
+                    object_label=object_label,
+                )
+            if is_grid_image:
+                if show_gridlines:
+                    accessor._add_gridlines(ax)
+                if show_section_boxes and self._root_image.num_objects > 0:
+                    accessor._add_section_boxes(ax)
+            return fig_mpl, ax
+
+        # Plotly path
+        from phenotypic.tools_._plotly_helpers import (
+            add_plotly_gridlines,
+            add_plotly_obj_labels,
+            add_plotly_section_boxes,
+            plotly_imshow,
+        )
+
         fig = plotly_imshow(arr=overlay_arr, figsize=figsize, title=title)
 
         if plotly_settings is not None:
             fig.update_layout(**plotly_settings)
 
-        # Add object labels if requested
         if show_labels:
             add_plotly_obj_labels(
                     fig, self._root_image, object_label=object_label,
@@ -147,9 +179,6 @@ class OverlayPlotter(BasePlotter):
                     size=label_settings.get("size", 12),
                     bgcolor=label_settings.get("facecolor", "red"),
             )
-
-        # Grid-specific features (duck typing check)
-        is_grid_image = hasattr(self._root_image, 'grid_finder')
 
         if is_grid_image:
             if show_gridlines:

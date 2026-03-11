@@ -20,10 +20,9 @@ import phenotypic
 from phenotypic.tools_.constants_ import IO, METADATA
 from phenotypic.tools_.funcs_ import normalize_rgb_bitdepth
 
-import plotly.graph_objects as go
-
 if TYPE_CHECKING:
     import napari
+    import plotly.graph_objects as go
     from phenotypic._core._image import Image
 
 import importlib.util
@@ -588,8 +587,10 @@ class ImageAccessorBase(ABC):
         *,
         overlay_settings: dict | None = None,
         plotly_settings: dict | None = None,
-    ) -> go.Figure:
-        """Plot an array with object map overlay using Plotly.
+    ) -> go.Figure | tuple[plt.Figure, plt.Axes]:
+        """Plot an array with object map overlay.
+
+        Uses Plotly when available, falling back to matplotlib otherwise.
 
         Args:
             arr: The primary array to be displayed as an image.
@@ -604,15 +605,22 @@ class ImageAccessorBase(ABC):
             plotly_settings: Additional Plotly layout settings.
 
         Returns:
-            A ``plotly.graph_objects.Figure`` with the overlay rendered.
+            A ``plotly.graph_objects.Figure`` when plotly is installed,
+            or a ``(plt.Figure, plt.Axes)`` tuple when using matplotlib
+            fallback.
         """
-        from phenotypic.tools_._plotly_helpers import plotly_imshow
+        from phenotypic.tools_._plotly_helpers import PLOTLY_AVAILABLE
 
         overlay_settings = dict(overlay_settings) if overlay_settings else {}
         overlay_alpha = overlay_settings.pop("alpha", 0.15)
         overlay_arr = ski.color.label2rgb(
             label=objmap, image=arr, bg_label=0, alpha=overlay_alpha, **overlay_settings
         )
+
+        if not PLOTLY_AVAILABLE:
+            return self._mpl_plot(arr=overlay_arr, figsize=figsize, title=title)
+
+        from phenotypic.tools_._plotly_helpers import plotly_imshow
 
         fig = plotly_imshow(arr=overlay_arr, figsize=figsize, title=title)
         if plotly_settings is not None:
@@ -632,8 +640,10 @@ class ImageAccessorBase(ABC):
         label_settings: None | dict = None,
         overlay_settings: None | dict = None,
         plotly_settings: None | dict = None,
-    ) -> go.Figure:
-        """Display an overlay of the object map on the parent image using Plotly.
+    ) -> go.Figure | tuple[plt.Figure, plt.Axes]:
+        """Display an overlay of the object map on the parent image.
+
+        Uses Plotly when available, falling back to matplotlib otherwise.
 
         Args:
             object_label: Specific object label to highlight. If None,
@@ -657,13 +667,11 @@ class ImageAccessorBase(ABC):
             plotly_settings: Additional Plotly layout settings.
 
         Returns:
-            A ``plotly.graph_objects.Figure`` with the overlay rendered.
+            A ``plotly.graph_objects.Figure`` when plotly is installed,
+            or a ``(plt.Figure, plt.Axes)`` tuple when using matplotlib
+            fallback.
         """
-        from phenotypic.tools_._plotly_helpers import (
-            add_plotly_gridlines,
-            add_plotly_obj_labels,
-            add_plotly_section_boxes,
-        )
+        from phenotypic.tools_._plotly_helpers import PLOTLY_AVAILABLE
 
         objmap = self._root_image.objmap[:]
         if object_label is not None:
@@ -671,7 +679,7 @@ class ImageAccessorBase(ABC):
         if label_settings is None:
             label_settings = {}
 
-        fig = self._plot_overlay(
+        result = self._plot_overlay(
             arr=self._subject_arr,
             objmap=objmap,
             figsize=figsize,
@@ -680,7 +688,30 @@ class ImageAccessorBase(ABC):
             plotly_settings=plotly_settings,
         )
 
+        is_grid_image = hasattr(self._root_image, 'grid_finder')
+
+        if not PLOTLY_AVAILABLE:
+            # matplotlib fallback — result is (fig, ax) tuple
+            fig_mpl, ax = result
+            if show_labels:
+                self._plot_obj_labels(
+                    ax=ax,
+                    color=label_settings.get("color", "white"),
+                    size=label_settings.get("size", 10),
+                    facecolor=label_settings.get("facecolor", label_settings.get("bgcolor", "black")),
+                    object_label=object_label,
+                )
+            if is_grid_image:
+                if show_gridlines:
+                    self._add_gridlines(ax)
+                if show_section_boxes and self._root_image.num_objects > 0:
+                    self._add_section_boxes(ax)
+            return fig_mpl, ax
+
+        # Plotly path
+        fig = result
         if show_labels:
+            from phenotypic.tools_._plotly_helpers import add_plotly_obj_labels
             add_plotly_obj_labels(
                 fig=fig,
                 root_image=self._root_image,
@@ -690,10 +721,9 @@ class ImageAccessorBase(ABC):
                 bgcolor=label_settings.get("bgcolor", "black"),
             )
 
-        # Grid-specific features (duck typing check)
-        is_grid_image = hasattr(self._root_image, 'grid_finder')
         if is_grid_image:
             if show_gridlines:
+                from phenotypic.tools_._plotly_helpers import add_plotly_gridlines
                 col_edges = self._root_image.grid.get_col_edges()
                 row_edges = self._root_image.grid.get_row_edges()
                 add_plotly_gridlines(
@@ -704,6 +734,7 @@ class ImageAccessorBase(ABC):
                     nrows=self._root_image.nrows,
                 )
             if show_section_boxes and self._root_image.num_objects > 0:
+                from phenotypic.tools_._plotly_helpers import add_plotly_section_boxes
                 add_plotly_section_boxes(fig=fig, root_image=self._root_image)
 
         return fig

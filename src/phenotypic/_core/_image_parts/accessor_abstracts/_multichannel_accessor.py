@@ -3,14 +3,18 @@ from __future__ import annotations
 import json
 import warnings
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
-import plotly.graph_objects as go
 import skimage as ski
 from PIL import Image as PIL_Image
 from abc import ABC, abstractmethod
 from phenotypic._core._image_parts.accessor_abstracts import ImageAccessorBase
 from phenotypic.tools_.constants_ import METADATA, IO
+
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
+    import plotly.graph_objects as go
 
 
 class MultiChannelAccessor(ImageAccessorBase, ABC):
@@ -104,8 +108,10 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             foreground_only: bool = False,
             *,
             plotly_settings: dict | None = None,
-    ) -> go.Figure:
-        """Display the multichannel image data using Plotly.
+    ) -> go.Figure | tuple[plt.Figure, plt.Axes]:
+        """Display the multichannel image data interactively.
+
+        Uses Plotly when available, falling back to matplotlib otherwise.
 
         Args:
             figsize: Figure size in inches (width, height). If None,
@@ -118,19 +124,36 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             plotly_settings: Additional Plotly layout settings.
 
         Returns:
-            A ``plotly.graph_objects.Figure``.
+            A ``plotly.graph_objects.Figure`` when plotly is installed,
+            or a ``(plt.Figure, plt.Axes)`` tuple when using matplotlib
+            fallback.
         """
-        from phenotypic.tools_._plotly_helpers import plotly_imshow
+        from phenotypic.tools_._plotly_helpers import PLOTLY_AVAILABLE
 
         arr = self[:] if not foreground_only else self.foreground()
-        if channel is None:
-            fig = plotly_imshow(arr=arr, figsize=figsize, title=title)
-        else:
+
+        if channel is not None:
             title = (
                 f"{self._root_image.name} - Channel {channel}"
                 if title is None
                 else f"{title} - Channel {channel}"
             )
+
+        if not PLOTLY_AVAILABLE:
+            if channel is None:
+                return self._mpl_plot(
+                    arr=arr, figsize=figsize, title=title,
+                )
+            return self._mpl_plot(
+                arr=arr[:, :, channel], figsize=figsize, title=title,
+                cmap="gray",
+            )
+
+        from phenotypic.tools_._plotly_helpers import plotly_imshow
+
+        if channel is None:
+            fig = plotly_imshow(arr=arr, figsize=figsize, title=title)
+        else:
             fig = plotly_imshow(
                     arr=arr[:, :, channel],
                     figsize=figsize,

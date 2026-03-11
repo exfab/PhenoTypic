@@ -5,10 +5,11 @@ all return plotly.graph_objects.Figure instances with correct structure.
 """
 
 import pytest
-import plotly.graph_objects as go
 
-from phenotypic import GridImage
-from phenotypic.data import load_synth_yeast_plate
+go = pytest.importorskip("plotly.graph_objects")
+
+from phenotypic import GridImage  # noqa: E402
+from phenotypic.data import load_synth_yeast_plate  # noqa: E402
 
 
 @pytest.fixture(scope="module")

@@ -4,9 +4,10 @@ from typing import Literal, TYPE_CHECKING, Tuple, Type
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
+    import plotly.graph_objects as go
+    import matplotlib.pyplot as plt
 
 import numpy as np
-import plotly.graph_objects as go
 import skimage as ski
 
 from skimage.transform import rotate as skimage_rotate
@@ -709,11 +710,12 @@ class ImageHandler(ImageDataManager):
 
     def show(
             self, figsize: Tuple[int, int] | None = None, **kwargs
-    ) -> go.Figure:
-        """Display the image using Plotly.
+    ) -> go.Figure | tuple[plt.Figure, plt.Axes]:
+        """Display the image interactively.
 
         Delegates to ``self.rgb.show()`` for color images or
-        ``self.gray.show()`` for grayscale images.
+        ``self.gray.show()`` for grayscale images. Uses Plotly when
+        available; falls back to matplotlib otherwise.
 
         Args:
             figsize: Figure size in inches (width, height). If None,
@@ -722,7 +724,9 @@ class ImageHandler(ImageDataManager):
                 accessor's ``show()`` method.
 
         Returns:
-            A ``plotly.graph_objects.Figure``.
+            A ``plotly.graph_objects.Figure`` when Plotly is installed,
+            or a ``(matplotlib.figure.Figure, matplotlib.axes.Axes)``
+            tuple when falling back to matplotlib.
         """
         if not self.rgb.isempty():
             return self.rgb.show(figsize=figsize, **kwargs)
