@@ -28,6 +28,7 @@ def aggregate_measurements(
     output_dir: Path,
     dataset_names: List[str],
     include_dataset_column: bool = True,
+    metadata_csv: Optional[Path] = None,
 ) -> Optional[Path]:
     """Aggregate per-image measurement CSVs into a single master CSV.
 
@@ -43,6 +44,10 @@ def aggregate_measurements(
         dataset_names: Names of datasets to scan.
         include_dataset_column: Whether to insert ``Metadata_Dataset``
             into each CSV that lacks it.
+        metadata_csv: Optional path to an external CSV file. When
+            provided, shared columns are used as join keys for a left
+            merge, adding any extra columns from the metadata CSV to
+            the master DataFrame.
 
     Returns:
         Path to ``master_measurements.csv``, or ``None`` if no
@@ -87,6 +92,48 @@ def aggregate_measurements(
     except Exception as e:
         logger.error("Failed to concatenate measurements: %s", e)
         return None
+
+    # Join external metadata if provided
+    if metadata_csv is not None:
+        try:
+            metadata_df = pd.read_csv(metadata_csv)
+            common = list(set(master_df.columns) & set(metadata_df.columns))
+            if not common:
+                logger.warning(
+                    "Metadata CSV has no columns in common with measurements — skipping join"
+                )
+            else:
+                logger.info("Joining metadata on columns: %s", common)
+                # Cast join keys to string so mismatched dtypes don't
+                # cause silent NaN results (e.g. int vs str plate IDs)
+                for col in common:
+                    master_df[col] = master_df[col].astype(str)
+                    metadata_df[col] = metadata_df[col].astype(str)
+                n_rows_before = len(master_df)
+                n_cols_before = len(master_df.columns)
+                master_df = master_df.merge(metadata_df, on=common, how="left")
+                n_new_cols = len(master_df.columns) - n_cols_before
+                if len(master_df) > n_rows_before:
+                    logger.warning(
+                        "Metadata join increased row count from %d to %d — "
+                        "metadata CSV likely has duplicate keys on columns %s. "
+                        "Verify your metadata CSV has unique values on join columns.",
+                        n_rows_before,
+                        len(master_df),
+                        common,
+                    )
+                n_matched = master_df.dropna(
+                    subset=[c for c in master_df.columns if c not in set(common)],
+                    how="all",
+                ).shape[0] if n_new_cols > 0 else len(master_df)
+                logger.info(
+                    "Metadata join: added %d columns, %d/%d rows matched",
+                    n_new_cols,
+                    n_matched,
+                    len(master_df),
+                )
+        except Exception as e:
+            logger.warning("Failed to join metadata CSV: %s: %s", type(e).__name__, e)
 
     master_path = output_dir / "master_measurements.csv"
 
@@ -397,12 +444,15 @@ class OutputManager:
     
     def aggregate_master_csv(
         self,
-        datasets: List[Dataset]
+        datasets: List[Dataset],
+        metadata_csv: Optional[Path] = None,
     ) -> Optional[Path]:
         """Aggregate all individual measurement CSVs into master CSV.
 
         Args:
             datasets: List of all datasets processed.
+            metadata_csv: Optional path to external CSV for left-join
+                on shared columns.
 
         Returns:
             Path to master_measurements.csv, or None if no measurements found.
@@ -411,4 +461,5 @@ class OutputManager:
             output_dir=self.base_dir,
             dataset_names=[ds.name for ds in datasets],
             include_dataset_column=self.include_dataset_column,
+            metadata_csv=metadata_csv,
         )

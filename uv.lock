@@ -3522,11 +3522,6 @@ gui = [
     { name = "pyqt5", version = "5.15.2", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'win32'" },
     { name = "pyqt5", version = "5.15.11", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'x86_64' or sys_platform != 'win32'" },
 ]
-jupyter = [
-    { name = "ipykernel" },
-    { name = "ipywidgets" },
-    { name = "jupyter" },
-]
 
 [package.dev-dependencies]
 dev = [
@@ -3577,12 +3572,9 @@ requires-dist = [
     { name = "h5py" },
     { name = "imagecodecs", specifier = ">=2025.3.30" },
     { name = "ipykernel", marker = "extra == 'gui'", specifier = ">=6.31.0" },
-    { name = "ipykernel", marker = "extra == 'jupyter'", specifier = ">=6.31.0" },
     { name = "ipywidgets", marker = "extra == 'gui'", specifier = ">=8.1.7" },
-    { name = "ipywidgets", marker = "extra == 'jupyter'", specifier = ">=8.1.7" },
     { name = "jinja2", marker = "extra == 'gui'", specifier = ">=3.1" },
     { name = "jupyter", marker = "extra == 'gui'", specifier = ">=1.1.1" },
-    { name = "jupyter", marker = "extra == 'jupyter'", specifier = ">=1.1.1" },
     { name = "jupyter-bokeh", marker = "extra == 'gui'", specifier = ">=4.0.5" },
     { name = "mahotas" },
     { name = "mmh3" },
@@ -3609,7 +3601,7 @@ requires-dist = [
     { name = "tqdm-joblib", specifier = ">=0.0.5" },
     { name = "wand", specifier = ">=0.6.13" },
 ]
-provides-extras = ["jupyter", "gui"]
+provides-extras = ["gui"]
 
 [package.metadata.requires-dev]
 dev = [

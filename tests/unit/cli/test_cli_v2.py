@@ -10,6 +10,7 @@ Tests the new features introduced in v2.0:
 """
 
 import json
+import logging
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -1615,3 +1616,159 @@ class TestAggregateMeasurements:
         master = pd.read_csv(result)
         assert len(master) == 2
         assert "Metadata_Dataset" in master.columns
+
+    def test_aggregate_measurements_with_metadata(self, temp_output_dir):
+        """Metadata CSV with shared column joins correctly, new columns appear."""
+        import pandas as pd
+
+        self._create_measurement_csvs(temp_output_dir, {
+            "ds1": [
+                ("img_001", pd.DataFrame({"plate": ["A", "A"], "area": [10, 20]})),
+                ("img_002", pd.DataFrame({"plate": ["B"], "area": [30]})),
+            ],
+        })
+
+        # Create metadata CSV with shared 'plate' column and new 'treatment' column
+        metadata_path = temp_output_dir / "metadata.csv"
+        pd.DataFrame({
+            "plate": ["A", "B"],
+            "treatment": ["control", "drug_X"],
+        }).to_csv(metadata_path, index=False)
+
+        result = aggregate_measurements(
+            output_dir=temp_output_dir,
+            dataset_names=["ds1"],
+            include_dataset_column=False,
+            metadata_csv=metadata_path,
+        )
+
+        assert result is not None
+        master = pd.read_csv(result)
+        assert "treatment" in master.columns
+        assert len(master) == 3
+        assert list(master.loc[master["plate"] == "A", "treatment"].unique()) == ["control"]
+        assert list(master.loc[master["plate"] == "B", "treatment"].unique()) == ["drug_X"]
+
+    def test_aggregate_measurements_metadata_no_common_columns(self, temp_output_dir):
+        """No shared columns produces warning, master CSV unchanged."""
+        import pandas as pd
+
+        self._create_measurement_csvs(temp_output_dir, {
+            "ds1": [
+                ("img_001", pd.DataFrame({"area": [10]})),
+            ],
+        })
+
+        metadata_path = temp_output_dir / "metadata.csv"
+        pd.DataFrame({
+            "strain": ["WT"],
+            "concentration": [0.5],
+        }).to_csv(metadata_path, index=False)
+
+        result = aggregate_measurements(
+            output_dir=temp_output_dir,
+            dataset_names=["ds1"],
+            include_dataset_column=False,
+            metadata_csv=metadata_path,
+        )
+
+        assert result is not None
+        master = pd.read_csv(result)
+        # No new columns added since there were no shared columns to join on
+        assert "strain" not in master.columns
+        assert "concentration" not in master.columns
+        assert list(master.columns) == ["area"]
+
+    def test_aggregate_measurements_metadata_partial_match(self, temp_output_dir):
+        """Left join: unmatched rows get NaN in metadata columns."""
+        import pandas as pd
+
+        self._create_measurement_csvs(temp_output_dir, {
+            "ds1": [
+                ("img_001", pd.DataFrame({"plate": ["A", "B", "C"], "area": [10, 20, 30]})),
+            ],
+        })
+
+        # Only provide metadata for plates A and B, not C
+        metadata_path = temp_output_dir / "metadata.csv"
+        pd.DataFrame({
+            "plate": ["A", "B"],
+            "treatment": ["control", "drug_X"],
+        }).to_csv(metadata_path, index=False)
+
+        result = aggregate_measurements(
+            output_dir=temp_output_dir,
+            dataset_names=["ds1"],
+            include_dataset_column=False,
+            metadata_csv=metadata_path,
+        )
+
+        assert result is not None
+        master = pd.read_csv(result)
+        assert len(master) == 3
+        assert "treatment" in master.columns
+        # Plate C should have NaN for treatment
+        assert pd.isna(master.loc[master["plate"] == "C", "treatment"].iloc[0])
+
+    def test_aggregate_measurements_metadata_duplicate_keys_warns(self, temp_output_dir, caplog):
+        """Duplicate keys in metadata CSV inflate rows and produce a warning."""
+        import pandas as pd
+
+        self._create_measurement_csvs(temp_output_dir, {
+            "ds1": [
+                ("img_001", pd.DataFrame({"plate": ["A"], "area": [10]})),
+            ],
+        })
+
+        # Metadata has duplicate entries for plate A
+        metadata_path = temp_output_dir / "metadata.csv"
+        pd.DataFrame({
+            "plate": ["A", "A"],
+            "treatment": ["control", "drug_X"],
+        }).to_csv(metadata_path, index=False)
+
+        with caplog.at_level(logging.WARNING):
+            result = aggregate_measurements(
+                output_dir=temp_output_dir,
+                dataset_names=["ds1"],
+                include_dataset_column=False,
+                metadata_csv=metadata_path,
+            )
+
+        assert result is not None
+        master = pd.read_csv(result)
+        # Row count inflated from 1 to 2
+        assert len(master) == 2
+        assert "duplicate keys" in caplog.text
+
+    def test_aggregate_measurements_metadata_dtype_mismatch(self, temp_output_dir):
+        """Join columns with mismatched dtypes (int vs str) still match."""
+        import pandas as pd
+
+        # Measurements have integer plate IDs
+        self._create_measurement_csvs(temp_output_dir, {
+            "ds1": [
+                ("img_001", pd.DataFrame({"plate": [1, 2], "area": [10, 20]})),
+            ],
+        })
+
+        # Metadata has string plate IDs
+        metadata_path = temp_output_dir / "metadata.csv"
+        pd.DataFrame({
+            "plate": ["1", "2"],
+            "treatment": ["control", "drug_X"],
+        }).to_csv(metadata_path, index=False)
+
+        result = aggregate_measurements(
+            output_dir=temp_output_dir,
+            dataset_names=["ds1"],
+            include_dataset_column=False,
+            metadata_csv=metadata_path,
+        )
+
+        assert result is not None
+        master = pd.read_csv(result)
+        assert len(master) == 2
+        assert "treatment" in master.columns
+        # Both rows should match (no NaN in treatment)
+        assert master["treatment"].notna().all()

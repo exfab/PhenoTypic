@@ -108,6 +108,9 @@ class ExecutionConfig:
     retry_failures: bool
     skip_validation: bool
 
+    # Metadata join
+    metadata_csv: Optional[Path] = None
+
     # Detection mode (default: gray)
     detect_mode: str = "gray"
     

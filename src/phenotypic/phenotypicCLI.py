@@ -541,6 +541,13 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
     help="Restart processing from beginning, clearing previous state (requires --output-dir)",
 )
 @click.option(
+    "--metadata",
+    "metadata_csv",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="CSV file to left-join onto master_measurements.csv on shared columns",
+)
+@click.option(
     "--skip-validation",
     is_flag=True,
     help="Skip pipeline validation (for advanced users)",
@@ -567,6 +574,7 @@ def phenotypic_cli(
     resume: bool,
     retry_failures: bool,
     restart: bool,
+    metadata_csv: Optional[Path],
     skip_validation: bool,
 ):
     """
@@ -663,6 +671,19 @@ def phenotypic_cli(
             )
             sys.exit(1)
 
+        # Validate metadata CSV early
+        if metadata_csv is not None:
+            import pandas as pd
+            try:
+                meta_df = pd.read_csv(metadata_csv)
+                if len(meta_df) == 0:
+                    click.echo(
+                        f"Warning: metadata CSV '{metadata_csv}' has zero rows",
+                        err=True,
+                    )
+            except Exception as e:
+                error_exit(f"Cannot read metadata CSV: {e}")
+
         # Create ExecutionConfig
         config = ExecutionConfig(
             pipeline_json=pipeline_json,
@@ -685,6 +706,7 @@ def phenotypic_cli(
             resume=resume,
             retry_failures=retry_failures,
             skip_validation=skip_validation,
+            metadata_csv=metadata_csv,
         )
 
         # Handle resume mode BEFORE creating output directory
@@ -942,7 +964,9 @@ def phenotypic_cli(
         # Aggregate master CSV (if we have completed results)
         if results.total_completed > 0:
             click.echo("\nAggregating measurements...")
-            master_path = output_manager.aggregate_master_csv(datasets)
+            master_path = output_manager.aggregate_master_csv(
+                datasets, metadata_csv=config.metadata_csv
+            )
             if master_path:
                 click.echo(f"✓ Master measurements: {master_path}")
             else:
