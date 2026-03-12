@@ -192,50 +192,47 @@ def aggregate_state_from_events(event_log: Path) -> Dict[str, DatasetState]:
     Returns:
         Dictionary mapping dataset names to their current state
     """
-    def _parse_event_log(log_path: Path) -> Dict[str, DatasetState]:
-        """Inner parser function that processes event log."""
+    def _parse_event_log(content: str) -> Dict[str, DatasetState]:
+        """Inner parser function that processes event log content."""
         datasets = {}
 
-        if not log_path.exists():
+        if not content:
             return datasets
 
-        # Read all events
-        with open(log_path, 'r', encoding='utf-8') as f:
-            for line_num, line in enumerate(f, 1):
-                if not line.strip():
-                    continue
+        for line_num, line in enumerate(content.splitlines(), 1):
+            if not line.strip():
+                continue
 
-                try:
-                    event = parse_event_line(line)
-                except ValueError as e:
-                    # Log malformed lines for debugging
-                    logger.debug(
-                        f"Skipping malformed line {line_num} in {log_path.name}: {e}"
-                    )
-                    continue
+            try:
+                event = parse_event_line(line)
+            except ValueError as e:
+                logger.debug(
+                    f"Skipping malformed line {line_num}: {e}"
+                )
+                continue
 
-                # Initialize dataset state if needed
-                if event.dataset not in datasets:
-                    datasets[event.dataset] = DatasetState()
+            # Initialize dataset state if needed
+            if event.dataset not in datasets:
+                datasets[event.dataset] = DatasetState()
 
-                ds = datasets[event.dataset]
+            ds = datasets[event.dataset]
 
-                # Update state based on event
-                if event.status == "started":
-                    ds.started.add(event.image)
-                elif event.status == "completed":
-                    ds.completed.add(event.image)
-                    # Remove from failed if it was previously failed (retry success)
-                    ds.failed.discard(event.image)
-                    # Remove error if present
-                    ds.errors.pop(event.image, None)
-                elif event.status == "failed":
-                    ds.failed.add(event.image)
-                    # Remove from completed if it was previously completed (shouldn't happen)
-                    ds.completed.discard(event.image)
-                    # Store error message
-                    if event.error_msg:
-                        ds.errors[event.image] = event.error_msg
+            # Update state based on event
+            if event.status == "started":
+                ds.started.add(event.image)
+            elif event.status == "completed":
+                ds.completed.add(event.image)
+                # Remove from failed if it was previously failed (retry success)
+                ds.failed.discard(event.image)
+                # Remove error if present
+                ds.errors.pop(event.image, None)
+            elif event.status == "failed":
+                ds.failed.add(event.image)
+                # Remove from completed if it was previously completed (shouldn't happen)
+                ds.completed.discard(event.image)
+                # Store error message
+                if event.error_msg:
+                    ds.errors[event.image] = event.error_msg
 
         return datasets
 

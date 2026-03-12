@@ -20,16 +20,14 @@ Examples:
     >>> atomic_append(Path("events.log"), "timestamp|dataset|image|completed|\\n")
     >>>
     >>> # Safely read event log while workers are writing
-    >>> def parse_log(path):
-    ...     return path.read_text().splitlines()
-    >>> events = atomic_read(event_log_path, parse_events)
+    >>> def parse_log(content):
+    ...     return content.splitlines()
+    >>> events = atomic_read(event_log_path, parse_log)
 """
 
 from __future__ import annotations
 
-import os
 import sys
-import tempfile
 import time
 from pathlib import Path
 from typing import Callable, TypeVar
@@ -87,12 +85,14 @@ def file_lock(file_handle, timeout: float = 30.0, shared: bool = False):
     start_time = time.time()
 
     if WINDOWS:
-        # Windows locking
+        # Windows locking — msvcrt.locking() operates at the current file
+        # position, so we must seek(0) before both lock and unlock to ensure
+        # we always lock/unlock the same byte.
         mode = msvcrt.LK_NBLCK if not shared else msvcrt.LK_NBRLCK
 
         while True:
             try:
-                # Lock first byte of file
+                file_handle.seek(0)
                 msvcrt.locking(file_handle.fileno(), mode, 1)
                 break
             except OSError:
@@ -106,7 +106,8 @@ def file_lock(file_handle, timeout: float = 30.0, shared: bool = False):
         try:
             yield file_handle
         finally:
-            # Unlock
+            file_handle.flush()
+            file_handle.seek(0)
             msvcrt.locking(file_handle.fileno(), msvcrt.LK_UNLCK, 1)
 
     else:
@@ -133,7 +134,7 @@ def file_lock(file_handle, timeout: float = 30.0, shared: bool = False):
 
 def atomic_read(
         file_path: Path,
-        reader: Callable[[Path], T],
+        reader: Callable[[str], T],
         timeout: float = 30.0
 ) -> T:
     """
@@ -141,42 +142,26 @@ def atomic_read(
 
     Args:
         file_path: Path to file to read
-        reader: Function that takes Path and returns parsed data
+        reader: Function that takes file content string and returns parsed data
         timeout: Maximum seconds to wait for lock
 
     Returns:
         Result from reader function
 
     Example:
-        >>> def parse_events(path):
-        ...     return path.read_text().splitlines()
+        >>> def parse_events(content):
+        ...     return content.splitlines()
         >>> lines = atomic_read(event_log, parse_events)
     """
     if not file_path.exists():
-        return reader(file_path)  # Let reader handle missing file
+        return reader("")
 
     with open(file_path, 'r', encoding='utf-8') as f:
         with file_lock(f, timeout=timeout, shared=True):
-            # Re-seek to ensure we read from start after lock acquired
             f.seek(0)
-            # Read entire content while locked
             content = f.read()
 
-    # Parse outside lock to minimize lock time
-    # Write content to temp location and parse
-    fd, tmp_name = tempfile.mkstemp(suffix='.tmp')
-    tmp_path = Path(tmp_name)
-    try:
-        with os.fdopen(fd, 'w', encoding='utf-8') as tmp:
-            tmp.write(content)
-        result = reader(tmp_path)
-    finally:
-        try:
-            tmp_path.unlink()
-        except PermissionError:
-            pass  # Windows: delayed file release
-
-    return result
+    return reader(content)
 
 
 def atomic_append(

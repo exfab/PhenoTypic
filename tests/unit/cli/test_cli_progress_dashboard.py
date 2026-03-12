@@ -16,6 +16,7 @@ Covers:
 from __future__ import annotations
 
 import json
+import shlex
 import sys
 import tempfile
 from datetime import datetime
@@ -645,4 +646,4 @@ class TestSentinelScript:
             slurm_args={},
         )
         content = script.read_text()
-        assert f"--sentinel-script {script}" in content
+        assert f"--sentinel-script {shlex.quote(str(script.as_posix()))}" in content
