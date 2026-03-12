@@ -235,6 +235,11 @@ class LocalParallelStrategy(ExecutionStrategy):
             error_msg = str(e)
             tb = traceback.format_exc()
 
+            logger.error(
+                "Processing failed for %s/%s:\n%s",
+                dataset.name, image_path.name, tb,
+            )
+
             # Truncate error message to prevent event log bloat
             truncated_msg = _truncate_error_message(error_msg)
 

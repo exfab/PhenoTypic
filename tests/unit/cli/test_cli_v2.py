@@ -1068,7 +1068,9 @@ class TestEdgeCases:
             ],
         )
 
-        assert result.exit_code == 0
+        assert result.exit_code == 0, (
+            f"CLI failed (exit_code={result.exit_code}):\n{result.output}"
+        )
 
         # Verify output files created for the single image
         # Output should be in results/dataset folder named after input directory ("input")
@@ -1140,7 +1142,9 @@ class TestEdgeCases:
                 "--skip-validation",
             ],
         )
-        assert result.exit_code == 0
+        assert result.exit_code == 0, (
+            f"CLI failed (exit_code={result.exit_code}):\n{result.output}"
+        )
 
         # Change image set: remove image_001, add image_004 (same count!)
         (input_dir / "image_001.jpg").unlink()
