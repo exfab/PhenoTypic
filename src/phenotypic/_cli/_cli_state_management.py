@@ -59,7 +59,7 @@ def save_processing_state(
     
     # Write atomically (temp file + rename)
     temp_file = state_file.with_suffix('.tmp')
-    temp_file.write_text(json.dumps(state_dict, indent=2))
+    temp_file.write_text(json.dumps(state_dict, indent=2), encoding="utf-8")
     temp_file.replace(state_file)
     
     return state_file
@@ -81,7 +81,7 @@ def load_processing_state(output_dir: Path) -> Optional[ProcessingState]:
         return None
     
     # Load state JSON
-    state_dict = json.loads(state_file.read_text())
+    state_dict = json.loads(state_file.read_text(encoding="utf-8"))
     
     # Parse timestamps
     timestamp = datetime.fromisoformat(state_dict["timestamp"])

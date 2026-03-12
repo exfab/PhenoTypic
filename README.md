@@ -38,13 +38,6 @@ to integrate new tools.
 uv add phenotypic
 ```
 
-**Pipeline Development Install** (recommended for pipeline
-development locally)
-
-```bash
-uv add "phenotypic[jupyter]"
-```
-
 **Interactive / GUI Install** (napari viewer, Panel dashboards, Jupyter)
 
 ```bash
@@ -57,12 +50,6 @@ uv add "phenotypic[gui]"
 
 ```bash
 pip install phenotypic
-```
-
-**Pipeline Development Install**
-
-```bash
-pip install phenotypic[jupyter]
 ```
 
 **Interactive / GUI Install**

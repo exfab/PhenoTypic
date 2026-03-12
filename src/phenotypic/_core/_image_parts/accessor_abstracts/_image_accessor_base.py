@@ -1033,6 +1033,34 @@ class ImageAccessorBase(ABC):
         pil_image.save(filepath, optimize=True, pnginfo=pnginfo)
 
     @staticmethod
+    def _write_tiff_tifffile(
+        filepath: Path,
+        arr: np.ndarray,
+        metadata_json: str | None,
+    ) -> None:
+        """Save a uint16 array as a 16-bit TIFF using tifffile.
+
+        Uses tifffile for lossless uint16 TIFF writing with metadata
+        support. This avoids PIL's limitation with multi-channel uint16
+        arrays.
+
+        Args:
+            filepath: Destination path.
+            arr: uint16 array (2-D grayscale or 3-D RGB).
+            metadata_json: Optional JSON metadata to embed as TIFF
+                ImageDescription tag.
+        """
+        import tifffile
+
+        photometric = "rgb" if arr.ndim == 3 and arr.shape[2] >= 3 else "minisblack"
+        tifffile.imwrite(
+            filepath,
+            arr,
+            description=metadata_json if metadata_json else None,
+            photometric=photometric,
+        )
+
+    @staticmethod
     def _write_tiff_metadata(filepath: Path, pil_image, metadata_json: str) -> None:
         """Write metadata to TIFF file using ImageDescription tag.
 
@@ -1123,11 +1151,14 @@ class ImageAccessorBase(ABC):
                         pil_img.save(filepath)
 
             case x if x in IO.TIFF_EXTENSIONS:
-                pil_img = PIL_Image.fromarray(arr2save)
-                if metadata_json:
-                    self._write_tiff_metadata(filepath, pil_img, metadata_json)
+                if arr2save.dtype == np.uint16:
+                    self._write_tiff_tifffile(filepath, arr2save, metadata_json)
                 else:
-                    pil_img.save(filepath)
+                    pil_img = PIL_Image.fromarray(arr2save)
+                    if metadata_json:
+                        self._write_tiff_metadata(filepath, pil_img, metadata_json)
+                    else:
+                        pil_img.save(filepath)
 
             case _:
                 raise ValueError(f"unknown file extension for saving:{filepath.suffix}")

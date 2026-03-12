@@ -56,15 +56,29 @@ def generate_sentinel_script(
     q_progress_dir = shlex.quote(str(progress_dir.as_posix()))
     q_script_path = shlex.quote(str(script_path.as_posix()))
 
+    # Derive SLURM wall time from max_runtime + 15-min margin, 60-min floor
+    slurm_minutes = max((max_runtime // 60) + 15, 60)
+    slurm_hours = slurm_minutes // 60
+    slurm_mins = slurm_minutes % 60
+
     script_content = f"""\
 #!/bin/bash
 #SBATCH --job-name=pheno-sentinel
 #SBATCH --partition={partition}
-#SBATCH --time=00:35:00
+#SBATCH --time={slurm_hours:02d}:{slurm_mins:02d}:00
 #SBATCH --mem=512M
 #SBATCH --cpus-per-task=1
 #SBATCH --output={progress_dir.as_posix()}/sentinel_%j.log
 {account_line}
+# Resubmit sentinel on SIGTERM (sent by SLURM before SIGKILL) unless
+# the Python process already handled resubmission.
+RESUBMIT_MARKER={q_progress_dir}/sentinel_resubmitted
+trap 'if [ ! -f "$RESUBMIT_MARKER" ]; then
+    echo "SIGTERM received — resubmitting sentinel from trap"
+    sbatch --parsable {q_script_path}
+fi
+exit 0' TERM
+
 {python_str} -m phenotypic._cli._cli_sentinel \\
     --output-dir {q_output_dir} \\
     --progress-dir {q_progress_dir} \\
@@ -74,7 +88,7 @@ def generate_sentinel_script(
     --slurm-partition {partition}
 """
 
-    script_path.write_text(script_content)
+    script_path.write_text(script_content, encoding="utf-8")
     script_path.chmod(script_path.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
     logger.info("Generated sentinel script: %s", script_path)

@@ -224,7 +224,7 @@ exit $EXIT_CODE
 
     # Write script
     script_path = script_dir / script_name
-    script_path.write_text(script_content)
+    script_path.write_text(script_content, encoding="utf-8")
     script_path.chmod(0o755)  # Make executable
 
     return script_path

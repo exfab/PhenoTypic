@@ -604,10 +604,45 @@ class TestSentinelScript:
         assert "#!/bin/bash" in content
         assert "#SBATCH --partition=gpu" in content
         assert "#SBATCH --account=mylab" in content
+        assert "#SBATCH --time=01:00:00" in content  # default max_runtime=1800 → 60-min floor
         assert "pheno-sentinel" in content
         assert "phenotypic._cli._cli_sentinel" in content
         # Uses the same Python path as array job scripts, not bare "python"
         assert "-m phenotypic._cli._cli_sentinel" in content
+
+    def test_time_derived_from_max_runtime(self, tmp_dir):
+        script = generate_sentinel_script(
+            output_dir=tmp_dir,
+            progress_dir=tmp_dir / "progress",
+            slurm_args={},
+            max_runtime=3600,  # 60 min → 75 min SLURM time
+        )
+        content = script.read_text()
+        assert "#SBATCH --time=01:15:00" in content
+
+    def test_time_minimum_floor(self, tmp_dir):
+        script = generate_sentinel_script(
+            output_dir=tmp_dir,
+            progress_dir=tmp_dir / "progress",
+            slurm_args={},
+            max_runtime=300,  # 5 min + 15 = 20, but floor is 60
+        )
+        content = script.read_text()
+        assert "#SBATCH --time=01:00:00" in content
+
+    def test_sigterm_trap_present(self, tmp_dir):
+        progress_dir = tmp_dir / "progress"
+        script = generate_sentinel_script(
+            output_dir=tmp_dir,
+            progress_dir=progress_dir,
+            slurm_args={},
+        )
+        content = script.read_text()
+        assert "RESUBMIT_MARKER=" in content
+        assert "sentinel_resubmitted" in content
+        assert "trap " in content
+        assert "SIGTERM" in content
+        assert "sbatch --parsable" in content
 
     @pytest.mark.skipif(sys.platform == "win32", reason="chmod not effective on Windows")
     def test_script_executable(self, tmp_dir):

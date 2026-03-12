@@ -63,12 +63,17 @@ def sentinel_main(
         format="%(asctime)s [sentinel] %(levelname)s %(message)s",
     )
 
+    # Clean up stale resubmission marker from a previous sentinel run
+    marker = progress_dir / "sentinel_resubmitted"
+    if marker.exists():
+        marker.unlink()
+
     metadata_path = progress_dir / "job_metadata.json"
     if not metadata_path.exists():
         logger.error("job_metadata.json not found at %s", metadata_path)
         raise SystemExit(1)
 
-    with open(metadata_path) as fh:
+    with open(metadata_path, encoding="utf-8") as fh:
         job_metadata = json.load(fh)
 
     start_time = job_metadata["start_time"]
@@ -120,7 +125,7 @@ def sentinel_main(
         # Check completion status from the freshly-written manifest
         manifest_path = progress_dir / "manifest.json"
         if manifest_path.exists():
-            with open(manifest_path) as fh:
+            with open(manifest_path, encoding="utf-8") as fh:
                 manifest = json.load(fh)
             is_complete = manifest.get("is_complete", False)
 
@@ -171,6 +176,9 @@ def sentinel_main(
         if result.returncode == 0:
             new_job_id = result.stdout.strip()
             logger.info("Sentinel resubmitted as SLURM job %s", new_job_id)
+            # Signal to bash trap that resubmission already happened
+            marker = progress_dir / "sentinel_resubmitted"
+            marker.write_text(new_job_id, encoding="utf-8")
         else:
             logger.error(
                 "Failed to resubmit sentinel: %s", result.stderr.strip()

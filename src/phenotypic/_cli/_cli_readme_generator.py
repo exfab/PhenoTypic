@@ -57,7 +57,7 @@ class READMEGenerator:
         ]
 
         content = "\n\n".join(filter(None, sections))
-        readme_path.write_text(content)
+        readme_path.write_text(content, encoding="utf-8")
 
         return readme_path
 

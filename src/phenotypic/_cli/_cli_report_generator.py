@@ -26,7 +26,7 @@ class HTMLReportGenerator:
             output_path: Path to save HTML file
         """
         html = self._generate_html(results)
-        output_path.write_text(html)
+        output_path.write_text(html, encoding="utf-8")
 
     def _generate_html(self, results: ExecutionResults) -> str:
         """Generate HTML content."""

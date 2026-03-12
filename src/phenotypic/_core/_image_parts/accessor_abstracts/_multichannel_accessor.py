@@ -93,8 +93,11 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
                 self._write_png_metadata(fname, pil_img, metadata_json)
 
         elif suffix in IO.TIFF_EXTENSIONS:
-            pil_img = PIL_Image.fromarray(arr)
-            self._write_tiff_metadata(fname, pil_img, metadata_json)
+            if arr.dtype == np.uint16:
+                self._write_tiff_tifffile(fname, arr, metadata_json)
+            else:
+                pil_img = PIL_Image.fromarray(arr)
+                self._write_tiff_metadata(fname, pil_img, metadata_json)
 
         else:
             # Fallback to skimage without metadata
