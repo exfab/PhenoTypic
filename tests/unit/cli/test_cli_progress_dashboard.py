@@ -16,6 +16,7 @@ Covers:
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -542,6 +543,7 @@ class TestDashboard:
         assert "YOUR_SERVER_URL" in html
         assert "--cut-dirs" in html
         assert "--user=" in html
+        assert "--password='" in html
 
     def test_download_url_autodetect_js(self, tmp_dir):
         generate_dashboard(tmp_dir)
@@ -606,6 +608,7 @@ class TestSentinelScript:
         # Uses the same Python path as array job scripts, not bare "python"
         assert "-m phenotypic._cli._cli_sentinel" in content
 
+    @pytest.mark.skipif(sys.platform == "win32", reason="chmod not effective on Windows")
     def test_script_executable(self, tmp_dir):
         import os
         import stat

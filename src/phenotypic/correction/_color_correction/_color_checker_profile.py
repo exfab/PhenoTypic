@@ -30,6 +30,17 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
+def _in_jupyter_notebook() -> bool:
+    """Detect whether code is running inside a Jupyter notebook."""
+    try:
+        from IPython import get_ipython
+
+        shell = get_ipython()
+        return shell is not None and shell.__class__.__name__ == "ZMQInteractiveShell"
+    except ImportError:
+        return False
+
 # ---------------------------------------------------------------------------
 # Illuminant constants
 # ---------------------------------------------------------------------------
@@ -166,10 +177,13 @@ class ColorCheckerProfile:
             root-polynomial fit.
         outlier_sigma: Patches whose Delta-E 2000 exceeds
             ``mean + outlier_sigma * stddev`` are rejected as outliers.
+        rois: List of ``(row_slice, col_slice)`` tuples delimiting checker
+            card regions in the source image.  Stored for use by
+            :meth:`fit` and :meth:`dashboard`.
 
     Attributes:
-        correction_matrix: Fitted correction matrix once :meth:`fit_from_rois`
-            or :meth:`fit_from_patch_colors` has been called.
+        correction_matrix: Fitted correction matrix once :meth:`fit`
+            or :meth:`_fit_from_patch_colors` has been called.
         diagnostics: Per-patch and aggregate quality metrics.
         is_fitted: ``True`` after a successful fit.
     """
@@ -185,6 +199,7 @@ class ColorCheckerProfile:
         core_fraction: float = 0.5,
         ridge_lambda: float = 1e-3,
         outlier_sigma: float = 2.0,
+        rois: list[tuple[slice, slice]] | None = None,
     ) -> None:
         if degree not in {1, 2, 3, 4}:
             raise ValueError(f"degree must be 1, 2, 3, or 4, got {degree}")
@@ -208,6 +223,8 @@ class ColorCheckerProfile:
         self._correction_matrix: np.ndarray | None = None
         self._diagnostics: dict[str, Any] = {}
         self._is_fitted: bool = False
+        self._rois = rois
+        self._image: Image | None = None
 
     # -- properties ---------------------------------------------------------
 
@@ -216,8 +233,7 @@ class ColorCheckerProfile:
         """Root-polynomial correction matrix (shape ``(3, F)``)."""
         if self._correction_matrix is None:
             raise RuntimeError(
-                "Profile is not fitted. Call fit_from_rois() or "
-                "fit_from_patch_colors() first."
+                "Profile is not fitted. Call fit() first."
             )
         return self._correction_matrix
 
@@ -233,7 +249,26 @@ class ColorCheckerProfile:
 
     # -- high-level fitting -------------------------------------------------
 
-    def fit_from_rois(
+    def fit(self, image: Image) -> ColorCheckerProfile:
+        """Fit the profile from checker-card ROIs stored at initialisation.
+
+        Args:
+            image: Source image containing visible checker cards.
+
+        Returns:
+            ``self`` for method chaining.
+
+        Raises:
+            ValueError: If no ROIs were provided at initialisation.
+        """
+        if self._rois is None:
+            raise ValueError(
+                "No ROIs available. Pass rois= to the constructor."
+            )
+        self._image = image
+        return self._fit_from_rois(image, self._rois)
+
+    def _fit_from_rois(
         self,
         image: Image,
         rois: list[tuple[slice, slice]],
@@ -357,7 +392,7 @@ class ColorCheckerProfile:
         )
         return self
 
-    def fit_from_patch_colors(
+    def _fit_from_patch_colors(
         self,
         measured_rgb: np.ndarray,
         patch_names: list[str] | None = None,
@@ -649,21 +684,24 @@ class ColorCheckerProfile:
         """
         return _load_reference_data(self.checker_type, self.target_illuminant)
 
-    # -- diagnostic --------------------------------------------------------
+    # -- dashboard ---------------------------------------------------------
 
-    def diagnostic(
-        self,
-        image: Image | None = None,
-        rois: list[tuple[slice, slice]] | None = None,
-    ) -> Any:
-        """Return an interactive Panel dashboard for inspection.
+    def dashboard(self, show: bool = True) -> Any:
+        """Display an interactive Panel dashboard for quality inspection.
+
+        Uses the image and ROIs stored during :meth:`fit`.  If fitted via
+        :meth:`_fit_from_patch_colors`, pipeline and segmentation sections
+        are hidden.
+
+        In Jupyter notebooks the dashboard renders inline.  In terminals
+        a local web server is launched.
 
         Args:
-            image: Source image containing checker cards (optional).
-            rois: ROI slices for pipeline step visualisation (optional).
+            show: Auto-display the dashboard.  Set ``False`` in tests
+                or for programmatic use.
 
         Returns:
-            Interactive dashboard instance.  Call ``.panel()`` to display.
+            The Panel layout object.
 
         Raises:
             RuntimeError: If the profile has not been fitted.
@@ -671,7 +709,7 @@ class ColorCheckerProfile:
         """
         if not self._is_fitted:
             raise RuntimeError(
-                "Cannot create diagnostic for an unfitted profile."
+                "Cannot create dashboard for an unfitted profile."
             )
         from ._diagnostic_dashboard import PANEL_AVAILABLE
 
@@ -682,9 +720,23 @@ class ColorCheckerProfile:
             )
         from ._diagnostic_dashboard import ColorCorrectionDashboard
 
-        return ColorCorrectionDashboard(
-            profile=self, image=image, rois=rois,
+        dashboard = ColorCorrectionDashboard(
+            profile=self, image=self._image, rois=self._rois,
         )
+        panel_layout = dashboard.panel()
+
+        if show:
+            if _in_jupyter_notebook():
+                import panel as pn
+
+                pn.extension(inline=True)
+                from IPython.display import display
+
+                display(panel_layout)
+            else:
+                panel_layout.show()
+
+        return panel_layout
 
     # -- serialisation ------------------------------------------------------
 
@@ -741,12 +793,15 @@ class ColorCheckerProfile:
         if data.get("diagnostics"):
             profile._diagnostics = data["diagnostics"]
         profile._is_fitted = data.get("is_fitted", False)
+        profile._rois = None
+        profile._image = None
         return profile
 
     def __repr__(self) -> str:
         status = "fitted" if self._is_fitted else "unfitted"
+        n_rois = len(self._rois) if self._rois else 0
         return (
             f"ColorCheckerProfile(checker_type={self.checker_type!r}, "
             f"degree={self.degree}, target_illuminant={self.target_illuminant!r}, "
-            f"status={status})"
+            f"rois={n_rois}, status={status})"
         )

@@ -27,7 +27,9 @@ Examples:
 
 from __future__ import annotations
 
+import os
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Callable, TypeVar
@@ -162,18 +164,17 @@ def atomic_read(
 
     # Parse outside lock to minimize lock time
     # Write content to temp location and parse
-    import tempfile
-
-    with tempfile.NamedTemporaryFile(
-            mode='w', delete=False, suffix='.tmp', encoding='utf-8'
-    ) as tmp:
-        tmp.write(content)
-        tmp_path = Path(tmp.name)
-
+    fd, tmp_name = tempfile.mkstemp(suffix='.tmp')
+    tmp_path = Path(tmp_name)
     try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as tmp:
+            tmp.write(content)
         result = reader(tmp_path)
     finally:
-        tmp_path.unlink()
+        try:
+            tmp_path.unlink()
+        except PermissionError:
+            pass  # Windows: delayed file release
 
     return result
 

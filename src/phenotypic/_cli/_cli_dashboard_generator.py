@@ -179,10 +179,14 @@ def _build_css() -> str:
       font-weight: 400;
       color: var(--color-heading);
     }
+    .header-title-group {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+    }
     .header-logo img {
-      max-height: 48px;
+      max-height: 42px;
       width: auto;
-      margin-top: var(--sp-2);
     }
     .header-right {
       display: flex;
@@ -719,9 +723,9 @@ def _build_body(execution_mode: str, logo_data_uri: str = "") -> str:
   <div class="container">
     <!-- Header -->
     <div class="header">
-      <div>
-        <h1>PhenoTypic Processing Dashboard</h1>
+      <div class="header-title-group">
         {logo_html}
+        <h1>PhenoTypic Processing Dashboard</h1>
       </div>
       <div class="header-right">
         <span class="input-path" id="input-path" style="display:none"></span>
@@ -914,14 +918,14 @@ def _build_js(execution_mode: str) -> str:
       const cutDirs = document.getElementById('dl-cutdirs').value || 'N';
 
       let auth = '';
-      if (user) auth = ' --user=' + user + (pass ? ' --password=' + pass : '');
+      if (user) auth = ' --user=' + user + (pass ? " --password='" + pass + "'" : '');
 
       document.getElementById('cmd-full').textContent =
-        'wget -r -np -nH --cut-dirs=' + cutDirs + auth + ' ' + base;
+        'wget -r -np -nH -e robots=off --cut-dirs=' + cutDirs + auth + ' ' + base;
       document.getElementById('cmd-csv').textContent =
-        'wget -r -np -nH --cut-dirs=' + cutDirs + ' -A "*.csv"' + auth + ' ' + base;
+        'wget -r -np -nH -e robots=off --cut-dirs=' + cutDirs + ' -A "*.csv"' + auth + ' ' + base;
       document.getElementById('cmd-png').textContent =
-        'wget -r -np -nH --cut-dirs=' + cutDirs + ' -A "*.png"' + auth + ' ' + base + 'results/';
+        'wget -r -np -nH -e robots=off --cut-dirs=' + cutDirs + ' -A "*.png"' + auth + ' ' + base + 'results/';
     }}
 
     // ── Render: Summary Cards ──────────────────────────────────

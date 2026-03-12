@@ -47,8 +47,8 @@ def format_sbatch_directives(
         - ``mem_gb`` is converted to ``--mem=<N>G``.
     """
     directives = [f"#SBATCH --job-name={job_name}"]
-    directives.append(f"#SBATCH --output={output_log}")
-    directives.append(f"#SBATCH --error={error_log}")
+    directives.append(f"#SBATCH --output={output_log.as_posix()}")
+    directives.append(f"#SBATCH --error={error_log.as_posix()}")
 
     for key, value in slurm_args.items():
         directive_name = key.replace("slurm_", "").replace("_", "-")

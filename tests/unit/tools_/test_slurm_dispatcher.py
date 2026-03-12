@@ -1,5 +1,7 @@
 """Tests for SLURM drip-feed dispatcher script generation."""
 
+import sys
+
 import pytest
 
 from phenotypic.tools_.slurm._dispatcher import (
@@ -127,6 +129,7 @@ class TestGenerateDispatcherScript:
         content = output.read_text()
         assert "--partition=gpu" in content
 
+    @pytest.mark.skipif(sys.platform == "win32", reason="chmod not effective on Windows")
     def test_dispatcher_is_executable(self, tmp_path, slurm_args):
         """Generated dispatcher script should be executable."""
         chunk_script = tmp_path / "chunk.sh"
@@ -246,6 +249,7 @@ class TestGenerateDispatcherChain:
         assert str(chunk_scripts[3]) in content2
         assert "no further dispatcher needed" in content2
 
+    @pytest.mark.skipif(sys.platform == "win32", reason="chmod not effective on Windows")
     def test_all_dispatchers_are_executable(self, chunk_scripts, tmp_path, slurm_args):
         """All generated dispatchers should be executable."""
         dispatchers = generate_dispatcher_chain(

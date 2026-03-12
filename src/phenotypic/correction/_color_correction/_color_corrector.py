@@ -55,8 +55,8 @@ class ColorCorrector(ImageCorrector):
 
         >>> from phenotypic.correction import ColorCheckerProfile, ColorCorrector
         >>> import numpy as np
-        >>> profile = ColorCheckerProfile(degree=2)  # doctest: +SKIP
-        >>> profile.fit_from_patch_colors(measured_rgb)  # doctest: +SKIP
+        >>> profile = ColorCheckerProfile(rois=[...], degree=2)  # doctest: +SKIP
+        >>> profile.fit(image)  # doctest: +SKIP
         >>> corrector = ColorCorrector(profile)  # doctest: +SKIP
         >>> corrected = corrector.apply(image)  # doctest: +SKIP
     """
@@ -145,20 +145,15 @@ class ColorCorrector(ImageCorrector):
 
         return image
 
-    def diagnostic(
-        self,
-        image: Image | None = None,
-        rois: list[tuple[slice, slice]] | None = None,
-    ) -> Any:
-        """Return an interactive diagnostic dashboard.
+    def dashboard(self, show: bool = True) -> Any:
+        """Display an interactive diagnostic dashboard.
 
-        Delegates to the underlying profile's diagnostic method.
+        Delegates to the underlying profile's dashboard method.
 
         Args:
-            image: Source image for pipeline visualisation (optional).
-            rois: ROI slices for pipeline step visualisation (optional).
+            show: Auto-display the dashboard.
 
         Returns:
-            Interactive dashboard instance.
+            The Panel layout object.
         """
-        return self._profile.diagnostic(image=image, rois=rois)
+        return self._profile.dashboard(show=show)

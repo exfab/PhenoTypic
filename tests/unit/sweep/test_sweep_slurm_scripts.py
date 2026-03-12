@@ -55,7 +55,8 @@ class TestGenerateSweepArrayScript:
             slurm_args=slurm_args,
         )
         assert script.exists()
-        assert script.stat().st_mode & 0o111  # executable
+        if sys.platform != "win32":
+            assert script.stat().st_mode & 0o111  # executable
 
     def test_2d_indexing_in_script(
         self, image_paths, pipeline_names, manifest_path, tmp_path, slurm_args

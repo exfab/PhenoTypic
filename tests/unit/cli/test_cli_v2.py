@@ -11,6 +11,7 @@ Tests the new features introduced in v2.0:
 
 import json
 import logging
+import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -1406,6 +1407,7 @@ class TestNewCoverageGaps:
         assert "--dataset-name" in script_content
         assert "plate1" in script_content
 
+    @pytest.mark.skipif(sys.platform == "win32", reason="bash not available on Windows CI")
     def test_slurm_script_bash_syntax(self, temp_output_dir):
         """Test that generated SLURM scripts have valid bash syntax."""
         import subprocess

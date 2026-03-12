@@ -109,13 +109,9 @@ if PANEL_AVAILABLE:
         matched color swatches.
 
         Not registered globally (not accessed via ``image.panel.*``).
-        Accessed directly via ``profile.diagnostic(image, rois)``.
+        Accessed directly via ``profile.dashboard()``.
         """
 
-        selected_roi = param.Integer(
-            default=0, bounds=(0, None),
-            doc="Index of the ROI to inspect for pipeline/segmentation views.",
-        )
         show_pipeline = param.Boolean(
             default=True, doc="Show pipeline preprocessing steps.",
         )
@@ -149,9 +145,6 @@ if PANEL_AVAILABLE:
             self._image = image
             self._rois = rois
             self._has_image = image is not None and rois is not None
-
-            if self._has_image and rois:
-                self.param.selected_roi.bounds = (0, len(rois) - 1)
 
         # ------------------------------------------------------------------
         # Helpers
@@ -216,33 +209,47 @@ if PANEL_AVAILABLE:
         # Section A: Pipeline Steps
         # ------------------------------------------------------------------
 
-        @param.depends("selected_roi", "show_pipeline")
+        @param.depends("show_pipeline")
         def _pipeline_section(self) -> pn.Column:
             if not self.show_pipeline or not self._has_image:
                 return pn.Column()
 
-            original, trimmed, filtered, padded = self._preprocess_roi(
-                self.selected_roi,
-            )
-
-            stages = [
-                ("1. Original Crop", original),
-                ("2. Background Trimmed", trimmed),
-                ("3. Median Filtered", filtered),
-                ("4. Centered & Padded", padded),
+            n_rois = len(self._rois)  # type: ignore[arg-type]
+            stage_labels = [
+                "1. Original Crop",
+                "2. Background Trimmed",
+                "3. Median Filtered",
+                "4. Centered & Padded",
             ]
 
             with plt.rc_context(_DASHBOARD_STYLE):
-                fig, axes = plt.subplots(1, 4, figsize=(16, 4))
-                for ax, (title, arr) in zip(axes, stages):
-                    display = arr.astype(np.float64)
-                    if display.max() > 1.0:
-                        display = display / display.max()
-                    ax.imshow(np.clip(display, 0, 1))
-                    ax.set_title(title, fontsize=9, color=_COLOR_NAVY)
-                    ax.axis("off")
+                fig, axes = plt.subplots(
+                    n_rois, 4, figsize=(16, 4 * n_rois), squeeze=False,
+                )
+                for roi_idx in range(n_rois):
+                    original, trimmed, filtered, padded = self._preprocess_roi(
+                        roi_idx,
+                    )
+                    for col, (label, arr) in enumerate(
+                        zip(stage_labels, [original, trimmed, filtered, padded])
+                    ):
+                        ax = axes[roi_idx, col]
+                        display = arr.astype(np.float64)
+                        if display.max() > 1.0:
+                            display = display / display.max()
+                        ax.imshow(np.clip(display, 0, 1))
+                        if roi_idx == 0:
+                            ax.set_title(label, fontsize=9, color=_COLOR_NAVY)
+                        ax.axis("off")
+                        if col == 0:
+                            ax.set_ylabel(
+                                f"ROI {roi_idx}", fontsize=9,
+                                color=_COLOR_NAVY, rotation=0,
+                                labelpad=40, va="center",
+                            )
+
                 fig.suptitle(
-                    f"Pipeline Steps -- ROI {self.selected_roi}",
+                    "Pipeline Steps",
                     fontsize=12, color=_COLOR_NAVY, fontweight="600",
                 )
                 fig.tight_layout()
@@ -260,7 +267,7 @@ if PANEL_AVAILABLE:
         # Section B: Segmentation
         # ------------------------------------------------------------------
 
-        @param.depends("selected_roi", "show_segmentation")
+        @param.depends("show_segmentation")
         def _segmentation_section(self) -> pn.Column:
             if not self.show_segmentation or not self._has_image:
                 return pn.Column()
@@ -273,78 +280,97 @@ if PANEL_AVAILABLE:
                 validate_patch_shape,
             )
 
-            _, _, _, padded = self._preprocess_roi(self.selected_roi)
-
-            # Load reference Lab for clustering.
+            n_rois = len(self._rois)  # type: ignore[arg-type]
             ref_Lab_dict, _, target_wp_xy = self._profile._load_refs()
-            padded_float = _normalize_to_unit_float(padded)
-            lab_padded = _rgb_to_lab(padded_float, illuminant_xy=target_wp_xy)
-
             ref_Lab_tuples = {
                 name: tuple(lab.tolist())
                 for name, lab in ref_Lab_dict.items()
             }
-            masks, bboxes, labels = lab_checker_cluster_masks(
-                lab_padded,
-                ref_Lab_tuples,
-                border_distance_threshold=self._profile.border_distance_threshold,
-                include_labels=True,
-            )  # type: ignore[misc]
-
-            # Build overlay image.
-            display = padded_float.copy()
-            if display.max() > 1.0:
-                display = display / display.max()
-
-            rng = np.random.default_rng(42)
-            overlay = np.zeros((*display.shape[:2], 4), dtype=np.float64)
 
             warnings_text: list[str] = []
-            for mask, label in zip(masks, labels):
-                if label == "border":
-                    continue
-                if not mask.any():
-                    continue
-                color = rng.uniform(0.3, 0.9, size=3)
-                overlay[mask, :3] = color
-                overlay[mask, 3] = 0.4
-
-                core = compute_core_mask(
-                    mask, core_fraction=self._profile.core_fraction,
-                )
-                overlay[core, 3] = 0.7  # brighter for core
-
-                _, patch_warnings = validate_patch_shape(core)
-                if patch_warnings:
-                    warnings_text.append(
-                        f"**{label}**: {'; '.join(patch_warnings)}"
-                    )
 
             with plt.rc_context(_DASHBOARD_STYLE):
-                fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-                axes[0].imshow(np.clip(display, 0, 1))
-                axes[0].set_title(
-                    "Preprocessed Image", fontsize=9, color=_COLOR_NAVY,
+                fig, axes = plt.subplots(
+                    n_rois, 2, figsize=(12, 5 * n_rois), squeeze=False,
                 )
-                axes[0].axis("off")
+                rng = np.random.default_rng(42)
 
-                axes[1].imshow(np.clip(display, 0, 1))
-                axes[1].imshow(overlay)
-                axes[1].set_title(
-                    "Cluster Masks (bright = core)",
-                    fontsize=9, color=_COLOR_NAVY,
-                )
-                axes[1].axis("off")
+                for roi_idx in range(n_rois):
+                    _, _, _, padded = self._preprocess_roi(roi_idx)
+                    padded_float = _normalize_to_unit_float(padded)
+                    lab_padded = _rgb_to_lab(
+                        padded_float, illuminant_xy=target_wp_xy,
+                    )
+
+                    masks, bboxes, labels = lab_checker_cluster_masks(
+                        lab_padded,
+                        ref_Lab_tuples,
+                        border_distance_threshold=(
+                            self._profile.border_distance_threshold
+                        ),
+                        include_labels=True,
+                    )  # type: ignore[misc]
+
+                    display = padded_float.copy()
+                    if display.max() > 1.0:
+                        display = display / display.max()
+
+                    overlay = np.zeros(
+                        (*display.shape[:2], 4), dtype=np.float64,
+                    )
+
+                    for mask, label in zip(masks, labels):
+                        if label == "border":
+                            continue
+                        if not mask.any():
+                            continue
+                        color = rng.uniform(0.3, 0.9, size=3)
+                        overlay[mask, :3] = color
+                        overlay[mask, 3] = 0.4
+
+                        core = compute_core_mask(
+                            mask,
+                            core_fraction=self._profile.core_fraction,
+                        )
+                        overlay[core, 3] = 0.7
+
+                        _, patch_warnings = validate_patch_shape(core)
+                        if patch_warnings:
+                            warnings_text.append(
+                                f"**ROI {roi_idx} -- {label}**: "
+                                f"{'; '.join(patch_warnings)}"
+                            )
+
+                    axes[roi_idx, 0].imshow(np.clip(display, 0, 1))
+                    axes[roi_idx, 0].set_title(
+                        "Preprocessed Image", fontsize=9,
+                        color=_COLOR_NAVY,
+                    )
+                    axes[roi_idx, 0].axis("off")
+                    if n_rois > 1:
+                        axes[roi_idx, 0].set_ylabel(
+                            f"ROI {roi_idx}", fontsize=9,
+                            color=_COLOR_NAVY, rotation=0,
+                            labelpad=40, va="center",
+                        )
+
+                    axes[roi_idx, 1].imshow(np.clip(display, 0, 1))
+                    axes[roi_idx, 1].imshow(overlay)
+                    axes[roi_idx, 1].set_title(
+                        "Cluster Masks (bright = core)",
+                        fontsize=9, color=_COLOR_NAVY,
+                    )
+                    axes[roi_idx, 1].axis("off")
 
                 fig.suptitle(
-                    f"Segmentation -- ROI {self.selected_roi}",
+                    "Segmentation",
                     fontsize=12, color=_COLOR_NAVY, fontweight="600",
                 )
                 fig.tight_layout()
                 pane = pn.pane.Matplotlib(fig, tight=True, dpi=100)
                 plt.close(fig)
 
-            items = [pane]
+            items: list[Any] = [pane]
             if warnings_text:
                 items.append(
                     pn.pane.Markdown(
@@ -624,16 +650,6 @@ if PANEL_AVAILABLE:
                 A Panel Column containing the full interactive dashboard.
             """
             # Build sidebar controls.
-            controls_items: list[Any] = []
-
-            if self._has_image:
-                controls_items.append(
-                    pn.Param(
-                        self.param.selected_roi,
-                        widgets={"selected_roi": pn.widgets.IntSlider},
-                    )
-                )
-
             controls_sections = pn.Card(
                 pn.Param(self.param.show_delta_e),
                 pn.Param(self.param.show_patches),
@@ -649,17 +665,7 @@ if PANEL_AVAILABLE:
                 collapsed=False,
                 width=300,
             )
-
-            if controls_items:
-                controls_params = pn.Card(
-                    *controls_items,
-                    title="Parameters",
-                    collapsed=False,
-                    width=300,
-                )
-                sidebar = pn.Column(controls_params, controls_sections, width=320)
-            else:
-                sidebar = pn.Column(controls_sections, width=320)
+            sidebar = pn.Column(controls_sections, width=320)
 
             # Diagnostics summary.
             diag = self._profile.diagnostics

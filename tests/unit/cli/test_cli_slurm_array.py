@@ -6,6 +6,7 @@ and sbatch submission parsing.
 """
 
 import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
@@ -207,7 +208,8 @@ class TestArrayJobScriptGeneration:
 
         assert script_path.exists()
         assert script_path.is_file()
-        assert script_path.stat().st_mode & 0o111  # Executable
+        if sys.platform != "win32":
+            assert script_path.stat().st_mode & 0o111  # Executable
 
         # Read script content
         content = script_path.read_text()

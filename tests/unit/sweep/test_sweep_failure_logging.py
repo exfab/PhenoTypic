@@ -51,7 +51,7 @@ class TestWriteFailureLog:
         )
         content = log_path.read_text()
         assert "Timestamp:" in content
-        assert "/data/images/plate001.tiff" in content
+        assert str(Path("/data/images/plate001.tiff")) in content
         assert "Pipeline:  Config_0" in content
         assert "ValueError: boom" in content
         assert '{"ops": []}' in content

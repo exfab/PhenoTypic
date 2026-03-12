@@ -22,9 +22,6 @@ from phenotypic.correction._color_correction._helpers import (
 
 if PANEL_AVAILABLE:
     import panel as pn
-    from phenotypic.correction._color_correction._diagnostic_dashboard import (
-        ColorCorrectionDashboard,
-    )
 
 panel_required = pytest.mark.skipif(
     not PANEL_AVAILABLE, reason="Panel/param not installed"
@@ -67,7 +64,7 @@ def fitted_profile() -> ColorCheckerProfile:
     """Return a ColorCheckerProfile that has been fitted on synthetic data."""
     measured_rgb, patch_names = make_synthetic_checker()
     profile = ColorCheckerProfile(degree=2)
-    profile.fit_from_patch_colors(measured_rgb, patch_names=patch_names)
+    profile._fit_from_patch_colors(measured_rgb, patch_names=patch_names)
     return profile
 
 
@@ -92,7 +89,7 @@ class TestColorCheckerProfileValidation:
         profile = ColorCheckerProfile(checker_type="nonexistent_checker")
         measured_rgb, _ = make_synthetic_checker()
         with pytest.raises(KeyError):
-            profile.fit_from_patch_colors(measured_rgb)
+            profile._fit_from_patch_colors(measured_rgb)
 
     def test_invalid_degree_zero_raises(self):
         """Constructing with degree=0 raises ValueError."""
@@ -131,7 +128,7 @@ class TestColorCheckerProfileFitting:
         """Fitting with low-noise synthetic patches succeeds."""
         measured_rgb, patch_names = make_synthetic_checker(noise_sigma=0.01)
         profile = ColorCheckerProfile(degree=2)
-        result = profile.fit_from_patch_colors(measured_rgb, patch_names=patch_names)
+        result = profile._fit_from_patch_colors(measured_rgb, patch_names=patch_names)
         assert result.is_fitted is True
 
     def test_fit_produces_correction_matrix(self):
@@ -139,7 +136,7 @@ class TestColorCheckerProfileFitting:
         for degree, expected_f in [(1, 3), (2, 6), (3, 13)]:
             measured_rgb, patch_names = make_synthetic_checker()
             profile = ColorCheckerProfile(degree=degree)
-            profile.fit_from_patch_colors(measured_rgb, patch_names=patch_names)
+            profile._fit_from_patch_colors(measured_rgb, patch_names=patch_names)
             matrix = profile.correction_matrix
             assert matrix.shape == (3, expected_f), (
                 f"degree={degree}: expected (3, {expected_f}), got {matrix.shape}"
@@ -223,7 +220,7 @@ class TestEdgeNoiseHandling:
         # Corrupt one patch drastically.
         measured_rgb[0] = [1.0, 0.0, 1.0]  # magenta -- far from 'dark skin'
         profile = ColorCheckerProfile(degree=2, outlier_sigma=1.5)
-        profile.fit_from_patch_colors(measured_rgb, patch_names=patch_names)
+        profile._fit_from_patch_colors(measured_rgb, patch_names=patch_names)
         rejected = profile.diagnostics["rejected_patches"]
         assert len(rejected) > 0
         # The corrupted patch should be among the rejected.
@@ -316,58 +313,72 @@ class TestColorCorrectorSerialization:
 class TestColorCorrectionDashboard:
     """Test interactive Panel diagnostic dashboard."""
 
-    def test_profile_diagnostic_returns_dashboard(self, fitted_profile):
-        """profile.diagnostic() returns a ColorCorrectionDashboard."""
-        dashboard = fitted_profile.diagnostic()
-        assert isinstance(dashboard, ColorCorrectionDashboard)
-
-    def test_corrector_diagnostic_delegates(self, fitted_profile):
-        """ColorCorrector.diagnostic() delegates to the profile."""
-        corrector = ColorCorrector(fitted_profile)
-        dashboard = corrector.diagnostic()
-        assert isinstance(dashboard, ColorCorrectionDashboard)
-
-    def test_panel_returns_column(self, fitted_profile):
-        """dashboard.panel() returns a pn.Column."""
-        dashboard = fitted_profile.diagnostic()
-        layout = dashboard.panel()
+    def test_profile_dashboard_returns_column(self, fitted_profile):
+        """profile.dashboard(show=False) returns a pn.Column."""
+        layout = fitted_profile.dashboard(show=False)
         assert isinstance(layout, pn.Column)
 
-    def test_delta_e_section_uses_diagnostics(self, fitted_profile):
-        """Delta E section renders using diagnostics data."""
-        dashboard = fitted_profile.diagnostic()
-        section = dashboard._delta_e_section()
-        assert isinstance(section, pn.Card)
-
-    def test_patches_section_renders(self, fitted_profile):
-        """Matched patches section renders without error."""
-        dashboard = fitted_profile.diagnostic()
-        section = dashboard._patches_section()
-        assert isinstance(section, pn.Card)
+    def test_corrector_dashboard_delegates(self, fitted_profile):
+        """ColorCorrector.dashboard() delegates to the profile."""
+        corrector = ColorCorrector(fitted_profile)
+        layout = corrector.dashboard(show=False)
+        assert isinstance(layout, pn.Column)
 
     def test_unfitted_profile_raises(self):
         """Unfitted profile raises RuntimeError."""
         profile = ColorCheckerProfile()
         with pytest.raises(RuntimeError, match="unfitted"):
-            profile.diagnostic()
+            profile.dashboard(show=False)
+
+    def test_delta_e_section_uses_diagnostics(self, fitted_profile):
+        """Delta E section renders using diagnostics data."""
+        from phenotypic.correction._color_correction._diagnostic_dashboard import (
+            ColorCorrectionDashboard,
+        )
+
+        dashboard = ColorCorrectionDashboard(profile=fitted_profile)
+        section = dashboard._delta_e_section()
+        assert isinstance(section, pn.Card)
+
+    def test_patches_section_renders(self, fitted_profile):
+        """Matched patches section renders without error."""
+        from phenotypic.correction._color_correction._diagnostic_dashboard import (
+            ColorCorrectionDashboard,
+        )
+
+        dashboard = ColorCorrectionDashboard(profile=fitted_profile)
+        section = dashboard._patches_section()
+        assert isinstance(section, pn.Card)
 
     def test_pipeline_hidden_without_image(self, fitted_profile):
         """Pipeline section returns empty when no image provided."""
-        dashboard = fitted_profile.diagnostic()
+        from phenotypic.correction._color_correction._diagnostic_dashboard import (
+            ColorCorrectionDashboard,
+        )
+
+        dashboard = ColorCorrectionDashboard(profile=fitted_profile)
         section = dashboard._pipeline_section()
         assert isinstance(section, pn.Column)
         assert len(section) == 0
 
     def test_segmentation_hidden_without_image(self, fitted_profile):
         """Segmentation section returns empty when no image provided."""
-        dashboard = fitted_profile.diagnostic()
+        from phenotypic.correction._color_correction._diagnostic_dashboard import (
+            ColorCorrectionDashboard,
+        )
+
+        dashboard = ColorCorrectionDashboard(profile=fitted_profile)
         section = dashboard._segmentation_section()
         assert isinstance(section, pn.Column)
         assert len(section) == 0
 
     def test_show_delta_e_toggle(self, fitted_profile):
         """Toggling show_delta_e hides the section."""
-        dashboard = fitted_profile.diagnostic()
+        from phenotypic.correction._color_correction._diagnostic_dashboard import (
+            ColorCorrectionDashboard,
+        )
+
+        dashboard = ColorCorrectionDashboard(profile=fitted_profile)
         dashboard.show_delta_e = False
         section = dashboard._delta_e_section()
         assert isinstance(section, pn.Column)
@@ -375,8 +386,21 @@ class TestColorCorrectionDashboard:
 
     def test_show_patches_toggle(self, fitted_profile):
         """Toggling show_patches hides the section."""
-        dashboard = fitted_profile.diagnostic()
+        from phenotypic.correction._color_correction._diagnostic_dashboard import (
+            ColorCorrectionDashboard,
+        )
+
+        dashboard = ColorCorrectionDashboard(profile=fitted_profile)
         dashboard.show_patches = False
         section = dashboard._patches_section()
         assert isinstance(section, pn.Column)
         assert len(section) == 0
+
+    def test_fit_without_rois_raises(self):
+        """fit() raises ValueError when no ROIs provided."""
+        from phenotypic import Image
+
+        profile = ColorCheckerProfile()
+        img = Image(arr=np.zeros((10, 10, 3), dtype=np.uint8))
+        with pytest.raises(ValueError, match="No ROIs available"):
+            profile.fit(img)

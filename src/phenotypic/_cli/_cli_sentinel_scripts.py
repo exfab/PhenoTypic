@@ -52,9 +52,9 @@ def generate_sentinel_script(
     if account:
         account_line = f"#SBATCH --account={account}\n"
 
-    q_output_dir = shlex.quote(str(output_dir))
-    q_progress_dir = shlex.quote(str(progress_dir))
-    q_script_path = shlex.quote(str(script_path))
+    q_output_dir = shlex.quote(str(output_dir.as_posix()))
+    q_progress_dir = shlex.quote(str(progress_dir.as_posix()))
+    q_script_path = shlex.quote(str(script_path.as_posix()))
 
     script_content = f"""\
 #!/bin/bash
@@ -63,7 +63,7 @@ def generate_sentinel_script(
 #SBATCH --time=00:35:00
 #SBATCH --mem=512M
 #SBATCH --cpus-per-task=1
-#SBATCH --output={progress_dir}/sentinel_%j.log
+#SBATCH --output={progress_dir.as_posix()}/sentinel_%j.log
 {account_line}
 {python_str} -m phenotypic._cli._cli_sentinel \\
     --output-dir {q_output_dir} \\
