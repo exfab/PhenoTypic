@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, TYPE_CHECKING
 
 import pandas as pd
+import polars as pl
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -54,7 +55,7 @@ def aggregate_measurements(
         measurements were found.
     """
     results_dir = output_dir / "results"
-    all_measurements: List[pd.DataFrame] = []
+    all_measurements: List[pl.DataFrame] = []
     n_skipped = 0
 
     for dataset_name in dataset_names:
@@ -64,10 +65,11 @@ def aggregate_measurements(
 
         for csv_file in sorted(dataset_meas_dir.glob("*.csv")):
             try:
-                df = pd.read_csv(csv_file)
+                df = pl.read_csv(csv_file)
                 if include_dataset_column and "Metadata_Dataset" not in df.columns:
-                    df = df.copy()
-                    df.insert(0, "Metadata_Dataset", dataset_name)
+                    df = df.insert_column(
+                        0, pl.lit(dataset_name).alias("Metadata_Dataset")
+                    )
                 all_measurements.append(df)
             except Exception as e:
                 logger.warning(
@@ -88,7 +90,7 @@ def aggregate_measurements(
         return None
 
     try:
-        master_df = pd.concat(all_measurements, axis=0, ignore_index=True)
+        master_df = pl.concat(all_measurements, how="diagonal_relaxed")
     except Exception as e:
         logger.error("Failed to concatenate measurements: %s", e)
         return None
@@ -96,7 +98,7 @@ def aggregate_measurements(
     # Join external metadata if provided
     if metadata_csv is not None:
         try:
-            metadata_df = pd.read_csv(metadata_csv)
+            metadata_df = pl.read_csv(metadata_csv)
             common = list(set(master_df.columns) & set(metadata_df.columns))
             if not common:
                 logger.warning(
@@ -105,32 +107,42 @@ def aggregate_measurements(
             else:
                 logger.info("Joining metadata on columns: %s", common)
                 # Cast join keys to string so mismatched dtypes don't
-                # cause silent NaN results (e.g. int vs str plate IDs)
-                for col in common:
-                    master_df[col] = master_df[col].astype(str)
-                    metadata_df[col] = metadata_df[col].astype(str)
-                n_rows_before = len(master_df)
+                # cause silent null results (e.g. int vs str plate IDs)
+                master_df = master_df.with_columns(
+                    pl.col(col).cast(pl.Utf8) for col in common
+                )
+                metadata_df = metadata_df.with_columns(
+                    pl.col(col).cast(pl.Utf8) for col in common
+                )
+                n_rows_before = master_df.height
                 n_cols_before = len(master_df.columns)
-                master_df = master_df.merge(metadata_df, on=common, how="left")
+                master_df = master_df.join(metadata_df, on=common, how="left")
                 n_new_cols = len(master_df.columns) - n_cols_before
-                if len(master_df) > n_rows_before:
+                if master_df.height > n_rows_before:
                     logger.warning(
                         "Metadata join increased row count from %d to %d — "
                         "metadata CSV likely has duplicate keys on columns %s. "
                         "Verify your metadata CSV has unique values on join columns.",
                         n_rows_before,
-                        len(master_df),
+                        master_df.height,
                         common,
                     )
-                n_matched = master_df.dropna(
-                    subset=[c for c in master_df.columns if c not in set(common)],
-                    how="all",
-                ).shape[0] if n_new_cols > 0 else len(master_df)
+                metadata_only_cols = [
+                    c for c in metadata_df.columns if c not in set(common)
+                ]
+                if n_new_cols > 0 and metadata_only_cols:
+                    n_matched = master_df.filter(
+                        ~pl.all_horizontal(
+                            pl.col(c).is_null() for c in metadata_only_cols
+                        )
+                    ).height
+                else:
+                    n_matched = master_df.height
                 logger.info(
                     "Metadata join: added %d columns, %d/%d rows matched",
                     n_new_cols,
                     n_matched,
-                    len(master_df),
+                    master_df.height,
                 )
         except Exception as e:
             logger.warning("Failed to join metadata CSV: %s: %s", type(e).__name__, e)
@@ -138,34 +150,33 @@ def aggregate_measurements(
     master_path = output_dir / "master_measurements.csv"
 
     # Atomic write: temp file + os.replace()
-    fd = tempfile.NamedTemporaryFile(
-        mode="w",
-        dir=output_dir,
-        prefix=".master_measurements_",
-        suffix=".tmp",
-        delete=False,
-        encoding="utf-8",
-    )
+    tmp_path = None
     try:
-        master_df.to_csv(fd, index=False)
-        fd.flush()
-        os.fsync(fd.fileno())
+        fd = tempfile.NamedTemporaryFile(
+            dir=output_dir,
+            prefix=".master_measurements_",
+            suffix=".tmp",
+            delete=False,
+        )
+        tmp_path = fd.name
         fd.close()
-        os.replace(fd.name, master_path)
+        master_df.write_csv(tmp_path)
+        os.replace(tmp_path, master_path)
     except BaseException:
-        fd.close()
-        try:
-            os.unlink(fd.name)
-        except OSError:
-            pass
+        if tmp_path is not None:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
         logger.error("Failed to save master CSV")
         return None
 
+    n_files = len(all_measurements)
     logger.info(
         "Aggregated %d CSV files into %s (%d total rows)",
-        len(all_measurements),
+        n_files,
         master_path.name,
-        len(master_df),
+        master_df.height,
     )
     return master_path
 

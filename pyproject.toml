@@ -48,6 +48,7 @@ dependencies = [
     "threadpoolctl>=3.6.0",
     "pympler>=1.0.1",
     "exifread>=3.5.1",
+    "polars",
     "click>=8.3.0",
     "bm3d>=4.0.3",
     "wand>=0.6.13",
