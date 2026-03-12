@@ -110,6 +110,72 @@ def get_slurm_max_submit_jobs() -> Optional[int]:
         return None
 
 
+def estimate_concurrent_capacity(
+    partition: str,
+    cpus_per_task: int = 1,
+    mem_gb_per_task: float = 4.0,
+) -> int:
+    """Estimate max concurrent tasks from partition resources via sinfo.
+
+    Queries SLURM's ``sinfo`` for the given partition to determine total
+    CPUs, memory, and node count, then estimates how many tasks can run
+    concurrently given per-task resource requirements.
+
+    Args:
+        partition: SLURM partition name.
+        cpus_per_task: CPUs requested per task.
+        mem_gb_per_task: Memory in GB per task.
+
+    Returns:
+        Estimated number of concurrent tasks. Falls back to 100 if
+        sinfo is unavailable.
+
+    Examples:
+        >>> capacity = estimate_concurrent_capacity("compute")
+        >>> capacity >= 1  # Always at least 1
+        True
+    """
+    try:
+        result = subprocess.run(
+            ["sinfo", "-p", partition, "-o", "%c %m %D", "--noheader"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+
+        if result.returncode != 0:
+            return 100
+
+        total_cpus = 0
+        total_mem_gb = 0.0
+
+        for line in result.stdout.strip().splitlines():
+            parts = line.split()
+            if len(parts) < 3:
+                continue
+            try:
+                cpus_per_node = int(parts[0])
+                mem_per_node_mb = int(parts[1])
+                num_nodes = int(parts[2])
+                total_cpus += cpus_per_node * num_nodes
+                total_mem_gb += (mem_per_node_mb / 1024.0) * num_nodes
+            except (ValueError, IndexError):
+                continue
+
+        if total_cpus == 0:
+            return 100
+
+        by_cpu = total_cpus // max(cpus_per_task, 1)
+        by_mem = int(total_mem_gb // max(mem_gb_per_task, 0.1))
+        concurrent = min(by_cpu, by_mem)
+
+        return max(concurrent, 1)
+
+    except (FileNotFoundError, subprocess.TimeoutExpired, ValueError):
+        return 100
+
+
 def calculate_optimal_array_chunks(
     num_images: int, array_limit: int
 ) -> List[Tuple[int, int]]:

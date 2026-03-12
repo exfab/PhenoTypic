@@ -548,6 +548,12 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
     help="CSV file to left-join onto master_measurements.csv on shared columns",
 )
 @click.option(
+    "--checkpoint-interval",
+    type=int,
+    default=None,
+    help="Insert checkpoint tasks every N images in SLURM arrays (default: auto-estimate)",
+)
+@click.option(
     "--skip-validation",
     is_flag=True,
     help="Skip pipeline validation (for advanced users)",
@@ -575,6 +581,7 @@ def phenotypic_cli(
     retry_failures: bool,
     restart: bool,
     metadata_csv: Optional[Path],
+    checkpoint_interval: Optional[int],
     skip_validation: bool,
 ):
     """
@@ -707,6 +714,7 @@ def phenotypic_cli(
             retry_failures=retry_failures,
             skip_validation=skip_validation,
             metadata_csv=metadata_csv,
+            checkpoint_interval=checkpoint_interval,
         )
 
         # Handle resume mode BEFORE creating output directory

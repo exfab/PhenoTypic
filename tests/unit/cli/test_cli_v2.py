@@ -1075,7 +1075,7 @@ class TestEdgeCases:
         # Verify output files created for the single image
         # Output should be in results/dataset folder named after input directory ("input")
         measurements_file = (
-            output_dir / "results" / "input" / "measurements" / "single.csv"
+            output_dir / "results" / "input" / "measurements" / "single.parquet"
         )
         overlay_file = output_dir / "results" / "input" / "overlays" / "single.png"
 
@@ -1223,7 +1223,7 @@ class TestNewCoverageGaps:
             / "results"
             / "single_image"
             / "measurements"
-            / "image1.csv"
+            / "image1.parquet"
         )
 
         path = manager.get_output_path("plate1", "measurements", "image1")
@@ -1234,7 +1234,7 @@ class TestNewCoverageGaps:
             / "results"
             / "plate1"
             / "measurements"
-            / "image1.csv"
+            / "image1.parquet"
         )
 
         path = manager.get_output_path("my_dataset", "overlays", "image2")
@@ -1508,17 +1508,23 @@ class TestAggregateMeasurements:
     """Tests for the standalone aggregate_measurements() function."""
 
     def _create_measurement_csvs(self, output_dir, datasets):
-        """Helper to create measurement CSV files in the expected directory structure.
+        """Helper to create measurement Parquet files in the expected directory structure.
 
         Args:
             output_dir: Base output directory.
             datasets: Dict of {dataset_name: list of (image_stem, dataframe)} tuples.
         """
+        import polars as pl
+
         for ds_name, images in datasets.items():
             meas_dir = output_dir / "results" / ds_name / "measurements"
             meas_dir.mkdir(parents=True, exist_ok=True)
             for stem, df in images:
-                df.to_csv(meas_dir / f"{stem}.csv", index=False)
+                pl.from_pandas(df).write_parquet(
+                    meas_dir / f"{stem}.parquet",
+                    compression="zstd",
+                    compression_level=3,
+                )
 
     def test_aggregate_measurements_standalone(self, temp_output_dir):
         """Single dataset: master CSV has correct rows and Metadata_Dataset column."""

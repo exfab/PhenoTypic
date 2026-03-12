@@ -11,7 +11,7 @@ from typing import Dict, List, Any
 import shlex
 
 from ._cli_types import Dataset, ExecutionConfig
-from ._cli_utils import get_python_command
+from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
 from phenotypic.tools_.slurm._sbatch import (
     format_sbatch_directives as _format_sbatch_directives,
 )
@@ -143,6 +143,8 @@ def generate_image_processing_script(
 
 set -e  # Exit on error
 set -u  # Exit on undefined variable
+
+{SLURM_THREAD_PIN_BASH}
 
 # Record start time
 echo "Job started: $(date)"

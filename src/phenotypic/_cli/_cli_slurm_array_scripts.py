@@ -10,11 +10,69 @@ from __future__ import annotations
 
 import shlex
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from ._cli_slurm_scripts import generate_slurm_directives
 from ._cli_types import Dataset, ExecutionConfig
-from ._cli_utils import get_python_command
+from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
+
+# Sentinel value inserted into the image list to trigger checkpoint aggregation
+_CHECKPOINT_SENTINEL = "__PHENOTYPIC_CHECKPOINT__"
+
+
+def _build_entry_list(
+    chunk_images: List[Path],
+    checkpoint_interval: Optional[int],
+) -> List[str]:
+    """Build the task entry list, optionally interleaving checkpoint sentinels.
+
+    Args:
+        chunk_images: Image paths for this chunk.
+        checkpoint_interval: Insert a sentinel every N images, or ``None``
+            to skip sentinel insertion.
+
+    Returns:
+        List of absolute path strings with optional sentinel markers.
+    """
+    if checkpoint_interval is not None and checkpoint_interval > 0:
+        entries: List[str] = []
+        for i, img_path in enumerate(chunk_images):
+            entries.append(str(img_path.absolute()))
+            if (i + 1) % checkpoint_interval == 0:
+                entries.append(_CHECKPOINT_SENTINEL)
+        return entries
+
+    return [str(img_path.absolute()) for img_path in chunk_images]
+
+
+def _resolve_checkpoint_interval(config: ExecutionConfig) -> int:
+    """Resolve checkpoint interval from config or auto-estimate from SLURM capacity.
+
+    Args:
+        config: Execution configuration with optional checkpoint_interval
+            and SLURM partition details.
+
+    Returns:
+        Checkpoint interval clamped to [50, 500].
+    """
+    if config.checkpoint_interval is not None:
+        return config.checkpoint_interval
+
+    from ._cli_slurm_config import estimate_concurrent_capacity
+
+    partition = config.slurm_args.get("slurm_partition", "")
+    if partition:
+        cpus_per_task = int(config.slurm_args.get("slurm_cpus_per_task", 1))
+        mem_gb = float(config.slurm_args.get("mem_gb", 4.0))
+        concurrent_capacity = estimate_concurrent_capacity(
+            partition=partition,
+            cpus_per_task=cpus_per_task,
+            mem_gb_per_task=mem_gb,
+        )
+    else:
+        concurrent_capacity = 100
+
+    return max(50, min(3 * concurrent_capacity, 500))
 
 
 def generate_array_job_script(
@@ -23,6 +81,7 @@ def generate_array_job_script(
     config: ExecutionConfig,
     output_dir: Path,
     chunk_id: int = 0,
+    checkpoint_interval: Optional[int] = None,
 ) -> Path:
     """
     Generate a SLURM array job script for processing a dataset chunk.
@@ -37,6 +96,8 @@ def generate_array_job_script(
         config: Execution configuration with SLURM parameters
         output_dir: Base output directory
         chunk_id: Chunk number for multi-chunk datasets (default: 0)
+        checkpoint_interval: If set, insert checkpoint sentinel entries
+            every N images so SLURM tasks can trigger chunk aggregation
 
     Returns:
         Path to generated array job script
@@ -69,6 +130,9 @@ def generate_array_job_script(
             f"Empty chunk for dataset {dataset.name}: indices ({start_idx}, {end_idx})"
         )
 
+    # Build task entries, interleaving checkpoint sentinels at regular intervals
+    entries = _build_entry_list(chunk_images, checkpoint_interval)
+
     # Create script directory
     script_dir = output_dir / "slurm_scripts" / dataset.name
     script_dir.mkdir(parents=True, exist_ok=True)
@@ -88,29 +152,21 @@ def generate_array_job_script(
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"{dataset.name}_%A_%a.log"
 
-    # Generate SBATCH directives with array specification
-    slurm_args_with_array = config.slurm_args.copy()
-    # Don't add --array here, we'll add it manually after other directives
+    # Generate SBATCH directives (array directive added separately below)
     directives = generate_slurm_directives(
         job_name=job_name,
-        slurm_args=slurm_args_with_array,
+        slurm_args=config.slurm_args,
         output_log=log_path,
-        error_log=log_path,  # Combined log
+        error_log=log_path,
     )
 
-    # Add array directive (0-based indexing)
-    num_tasks = len(chunk_images)
-    array_directive = f"#SBATCH --array=0-{num_tasks - 1}"
+    # Array directive uses 0-based indexing across images and sentinels
+    array_directive = f"#SBATCH --array=0-{len(entries) - 1}"
 
-    # Build image list for bash array
-    # Use absolute paths for reliability
-    image_list_lines = []
-    for img_path in chunk_images:
-        # Quote paths for safety (spaces, special chars)
-        quoted_path = shlex.quote(str(img_path.absolute()))
-        image_list_lines.append(f"    {quoted_path}")
-
-    image_list_content = "\n".join(image_list_lines)
+    # Build bash array body (absolute paths and sentinel literals, shell-quoted)
+    image_list_content = "\n".join(
+        f"    {shlex.quote(entry)}" for entry in entries
+    )
 
     # Build command arguments for single-image processor
     event_log = output_dir / "processing_events.log"
@@ -165,6 +221,16 @@ def generate_array_job_script(
     # Join command with line continuations for readability
     cmd = " \\\n    ".join(cmd_parts)
 
+    # Build checkpoint command
+    checkpoint_cmd_parts = [
+        *python_cmd,
+        "-m",
+        "phenotypic._cli._cli_chunk_writer",
+        "--output-dir",
+        shlex.quote(str(output_dir.absolute())),
+    ]
+    checkpoint_cmd = " \\\n    ".join(checkpoint_cmd_parts)
+
     # Generate complete script
     script_content = f"""#!/bin/bash
 {directives}
@@ -178,6 +244,8 @@ def generate_array_job_script(
 set -e  # Exit on error
 set -u  # Exit on undefined variable
 
+{SLURM_THREAD_PIN_BASH}
+
 # Record start time
 echo "======================================"
 echo "Job ID: ${{SLURM_JOB_ID:-unknown}}"
@@ -187,6 +255,7 @@ echo "Start Time: $(date)"
 echo "======================================"
 
 # Build image list (0-based indexing)
+# Entries may include {_CHECKPOINT_SENTINEL} sentinels for checkpoint aggregation
 IMAGE_LIST=(
 {image_list_content}
 )
@@ -202,16 +271,26 @@ if [ "$SLURM_ARRAY_TASK_ID" -ge "${{#IMAGE_LIST[@]}}" ]; then
     exit 1
 fi
 
-# Get current image using array task ID
+# Get current entry using array task ID
 CURRENT_IMAGE="${{IMAGE_LIST[$SLURM_ARRAY_TASK_ID]}}"
 
-echo "Processing image $((SLURM_ARRAY_TASK_ID + 1))/${{#IMAGE_LIST[@]}}: $CURRENT_IMAGE"
-echo ""
+if [ "$CURRENT_IMAGE" = "{_CHECKPOINT_SENTINEL}" ]; then
+    # Checkpoint task: aggregate per-image Parquets into a dashboard chunk
+    echo "Running checkpoint aggregation (task $SLURM_ARRAY_TASK_ID)"
+    echo ""
 
-# Run processing
-{cmd}
+    {checkpoint_cmd}
 
-EXIT_CODE=$?
+    EXIT_CODE=$?
+else
+    # Normal image processing
+    echo "Processing image $((SLURM_ARRAY_TASK_ID + 1))/${{#IMAGE_LIST[@]}}: $CURRENT_IMAGE"
+    echo ""
+
+    {cmd}
+
+    EXIT_CODE=$?
+fi
 
 echo ""
 echo "======================================"
@@ -269,29 +348,24 @@ def generate_all_array_job_scripts(
     """
     from ._cli_slurm_config import calculate_optimal_array_chunks
 
-    all_scripts = {}
+    checkpoint_interval = _resolve_checkpoint_interval(config)
+    all_scripts: Dict[str, List[Path]] = {}
 
     for dataset in datasets:
-        num_images = len(dataset.images)
-
-        if num_images == 0:
-            # Skip empty datasets
+        if not dataset.images:
             continue
 
-        # Calculate chunks based on array limit
-        chunks = calculate_optimal_array_chunks(num_images, array_limit)
-
-        dataset_scripts = []
-        for chunk_id, (start, end) in enumerate(chunks):
-            script_path = generate_array_job_script(
+        chunks = calculate_optimal_array_chunks(len(dataset.images), array_limit)
+        all_scripts[dataset.name] = [
+            generate_array_job_script(
                 dataset=dataset,
                 array_indices=(start, end),
                 config=config,
                 output_dir=output_dir,
                 chunk_id=chunk_id,
+                checkpoint_interval=checkpoint_interval,
             )
-            dataset_scripts.append(script_path)
-
-        all_scripts[dataset.name] = dataset_scripts
+            for chunk_id, (start, end) in enumerate(chunks)
+        ]
 
     return all_scripts

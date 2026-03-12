@@ -1,6 +1,6 @@
 """Sidecar data preparation for the Analysis tab.
 
-Scans per-image measurement CSVs, optionally left-joins metadata,
+Scans per-image measurement Parquet files, optionally left-joins metadata,
 and writes JSON sidecar files that the dashboard's Analysis tab
 reads via ``fetch()``.
 """
@@ -15,13 +15,17 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import numpy as np
-import pandas as pd
+import polars as pl
+
+from .._cli_output_manager import _atomic_write
 
 logger = logging.getLogger(__name__)
 
 # Prefix priority for column selection in scatter data.
 _SCATTER_PREFIX_PRIORITY = ("Metadata_", "Grid_", "Shape_", "Intensity_", "Color_")
+
+# Column used to identify datasets throughout this module.
+_DATASET_COL = "Metadata_Dataset"
 
 
 # ---------------------------------------------------------------------------
@@ -36,12 +40,15 @@ def write_analysis_sidecar(
     """Write JSON sidecar files for the dashboard Analysis tab.
 
     Discovers datasets under ``results/``, loads and merges measurement
-    CSVs, and writes four JSON files into ``progress/``:
+    Parquet files, and writes four JSON files into ``progress/``:
 
     * ``analysis_scatter.json`` -- columnar data for scatter plots
     * ``analysis_table.json`` -- columnar data for the raw-data table
     * ``analysis_stats.json`` -- per-dataset descriptive statistics
     * ``overlay_manifest.json`` -- dataset-to-overlay-image mapping
+
+    Also writes ``progress/analysis_full.parquet`` as a local-mode
+    sidecar (single-file approach, no chunking).
 
     All writes are atomic (tempfile + :func:`os.replace`).
 
@@ -72,10 +79,13 @@ def write_analysis_sidecar(
     _write_json_atomic(table_data, progress_dir / "analysis_table.json")
     _write_json_atomic(summary_stats, progress_dir / "analysis_stats.json")
 
+    # Write local-mode Parquet sidecar (single-file, no chunking).
+    _write_parquet_sidecar(merged_df, progress_dir / "analysis_full.parquet")
+
     logger.debug(
         "Wrote analysis sidecar files (%d rows, %d columns)",
-        len(merged_df),
-        len(merged_df.columns),
+        merged_df.height,
+        merged_df.width,
     )
 
 
@@ -87,10 +97,10 @@ def write_analysis_sidecar(
 def _load_and_merge(
     output_dir: Path,
     metadata_csv: Optional[Path],
-) -> Optional[pd.DataFrame]:
-    """Scan measurement CSVs, concatenate, and optionally join metadata.
+) -> Optional[pl.DataFrame]:
+    """Scan measurement Parquet files, concatenate, and optionally join metadata.
 
-    Walks ``results/*/measurements/*.csv``, adds ``Metadata_Dataset``
+    Walks ``results/*/measurements/*.parquet``, adds ``Metadata_Dataset``
     and ``Metadata_ImageFile`` columns, and performs a left-join with
     *metadata_csv* when provided.
 
@@ -112,7 +122,7 @@ def _load_and_merge(
     if not dataset_names:
         return None
 
-    all_measurements: List[pd.DataFrame] = []
+    all_measurements: List[pl.DataFrame] = []
     n_skipped = 0
 
     for dataset_name in dataset_names:
@@ -120,36 +130,36 @@ def _load_and_merge(
         if not dataset_meas_dir.is_dir():
             continue
 
-        for csv_file in sorted(dataset_meas_dir.glob("*.csv")):
+        for parquet_file in sorted(dataset_meas_dir.glob("*.parquet")):
             try:
-                df = pd.read_csv(csv_file)
-                if "Metadata_Dataset" not in df.columns:
-                    df = df.copy()
-                    df.insert(0, "Metadata_Dataset", dataset_name)
+                df = pl.read_parquet(parquet_file)
+                if _DATASET_COL not in df.columns:
+                    df = df.insert_column(
+                        0, pl.lit(dataset_name).alias(_DATASET_COL)
+                    )
                 if "Metadata_ImageFile" not in df.columns:
-                    df.insert(
-                        min(1, len(df.columns)),
-                        "Metadata_ImageFile",
-                        csv_file.stem,
+                    df = df.insert_column(
+                        min(1, df.width),
+                        pl.lit(parquet_file.stem).alias("Metadata_ImageFile"),
                     )
                 all_measurements.append(df)
             except Exception as e:
                 logger.warning(
                     "Failed to read %s: %s: %s",
-                    csv_file,
+                    parquet_file,
                     type(e).__name__,
                     e,
                 )
                 n_skipped += 1
 
     if n_skipped:
-        logger.warning("Skipped %d CSV file(s) due to read errors", n_skipped)
+        logger.warning("Skipped %d Parquet file(s) due to read errors", n_skipped)
 
     if not all_measurements:
         return None
 
     try:
-        master_df = pd.concat(all_measurements, axis=0, ignore_index=True)
+        master_df = pl.concat(all_measurements, how="diagonal_relaxed")
     except Exception as e:
         logger.error("Failed to concatenate measurements: %s", e)
         return None
@@ -157,8 +167,10 @@ def _load_and_merge(
     # Join external metadata if provided.
     if metadata_csv is not None:
         try:
-            metadata_df = pd.read_csv(metadata_csv)
-            common = list(set(master_df.columns) & set(metadata_df.columns))
+            metadata_df = pl.read_csv(metadata_csv)
+            common = [
+                c for c in master_df.columns if c in metadata_df.columns
+            ]
             if not common:
                 logger.warning(
                     "Metadata CSV has no columns in common with measurements "
@@ -166,17 +178,23 @@ def _load_and_merge(
                 )
             else:
                 logger.info("Joining metadata on columns: %s", common)
-                for col in common:
-                    master_df[col] = master_df[col].astype(str)
-                    metadata_df[col] = metadata_df[col].astype(str)
-                n_rows_before = len(master_df)
-                master_df = master_df.merge(metadata_df, on=common, how="left")
-                if len(master_df) > n_rows_before:
+                # Cast join keys to string for consistent matching.
+                master_df = master_df.with_columns(
+                    pl.col(c).cast(pl.String) for c in common
+                )
+                metadata_df = metadata_df.with_columns(
+                    pl.col(c).cast(pl.String) for c in common
+                )
+                n_rows_before = master_df.height
+                master_df = master_df.join(
+                    metadata_df, on=common, how="left"
+                )
+                if master_df.height > n_rows_before:
                     logger.warning(
                         "Metadata join increased row count from %d to %d -- "
                         "metadata CSV likely has duplicate keys on columns %s",
                         n_rows_before,
-                        len(master_df),
+                        master_df.height,
                         common,
                     )
         except Exception as e:
@@ -195,7 +213,7 @@ def _load_and_merge(
 # ---------------------------------------------------------------------------
 
 
-def _prepare_scatter_data(df: pd.DataFrame, max_rows: int = 10_000) -> dict:
+def _prepare_scatter_data(df: pl.DataFrame, max_rows: int = 10_000) -> dict:
     """Prepare columnar data for scatter plots.
 
     Selects up to 25 key columns (prioritised by prefix) and optionally
@@ -209,10 +227,10 @@ def _prepare_scatter_data(df: pd.DataFrame, max_rows: int = 10_000) -> dict:
         JSON-serializable dict with ``columns``, ``data``, ``total_rows``,
         and ``sampled`` keys.
     """
-    columns = _select_scatter_columns(df.columns.tolist())
-    sub = df[columns]
+    columns = _select_scatter_columns(df.columns)
+    sub = df.select(columns)
 
-    total_rows = len(sub)
+    total_rows = sub.height
     sampled = total_rows > max_rows
     if sampled:
         sub = _stratified_sample(sub, max_rows)
@@ -220,7 +238,7 @@ def _prepare_scatter_data(df: pd.DataFrame, max_rows: int = 10_000) -> dict:
     return _to_columnar(sub, total_rows, sampled)
 
 
-def _prepare_table_data(df: pd.DataFrame, max_rows: int = 5_000) -> dict:
+def _prepare_table_data(df: pl.DataFrame, max_rows: int = 5_000) -> dict:
     """Prepare columnar data for the raw-data table.
 
     Includes all columns.  Rows are stratified-sampled when they
@@ -233,7 +251,7 @@ def _prepare_table_data(df: pd.DataFrame, max_rows: int = 5_000) -> dict:
     Returns:
         JSON-serializable columnar dict.
     """
-    total_rows = len(df)
+    total_rows = df.height
     sampled = total_rows > max_rows
     if sampled:
         df = _stratified_sample(df, max_rows)
@@ -241,7 +259,7 @@ def _prepare_table_data(df: pd.DataFrame, max_rows: int = 5_000) -> dict:
     return _to_columnar(df, total_rows, sampled)
 
 
-def _prepare_summary_stats(df: pd.DataFrame) -> dict:
+def _prepare_summary_stats(df: pl.DataFrame) -> dict:
     """Compute per-dataset descriptive statistics on the full dataset.
 
     Groups by ``Metadata_Dataset`` and computes count, mean, std, min,
@@ -253,7 +271,9 @@ def _prepare_summary_stats(df: pd.DataFrame) -> dict:
     Returns:
         JSON-serializable dict with ``datasets`` and ``column_groups``.
     """
-    numeric_cols = df.select_dtypes(include="number").columns.tolist()
+    numeric_cols = [
+        c for c in df.columns if df[c].dtype.is_numeric()
+    ]
 
     # Build column groups by splitting on the first underscore.
     column_groups: Dict[str, List[str]] = {}
@@ -264,23 +284,19 @@ def _prepare_summary_stats(df: pd.DataFrame) -> dict:
             group = col
         column_groups.setdefault(group, []).append(col)
 
-    # Group by dataset (fall back to a single group if column is absent).
-    if "Metadata_Dataset" in df.columns:
-        grouped = df.groupby("Metadata_Dataset", sort=True)
-    else:
-        grouped = [("all", df)]
+    groups = _partition_by_dataset(df)
 
     datasets: Dict[str, dict] = {}
-    for ds_name, group_df in grouped:
+    for ds_name, group_df in sorted(groups.items()):
         col_stats: Dict[str, dict] = {}
         for col in numeric_cols:
             series = group_df[col]
-            count = int(series.count())
-            mean = float(series.mean()) if count else None
-            std = float(series.std()) if count else None
-            col_min = float(series.min()) if count else None
-            col_max = float(series.max()) if count else None
-            median = float(series.median()) if count else None
+            count = int(series.drop_nulls().len())
+            mean = series.mean() if count else None
+            std = series.std() if count else None
+            col_min = series.min() if count else None
+            col_max = series.max() if count else None
+            median = series.median() if count else None
 
             if mean is not None and std is not None and mean != 0:
                 cv = std / abs(mean) * 100
@@ -337,15 +353,43 @@ def _prepare_overlay_manifest(output_dir: Path) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Partitioning helper
+# ---------------------------------------------------------------------------
+
+
+def _partition_by_dataset(df: pl.DataFrame) -> Dict[str, pl.DataFrame]:
+    """Partition *df* by ``Metadata_Dataset``, returning a flat string-keyed dict.
+
+    Falls back to a single ``"all"`` group when the column is absent.
+    Handles the tuple-key format that ``partition_by(as_dict=True)``
+    returns in Polars.
+
+    Args:
+        df: DataFrame to partition.
+
+    Returns:
+        Mapping from dataset name to its sub-DataFrame.
+    """
+    if _DATASET_COL not in df.columns:
+        return {"all": df}
+
+    raw = df.partition_by(_DATASET_COL, as_dict=True)
+    return {
+        str(k[0]) if isinstance(k, tuple) else str(k): v
+        for k, v in raw.items()
+    }
+
+
+# ---------------------------------------------------------------------------
 # Sampling and column selection
 # ---------------------------------------------------------------------------
 
 
 def _stratified_sample(
-    df: pd.DataFrame,
+    df: pl.DataFrame,
     max_rows: int,
     seed: int = 42,
-) -> pd.DataFrame:
+) -> pl.DataFrame:
     """Stratified proportional sample by ``Metadata_Dataset``.
 
     When ``Metadata_Dataset`` is not present, falls back to a simple
@@ -359,28 +403,29 @@ def _stratified_sample(
     Returns:
         Sampled DataFrame (or the original if it already fits).
     """
-    if len(df) <= max_rows:
+    if df.height <= max_rows:
         return df
 
-    if "Metadata_Dataset" not in df.columns:
-        return df.sample(n=max_rows, random_state=seed)
+    if _DATASET_COL not in df.columns:
+        return df.sample(n=max_rows, seed=seed)
 
     # Proportional allocation per dataset.
-    grouped = df.groupby("Metadata_Dataset", sort=True)
-    total = len(df)
-    sampled_parts: List[pd.DataFrame] = []
+    groups = _partition_by_dataset(df)
+    total = df.height
+    sampled_parts: List[pl.DataFrame] = []
 
-    for ds_name, group_df in grouped:
-        proportion = len(group_df) / total
+    for ds_name in sorted(groups.keys()):
+        group_df = groups[ds_name]
+        proportion = group_df.height / total
         n_sample = max(1, int(round(proportion * max_rows)))
-        n_sample = min(n_sample, len(group_df))
-        sampled_parts.append(group_df.sample(n=n_sample, random_state=seed))
+        n_sample = min(n_sample, group_df.height)
+        sampled_parts.append(group_df.sample(n=n_sample, seed=seed))
 
-    result = pd.concat(sampled_parts, ignore_index=True)
+    result = pl.concat(sampled_parts)
 
     # Trim to exact max_rows if rounding pushed us over.
-    if len(result) > max_rows:
-        result = result.sample(n=max_rows, random_state=seed)
+    if result.height > max_rows:
+        result = result.sample(n=max_rows, seed=seed)
 
     return result
 
@@ -400,7 +445,7 @@ def _select_scatter_columns(all_columns: List[str], max_cols: int = 25) -> List[
         Ordered list of selected column names.
     """
     selected: List[str] = []
-    used: set = set()
+    used: set[str] = set()
 
     # Pass 1: pick columns by prefix priority.
     for prefix in _SCATTER_PREFIX_PRIORITY:
@@ -434,16 +479,13 @@ def _sanitize_for_json(value: Any) -> Any:
     """
     if value is None:
         return None
-    try:
-        if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
-            return None
-    except TypeError:
-        pass
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
     return value
 
 
 def _to_columnar(
-    df: pd.DataFrame,
+    df: pl.DataFrame,
     total_rows: int,
     sampled: bool,
 ) -> dict:
@@ -457,32 +499,15 @@ def _to_columnar(
     Returns:
         Dict with ``columns``, ``data``, ``total_rows``, ``sampled``.
     """
-    columns = df.columns.tolist()
+    columns = df.columns
     data: Dict[str, list] = {}
 
     for col in columns:
         series = df[col]
-        kind = series.dtype.kind
-        raw = series.tolist()
-
-        if kind == "f":
-            # Float columns: sanitize NaN/Inf and convert numpy scalars.
-            data[col] = [
-                _sanitize_for_json(v.item() if isinstance(v, np.floating) else v)
-                for v in raw
-            ]
-        elif kind == "O":
-            # Object columns may contain mixed types; sanitise NaN.
-            data[col] = [
-                None if isinstance(v, float) and math.isnan(v) else v
-                for v in raw
-            ]
+        if series.dtype.is_float():
+            data[col] = [_sanitize_for_json(v) for v in series.to_list()]
         else:
-            # Integer/bool/other: convert numpy scalars to Python natives.
-            data[col] = [
-                v.item() if isinstance(v, (np.integer, np.bool_)) else v
-                for v in raw
-            ]
+            data[col] = series.to_list()
 
     return {
         "columns": columns,
@@ -526,3 +551,19 @@ def _write_json_atomic(payload: dict, target_path: Path) -> None:
         except OSError:
             pass
         raise
+
+
+def _write_parquet_sidecar(merged_df: pl.DataFrame, target_path: Path) -> None:
+    """Write the merged measurement DataFrame as a Parquet sidecar file.
+
+    Writes with zstd compression using an atomic write pattern
+    (tempfile + :func:`os.replace`).
+
+    Args:
+        merged_df: Merged measurement DataFrame (Polars).
+        target_path: Destination file path for the Parquet sidecar.
+    """
+    _atomic_write(
+        target_path,
+        lambda p: merged_df.write_parquet(p, compression="zstd", compression_level=3),
+    )

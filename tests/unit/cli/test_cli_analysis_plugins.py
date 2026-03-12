@@ -18,6 +18,7 @@ import tempfile
 from pathlib import Path
 
 import pandas as pd
+import polars as pl
 import pytest
 
 
@@ -272,12 +273,12 @@ class TestAnalysisData:
         assert not (tmp_dir / "progress" / "analysis_scatter.json").exists()
 
     def test_write_sidecar_with_data(self, tmp_dir):
-        """write_analysis_sidecar should produce JSON files from measurement CSVs."""
+        """write_analysis_sidecar should produce JSON files from measurement Parquets."""
         from phenotypic._cli._dashboard._analysis_data import (
             write_analysis_sidecar,
         )
 
-        # Create fake measurement CSV
+        # Create fake measurement Parquet
         results_dir = tmp_dir / "results" / "plate1" / "measurements"
         results_dir.mkdir(parents=True)
         df = pd.DataFrame(
@@ -287,7 +288,9 @@ class TestAnalysisData:
                 "Intensity_MeanIntensity": [float(x) * 0.1 for x in range(10)],
             }
         )
-        df.to_csv(results_dir / "img001.csv", index=False)
+        pl.from_pandas(df).write_parquet(
+            results_dir / "img001.parquet", compression="snappy"
+        )
 
         write_analysis_sidecar(tmp_dir)
 
@@ -310,7 +313,7 @@ class TestAnalysisData:
             write_analysis_sidecar,
         )
 
-        # Create fake measurement CSV
+        # Create fake measurement Parquet
         results_dir = tmp_dir / "results" / "plate1" / "measurements"
         results_dir.mkdir(parents=True)
         df = pd.DataFrame(
@@ -320,7 +323,9 @@ class TestAnalysisData:
                 "Shape_Area": range(5),
             }
         )
-        df.to_csv(results_dir / "img000.csv", index=False)
+        pl.from_pandas(df).write_parquet(
+            results_dir / "img000.parquet", compression="snappy"
+        )
 
         # Create metadata CSV with a shared key and a new column
         metadata_csv = tmp_dir / "metadata.csv"
@@ -350,18 +355,20 @@ class TestAnalysisData:
             _stratified_sample,
         )
 
-        df = pd.DataFrame(
+        df = pl.DataFrame(
             {
                 "Metadata_Dataset": ["A"] * 100 + ["B"] * 100,
                 "value": range(200),
             }
         )
         sampled = _stratified_sample(df, max_rows=50)
-        assert len(sampled) == 50
+        assert sampled.height == 50
         # Should have roughly proportional representation
         counts = sampled["Metadata_Dataset"].value_counts()
-        assert counts["A"] > 10
-        assert counts["B"] > 10
+        count_a = counts.filter(pl.col("Metadata_Dataset") == "A")["count"][0]
+        count_b = counts.filter(pl.col("Metadata_Dataset") == "B")["count"][0]
+        assert count_a > 10
+        assert count_b > 10
 
     def test_overlay_manifest(self, tmp_dir):
         """Overlay manifest should discover PNG files grouped by dataset."""

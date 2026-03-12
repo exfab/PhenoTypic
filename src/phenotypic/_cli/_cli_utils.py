@@ -27,6 +27,14 @@ import click
 # Allowed image file extensions for PhenoTypic processing
 ALLOWED_EXTENSIONS: Set[str] = {".png", ".tif", ".tiff", ".jpg", ".jpeg"}
 
+# Thread-pinning snippet for SLURM bash scripts. Ensures Polars and NumPy
+# respect the SLURM CPU allocation. Must appear before any Python import.
+# NOTE: Intended for use inside f-strings, so braces are doubled.
+SLURM_THREAD_PIN_BASH = """\
+# Pin Polars/NumPy thread pools to SLURM allocation (must happen before import)
+export POLARS_MAX_THREADS=${{SLURM_CPUS_PER_TASK:-1}}
+export OMP_NUM_THREADS=${{SLURM_CPUS_PER_TASK:-1}}"""
+
 
 def normalize_extension(ext: str, default: str = ".tiff") -> str:
     """

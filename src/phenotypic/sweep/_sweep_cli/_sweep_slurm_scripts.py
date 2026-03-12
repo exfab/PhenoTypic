@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from phenotypic.tools_.slurm._config import calculate_optimal_array_chunks
 from phenotypic.tools_.slurm._sbatch import format_sbatch_directives as generate_slurm_directives
-from phenotypic._cli._cli_utils import get_python_command
+from phenotypic._cli._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
 
 
 def _build_worker_command(
@@ -310,6 +310,8 @@ exit $EXIT_CODE
 
 set -e  # Exit on error
 set -u  # Exit on undefined variable
+
+{SLURM_THREAD_PIN_BASH}
 
 IMAGE_LIST=(
 {image_list_content}

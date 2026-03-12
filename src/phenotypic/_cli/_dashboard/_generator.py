@@ -46,8 +46,8 @@ def _build_analysis_subtabs(plugins: list) -> str:
     for i, p in enumerate(plugins):
         active = " active" if i == 0 else ""
         buttons.append(
-            f'<button class="sub-tab-btn{active}" '
-            f"onclick=\"switchSubTab('{p.call_name}')\">{p.display_name}</button>"
+                f'<button class="sub-tab-btn{active}" '
+                f"onclick=\"switchSubTab('{p.call_name}')\">{p.display_name}</button>"
         )
 
     # Sub-tab content panels
@@ -55,15 +55,15 @@ def _build_analysis_subtabs(plugins: list) -> str:
     for i, p in enumerate(plugins):
         active = " active" if i == 0 else ""
         panels.append(
-            f'<div class="sub-tab-content{active}" id="subtab-{p.call_name}">'
-            f"{p.html()}</div>"
+                f'<div class="sub-tab-content{active}" id="subtab-{p.call_name}">'
+                f"{p.html()}</div>"
         )
 
     return (
-        '<div class="analysis-sub-tabs">\n          '
-        + "\n          ".join(buttons)
-        + "\n        </div>\n        "
-        + "\n        ".join(panels)
+            '<div class="analysis-sub-tabs">\n          '
+            + "\n          ".join(buttons)
+            + "\n        </div>\n        "
+            + "\n        ".join(panels)
     )
 
 
@@ -79,27 +79,31 @@ def generate_dashboard(output_dir: Path, *, execution_mode: str = "local") -> No
     dashboard_path.write_text(_build_html(execution_mode), encoding="utf-8")
     logger.info("Dashboard written to %s", dashboard_path)
 
-    # Write Plotly.js sidecar for lazy loading by the Analysis tab
-    _write_plotly_sidecar(output_dir)
+    # Write JS sidecars for lazy loading by the Analysis tab
+    _write_js_sidecar(output_dir, "plotly.min.js", "Plotly.js")
+    _write_js_sidecar(output_dir, "hyparquet.min.js", "hyparquet.js")
 
 
-def _write_plotly_sidecar(output_dir: Path) -> None:
-    """Copy vendored Plotly.js to the progress directory as a sidecar file."""
+def _write_js_sidecar(output_dir: Path, filename: str, label: str) -> None:
+    """Copy a vendored JS asset to the progress directory as a sidecar file.
+
+    Args:
+        output_dir: Root output directory.
+        filename: Asset filename (e.g. ``"plotly.min.js"``).
+        label: Human-readable name for log messages (e.g. ``"Plotly.js"``).
+    """
     progress_dir = output_dir / "progress"
     progress_dir.mkdir(parents=True, exist_ok=True)
-    plotly_dest = progress_dir / "plotly.min.js"
+    dest = progress_dir / filename
     try:
-        plotly_src = files("phenotypic._cli._dashboard").joinpath(
-            "_assets", "plotly.min.js"
-        )
-        src_data = plotly_src.read_bytes()
-        # Skip write if destination already exists with matching size
-        if plotly_dest.exists() and plotly_dest.stat().st_size == len(src_data):
+        src = files("phenotypic._cli._dashboard").joinpath("_assets", filename)
+        src_data = src.read_bytes()
+        if dest.exists() and dest.stat().st_size == len(src_data):
             return
-        plotly_dest.write_bytes(src_data)
-        logger.debug("Plotly.js sidecar written to %s", plotly_dest)
+        dest.write_bytes(src_data)
+        logger.debug("%s sidecar written to %s", label, dest)
     except (OSError, ModuleNotFoundError, TypeError):
-        logger.debug("Plotly.js asset not found -- Analysis tab will not render charts")
+        logger.debug("%s asset not found -- feature will not be available", label)
 
 
 # ---------------------------------------------------------------------------
@@ -117,7 +121,7 @@ def _build_html(execution_mode: str) -> str:
         "<head>\n"
         "  <meta charset=\"UTF-8\">\n"
         "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
-        "  <title>PhenoTypic Processing Dashboard</title>\n"
+        "  <title>PhenoTypic Dashboard</title>\n"
         "  <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n"
         "  <link href=\"https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap\" rel=\"stylesheet\">\n"
         f"  <style>\n{_build_css(plugins)}\n  </style>\n"
@@ -136,7 +140,7 @@ def _load_logo_data_uri() -> str:
     try:
         raw = (
             files("phenotypic._cli._dashboard")
-            .joinpath("_assets", "light_logo.png")
+            .joinpath("_assets", "LogoArtOnly.png")
             .read_bytes()
         )
         b64 = base64.b64encode(raw).decode("ascii")
@@ -257,7 +261,7 @@ def _build_css(plugins: list | None = None) -> str:
       gap: var(--sp-3);
     }
     .header-logo img {
-      max-height: 250px;
+      max-height: 180px;
       width: auto;
       background: transparent;
     }
@@ -858,7 +862,8 @@ def _build_css(plugins: list | None = None) -> str:
     return base_css + "\n" + plugin_css
 
 
-def _build_body(execution_mode: str, logo_data_uri: str = "", plugins: list | None = None) -> str:
+def _build_body(execution_mode: str, logo_data_uri: str = "",
+                plugins: list | None = None) -> str:
     """Return the HTML body content (no <body> tags)."""
     logo_html = (
         f'<div class="header-logo"><img src="{logo_data_uri}" alt="PhenoTypic"></div>'
@@ -1412,26 +1417,22 @@ def _build_js(execution_mode: str, plugins: list | None = None) -> str:
     let analysisData = {{}};
     let analysisDataVersion = null;
     let analysisInitialized = {{}};
-    let plotlyLoaded = false;
-    let plotlyLoading = false;
-
-    function loadPlotly() {{
-      return new Promise((resolve, reject) => {{
-        if (window.Plotly) {{ plotlyLoaded = true; resolve(); return; }}
-        if (plotlyLoading) {{
-          const check = setInterval(() => {{
-            if (window.Plotly) {{ clearInterval(check); plotlyLoaded = true; resolve(); }}
-          }}, 100);
-          return;
-        }}
-        plotlyLoading = true;
+    let parquetChunks = [];  // Track loaded chunk names
+    const _scriptCache = {{}};
+    function loadScript(src, globalName) {{
+      if (_scriptCache[src]) return _scriptCache[src];
+      _scriptCache[src] = new Promise((resolve, reject) => {{
+        if (window[globalName]) {{ resolve(); return; }}
         const s = document.createElement('script');
-        s.src = 'progress/plotly.min.js';
-        s.onload = () => {{ plotlyLoaded = true; resolve(); }};
-        s.onerror = () => reject(new Error('Failed to load Plotly.js'));
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = () => reject(new Error('Failed to load ' + src));
         document.head.appendChild(s);
       }});
+      return _scriptCache[src];
     }}
+    function loadPlotly() {{ return loadScript('progress/plotly.min.js', 'Plotly'); }}
+    function loadHyparquet() {{ return loadScript('progress/hyparquet.min.js', 'hyparquet'); }}
 
     // Sub-tab switching
     function switchSubTab(tabId) {{
@@ -1447,11 +1448,11 @@ def _build_js(execution_mode: str, plugins: list | None = None) -> str:
     }}
 
     async function initSubTab(tabId) {{
-      // Ensure data is loaded
       if (!analysisData.scatter && !analysisData.table && !analysisData.stats) {{
         await fetchAnalysisData();
       }}
-      try {{ await loadPlotly(); }} catch(e) {{ console.warn('Plotly load failed:', e); }}
+      // Load both scripts concurrently; failures are non-fatal
+      await Promise.allSettled([loadPlotly(), loadHyparquet()]);
       analysisInitialized[tabId] = true;
       renderSubTab(tabId);
     }}
@@ -1470,6 +1471,7 @@ def _build_js(execution_mode: str, plugins: list | None = None) -> str:
     async function refreshAnalysisData() {{
       await fetchAnalysisData();
       analysisInitialized = {{}};
+      parquetChunks = [];  // Clear chunk cache on refresh
       // Re-render active sub-tab
       const active = document.querySelector('.sub-tab-content.active');
       if (active) {{

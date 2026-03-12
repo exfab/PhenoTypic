@@ -6,6 +6,7 @@ This subpackage consolidates SLURM logic used by both the main CLI
 
 from ._config import (
     calculate_optimal_array_chunks,
+    estimate_concurrent_capacity,
     get_slurm_array_limit,
     get_slurm_max_submit_jobs,
     validate_array_chunk,
@@ -19,6 +20,7 @@ from ._dispatcher import (
 
 __all__ = [
     "calculate_optimal_array_chunks",
+    "estimate_concurrent_capacity",
     "format_sbatch_directives",
     "generate_dispatcher_chain",
     "generate_dispatcher_script",

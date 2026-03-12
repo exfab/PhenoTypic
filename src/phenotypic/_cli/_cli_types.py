@@ -111,6 +111,9 @@ class ExecutionConfig:
     # Metadata join
     metadata_csv: Optional[Path] = None
 
+    # Checkpoint interval for SLURM array jobs
+    checkpoint_interval: Optional[int] = None
+
     # Detection mode (default: gray)
     detect_mode: str = "gray"
     

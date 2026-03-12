@@ -12,7 +12,7 @@ import logging
 import os
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional, TYPE_CHECKING
+from typing import Callable, Dict, List, Optional, TYPE_CHECKING
 
 import pandas as pd
 import polars as pl
@@ -25,15 +25,49 @@ from ._cli_types import Dataset
 logger = logging.getLogger(__name__)
 
 
+def _atomic_write(target: Path, write_func: Callable[[str], None]) -> None:
+    """Write to *target* atomically via a temp file and ``os.replace``.
+
+    Args:
+        target: Final destination path.
+        write_func: Callable that writes content to a given file path string.
+
+    Raises:
+        Any exception from *write_func* after cleaning up the temp file.
+    """
+    target.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path: Optional[str] = None
+    try:
+        fd = tempfile.NamedTemporaryFile(
+            dir=target.parent,
+            prefix=f".{target.stem}_",
+            suffix=".tmp",
+            delete=False,
+        )
+        tmp_path = fd.name
+        fd.close()
+        write_func(tmp_path)
+        with open(tmp_path, "rb") as f:
+            os.fsync(f.fileno())
+        os.replace(tmp_path, target)
+    except BaseException:
+        if tmp_path is not None:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+        raise
+
+
 def aggregate_measurements(
     output_dir: Path,
     dataset_names: List[str],
     include_dataset_column: bool = True,
     metadata_csv: Optional[Path] = None,
 ) -> Optional[Path]:
-    """Aggregate per-image measurement CSVs into a single master CSV.
+    """Aggregate per-image measurement Parquet files into a single master CSV.
 
-    Scans ``results/{name}/measurements/*.csv`` for each dataset, optionally
+    Scans ``results/{name}/measurements/*.parquet`` for each dataset, optionally
     adds a ``Metadata_Dataset`` column, and writes a concatenated
     ``master_measurements.csv`` to *output_dir* using an atomic write.
 
@@ -44,7 +78,7 @@ def aggregate_measurements(
         output_dir: Base output directory (contains ``results/``).
         dataset_names: Names of datasets to scan.
         include_dataset_column: Whether to insert ``Metadata_Dataset``
-            into each CSV that lacks it.
+            into each Parquet file that lacks it.
         metadata_csv: Optional path to an external CSV file. When
             provided, shared columns are used as join keys for a left
             merge, adding any extra columns from the metadata CSV to
@@ -63,9 +97,9 @@ def aggregate_measurements(
         if not dataset_meas_dir.is_dir():
             continue
 
-        for csv_file in sorted(dataset_meas_dir.glob("*.csv")):
+        for parquet_file in sorted(dataset_meas_dir.glob("*.parquet")):
             try:
-                df = pl.read_csv(csv_file)
+                df = pl.read_parquet(parquet_file)
                 if include_dataset_column and "Metadata_Dataset" not in df.columns:
                     df = df.insert_column(
                         0, pl.lit(dataset_name).alias("Metadata_Dataset")
@@ -74,7 +108,7 @@ def aggregate_measurements(
             except Exception as e:
                 logger.warning(
                     "Failed to read %s: %s: %s",
-                    csv_file,
+                    parquet_file,
                     type(e).__name__,
                     e,
                 )
@@ -82,7 +116,7 @@ def aggregate_measurements(
 
     if n_skipped:
         logger.warning(
-            "Skipped %d CSV file(s) due to read errors", n_skipped
+            "Skipped %d Parquet file(s) due to read errors", n_skipped
         )
 
     if not all_measurements:
@@ -94,6 +128,13 @@ def aggregate_measurements(
     except Exception as e:
         logger.error("Failed to concatenate measurements: %s", e)
         return None
+
+    logger.info(
+        "Aggregated %d rows x %d cols, %.0f MB estimated",
+        master_df.height,
+        master_df.width,
+        master_df.estimated_size("mb"),
+    )
 
     # Join external metadata if provided
     if metadata_csv is not None:
@@ -149,33 +190,15 @@ def aggregate_measurements(
 
     master_path = output_dir / "master_measurements.csv"
 
-    # Atomic write: temp file + os.replace()
-    tmp_path = None
     try:
-        fd = tempfile.NamedTemporaryFile(
-            dir=output_dir,
-            prefix=".master_measurements_",
-            suffix=".tmp",
-            delete=False,
-        )
-        tmp_path = fd.name
-        fd.close()
-        master_df.write_csv(tmp_path)
-        with open(tmp_path, "rb") as f:
-            os.fsync(f.fileno())
-        os.replace(tmp_path, master_path)
-    except BaseException:
-        if tmp_path is not None:
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
+        _atomic_write(master_path, master_df.write_csv)
+    except Exception:
         logger.error("Failed to save master CSV")
         return None
 
     n_files = len(all_measurements)
     logger.info(
-        "Aggregated %d CSV files into %s (%d total rows)",
+        "Aggregated %d Parquet files into %s (%d total rows)",
         n_files,
         master_path.name,
         master_df.height,
@@ -186,11 +209,11 @@ def aggregate_measurements(
 class OutputManager:
     """
     Manages all output file creation and organization for CLI processing.
-    
+
     Handles directory structure creation, output path resolution, and saving
     of measurements, overlays, and optional image layers (rgb, gray, masks, etc.).
     """
-    
+
     def __init__(
         self,
         base_dir: Path,
@@ -206,7 +229,7 @@ class OutputManager:
             base_dir: Base output directory for all results
             save_layers: Which layers to save {"rgb": True, "gray": False, ...}
             extensions: File extensions for each layer {"rgb": ".tiff", ...}
-            include_dataset_column: Whether to add Metadata_Dataset column to CSVs (default: True)
+            include_dataset_column: Whether to add Metadata_Dataset column to measurements (default: True)
             overlay_alpha: Alpha transparency for label overlay (0.0-1.0, default: 0.3)
         """
         self.base_dir = Path(base_dir)
@@ -234,7 +257,7 @@ class OutputManager:
         Args:
             base_dir: Base output directory.
             ext: Extension for rgb/gray/detect_mat (e.g. ".tiff").
-            include_dataset_column: Add Metadata_Dataset to CSVs.
+            include_dataset_column: Add Metadata_Dataset to measurements.
             overlay_alpha: Alpha for overlay compositing.
         """
         return cls(
@@ -274,7 +297,7 @@ class OutputManager:
             for layer_name, enabled in self.save_layers.items():
                 if enabled:
                     (dataset_dir / layer_name).mkdir(exist_ok=True)
-    
+
     def get_output_path(
         self,
         dataset_name: str,
@@ -294,7 +317,7 @@ class OutputManager:
         """
         # Determine extension
         if layer == "measurements":
-            ext = ".csv"
+            ext = ".parquet"
         elif layer == "overlays":
             ext = ".png"
         else:
@@ -304,7 +327,7 @@ class OutputManager:
 
         # Always use: results/dataset/layer/file
         return self.results_dir / dataset_name / layer / f"{image_stem}{ext}"
-    
+
     def save_measurements(
         self,
         measurements: pd.DataFrame,
@@ -312,7 +335,7 @@ class OutputManager:
         image_stem: str
     ) -> Path:
         """
-        Save measurements CSV for a single image.
+        Save measurements as a Parquet file for a single image.
 
         Args:
             measurements: DataFrame with measurement data
@@ -328,9 +351,17 @@ class OutputManager:
             measurements.insert(0, "Metadata_Dataset", dataset_name)
 
         output_path = self.get_output_path(dataset_name, "measurements", image_stem)
-        measurements.to_csv(output_path, index=False)
+        parquet_df = pl.from_pandas(measurements)
+
+        _atomic_write(
+            output_path,
+            lambda p: parquet_df.write_parquet(
+                p, compression="zstd", compression_level=3
+            ),
+        )
+
         return output_path
-    
+
     def save_overlay(
         self,
         image: Image,
@@ -369,23 +400,20 @@ class OutputManager:
     def _save_layer_safely(
         self,
         layer_name: str,
-        image: Image,
         dataset_name: str,
         image_stem: str,
-        save_func: callable
+        save_func: Callable[[Path], None],
     ) -> Optional[Path]:
-        """
-        Safely save an image layer with error logging.
+        """Safely save an image layer with error logging.
 
         Args:
-            layer_name: Name of layer (e.g., "rgb", "gray")
-            image: Image object
-            dataset_name: Dataset name
-            image_stem: Image filename stem
-            save_func: Function to call for saving (takes path as argument)
+            layer_name: Name of layer (e.g., "rgb", "gray").
+            dataset_name: Dataset name.
+            image_stem: Image filename stem.
+            save_func: Function to call for saving (takes path as argument).
 
         Returns:
-            Path if successful, None if failed
+            Path if successful, None if failed.
         """
         try:
             path = self.get_output_path(dataset_name, layer_name, image_stem)
@@ -393,8 +421,12 @@ class OutputManager:
             return path
         except Exception as e:
             logger.warning(
-                f"Failed to save {layer_name} for {dataset_name}/{image_stem}: "
-                f"{type(e).__name__}: {e}"
+                "Failed to save %s for %s/%s: %s: %s",
+                layer_name,
+                dataset_name,
+                image_stem,
+                type(e).__name__,
+                e,
             )
             return None
 
@@ -402,65 +434,47 @@ class OutputManager:
         self,
         image: Image,
         dataset_name: str,
-        image_stem: str
+        image_stem: str,
     ) -> Dict[str, Path]:
-        """
-        Save all requested image layers (rgb, gray, detect_mat, objmap).
+        """Save all requested image layers (rgb, gray, detect_mat, objmap).
 
         Args:
-            image: Image object with processing results
-            dataset_name: Dataset name
-            image_stem: Image filename without extension
+            image: Image object with processing results.
+            dataset_name: Dataset name.
+            image_stem: Image filename without extension.
 
         Returns:
-            Dictionary mapping layer names to saved paths (only successful saves)
+            Dictionary mapping layer names to saved paths (only successful saves).
         """
-        saved_paths = {}
+        saved_paths: Dict[str, Path] = {}
 
-        # Save RGB if requested and not empty
-        if self.save_layers.get("rgb") and not image.rgb.isempty():
+        layer_accessors = {
+            "rgb": image.rgb,
+            "gray": image.gray,
+            "detect_mat": image.detect_mat,
+            "objmap": image.objmap,
+        }
+
+        for layer_name, accessor in layer_accessors.items():
+            if not self.save_layers.get(layer_name) or accessor.isempty():
+                continue
             path = self._save_layer_safely(
-                "rgb", image, dataset_name, image_stem,
-                lambda p: image.rgb.imsave(p)
+                layer_name,
+                dataset_name,
+                image_stem,
+                lambda p, acc=accessor: acc.imsave(filepath=p),
             )
             if path:
-                saved_paths["rgb"] = path
-
-        # Save grayscale if requested
-        if self.save_layers.get("gray") and not image.gray.isempty():
-            path = self._save_layer_safely(
-                "gray", image, dataset_name, image_stem,
-                lambda p: image.gray.imsave(filepath=p)
-            )
-            if path:
-                saved_paths["gray"] = path
-
-        # Save detection matrix if requested
-        if self.save_layers.get("detect_mat") and not image.detect_mat.isempty():
-            path = self._save_layer_safely(
-                "detect_mat", image, dataset_name, image_stem,
-                lambda p: image.detect_mat.imsave(filepath=p)
-            )
-            if path:
-                saved_paths["detect_mat"] = path
-
-        # Save object map if requested
-        if self.save_layers.get("objmap") and not image.objmap.isempty():
-            path = self._save_layer_safely(
-                "objmap", image, dataset_name, image_stem,
-                lambda p: image.objmap.imsave(filepath=p)
-            )
-            if path:
-                saved_paths["objmap"] = path
+                saved_paths[layer_name] = path
 
         return saved_paths
-    
+
     def aggregate_master_csv(
         self,
         datasets: List[Dataset],
         metadata_csv: Optional[Path] = None,
     ) -> Optional[Path]:
-        """Aggregate all individual measurement CSVs into master CSV.
+        """Aggregate per-image measurement Parquet files into master CSV.
 
         Args:
             datasets: List of all datasets processed.
