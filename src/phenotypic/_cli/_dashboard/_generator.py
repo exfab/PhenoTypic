@@ -257,8 +257,9 @@ def _build_css(plugins: list | None = None) -> str:
       gap: var(--sp-3);
     }
     .header-logo img {
-      max-height: 42px;
+      max-height: 72px;
       width: auto;
+      background: transparent;
     }
     .header-right {
       display: flex;
