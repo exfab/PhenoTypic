@@ -109,10 +109,10 @@ def aggregate_measurements(
                 # Cast join keys to string so mismatched dtypes don't
                 # cause silent null results (e.g. int vs str plate IDs)
                 master_df = master_df.with_columns(
-                    pl.col(col).cast(pl.Utf8) for col in common
+                    pl.col(col).cast(pl.String) for col in common
                 )
                 metadata_df = metadata_df.with_columns(
-                    pl.col(col).cast(pl.Utf8) for col in common
+                    pl.col(col).cast(pl.String) for col in common
                 )
                 n_rows_before = master_df.height
                 n_cols_before = len(master_df.columns)
@@ -161,6 +161,8 @@ def aggregate_measurements(
         tmp_path = fd.name
         fd.close()
         master_df.write_csv(tmp_path)
+        with open(tmp_path, "rb") as f:
+            os.fsync(f.fileno())
         os.replace(tmp_path, master_path)
     except BaseException:
         if tmp_path is not None:
