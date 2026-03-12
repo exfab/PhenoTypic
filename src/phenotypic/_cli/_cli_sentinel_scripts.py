@@ -57,6 +57,8 @@ def generate_sentinel_script(
         if k not in ("time", "slurm_time")
     }
     sentinel_slurm_args["time"] = slurm_minutes
+    if "slurm_partition" not in sentinel_slurm_args:
+        sentinel_slurm_args["slurm_partition"] = "batch"
 
     log_path = progress_dir / "sentinel_%j.log"
     directives = generate_slurm_directives(
