@@ -36,12 +36,12 @@ from phenotypic._cli._cli_failure_tracker import (
     read_failures,
     categorize_failures,
 )
-from phenotypic._cli._cli_manifest_builder import (
+from phenotypic._cli._dashboard._manifest_builder import (
     build_manifest,
     query_sacct_job_states,
     query_sacct_chunk_states,
 )
-from phenotypic._cli._cli_dashboard_generator import generate_dashboard
+from phenotypic._cli._dashboard import generate_dashboard
 from phenotypic._cli._cli_sentinel_scripts import generate_sentinel_script
 
 
@@ -474,7 +474,7 @@ class TestSacctParsing:
 
     def test_sacct_chunk_states_unavailable(self):
         with patch(
-            "phenotypic._cli._cli_manifest_builder.query_sacct_job_states",
+            "phenotypic._cli._dashboard._manifest_builder.query_sacct_job_states",
             return_value=None,
         ):
             active, completed, pending = query_sacct_chunk_states({"0": "12345"})

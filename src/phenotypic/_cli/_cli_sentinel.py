@@ -14,7 +14,7 @@ from pathlib import Path
 
 import click
 
-from ._cli_manifest_builder import build_manifest
+from ._dashboard import build_manifest
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +105,17 @@ def sentinel_main(
             chunk_scripts=chunk_scripts,
             input_path=input_path,
         )
+
+        # Update analysis sidecar data (partial results visible during run)
+        try:
+            from phenotypic._cli._dashboard._analysis_data import write_analysis_sidecar
+            _meta_csv = job_metadata.get("metadata_csv")
+            write_analysis_sidecar(
+                output_dir,
+                metadata_csv=Path(_meta_csv) if _meta_csv else None,
+            )
+        except Exception:
+            logger.debug("Analysis sidecar write failed", exc_info=True)
 
         # Check completion status from the freshly-written manifest
         manifest_path = progress_dir / "manifest.json"

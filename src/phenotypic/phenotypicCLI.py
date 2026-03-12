@@ -975,6 +975,13 @@ def phenotypic_cli(
                     err=True,
                 )
 
+            # Write analysis sidecar data for the dashboard
+            try:
+                from phenotypic._cli._dashboard._analysis_data import write_analysis_sidecar
+                write_analysis_sidecar(output_dir, metadata_csv=config.metadata_csv)
+            except Exception:
+                logger.warning("Analysis sidecar write failed", exc_info=True)
+
         # Generate HTML report
         click.echo("Generating HTML report...")
         report_gen = HTMLReportGenerator()

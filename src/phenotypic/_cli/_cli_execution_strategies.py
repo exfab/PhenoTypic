@@ -40,8 +40,7 @@ from phenotypic.tools_.slurm import (
 from ._cli_slurm_array_scripts import generate_all_array_job_scripts
 from ._cli_update_state import append_event, append_completion_event, aggregate_state_from_events
 from ._cli_failure_tracker import append_failure, read_failures
-from ._cli_manifest_builder import build_manifest
-from ._cli_dashboard_generator import generate_dashboard
+from ._dashboard import build_manifest, generate_dashboard
 from ._cli_sentinel_scripts import generate_sentinel_script
 from ._cli_constants import MAX_TRACEBACK_LINES
 
