@@ -713,10 +713,15 @@ class FilamentousFungiDetector(GridObjectDetector):
             composite cost before colony masking and cost_surface has
             colony/central pixels set to near-zero traversal cost.
         """
+        # Anisotropy gives pixel level directional dependence
         anisotropy = compute_anisotropy(pct_result.M, pct_result.m)
+
+        # Coherence is a measure of the length of the structures orientation
         coherence = compute_orientation_coherence(
                 pct_result.orientation, self.r_coherence
         )
+
+        # For identifying noisy regions away from inoculum center
         mad = compute_local_mad_map(enhanced_arr, self.mad_window)
 
         base_cost = assemble_composite_cost(
