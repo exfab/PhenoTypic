@@ -3588,7 +3588,7 @@ requires-dist = [
     { name = "param", marker = "extra == 'gui'", specifier = ">=2.0" },
     { name = "pillow" },
     { name = "plotly", specifier = ">=6.0.0" },
-    { name = "polars" },
+    { name = "polars", specifier = ">=1.0.0" },
     { name = "psutil", specifier = ">=7.0.0" },
     { name = "pympler", specifier = ">=1.0.1" },
     { name = "pyqt5", marker = "extra == 'gui'", specifier = ">=5.15.2" },
