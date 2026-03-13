@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional
 import polars as pl
 
 from .._cli_output_manager import _atomic_write
+from .._cli_utils import scan_parquets
 
 logger = logging.getLogger(__name__)
 
@@ -125,32 +126,39 @@ def _load_and_merge(
     all_measurements: List[pl.DataFrame] = []
     n_skipped = 0
 
+    # Collect all Parquet paths, then stream-read in one batch.
+    path_to_dataset: Dict[Path, str] = {}
     for dataset_name in dataset_names:
         dataset_meas_dir = results_dir / dataset_name / "measurements"
         if not dataset_meas_dir.is_dir():
             continue
-
         for parquet_file in sorted(dataset_meas_dir.glob("*.parquet")):
-            try:
-                df = pl.read_parquet(parquet_file)
-                if _DATASET_COL not in df.columns:
-                    df = df.insert_column(
-                        0, pl.lit(dataset_name).alias(_DATASET_COL)
-                    )
-                if "Metadata_ImageFile" not in df.columns:
-                    df = df.insert_column(
-                        min(1, df.width),
-                        pl.lit(parquet_file.stem).alias("Metadata_ImageFile"),
-                    )
-                all_measurements.append(df)
-            except Exception as e:
-                logger.warning(
-                    "Failed to read %s: %s: %s",
-                    parquet_file,
-                    type(e).__name__,
-                    e,
+            path_to_dataset[parquet_file] = dataset_name
+
+    lazy_frames = scan_parquets(list(path_to_dataset.keys()))
+
+    for pq_path, lf in lazy_frames.items():
+        dataset_name = path_to_dataset[pq_path]
+        try:
+            df = lf.collect()
+            if _DATASET_COL not in df.columns:
+                df = df.insert_column(
+                    0, pl.lit(dataset_name).alias(_DATASET_COL)
                 )
-                n_skipped += 1
+            if "Metadata_ImageFile" not in df.columns:
+                df = df.insert_column(
+                    min(1, df.width),
+                    pl.lit(pq_path.stem).alias("Metadata_ImageFile"),
+                )
+            all_measurements.append(df)
+        except Exception as e:
+            logger.warning(
+                "Failed to read %s: %s: %s",
+                pq_path,
+                type(e).__name__,
+                e,
+            )
+            n_skipped += 1
 
     if n_skipped:
         logger.warning("Skipped %d Parquet file(s) due to read errors", n_skipped)

@@ -18,6 +18,7 @@ import polars as pl
 
 from ._cli_file_locking import file_lock
 from ._cli_output_manager import _atomic_write
+from ._cli_utils import scan_parquets
 
 logger = logging.getLogger(__name__)
 
@@ -29,15 +30,31 @@ logger = logging.getLogger(__name__)
     required=True,
 )
 def aggregate_chunks(output_dir: Path) -> None:
-    """Aggregate unchunked per-image Parquets into a dashboard chunk."""
+    """Aggregate unchunked per-image Parquets into a dashboard chunk.
+
+    The entire read-scan-write cycle is serialised via an exclusive
+    file lock on ``progress/.chunk_lock`` so that concurrent checkpoint
+    tasks (SLURM may schedule multiple sentinels near-simultaneously)
+    do not race on the shared state files or duplicate Parquet data.
+    """
     progress_dir = output_dir / "progress"
+    progress_dir.mkdir(parents=True, exist_ok=True)
+
+    lock_path = progress_dir / ".chunk_lock"
+    lock_path.touch(exist_ok=True)
+
+    with open(lock_path, "r") as lock_fh:
+        with file_lock(lock_fh, shared=False, timeout=120.0):
+            _aggregate_chunks_locked(output_dir, progress_dir)
+
+
+def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
+    """Inner body of chunk aggregation, called under exclusive lock."""
     chunks_dir = progress_dir / "chunks"
     chunks_dir.mkdir(parents=True, exist_ok=True)
 
     state_path = progress_dir / "chunk_state.json"
-    state = _read_json_locked(
-        state_path, default={"chunked_files": [], "next_chunk_id": 0}
-    )
+    state = _read_json(state_path, default={"chunked_files": [], "next_chunk_id": 0})
     chunked_files: set[str] = set(state.get("chunked_files", []))
     next_chunk_id: int = state.get("next_chunk_id", 0)
 
@@ -65,12 +82,10 @@ def aggregate_chunks(output_dir: Path) -> None:
 
     state["chunked_files"] = sorted(chunked_files)
     state["next_chunk_id"] = next_chunk_id + 1
-    _write_json_locked(state, state_path)
+    _write_json(state, state_path)
 
     manifest_path = progress_dir / "chunk_manifest.json"
-    manifest = _read_json_locked(
-        manifest_path, default={"chunks": [], "total_rows": 0}
-    )
+    manifest = _read_json(manifest_path, default={"chunks": [], "total_rows": 0})
     datasets_in_chunk = chunk_df["Metadata_Dataset"].unique().to_list()
     manifest["chunks"].append(
         {
@@ -80,7 +95,7 @@ def aggregate_chunks(output_dir: Path) -> None:
         }
     )
     manifest["total_rows"] = sum(c["rows"] for c in manifest["chunks"])
-    _write_json_locked(manifest, manifest_path)
+    _write_json(manifest, manifest_path)
 
     combined = _incremental_combined(chunk_df, progress_dir / "analysis_full.parquet")
     if combined is not None:
@@ -145,24 +160,32 @@ def _scan_unchunked_parquets(
 def _read_and_concat(parquet_files: list[Path]) -> pl.DataFrame | None:
     """Read per-image Parquet files, ensure ``Metadata_Dataset``, and concat.
 
+    Uses :func:`scan_parquets` for lazy scans locally and ``tar``
+    streaming on HPC shared filesystems to reduce per-file metadata
+    overhead.
+
     Args:
         parquet_files: Paths to per-image Parquet files.
 
     Returns:
         Concatenated DataFrame, or ``None`` if no files could be read.
     """
+    lazy_frames = scan_parquets(parquet_files)
+    if not lazy_frames:
+        return None
+
     frames: list[pl.DataFrame] = []
-    for pq_file in parquet_files:
+    for pq_path, lf in lazy_frames.items():
         try:
-            df = pl.read_parquet(pq_file)
+            df = lf.collect()
             if "Metadata_Dataset" not in df.columns:
-                dataset_name = pq_file.parent.parent.name
+                dataset_name = pq_path.parent.parent.name
                 df = df.insert_column(
                     0, pl.lit(dataset_name).alias("Metadata_Dataset")
                 )
             frames.append(df)
         except Exception as exc:
-            logger.warning("Failed to read %s: %s", pq_file, exc)
+            logger.warning("Failed to read %s: %s", pq_path, exc)
 
     if not frames:
         return None
@@ -219,8 +242,10 @@ def _rebuild_combined(chunks_dir: Path) -> pl.DataFrame | None:
 # ---------------------------------------------------------------------------
 
 
-def _read_json_locked(path: Path, *, default: dict[str, Any]) -> dict[str, Any]:
-    """Read JSON with a shared file lock, returning *default* on failure.
+def _read_json(path: Path, *, default: dict[str, Any]) -> dict[str, Any]:
+    """Read JSON, returning *default* on failure.
+
+    Caller must hold the outer chunk lock.
 
     Args:
         path: JSON file to read.
@@ -233,15 +258,15 @@ def _read_json_locked(path: Path, *, default: dict[str, Any]) -> dict[str, Any]:
         return dict(default)
     try:
         with open(path, "r") as f:
-            with file_lock(f, shared=True):
-                f.seek(0)
-                return json.load(f)
+            return json.load(f)
     except (json.JSONDecodeError, OSError):
         return dict(default)
 
 
-def _write_json_locked(data: dict[str, Any], path: Path) -> None:
-    """Write JSON with an exclusive file lock and fsync for durability.
+def _write_json(data: dict[str, Any], path: Path) -> None:
+    """Write JSON with fsync for durability.
+
+    Caller must hold the outer chunk lock.
 
     Args:
         data: Dict to serialize.
@@ -249,11 +274,10 @@ def _write_json_locked(data: dict[str, Any], path: Path) -> None:
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w") as f:
-        with file_lock(f, shared=False):
-            json.dump(data, f, indent=2)
-            f.write("\n")
-            f.flush()
-            os.fsync(f.fileno())
+        json.dump(data, f, indent=2)
+        f.write("\n")
+        f.flush()
+        os.fsync(f.fileno())
 
 
 if __name__ == "__main__":
