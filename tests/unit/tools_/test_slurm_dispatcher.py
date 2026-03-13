@@ -4,6 +4,8 @@ import sys
 
 import pytest
 
+pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="SLURM not available on Windows")
+
 from phenotypic.tools_.slurm._dispatcher import (
     generate_dispatcher_chain,
     generate_dispatcher_script,

@@ -5,6 +5,8 @@ import sys
 
 import pytest
 
+pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="SLURM not available on Windows")
+
 from phenotypic.sweep._sweep_cli._sweep_slurm_scripts import (
     generate_sweep_array_script,
     generate_sweep_array_scripts_chunked,

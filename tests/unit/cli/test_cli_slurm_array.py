@@ -12,6 +12,8 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
+pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="SLURM not available on Windows")
+
 from phenotypic._cli._cli_slurm_config import (
     get_slurm_array_limit,
     get_slurm_max_submit_jobs,
