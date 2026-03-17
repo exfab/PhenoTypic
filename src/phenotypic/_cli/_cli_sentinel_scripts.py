@@ -74,6 +74,9 @@ def generate_sentinel_script(
 
 # Resubmit sentinel on SIGTERM (sent by SLURM before SIGKILL) unless
 # the Python process already handled resubmission.
+# Allow Polars to run on nodes without AVX2/BMI2/MOVBE CPU features
+export POLARS_SKIP_CPU_CHECK=1
+
 RESUBMIT_MARKER={q_progress_dir}/sentinel_resubmitted
 trap 'if [ ! -f "$RESUBMIT_MARKER" ]; then
     echo "SIGTERM received — resubmitting sentinel from trap"
