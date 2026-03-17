@@ -9,6 +9,7 @@ Covers:
 - Analysis data sidecar file writing
 - Stratified sampling
 - Overlay manifest preparation
+- Plugin prepare_data lifecycle
 """
 
 from __future__ import annotations
@@ -349,10 +350,10 @@ class TestAnalysisData:
             "ctrl", "drugA", "drugB", "drugA", "ctrl"
         ]
 
-    def test_stratified_sampling(self, tmp_dir):
+    def test_stratified_sampling(self):
         """Stratified sampling should maintain proportional representation."""
-        from phenotypic._cli._dashboard._analysis_data import (
-            _stratified_sample,
+        from phenotypic._cli._dashboard._analysis_helpers import (
+            stratified_sample,
         )
 
         df = pl.DataFrame(
@@ -361,7 +362,7 @@ class TestAnalysisData:
                 "value": range(200),
             }
         )
-        sampled = _stratified_sample(df, max_rows=50)
+        sampled = stratified_sample(df, max_rows=50)
         assert sampled.height == 50
         # Should have roughly proportional representation
         counts = sampled["Metadata_Dataset"].value_counts()
@@ -371,9 +372,12 @@ class TestAnalysisData:
         assert count_b > 10
 
     def test_overlay_manifest(self, tmp_dir):
-        """Overlay manifest should discover PNG files grouped by dataset."""
-        from phenotypic._cli._dashboard._analysis_data import (
-            _prepare_overlay_manifest,
+        """ImageViewerPlugin.prepare_data should discover PNG files grouped by dataset."""
+        from phenotypic._cli._dashboard._analysis._image_viewer import (
+            ImageViewerPlugin,
+        )
+        from phenotypic._cli._dashboard._analysis._prepare_context import (
+            AnalysisPrepareContext,
         )
 
         overlay_dir = tmp_dir / "results" / "plate1" / "overlays"
@@ -381,7 +385,92 @@ class TestAnalysisData:
         (overlay_dir / "img001.png").touch()
         (overlay_dir / "img002.png").touch()
 
-        manifest = _prepare_overlay_manifest(tmp_dir)
+        progress_dir = tmp_dir / "progress"
+        progress_dir.mkdir(parents=True)
+
+        ctx = AnalysisPrepareContext(
+            output_dir=tmp_dir,
+            progress_dir=progress_dir,
+            merged_df=None,
+        )
+        plugin = ImageViewerPlugin()
+        plugin.prepare_data(ctx)
+
+        manifest = json.loads(
+            (progress_dir / "overlay_manifest.json").read_text()
+        )
         assert "datasets" in manifest
         assert "plate1" in manifest["datasets"]
         assert len(manifest["datasets"]["plate1"]) == 2
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Plugin Lifecycle Tests
+# ──────────────────────────────────────────────────────────────────────
+
+
+class TestPluginPrepareData:
+
+    def test_prepare_data_no_crash_with_none(self, tmp_dir):
+        """Each plugin's prepare_data handles merged_df=None without error."""
+        from phenotypic._cli._dashboard._analysis._prepare_context import (
+            AnalysisPrepareContext,
+        )
+        from phenotypic.tools_.register import AnalysisPluginRegistry
+
+        # Trigger registration
+        from phenotypic._cli._dashboard import _analysis  # noqa: F401
+
+        progress_dir = tmp_dir / "progress"
+        progress_dir.mkdir(parents=True)
+
+        ctx = AnalysisPrepareContext(
+            output_dir=tmp_dir,
+            progress_dir=progress_dir,
+            merged_df=None,
+        )
+
+        for name in AnalysisPluginRegistry.available():
+            plugin = AnalysisPluginRegistry.get(name)()
+            plugin.prepare_data(ctx)  # Should not raise
+
+    def test_prepare_data_writes_files(self, tmp_dir):
+        """Each plugin produces its expected output file(s) with valid data."""
+        from phenotypic._cli._dashboard._analysis._prepare_context import (
+            AnalysisPrepareContext,
+        )
+        from phenotypic.tools_.register import AnalysisPluginRegistry
+
+        # Trigger registration
+        from phenotypic._cli._dashboard import _analysis  # noqa: F401
+
+        # Create overlay PNGs for image viewer plugin
+        overlay_dir = tmp_dir / "results" / "plate1" / "overlays"
+        overlay_dir.mkdir(parents=True)
+        (overlay_dir / "img001.png").touch()
+
+        progress_dir = tmp_dir / "progress"
+        progress_dir.mkdir(parents=True)
+
+        merged_df = pl.DataFrame(
+            {
+                "Metadata_Dataset": ["plate1"] * 5,
+                "Shape_Area": list(range(5)),
+                "Intensity_Mean": [0.1, 0.2, 0.3, 0.4, 0.5],
+            }
+        )
+        ctx = AnalysisPrepareContext(
+            output_dir=tmp_dir,
+            progress_dir=progress_dir,
+            merged_df=merged_df,
+        )
+
+        for name in AnalysisPluginRegistry.available():
+            plugin = AnalysisPluginRegistry.get(name)()
+            plugin.prepare_data(ctx)
+
+        assert (progress_dir / "analysis_scatter.json").exists()
+        assert (progress_dir / "analysis_table.json").exists()
+        assert (progress_dir / "analysis_stats.json").exists()
+        assert (progress_dir / "analysis_full.parquet").exists()
+        assert (progress_dir / "overlay_manifest.json").exists()

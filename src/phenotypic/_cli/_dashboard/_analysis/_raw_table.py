@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from phenotypic.tools_.register import register_analysis
 
 from ._base_plugin import BaseAnalysisPlugin
+
+if TYPE_CHECKING:
+    from ._prepare_context import AnalysisPrepareContext
 
 
 @register_analysis
@@ -14,8 +19,27 @@ class RawTablePlugin(BaseAnalysisPlugin):
     call_name = "table"
     display_name = "Raw Table"
     sort_order = 5
-    needs_measurements = True
-    needs_overlay_manifest = False
+
+    def prepare_data(self, ctx: AnalysisPrepareContext) -> None:
+        """Write ``analysis_table.json`` to *ctx.progress_dir*."""
+        if ctx.merged_df is None:
+            return
+
+        from .._analysis_helpers import (
+            stratified_sample,
+            to_columnar,
+            write_json_atomic,
+        )
+
+        df = ctx.merged_df
+        max_rows = 5_000
+        total_rows = df.height
+        sampled = total_rows > max_rows
+        if sampled:
+            df = stratified_sample(df, max_rows)
+
+        payload = to_columnar(df, total_rows, sampled)
+        write_json_atomic(payload, ctx.progress_dir / "analysis_table.json")
 
     def css(self) -> str:
         """Return CSS scoped with the plugin's call_name prefix."""

@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from phenotypic.tools_.register import register_analysis
 
 from ._base_plugin import BaseAnalysisPlugin
+
+if TYPE_CHECKING:
+    from ._prepare_context import AnalysisPrepareContext
 
 
 @register_analysis
@@ -14,8 +19,31 @@ class ScatterPlotPlugin(BaseAnalysisPlugin):
     call_name = "scatter"
     display_name = "Scatter Plot"
     sort_order = 10
-    needs_measurements = True
-    needs_overlay_manifest = False
+
+    def prepare_data(self, ctx: AnalysisPrepareContext) -> None:
+        """Write ``analysis_scatter.json`` to *ctx.progress_dir*."""
+        if ctx.merged_df is None:
+            return
+
+        from .._analysis_helpers import (
+            select_scatter_columns,
+            stratified_sample,
+            to_columnar,
+            write_json_atomic,
+        )
+
+        df = ctx.merged_df
+        columns = select_scatter_columns(df.columns)
+        sub = df.select(columns)
+
+        max_rows = 10_000
+        total_rows = sub.height
+        sampled = total_rows > max_rows
+        if sampled:
+            sub = stratified_sample(sub, max_rows)
+
+        payload = to_columnar(sub, total_rows, sampled)
+        write_json_atomic(payload, ctx.progress_dir / "analysis_scatter.json")
 
     def css(self) -> str:
         """Return CSS scoped with the plugin's call_name prefix."""

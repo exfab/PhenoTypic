@@ -7,9 +7,14 @@ is unavailable.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Dict, List
+
 from phenotypic.tools_.register import register_analysis
 
 from ._base_plugin import BaseAnalysisPlugin
+
+if TYPE_CHECKING:
+    from ._prepare_context import AnalysisPrepareContext
 
 
 @register_analysis
@@ -25,8 +30,71 @@ class SummaryStatsPlugin(BaseAnalysisPlugin):
     call_name = "stats"
     display_name = "Statistics"
     sort_order = 20
-    needs_measurements = True
-    needs_overlay_manifest = False
+
+    def prepare_data(self, ctx: AnalysisPrepareContext) -> None:
+        """Write ``analysis_stats.json`` and ``analysis_full.parquet``."""
+        if ctx.merged_df is None:
+            return
+
+        from .._analysis_helpers import (
+            partition_by_dataset,
+            sanitize_for_json,
+            write_json_atomic,
+            write_parquet_sidecar,
+        )
+
+        df = ctx.merged_df
+        numeric_cols = [
+            c for c in df.columns if df[c].dtype.is_numeric()
+        ]
+
+        # Build column groups by splitting on the first underscore.
+        column_groups: Dict[str, List[str]] = {}
+        for col in numeric_cols:
+            if "_" in col:
+                group = col.split("_", 1)[0]
+            else:
+                group = col
+            column_groups.setdefault(group, []).append(col)
+
+        groups = partition_by_dataset(df)
+
+        datasets: Dict[str, dict] = {}
+        for ds_name, group_df in sorted(groups.items()):
+            col_stats: Dict[str, dict] = {}
+            for col in numeric_cols:
+                series = group_df[col]
+                count = int(series.drop_nulls().len())
+                mean = series.mean() if count else None
+                std = series.std() if count else None
+                col_min = series.min() if count else None
+                col_max = series.max() if count else None
+                median = series.median() if count else None
+
+                if mean is not None and std is not None and mean != 0:
+                    cv = float(std) / abs(float(mean)) * 100  # type: ignore[arg-type]
+                else:
+                    cv = None
+
+                col_stats[col] = {
+                    "count": count,
+                    "mean": sanitize_for_json(mean),
+                    "std": sanitize_for_json(std),
+                    "min": sanitize_for_json(col_min),
+                    "max": sanitize_for_json(col_max),
+                    "median": sanitize_for_json(median),
+                    "cv": sanitize_for_json(cv),
+                }
+
+            datasets[str(ds_name)] = {"columns": col_stats}
+
+        summary_stats = {
+            "datasets": datasets,
+            "column_groups": column_groups,
+        }
+
+        write_json_atomic(summary_stats, ctx.progress_dir / "analysis_stats.json")
+        write_parquet_sidecar(df, ctx.progress_dir / "analysis_full.parquet")
 
     def css(self) -> str:
         """Return CSS scoped with the plugin's call_name prefix."""

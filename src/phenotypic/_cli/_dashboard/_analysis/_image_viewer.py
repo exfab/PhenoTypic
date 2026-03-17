@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Dict, List
+
 from phenotypic.tools_.register import register_analysis
 
 from ._base_plugin import BaseAnalysisPlugin
+
+if TYPE_CHECKING:
+    from ._prepare_context import AnalysisPrepareContext
 
 
 @register_analysis
@@ -14,8 +19,29 @@ class ImageViewerPlugin(BaseAnalysisPlugin):
     call_name = "images"
     display_name = "Image Viewer"
     sort_order = 30
-    needs_measurements = False
-    needs_overlay_manifest = True
+
+    def prepare_data(self, ctx: AnalysisPrepareContext) -> None:
+        """Write ``overlay_manifest.json`` by scanning overlay PNGs."""
+        from .._analysis_helpers import write_json_atomic
+
+        results_dir = ctx.output_dir / "results"
+        datasets: Dict[str, List[str]] = {}
+
+        if results_dir.is_dir():
+            for dataset_dir in sorted(results_dir.iterdir()):
+                if not dataset_dir.is_dir():
+                    continue
+                overlay_dir = dataset_dir / "overlays"
+                if not overlay_dir.is_dir():
+                    continue
+                png_files = sorted(f.name for f in overlay_dir.glob("*.png"))
+                if png_files:
+                    datasets[dataset_dir.name] = png_files
+
+        write_json_atomic(
+            {"datasets": datasets},
+            ctx.progress_dir / "overlay_manifest.json",
+        )
 
     def css(self) -> str:
         """Return CSS scoped with the plugin's call_name prefix."""

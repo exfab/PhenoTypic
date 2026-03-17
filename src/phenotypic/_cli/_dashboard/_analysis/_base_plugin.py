@@ -3,28 +3,28 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ._prepare_context import AnalysisPrepareContext
 
 
 class BaseAnalysisPlugin(ABC):
     """Base class for analysis tab plugins.
 
     Subclasses must define class attributes and implement the ``css``,
-    ``html``, and ``js`` methods to contribute content to the dashboard
-    analysis tab.
+    ``html``, ``js``, and ``prepare_data`` methods to contribute content
+    to the dashboard analysis tab.
 
     Attributes:
         call_name: Short identifier used for registration and HTML IDs.
         display_name: Human-readable name shown in the sub-tab button.
         sort_order: Numeric order for tab arrangement (lower = leftmost).
-        needs_measurements: Whether the plugin requires measurement data.
-        needs_overlay_manifest: Whether the plugin requires overlay paths.
     """
 
     call_name: str
     display_name: str
     sort_order: int = 0
-    needs_measurements: bool = True
-    needs_overlay_manifest: bool = False
 
     @abstractmethod
     def css(self) -> str:
@@ -37,3 +37,11 @@ class BaseAnalysisPlugin(ABC):
     @abstractmethod
     def js(self) -> str:
         """Return JS including an ``initAnalysis_{call_name}()`` function."""
+
+    @abstractmethod
+    def prepare_data(self, ctx: AnalysisPrepareContext) -> None:
+        """Prepare and write sidecar data files for this plugin.
+
+        Args:
+            ctx: Immutable context with output paths and merged data.
+        """
