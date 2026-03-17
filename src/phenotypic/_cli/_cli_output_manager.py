@@ -48,7 +48,7 @@ def _atomic_write(target: Path, write_func: Callable[[str], None]) -> None:
         tmp_path = fd.name
         fd.close()
         write_func(tmp_path)
-        with open(tmp_path, "rb") as f:
+        with open(tmp_path, "r+b") as f:
             os.fsync(f.fileno())
         os.replace(tmp_path, target)
     except BaseException:
