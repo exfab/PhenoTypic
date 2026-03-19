@@ -492,8 +492,8 @@ class TestDashboard:
 
     def test_generates_html(self, tmp_dir):
         generate_dashboard(tmp_dir)
-        dashboard = tmp_dir / "dashboard.html"
-        assert dashboard.exists()
+        assert (tmp_dir / "dashboard.html").exists()
+        assert (tmp_dir / "analysis.html").exists()
 
     def test_html_contains_key_elements(self, tmp_dir):
         generate_dashboard(tmp_dir)
@@ -508,6 +508,7 @@ class TestDashboard:
         new_dir = tmp_dir / "new_output"
         generate_dashboard(new_dir)
         assert (new_dir / "dashboard.html").exists()
+        assert (new_dir / "analysis.html").exists()
 
     def test_contains_tab_structure(self, tmp_dir):
         generate_dashboard(tmp_dir)
@@ -516,6 +517,9 @@ class TestDashboard:
         assert "tab-readme" in html
         assert "tab-download" in html
         assert "switchTab" in html
+        # Analysis is now a separate page, linked from dashboard
+        assert "analysis.html" in html
+        assert "tab-analysis" not in html
 
     def test_contains_marked_js(self, tmp_dir):
         generate_dashboard(tmp_dir)

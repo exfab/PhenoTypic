@@ -92,6 +92,7 @@ output_folder/
 |       +-- measurements/         # Per-image CSV measurement files
 |       +-- overlays/             # Detection overlay visualizations
 +-- dashboard.html                # Live processing dashboard
++-- analysis.html                 # Analysis & visualization
 +-- master_measurements.csv       # Aggregated measurements (all datasets)
 +-- processing_state.json         # Resume/state tracking
 +-- processing_report.html        # HTML summary report

@@ -68,7 +68,7 @@ def _build_analysis_subtabs(plugins: list) -> str:
 
 
 def generate_dashboard(output_dir: Path, *, execution_mode: str = "local") -> None:
-    """Write ``dashboard.html`` to the output directory root.
+    """Write ``dashboard.html`` and ``analysis.html`` to the output directory root.
 
     Args:
         output_dir: Root output directory.
@@ -79,7 +79,11 @@ def generate_dashboard(output_dir: Path, *, execution_mode: str = "local") -> No
     dashboard_path.write_text(_build_html(execution_mode), encoding="utf-8")
     logger.info("Dashboard written to %s", dashboard_path)
 
-    # Write JS sidecars for lazy loading by the Analysis tab
+    analysis_path = output_dir / "analysis.html"
+    analysis_path.write_text(_build_analysis_html(), encoding="utf-8")
+    logger.info("Analysis page written to %s", analysis_path)
+
+    # Write JS sidecars for lazy loading by the Analysis page
     _write_js_sidecar(output_dir, "plotly.min.js", "Plotly.js")
     _write_js_sidecar(output_dir, "hyparquet.min.js", "hyparquet.js")
 
@@ -114,7 +118,6 @@ def _write_js_sidecar(output_dir: Path, filename: str, label: str) -> None:
 def _build_html(execution_mode: str) -> str:
     """Assemble the complete self-contained HTML document."""
     logo_data_uri = _load_logo_data_uri()
-    plugins = _get_analysis_plugins()
     return (
         "<!DOCTYPE html>\n"
         "<html lang=\"en\">\n"
@@ -124,12 +127,35 @@ def _build_html(execution_mode: str) -> str:
         "  <title>PhenoTypic Dashboard</title>\n"
         "  <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n"
         "  <link href=\"https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap\" rel=\"stylesheet\">\n"
+        f"  <style>\n{_build_css(None)}\n  </style>\n"
+        "</head>\n"
+        "<body>\n"
+        f"{_build_body(execution_mode, logo_data_uri, None)}\n"
+        f"  <script>\n{MARKED_MIN_JS}\n  </script>\n"
+        f"  <script>\n{_build_js(execution_mode, None)}\n  </script>\n"
+        "</body>\n"
+        "</html>\n"
+    )
+
+
+def _build_analysis_html() -> str:
+    """Assemble a self-contained analysis HTML page."""
+    logo_data_uri = _load_logo_data_uri()
+    plugins = _get_analysis_plugins()
+    return (
+        "<!DOCTYPE html>\n"
+        "<html lang=\"en\">\n"
+        "<head>\n"
+        "  <meta charset=\"UTF-8\">\n"
+        "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
+        "  <title>PhenoTypic Analysis</title>\n"
+        "  <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n"
+        "  <link href=\"https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap\" rel=\"stylesheet\">\n"
         f"  <style>\n{_build_css(plugins)}\n  </style>\n"
         "</head>\n"
         "<body>\n"
-        f"{_build_body(execution_mode, logo_data_uri, plugins)}\n"
-        f"  <script>\n{MARKED_MIN_JS}\n  </script>\n"
-        f"  <script>\n{_build_js(execution_mode, plugins)}\n  </script>\n"
+        f"{_build_analysis_body(logo_data_uri, plugins)}\n"
+        f"  <script>\n{_build_analysis_js(plugins)}\n  </script>\n"
         "</body>\n"
         "</html>\n"
     )
@@ -889,7 +915,7 @@ def _build_body(execution_mode: str, logo_data_uri: str = "",
 
     <div class="tab-bar">
       <button class="tab-btn active" onclick="switchTab('progress')">Progress</button>
-      <button class="tab-btn" onclick="switchTab('analysis')">Analysis</button>
+      <a href="analysis.html" class="tab-btn" style="text-decoration:none">Analysis</a>
       <button class="tab-btn" onclick="switchTab('readme')">README</button>
       <button class="tab-btn" id="download-tab-btn" onclick="switchTab('download')"
               style="display:none">Download</button>
@@ -985,15 +1011,6 @@ def _build_body(execution_mode: str, logo_data_uri: str = "",
       </div>
     </div>
 
-    <div class="tab-content" id="tab-analysis">
-      <div class="analysis-container">
-        <div class="analysis-banner" id="analysis-banner" style="display:none">
-          <span>New data available</span>
-          <button class="analysis-banner-btn" onclick="refreshAnalysisData()">Refresh</button>
-        </div>
-        {_build_analysis_subtabs(plugins)}
-      </div>
-    </div>
   </div>"""
 
 
@@ -1038,13 +1055,6 @@ def _build_js(execution_mode: str, plugins: list | None = None) -> str:
       document.getElementById('tab-' + tabId).classList.add('active');
       document.querySelector('[onclick*="' + tabId + '"]').classList.add('active');
       if (tabId === 'readme' && !readmeLoaded) loadReadme();
-      if (tabId === 'analysis') {{
-        const activeSubTab = document.querySelector('.sub-tab-content.active');
-        if (activeSubTab) {{
-          const subId = activeSubTab.id.replace('subtab-', '');
-          if (!analysisInitialized[subId]) initSubTab(subId);
-        }}
-      }}
     }}
 
     // ── README Loading ─────────────────────────────────────────
@@ -1353,13 +1363,6 @@ def _build_js(execution_mode: str, plugins: list | None = None) -> str:
         renderFailureChart(data.failure_categories);
         await renderRecentFailures(data);
 
-        // Check for analysis data version changes
-        const newVersion = data.analysis_data_version || 0;
-        if (analysisDataVersion !== null && newVersion > analysisDataVersion) {{
-          document.getElementById('analysis-banner').style.display = '';
-        }}
-        analysisDataVersion = newVersion;
-
         const inputEl = document.getElementById('input-path');
         if (data.input_path) {{
           inputEl.textContent = data.input_path;
@@ -1413,78 +1416,149 @@ def _build_js(execution_mode: str, plugins: list | None = None) -> str:
     }}
     updateCommands();
 
-    // ── Analysis Tab ──────────────────────────────────────────
-    let analysisData = {{}};
+"""
+    # Append plugin JS
+    plugin_js = "\n".join(p.js() for p in (plugins or []))
+    return framework_js + "\n" + plugin_js
+
+
+def _build_analysis_body(logo_data_uri: str, plugins: list) -> str:
+    """Return the HTML body content for the analysis page."""
+    logo_html = (
+        f'<div class="header-logo"><img src="{logo_data_uri}" alt="PhenoTypic"></div>'
+        if logo_data_uri
+        else ""
+    )
+    return f"""\
+  <div class="container">
+    <div class="header">
+      <div class="header-title-group">
+        {logo_html}
+        <h1>PhenoTypic Analysis</h1>
+      </div>
+      <div class="header-right">
+        <a href="dashboard.html" class="tab-btn" style="text-decoration:none">&larr; Dashboard</a>
+        <span id="last-updated"></span>
+      </div>
+    </div>
+    <div class="analysis-container">
+      <div class="analysis-banner" id="analysis-banner" style="display:none">
+        <span>New data available</span>
+        <button class="analysis-banner-btn" onclick="refreshAnalysisData()">Refresh</button>
+      </div>
+      {_build_analysis_subtabs(plugins)}
+    </div>
+  </div>"""
+
+
+def _build_analysis_js(plugins: list) -> str:
+    """Return the inline JavaScript for the analysis page."""
+    framework_js = """\
+    // ── Helpers ────────────────────────────────────────────────
+    function esc(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    // ── Analysis State ────────────────────────────────────────
+    let analysisData = {};
     let analysisDataVersion = null;
-    let analysisInitialized = {{}};
-    let parquetChunks = [];  // Track loaded chunk names
-    const _scriptCache = {{}};
-    function loadScript(src, globalName) {{
+    let analysisInitialized = {};
+    let parquetChunks = [];
+    const _scriptCache = {};
+
+    function loadScript(src, globalName) {
       if (_scriptCache[src]) return _scriptCache[src];
-      _scriptCache[src] = new Promise((resolve, reject) => {{
-        if (window[globalName]) {{ resolve(); return; }}
+      _scriptCache[src] = new Promise((resolve, reject) => {
+        if (window[globalName]) { resolve(); return; }
         const s = document.createElement('script');
         s.src = src;
         s.onload = resolve;
         s.onerror = () => reject(new Error('Failed to load ' + src));
         document.head.appendChild(s);
-      }});
+      });
       return _scriptCache[src];
-    }}
-    function loadPlotly() {{ return loadScript('progress/plotly.min.js', 'Plotly'); }}
-    function loadHyparquet() {{ return loadScript('progress/hyparquet.min.js', 'hyparquet'); }}
+    }
+    function loadPlotly() { return loadScript('progress/plotly.min.js', 'Plotly'); }
+    function loadHyparquet() { return loadScript('progress/hyparquet.min.js', 'hyparquet'); }
 
-    // Sub-tab switching
-    function switchSubTab(tabId) {{
+    function switchSubTab(tabId) {
       document.querySelectorAll('.sub-tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.sub-tab-content').forEach(c => c.classList.remove('active'));
       document.getElementById('subtab-' + tabId).classList.add('active');
-      document.querySelectorAll('.sub-tab-btn').forEach(b => {{
+      document.querySelectorAll('.sub-tab-btn').forEach(b => {
         if (b.getAttribute('onclick') && b.getAttribute('onclick').includes("'" + tabId + "'")) b.classList.add('active');
-      }});
-      if (!analysisInitialized[tabId]) {{
+      });
+      if (!analysisInitialized[tabId]) {
         initSubTab(tabId);
-      }}
-    }}
+      }
+    }
 
-    async function initSubTab(tabId) {{
-      if (!analysisData.scatter && !analysisData.table && !analysisData.stats) {{
+    async function initSubTab(tabId) {
+      if (!analysisData.scatter && !analysisData.table && !analysisData.stats) {
         await fetchAnalysisData();
-      }}
-      // Load both scripts concurrently; failures are non-fatal
+      }
       await Promise.allSettled([loadPlotly(), loadHyparquet()]);
       analysisInitialized[tabId] = true;
       renderSubTab(tabId);
-    }}
+    }
 
-    async function fetchAnalysisData() {{
+    async function fetchAnalysisData() {
       const files = ['analysis_scatter.json', 'analysis_table.json', 'analysis_stats.json', 'overlay_manifest.json'];
       const keys = ['scatter', 'table', 'stats', 'overlay'];
-      for (let i = 0; i < files.length; i++) {{
-        try {{
+      for (let i = 0; i < files.length; i++) {
+        try {
           const resp = await fetch('progress/' + files[i] + '?' + Date.now());
           if (resp.ok) analysisData[keys[i]] = await resp.json();
-        }} catch(e) {{ /* file not ready yet */ }}
-      }}
-    }}
+        } catch(e) { /* file not ready yet */ }
+      }
+    }
 
-    async function refreshAnalysisData() {{
+    async function refreshAnalysisData() {
       await fetchAnalysisData();
-      analysisInitialized = {{}};
-      parquetChunks = [];  // Clear chunk cache on refresh
-      // Re-render active sub-tab
+      analysisInitialized = {};
+      parquetChunks = [];
       const active = document.querySelector('.sub-tab-content.active');
-      if (active) {{
+      if (active) {
         const tabId = active.id.replace('subtab-', '');
         await initSubTab(tabId);
-      }}
+      }
       document.getElementById('analysis-banner').style.display = 'none';
-    }}
+    }
 
-    function renderSubTab(tabId) {{
+    function renderSubTab(tabId) {
       var fn = window['initAnalysis_' + tabId];
       if (typeof fn === 'function') fn();
-    }}
+    }
+
+    // ── Auto-refresh polling ──────────────────────────────────
+    let _refreshTimer = null;
+    async function _pollManifest() {
+      try {
+        const resp = await fetch('progress/manifest.json?' + Date.now());
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const newVersion = data.analysis_data_version || 0;
+        if (analysisDataVersion !== null && newVersion > analysisDataVersion) {
+          document.getElementById('analysis-banner').style.display = '';
+        }
+        analysisDataVersion = newVersion;
+        document.getElementById('last-updated').textContent =
+          'Updated ' + new Date().toLocaleTimeString();
+      } catch(e) { /* ignore */ }
+    }
+
+    // ── Boot ──────────────────────────────────────────────────
+    (async function() {
+      await _pollManifest();
+      _refreshTimer = setInterval(_pollManifest, 10000);
+      const activeSubTab = document.querySelector('.sub-tab-content.active');
+      if (activeSubTab) {
+        const subId = activeSubTab.id.replace('subtab-', '');
+        initSubTab(subId);
+      }
+    })();
 """
     # Append plugin JS
     plugin_js = "\n".join(p.js() for p in (plugins or []))

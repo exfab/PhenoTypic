@@ -224,10 +224,6 @@ var statsState = {
 
 var STAT_KEYS = ['count', 'mean', 'std', 'min', 'median', 'max', 'cv'];
 
-if (typeof parquetChunks === 'undefined') {
-  var parquetChunks = [];
-}
-
 /* ---- Shared helpers ---- */
 
 function isNum(v) {

@@ -125,20 +125,20 @@ class TestAnalysisPluginRegistry:
 class TestDashboardAnalysisTab:
 
     def test_analysis_tab_in_html(self, tmp_dir):
-        """Dashboard should contain the analysis tab."""
+        """Analysis page should contain the analysis container."""
         from phenotypic._cli._dashboard import generate_dashboard
 
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "dashboard.html").read_text()
-        assert "tab-analysis" in html
-        assert "switchTab" in html
+        html = (tmp_dir / "analysis.html").read_text()
+        assert "analysis-container" in html
+        assert "switchSubTab" in html
 
     def test_sub_tabs_present(self, tmp_dir):
-        """All four plugin sub-tabs should be present in the HTML."""
+        """All four plugin sub-tabs should be present in the analysis page."""
         from phenotypic._cli._dashboard import generate_dashboard
 
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "dashboard.html").read_text()
+        html = (tmp_dir / "analysis.html").read_text()
         assert "subtab-table" in html
         assert "subtab-scatter" in html
         assert "subtab-stats" in html
@@ -149,7 +149,7 @@ class TestDashboardAnalysisTab:
         from phenotypic._cli._dashboard import generate_dashboard
 
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "dashboard.html").read_text()
+        html = (tmp_dir / "analysis.html").read_text()
         assert "Raw Table" in html
         assert "Scatter Plot" in html
         assert "Statistics" in html
@@ -160,7 +160,7 @@ class TestDashboardAnalysisTab:
         from phenotypic._cli._dashboard import generate_dashboard
 
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "dashboard.html").read_text()
+        html = (tmp_dir / "analysis.html").read_text()
         # The first sub-tab button should be active
         assert 'sub-tab-btn active' in html
         # The first sub-tab content should be active
@@ -171,17 +171,17 @@ class TestDashboardAnalysisTab:
         from phenotypic._cli._dashboard import generate_dashboard
 
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "dashboard.html").read_text()
+        html = (tmp_dir / "analysis.html").read_text()
         assert "window['initAnalysis_' + tabId]" in html
         # Old hardcoded dispatch should be gone
         assert "if (tabId === 'table') renderRawTable" not in html
 
     def test_plugin_css_in_html(self, tmp_dir):
-        """Plugin-specific CSS should be included in the dashboard."""
+        """Plugin-specific CSS should be included in the analysis page."""
         from phenotypic._cli._dashboard import generate_dashboard
 
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "dashboard.html").read_text()
+        html = (tmp_dir / "analysis.html").read_text()
         # CSS from plugins
         assert "analysis-table" in html
         assert "scatter-controls" in html
@@ -189,11 +189,11 @@ class TestDashboardAnalysisTab:
         assert "image-viewer-controls" in html
 
     def test_framework_css_in_html(self, tmp_dir):
-        """Framework-level CSS should be included in the dashboard."""
+        """Framework-level CSS should be included in the analysis page."""
         from phenotypic._cli._dashboard import generate_dashboard
 
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "dashboard.html").read_text()
+        html = (tmp_dir / "analysis.html").read_text()
         assert "analysis-container" in html
         assert "analysis-banner" in html
         assert "sub-tab-btn" in html
@@ -201,11 +201,11 @@ class TestDashboardAnalysisTab:
         assert "analysis-sample-label" in html
 
     def test_plugin_js_functions_in_html(self, tmp_dir):
-        """Plugin JS init functions should be present in the dashboard."""
+        """Plugin JS init functions should be present in the analysis page."""
         from phenotypic._cli._dashboard import generate_dashboard
 
         generate_dashboard(tmp_dir)
-        html = (tmp_dir / "dashboard.html").read_text()
+        html = (tmp_dir / "analysis.html").read_text()
         assert "initAnalysis_table" in html
         assert "initAnalysis_scatter" in html
         assert "initAnalysis_stats" in html
@@ -221,7 +221,7 @@ class TestDashboardAnalysisTab:
         assert plotly_path.stat().st_size > 1000  # Should be >3MB
 
     def test_existing_tabs_preserved(self, tmp_dir):
-        """Progress, README, and Download tabs should not be broken."""
+        """Progress, README, and Download tabs should not be broken by analysis split."""
         from phenotypic._cli._dashboard import generate_dashboard
 
         generate_dashboard(tmp_dir)
@@ -231,6 +231,30 @@ class TestDashboardAnalysisTab:
         assert "tab-download" in html
         assert "progress/manifest.json" in html
         assert "progress/failures.jsonl" in html
+        # Analysis is now a separate page
+        assert "analysis.html" in html
+        assert "tab-analysis" not in html
+
+    def test_dashboard_no_plugin_js(self, tmp_dir):
+        """Dashboard should not contain analysis plugin JS after split."""
+        from phenotypic._cli._dashboard import generate_dashboard
+
+        generate_dashboard(tmp_dir)
+        html = (tmp_dir / "dashboard.html").read_text()
+        assert "initAnalysis_table" not in html
+        assert "initAnalysis_scatter" not in html
+        assert "initAnalysis_stats" not in html
+        assert "initAnalysis_images" not in html
+        assert "switchSubTab" not in html
+        assert "parquetChunks" not in html
+
+    def test_analysis_links_to_dashboard(self, tmp_dir):
+        """Analysis page should contain a link back to dashboard."""
+        from phenotypic._cli._dashboard import generate_dashboard
+
+        generate_dashboard(tmp_dir)
+        html = (tmp_dir / "analysis.html").read_text()
+        assert "dashboard.html" in html
 
     def test_analysis_data_version_in_manifest(self, tmp_dir):
         """Manifest should contain analysis_data_version field."""

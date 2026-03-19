@@ -541,8 +541,9 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         # Generate dashboard HTML
         generate_dashboard(output_dir, execution_mode="slurm")
         console.print(
-            f"[green]✓[/green] Progress dashboard: "
-            f"[bold]{output_dir / 'dashboard.html'}[/bold]\n"
+            f"[green]✓[/green] Dashboard: "
+            f"[bold]{output_dir / 'dashboard.html'}[/bold]  "
+            f"Analysis: [bold]{output_dir / 'analysis.html'}[/bold]\n"
         )
 
         # Wait if requested
@@ -554,6 +555,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         else:
             click.echo("\nJobs submitted. Monitor progress with:")
             click.echo(f"  Open: {output_dir / 'dashboard.html'}")
+            click.echo(f"  Analysis: {output_dir / 'analysis.html'}")
             click.echo("  squeue -u $USER --array")
             click.echo(f"  tail -f {output_dir}/processing_events.log")
             final_results = None
