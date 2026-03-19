@@ -541,6 +541,11 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
     help="Restart processing from beginning, clearing previous state (requires --output-dir)",
 )
 @click.option(
+    "--overwrite",
+    is_flag=True,
+    help="Delete existing output directory contents before processing",
+)
+@click.option(
     "--metadata",
     "metadata_csv",
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
@@ -580,6 +585,7 @@ def phenotypic_cli(
     resume: bool,
     retry_failures: bool,
     restart: bool,
+    overwrite: bool,
     metadata_csv: Optional[Path],
     checkpoint_interval: Optional[int],
     skip_validation: bool,
@@ -658,6 +664,12 @@ def phenotypic_cli(
 
         if restart and resume:
             click.echo("Error: --restart and --resume are mutually exclusive", err=True)
+            sys.exit(1)
+
+        if overwrite and resume:
+            click.echo(
+                "Error: --overwrite and --resume are mutually exclusive", err=True
+            )
             sys.exit(1)
 
         if restart and output_dir is None:
@@ -795,6 +807,28 @@ def phenotypic_cli(
             click.echo(f"Auto-generated output directory: {output_dir}")
 
         config.output_dir = output_dir
+
+        # Check for existing output directory contents (skip for resume/restart)
+        if not config.resume and not restart:
+            if output_dir.exists() and any(output_dir.iterdir()):
+                if overwrite:
+                    import shutil
+
+                    click.echo(
+                        f"Overwriting existing output directory: {output_dir}"
+                    )
+                    shutil.rmtree(output_dir)
+                else:
+                    click.echo(
+                        f"Error: Output directory already contains files: {output_dir}",
+                        err=True,
+                    )
+                    click.echo(
+                        "\nUse --overwrite to delete existing contents and replace them, "
+                        "or choose a different output directory.",
+                        err=True,
+                    )
+                    sys.exit(1)
 
         # Scan directory structure
         click.echo(f"Scanning {input_path}...")
