@@ -179,7 +179,7 @@ def _load_and_merge(
                 )
                 n_rows_before = master_df.height
                 master_df = master_df.join(
-                    metadata_df, on=common, how="left"
+                    metadata_df, on=common, how="inner"
                 )
                 if master_df.height > n_rows_before:
                     logger.warning(
@@ -187,6 +187,15 @@ def _load_and_merge(
                         "metadata CSV likely has duplicate keys on columns %s",
                         n_rows_before,
                         master_df.height,
+                        common,
+                    )
+                n_dropped = n_rows_before - master_df.height
+                if n_dropped > 0:
+                    logger.warning(
+                        "Metadata inner join dropped %d/%d measurement rows "
+                        "with no matching metadata on columns %s",
+                        n_dropped,
+                        n_rows_before,
                         common,
                     )
         except Exception as e:

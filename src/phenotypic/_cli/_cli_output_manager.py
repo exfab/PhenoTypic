@@ -165,7 +165,7 @@ def aggregate_measurements(
                 )
                 n_rows_before = master_df.height
                 n_cols_before = len(master_df.columns)
-                master_df = master_df.join(metadata_df, on=common, how="left")
+                master_df = master_df.join(metadata_df, on=common, how="inner")
                 n_new_cols = len(master_df.columns) - n_cols_before
                 if master_df.height > n_rows_before:
                     logger.warning(
@@ -176,22 +176,20 @@ def aggregate_measurements(
                         master_df.height,
                         common,
                     )
-                metadata_only_cols = [
-                    c for c in metadata_df.columns if c not in set(common)
-                ]
-                if n_new_cols > 0 and metadata_only_cols:
-                    n_matched = master_df.filter(
-                        ~pl.all_horizontal(
-                            pl.col(c).is_null() for c in metadata_only_cols
-                        )
-                    ).height
-                else:
-                    n_matched = master_df.height
+                n_dropped = n_rows_before - master_df.height
+                if n_dropped > 0:
+                    logger.warning(
+                        "Metadata inner join dropped %d/%d measurement rows "
+                        "with no matching metadata on columns %s",
+                        n_dropped,
+                        n_rows_before,
+                        common,
+                    )
                 logger.info(
                     "Metadata join: added %d columns, %d/%d rows matched",
                     n_new_cols,
-                    n_matched,
                     master_df.height,
+                    n_rows_before,
                 )
         except Exception as e:
             logger.warning("Failed to join metadata CSV: %s: %s", type(e).__name__, e)

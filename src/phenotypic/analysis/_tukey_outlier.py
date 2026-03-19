@@ -18,7 +18,7 @@ class TukeyOutlierRemover(SetAnalyzer):
 
     Args:
         on: Name of measurement column to test for outliers (e.g., 'Shape_Area', 'Intensity_IntegratedIntensity').
-        groupby: List of column names to group by (e.g., ['ImageName', 'Metadata_Plate']).
+        groupby: List of column names to group by (e.g., ['StrainID', 'Time']).
         k: IQR multiplier for fence calculation. Default is 1.5 (standard outliers).
             Use 3.0 for extreme outliers only.
         num_workers: Number of parallel workers. Default is 1.
@@ -61,7 +61,7 @@ class TukeyOutlierRemover(SetAnalyzer):
     """
 
     def __init__(
-        self, on: str, groupby: list[str], k: float = 1.5, num_workers: int = 1
+            self, on: str, groupby: list[str], k: float = 1.5, num_workers: int = 1
     ):
         """Initialize TukeyOutlierRemover with test parameters.
 
@@ -162,8 +162,8 @@ class TukeyOutlierRemover(SetAnalyzer):
                 results.append(self.__class__._apply2group_func(key, group, **config))
         else:
             results = Parallel(n_jobs=self.n_jobs)(
-                delayed(self.__class__._apply2group_func)(key, group, **config)
-                for key, group in grouped
+                    delayed(self.__class__._apply2group_func)(key, group, **config)
+                    for key, group in grouped
             )
 
         # Concatenate all group results
@@ -172,12 +172,12 @@ class TukeyOutlierRemover(SetAnalyzer):
         return self._latest_measurements
 
     def show(
-        self,
-        figsize: tuple[int, int] | None = None,
-        max_groups: int = 20,
-        collapsed: bool = True,
-        criteria: dict[str, any] | None = None,
-        **kwargs,
+            self,
+            figsize: tuple[int, int] | None = None,
+            max_groups: int = 20,
+            collapsed: bool = True,
+            criteria: dict[str, any] | None = None,
+            **kwargs,
     ) -> (plt.Figure, plt.Axes):
         """Visualize outlier detection results.
 
@@ -289,7 +289,7 @@ class TukeyOutlierRemover(SetAnalyzer):
         if len(groups) > max_groups:
             groups = groups[:max_groups]
             print(
-                f"Warning: Displaying only first {max_groups} of {len(data[group_col].unique())} groups"
+                    f"Warning: Displaying only first {max_groups} of {len(data[group_col].unique())} groups"
             )
 
         # Branch based on visualization mode
@@ -299,12 +299,12 @@ class TukeyOutlierRemover(SetAnalyzer):
             return self._show_individual(data, groups, group_col, figsize, **kwargs)
 
     def _show_individual(
-        self,
-        data: pd.DataFrame,
-        groups,
-        group_col: str,
-        figsize: tuple[int, int] | None,
-        **kwargs,
+            self,
+            data: pd.DataFrame,
+            groups,
+            group_col: str,
+            figsize: tuple[int, int] | None,
+            **kwargs,
     ) -> (plt.Figure, plt.Axes):
         """Create individual subplots for each group."""
         # Extract figure-level kwargs
@@ -325,7 +325,7 @@ class TukeyOutlierRemover(SetAnalyzer):
             figsize = (5 * n_cols, 4 * n_rows)
 
         fig, axes = plt.subplots(
-            n_rows, n_cols, figsize=figsize, squeeze=False, **fig_kwargs
+                n_rows, n_cols, figsize=figsize, squeeze=False, **fig_kwargs
         )
         axes = axes.flatten()
 
@@ -362,62 +362,62 @@ class TukeyOutlierRemover(SetAnalyzer):
             # Plot inliers
             if len(inliers) > 0:
                 ax.scatter(
-                    x_inliers,
-                    inliers[self.on].values,
-                    alpha=0.6,
-                    s=40,
-                    c="#2E86AB",
-                    label="Normal",
-                    zorder=3,
+                        x_inliers,
+                        inliers[self.on].values,
+                        alpha=0.6,
+                        s=40,
+                        c="#2E86AB",
+                        label="Normal",
+                        zorder=3,
                 )
 
             # Plot outliers
             if len(outliers) > 0:
                 ax.scatter(
-                    x_outliers,
-                    outliers[self.on].values,
-                    alpha=0.8,
-                    s=50,
-                    c="#E63946",
-                    marker="D",
-                    label="Outlier",
-                    zorder=4,
+                        x_outliers,
+                        outliers[self.on].values,
+                        alpha=0.8,
+                        s=50,
+                        c="#E63946",
+                        marker="D",
+                        label="Outlier",
+                        zorder=4,
                 )
 
             # Create box plot
             bp = ax.boxplot(
-                [values],
-                positions=[1],
-                widths=0.3,
-                patch_artist=True,
-                showfliers=False,
-                boxprops=dict(facecolor="lightgray", alpha=0.3),
-                medianprops=dict(color="black", linewidth=2),
+                    [values],
+                    positions=[1],
+                    widths=0.3,
+                    patch_artist=True,
+                    showfliers=False,
+                    boxprops=dict(facecolor="lightgray", alpha=0.3),
+                    medianprops=dict(color="black", linewidth=2),
             )
 
             # Add fence lines
             ax.axhline(
-                y=lower_fence,
-                color="#F4A261",
-                linestyle="--",
-                linewidth=1.5,
-                label="Lower Fence",
-                zorder=2,
+                    y=lower_fence,
+                    color="#F4A261",
+                    linestyle="--",
+                    linewidth=1.5,
+                    label="Lower Fence",
+                    zorder=2,
             )
             ax.axhline(
-                y=upper_fence,
-                color="#F4A261",
-                linestyle="--",
-                linewidth=1.5,
-                label="Upper Fence",
-                zorder=2,
+                    y=upper_fence,
+                    color="#F4A261",
+                    linestyle="--",
+                    linewidth=1.5,
+                    label="Upper Fence",
+                    zorder=2,
             )
 
             # Formatting
             ax.set_title(
-                f"{group_name}\n({len(outliers)} outliers / {len(group_data)} total)",
-                fontsize=10,
-                fontweight="bold",
+                    f"{group_name}\n({len(outliers)} outliers / {len(group_data)} total)",
+                    fontsize=10,
+                    fontweight="bold",
             )
             ax.set_ylabel(self.on, fontsize=9)
             ax.set_xticks([])
@@ -429,11 +429,11 @@ class TukeyOutlierRemover(SetAnalyzer):
                 # Remove duplicate labels
                 by_label = dict(zip(labels, handles))
                 ax.legend(
-                    by_label.values(),
-                    by_label.keys(),
-                    loc="best",
-                    fontsize=legend_fontsize,
-                    framealpha=0.9,
+                        by_label.values(),
+                        by_label.keys(),
+                        loc="best",
+                        fontsize=legend_fontsize,
+                        framealpha=0.9,
                 )
 
         # Hide unused subplots
@@ -444,11 +444,11 @@ class TukeyOutlierRemover(SetAnalyzer):
         outlier_pct = 100 * total_outliers / total_count if total_count > 0 else 0
 
         fig.suptitle(
-            f"Tukey Outlier Detection (k={self.k})\n"
-            f"{total_outliers} outliers detected ({outlier_pct:.1f}% of {total_count} measurements)",
-            fontsize=14,
-            fontweight="bold",
-            y=0.995,
+                f"Tukey Outlier Detection (k={self.k})\n"
+                f"{total_outliers} outliers detected ({outlier_pct:.1f}% of {total_count} measurements)",
+                fontsize=14,
+                fontweight="bold",
+                y=0.995,
         )
 
         plt.tight_layout()
@@ -456,12 +456,12 @@ class TukeyOutlierRemover(SetAnalyzer):
         return fig, axes
 
     def _show_collapsed(
-        self,
-        data: pd.DataFrame,
-        groups,
-        group_col: str,
-        figsize: tuple[int, int] | None,
-        **kwargs,
+            self,
+            data: pd.DataFrame,
+            groups,
+            group_col: str,
+            figsize: tuple[int, int] | None,
+            **kwargs,
     ) -> (plt.Figure, plt.Axes):
         """Create collapsed stacked view with all groups in single plot."""
         # Extract figure-level kwargs
@@ -512,13 +512,13 @@ class TukeyOutlierRemover(SetAnalyzer):
             data_min = values.min()
             data_max = values.max()
             ax.hlines(
-                y_pos,
-                data_min,
-                data_max,
-                colors="lightgray",
-                linewidth=1.5,
-                alpha=0.6,
-                zorder=1,
+                    y_pos,
+                    data_min,
+                    data_max,
+                    colors="lightgray",
+                    linewidth=1.5,
+                    alpha=0.6,
+                    zorder=1,
             )
 
             # Add vertical tick marks for fences and mean
@@ -532,23 +532,23 @@ class TukeyOutlierRemover(SetAnalyzer):
                 lbl = None
 
             ax.plot(
-                [lower_fence, lower_fence],
-                [y_pos - tick_height, y_pos + tick_height],
-                color="#F4A261",
-                linewidth=2.5,
-                linestyle="-",
-                label=lbl,
-                zorder=3,
+                    [lower_fence, lower_fence],
+                    [y_pos - tick_height, y_pos + tick_height],
+                    color="#F4A261",
+                    linewidth=2.5,
+                    linestyle="-",
+                    label=lbl,
+                    zorder=3,
             )
 
             # Upper fence tick
             ax.plot(
-                [upper_fence, upper_fence],
-                [y_pos - tick_height, y_pos + tick_height],
-                color="#F4A261",
-                linewidth=2.5,
-                linestyle="-",
-                zorder=3,
+                    [upper_fence, upper_fence],
+                    [y_pos - tick_height, y_pos + tick_height],
+                    color="#F4A261",
+                    linewidth=2.5,
+                    linestyle="-",
+                    zorder=3,
             )
 
             # Median marker
@@ -559,13 +559,13 @@ class TukeyOutlierRemover(SetAnalyzer):
                 lbl = None
 
             ax.plot(
-                [median, median],
-                [y_pos - tick_height, y_pos + tick_height],
-                color="black",
-                linewidth=2.5,
-                linestyle="-",
-                label=lbl,
-                zorder=3,
+                    [median, median],
+                    [y_pos - tick_height, y_pos + tick_height],
+                    color="black",
+                    linewidth=2.5,
+                    linestyle="-",
+                    label=lbl,
+                    zorder=3,
             )
 
             # Create y-coordinates with jitter for scatter plot
@@ -580,13 +580,13 @@ class TukeyOutlierRemover(SetAnalyzer):
                 else:
                     lbl = None
                 ax.scatter(
-                    inliers[self.on].values,
-                    y_inliers,
-                    alpha=0.6,
-                    s=30,
-                    c="#2E86AB",
-                    label=lbl,
-                    zorder=4,
+                        inliers[self.on].values,
+                        y_inliers,
+                        alpha=0.6,
+                        s=30,
+                        c="#2E86AB",
+                        label=lbl,
+                        zorder=4,
                 )
 
             # Plot outliers
@@ -597,14 +597,14 @@ class TukeyOutlierRemover(SetAnalyzer):
                 else:
                     lbl = None
                 ax.scatter(
-                    outliers[self.on].values,
-                    y_outliers,
-                    alpha=0.8,
-                    s=35,
-                    c="#E63946",
-                    marker="D",
-                    label=lbl,
-                    zorder=5,
+                        outliers[self.on].values,
+                        y_outliers,
+                        alpha=0.8,
+                        s=35,
+                        c="#E63946",
+                        marker="D",
+                        label=lbl,
+                        zorder=5,
                 )
 
         # Formatting
@@ -621,10 +621,10 @@ class TukeyOutlierRemover(SetAnalyzer):
         # Overall title
         outlier_pct = 100 * total_outliers / total_count if total_count > 0 else 0
         fig.suptitle(
-            f"Tukey Outlier Detection (k={self.k})\n"
-            f"{total_outliers} outliers detected ({outlier_pct:.1f}% of {total_count} measurements)",
-            fontsize=13,
-            fontweight="bold",
+                f"Tukey Outlier Detection (k={self.k})\n"
+                f"{total_outliers} outliers detected ({outlier_pct:.1f}% of {total_count} measurements)",
+                fontsize=13,
+                fontweight="bold",
         )
 
         plt.tight_layout()

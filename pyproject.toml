@@ -59,6 +59,7 @@ dependencies = [
     "numba>=0.62.1",
     "plotly>=6.0.0",
     "pyarrow>=23.0.1",
+    "kaleido>=1.2.0",
 ]
 
 [project.urls]
