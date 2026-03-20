@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Literal, Union
 
 from phenotypic import ImagePipeline
 from phenotypic.abc_ import PrefabPipeline, ObjectDetector
-from phenotypic.correction import GatBM3D
+from phenotypic.correction import StableDenoise
 from phenotypic.detect import FilamentousFungiDetector
 from phenotypic.enhance import HomomorphicFilter
 from phenotypic.detect._inoculum_detector import InoculumDetector
@@ -21,10 +21,10 @@ if TYPE_CHECKING:
 
 
 class FilamentousFungiPipeline(PrefabPipeline):
-    """Ready-to-use pipeline for filamentous fungi detection with GatBM3D denoising and spatial measurements.
+    """Ready-to-use pipeline for filamentous fungi detection with StableDenoise denoising and spatial measurements.
 
     Pipeline Steps:
-        1. ``GatBM3D`` -- Variance-stabilized BM3D denoising for Poisson-Gaussian
+        1. ``StableDenoise`` -- Variance-stabilized BM3D denoising for Poisson-Gaussian
            noise removal on gray and detect_mat channels.
         2. ``HomomorphicFilter`` -- Illumination normalization via
            frequency-domain filtering on detect_mat.
@@ -88,7 +88,7 @@ class FilamentousFungiPipeline(PrefabPipeline):
         verbose: Enable verbose logging during pipeline execution.
 
     Examples:
-        Detect filamentous fungi with default GatBM3D denoising and reconnection:
+        Detect filamentous fungi with default StableDenoise denoising and reconnection:
 
         >>> from phenotypic.prefab import FilamentousFungiPipeline
         >>> from phenotypic.data import load_synth_yeast_plate
@@ -161,7 +161,7 @@ class FilamentousFungiPipeline(PrefabPipeline):
             )
 
         ops = [
-            GatBM3D(
+            StableDenoise(
                     block_size=bm3d_block_size,
                     stage_arg=bm3d_stage_arg,
             ),

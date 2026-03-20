@@ -14,7 +14,7 @@ from ..enhance._anscombe_forward import AnscombeForward
 from ..enhance._anscombe_inverse import AnscombeInverse
 
 
-class GatBM3D(ImageCorrector):
+class StableDenoise(ImageCorrector):
     """Variance-stabilized BM3D denoising for grayscale via accessor cascade.
 
     Combines the Generalized Anscombe Transform (GAT) with BM3D collaborative
@@ -67,15 +67,15 @@ class GatBM3D(ImageCorrector):
         One-step variance-stabilized denoising:
 
         >>> from phenotypic.data import load_synth_yeast_plate
-        >>> from phenotypic.correction import GatBM3D
+        >>> from phenotypic.correction import StableDenoise
         >>> image = load_synth_yeast_plate()
-        >>> corrector = GatBM3D()
+        >>> corrector = StableDenoise()
         >>> denoised = corrector.apply(image)  # doctest: +SKIP
 
         Fast mode with hard thresholding only:
 
-        >>> from phenotypic.correction import GatBM3D
-        >>> corrector = GatBM3D(stage_arg='hard_thresholding')
+        >>> from phenotypic.correction import StableDenoise
+        >>> corrector = StableDenoise(stage_arg='hard_thresholding')
     """
 
     def __init__(

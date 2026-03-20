@@ -9,7 +9,7 @@ detect_mat).
 
 from ._bayesshrink_corrector import BayesShrinkCorrector
 from ._color_correction import ColorCheckerProfile, ColorCorrector
-from ._gat_bm3d import GatBM3D
+from ._stable_denoise import StableDenoise
 from ._grid_aligner import GridAligner
 from ._visushrink_corrector import VisuShrinkCorrector
 from ._image_cropper import ImageCropper
@@ -18,7 +18,7 @@ from ._image_padder import ImagePadder
 __all__ = [
     "ColorCheckerProfile",
     "ColorCorrector",
-    "GatBM3D",
+    "StableDenoise",
     "GridAligner",
     "ImageCropper",
     "ImagePadder",

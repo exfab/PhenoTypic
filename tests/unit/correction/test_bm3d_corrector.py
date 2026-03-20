@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from phenotypic import Image
-from phenotypic.correction import GatBM3D
+from phenotypic.correction import StableDenoise
 
 
 class TestBM3DCorrectorParameterValidation:
@@ -12,30 +12,30 @@ class TestBM3DCorrectorParameterValidation:
 
     def test_gain_zero_raises(self):
         with pytest.raises(ValueError, match="gain must be > 0"):
-            GatBM3D(gain=0.0)
+            StableDenoise(gain=0.0)
 
     def test_gain_negative_raises(self):
         with pytest.raises(ValueError, match="gain must be > 0"):
-            GatBM3D(gain=-1.0)
+            StableDenoise(gain=-1.0)
 
     def test_sigma_negative_raises(self):
         with pytest.raises(ValueError, match="sigma must be >= 0"):
-            GatBM3D(sigma=-0.1)
+            StableDenoise(sigma=-0.1)
 
     def test_scale_factor_zero_raises(self):
         with pytest.raises(ValueError, match="scale_factor must be > 0"):
-            GatBM3D(scale_factor=0.0)
+            StableDenoise(scale_factor=0.0)
 
     def test_scale_factor_negative_raises(self):
         with pytest.raises(ValueError, match="scale_factor must be > 0"):
-            GatBM3D(scale_factor=-10.0)
+            StableDenoise(scale_factor=-10.0)
 
     def test_invalid_stage_arg_raises(self):
         with pytest.raises(ValueError, match="stage_arg must be"):
-            GatBM3D(stage_arg="invalid")
+            StableDenoise(stage_arg="invalid")
 
     def test_valid_defaults(self):
-        c = GatBM3D()
+        c = StableDenoise()
         assert c.block_size == 8
         assert c.stage_arg == "all_stages"
         assert c.gain == 1.0
@@ -44,7 +44,7 @@ class TestBM3DCorrectorParameterValidation:
         assert c.scale_factor is None
 
     def test_valid_custom_params(self):
-        c = GatBM3D(
+        c = StableDenoise(
                 16,
                 "hard_thresholding",
                 gain=2.0,
@@ -72,31 +72,31 @@ class TestBM3DCorrectorComponentModification:
 
     def test_gray_modified(self, noisy_image):
         original_gray = noisy_image.gray[:].copy()
-        result = GatBM3D(
+        result = StableDenoise(
                 stage_arg="hard_thresholding", scale_factor=255.0
         ).apply(noisy_image)
         assert not np.array_equal(result.gray[:], original_gray)
 
     def test_detect_mat_modified(self, noisy_image):
         original_dm = noisy_image.detect_mat[:].copy()
-        result = GatBM3D(
+        result = StableDenoise(
                 stage_arg="hard_thresholding", scale_factor=255.0
         ).apply(noisy_image)
         assert not np.array_equal(result.detect_mat[:], original_dm)
 
     def test_rgb_unchanged(self):
-        """RGB data is not modified by GatBM3D."""
+        """RGB data is not modified by StableDenoise."""
         rng = np.random.default_rng(99)
         rgb = rng.integers(0, 255, (64, 64, 3), dtype=np.uint8)
         image = Image(arr=rgb)
         original_rgb = image.rgb[:].copy()
-        result = GatBM3D(
+        result = StableDenoise(
                 stage_arg="hard_thresholding", scale_factor=255.0
         ).apply(image)
         np.testing.assert_array_equal(result.rgb[:], original_rgb)
 
     def test_output_in_unit_range(self, noisy_image):
-        result = GatBM3D(
+        result = StableDenoise(
                 stage_arg="hard_thresholding", scale_factor=255.0
         ).apply(noisy_image)
         assert result.gray[:].min() >= 0.0
@@ -106,7 +106,7 @@ class TestBM3DCorrectorComponentModification:
 
     def test_shape_preserved(self, noisy_image):
         original_shape = noisy_image.gray[:].shape
-        result = GatBM3D(
+        result = StableDenoise(
                 stage_arg="hard_thresholding", scale_factor=255.0
         ).apply(noisy_image)
         assert result.gray[:].shape == original_shape
@@ -122,7 +122,7 @@ class TestBM3DCorrectorDenoisingQuality:
         noisy = (clean + rng.normal(0, 0.08, clean.shape)).clip(0.0, 1.0)
         image = Image(arr=noisy)
 
-        result = GatBM3D(
+        result = StableDenoise(
                 stage_arg="hard_thresholding", scale_factor=255.0
         ).apply(image)
 
@@ -139,7 +139,7 @@ class TestBM3DCorrectorScaleFactor:
         arr = (rng.uniform(0.3, 0.7, (64, 64))).astype(np.float64)
         image = Image(arr=arr)
 
-        c = GatBM3D(stage_arg="hard_thresholding", scale_factor=1000.0)
+        c = StableDenoise(stage_arg="hard_thresholding", scale_factor=1000.0)
         assert c._get_scale_factor(image) == 1000.0
 
     def test_default_falls_back_to_255(self):
@@ -147,5 +147,5 @@ class TestBM3DCorrectorScaleFactor:
         arr = (rng.uniform(0.3, 0.7, (64, 64))).astype(np.float64)
         image = Image(arr=arr)
 
-        c = GatBM3D()
+        c = StableDenoise()
         assert c._get_scale_factor(image) == 255.0

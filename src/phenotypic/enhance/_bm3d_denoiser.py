@@ -52,7 +52,7 @@ class BM3DDenoiser(ImageEnhancer):
       set ``clip=False``. GAT-domain values fall outside [0, 1] (typically
       ~1-32 for 8-bit images), and clipping would destroy the transformed
       signal. For a single-step alternative, see
-      :class:`~phenotypic.correction.GatBM3D`.
+      :class:`~phenotypic.correction.StableDenoise`.
 
     Attributes:
         sigma_psd (float): Noise standard deviation in [0, 1] normalized
