@@ -1496,7 +1496,7 @@ def _build_analysis_js(plugins: list) -> str:
     }
 
     async function initSubTab(tabId) {
-      if (!analysisData.scatter && !analysisData.table && !analysisData.stats) {
+      if (!analysisData.scatter && !analysisData.table && !analysisData.stats && !analysisData.overlay) {
         await fetchAnalysisData();
       }
       await Promise.allSettled([loadPlotly(), loadHyparquet()]);
@@ -1560,6 +1560,298 @@ def _build_analysis_js(plugins: list) -> str:
       }
     })();
 """
+    # Shared transform helpers available to all analysis plugins
+    transform_js = """\
+
+    // ── Transform Helpers ────────────────────────────────────────
+    // Shared data transform functions for analysis plugins.
+    // All accept `data` (column-name → value-array, e.g. statsState.allData)
+    // and `indices` (filtered row indices from getFilteredIndices()).
+
+    /**
+     * Filter indices to rows where data[field][i] === value.
+     */
+    function filterByCategory(data, indices, field, value) {
+      var result = [];
+      var col = data[field];
+      if (!col) return result;
+      for (var i = 0; i < indices.length; i++) {
+        var idx = indices[i];
+        if (col[idx] === value) {
+          result.push(idx);
+        }
+      }
+      return result;
+    }
+
+    /**
+     * Filter indices to rows where min <= data[field][i] <= max.
+     * Skips null/undefined/NaN values.
+     */
+    function filterByRange(data, indices, field, min, max) {
+      var result = [];
+      var col = data[field];
+      if (!col) return result;
+      for (var i = 0; i < indices.length; i++) {
+        var idx = indices[i];
+        var v = col[idx];
+        if (isNum(v) && v >= min && v <= max) {
+          result.push(idx);
+        }
+      }
+      return result;
+    }
+
+    /**
+     * Group-by summary statistics for bar charts with error bars.
+     * Returns {groups: string[], means: number[], stdevs: number[], ns: number[]}.
+     */
+    function groupSummary(data, indices, groupField, valueField) {
+      var empty = { groups: [], means: [], stdevs: [], ns: [] };
+      if (!data[groupField] || !data[valueField]) return empty;
+
+      var groupCol = data[groupField];
+      var valueCol = data[valueField];
+      var buckets = {};
+      var seenGroups = {};
+
+      for (var i = 0; i < indices.length; i++) {
+        var idx = indices[i];
+        var g = groupCol[idx];
+        var v = valueCol[idx];
+        if (g === null || g === undefined) continue;
+        var key = String(g);
+        if (!seenGroups[key]) {
+          seenGroups[key] = true;
+          buckets[key] = [];
+        }
+        if (isNum(v)) buckets[key].push(v);
+      }
+
+      var groups = [];
+      for (var k in seenGroups) {
+        if (seenGroups.hasOwnProperty(k)) groups.push(k);
+      }
+      groups.sort();
+
+      var means = [], stdevs = [], ns = [];
+      for (var j = 0; j < groups.length; j++) {
+        var vals = buckets[groups[j]];
+        var n = vals.length;
+        ns.push(n);
+        if (n === 0) {
+          means.push(null);
+          stdevs.push(null);
+        } else {
+          var m = statMean(vals);
+          means.push(m);
+          stdevs.push(n >= 2 ? statStd(vals, m) : null);
+        }
+      }
+      return { groups: groups, means: means, stdevs: stdevs, ns: ns };
+    }
+
+    /**
+     * Collect raw numeric values per group for box/strip plots.
+     * Returns plain object: {groupName: number[], ...} with sorted keys.
+     */
+    function groupedArrays(data, indices, groupField, valueField) {
+      if (!data[groupField] || !data[valueField]) return {};
+
+      var groupCol = data[groupField];
+      var valueCol = data[valueField];
+      var buckets = {};
+      var seenGroups = {};
+
+      for (var i = 0; i < indices.length; i++) {
+        var idx = indices[i];
+        var g = groupCol[idx];
+        var v = valueCol[idx];
+        if (g === null || g === undefined) continue;
+        var key = String(g);
+        if (!seenGroups[key]) {
+          seenGroups[key] = true;
+          buckets[key] = [];
+        }
+        if (isNum(v)) buckets[key].push(v);
+      }
+
+      var sortedKeys = [];
+      for (var k in seenGroups) {
+        if (seenGroups.hasOwnProperty(k)) sortedKeys.push(k);
+      }
+      sortedKeys.sort();
+
+      var result = {};
+      for (var j = 0; j < sortedKeys.length; j++) {
+        result[sortedKeys[j]] = buckets[sortedKeys[j]];
+      }
+      return result;
+    }
+
+    /**
+     * Build scatter-plot arrays, optionally grouped.
+     * Returns {groupName: {x: number[], y: number[]}, ...}.
+     * If no groupField, uses single key "all".
+     */
+    function scatterArrays(data, indices, xField, yField, groupField) {
+      if (!data[xField] || !data[yField]) return {};
+
+      var xCol = data[xField];
+      var yCol = data[yField];
+      var hasGroup = groupField && groupField !== '' && data[groupField];
+      var gCol = hasGroup ? data[groupField] : null;
+
+      var groups = {};
+      for (var i = 0; i < indices.length; i++) {
+        var idx = indices[i];
+        var xi = xCol[idx];
+        var yi = yCol[idx];
+        if (!isNum(xi) || !isNum(yi)) continue;
+        var g = hasGroup ? String(gCol[idx]) : 'all';
+        if (!groups[g]) groups[g] = { x: [], y: [] };
+        groups[g].x.push(xi);
+        groups[g].y.push(yi);
+      }
+
+      if (!hasGroup) return groups;
+
+      var keys = [];
+      for (var k in groups) {
+        if (groups.hasOwnProperty(k)) keys.push(k);
+      }
+      keys.sort();
+
+      var result = {};
+      for (var j = 0; j < keys.length; j++) {
+        result[keys[j]] = groups[keys[j]];
+      }
+      return result;
+    }
+
+    /**
+     * Z-score normalization within group.
+     * Returns number[] aligned 1:1 with indices (NaN for non-numeric values).
+     */
+    function zscoreWithinGroup(data, indices, valueField, groupField) {
+      var n = indices.length;
+      if (!data[valueField] || !data[groupField]) {
+        var nanArr = [];
+        for (var a = 0; a < n; a++) nanArr.push(NaN);
+        return nanArr;
+      }
+
+      var valCol = data[valueField];
+      var grpCol = data[groupField];
+
+      // Partition indices by group (store position in indices array)
+      var groupMap = {};
+      for (var i = 0; i < n; i++) {
+        var g = String(grpCol[indices[i]]);
+        if (!groupMap[g]) groupMap[g] = [];
+        groupMap[g].push(i);
+      }
+
+      // Per-group mean and stdev
+      var groupStats = {};
+      for (var gk in groupMap) {
+        if (!groupMap.hasOwnProperty(gk)) continue;
+        var positions = groupMap[gk];
+        var sum = 0, count = 0;
+        for (var p = 0; p < positions.length; p++) {
+          var v = valCol[indices[positions[p]]];
+          if (isNum(v)) { sum += v; count++; }
+        }
+        var mean = count > 0 ? sum / count : 0;
+        var sqSum = 0;
+        for (var q = 0; q < positions.length; q++) {
+          var v2 = valCol[indices[positions[q]]];
+          if (isNum(v2)) { sqSum += (v2 - mean) * (v2 - mean); }
+        }
+        var stdev = count > 0 ? Math.sqrt(sqSum / count) : 0;
+        groupStats[gk] = { mean: mean, stdev: stdev };
+      }
+
+      // Map each index to its z-score
+      var result = new Array(n);
+      for (var r = 0; r < n; r++) {
+        var rv = valCol[indices[r]];
+        var rg = String(grpCol[indices[r]]);
+        var stats = groupStats[rg];
+        if (!isNum(rv)) {
+          result[r] = NaN;
+        } else if (stats.stdev === 0) {
+          result[r] = 0;
+        } else {
+          result[r] = (rv - stats.mean) / stats.stdev;
+        }
+      }
+      return result;
+    }
+
+    /**
+     * Pivot to dense matrix for heatmaps.
+     * Returns {rowLabels: string[], colLabels: string[], z: number[][]}.
+     * Multiple values per cell are averaged. Missing cells are NaN.
+     */
+    function pivotToMatrix(data, indices, rowField, colField, valueField) {
+      if (!data[rowField] || !data[colField] || !data[valueField]) {
+        return { rowLabels: [], colLabels: [], z: [] };
+      }
+
+      var rowCol = data[rowField];
+      var colCol = data[colField];
+      var valCol = data[valueField];
+
+      // Collect unique labels
+      var rowSet = {}, colSet = {};
+      for (var i = 0; i < indices.length; i++) {
+        var r = rowCol[indices[i]];
+        var c = colCol[indices[i]];
+        if (r !== null && r !== undefined) rowSet[r] = true;
+        if (c !== null && c !== undefined) colSet[c] = true;
+      }
+
+      var rowLabels = Object.keys(rowSet).sort();
+      var colLabels = Object.keys(colSet).sort();
+
+      // Build lookup maps
+      var rowIdx = {}, colIdx = {};
+      for (i = 0; i < rowLabels.length; i++) rowIdx[rowLabels[i]] = i;
+      for (i = 0; i < colLabels.length; i++) colIdx[colLabels[i]] = i;
+
+      // Initialize accumulators
+      var nRows = rowLabels.length, nCols = colLabels.length;
+      var sum = [], count = [], z = [];
+      for (i = 0; i < nRows; i++) {
+        sum[i] = []; count[i] = []; z[i] = [];
+        for (var j = 0; j < nCols; j++) {
+          sum[i][j] = 0; count[i][j] = 0; z[i][j] = NaN;
+        }
+      }
+
+      // Accumulate values
+      for (i = 0; i < indices.length; i++) {
+        var rv = rowCol[indices[i]];
+        var cv = colCol[indices[i]];
+        var v = valCol[indices[i]];
+        if (!isNum(v)) continue;
+        if (rv === null || rv === undefined || cv === null || cv === undefined) continue;
+        var ri = rowIdx[rv], ci = colIdx[cv];
+        sum[ri][ci] += v;
+        count[ri][ci] += 1;
+      }
+
+      // Compute means
+      for (i = 0; i < nRows; i++) {
+        for (j = 0; j < nCols; j++) {
+          if (count[i][j] > 0) z[i][j] = sum[i][j] / count[i][j];
+        }
+      }
+
+      return { rowLabels: rowLabels, colLabels: colLabels, z: z };
+    }
+"""
     # Append plugin JS
     plugin_js = "\n".join(p.js() for p in (plugins or []))
-    return framework_js + "\n" + plugin_js
+    return framework_js + "\n" + transform_js + "\n" + plugin_js
