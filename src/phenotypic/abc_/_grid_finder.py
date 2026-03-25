@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 
 from phenotypic.abc_ import GridMeasureFeatures
+from phenotypic.tools_.constants_ import OBJECT
 from phenotypic.tools_.measurement_info_ import BBOX, GRID
 
 
@@ -403,6 +404,18 @@ class GridFinder(GridMeasureFeatures, ABC):
         Returns:
             pd.DataFrame: Complete grid information table with ROW_NUM, COL_NUM, ROW_MAJOR_IDX, and COL_MAJOR_IDX columns.
         """
+        if image.num_objects == 0:
+            columns = [
+                OBJECT.LABEL,
+                str(BBOX.CENTER_RR), str(BBOX.CENTER_CC),
+                str(BBOX.MIN_RR), str(BBOX.MIN_CC),
+                str(BBOX.MAX_RR), str(BBOX.MAX_CC),
+                str(BBOX.WEIGHTED_CENTER_RR), str(BBOX.WEIGHTED_CENTER_CC),
+                str(GRID.ROW_NUM), str(GRID.COL_NUM),
+                str(GRID.ROW_MAJOR_IDX), str(GRID.COL_MAJOR_IDX),
+            ]
+            return pd.DataFrame(columns=columns)
+
         info_table = image.objects.info(include_metadata=False)
 
         # Add row information

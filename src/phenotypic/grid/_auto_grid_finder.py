@@ -220,6 +220,8 @@ class AutoGridFinder(GridFinder):
         Returns:
             Integer array of length ``nrows + 1``.
         """
+        if image.num_objects == 0:
+            return self._uniform_edges(self.nrows, image.shape[0])
         info_table = image.objects.info(include_metadata=False)
         return self._fit_axis_edges(
             info_table, axis=0, n_expected=self.nrows, image_dim=image.shape[0],
@@ -234,6 +236,8 @@ class AutoGridFinder(GridFinder):
         Returns:
             Integer array of length ``ncols + 1``.
         """
+        if image.num_objects == 0:
+            return self._uniform_edges(self.ncols, image.shape[1])
         info_table = image.objects.info(include_metadata=False)
         return self._fit_axis_edges(
             info_table, axis=1, n_expected=self.ncols, image_dim=image.shape[1],
@@ -248,6 +252,12 @@ class AutoGridFinder(GridFinder):
         Returns:
             DataFrame with grid assignments (ROW_NUM, COL_NUM, ROW_MAJOR_IDX).
         """
+        if image.num_objects == 0:
+            return super()._get_grid_info(
+                image=image,
+                row_edges=self._uniform_edges(self.nrows, image.shape[0]),
+                col_edges=self._uniform_edges(self.ncols, image.shape[1]),
+            )
         info_table = image.objects.info(include_metadata=False)
         row_edges = self._fit_axis_edges(
             info_table, axis=0, n_expected=self.nrows, image_dim=image.shape[0],
