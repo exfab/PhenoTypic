@@ -373,7 +373,7 @@ class ImageGridHandler(Image):
 
         This method adds colored rectangular boxes around each grid section that
         contains detected colonies, similar to the Rectangle patches in
-        show_overlay(). Uses skimage.draw for pixel-level drawing. Line width
+        show(overlay=True). Uses skimage.draw for pixel-level drawing. Line width
         scales dynamically with image size based on _GRIDLINE_WIDTH_FACTOR.
 
         Args:

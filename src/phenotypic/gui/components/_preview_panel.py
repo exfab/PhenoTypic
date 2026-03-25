@@ -235,7 +235,7 @@ class PreviewPanel:
 
             # Handle overlay separately since it creates its own figure
             if view == "overlay":
-                fig, ax = image.plot.overlay()
+                fig, ax = image.show(overlay=True)
             else:
                 # Create figure for other views
                 fig, ax = plt.subplots(figsize=(8, 6))

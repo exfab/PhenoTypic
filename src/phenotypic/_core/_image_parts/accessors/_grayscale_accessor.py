@@ -39,7 +39,7 @@ class Grayscale(SingleChannelAccessor):
         Visualize histogram and overlay:
 
         >>> fig, axes = img.gray.histogram()
-        >>> fig = img.plot.overlay(show_labels=True)
+        >>> fig, ax = img.show(overlay=True, show_labels=True)
     """
 
     @property

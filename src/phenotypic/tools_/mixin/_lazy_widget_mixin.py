@@ -660,19 +660,19 @@ class LazyWidgetMixin:
                     view = self._view_dropdown.value
 
                     if view == "overlay":
-                        fig = img_copy.plot.overlay()
+                        fig = img_copy.dash(overlay=True)
                         fig.show()
                     elif view == "rgb":
                         if not img_copy.rgb.isempty():
-                            fig = img_copy.rgb.show()
+                            fig = img_copy.rgb.dash()
                             fig.show()
                         else:
                             print("No RGB data available.")
                     elif view == "gray":
-                        fig = img_copy.gray.show()
+                        fig = img_copy.gray.dash()
                         fig.show()
                     elif view == "detect_mat":
-                        fig = img_copy.detect_mat.show()
+                        fig = img_copy.detect_mat.dash()
                         fig.show()
                     elif view in ("objmap", "objmask"):
                         import matplotlib.pyplot as _plt

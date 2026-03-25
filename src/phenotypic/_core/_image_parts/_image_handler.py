@@ -35,7 +35,7 @@ class ImageHandler(ImageDataManager):
     image operations through:
     - Property-based accessors for RGB, grayscale, detection matrix, object masks, and object maps
     - Image manipulation operations (slicing, rotation, copying, resetting)
-    - Visualization methods (show, show_overlay)
+    - Visualization methods (show, dash)
     - Comparison and equality operations
 
     The accessor pattern allows intuitive access to image data components while
@@ -710,12 +710,11 @@ class ImageHandler(ImageDataManager):
 
     def show(
             self, figsize: Tuple[int, int] | None = None, **kwargs
-    ) -> go.Figure | tuple[plt.Figure, plt.Axes]:
-        """Display the image interactively.
+    ) -> tuple[plt.Figure, plt.Axes]:
+        """Display the image using matplotlib.
 
         Delegates to ``self.rgb.show()`` for color images or
-        ``self.gray.show()`` for grayscale images. Uses Plotly when
-        available; falls back to matplotlib otherwise.
+        ``self.gray.show()`` for grayscale images.
 
         Args:
             figsize: Figure size in inches (width, height). If None,
@@ -724,14 +723,37 @@ class ImageHandler(ImageDataManager):
                 accessor's ``show()`` method.
 
         Returns:
-            A ``plotly.graph_objects.Figure`` when Plotly is installed,
-            or a ``(matplotlib.figure.Figure, matplotlib.axes.Axes)``
-            tuple when falling back to matplotlib.
+            A ``(matplotlib.figure.Figure, matplotlib.axes.Axes)`` tuple.
         """
         if not self.rgb.isempty():
             return self.rgb.show(figsize=figsize, **kwargs)
         else:
             return self.gray.show(figsize=figsize, **kwargs)
+
+    def dash(
+            self, figsize: Tuple[int, int] | None = None, **kwargs
+    ) -> go.Figure:
+        """Display the image using Plotly.
+
+        Delegates to ``self.rgb.dash()`` for color images or
+        ``self.gray.dash()`` for grayscale images.
+
+        Args:
+            figsize: Figure size in inches (width, height). If None,
+                auto-calculated from array aspect ratio.
+            **kwargs: Additional keyword arguments passed to the
+                accessor's ``dash()`` method.
+
+        Returns:
+            A ``plotly.graph_objects.Figure``.
+
+        Raises:
+            ImportError: If plotly is not installed.
+        """
+        if not self.rgb.isempty():
+            return self.rgb.dash(figsize=figsize, **kwargs)
+        else:
+            return self.gray.dash(figsize=figsize, **kwargs)
 
     def rotate(
             self,

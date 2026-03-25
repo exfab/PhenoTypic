@@ -213,7 +213,7 @@ class ImageCropper(ImageCorrector):
             >>> assert cropped.nrows == 8  # doctest: +SKIP
             >>> assert cropped.ncols == 12  # doctest: +SKIP
             >>> # Grid positions are recalculated for cropped image
-            >>> cropped.plot.overlay(show_gridlines=True)  # doctest: +SKIP
+            >>> cropped.show(overlay=True, show_gridlines=True)  # doctest: +SKIP
         """
         top, bottom_idx, left, right_idx = self._get_idxes(image)
 

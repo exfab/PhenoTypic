@@ -15,7 +15,7 @@ class PlotterRegistry(BaseRegistry["BasePlotter"]):
 
     Plotters are registered by their ``call_name`` class attribute, which must
     match the method name used for dispatch (e.g., ``call_name = "overlay"``
-    corresponds to ``image.plot.overlay()``).
+    corresponds to ``image.plot.size_distribution()``).
     """
 
     _REGISTRY: ClassVar[dict[str, type["BasePlotter"]]] = {}

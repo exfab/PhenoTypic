@@ -109,12 +109,16 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             title: str | None = None,
             channel: int | None = None,
             foreground_only: bool = False,
+            overlay: bool = False,
             *,
-            plotly_settings: dict | None = None,
-    ) -> go.Figure | tuple[plt.Figure, plt.Axes]:
-        """Display the multichannel image data interactively.
-
-        Uses Plotly when available, falling back to matplotlib otherwise.
+            object_label: int | None = None,
+            show_labels: bool = False,
+            show_gridlines: bool = True,
+            show_section_boxes: bool = True,
+            label_settings: dict | None = None,
+            overlay_settings: dict | None = None,
+    ) -> tuple[plt.Figure, plt.Axes]:
+        """Display the multichannel image data using matplotlib.
 
         Args:
             figsize: Figure size in inches (width, height). If None,
@@ -124,14 +128,113 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             channel: Specific channel index to plot. If None, all
                 channels are displayed as RGB.
             foreground_only: If True, only foreground is displayed.
+            overlay: If True, overlay the object map on the image.
+                Falls back to plain image when no objects are detected.
+            object_label: Specific object label to highlight. If None,
+                shows all detected objects. Only used when overlay is True.
+            show_labels: If True, displays numeric labels at object centroids.
+                Only used when overlay is True.
+            show_gridlines: For GridImage only. If True, draws cyan dashed
+                gridlines at row/column boundaries. Only used when overlay
+                is True. Ignored for regular Image.
+            show_section_boxes: For GridImage only. If True, draws colored
+                bounding boxes around each grid section. Only used when
+                overlay is True. Ignored for regular Image.
+            label_settings: Dict passed to text label rendering.
+            overlay_settings: Dict passed to skimage.color.label2rgb.
+
+        Returns:
+            A ``(plt.Figure, plt.Axes)`` tuple.
+        """
+        arr = self[:] if not foreground_only else self.foreground()
+
+        if channel is not None:
+            title = (
+                f"{self._root_image.name} - Channel {channel}"
+                if title is None
+                else f"{title} - Channel {channel}"
+            )
+
+        has_objects = self._root_image.num_objects > 0
+        if overlay and has_objects:
+            plot_arr = arr if channel is None else arr[:, :, channel]
+            objmap = self._get_filtered_objmap(object_label)
+            fig, ax = self._plot_overlay(
+                arr=plot_arr, objmap=objmap, figsize=figsize, title=title,
+                overlay_settings=overlay_settings,
+            )
+            self._decorate_mpl_overlay(
+                ax, has_objects=has_objects, object_label=object_label,
+                show_labels=show_labels, show_gridlines=show_gridlines,
+                show_section_boxes=show_section_boxes,
+                label_settings=label_settings,
+            )
+            return fig, ax
+
+        if channel is None:
+            return self._mpl_plot(
+                arr=arr, figsize=figsize, title=title,
+            )
+        return self._mpl_plot(
+            arr=arr[:, :, channel], figsize=figsize, title=title,
+            cmap="gray",
+        )
+
+    def dash(
+            self,
+            figsize: tuple[int, int] | None = None,
+            title: str | None = None,
+            channel: int | None = None,
+            foreground_only: bool = False,
+            overlay: bool = False,
+            *,
+            object_label: int | None = None,
+            show_labels: bool = False,
+            show_gridlines: bool = True,
+            show_section_boxes: bool = True,
+            label_settings: dict | None = None,
+            overlay_settings: dict | None = None,
+            plotly_settings: dict | None = None,
+    ) -> go.Figure:
+        """Display the multichannel image data using Plotly.
+
+        Args:
+            figsize: Figure size in inches (width, height). If None,
+                auto-calculated from array aspect ratio.
+            title: Title of the plot. If None, a default title is
+                generated based on the image and channel.
+            channel: Specific channel index to plot. If None, all
+                channels are displayed as RGB.
+            foreground_only: If True, only foreground is displayed.
+            overlay: If True, overlay the object map on the image.
+                Falls back to plain image when no objects are detected.
+            object_label: Specific object label to highlight. If None,
+                shows all detected objects. Only used when overlay is True.
+            show_labels: If True, displays numeric labels at object centroids.
+                Only used when overlay is True.
+            show_gridlines: For GridImage only. If True, draws gridlines
+                at row/column boundaries. Only used when overlay is True.
+                Ignored for regular Image.
+            show_section_boxes: For GridImage only. If True, draws colored
+                bounding boxes around each grid section. Only used when
+                overlay is True. Ignored for regular Image.
+            label_settings: Dict passed to text label rendering.
+            overlay_settings: Dict passed to skimage.color.label2rgb.
             plotly_settings: Additional Plotly layout settings.
 
         Returns:
-            A ``plotly.graph_objects.Figure`` when plotly is installed,
-            or a ``(plt.Figure, plt.Axes)`` tuple when using matplotlib
-            fallback.
+            A ``plotly.graph_objects.Figure``.
+
+        Raises:
+            ImportError: If plotly is not installed.
         """
         from phenotypic.tools_._plotly_helpers import PLOTLY_AVAILABLE
+
+        if not PLOTLY_AVAILABLE:
+            raise ImportError(
+                "plotly is required for .dash(). "
+                "Install it with: pip install plotly"
+            )
 
         arr = self[:] if not foreground_only else self.foreground()
 
@@ -142,15 +245,22 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
                 else f"{title} - Channel {channel}"
             )
 
-        if not PLOTLY_AVAILABLE:
-            if channel is None:
-                return self._mpl_plot(
-                    arr=arr, figsize=figsize, title=title,
-                )
-            return self._mpl_plot(
-                arr=arr[:, :, channel], figsize=figsize, title=title,
-                cmap="gray",
+        has_objects = self._root_image.num_objects > 0
+        if overlay and has_objects:
+            plot_arr = arr if channel is None else arr[:, :, channel]
+            objmap = self._get_filtered_objmap(object_label)
+            fig = self._plotly_overlay(
+                arr=plot_arr, objmap=objmap, figsize=figsize, title=title,
+                overlay_settings=overlay_settings,
+                plotly_settings=plotly_settings,
             )
+            self._decorate_plotly_overlay(
+                fig, has_objects=has_objects, object_label=object_label,
+                show_labels=show_labels, show_gridlines=show_gridlines,
+                show_section_boxes=show_section_boxes,
+                label_settings=label_settings,
+            )
+            return fig
 
         from phenotypic.tools_._plotly_helpers import plotly_imshow
 

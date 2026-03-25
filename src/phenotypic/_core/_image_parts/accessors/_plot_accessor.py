@@ -20,9 +20,6 @@ from phenotypic._core._image_parts.plot_accessor._diagnostics_plotter import (
 from phenotypic._core._image_parts.plot_accessor._morphology_plotter import (
     MorphologyPlotter,
 )
-from phenotypic._core._image_parts.plot_accessor._overlay_plotter import (
-    OverlayPlotter,
-)
 from phenotypic._core._image_parts.plot_accessor._size_distribution_plotter import (
     SizeDistributionPlotter,
 )
@@ -53,9 +50,12 @@ class PlotAccessor(ImageAccessorBase):
     labeled objects (objmap) or binary masks (objmask) are available, and adapting
     their analysis accordingly.
 
-    Built-in plot methods (``overlay``, ``all``, ``morph_progression``, etc.) are
-    defined as explicit methods for IDE autocomplete. User-registered plotters added
-    via ``@register_plotter`` are still accessible through dynamic dispatch.
+    Built-in plot methods (``all``, ``morph_progression``, etc.) are defined as
+    explicit methods for IDE autocomplete. User-registered plotters added via
+    ``@register_plotter`` are still accessible through dynamic dispatch.
+
+    For overlay visualization, use ``image.show(overlay=True)`` or
+    ``image.dash(overlay=True)`` instead.
 
     Note:
         For large images (>3000x3000 pixels), memory usage can be significant.
@@ -84,7 +84,7 @@ class PlotAccessor(ImageAccessorBase):
 
         >>> from phenotypic._core._image_parts.plot_accessor import available_plotters
         >>> print(available_plotters())
-        ('all', 'diagnostics', 'morph_progression', 'overlay', ...)
+        ('all', 'diagnostics', 'morph_progression', ...)
     """
 
     def __init__(self, root_image: Image) -> None:
@@ -117,13 +117,6 @@ class PlotAccessor(ImageAccessorBase):
         return self._instances[cls_name]
 
     # -- Built-in plotter methods (explicit for IDE autocomplete) --
-
-    def overlay(self, *args: Any, **kwargs: Any) -> Any:
-        """Overlay detected objects on the original image.
-
-        See :meth:`~phenotypic._core._image_parts.plot_accessor.OverlayPlotter.overlay`.
-        """
-        return self._get_or_create(OverlayPlotter).overlay(*args, **kwargs)
 
     def all(self, *args: Any, **kwargs: Any) -> Any:
         """Plot all available image data layers side by side.

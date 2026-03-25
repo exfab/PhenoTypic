@@ -55,7 +55,7 @@ def test_image_grid_section_retrieval(plate_grid_images_with_detection):
 @timeit
 def test_grid_plot_overlay(plate_grid_images_with_detection):
     grid_image = plate_grid_images_with_detection
-    fig = grid_image.plot.overlay(show_labels=False)
+    fig, ax = grid_image.show(overlay=True, show_labels=False)
     assert fig is not None
 
 
