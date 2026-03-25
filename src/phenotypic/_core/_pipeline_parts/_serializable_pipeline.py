@@ -95,15 +95,6 @@ class SerializablePipeline(NapariPipelineViewer):
 
         return json.dumps(config, indent=2)
 
-    def to_json_str(self) -> str:
-        """
-        Alias for __str__. Returns JSON string representation of the pipeline.
-
-        Returns:
-            str: A JSON-formatted string encoding the pipeline configuration.
-        """
-        return str(self)
-
     @classmethod
     def from_json(
             cls,

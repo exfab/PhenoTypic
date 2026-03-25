@@ -386,7 +386,7 @@ class TestLoadSinglePipelineFromManifest:
         json_str = load_single_pipeline_from_manifest(out, "Pipeline_1")
         lazy_pipe = ImagePipeline.from_json(json_str)
 
-        assert full_pipe.to_json_str() == lazy_pipe.to_json_str()
+        assert full_pipe.to_json() == lazy_pipe.to_json()
 
     def test_not_found_raises_key_error(self, simple_config, tmp_path):
         out = tmp_path / "sweep.json"

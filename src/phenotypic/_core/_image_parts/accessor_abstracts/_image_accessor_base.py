@@ -122,8 +122,22 @@ class ImageAccessorBase(ABC):
         filepath = Path(filepath)
         expected_property = f"Image.{cls._accessor_property_name_value()}"
 
-        # Load the array
-        arr = ski.io.imread(str(filepath))
+        # Load the array using cv2 for reliable uint16 round-trip
+        import cv2
+
+        arr = cv2.imread(str(filepath), cv2.IMREAD_UNCHANGED)
+        if arr is None:
+            raise FileNotFoundError(
+                f"Could not read image file: {filepath}. "
+                "File may not exist, be corrupt, or be in an "
+                "unsupported format."
+            )
+        # cv2 loads colour images as BGR/BGRA; convert to RGB/RGBA
+        if arr.ndim == 3:
+            if arr.shape[2] == 4:
+                arr = cv2.cvtColor(arr, cv2.COLOR_BGRA2RGBA)
+            elif arr.shape[2] == 3:
+                arr = cv2.cvtColor(arr, cv2.COLOR_BGR2RGB)
 
         # Try to extract and verify PhenoTypic metadata
         phenotypic_data = cls._extract_phenotypic_metadata(filepath)
@@ -1237,7 +1251,7 @@ class ImageAccessorBase(ABC):
 
         # Build metadata JSON
         phenotypic_metadata = self._build_phenotypic_metadata()
-        metadata_json = json.dumps(phenotypic_metadata, ensure_ascii=False)
+        metadata_json = json.dumps(phenotypic_metadata, ensure_ascii=True)
 
         self._save_image(
             filepath=filepath,

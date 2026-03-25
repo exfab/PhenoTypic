@@ -110,6 +110,11 @@ class HessianFilter(ImageEnhancer):
         self.mode = mode
         self.cval = cval
 
+    def __setattr__(self, name: str, value: object) -> None:
+        if name == "sigmas" and value is not None:
+            value = tuple(value)  # type: ignore[arg-type]
+        super().__setattr__(name, value)
+
     def _operate(self, image: Image) -> Image:
         image.detect_mat[:] = hessian(
                 image=image.detect_mat[:],

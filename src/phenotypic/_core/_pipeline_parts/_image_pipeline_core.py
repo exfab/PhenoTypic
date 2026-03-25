@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import importlib.util
 import logging
-import traceback
 import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Union, Optional, NamedTuple
@@ -439,12 +438,14 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 if on_op_complete is not None:
                     on_op_complete(i, key, img, operation)
 
-            except Exception:
+            except Exception as exc:
                 if self._benchmark and self._verbose and has_tqdm:
                     pbar.close()
-                exc_type, exc_val, exc_tb = sys.exc_info()
-                traceback.print_tb(exc_tb)
-                raise exc_val.with_traceback(exc_tb)
+                op_class = type(operation).__name__
+                raise type(exc)(
+                    f"[{op_class}] (step {i + 1}/{len(self._ops)}, "
+                    f"key='{key}'): {exc}"
+                ) from exc
 
         # Close the progress bar if it exists
         if self._benchmark and self._verbose and has_tqdm:
@@ -664,10 +665,14 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                             )
                 else:
                     measurements.append(measurement.measure(image))
-            except Exception as e:
+            except Exception as exc:
                 if self._benchmark and self._verbose and has_tqdm:
                     pbar.close()
-                raise e
+                meas_class = type(measurement).__name__
+                raise type(exc)(
+                    f"[{meas_class}] (step {i + 1}/{len(self._meas)}, "
+                    f"key='{key}'): {exc}"
+                ) from exc
 
         # Close the progress bar if it exists
         if self._benchmark and self._verbose and has_tqdm:

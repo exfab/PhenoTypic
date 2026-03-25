@@ -5,7 +5,6 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
     from phenotypic._core._grid_image import GridImage
 
-
 from ._image_operation import ImageOperation
 from phenotypic.tools_.funcs_ import validate_operation_integrity
 from abc import ABC, abstractmethod
@@ -31,7 +30,7 @@ class ObjectRefiner(ImageOperation, ABC):
     - **ObjectRefiner vs ObjectDetector:** Refiners work on existing masks (objmask/objmap), detectors create
       masks from image data. Refiners are for cleanup, detectors are for initial analysis.
     - **Size filtering:** Use for removing dust, noise, agar artifacts (too small) or unrealistic regions
-      (too large). Example: [SmallObjectRemover](src/phenotypic/refine/_small_object_modifier.py).
+      (too large). Example: [SmallObjectRemover](src/phenotypic/refine/_small_object_remover.py).
     - **Morphological cleanup:** Use for fragmented edges, thin protrusions, internal gaps. Example:
       [MaskDilator](src/phenotypic/refine/_mask_dilator.py) (uses FootprintMixin).
     - **Hole filling:** Use for voids from uneven illumination or pigment patterns within colonies.
@@ -132,7 +131,7 @@ class ObjectRefiner(ImageOperation, ABC):
 
     Common ObjectRefiner implementations address specific issues:
 
-    - **Size filtering:** [SmallObjectRemover](src/phenotypic/refine/_small_object_modifier.py) removes
+    - **Size filtering:** [SmallObjectRemover](src/phenotypic/refine/_small_object_remover.py) removes
       objects below/above thresholds. Targets: spurious noise, dust, agar artifacts, oversized regions.
 
     - **Shape filtering:** Remove objects with poor morphology (low circularity, low solidity, high

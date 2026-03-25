@@ -29,7 +29,7 @@ from ._min_residual_error_reducer import ReduceMultipleGridObjects
 from ._nearest_neighbor_merger import NearestNeighborMerger
 from ._residual_outlier_remover import ResidualOutlierRemover
 from ._skeletonize import Skeletonize
-from ._small_object_modifier import SmallObjectRemover
+from ._small_object_remover import SmallObjectRemover
 from ._small_to_large_merger import SmallToLargeMerger
 from ._thinning import Thinning
 from ._transitive_distance_merger import TransitiveDistanceMerger

@@ -103,7 +103,7 @@ def generate_sweep_manifest(
                 pipe.set_meas(meas)
 
             # Parse the JSON string to a dict so the manifest is a pure dict
-            pipelines_dict[pipe_name] = json.loads(pipe.to_json_str())
+            pipelines_dict[pipe_name] = json.loads(pipe.to_json())
 
         manifest["configs"][cfg_name] = {
             "n_combinations": len(combinations),
