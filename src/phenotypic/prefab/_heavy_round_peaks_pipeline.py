@@ -18,37 +18,41 @@ from phenotypic.measure import (
 
 
 class HeavyRoundPeaksPipeline(PrefabPipeline):
-    """
-    Configures and initializes a robust image processing pipeline tailored for analyzing circular colonies grown on
-    solid media agar. It incorporates preprocessing, detection, morphological refinement, and feature extraction
-    stages, with customizable parameters to handle diverse experimental setups and imaging conditions. Adjusting
-    attributes fine-tunes pipeline behavior and impacts colony detection and measurement accuracy.
+    """Detect and measure round colonies using peak detection with full refinement.
 
-    Operations:
-        1. `BM3DDenoiser`
-        2. `CLAHE`
-        3. `MedianFilter`
-        4. `RoundPeaksDetector` (first pass)
-        5. `MaskOpener`
-        6. `BorderObjectRemover`
-        7. `SmallObjectRemover`
-        8. `MaskFill`
-        9. `GridOversizedObjectRemover`
-        10. `ReduceMultipleGridObjects`
-        11. `GridAligner`
-        12. `RoundPeaksDetector` (second pass since alignment might improve detection)
-        13. `MaskOpener` (no opening)
-        14. `BorderObjectRemover`
-        15. `SmallObjectRemover`
-        16. `GridOversizedObjectRemover`
-        17. `MaskFill`
-        18. `ReduceMultipleGridObjects`
+    An extended version of :class:`RoundPeaksPipeline` that adds BM3D denoising,
+    CLAHE contrast enhancement, morphological refinement, grid alignment, and a
+    second detection pass for improved accuracy on challenging plates.
 
-    Measurements:
-        - `MeasureShape`
-        - `MeasureColor`
-        - `MeasureIntensity`
-        - `MeasureTexture`
+    Steps:
+        1. BM3DDenoiser — high-quality denoising
+        2. CLAHE — boost local contrast
+        3. MedianFilter — remove residual speckle
+        4. RoundPeaksDetector — first detection pass
+        5. MaskOpener, BorderObjectRemover, SmallObjectRemover, MaskFill — cleanup
+        6. GridOversizedObjectRemover, ReduceMultipleGridObjects — grid refinement
+        7. GridAligner — straighten the grid
+        8. RoundPeaksDetector — second detection pass after alignment
+        9. BorderObjectRemover, SmallObjectRemover, MaskFill — final cleanup
+        10. ReduceMultipleGridObjects — final grid refinement
+
+    Measurements: MeasureShape, MeasureColor, MeasureIntensity, MeasureTexture.
+
+    Best For:
+        - Round colonies on grid plates that need thorough refinement.
+        - Noisy or low-contrast plates where :class:`RoundPeaksPipeline`
+          produces too many artifacts.
+        - Plates with slight rotation that benefits from grid alignment
+          between detection passes.
+
+    Consider Also:
+        - :class:`RoundPeaksPipeline` for a faster, lighter version when
+          plates are clean and well-lit.
+        - :class:`HeavyOtsuPipeline` for general-purpose Otsu-based detection.
+
+    See Also:
+        :doc:`/tutorials/notebooks/08_using_prefab_pipelines` for a visual
+        comparison of prefab pipelines.
     """
 
     def __init__(

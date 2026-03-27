@@ -22,18 +22,42 @@ from phenotypic.refine import (
 
 
 class HeavyWatershedPipeline(PrefabPipeline):
-    """
-    Provides an image processing pipeline with robust preprocessing/post-processing and watershed segmentation.
+    """Detect and measure colonies using watershed segmentation for touching colonies.
 
-    This class defines a sequence of operations and measurements designed for
-    image analysis. It includes smoothing, enhancement, segmentation, border
-    object removal, and various analysis steps. The pipeline is highly customizable
-    for tasks such as image segmentation and feature extraction, making it suitable
-    for applications involving image quantification and preprocessing.
+    A robust pipeline that uses watershed region-growing to separate touching
+    or overlapping colonies that single-threshold methods merge into one object.
+    Includes multi-stage preprocessing, morphological refinement, and grid
+    alignment.
 
-    Note:
-        This pipeline uses computationally intensive operations aimed at cases where there is heavy background noise
+    Steps:
+        1. GaussianBlur — smooth noise
+        2. CLAHE — boost local contrast
+        3. MedianFilter — remove residual speckle
+        4. WatershedDetector — region-growing segmentation
+        5. BorderObjectRemover — remove partial edge colonies
+        6. LowCircularityRemover — remove non-circular artifacts
+        7. GridOversizedObjectRemover — remove merged multi-well objects
+        8. ReduceMultipleGridObjects — keep one colony per well
+        9. GridAligner — straighten the grid
+        10. MaskFill — fill interior holes
 
+    Measurements: MeasureShape, MeasureColor, MeasureTexture, MeasureIntensity.
+
+    Best For:
+        - Dense plates where colonies touch or overlap.
+        - Late time-point plates with large, merging colonies.
+        - Plates where Otsu detection merges adjacent colonies into single objects.
+
+    Consider Also:
+        - :class:`HeavyOtsuPipeline` when colonies are well-separated.
+        - :class:`RoundPeaksPipeline` for a faster approach on round,
+          non-touching colonies.
+
+    See Also:
+        :doc:`/tutorials/notebooks/08_using_prefab_pipelines` for a visual
+        comparison of prefab pipelines.
+        :doc:`/explanation/prefab_pipelines_guide` for guidance on choosing
+        a prefab pipeline.
     """
 
     def __init__(

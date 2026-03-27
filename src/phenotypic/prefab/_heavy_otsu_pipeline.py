@@ -26,29 +26,45 @@ from phenotypic.measure import (
 
 
 class HeavyOtsuPipeline(PrefabPipeline):
-    """
-    The HeavyWatershedPipeline class is a composite image processing pipeline that combines multiple layers of preprocessing, detection, and filtering steps
-    that can will select the right colonies in most cases. This comes at the cost of being a more computationally expensive pipeline.
+    """Detect and measure colonies using multi-stage Otsu thresholding with refinement.
 
-    Pipeline Steps:
-        1. Gaussian Smoothing
-        2. CLAHE
-        3. Median Enhancement
-        4. Watershed Segmentation
-        5. Border Object Removal
-        6. Grid Oversized Object Removal
-        7. Minimum Residual Error Reduction
-        8. Grid Alignment
-        9. Repeat Watershed Segmentation
-        10. Repeat Border Object Removal
-        11. Repeat Minimum Residual Error Reduction
-        12. Mask Fill
+    A robust general-purpose pipeline that chains preprocessing, Otsu detection,
+    morphological cleanup, grid alignment, and re-detection for reliable colony
+    segmentation on standard grid plates.
 
-    Measurements:
-        - Shape
-        - Color
-        - Texture
-        - Intensity
+    Steps:
+        1. GaussianBlur — smooth noise
+        2. CLAHE — boost local contrast
+        3. MedianFilter — remove residual speckle
+        4. SobelFilter — enhance colony edges
+        5. OtsuDetector — threshold-based detection
+        6. MaskOpener — smooth mask boundaries
+        7. BorderObjectRemover — remove partial edge colonies
+        8. SmallObjectRemover — remove noise fragments
+        9. MaskFill — fill interior holes
+        10. GridOversizedObjectRemover — remove merged multi-well objects
+        11. ReduceMultipleGridObjects — keep one colony per well
+        12. GridAligner — straighten the grid
+
+    Measurements: MeasureShape, MeasureColor, MeasureTexture, MeasureIntensity.
+
+    Best For:
+        - Standard 96-well or 384-well yeast plates with clean backgrounds.
+        - General-purpose colony detection when you are unsure which detector
+          to use.
+        - Plates with uniform illumination and bimodal intensity histograms.
+
+    Consider Also:
+        - :class:`HeavyWatershedPipeline` when colonies touch or overlap.
+        - :class:`RoundPeaksPipeline` for a faster, lighter approach on
+          well-separated round colonies.
+        - :class:`FilamentousFungiPipeline` for filamentous organisms.
+
+    See Also:
+        :doc:`/tutorials/notebooks/08_using_prefab_pipelines` for a visual
+        comparison of prefab pipelines.
+        :doc:`/explanation/prefab_pipelines_guide` for guidance on choosing
+        a prefab pipeline.
     """
 
     def __init__(

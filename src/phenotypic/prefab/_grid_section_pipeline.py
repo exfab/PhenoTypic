@@ -23,14 +23,36 @@ from phenotypic.measure import (
 
 
 class GridSectionPipeline(PrefabPipeline):
-    """
-    Provides an image processing pipeline designed for grid-based section-level analysis.
+    """Detect and measure colonies using per-section processing on grid plates.
 
-    This class defines a sequence of operations and measurements optimized for processing
-    gridded images where each section is analyzed independently. The pipeline includes
-    multiple stages of preprocessing, detection, filtering, and alignment steps, followed
-    by section-level detection and final measurements.
+    Applies a sub-pipeline independently to each grid section, enabling
+    section-specific thresholds and parameters. Useful when colony properties
+    vary across the plate (e.g., different strains in different wells).
 
+    Steps:
+        1. GaussianBlur + CLAHE — global preprocessing
+        2. OtsuDetector — initial global detection
+        3. BorderObjectRemover, SmallObjectRemover — cleanup
+        4. GridAligner — straighten the grid
+        5. GridApply — apply per-section sub-pipeline
+        6. ReduceMultipleGridObjects — final grid refinement
+
+    Measurements: MeasureShape, MeasureColor, MeasureIntensity, MeasureTexture.
+
+    Best For:
+        - Plates where colony properties vary significantly across wells.
+        - Pre-tiled grid sections that need independent processing.
+        - Experiments with different strains or conditions in each well.
+
+    Consider Also:
+        - :class:`HeavyOtsuPipeline` when uniform processing across the
+          plate is sufficient.
+        - :class:`RoundPeaksPipeline` for a faster approach on consistent
+          round colonies.
+
+    See Also:
+        :doc:`/explanation/prefab_pipelines_guide` for guidance on choosing
+        a prefab pipeline.
     """
 
     def __init__(

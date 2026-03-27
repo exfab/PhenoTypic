@@ -14,25 +14,36 @@ from phenotypic.measure import (
 
 
 class RoundPeaksPipeline(PrefabPipeline):
-    """Lightweight pipeline for circular colonies on solid media agar.
+    """Detect and measure round colonies using lightweight peak-based detection.
 
-    This prefab pipeline provides a streamlined sequence of operations tailored for
-    imaging pinned or arrayed fungal colonies on solid media agar. It performs a
-    gentle Gaussian blur to suppress scanner and agar noise, followed by a
-    grid-aware circular colony detector and a compact set of measurement
-    modules. Compared with :class:`HeavyRoundPeaksPipeline`, this variant exposes a
-    smaller number of stages and parameters but still allows fine control over
-    blur strength, thresholding, grid refinement, and texture scale.
+    A fast, minimal pipeline that applies Gaussian smoothing and grid-aware
+    peak detection for circular colonies. Fewer stages and parameters than
+    the Heavy variants, making it the fastest prefab option.
 
-    Operations:
-        1. ``GaussianBlur``
-        2. ``RoundPeaksDetector``
+    Steps:
+        1. GaussianBlur — smooth noise
+        2. RoundPeaksDetector — grid-aware circular colony detection
 
-    Measurements:
-        - ``MeasureShape``
-        - ``MeasureIntensity``
-        - ``MeasureTexture``
-        - ``MeasureColor``
+    Measurements: MeasureShape, MeasureIntensity, MeasureTexture, MeasureColor.
+
+    Best For:
+        - Well-separated round colonies on grid plates.
+        - High-throughput screening where speed matters.
+        - Plates with consistent colony sizes and regular spacing.
+        - Quick prototyping before switching to a heavier pipeline.
+
+    Consider Also:
+        - :class:`HeavyRoundPeaksPipeline` when additional refinement stages
+          are needed for cleaner results.
+        - :class:`HeavyOtsuPipeline` for general-purpose detection with more
+          robust preprocessing.
+        - :class:`FilamentousFungiPipeline` for filamentous organisms.
+
+    See Also:
+        :doc:`/tutorials/notebooks/08_using_prefab_pipelines` for a visual
+        comparison of prefab pipelines.
+        :doc:`/explanation/prefab_pipelines_guide` for guidance on choosing
+        a prefab pipeline.
 
     Parameters
     ----------
