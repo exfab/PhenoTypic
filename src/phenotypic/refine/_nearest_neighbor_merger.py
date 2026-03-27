@@ -14,71 +14,42 @@ from ..abc_ import ObjectRefiner
 
 
 class NearestNeighborMerger(ObjectRefiner):
-    """Merge colonies to their nearest neighbor within distance threshold.
+    """Merge small fragments into their nearest neighboring colony.
 
-    Intuition:
-        Unlike transitive merging which creates chains, nearest-neighbor merging
-        is one-directional: each object merges to its single closest neighbor if
-        within threshold. This prevents cascading merges while still addressing
-        fragmented colonies. Combined with size filtering, this is effective for
-        removing small noise/debris artifacts near real colonies without over-merging
-        distinct colonies that happen to be close together.
+    Each object below ``min_size`` is absorbed into its single closest
+    neighbor within ``distance_threshold``. Unlike transitive merging, this
+    is one-directional and conservative — it cleans up debris without
+    cascading merges across the plate.
 
-    Why this is useful for agar plates:
-        Small fragments from dust, agar texture, or sensor noise often appear as
-        independent labels near larger, real colonies. Merging only small objects
-        to their nearest neighbor provides selective cleanup: genuine small colonies
-        remain untouched while noise is absorbed into nearby larger structures.
-        This is more conservative than transitive merging and better preserves
-        distinct objects in crowded plates.
+    Best For:
+        - Absorbing dust or noise fragments near real colonies.
+        - Cleaning up small detection artifacts without risking cascading merges.
+        - Size-selective cleanup where only fragments below a threshold merge.
 
-    Use cases:
-        - Removing small noise artifacts near real colonies while preserving
-          distinct small colonies that may be legitimate.
-        - Cleaning up dust, salt-and-pepper noise, or agar texture artifacts
-          without risk of cascading merges.
-        - Post-processing when you want to be conservative: merge only objects
-          below a size threshold and only to their nearest neighbor.
-        - Working with size-biased detection artifacts where small fragments
-          are noise but large objects are colonies of interest.
+    Consider Also:
+        - :class:`TransitiveDistanceMerger` for chained merging of all nearby
+          objects regardless of size.
+        - :class:`SmallToLargeMerger` for merging small objects into the
+          largest nearby colony.
+        - :class:`MaskCloser` for bridging narrow gaps morphologically.
 
-    Caveats:
-        - One-directional merging creates asymmetric behavior: object A merges
-          to B, but B may merge to C, creating indirect chains. Not guaranteed
-          to merge all objects within threshold distance to each other.
-        - Without size filtering (min_size=None), all objects merge to their
-          nearest neighbor, even large well-formed colonies. This is rarely
-          desired unless you want to explicitly merge all nearby objects.
-        - Labels may remain non-consecutive after merging (acceptable for
-          functional purposes but may affect visualization).
-        - Small objects that are equidistant from multiple neighbors will merge
-          to one arbitrarily based on KDTree ordering.
+    Args:
+        distance_threshold: Maximum centroid distance (pixels) for merging.
+            Objects beyond this distance remain independent. Typical range:
+            15--40. Default: 25.
+        min_size: Only objects with area below this threshold are merge
+            candidates. Larger objects serve as anchor targets. ``None``
+            merges all objects (rarely desired). Default: 50.
 
-    Attributes:
-        distance_threshold (float): Maximum distance to nearest neighbor for
-            merging (pixels). Objects with nearest neighbor beyond this distance
-            remain independent. Typical range: 15-40 pixels. Smaller values
-            preserve more independence; larger values merge more aggressively.
-        min_size (int | None): If provided, only objects with area < min_size
-            are candidates for merging. Objects >= min_size are preserved
-            independently and act as anchor targets. Default: 50 pixels. Set to
-            None to merge all objects regardless of size (usually not recommended).
+    Returns:
+        Image: Input image with ``objmask`` and ``objmap`` updated after
+        merging small objects into their nearest neighbors.
 
-    Examples:
-        Remove small noise by merging only small objects to neighbors:
-
-        >>> from phenotypic.refine import NearestNeighborMerger
-        >>> from phenotypic import Image
-        >>> from phenotypic.detect import OtsuDetector
-        >>> image = Image('noisy_plate.jpg')
-        >>> detected = OtsuDetector().apply(image)
-        >>> # Merge only objects smaller than 50 pixels to their nearest colony
-        >>> merger = NearestNeighborMerger(
-        ...     distance_threshold=25,
-        ...     min_size=50
-        ... )
-        >>> cleaned = merger.apply(detected)  # doctest: +SKIP
-        >>> print(f"Removed small artifacts: {detected.objmap[:].max()} -> {cleaned.objmap[:].max()}")  # doctest: +SKIP
+    See Also:
+        :doc:`/how_to/notebooks/merge_fragmented_detections` for fragment
+        merging strategies.
+        :doc:`/explanation/refinement_strategies` for choosing the right
+        refinement approach.
     """
 
     def __init__(self, distance_threshold: float = 20.0, min_size: Optional[int] = 50):

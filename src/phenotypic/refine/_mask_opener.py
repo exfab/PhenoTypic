@@ -14,44 +14,43 @@ from phenotypic.tools_.typing_ import FootprintShape
 
 
 class MaskOpener(ObjectRefiner, FootprintMixin):
-    """Morphologically open binary masks to remove thin connections and specks.
+    """Smooth mask boundaries and break thin bridges between touching colonies.
 
-    Intuition:
-        Binary opening (erosion followed by dilation) removes small isolated
-        pixels and breaks narrow bridges between objects. On agar plates, this
-        helps separate touching colonies and suppresses tiny artifacts from
-        dust or condensation without overly shrinking well-formed colonies.
+    Applies binary opening (erosion then dilation) to remove small isolated
+    pixels and narrow connections. Colonies linked by faint film or agar
+    artifacts become separated without significantly shrinking well-formed
+    colony masks.
 
-    Why this is useful for agar plates:
-        Colonies may develop halos or be linked by faint film on the agar. A
-        gentle opening step can restore separated masks, improving count and
-        phenotype accuracy.
+    Best For:
+        - Splitting colonies connected by 1--2 pixel bridges after thresholding.
+        - Removing tiny noise specks from the detection mask.
+        - Smoothing jagged mask edges before measurement.
 
-    Use cases:
-        - After thresholding, to split colonies connected by 1–2-pixel bridges.
-        - To remove tiny noise specks before measuring morphology.
+    Consider Also:
+        - :class:`MaskCloser` for the opposite effect — filling small gaps
+          and bridging fragments.
+        - :class:`SmallObjectRemover` for removing small objects by area
+          rather than morphology.
+        - :class:`SeparateObjects` for splitting merged colonies using
+          watershed-based separation.
 
-    Caveats:
-        - Too large a footprint erodes small colonies or weakly-stained edges,
-          lowering recall and edge sharpness.
-        - GrayOpening can remove thin filaments that are biologically meaningful in
-          spreading/filamentous phenotypes.
+    Args:
+        shape: Structuring element. ``'auto'`` selects based on detected
+            objects. ``'diamond'``, ``'square'``, ``'disk'``, or a custom
+            ndarray. Default: ``None``.
+        width: Size of the structuring element in pixels. Larger values
+            smooth more aggressively. Typical range: 3--9. Default: 5.
+        n_iter: Number of opening iterations. Default: 1.
 
-    Attributes:
-        shape (Literal["auto"] | np.ndarray | int | None): Structuring
-            element used for opening. A larger or denser footprint removes more
-            thin connections and specks but risks eroding colony boundaries.
+    Returns:
+        Image: Input image with ``objmask`` and ``objmap`` morphologically
+        opened.
 
-    Examples:
-        Morphologically open masks to separate touching colonies:
-
-        >>> from phenotypic.refine import MaskOpener
-        >>> op = MaskOpener(shape='auto')
-        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
-
-    Raises:
-        AttributeError: If an invalid ``footprint`` type is provided (checked
-            during operation).
+    See Also:
+        :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough
+        of refinement operations.
+        :doc:`/explanation/refinement_strategies` for the recommended
+        refinement sequence.
     """
 
     def __init__(

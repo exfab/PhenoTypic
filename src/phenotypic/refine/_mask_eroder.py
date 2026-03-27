@@ -13,63 +13,36 @@ from skimage.morphology import erosion
 
 
 class MaskEroder(ObjectRefiner, FootprintMixin):
-    """Morphologically erode binary masks to remove thin protrusions and noise.
+    """Shrink colony masks inward to remove thin protrusions and noise pixels.
 
-    Intuition:
-        Binary erosion shrinks all object regions by removing outer pixels,
-        effectively eliminating thin protrusions, small isolated specks, and
-        faint boundary pixels. On agar plates, this removes dust, sensor noise,
-        condensation artifacts, and uneven staining artifacts while preserving
-        the _core structure of well-formed colonies.
+    Removes outer boundary pixels from all objects, eliminating thin
+    whiskers, isolated specks, and uncertain boundary pixels from soft
+    edges. Leaves the core colony structure intact.
 
-    Why this is useful for agar plates:
-        Colony boundaries detected via thresholding often include noise pixels,
-        thin speckles from uneven illumination, and uncertain boundary pixels
-        from soft edges. Erosion strips away these artifacts, leaving a more
-        robust _core colony shape. This is useful for reducing false-positive
-        signal and improving measurement precision.
+    Best For:
+        - Removing thin protrusions or whiskers from colony edges.
+        - Eliminating noise specks that survived previous cleanup.
+        - Excluding uncertain boundary pixels for higher-precision measurements.
 
-    Use cases:
-        - Remove thin protrusions or whiskers extending from colony edges.
-        - Eliminate isolated noise specks and dust artifacts before merging.
-        - Shrink masks to exclude uncertain boundary pixels, improving precision.
-        - Prepare masks for subsequent operations (e.g., erosion-dilation to
-          refine morphology without changing overall size).
+    Consider Also:
+        - :class:`MaskDilator` for the opposite effect — expanding masks
+          outward.
+        - :class:`MaskOpener` for erosion-then-dilation that removes thin
+          features without permanently shrinking colonies.
+        - :class:`SmallObjectRemover` for removing small objects by area
+          rather than shrinking all objects.
 
-    Caveats:
-        - Too large a shape eliminates small colonies entirely or severely
-          shrinks area measurements, reducing sensitivity for small colonies.
-        - Aggressive erosion can disconnect weakly-stained colonies or separate
-          merged colonies at the cost of breaking apart the same colony.
-        - Erosion reduces per-colony area measurements, which may bias phenotypic
-          analysis if not compensated downstream.
+    Args:
+        shape: Structuring element. ``'auto'``, ``'disk'``, ``'square'``,
+            ``'diamond'``, or custom ndarray. Default: ``None``.
+        width: Footprint width in pixels. Default: 5.
 
-    Attributes:
-        shape (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
-            Structuring element used for erosion. A larger shape removes
-            more boundary pixels and thin features but risks shrinking colonies
-            too aggressively.
-        width (int): Footprint width in pixels. Larger values erode more deeply
-            but risk eliminating small colonies entirely.
+    Returns:
+        Image: Input image with ``objmask`` and ``objmap`` eroded.
 
-    Examples:
-        Remove thin protrusions and noise from colony masks:
-
-        >>> from phenotypic.refine import MaskEroder
-        >>> from phenotypic import Image
-        >>> from phenotypic.detect import OtsuDetector
-        >>> image = Image.imread("colony_plate.jpg")  # doctest: +SKIP
-        >>> detected = OtsuDetector().apply(image)  # doctest: +SKIP
-        >>> # Erode with auto-scaled shape to remove specks
-        >>> refiner = MaskEroder(shape='auto')  # doctest: +SKIP
-        >>> eroded = refiner.apply(detected)  # doctest: +SKIP
-        >>> # Or use a small fixed disk shape (width 1) for gentle erosion
-        >>> refiner = MaskEroder(shape='disk', width=1)  # doctest: +SKIP
-        >>> eroded = refiner.apply(detected, inplace=True)  # doctest: +SKIP
-
-    Raises:
-        AttributeError: If an invalid ``shape`` type is provided (checked
-            during operation).
+    See Also:
+        :doc:`/explanation/refinement_strategies` for the recommended
+        refinement sequence.
     """
 
     def __init__(

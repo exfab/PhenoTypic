@@ -12,88 +12,34 @@ from phenotypic.abc_ import ImageCorrector
 class ImageCropper(ImageCorrector):
     """Remove pixels from image edges by specifying crop margins.
 
-    ImageCropper crops an image by removing a specified number of pixels from each edge
-    (left, right, top, bottom). This is useful for eliminating edge artifacts, removing
-    scanner borders, or cropping to a region of interest before colony detection and
-    analysis.
+    Crops all image components (rgb, gray, detect_mat, objmask, objmap)
+    together. When applied to a GridImage, the grid structure is preserved
+    and grid positions are recalculated for the cropped dimensions.
 
-    **Use cases for colony phenotyping:**
+    Best For:
+        - Removing scanner margins or borders outside the agar plate.
+        - Eliminating edge artifacts (bent agar, labeling, moisture).
+        - Standardizing image dimensions across a batch of plates.
 
-    - **Remove scanner margins:** Scanners often capture a border region outside the agar
-      plate. Crop these margins to isolate the plate area containing colonies.
-    - **Eliminate edge artifacts:** The edges of agar plates often have artifacts
-      (bent agar, labeling, moisture) that interfere with detection. Cropping the outer
-      wells/rows removes these problems.
-    - **Focus on region of interest:** For large plates with sparse colonies, crop to the
-      area where colonies are expected, improving detection efficiency and reducing noise
-      from empty regions.
-    - **Standardize image size:** For batch processing of plates with slightly different
-      captured boundaries, cropping to consistent margins ensures uniform image dimensions.
+    Consider Also:
+        - :class:`ImagePadder` for adding pixels instead of removing them.
+        - :class:`BorderObjectRemover` for removing edge-touching colonies
+          without changing image dimensions.
 
-    **Important caveat:** The cropping is applied to the entire image (rgb, gray, detect_mat,
-    objmask, objmap) together, making this an ImageCorrector. If detection has already been
-    performed, the detection results (objmask, objmap) are cropped along with the image
-    data. Re-detection after cropping may be necessary if the crop affects detection quality.
+    Args:
+        left: Pixels to remove from the left edge. ``None`` means no
+            cropping. Default: ``None``.
+        right: Pixels to remove from the right edge. Default: ``None``.
+        top: Pixels to remove from the top edge. Default: ``None``.
+        bottom: Pixels to remove from the bottom edge. Default: ``None``.
 
-    **Grid-aware cropping:** When applied to a GridImage, the cropper preserves the grid
-    structure (nrows, ncols, grid_finder) while adapting grid positions to the cropped
-    dimensions. Grid positions are automatically recalculated by the grid_finder to align
-    with the new image boundaries.
+    Returns:
+        Image: Input image with all components cropped to the specified
+        margins.
 
-    Attributes:
-        left (int | None): Number of pixels to crop from the left edge. If None, no left
-            cropping is performed (equivalent to 0).
-        right (int | None): Number of pixels to crop from the right edge. If None, no right
-            cropping is performed (equivalent to 0).
-        top (int | None): Number of pixels to crop from the top edge. If None, no top
-            cropping is performed (equivalent to 0).
-        bottom (int | None): Number of pixels to crop from the bottom edge. If None, no
-            bottom cropping is performed (equivalent to 0).
-
-    Examples:
-        Basic usage: crop scanner border from all edges:
-
-        >>> from phenotypic import Image
-        >>> from phenotypic.correction import ImageCropper
-        >>> # Load a scanned plate image (may include scanner margins)
-        >>> image = Image.imread('plate_with_border.tiff')  # doctest: +SKIP
-        >>> print(f"Original size: {image.shape}")  # doctest: +SKIP
-        >>> # Remove 50 pixels from all edges
-        >>> cropper = ImageCropper(left=50, right=50, top=50, bottom=50)
-        >>> cropped = cropper.apply(image)  # doctest: +SKIP
-        >>> print(f"Cropped size: {cropped.shape}")  # doctest: +SKIP
-
-        Asymmetric cropping: remove only top/right margins:
-
-        >>> from phenotypic import Image
-        >>> from phenotypic.correction import ImageCropper
-        >>> image = Image.imread('plate_image.jpg')  # doctest: +SKIP
-        >>> # Remove top margin (label text) and right margin (edge artifact)
-        >>> # Keep left and bottom edges intact
-        >>> cropper = ImageCropper(top=80, right=60, left=None, bottom=None)
-        >>> cropped = cropper.apply(image)  # doctest: +SKIP
-
-        Crop after detection to isolate plate region:
-
-        >>> from phenotypic import Image, ImagePipeline
-        >>> from phenotypic.enhance import GaussianBlur
-        >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.correction import ImageCropper
-        >>> # Load and process a plate image
-        >>> image = Image.imread('raw_plate.tiff')  # doctest: +SKIP
-        >>> # Build preprocessing pipeline
-        >>> pipeline = ImagePipeline([
-        ...     GaussianBlur(sigma=1.5),
-        ...     OtsuDetector()
-        ... ])
-        >>> # Apply processing
-        >>> detected = pipeline.operate(image)  # doctest: +SKIP
-        >>> # Now crop to remove edge noise
-        >>> cropper = ImageCropper(left=40, right=40, top=40, bottom=40)
-        >>> final = cropper.apply(detected)  # doctest: +SKIP
-        >>> # Detection results are preserved in cropped image
-        >>> colonies = final.objects  # doctest: +SKIP
-        >>> print(f"Detected {len(colonies)} colonies in cropped region")  # doctest: +SKIP
+    See Also:
+        :doc:`/how_to/notebooks/crop_and_pad` for a visual walkthrough of
+        cropping and padding operations.
     """
 
     def __init__(self,

@@ -13,58 +13,39 @@ from skimage.morphology import closing
 
 
 class MaskCloser(ObjectRefiner, FootprintMixin):
-    """Morphologically close binary masks to fill small holes and gaps.
+    """Bridge small gaps and fill holes in colony masks using morphological closing.
 
-    Intuition:
-        Binary closing (dilation followed by erosion) fills small holes and
-        thin gaps between nearby objects. On agar plates, this bridges fragments
-        of the same colony that are separated by thin channels of background
-        (from uneven staining, condensation, or shadow effects) while preserving
-        the overall shape and size of larger colonies.
+    Applies binary closing (dilation then erosion) to reconnect nearby
+    fragments of the same colony separated by thin background channels.
+    Preserves overall colony shape and size while reducing fragmentation.
 
-    Why this is useful for agar plates:
-        Colonies may fragment due to uneven pigmentation, staining patterns, or
-        internal voids from gas pockets. A gentle closing step reconnects nearby
-        fragments, improving count accuracy and morphological measurements
-        (area, perimeter) by representing each colony as a single contiguous object.
+    Best For:
+        - Colonies fragmented by uneven pigmentation or shadow effects.
+        - Small internal holes from condensation or glare.
+        - Reconnecting nearby fragments before measurement.
 
-    Use cases:
-        - Reconnect nearby fragments of the same colony separated by thin channels.
-        - Fill small internal holes from uneven staining or shadow effects.
-        - Smooth minor gaps in colony boundaries after thresholding.
+    Consider Also:
+        - :class:`MaskFill` for filling enclosed holes without bridging
+          separate objects.
+        - :class:`MaskOpener` for the opposite effect — breaking thin
+          connections between distinct colonies.
+        - :class:`NearestNeighborMerger` for merging distant fragments
+          based on proximity.
 
-    Caveats:
-        - Too large a shape may merge adjacent but distinct colonies into
-          a single object, inflating size measurements and reducing count accuracy.
-        - Closing can obscure true biological gaps in filamentous or spreading
-          growth phenotypes.
-        - Large radii produce blunter colony edges and may remove thin appendages.
+    Args:
+        shape: Structuring element. ``'auto'``, ``'disk'``, ``'square'``,
+            ``'diamond'``, or custom ndarray. Default: ``None``.
+        width: Footprint width in pixels. Larger values bridge wider gaps
+            but risk merging distinct colonies. Typical range: 3--9.
+            Default: 5.
 
-    Attributes:
-        shape (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
-            Structuring element used for closing. A larger or denser shape fills
-            wider gaps but risks merging adjacent colonies.
-        width (int): Footprint width in pixels. Larger values fill bigger gaps
-            but risk over-connecting separate objects.
+    Returns:
+        Image: Input image with ``objmask`` and ``objmap`` morphologically
+        closed.
 
-    Examples:
-        Fill small gaps in colony masks:
-
-        >>> from phenotypic.refine import MaskCloser
-        >>> from phenotypic import Image
-        >>> from phenotypic.detect import OtsuDetector
-        >>> image = Image.imread("colony_plate.jpg")  # doctest: +SKIP
-        >>> detected = OtsuDetector().apply(image)  # doctest: +SKIP
-        >>> # Fill gaps from uneven staining with auto-scaled shape
-        >>> refiner = MaskCloser(shape='auto')  # doctest: +SKIP
-        >>> refined = refiner.apply(detected)  # doctest: +SKIP
-        >>> # Or use a fixed disk shape with width 3
-        >>> refiner = MaskCloser(shape='disk', width=3)  # doctest: +SKIP
-        >>> refined = refiner.apply(detected, inplace=False)  # doctest: +SKIP
-
-    Raises:
-        AttributeError: If an invalid ``shape`` type is provided (checked
-            during operation).
+    See Also:
+        :doc:`/how_to/notebooks/merge_fragmented_detections` for fragment
+        merging strategies.
     """
 
     def __init__(

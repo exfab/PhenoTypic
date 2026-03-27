@@ -13,61 +13,35 @@ from skimage.morphology import dilation
 
 
 class MaskDilator(ObjectRefiner, FootprintMixin):
-    """Morphologically dilate binary masks to expand colonies and bridge gaps.
+    """Expand colony masks outward using morphological dilation.
 
-    Intuition:
-        Binary dilation expands all object regions by adding pixels around the
-        boundaries. On agar plates, this bridges small gaps between nearby
-        fragments of the same colony (from uneven staining or shadow effects)
-        and expands masks to include faint halos or uncertain boundary pixels
-        that belong to the colony but were excluded by strict thresholding.
+    Adds pixels around object boundaries, bridging small gaps between
+    nearby fragments and recovering faint halos excluded by strict
+    thresholding. Dilation inflates area; follow with erosion (closing)
+    if area accuracy is critical.
 
-    Why this is useful for agar plates:
-        Fragmented colony detections are common from uneven illumination,
-        pigmentation heterogeneity, or internal voids. Dilation reconnects
-        nearby fragments and recovers faint outer regions, improving count
-        accuracy and colony area estimates. It's particularly useful as a
-        preprocessing step for merging operations or boundary recovery.
+    Best For:
+        - Bridging thin gaps between fragments of the same colony.
+        - Recovering faint colony halos near detection boundaries.
+        - Preprocessing before merge-based refinement operations.
 
-    Use cases:
-        - Merge fragmented colony detections separated by thin gaps.
-        - Bridge shadow-induced gaps in detection masks.
-        - Expand masks to recover faint colony halos near detection boundaries.
-        - Prepare masks for merge-based refinement operations.
+    Consider Also:
+        - :class:`MaskCloser` for dilation-then-erosion that bridges gaps
+          without inflating colony size.
+        - :class:`MaskEroder` for the opposite effect — shrinking masks
+          to remove thin protrusions.
 
-    Caveats:
-        - Too large a shape merges distinct adjacent colonies into a single
-          object, reducing count accuracy and biasing spatial analysis.
-        - Dilation inflates area measurements; if area accuracy is critical,
-          follow dilation with erosion (closing) or record original measurements.
-        - Large radii can create bridges between originally separate colonies
-          that were only separated by a thin gap, introducing false merges.
+    Args:
+        shape: Structuring element. ``'auto'``, ``'disk'``, ``'square'``,
+            ``'diamond'``, or custom ndarray. Default: ``None``.
+        width: Footprint width in pixels. Default: 5.
 
-    Attributes:
-        shape (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
-            Structuring element used for dilation. A larger shape expands
-            objects more aggressively but risks merging adjacent colonies.
-        width (int): Footprint width in pixels. Larger values bridge bigger gaps
-            but risk over-connecting separate objects.
+    Returns:
+        Image: Input image with ``objmask`` and ``objmap`` dilated.
 
-    Examples:
-        Merge fragmented colonies via dilation:
-
-        >>> from phenotypic.refine import MaskDilator
-        >>> from phenotypic import Image
-        >>> from phenotypic.detect import OtsuDetector
-        >>> image = Image.imread("colony_plate.jpg")  # doctest: +SKIP
-        >>> detected = OtsuDetector().apply(image)  # doctest: +SKIP
-        >>> # Dilate with auto-scaled shape to bridge nearby fragments
-        >>> refiner = MaskDilator(shape='auto')  # doctest: +SKIP
-        >>> dilated = refiner.apply(detected)  # doctest: +SKIP
-        >>> # Or use a fixed disk shape with width 2 for moderate expansion
-        >>> refiner = MaskDilator(shape='disk', width=2)  # doctest: +SKIP
-        >>> dilated = refiner.apply(detected, inplace=False)  # doctest: +SKIP
-
-    Raises:
-        AttributeError: If an invalid ``shape`` type is provided (checked
-            during operation).
+    See Also:
+        :doc:`/explanation/refinement_strategies` for the recommended
+        refinement sequence.
     """
 
     def __init__(

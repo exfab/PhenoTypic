@@ -11,43 +11,38 @@ from ..abc_ import ObjectRefiner
 
 
 class SmallObjectRemover(ObjectRefiner):
-    """Remove small, likely spurious objects from a labeled object map.
+    “””Remove objects smaller than a minimum area from the detection mask.
 
-    Intuition:
-        After thresholding/segmentation of agar-plate images, tiny specks from
-        dust, condensation, camera noise, or over-segmentation can appear as
-        separate labeled objects. Removing these below a minimum size reduces
-        false positives and stabilizes downstream phenotyping.
+    Eliminates dust, condensation specks, and noise fragments that appear
+    as tiny labeled objects after thresholding. Reduces false positives
+    and stabilizes colony counts.
 
-    Use cases (agar plates):
-        - Clean up salt-and-pepper detections before measuring colony size or
-          shape.
-        - Suppress fragmented debris around large colonies that may bias
-          counts or area statistics.
-        - Post-processing step after aggressive enhancement/thresholding.
+    Best For:
+        - Cleaning up salt-and-pepper artifacts after detection.
+        - Removing fragmented debris around large colonies.
+        - Post-processing after aggressive enhancement or thresholding.
 
-    Tuning and effects:
-        - min_size: Sets the minimum object area (in pixels). Increasing this
-          value removes more small fragments, typically improving mask quality
-          and background suppression, but may also delete legitimate micro-
-          colonies when colonies are extremely small or underexposed.
+    Consider Also:
+        - :class:`BorderObjectRemover` for removing partial colonies at
+          image edges (size-independent).
+        - :class:`LowCircularityRemover` for removing non-circular artifacts
+          regardless of size.
 
-    Caveats:
-        - Setting ``min_size`` too high can remove small but real colonies or
-          early-time-point growth, reducing recall.
-        - The optimal threshold depends on resolution; what is “small” at
-          high-resolution imaging may be substantial at low resolution.
+    Args:
+        min_size: Minimum object area in pixels to keep. Objects below this
+            threshold are removed. Typical range: 20--200 depending on
+            image resolution. Default: 64.
 
-    Attributes:
-        (No public attributes)
+    Returns:
+        Image: Input image with ``objmask`` and ``objmap`` updated to
+        exclude small objects.
 
-    Examples:
-        Remove small spurious objects below a minimum size:
-
-        >>> from phenotypic.refine import SmallObjectRemover
-        >>> op = SmallObjectRemover(min_size=100)
-        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
-    """
+    See Also:
+        :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough
+        of refinement operations.
+        :doc:`/explanation/refinement_strategies` for choosing the right
+        refinement sequence.
+    “””
 
     def __init__(self, min_size=64):
         """Initialize the remover.
