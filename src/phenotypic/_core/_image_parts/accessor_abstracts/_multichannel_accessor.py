@@ -41,9 +41,9 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
         raise NotImplementedError
 
     def imsave(
-        self,
-        filepath: str | Path,
-        bit_depth: Literal[8, 16] | None = None,
+            self,
+            filepath: str | Path,
+            bit_depth: Literal[8, 16] | None = None,
     ) -> None:
         """Save the multichannel image array to a file with PhenoTypic metadata embedded.
 
@@ -119,7 +119,7 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             title: str | None = None,
             channel: int | None = None,
             foreground_only: bool = False,
-            overlay: bool = False,
+            overlay: bool = True,
             *,
             object_label: int | None = None,
             show_labels: bool = False,
@@ -170,24 +170,24 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             plot_arr = arr if channel is None else arr[:, :, channel]
             objmap = self._get_filtered_objmap(object_label)
             fig, ax = self._plot_overlay(
-                arr=plot_arr, objmap=objmap, figsize=figsize, title=title,
-                overlay_settings=overlay_settings,
+                    arr=plot_arr, objmap=objmap, figsize=figsize, title=title,
+                    overlay_settings=overlay_settings,
             )
             self._decorate_mpl_overlay(
-                ax, has_objects=has_objects, object_label=object_label,
-                show_labels=show_labels, show_gridlines=show_gridlines,
-                show_section_boxes=show_section_boxes,
-                label_settings=label_settings,
+                    ax, has_objects=has_objects, object_label=object_label,
+                    show_labels=show_labels, show_gridlines=show_gridlines,
+                    show_section_boxes=show_section_boxes,
+                    label_settings=label_settings,
             )
             return fig, ax
 
         if channel is None:
             return self._mpl_plot(
-                arr=arr, figsize=figsize, title=title,
+                    arr=arr, figsize=figsize, title=title,
             )
         return self._mpl_plot(
-            arr=arr[:, :, channel], figsize=figsize, title=title,
-            cmap="gray",
+                arr=arr[:, :, channel], figsize=figsize, title=title,
+                cmap="gray",
         )
 
     def dash(
@@ -196,7 +196,7 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             title: str | None = None,
             channel: int | None = None,
             foreground_only: bool = False,
-            overlay: bool = False,
+            overlay: bool = True,
             *,
             object_label: int | None = None,
             show_labels: bool = False,
@@ -242,8 +242,8 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
 
         if not PLOTLY_AVAILABLE:
             raise ImportError(
-                "plotly is required for .dash(). "
-                "Install it with: pip install plotly"
+                    "plotly is required for .dash(). "
+                    "Install it with: pip install plotly"
             )
 
         arr = self[:] if not foreground_only else self.foreground()
@@ -260,15 +260,15 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             plot_arr = arr if channel is None else arr[:, :, channel]
             objmap = self._get_filtered_objmap(object_label)
             fig = self._plotly_overlay(
-                arr=plot_arr, objmap=objmap, figsize=figsize, title=title,
-                overlay_settings=overlay_settings,
-                plotly_settings=plotly_settings,
+                    arr=plot_arr, objmap=objmap, figsize=figsize, title=title,
+                    overlay_settings=overlay_settings,
+                    plotly_settings=plotly_settings,
             )
             self._decorate_plotly_overlay(
-                fig, has_objects=has_objects, object_label=object_label,
-                show_labels=show_labels, show_gridlines=show_gridlines,
-                show_section_boxes=show_section_boxes,
-                label_settings=label_settings,
+                    fig, has_objects=has_objects, object_label=object_label,
+                    show_labels=show_labels, show_gridlines=show_gridlines,
+                    show_section_boxes=show_section_boxes,
+                    label_settings=label_settings,
             )
             return fig
 
