@@ -11,84 +11,62 @@ from ..abc_ import ThresholdDetector
 
 
 class OtsuDetector(ThresholdDetector):
-    """Global Otsu threshold detector for balanced colony segmentation.
+    """Detect colonies by global Otsu thresholding on bimodal plate histograms.
 
-    OtsuDetector applies Otsu's method, which automatically computes a global
-    threshold that minimizes within-class variance. This assumes a bimodal histogram
-    (two intensity peaks) separating background from foreground. Simple, robust,
-    and parameter-free, making it ideal for standardized imaging conditions and
-    baseline detection.
+    Automatically compute a single intensity threshold that minimises
+    within-class variance, separating colony foreground from agar background.
+    The resulting binary mask cleanly segments plates whose histograms are
+    bimodal (one peak for background, one for colonies). For a comparison of
+    all available detection strategies see
+    :doc:`/explanation/detection_strategies_compared`.
+
+    Best For:
+        * Plates imaged under standardised lighting where the intensity
+          histogram has two well-separated peaks.
+        * Quick baseline detection requiring no parameter tuning.
+        * High-throughput screens with uniform agar colour and colony density.
+        * Comparing automatic methods -- Otsu is the standard reference
+          threshold.
+        * Clean plates with minimal dust, scratches, or condensation.
+
+    Consider Also:
+        * :class:`TriangleDetector` when colonies occupy a small fraction of
+          the plate and the histogram is skewed.
+        * :class:`HysteresisDetector` when colony intensity varies (e.g.,
+          young versus mature growth) and a single threshold under-segments.
+        * :class:`WatershedDetector` when touching colonies must be split
+          into individually labelled objects.
 
     Args:
-        ignore_zeros: If True (default), exclude zero-intensity pixels from threshold
-            computation. Essential for images with black borders or masks. Prevents
-            threshold from skewing toward zero.
+        ignore_zeros: If True (default), exclude zero-intensity pixels from
+            threshold computation. Enable for plates with black borders or
+            masked regions; disable only when zero is a meaningful intensity
+            value. Typical range: True for most workflows.
 
-        ignore_borders: If True (default), remove colonies touching image edges via
-            clear_border(). Eliminates partial colonies at plate boundaries.
-
-    Attributes:
-        ignore_zeros, ignore_borders
+        ignore_borders: If True (default), remove colonies touching image
+            edges via ``clear_border()``. Recommended for grid-based colony
+            counting to eliminate partial colonies at plate boundaries.
 
     Returns:
-        Image: Input image with objmask set to binary mask from Otsu thresholding.
+        Image: Input image with ``objmask`` set to a binary colony mask
+        produced by Otsu thresholding. ``objmap`` is not modified.
 
     Raises:
-        ValueError: If threshold computation fails (e.g., all pixels same value).
+        ValueError: If threshold computation fails (e.g., all pixels share
+            the same intensity value, producing a degenerate histogram).
 
-    **Use cases**
+    References:
+        [1] N. Otsu, "A threshold selection method from gray-level
+        histograms," *IEEE Trans. Syst., Man, Cybern.*, vol. 9, no. 1,
+        pp. 62--66, 1979.
 
-    - **Balanced intensity distributions:** Colony and background peaks roughly
-      equal in height. Otsu optimally separates two-peak histograms.
-    - **Standardized imaging:** Fixed lighting, camera, and agar type produce
-      reproducible histograms where Otsu works reliably.
-    - **Baseline comparison:** Testing automatic methods; Otsu is standard baseline.
-    - **Simple, parameter-free detection:** When minimal tuning is desired.
-
-    **Limitations**
-
-    - Bimodal histogram assumption. Fails on unimodal or multimodal distributions.
-      Poorly lit colonies or complex backgrounds violate assumption.
-    - Variable colony intensity. Otsu sensitive to brightness variations (young vs
-      mature colonies). May over/under-segment depending on growth stage distribution.
-    - Uneven illumination. Global threshold doesn't adapt to vignetting or spatial
-      gradients. Use local methods (RankOtsuDetector) for uneven lighting.
-    - No spatial awareness. Treats all image regions identically. Unsuitable for
-      plates with varying background intensity.
-
-    **Parameter effects on colony detection**
-
-    - **ignore_zeros:** Enable for images with black borders. Disable only if zero
-      is meaningful intensity.
-    - **ignore_borders:** Recommended for grid-based analysis. Disable if edges
-      contain valid data.
-
-    Examples:
-        Basic Otsu detection::
-
-            from phenotypic import Image
-            from phenotypic.detect import OtsuDetector
-
-            plate = Image.imread("plate.jpg")
-            detector = OtsuDetector()
-            detected = detector.apply(plate)
-            mask = detected.objmask[:]
-            print(f"Detected {mask.sum()} colony pixels via Otsu")
-
-        Pipeline with Otsu for batch processing::
-
-            from phenotypic import ImagePipeline
-            from phenotypic.enhance import GaussianBlur, CLAHE
-            from phenotypic.detect import OtsuDetector
-
-            pipeline = ImagePipeline([
-                GaussianBlur(sigma=1.5),
-                CLAHE(clip_limit=2.0),
-                OtsuDetector(ignore_zeros=True, ignore_borders=True)
-            ])
-
-            image = Image.imread("plate.jpg")
-            result = pipeline.apply(image)
+    See Also:
+        :doc:`/tutorials/notebooks/02_detecting_colonies`
+            Step-by-step tutorial for basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm`
+            Guide for selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared`
+            In-depth comparison of all detection strategies.
     """
 
     def __init__(self, ignore_zeros: bool = True, ignore_borders: bool = True):

@@ -10,38 +10,46 @@ from skimage.filters import median
 
 
 class MedianFilter(ImageEnhancer):
-    """
-    Median filtering to reduce impulsive noise while preserving edges.
+    “””Remove impulsive noise from detect_mat while preserving colony edges.
 
-    The median filter replaces each pixel with the median of its local neighborhood
-    and is robust to outliers. For agar plate colony images, this is effective at
-    removing speckle from condensation droplets, dust, or sensor noise without
-    blurring colony edges as much as Gaussian smoothing would.
+    Replaces each pixel with the median of its local neighborhood, making it
+    robust to outlier pixels (condensation droplets, dust specks, sensor noise).
+    Preserves colony boundaries better than Gaussian smoothing because it does
+    not average across edges.
 
-    Use cases (agar plates):
-    - Reduce “salt-and-pepper” artifacts and tiny bright/dark specks prior to
-      thresholding or edge detection.
-    - Preserve colony boundaries better than linear blur when colonies are small
-      or closely packed.
+    Best For:
+        - Plates with salt-and-pepper noise or bright/dark speckle artifacts.
+        - Preserving sharp colony edges during denoising.
+        - Pre-filtering before edge-based detection (Canny, Sobel).
 
-    Tuning and effects:
-    - Footprint: This implementation uses the library default shape when none
-      is provided (a small neighborhood). For stronger denoising, prefer
-      `RankMedianEnhancer` where you can set shape and width explicitly.
-    - mode/cval: Control how borders are handled. 'reflect' or 'nearest' avoids
-      artificial artifacts at the plate boundary; 'constant' uses `cval` as fill.
+    Consider Also:
+        - :class:`GaussianBlur` for faster, simpler smoothing when edge
+          preservation is less critical.
+        - :class:`BilateralDenoise` for edge-preserving smoothing with
+          continuous intensity gradients.
+        - :class:`RankMedianEnhancer` for configurable rank-based filtering
+          with explicit footprint control.
 
-    Caveats:
-    - Using a very large neighborhood (when configured via alternative median
-      functions) can remove small colonies or close thin gaps.
-    - Median filtering can flatten fine texture within pigmented colonies; use a
-      light application or a rank filter with an appropriate shape.
+    Args:
+        mode: Boundary handling. Accepted values: ``'nearest'``, ``'reflect'``,
+            ``'constant'``, ``'mirror'``, ``'wrap'``. Default: ``'nearest'``.
+        shape: Structuring element shape. Accepted values: ``'disk'``,
+            ``'square'``, ``'diamond'``, or ``None`` for library default.
+            Default: ``None``.
+        width: Size of the structuring element in pixels. Larger values
+            smooth more aggressively. Typical range: 3--9. Default: 5.
+        cval: Fill value when ``mode='constant'``. Default: 0.0.
 
-    Attributes:
-        mode (str): Boundary handling mode: 'nearest', 'reflect', 'constant',
-            'mirror', or 'wrap'.
-        cval (float): Constant fill when `mode='constant'`.
-    """
+    Returns:
+        Image: Input image with ``detect_mat`` filtered. ``rgb`` and ``gray``
+        are unchanged.
+
+    See Also:
+        :doc:`/how_to/notebooks/denoise_low_light` for a comparison of
+        denoising methods on low-light plates.
+        :doc:`/explanation/what_enhancement_does` for how enhancement fits
+        into the pipeline model.
+    “””
 
     def __init__(
             self,

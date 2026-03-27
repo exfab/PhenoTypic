@@ -12,93 +12,78 @@ from phenotypic.tools_.mixin._footprint_mixin import FootprintMixin
 
 
 class ManualGridDetector(GridObjectDetector, FootprintMixin):
-    """Place footprint masks at evenly-spaced grid positions from reference coordinates.
+    """Detect colonies by stamping footprint masks at evenly-spaced grid positions derived from reference coordinates.
+
+    Compute a regular grid of colony positions from one or two user-supplied
+    pixel coordinates, then stamp a morphological footprint at each position
+    to produce ``objmask`` and ``objmap``. This purely geometric approach
+    bypasses intensity-based detection entirely, making it ideal when colony
+    positions follow a known pattern but automatic grid detection is
+    unreliable. For a full comparison see
+    :doc:`/explanation/detection_strategies_compared`.
+
+    In **one-coordinate mode**, *coord1* defines the top-left cell centre and
+    symmetric margins are assumed: row spacing =
+    ``(H - 2*y) / (nrows - 1)``, column spacing =
+    ``(W - 2*x) / (ncols - 1)``. In **two-coordinate mode**, *coord1* and
+    *coord2* define cells (0, 0) and (1, 1); row and column spacing are
+    derived from their difference and extrapolated across all grid cells.
+
+    Best For:
+        * Plates where automatic grid finders fail due to low contrast,
+          missing wells, or non-standard plate formats.
+        * Template-based detection when colony positions are known a priori
+          from plate layout metadata or robotic spotting coordinates.
+        * Generating ground-truth masks for testing or validating other
+          detection pipelines.
+        * Quick prototyping when full detection is unnecessary and grid
+          geometry is well-characterised.
+
+    Consider Also:
+        * :class:`RoundPeaksDetector` when grid positions can be inferred
+          automatically from intensity profiles.
+        * :class:`WatershedDetector` when colonies are not on a regular
+          grid and must be separated by region growing.
+        * :class:`InoculumDetector` when inoculation sites must be detected
+          from image content rather than geometric templates.
 
     Args:
-        coord1: (y, x) pixel position of the top-left grid cell center (row 0,
-            column 0). This is the anchor point from which all other grid positions
-            are calculated.
+        coord1: ``(y, x)`` pixel position of the top-left grid cell centre
+            (row 0, column 0). This is the anchor point from which all
+            other positions are calculated. Default ``(0, 0)``.
 
-        coord2: Optional (y, x) pixel position of the diagonally adjacent cell
-            (row 1, column 1). When provided, row and column spacing are derived
-            from the difference between coord2 and coord1. When omitted, spacing
-            is computed from image dimensions assuming symmetric margins.
+        coord2: Optional ``(y, x)`` pixel position of the diagonally
+            adjacent cell (row 1, column 1). When provided, row and column
+            spacing are derived from the difference between *coord2* and
+            *coord1*. When omitted, spacing is computed from image
+            dimensions assuming symmetric margins.
 
         shape: Morphological footprint shape stamped at each grid position.
-            ``"disk"`` preserves round colony geometry, ``"square"`` covers
-            rectangular well regions, ``"diamond"`` offers a compromise.
+            ``"disk"`` (default) preserves round colony geometry.
+            ``"square"`` covers rectangular well regions. ``"diamond"``
+            offers a compromise between the two.
 
-        width: Diameter of the footprint in pixels. Controls the size of each
-            stamped mask region. Larger values cover more area per grid cell;
-            smaller values produce tighter, more precise masks.
+        width: Diameter of the footprint in pixels (default 15). Larger
+            values cover more area per grid cell; smaller values produce
+            tighter, more precise masks. Typical range: 5--50, depending
+            on image resolution and colony size.
 
     Returns:
-        GridImage: Input image with objmask set to the union of all stamped
-            footprints and objmap set to uniquely labeled regions (1-indexed,
-            row-major order).
+        GridImage: Input image with ``objmask`` set to the union of all
+        stamped footprints and ``objmap`` set to uniquely labelled regions
+        (1-indexed, row-major order).
 
     Raises:
-        GridImageInputError: If a plain Image is passed instead of GridImage.
+        GridImageInputError: If a plain Image is passed instead of a
+            GridImage.
 
-    ManualGridDetector computes a regular grid of positions from one or two
-    user-supplied reference coordinates, then stamps a morphological footprint
-    at each position to produce objmask and objmap. This is useful when colony
-    positions follow a known regular pattern but automatic grid detection is
-    unreliable or unnecessary.
-
-    **One-coordinate mode:** coord1 defines the top-left cell center. The grid
-    is assumed to have symmetric margins — the spacing is calculated so that
-    the last row/column center mirrors coord1's distance from the opposite
-    image edge. Row spacing = ``(H - 2*y) / (nrows - 1)``, column spacing =
-    ``(W - 2*x) / (ncols - 1)``.
-
-    **Two-coordinate mode:** coord1 and coord2 define adjacent cells (0,0) and
-    (1,1). Row spacing = ``coord2[0] - coord1[0]``, column spacing =
-    ``coord2[1] - coord1[1]``. The grid is extrapolated from coord1 using
-    these spacings for all nrows x ncols positions.
-
-    **Use cases**
-
-    - **Manual grid specification:** When automatic grid finders fail due to
-      low contrast, missing wells, or non-standard plate formats.
-    - **Synthetic mask generation:** Creating ground-truth masks for testing
-      or validation of detection pipelines.
-    - **Template-based detection:** When colony positions are known a priori
-      from plate layout metadata or robotic spotting coordinates.
-    - **Quick prototyping:** Rapidly generating grid masks without running
-      full detection algorithms.
-
-    **Limitations**
-
-    - Assumes a perfectly regular grid. Cannot handle irregular spacing,
-      rotated grids, or missing wells.
-    - Does not use image content (detect_mat) — positions are purely geometric.
-      Colonies that deviate from expected positions will be missed.
-    - Footprints may extend beyond image bounds at edges; these are clipped
-      silently.
-
-    Examples:
-        Single-coordinate mode using image dimensions:
-
-        >>> import numpy as np
-        >>> from phenotypic import GridImage
-        >>> from phenotypic.detect import ManualGridDetector
-        >>> arr = np.zeros((200, 300, 3), dtype=np.uint8)
-        >>> grid_img = GridImage(arr=arr, nrows=4, ncols=6)
-        >>> detector = ManualGridDetector(coord1=(25, 25), shape="disk", width=11)
-        >>> result = detector.apply(grid_img)
-        >>> result.objmask[:].any()
-        True
-
-        Two-coordinate mode with explicit spacing:
-
-        >>> detector2 = ManualGridDetector(
-        ...     coord1=(20, 30), coord2=(70, 80), shape="square", width=9
-        ... )
-        >>> result2 = detector2.apply(grid_img)
-        >>> # Labels are 1-indexed, row-major: cell (0,0)=1, (0,1)=2, ...
-        >>> int(result2.objmap[:].max()) == 4 * 6
-        True
+    See Also:
+        :doc:`/tutorials/notebooks/02_detecting_colonies`
+            Step-by-step tutorial for basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm`
+            Guide for selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared`
+            In-depth comparison of all detection strategies.
     """
 
     def __init__(

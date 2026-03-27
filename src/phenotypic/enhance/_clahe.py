@@ -11,47 +11,56 @@ from phenotypic.abc_ import ImageEnhancer
 
 
 class CLAHE(ImageEnhancer):
-    """
-    CLAHE (Contrast Limited Adaptive Histogram Equalization)
+    """Boost local contrast in detect_mat using adaptive histogram equalization.
 
-    Applies adaptive histogram equalization while limiting local contrast
-    amplification to control noise. For colony images on solid-media agar
-    plates, this operation is helpful when illumination is uneven (vignetting,
-    shadows from lids) or when colonies are low-contrast/translucent. By
-    boosting local contrast tile-by-tile, faint colonies become easier to
-    separate from agar background in later thresholding or edge-based steps.
+    Divides detect_mat into tiles and equalizes the histogram within each tile,
+    with a clip limit that prevents excessive noise amplification. Faint colonies
+    become more visible and easier to threshold, even when illumination varies
+    across the plate.
 
-    Use cases (agar plates):
-    - Improve visibility of small, faint, or translucent colonies that blend
-      into agar.
-    - Compensate for gradual illumination roll-off across the plate or
-      scanner/lens vignetting.
-    - Preconditioning before global/otsu thresholding to reduce sensitivity to
-      global intensity shifts.
+    For a discussion of contrast enhancement strategies, see
+    :doc:`/explanation/what_enhancement_does`.
 
-    Tuning and effects:
-    - kernel_size (tile size): Smaller tiles emphasize very local contrast and
-      can reveal tiny colonies, but may also accentuate agar texture and noise.
-      Larger tiles produce smoother results and are safer for noisy images. If
-      left as None, a size proportional to the image dimensions is chosen.
-    - clip_limit: Controls how much local contrast is allowed. Lower values
-      suppress noise amplification and halos but may leave faint colonies under-
-      enhanced. Higher values make colonies pop more strongly but can create
-      ringing around dust, condensation droplets, or plate edges.
+    Best For:
+        - Plates with faint or translucent colonies that blend into agar.
+        - Uneven illumination (vignetting, shadows from plate lids).
+        - Pre-conditioning before global thresholding (Otsu, Triangle).
+        - Early time-point plates where colonies are barely visible.
 
-    Caveats:
-    - Can amplify non-biological artifacts (scratches, dust, glare); consider a
-      mild blur or artifact suppression before CLAHE if this occurs.
-    - Different tiles adjust differently; ensure consistent parameters across a
-      batch to avoid biasing downstream measurements.
-    - Excessive enhancement may distort intensity-based phenotypes (e.g., pigment
-      quantification). Prefer using it only in the `detect_mat` pipeline channel.
+    Consider Also:
+        - :class:`ContrastStretching` for a simpler global contrast adjustment
+          when illumination is already uniform.
+        - :class:`HomomorphicFilter` when the primary problem is a large-scale
+          illumination gradient rather than local contrast.
+        - :class:`UnsharpMask` when edges need sharpening rather than contrast
+          boosting.
 
-    Attributes:
-        kernel_size (int | None): Tile size for local equalization. None selects
-            an automatic size based on image dimensions.
-        clip_limit (float): Normalized contrast limit per tile; smaller values
-            reduce amplification, larger values increase it. Default 0.01.
+    Args:
+        kernel_size: Tile size for local equalization. Smaller tiles reveal
+            tiny colonies but amplify agar texture; larger tiles produce
+            smoother results. ``None`` auto-selects based on image size
+            (typically min(height, width) / 15). Default: ``None``.
+        clip_limit: Maximum local contrast amplification. Typical range:
+            0.005--0.05. Lower values suppress noise; higher values make
+            faint colonies stand out more. Default: 0.01.
+
+    Returns:
+        Image: Input image with ``detect_mat`` contrast-enhanced.
+        ``rgb`` and ``gray`` are unchanged.
+
+    Raises:
+        ValueError: If the detect_mat value range is invalid.
+
+    References:
+        [1] S. M. Pizer et al., "Adaptive histogram equalization and its
+        variations," *Computer Vision, Graphics, and Image Processing*,
+        vol. 39, no. 3, pp. 355--368, Sep. 1987.
+
+    See Also:
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
+        visual walkthrough of CLAHE before detection.
+        :doc:`/how_to/notebooks/enhance_low_contrast` for a comparison of
+        contrast enhancement methods.
     """
 
     def __init__(

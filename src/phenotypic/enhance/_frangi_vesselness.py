@@ -10,47 +10,59 @@ from phenotypic.abc_ import ImageEnhancer
 
 
 class FrangiVesselness(ImageEnhancer):
-    """
-    Frangi vesselness filter to detect elongated structures and colony branches.
+    """Enhance tubular structures in detect_mat using Hessian-based vesselness filtering.
 
-    Computes the Frangi vesselness measure using the Hessian matrix eigenvalues
-    to enhance line-like structures (thin filamentous colonies, branching patterns,
-    mycelial networks). On agar plate images, this highlights elongated features
-    and is particularly useful for organisms that form filamentous or branching
-    morphologies (e.g., fungi, Bacillus).
+    Computes the Frangi vesselness measure from Hessian matrix eigenvalues at
+    multiple scales, producing a response map that highlights elongated features
+    (hyphae, branches, mycelial networks). The output is a probability-like map
+    (0--1) that typically requires thresholding before detection.
 
-    Use cases (agar plates):
-    - Enhance branching filaments or network-like colonies for better detection.
-    - Detect thin, elongated structures that global thresholding might miss.
-    - Improve segmentation of interconnected mycelial networks or biofilms.
-    - Preprocess images from fungal cultures that form visible hyphae.
+    For algorithm details, see :doc:`/explanation/filamentous_fungi_algorithm`.
 
-    Tuning and effects:
-    - sigmas: Range of standard deviations for Gaussian derivatives. Smaller sigmas
-      detect finer structures; larger sigmas detect thicker features. Should span
-      the expected range of colony feature scales (e.g., sigmas=range(1, 10, 2)
-      for 1-10 pixel width structures).
-    - alpha, beta: Sensitivity parameters for vesselness computation. Lower values
-      make detection more permissive; higher values are stricter. Typical range:
-      0.5-1.0 for both.
-    - gamma: Background suppression parameter. Larger values suppress low-curvature
-      regions (agar background). Typical range: 10-20.
-    - black_ridges: If True, detect dark ridges (colonies) on bright background.
-      If False, detect bright ridges on dark background. For plate imaging, use
-      True when colonies appear darker than agar.
+    Best For:
+        - Filamentous fungi (*Neurospora*, *Aspergillus*) with branching hyphae.
+        - Thin, elongated structures that global thresholding misses.
+        - Interconnected mycelial networks or biofilm structures.
+        - Pre-filtering before ``FilamentousFungiDetector``.
 
-    Guidance:
-    - Combine with mild smoothing (GaussianBlur) beforehand to suppress noise;
-      Frangi is sensitive to high-frequency artifacts, especially with small sigmas.
-    - Start with alpha=beta=0.5, gamma=15 and adjust based on colony morphology.
-    - Choose sigmas that match expected feature widths (e.g., typical colony radius).
+    Consider Also:
+        - :class:`MeijeringRidgeFilter` for neurite-like structures with fewer
+          parameters to tune.
+        - :class:`SatoRidgeFilter` for ridge detection with different
+          sensitivity characteristics.
+        - :class:`PhaseCongruencyEnhancer` for illumination-invariant edge
+          enhancement of filaments.
 
-    Caveats:
-    - Output is a vesselness map (probability measure), not binary. Thresholding is
-      typically needed afterward.
-    - Computationally expensive for large sigma ranges; consider limiting to 3-5
-      different scales for speed.
-    - May amplify noise or agar texture if gamma is too small or sigmas are too small.
+    Args:
+        sigmas: Scales (standard deviations) for Hessian computation. Smaller
+            values detect finer structures; larger values detect thicker ones.
+            Span the expected range of hyphal widths in pixels. Default:
+            ``(0.5, 1, 1.5)``.
+        alpha: Blobness sensitivity (0--1). Lower is more permissive.
+            Default: 0.5.
+        beta: Structuredness sensitivity (0--1). Lower is more permissive.
+            Default: 0.5.
+        gamma: Background suppression threshold. Larger values suppress
+            low-curvature (flat) regions more aggressively. ``None`` uses
+            half of the max Hessian norm. Default: ``None``.
+        black_ridges: If ``True``, detect dark ridges on bright background.
+            If ``False``, detect bright ridges on dark background.
+            Default: ``False``.
+
+    Returns:
+        Image: Input image with ``detect_mat`` set to the vesselness response
+        map. ``rgb`` and ``gray`` are unchanged.
+
+    References:
+        [1] A. F. Frangi, W. J. Niessen, K. L. Vincken, and M. A. Viergever,
+        "Multiscale vessel enhancement filtering," in *MICCAI*, 1998,
+        pp. 130--137.
+
+    See Also:
+        :doc:`/tutorials/notebooks/10_detecting_filamentous_fungi` for a
+        visual walkthrough of filamentous fungi detection.
+        :doc:`/explanation/filamentous_fungi_algorithm` for the theory behind
+        Hessian-based vesselness filtering.
 
     Attributes:
         sigmas (tuple | list): Sequence of standard deviations for Hessian

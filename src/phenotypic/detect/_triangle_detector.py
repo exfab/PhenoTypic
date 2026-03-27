@@ -9,80 +9,63 @@ from ..abc_ import ThresholdDetector
 
 
 class TriangleDetector(ThresholdDetector):
-    """Triangle threshold detector for background-dominant colony segmentation.
+    """Detect colonies by triangle thresholding on skewed, background-dominant plate histograms.
 
-    TriangleDetector applies the triangle (or iso-data) thresholding method,
-    which finds the threshold at the base of a histogram triangle formed by
-    the minimum value, maximum value, and peak of the histogram. This method
-    works well on skewed histograms where background dominates and is effective
-    for foreground regions comprising a small fraction of the image.
+    Compute a threshold at the base of the triangle formed by the histogram
+    peak, minimum, and maximum. This method excels when colonies occupy a
+    small fraction of the plate so that the intensity histogram is strongly
+    skewed toward background. The resulting binary mask captures sparse or
+    faint colonies that Otsu may miss. For a full comparison see
+    :doc:`/explanation/detection_strategies_compared`.
+
+    Best For:
+        * Plates where colonies are sparse and background dominates the
+          intensity histogram.
+        * Faintly pigmented or translucent colonies that produce a small
+          foreground peak relative to the background tail.
+        * Early time-point images where colony growth is minimal and most
+          pixels belong to the agar background.
+        * Drop-out screens with many empty grid positions and few visible
+          colonies.
+
+    Consider Also:
+        * :class:`OtsuDetector` when colonies and background occupy roughly
+          equal histogram areas (balanced bimodal distribution).
+        * :class:`HysteresisDetector` when colony brightness varies across
+          the plate and a single threshold under-segments faint regions.
+        * :class:`ManualDetector` when an empirically determined threshold is
+          known to outperform automatic methods for your plate type.
 
     Args:
-        ignore_zeros: If True (default), exclude zero-intensity pixels from threshold
-            computation. Essential for images with black borders or masks.
+        ignore_zeros: If True (default), exclude zero-intensity pixels from
+            threshold computation. Enable for plates with black borders or
+            masked regions; disable only when zero is a meaningful intensity
+            value. Typical range: True for most workflows.
 
-        ignore_borders: If True (default), remove colonies touching image edges via
-            clear_border(). Eliminates partial colonies at plate boundaries.
-
-    Attributes:
-        ignore_zeros, ignore_borders
+        ignore_borders: If True (default), remove colonies touching image
+            edges via ``clear_border()``. Recommended for grid-based colony
+            counting to eliminate partial colonies at plate boundaries.
 
     Returns:
-        Image: Input image with objmask set to binary mask from triangle thresholding.
+        Image: Input image with ``objmask`` set to a binary colony mask
+        produced by triangle thresholding. ``objmap`` is not modified.
 
     Raises:
-        ValueError: If threshold computation fails.
+        ValueError: If threshold computation fails (e.g., degenerate
+            histogram with insufficient intensity variation).
 
-    **Use cases**
+    References:
+        [1] G. W. Zack, W. E. Rogers, and S. A. Latt, "Automatic
+        measurement of sister chromatid exchange frequency," *J. Histochem.
+        Cytochem.*, vol. 25, no. 7, pp. 741--753, 1977.
 
-    - **Background-dominant images:** Colonies occupy small fraction; background
-      dominates histogram. Triangle method biased toward finding background valley.
-    - **Skewed histograms:** Better than Otsu when foreground peak small relative
-      to background tail.
-    - **Sparse detection:** Sparse colonies on large background where global methods
-      struggle.
-
-    **Limitations**
-
-    - Assumes skewed histogram. Poor on balanced histograms where colonies and
-      background peaks similar.
-    - Background assumption. Fails if colonies comprise majority of image or
-      background is sparse.
-    - Less robust than Otsu. Triangle method less widely-tested; behavior on edge
-      cases less predictable.
-    - Computation based on histogram extrema. Outliers (noise at extremes) can
-      influence threshold.
-
-    **Parameter effects on colony detection**
-
-    - **ignore_zeros:** Enable for black borders. Disable only if zero is meaningful.
-    - **ignore_borders:** Recommended for grid analysis.
-
-    Examples:
-        Basic triangle detection for sparse imaging::
-
-            from phenotypic import Image
-            from phenotypic.detect import TriangleDetector
-
-            plate = Image.imread("sparse_colonies_plate.jpg")
-            detector = TriangleDetector()
-            detected = detector.apply(plate)
-            mask = detected.objmask[:]
-            print(f"Detected {mask.sum()} colony pixels via triangle")
-
-        Pipeline with triangle thresholding::
-
-            from phenotypic import ImagePipeline
-            from phenotypic.enhance import GaussianBlur
-            from phenotypic.detect import TriangleDetector
-
-            pipeline = ImagePipeline([
-                GaussianBlur(sigma=1.5),
-                TriangleDetector(ignore_zeros=True, ignore_borders=True)
-            ])
-
-            image = Image.imread("plate.jpg")
-            result = pipeline.apply(image)
+    See Also:
+        :doc:`/tutorials/notebooks/02_detecting_colonies`
+            Step-by-step tutorial for basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm`
+            Guide for selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared`
+            In-depth comparison of all detection strategies.
     """
 
     def _operate(self, image: Image) -> Image:

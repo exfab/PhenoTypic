@@ -22,103 +22,73 @@ from ..abc_ import ThresholdDetector
 
 
 class HysteresisDetector(ThresholdDetector):
-    """Hysteresis threshold detector for robust colony segmentation with dual thresholds.
+    """Detect colonies by dual-threshold hysteresis, bridging bright cores to faint edges.
 
-    HysteresisDetector applies a two-threshold algorithm that seeds strong colony
-    regions (high threshold) and expands via connectivity to include weaker regions
-    (low threshold). This provides robust segmentation when colonies have variable
-    intensity, background noise, or uneven illumination, especially when a single
-    global threshold is insufficient.
+    Seed strong colony regions that exceed the high threshold and expand each
+    seed via pixel connectivity to include neighbouring pixels above the low
+    threshold. This two-pass approach captures colonies whose intensity varies
+    from bright centres to faint margins -- a common pattern across growth
+    stages and under uneven illumination. For a full comparison see
+    :doc:`/explanation/detection_strategies_compared`.
+
+    Best For:
+        * Plates where colony brightness varies (e.g., young versus mature
+          growth, or centre-to-edge intensity gradients within a colony).
+        * Noisy agar backgrounds where isolated noise pixels sit above a
+          single threshold but lack connectivity to true colony regions.
+        * Moderate vignetting or lighting gradients that cause a single
+          global threshold to over- or under-segment parts of the plate.
+        * Mixed-species plates where different organisms produce colonies of
+          different intensities on the same agar.
+
+    Consider Also:
+        * :class:`OtsuDetector` when colony and background peaks are balanced
+          and a single threshold suffices.
+        * :class:`WatershedDetector` when touching colonies must be split
+          into individually labelled regions.
+        * :class:`CannyDetector` when colonies are best delineated by edge
+          contrast rather than intensity.
 
     Args:
-        low: Lower threshold. Either string method name ('otsu', 'triangle', 'li',
-            'yen', 'isodata', 'mean', 'minimum') for automatic computation, or float
-            for manual value (0-255 for 8-bit). Default 'mean'. Controls sensitivity;
-            lower values include more faint colonies but increase false positives.
+        low: Lower threshold controlling expansion sensitivity. Accepts a
+            method name (``'otsu'``, ``'triangle'``, ``'li'``, ``'yen'``,
+            ``'isodata'``, ``'mean'``, ``'minimum'``) for automatic
+            computation, or a float for a manual value (0--255 for 8-bit,
+            0--65535 for 16-bit). Default ``'mean'``. Lower values include
+            more faint colony pixels but increase false positives. Typical
+            tuning: start with ``'mean'`` and switch to a numeric value if
+            automatic methods are too aggressive or too conservative.
 
-        high: Upper threshold. Same format as low. Default 'otsu'. Must be >= low
-            after computation. Higher values are more conservative, detecting only
-            bright colonies.
+        high: Upper threshold seeding strong colony regions. Same format as
+            *low*. Default ``'otsu'``. Must be >= *low* after computation.
+            Higher values restrict seeds to the brightest colony pixels,
+            producing fewer but higher-confidence detections.
 
-        ignore_zeros: If True (default), exclude zero pixels from automatic threshold
-            computation. Essential for images with black borders or masks.
+        ignore_zeros: If True (default), exclude zero-intensity pixels from
+            automatic threshold computation. Enable for plates with black
+            borders or masked regions.
 
-        ignore_borders: If True (default), remove colonies touching image edges via
-            clear_border(). Eliminates partial colonies at boundaries.
-
-    Attributes:
-        low: The low threshold (method name or float value).
-        high: The high threshold (method name or float value).
-        ignore_zeros: Whether to exclude zero pixels.
-        ignore_borders: Whether to remove edge-touching colonies.
+        ignore_borders: If True (default), remove colonies touching image
+            edges via ``clear_border()``. Recommended for grid-based colony
+            counting.
 
     Returns:
-        Image: Input image with objmask set to binary mask. True pixels represent
-        colonies (including faint pixels connected to strong regions), False = background.
+        Image: Input image with ``objmask`` set to a binary colony mask
+        where True pixels are colony foreground (including faint pixels
+        connected to strong seed regions). ``objmap`` is not modified.
 
     Raises:
-        ValueError: If high < low after computation or invalid method name provided.
+        ValueError: If the computed high threshold is less than the computed
+            low threshold, or if an unrecognised threshold method name is
+            provided.
 
-    **Use cases**
-
-    - **Variable colony intensity:** Colonies vary in brightness (small vs large, young
-      vs mature growth). Hysteresis bridges fragments via connectivity.
-    - **Noisy backgrounds:** Agar texture, dust, or scanner noise. Hysteresis rejects
-      isolated noise while preserving connected weak regions (faint colonies).
-    - **Uneven illumination:** Plates with vignetting or gradient backgrounds. More
-      flexible than single-threshold methods.
-    - **Touching colonies:** When colonies merge, two thresholds help distinguish
-      boundaries based on intensity peaks.
-
-    **Limitations**
-
-    - Two thresholds to tune (more parameters than single-threshold methods). Test
-      combinations on representative images.
-    - Global method (no spatial adaptation). For severe vignetting, local thresholding
-      may perform better.
-    - Connectivity assumption: Isolated pixels above high threshold may not connect
-      to weak regions. Ensure low is meaningfully lower than high.
-    - Threshold order required: high >= low. If computed methods violate this, raises
-      ValueError.
-    - Fallback behavior: If low == high after computation, automatically performs
-      simple threshold segmentation (mask = image >= threshold) instead of hysteresis.
-
-    **Parameter effects on colony detection**
-
-    - **low (float or str):** Controls expansion sensitivity. Method strings ('mean',
-      'minimum') are conservative; numeric values control absolute cutoff. Lower
-      values → more detected colonies, more noise.
-    - **high (float or str):** Seeds strong regions. Higher values → fewer/larger
-      colonies, lower false positives.
-    - **ignore_zeros/ignore_borders:** Remove preprocessing artifacts (black borders,
-      edge-touching partial colonies).
-
-    Examples:
-        Basic detection with automatic thresholds::
-
-            from phenotypic import Image
-            from phenotypic.detect import HysteresisDetector
-
-            plate = Image.imread("agar_plate.jpg")
-            detector = HysteresisDetector(low='mean', high='otsu')
-            detected = detector.apply(plate)
-            mask = detected.objmask[:]
-            print(f"Detected {mask.sum()} colony pixels")
-
-        Pipeline with preprocessing::
-
-            from phenotypic import ImagePipeline
-            from phenotypic.enhance import GaussianBlur, CLAHE
-            from phenotypic.detect import HysteresisDetector
-
-            pipeline = ImagePipeline([
-                GaussianBlur(sigma=1.5),
-                CLAHE(clip_limit=2.0),
-                HysteresisDetector(low='mean', high='otsu', ignore_borders=True)
-            ])
-
-            image = Image.imread("plate.jpg")
-            result = pipeline.apply(image)
+    See Also:
+        :doc:`/tutorials/notebooks/02_detecting_colonies`
+            Step-by-step tutorial for basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm`
+            Guide for selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared`
+            In-depth comparison of all detection strategies.
     """
 
     def __init__(

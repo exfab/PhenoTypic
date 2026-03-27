@@ -10,91 +10,66 @@ from ..abc_ import ThresholdDetector
 
 
 class ManualDetector(ThresholdDetector):
-    """Manual threshold detector for colony segmentation with user-defined threshold.
+    """Detect colonies by applying a user-specified intensity threshold.
 
-    ManualDetector applies a user-specified intensity cutoff to convert the enhanced
-    grayscale image into a binary colony mask. Unlike automatic methods (Otsu, Li, etc.),
-    this provides explicit control over detection sensitivity, enabling tuning for
-    specific imaging conditions or experimental requirements.
+    Apply a fixed intensity cutoff to the plate detection matrix, producing a
+    binary colony mask without any automatic threshold computation. This
+    gives explicit control over detection sensitivity and is the preferred
+    approach when empirical testing has identified an optimal threshold for a
+    specific imaging setup. For a full comparison see
+    :doc:`/explanation/detection_strategies_compared`.
+
+    Best For:
+        * Standardised imaging setups where the optimal threshold has been
+          determined empirically and remains stable across plates.
+        * Overriding automatic methods (Otsu, triangle, etc.) that
+          consistently over- or under-segment on a particular plate type.
+        * High-contrast plates where colonies are uniformly bright or dark
+          relative to background and a single cutoff cleanly separates
+          foreground from background.
+        * Reproducibility-critical workflows where a fixed numeric threshold
+          eliminates variability introduced by automatic selection.
+
+    Consider Also:
+        * :class:`OtsuDetector` when an automatic, parameter-free threshold
+          is preferred and the histogram is bimodal.
+        * :class:`HysteresisDetector` when colony intensity varies across
+          the plate and a single threshold cannot capture all colonies.
+        * :class:`TriangleDetector` when colonies are sparse and the
+          histogram is skewed toward background.
 
     Args:
-        threshold: Intensity value for binary thresholding (0-255 for 8-bit, 0-65535
-            for 16-bit). Pixels >= threshold become colonies (True), others background
-            (False). Higher values detect fewer/larger colonies (conservative), lower
-            values detect more/smaller colonies (sensitive).
+        threshold: Intensity cutoff for binary segmentation. Pixels with
+            intensity >= *threshold* become colony (True), others become
+            background (False). For 8-bit images the valid range is
+            0--255; for 16-bit images 0--65535; for float images 0.0--1.0.
+            Higher values are more conservative (fewer colonies detected);
+            lower values are more sensitive (more colonies, more noise).
+            Default 0.5. Start by inspecting the image histogram to find
+            the valley between background and colony peaks.
 
-        ignore_zeros: If True (default), exclude zero-intensity pixels from threshold
-            computation. Essential for images with black borders or masks.
+        ignore_zeros: If True (default), exclude zero-intensity pixels from
+            processing. Enable for plates with black borders or masked
+            regions.
 
-        ignore_borders: If True (default), remove colonies touching image edges via
-            clear_border(). Eliminates partial colonies at plate boundaries.
-
-    Attributes:
-        threshold: The user-specified threshold intensity value.
-        ignore_zeros: Whether to exclude zero-intensity pixels.
-        ignore_borders: Whether to remove edge-touching colonies.
+        ignore_borders: If True (default), remove colonies touching image
+            edges via ``clear_border()``. Recommended for grid-based colony
+            counting.
 
     Returns:
-        Image: Input image with objmask set to binary mask (True = colony, False = background).
+        Image: Input image with ``objmask`` set to a binary colony mask
+        (True = colony, False = background). ``objmap`` is not modified.
 
     Raises:
-        ValueError: If threshold is negative or exceeds image intensity range.
+        ValueError: If *threshold* is negative.
 
-    **Use cases**
-
-    - **Known-good threshold:** Empirical testing has identified an optimal threshold
-      for your imaging setup.
-    - **Standardized imaging:** Plates are imaged under fixed conditions (lighting,
-      exposure, camera settings) where a single threshold works reliably.
-    - **Override automatic methods:** Automatic methods over/under-segment; manual
-      threshold provides precise control.
-    - **High-contrast imaging:** Colonies are bright/dark relative to background with
-      minimal variation. A fixed cutoff cleanly separates foreground from background.
-
-    **Limitations**
-
-    - No spatial adaptation. A single global threshold doesn't handle uneven illumination
-      or intensity gradients. Consider local/adaptive methods for severe vignetting.
-    - Tuning required. You must determine optimal threshold through trial and error or
-      prior histogram analysis. Poor choices lead to over/under-segmentation.
-    - Not portable. A threshold tuned for one imaging setup may not generalize to
-      different cameras, lighting, or agar types.
-    - Bit-depth dependent. Threshold values differ for 8-bit vs 16-bit images.
-
-    **Parameter effects on colony detection**
-
-    - **threshold:** Higher values → fewer colonies, lower false positives (stricter).
-      Lower values → more colonies, higher noise inclusion (more sensitive). Start with
-      histogram inspection to find intensity valley between background and colony peaks.
-    - **ignore_zeros/ignore_borders:** Remove preprocessing artifacts (black borders,
-      partial edge colonies).
-
-    Examples:
-        Basic detection with manual threshold::
-
-            from phenotypic import Image
-            from phenotypic.detect import ManualDetector
-
-            plate = Image.imread("agar_plate.jpg")
-            detector = ManualDetector(threshold=120, ignore_zeros=True)
-            detected = detector.apply(plate)
-            mask = detected.objmask[:]
-            print(f"Foreground pixels: {mask.sum()}")
-
-        Pipeline with manual threshold for standardized imaging::
-
-            from phenotypic import ImagePipeline
-            from phenotypic.enhance import GaussianBlur, CLAHE
-            from phenotypic.detect import ManualDetector
-
-            pipeline = ImagePipeline([
-                GaussianBlur(sigma=1.5),
-                CLAHE(clip_limit=2.0),
-                ManualDetector(threshold=130, ignore_borders=True)
-            ])
-
-            image = Image.imread("plate.jpg")
-            result = pipeline.apply(image)
+    See Also:
+        :doc:`/tutorials/notebooks/02_detecting_colonies`
+            Step-by-step tutorial for basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm`
+            Guide for selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared`
+            In-depth comparison of all detection strategies.
     """
 
     def __init__(

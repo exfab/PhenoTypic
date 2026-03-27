@@ -12,76 +12,67 @@ from phenotypic.detect import OtsuDetector, RoundPeaksDetector
 
 
 class CompositeDetector(ObjectDetector):
-    """
-    Combines multiple detectors or pipelines using union, intersection, or overlap filtering.
+    """Detect colonies by combining multiple detectors via union, intersection, or overlap filtering.
 
-    This detector applies multiple detection algorithms (or preprocessing pipelines +
-    detection) to the same image and combines their objmask outputs. Useful for
-    ensemble detection, consensus filtering, or quality control.
+    Apply two or more detection algorithms (or preprocessing pipelines ending
+    in a detector) to the same plate image and merge their binary masks.
+    Ensemble combination improves sensitivity (union), specificity
+    (intersection), or both (overlap filtering). This is especially useful
+    for challenging plates where no single algorithm captures all colonies
+    reliably. For a full comparison see
+    :doc:`/explanation/detection_strategies_compared`.
+
+    Best For:
+        * Plates where different colony sub-populations respond to different
+          detection algorithms (e.g., bright colonies via Otsu, faint
+          colonies via triangle thresholding).
+        * Consensus-based quality control that accepts only colonies
+          confirmed by all methods.
+        * Ensemble strategies that maximise recall by unioning masks from
+          complementary algorithms.
+        * Benchmarking workflows that compare detector agreement.
+
+    Consider Also:
+        * :class:`OtsuDetector` or :class:`HysteresisDetector` when a
+          single detector already captures all colonies reliably.
+        * :class:`WatershedDetector` when the primary challenge is
+          separating touching colonies rather than combining detection
+          strategies.
 
     Args:
-        detectors: List of ObjectDetector instances or ImagePipeline instances to combine.
-            ImagePipeline instances allow preprocessing steps before detection.
-            Defaults to empty list.
-        mode: Combination strategy:
-            - 'union': Pixel is True if True in ANY detector (logical OR)
-            - 'intersection': Pixel is True if True in ALL detectors (logical AND)
-            - 'overlap': Keep only objects with sufficient overlap across all masks
-        min_overlap_ratio: For 'overlap' mode, minimum fraction of object pixels
-            that must overlap with all other masks. Range: 0.0 to 1.0. Default: 0.5
+        detectors: List of :class:`~phenotypic.abc_.ObjectDetector` or
+            :class:`~phenotypic.ImagePipeline` instances to combine.
+            Pipelines allow preprocessing steps before detection. Defaults
+            to ``[OtsuDetector(), RoundPeaksDetector()]`` when not
+            specified.
+
+        mode: Combination strategy. ``'union'`` marks a pixel as colony if
+            any detector flags it (logical OR, maximises sensitivity).
+            ``'intersection'`` requires all detectors to agree (logical AND,
+            maximises specificity). ``'overlap'`` retains whole objects that
+            have mutual spatial overlap across masks (balances sensitivity
+            and specificity). Default ``'overlap'``.
+
+        min_overlap_ratio: For ``'overlap'`` mode, minimum fraction of
+            object pixels that must overlap with all other masks. Range:
+            0.0--1.0. Default 0.0. Higher values produce more conservative
+            filtering. Typical range: 0.0--0.5.
 
     Returns:
-        Image: Image with combined objmask and objmap from all detectors/pipelines.
+        Image: Input image with ``objmask`` set to the combined binary
+        colony mask and ``objmap`` derived from the merged mask.
 
     Raises:
-        ValueError: If detectors list is empty or mode is invalid.
+        ValueError: If *detectors* list is empty or *mode* is not one of
+            ``'union'``, ``'intersection'``, or ``'overlap'``.
 
-    Use Cases:
-        - Ensemble detection: Combine multiple algorithms for increased sensitivity
-        - Consensus detection: Only accept colonies detected by all methods (high confidence)
-        - Quality filtering: Remove spurious detections via overlap requirements
-
-    Limitations:
-        - Execution time is sum of all detector execution times (runs sequentially)
-        - Union mode may increase false positives vs single detector
-        - Intersection mode may miss valid colonies detected by only one method
-        - Overlap mode requires tuning min_overlap_ratio for your imaging conditions
-
-    Parameter Effects:
-        - **mode='union'**: Maximizes sensitivity, may include more noise
-        - **mode='intersection'**: Maximizes specificity, may miss valid objects
-        - **mode='overlap'**: Balances sensitivity/specificity based on min_overlap_ratio
-        - **min_overlap_ratio** (overlap mode only): Higher values = more conservative filtering
-
-    Examples:
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>> from phenotypic import ImagePipeline
-        >>> from phenotypic.detect import OtsuDetector, CannyDetector, CompositeDetector
-        >>> from phenotypic.enhance import GaussianBlur
-        >>>
-        >>> image = load_synth_yeast_plate()
-        >>>
-        >>> # Union: detect colonies found by either method (high sensitivity)
-        >>> composite = CompositeDetector(
-        ...     detectors=[OtsuDetector(), CannyDetector(sigma=2)],
-        ...     mode='union'
-        ... )
-        >>> result = composite.apply(image)
-        >>> print(f"Union detected {result.objmap[:].max()} colonies")
-        >>>
-        >>> # Mix detectors and pipelines for strategy comparison
-        >>> composite_mixed = CompositeDetector(
-        ...     detectors=[
-        ...         OtsuDetector(),
-        ...         ImagePipeline([
-        ...             GaussianBlur(sigma=2),
-        ...             CannyDetector(sigma=2)
-        ...         ])
-        ...     ],
-        ...     mode='intersection'
-        ... )
-        >>> result = composite_mixed.apply(image)
-        >>> print(f"Mixed strategy detected {result.objmap[:].max()} colonies")
+    See Also:
+        :doc:`/tutorials/notebooks/02_detecting_colonies`
+            Step-by-step tutorial for basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm`
+            Guide for selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared`
+            In-depth comparison of all detection strategies.
     """
 
     def __init__(

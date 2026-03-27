@@ -55,149 +55,123 @@ from phenotypic.detect._filamentous_fungi import (
 
 
 class FilamentousFungiDetector(GridObjectDetector):
-    """Detects and separates filamentous fungi using two-stage detection and Euclidean Voronoi partition.
+    """Detect and separate filamentous fungal colonies by two-stage detection with Euclidean Voronoi partition.
 
-    FilamentousFungiDetector uses two detection strategies to segment filamentous fungi:
-    (1) inoculum_detector identifies compact fungal centers/nuclei, (2) overall_detector captures
-    the complete fungal structure including spreading hyphae. The detector filters centers to
-    those overlapping with the overall structure, then computes geometric centroids of each
-    inoculum region as seed markers for Euclidean Voronoi partition. Each mask pixel is assigned
-    to its nearest seed by Euclidean distance, with connectivity-based correction ensuring that
-    single-seed connected components are uniformly labeled.
+    Segment filamentous fungi in two stages: (1) detect compact inoculation
+    centres with an ``inoculum_detector``, (2) capture the full hyphal
+    structure with an ``overall_detector`` or, when
+    ``enable_reconnection=True``, via phase-congruency-based branch detection
+    and Dijkstra reconnection. Filtered centre centroids seed a Euclidean
+    Voronoi partition that assigns every fungal pixel to its nearest colony,
+    with connectivity-based correction ensuring uniform labelling within
+    connected components. For a full comparison see
+    :doc:`/explanation/detection_strategies_compared`.
 
-    When ``enable_reconnection=True``, the detector replaces the legacy ``overall_detector``
-    path with a dual-mask branch detection pipeline (ContrastStretching + Gaussian subtraction
-    + phase congruency) followed by Dijkstra-based branch reconnection. Fragmented hyphal
-    branches that fall outside the initial Voronoi partition are reconnected to their parent
-    colonies via minimum-cost paths through a composite cost surface derived from phase
-    congruency features. Path quality is validated against calibration metrics from known-good
-    colony skeleton branches using a five-filter structure-based cascade.
+    Best For:
+        * Filamentous fungal colonies (e.g., *Aspergillus*, *Neurospora*,
+          *Trichoderma*) with irregular, spreading hyphal morphologies.
+        * Dense plates where neighbouring fungal colonies touch or overlap
+          and must be individually labelled.
+        * Time-course experiments tracking hyphal extension from compact
+          inoculation sites.
+        * Grid-based fungal culture plates (GridImage) where one colony per
+          well must be quantified.
+        * High-throughput fungal phenotyping screens requiring consistent
+          separation quality across hundreds of plates.
+
+    Consider Also:
+        * :class:`WatershedDetector` when colonies are compact and roughly
+          circular (yeast-like morphology).
+        * :class:`OtsuDetector` when fungi are well-separated and a simple
+          binary mask suffices without individual labelling.
+        * :class:`CompositeDetector` when combining multiple detection
+          strategies without the two-stage centre-plus-body approach.
 
     Args:
-        inoculum_detector: ObjectDetector or ImagePipeline that identifies fungal centers/nuclei.
-            Should produce small, compact regions at center points. Examples: OtsuDetector(),
-            RoundPeaksDetector(), or preprocessing pipeline with GaussianBlur() + detector.
+        inoculum_detector: ObjectDetector or ImagePipeline that identifies
+            compact fungal centres/nuclei. Should produce small, tight
+            regions at inoculation points. Default uses an internal
+            InoculumDetector + GridSectionLargest pipeline.
 
-        overall_detector: ObjectDetector or ImagePipeline that captures complete fungal
-            structures including hyphae and spreading edges. Should produce full fungal body
-            masks. Examples: TriangleDetector(), CannyDetector(), or custom detector with
-            lower threshold than inoculum_detector. Ignored when ``enable_reconnection=True``.
+        overall_detector: ObjectDetector or ImagePipeline that captures
+            complete fungal structures including spreading hyphae. Should
+            produce full-body masks with a lower threshold than the
+            inoculum detector. Ignored when *enable_reconnection* is True.
 
-        enable_reconnection: When True, use dual-mask branch detection and Dijkstra-based
-            reconnection instead of the legacy ``overall_detector`` path.
+        enable_reconnection: When True, replace the legacy
+            *overall_detector* path with dual-mask branch detection
+            (ContrastStretching + Gaussian subtraction + phase congruency)
+            followed by Dijkstra-based reconnection of fragmented hyphal
+            branches.
 
-        pct_n_orient: Number of orientations for phase congruency computation.
+        pct_n_orient: Number of orientations for phase congruency
+            computation. Typical range: 4--8. Default 6.
         pct_min_wavelength: Minimum wavelength for log-Gabor filters.
+            Typical range: 2--6. Default 3.
         pct_k: Noise threshold scaling factor for phase congruency.
+            Typical range: 1--5. Default 2.0.
 
         gauss_sigma: Sigma for SubtractGaussian background subtraction.
-        gauss_n_iter: Number of SubtractGaussian iterations.
+            Typical range: 10--100. Default 50.
+        gauss_n_iter: Number of SubtractGaussian iterations. Default 2.
 
-        morph_width: Disk radius for morphological open/close operations on branch masks.
+        morph_width: Disk radius for morphological open/close operations
+            on branch masks. Typical range: 1--5. Default 2.
 
         beta: Exponent on anisotropy in the composite cost formula.
+            Default 2.0.
         gamma: Weight of MAD penalty in the composite cost numerator.
-            Defaults to 1.2.
+            Default 1.2.
         r_coherence: Radius for orientation coherence computation.
+            Default 5.
         mad_window: Window size for local MAD computation (must be odd).
+            Default 11.
 
-        r_screen: Screening radius for fragment pre-screening.
+        r_screen: Screening radius for fragment pre-screening. Default 50.
         delta: Dijkstra radial penalty factor for retreating steps.
+            Default 1.5.
         quality_k: IQR multiplier for path quality threshold calibration.
-            Higher values are more permissive.
-        window_cost: Sliding window size in pixels for the windowed cost metric.
-        edge_margin: Border penalty width in pixels. Prevents edge-routing paths.
-        gap_penalty_alpha: Distance-gap penalty strength. Higher values impose
-            stronger distance gating on PCT energy gaps.
-        snr_margin: Extra radius beyond ``path_dilation_radius`` for the SNR
-            background ring in the grayscale SNR filter.
+            Higher values are more permissive. Default 1.5.
+        window_cost: Sliding window size in pixels for the windowed cost
+            metric. Default 20.
+        edge_margin: Border penalty width in pixels. Prevents paths from
+            routing along image edges. Default 20.
+        gap_penalty_alpha: Distance-gap penalty strength. Higher values
+            impose stronger distance gating on PCT energy gaps.
+            Default 2.0.
+        snr_margin: Extra radius beyond *path_dilation_radius* for the
+            SNR background ring in the grayscale SNR filter. Default 3.
         path_dilation_radius: Disk radius for dilating reconnection paths.
+            Default 3.
 
-        tile_size: Side length of square tiles for tiled Dijkstra processing.
+        tile_size: Side length of square tiles for tiled Dijkstra
+            processing. Default 1200.
         tile_overlap: Overlap in pixels between adjacent tiles.
+            Default 100.
 
     Returns:
-        Image: Input image with objmask (binary mask) and objmap (labeled fungi) set.
-            Each labeled fungus is separated by Voronoi assignment based on filtered
-            centers. objmask is True for all fungal pixels within assigned regions.
+        Image: Input image with ``objmask`` set to a binary fungal mask
+        and ``objmap`` set to a labelled colony map where each fungal
+        colony receives a unique integer label via Voronoi assignment.
 
     Raises:
-        TypeError: If inoculum_detector or overall_detector are not ObjectDetector or
-            ImagePipeline instances.
-        ValueError: If no centers detected, no overall structure detected, or no centers
-            overlap with overall structure after filtering.
+        TypeError: If *inoculum_detector* or *overall_detector* are not
+            ObjectDetector or ImagePipeline instances.
+        ValueError: If no centres are detected, no overall structure is
+            detected, or no centres overlap with the overall structure
+            after filtering.
 
-    **Use cases**
+    References:
+        [1] P. Kovesi, "Image features from phase congruency," *Videre:
+        J. Comput. Vis. Res.*, vol. 1, no. 3, pp. 1--26, 1999.
 
-    - **Filamentous fungal colonies:** Irregular spreading structures that require separate
-      center and overall detection strategies for accurate segmentation.
-    - **Touching/overlapping fungi:** Voronoi assignment using center seeds effectively
-      separates filaments in close contact where simple thresholding merges them.
-    - **Variable morphology:** Two-stage approach adapts to fungi with varying sizes,
-      growth patterns, and hyphae density.
-    - **Grid-based fungal cultures:** Works on GridImage with multiple wells containing
-      filamentous fungi; can be integrated into ImagePipeline.
-    - **High-throughput fungal phenotyping:** Enables batch processing of fungal plate
-      images with consistent separation quality.
-
-    **Limitations**
-
-    - Requires two compatible detectors: centers must overlap significantly with overall
-      structure, or ValueError is raised. Tuning both detectors is necessary.
-    - Voronoi assignment quality depends on center detection accuracy: missing centers
-      cause under-segmentation; spurious centers cause over-segmentation.
-    - May over-segment if centers are too numerous or too close together.
-    - Less suitable for circular, yeast-like colonies; use WatershedDetector instead
-      for round morphologies.
-    - **Memory per tile**: Dijkstra heap = ``2*tile_H*tile_W`` entries. With
-      ``tile_size=1200``, ~35 MB per tile.
-    - **Tile boundary artifacts**: Fragments split across tiles may be partially
-      reconnected. Overlap (100px) mitigates this.
-    - **F3 displacement filter**: No-op when colony branches < ``window_disp`` (40px).
-    - **Single-threaded Dijkstra**: ~7s per 1200x1200 tile.
-
-    Examples:
-        Detect and separate filamentous fungi with center and overall detection:
-
-        >>> from phenotypic.detect import FilamentousFungiDetector, OtsuDetector, TriangleDetector
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>>
-        >>> # Create detector: centers detected via OtsuDetector, overall via TriangleDetector
-        >>> detector = FilamentousFungiDetector(
-        ...     inoculum_detector=OtsuDetector(ignore_zeros=True),
-        ...     overall_detector=TriangleDetector(),
-        ... )
-        >>>
-        >>> # Note: load_synth_plate returns circular colonies; example is illustrative
-        >>> image = load_synth_yeast_plate()
-        >>> result = detector.apply(image)
-        >>> num_fungi = result.objmap[:].max()
-        >>> print(f"Detected and separated {num_fungi} fungal colonies")
-
-        Integration in processing pipeline with preprocessing and refinement:
-
-        >>> from phenotypic import ImagePipeline
-        >>> from phenotypic.enhance import GaussianBlur, CLAHE
-        >>> from phenotypic.refine import SmallObjectRemover
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>>
-        >>> # Build pipeline with enhancement, two-stage fungi detection, and cleanup
-        >>> pipeline = ImagePipeline([
-        ...     GaussianBlur(sigma=1.5),
-        ...     CLAHE(clip_limit=2.0),
-        ...     FilamentousFungiDetector(
-        ...         inoculum_detector=ImagePipeline([
-        ...             GaussianBlur(sigma=0.5),
-        ...             OtsuDetector()
-        ...         ]),
-        ...         overall_detector=TriangleDetector(),
-        ...     ),
-        ...     SmallObjectRemover(min_size=100)
-        ... ])
-        >>>
-        >>> image = load_synth_yeast_plate()
-        >>> result = pipeline.apply(image)
-        >>> print(f"Final separated fungi: {result.objmap[:].max()}")
+    See Also:
+        :doc:`/tutorials/notebooks/10_detecting_filamentous_fungi`
+            Dedicated tutorial for filamentous fungi detection workflows.
+        :doc:`/how_to/notebooks/choose_detection_algorithm`
+            Guide for selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared`
+            In-depth comparison of all detection strategies.
     """
     __center_pipe = ImagePipeline(
             ops=[InoculumDetector(), GridSectionLargest()]

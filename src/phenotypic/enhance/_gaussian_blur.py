@@ -10,42 +10,52 @@ from ..abc_ import ImageEnhancer
 
 
 class GaussianBlur(ImageEnhancer):
-    """
-    Gaussian blur smoothing for plate images.
+    “””Smooth noise in detect_mat using isotropic Gaussian convolution.
 
-    Applies Gaussian smoothing to reduce high-frequency noise and minor texture
-    on agar plates (e.g., scanner noise, agar granularity, condensation speckle).
-    This can make colony boundaries more coherent and reduce false edges before
-    edge detection or thresholding.
+    Reduces high-frequency noise, scanner artifacts, and minor agar texture
+    so that downstream thresholding responds to colony signal rather than
+    noise. Colony edges become more coherent at the cost of some spatial
+    sharpness.
 
-    Use cases (agar plates):
-    - Suppress “salt-and-pepper” noise and minor agar texture so thresholding is
-      driven by colony signal rather than noise.
-    - Pre-filter before `SobelFilter` or Laplacian to avoid amplifying noise.
-    - Slightly smooth within colonies to make segmentation more compact.
+    For a comparison of denoising approaches, see
+    :doc:`/explanation/what_enhancement_does`.
 
-    Tuning and effects:
-    - sigma: Controls blur strength. Choose below the typical colony width to
-      avoid merging close colonies. Too large sigma will wash out small colonies
-      and narrow gaps between neighbors.
-    - mode/cval: Define how edges are handled. For plates, 'reflect' usually
-      avoids artificial dark/bright rims. 'constant' with a neutral `cval` may
-      be useful for cropped regions.
-    - truncate: Larger values include more of the Gaussian tail (slightly slower)
-      with subtle effect on smoothness near edges.
+    Best For:
+        - Plates with visible scanner noise or agar granularity.
+        - Pre-filtering before edge-based detectors (Sobel, Canny).
+        - Quick preprocessing when speed matters more than edge preservation.
 
-    Caveats:
-    - Excessive blur merges adjacent colonies and reduces edge sharpness.
-    - Do not rely on blur to fix illumination gradients; prefer background
-      subtraction (e.g., `SubtractGaussian` or `SubtractRollingBall`).
+    Consider Also:
+        - :class:`MedianFilter` when salt-and-pepper noise dominates and edge
+          preservation is important.
+        - :class:`BilateralDenoise` for smoothing within regions while keeping
+          colony boundaries sharp.
+        - :class:`StableDenoise` for highest-quality BM3D denoising on critical
+          experiments.
 
-    Attributes:
-        sigma (int): Standard deviation of the Gaussian kernel (blur strength).
-        mode (str): Edge handling: 'reflect', 'constant', or 'nearest'.
-        cval (float): Fill value when `mode='constant'`.
-        truncate (float): Radius of kernel in standard deviations; kernel is
-            truncated beyond this distance.
-    """
+    Args:
+        sigma: Standard deviation of the Gaussian kernel in pixels. Controls
+            blur strength. Typical range: 0.5--5.0. Keep below the smallest
+            colony radius to avoid merging adjacent colonies. Default: 2.0.
+        mode: Boundary handling. Accepted values: ``'reflect'``, ``'constant'``,
+            ``'nearest'``. Default: ``'reflect'``.
+        cval: Fill value when ``mode='constant'``. Default: 0.0.
+        truncate: Kernel extent in standard deviations. Rarely needs
+            adjustment. Default: 4.0.
+
+    Returns:
+        Image: Input image with ``detect_mat`` smoothed by the Gaussian
+        kernel. ``rgb`` and ``gray`` are unchanged.
+
+    Raises:
+        ValueError: If ``mode`` is not one of the accepted values.
+
+    See Also:
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
+        visual walkthrough of enhancement before detection.
+        :doc:`/how_to/notebooks/denoise_low_light` for a comparison of
+        denoising methods.
+    “””
 
     def __init__(
             self, sigma: float = 2.0, *, mode: str = "reflect", cval=0.0,

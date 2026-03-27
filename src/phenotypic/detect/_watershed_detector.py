@@ -17,97 +17,86 @@ from phenotypic.abc_ import ThresholdDetector
 
 
 class WatershedDetector(ThresholdDetector):
-    """Region-growing colony detector using watershed segmentation from distance transform.
+    """Detect and separate touching colonies by watershed segmentation on a distance-transform surface.
 
-    WatershedDetector segments colonies using the watershed algorithm: (1) threshold
-    image to binary mask, (2) compute distance transform to locate colony centers,
-    (3) find local maxima as seed markers, (4) propagate regions via watershed on
-    Sobel gradient. This region-growing approach effectively separates touching
-    colonies and handles variable colony sizes better than global thresholding.
+    Threshold the plate image to a binary mask, compute a Euclidean distance
+    transform to locate colony centres, seed markers at local maxima, and
+    propagate labelled regions via watershed on the Sobel gradient. This
+    region-growing approach individually labels colonies that are in physical
+    contact -- a scenario where global thresholding merges them into a single
+    object. For a full comparison see
+    :doc:`/explanation/detection_strategies_compared`.
+
+    Best For:
+        * Dense plates where colonies touch or overlap and must be counted
+          individually.
+        * Plates with variable colony sizes (e.g., mutant libraries) where
+          the distance transform naturally adapts seed placement.
+        * Irregular colony morphologies that follow local intensity
+          gradients better than geometric assumptions.
+        * Post-incubation plates where colony crowding is the primary
+          segmentation challenge.
+
+    Consider Also:
+        * :class:`OtsuDetector` when colonies are well-separated and a
+          simple binary mask suffices.
+        * :class:`RoundPeaksDetector` when colonies sit on a regular
+          pinned grid and peak-based assignment is more efficient.
+        * :class:`FilamentousFungiDetector` when colonies exhibit spreading,
+          filamentous growth rather than compact morphology.
+        * :class:`CannyDetector` when edge contrast is stronger than
+          intensity contrast for delineating colony boundaries.
 
     Args:
-        footprint: Structure element for peak detection. Options: 'auto' (infer from
-            grid if GridImage), ndarray (custom), int (diamond radius), None (default).
-            Controls neighborhood size for local maxima detection.
+        footprint: Structuring element for peak detection. ``'auto'``
+            infers size from grid spacing (GridImage only); an int creates a
+            diamond of that radius; an ndarray supplies a custom footprint;
+            None (default) lets scikit-image choose. Larger footprints merge
+            nearby peaks into fewer seeds; smaller footprints yield finer
+            segmentation. Typical range: 5--50 (diamond radius in pixels).
 
-        min_size: Minimum object area in pixels (default 50). Objects smaller than
-            this are removed, filtering dust and debris.
+        min_size: Minimum object area in pixels (default 50). Objects
+            smaller than this are removed as dust or debris. Typical range:
+            20--200 depending on image resolution and colony size.
 
-        compactness: Watershed compactness parameter (default 0.001). Higher values
-            enforce more regularly shaped segments but may over-segment irregular colonies.
+        compactness: Watershed compactness parameter (default 0.001). Higher
+            values enforce more regularly shaped segments; lower values let
+            regions follow intensity gradients freely. Typical range:
+            0.0001--0.1. Increase if colonies are round and over-segmented;
+            decrease for irregular morphologies.
 
-        connectivity: Connectivity for region labeling (1=4-connected, 2=8-connected,
-            default 1). Controls how adjacent pixels merge into regions.
+        connectivity: Connectivity for region labelling (1 = 4-connected,
+            2 = 8-connected; default 1). Higher connectivity merges
+            diagonally adjacent pixels.
 
-        relabel: If True (default), relabel segments to ensure consecutive IDs.
+        relabel: If True (default), relabel segments to consecutive IDs
+            after watershed.
 
-        ignore_zeros: If True (default), exclude zero-intensity pixels from threshold
-            computation. Essential for images with black borders or masks.
-
-    Attributes:
-        footprint, min_size, compactness, connectivity, relabel, ignore_zeros
+        ignore_zeros: If True (default), exclude zero-intensity pixels from
+            threshold computation. Enable for plates with black borders or
+            masked regions.
 
     Returns:
-        Image: Input image with objmap set to labeled colonies from watershed segmentation.
+        Image: Input image with ``objmap`` set to a labelled colony map
+        where each colony receives a unique integer label. ``objmask`` is
+        derived from the non-zero region of the label map.
 
     Raises:
-        ValueError: If invalid parameters or computation fails (e.g., out of memory).
+        ValueError: If invalid parameters are provided or if the distance
+            transform / watershed computation fails.
 
-    **Use cases**
+    References:
+        [1] S. Beucher and C. Lantuejoul, "Use of watersheds in contour
+        detection," in *Proc. Int. Workshop on Image Processing*, CCETT,
+        Rennes, France, 1979.
 
-    - **Touching/overlapping colonies:** Region-growing effectively separates colonies
-      in close contact where threshold-based methods merge them.
-    - **Variable colony sizes:** Distance transform-based seeding adapts to colony size
-      variations better than fixed-threshold methods.
-    - **Irregular colony shapes:** Watershed respects local intensity gradients,
-      handling non-circular morphologies better than geometric methods.
-
-    **Limitations**
-
-    - Memory-intensive. Distance transform, gradient, and watershed on large images
-      consume significant RAM. Not suitable for very large images on memory-constrained systems.
-    - Compactness parameter tuning required. Incorrect values cause over/under-segmentation.
-    - Assumes detectable local intensity maxima. Very faint or flat colonies may not
-      seed properly, causing under-segmentation.
-    - Sensitive to noise. Noisy backgrounds can create spurious peaks. Pre-blur with
-      GaussianBlur recommended before detection.
-    - Slower than simple thresholding. Distance transform and watershed operations
-      are computationally expensive.
-
-    **Parameter effects on colony detection**
-
-    - **footprint:** Larger footprints merge nearby peaks, fewer seeds → larger regions.
-      Smaller footprints detect more peaks, more seeds → finer segmentation.
-    - **min_size:** Filters small noise but may remove genuine small colonies if set
-      too high. Balance sensitivity vs robustness.
-    - **compactness:** Controls segment regularity. Higher values enforce compact shapes
-      but may violate true colony boundaries. Lower values follow intensity gradients.
-
-    Examples:
-        Basic watershed detection with preprocessing::
-
-            from phenotypic import Image
-            from phenotypic.detect import WatershedDetector
-
-            plate = Image.imread("plate.jpg")
-            detector = WatershedDetector(min_size=50, compactness=0.001)
-            detected = detector.apply(plate)
-            num_colonies = detected.objects.count
-            print(f"Detected {num_colonies} colonies via watershed")
-
-        Pipeline with Gaussian blur for noise reduction::
-
-            from phenotypic import ImagePipeline
-            from phenotypic.enhance import GaussianBlur
-            from phenotypic.detect import WatershedDetector
-
-            pipeline = ImagePipeline([
-                GaussianBlur(sigma=1.5),
-                WatershedDetector(min_size=50, compactness=0.001)
-            ])
-
-            image = Image.imread("plate.jpg")
-            result = pipeline.apply(image)
+    See Also:
+        :doc:`/tutorials/notebooks/02_detecting_colonies`
+            Step-by-step tutorial for basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm`
+            Guide for selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared`
+            In-depth comparison of all detection strategies.
     """
 
     def __init__(

@@ -10,28 +10,32 @@ from phenotypic.abc_ import ImageEnhancer
 
 
 class SobelFilter(ImageEnhancer):
-    """
-    Sobel edge filter to highlight colony boundaries.
+    """Highlight colony edges in detect_mat using the Sobel gradient operator.
 
-    Computes the gradient magnitude using the Sobel operator to emphasize edges
-    (rapid intensity changes). On agar plate images, this highlights colony
-    perimeters and helps downstream steps that rely on edge strength (e.g.,
-    contour finding, watershed seeds, or boundary-based scoring).
+    Computes the gradient magnitude to emphasize intensity transitions at
+    colony boundaries. The output is an edge-strength map, not a corrected
+    image — useful as a preprocessing step before watershed seeds or
+    contour-based detectors.
 
-    Use cases (agar plates):
-    - Emphasize colony outlines before contour detection or watershed.
-    - Separate touching colonies when combined with a distance or marker-based
-      segmentation strategy.
+    Best For:
+        - Pre-filtering before watershed or contour-based detection.
+        - Separating touching colonies when combined with marker-based
+          segmentation.
+        - Visualizing colony boundary sharpness for quality assessment.
 
-    Guidance:
-    - Consider light smoothing with `GaussianBlur` beforehand to suppress noise;
-      Sobel is sensitive to high-frequency artifacts (dust, texture).
+    Consider Also:
+        - :class:`UnsharpMask` when you want to sharpen edges without
+          converting to a pure edge map.
+        - :class:`LaplaceEnhancer` for second-derivative edge detection
+          that responds to ridges and valleys.
 
-    Caveats:
-    - Output is an edge map, not a background-corrected image. Use in tandem
-      with background removal or thresholding for full segmentation.
-    - Strong illumination gradients can still produce spurious edges; correct
-      background first if needed.
+    Returns:
+        Image: Input image with ``detect_mat`` set to gradient magnitude.
+        ``rgb`` and ``gray`` are unchanged.
+
+    See Also:
+        :doc:`/explanation/what_enhancement_does` for how edge enhancement
+        fits into the pipeline model.
     """
 
     def _operate(self, image: Image) -> Image:
