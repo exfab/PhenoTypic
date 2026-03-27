@@ -23,4 +23,8 @@ __all__ = [
     "load_colony",
     "load_smear_plate_12hr",
     "load_smear_plate_24hr",
+    "load_yeast_plate",
+    "load_fungi_plate",
+    "load_yeast_plate_full",
+    "load_fungi_plate_full",
 ]

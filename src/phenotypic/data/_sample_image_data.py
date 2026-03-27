@@ -156,3 +156,86 @@ def load_imager_plate(
         mode: Literal["array", "Image", "GridImage"] = "array",
 ) -> Union[np.ndarray, Image, GridImage]:
     return _image_loader(__current_file_dir / "RHODOTORULA_RAW.cr3", mode=mode)
+
+
+def load_yeast_plate(
+        mode: Literal["array", "Image", "GridImage"] = "GridImage",
+) -> Union[np.ndarray, Image, GridImage]:
+    """Load a cropped Rhodotorula yeast 96-well plate image.
+
+    Returns a pre-cropped plate image of Rhodotorula yeast colonies arranged
+    in a standard 96-well grid (8 rows x 12 columns). Round colony morphology
+    with clean background -- suitable as the default sample for most tutorials
+    and how-to guides.
+
+    Args:
+        mode: Return format. Default: ``'GridImage'``.
+
+    Returns:
+        The plate image in the requested format.
+    """
+    return _image_loader(
+        __current_file_dir / "SnP_images" / "RhodotorulaYeastCropped.png", mode
+    )
+
+
+def load_fungi_plate(
+        mode: Literal["array", "Image", "GridImage"] = "GridImage",
+) -> Union[np.ndarray, Image, GridImage]:
+    """Load a cropped Neurospora filamentous fungi 96-well plate image.
+
+    Returns a pre-cropped plate image of Neurospora filamentous fungi arranged
+    in a 96-well grid. Irregular hyphal morphology with spreading growth --
+    suitable for filamentous fungi tutorials and how-to guides.
+
+    Args:
+        mode: Return format. Default: ``'GridImage'``.
+
+    Returns:
+        The plate image in the requested format.
+    """
+    return _image_loader(
+        __current_file_dir / "SnP_images" / "NeurosporaFilamentousFungiCropped.png",
+        mode,
+    )
+
+
+def load_yeast_plate_full(
+        mode: Literal["array", "Image", "GridImage"] = "Image",
+) -> Union[np.ndarray, Image, GridImage]:
+    """Load a full (uncropped) Rhodotorula yeast plate image with color checker.
+
+    Returns the full plate image including scanner margins and a color checker
+    target. Use for tutorials and how-to guides that demonstrate cropping
+    (``ImageCropper``), padding (``ImagePadder``), vignetting correction
+    (``VignetteCorrector``), or color correction (``ColorCorrector``).
+
+    Args:
+        mode: Return format. Default: ``'Image'``.
+
+    Returns:
+        The full plate image in the requested format.
+    """
+    return _image_loader(
+        __current_file_dir / "SnP_images" / "RhodotorulaYeastFullPlate.png", mode
+    )
+
+
+def load_fungi_plate_full(
+        mode: Literal["array", "Image", "GridImage"] = "Image",
+) -> Union[np.ndarray, Image, GridImage]:
+    """Load a full (uncropped) Neurospora filamentous fungi plate image with color checker.
+
+    Returns the full plate image including scanner margins and a color checker
+    target. Use for fungi-specific correction workflow tutorials.
+
+    Args:
+        mode: Return format. Default: ``'Image'``.
+
+    Returns:
+        The full plate image in the requested format.
+    """
+    return _image_loader(
+        __current_file_dir / "SnP_images" / "NeurosporaFilamentousFungiFullPlate.png",
+        mode,
+    )

@@ -136,6 +136,7 @@ version = { attr = "phenotypic.__version__" }
 "phenotypic" = [
     "data/*.jpg",
     "data/*.png",
+    "data/SnP_images/*.png",
     "_cli/_assets/*.png",
 ]
 

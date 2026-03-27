@@ -130,11 +130,11 @@ suppress_warnings = [
 ]
 
 # Exclude patterns - don't process these files/directories
-exclude_patterns = ["_build", "**.ipynb_checkpoints", "**/auto_examples"]
+exclude_patterns = ["_build", "**.ipynb_checkpoints", "**/auto_examples", "_legacy"]
 
 # nbsphinx configuration
 nbsphinx_execute = "auto"
-nbsphinx_allow_errors = True
+nbsphinx_allow_errors = False
 nbsphinx_kernel_name = "python3"
 
 # Fix for deprecated ipython2 lexer in Jupyter notebooks
@@ -485,12 +485,13 @@ def generate_downloadables_rst(app):
     # Collect Jupyter notebooks from examples and tutorials so they can also be
     # offered as downloads on this page.
     notebook_dirs = [
-        # Current locations under user_guide
+        # New Diataxis structure
+        os.path.join(source_dir, "tutorials", "notebooks"),
+        os.path.join(source_dir, "how_to", "notebooks"),
+        os.path.join(source_dir, "extending", "notebooks"),
+        # Legacy locations (kept during transition)
         os.path.join(source_dir, "user_guide", "examples", "notebooks"),
         os.path.join(source_dir, "user_guide", "tutorial", "notebooks"),
-        # Fallback legacy-style locations if they exist
-        os.path.join(source_dir, "examples", "notebooks"),
-        os.path.join(source_dir, "tutorial", "notebooks"),
     ]
 
     # Insert a separate grid for notebooks if we find any
