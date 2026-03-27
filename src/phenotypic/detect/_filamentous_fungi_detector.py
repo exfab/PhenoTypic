@@ -30,6 +30,7 @@ from phenotypic.detect import (
 )
 from phenotypic.detect._inoculum_detector import InoculumDetector
 from phenotypic.refine import MaskOpener, MaskCloser, GridSectionLargest
+from skimage.filters import threshold_triangle
 
 from phenotypic.detect._filamentous_fungi import (
     _apply_distance_gap_penalty_inplace,
@@ -207,7 +208,7 @@ class FilamentousFungiDetector(GridObjectDetector):
             inoculum_detector: Union[ObjectDetector, 'ImagePipeline', None] = None,
             overall_detector: Union[ObjectDetector, 'ImagePipeline', None] = None,
             # Reconnection parameters
-            enable_reconnection: bool = False,
+            enable_reconnection: bool = True,
             pct_n_orient: int = 8,
             pct_min_wavelength: float = 5.0,
             pct_k: float = 6.0,
@@ -227,7 +228,7 @@ class FilamentousFungiDetector(GridObjectDetector):
             snr_margin: int = 3,
             path_dilation_radius: int = 2,
             tile_size: int = 1200,
-            tile_overlap: int = 100,
+            tile_overlap: int = 600,
     ):
         super().__init__()
 
@@ -299,75 +300,6 @@ class FilamentousFungiDetector(GridObjectDetector):
         self.tile_size = tile_size
         self.tile_overlap = tile_overlap
 
-    def diagnostic(self, image: 'Image') -> dict[str, 'plt.Figure']:
-        """Run detection and return diagnostic figures for pathfinding and filtering.
-
-        Re-runs the full detection pipeline (Phases 1-4) on the input image
-        without tiling, capturing all intermediates for visualization.  This
-        is expensive — roughly equivalent to calling ``apply`` once — and is
-        intended for interactive parameter tuning, not production use.
-
-        Args:
-            image: Input image.  Not modified.
-
-        Returns:
-            Dict with six figures keyed by name:
-
-            ``"cost_distance"``
-                1x3 panel: log1p cost-distance, colony territory, clipped cost.
-            ``"fragment_overlay"``
-                Colony / fragment / path overlay on enhanced image.
-            ``"path_metrics"``
-                Histograms of total cost, path length, and cost per pixel.
-            ``"cost_profiles"``
-                Line plots of cumulative cost along cheapest and most expensive paths.
-            ``"filter_dashboard"``
-                2x3 scatter and bar charts of filter metrics and rejections.
-            ``"filter_spatial"``
-                Per-filter spatial rejection maps with summary panel.
-
-        Raises:
-            ValueError: If ``enable_reconnection`` is False (legacy path has
-                no pathfinding to diagnose).
-
-        Longer description:
-            Figures use explicit matplotlib (no pyplot state).  Callers should
-            call ``plt.close(fig)`` on each returned figure after use to free
-            memory.
-
-        Examples:
-            >>> from phenotypic.detect import FilamentousFungiDetector
-            >>> d = FilamentousFungiDetector(enable_reconnection=True)
-            >>> print(hasattr(d, 'diagnostic'))
-            True
-        """
-        if not self.enable_reconnection:
-            raise ValueError(
-                    "diagnostic() requires enable_reconnection=True. "
-                    "The legacy detection path has no pathfinding to diagnose."
-            )
-
-        from phenotypic.detect._filamentous_fungi._diagnostic import (
-            collect_diagnostic_state,
-            plot_cost_distance,
-            plot_cost_profiles,
-            plot_filter_dashboard,
-            plot_filter_spatial,
-            plot_fragment_overlay,
-            plot_path_metrics,
-        )
-
-        state = collect_diagnostic_state(self, image)
-
-        return {
-            "cost_distance"   : plot_cost_distance(state),
-            "fragment_overlay": plot_fragment_overlay(state),
-            "path_metrics"    : plot_path_metrics(state),
-            "cost_profiles"   : plot_cost_profiles(state),
-            "filter_dashboard": plot_filter_dashboard(state),
-            "filter_spatial"  : plot_filter_spatial(state),
-        }
-
     def _operate(self, image: 'GridImage') -> 'GridImage':
         """Detect and separate filamentous fungi using grid-based Voronoi partition.
 
@@ -416,15 +348,32 @@ class FilamentousFungiDetector(GridObjectDetector):
             enhanced_gray = enhanced_work.gray[:]  # capture before destructive call
 
             # Mask A: Gauss branches (destructive: modifies enhanced_work in place)
-            gauss_labels = self._detect_gauss_branches(enhanced_work)
+            bg_removed_arr = self._subtract_background(enhanced_work)
             del enhanced_work  # no longer valid after destructive call
 
             # Mask B: PCT branches
-            pct_mask, pct_result = self._detect_pct_branches(enhanced_arr)
+            pct_result = PhaseCongruencyEnhancer(
+                    n_orient=self.pct_n_orient,
+                    min_wavelength=self.pct_min_wavelength,
+                    k=self.pct_k,
+            )._phasecong3(enhanced_arr)
 
             # Overlap filter: keep Gauss labels with any PCT overlap
-            branch_labels = self._filter_gauss_by_pct_overlap(gauss_labels, pct_mask)
-            overall_objmask = branch_labels > 0
+            fragmented_overall_detect_mat = self._combine_bg_removed_with_pct(
+                    bg_removed_arr=bg_removed_arr,
+                    pct_sum=pct_result.pc_sum,
+            )
+
+            _fragmented_detect_img = image.copy()
+            _fragmented_detect_img.detect_mat[:] = fragmented_overall_detect_mat
+            HysteresisDetector(
+                    low="triangle",
+                    high="otsu",
+                    ignore_zeros=False,
+                    ignore_borders=False
+            ).apply(_fragmented_detect_img, inplace=True)
+            overall_objmask = _fragmented_detect_img.objmask[:]
+            del _fragmented_detect_img
 
             self._log_memory_usage("after dual-mask branch detection")
         else:
@@ -444,8 +393,9 @@ class FilamentousFungiDetector(GridObjectDetector):
 
             if overall_result.num_objects == 0:
                 raise ValueError(
-                        "No overall structure detected by overall_detector. Cannot create "
-                        "assignment mask. Try adjusting overall_detector parameters."
+                        "No overall structure detected by overall_detector. Cannot "
+                        "create assignment mask. Try adjusting overall_detector "
+                        "parameters."
                 )
 
             branch_labels = None
@@ -489,7 +439,7 @@ class FilamentousFungiDetector(GridObjectDetector):
         # ── PHASE 4: DIJKSTRA RECONNECTION ──────────────────────────
         colony_labels = inoculum_structure_map
 
-        if self.enable_reconnection and branch_labels is not None:
+        if self.enable_reconnection:
             central_mask, fragment_labels = self._identify_pseudo_fragments(
                     colony_labels=colony_labels,
                     center_objmask=inoculum_objmask,
@@ -539,91 +489,23 @@ class FilamentousFungiDetector(GridObjectDetector):
 
     # ── Phase 2 helpers ─────────────────────────────────────────────
 
-    def _detect_gauss_branches(self, enhanced_work: 'Image') -> np.ndarray:
-        """Apply SubtractGaussian, TriangleDetector, and morphology.
-
-        Modified destructively; caller must extract needed data beforehand.
-        All operations here only modify detect_mat/objmask/objmap, not gray
-        or rgb (one-directional cascade), so capturing gray[:] before this
-        call is safe.
-
-        Args:
-            enhanced_work: Contrast-stretched image (modified in place).
-
-        Returns:
-            Labeled array of detected Gaussian branches.
-        """
-        SubtractGaussian(sigma=self.gauss_sigma, n_iter=self.gauss_n_iter).apply(
-                enhanced_work, inplace=True
-        )
-        TriangleDetector().apply(enhanced_work, inplace=True)
-        MaskOpener(shape="disk", width=self.morph_width, n_iter=1).apply(
-                enhanced_work, inplace=True
-        )
-        MaskCloser(shape="disk", width=self.morph_width, n_iter=2).apply(
-                enhanced_work, inplace=True
-        )
-        MaskOpener(shape="disk", width=self.morph_width, n_iter=1).apply(
-                enhanced_work, inplace=True
-        )
-        MaskCloser(shape="disk", width=self.morph_width, n_iter=2).apply(
-                enhanced_work, inplace=True
-        )
-        return enhanced_work.objmap[:]
-
-    def _detect_pct_branches(
-            self, enhanced_arr: np.ndarray
-    ) -> tuple[np.ndarray, '_PhaseCong3Result']:
-        """Run phase congruency on enhanced array and apply hysteresis threshold.
-
-        Args:
-            enhanced_arr: 2D contrast-stretched detection matrix.
-
-        Returns:
-            Tuple of (binary_mask, pct_result) where binary_mask is the
-            hysteresis-thresholded phase congruency mask and pct_result
-            contains the raw phase congruency feature maps.
-        """
-        from phenotypic._core._image import Image
-
-        pct = PhaseCongruencyEnhancer(
-                n_orient=self.pct_n_orient,
-                min_wavelength=self.pct_min_wavelength,
-                k=self.pct_k,
-        )
-        pct_result = pct._phasecong3(enhanced_arr)
-
-        # Create temporary Image from pc_sum for hysteresis detection
-        temp = Image(arr=pct_result.pc_sum)
-        temp = HysteresisDetector(
-                low="triangle", high="otsu",
-                ignore_borders=False, ignore_zeros=False,
-        ).apply(temp)
-        pct_mask = temp.objmask[:]
-
-        return pct_mask, pct_result
+    def _subtract_background(self, enhanced_work: 'Image') -> np.ndarray:
+        """Subtracts the background of the input Image class. This potentially deletes
+        branches so is combined downstream with the PCT response"""
+        return SubtractGaussian(
+                sigma=self.gauss_sigma, n_iter=self.gauss_n_iter
+        ).apply(enhanced_work, inplace=False).detect_mat[:]
 
     @staticmethod
-    def _filter_gauss_by_pct_overlap(
-            gauss_labels: np.ndarray, pct_mask: np.ndarray
-    ) -> np.ndarray:
-        """LUT-based label filtering: keep Gauss labels with any pixel overlapping PCT mask.
+    def _combine_bg_removed_with_pct(
+            bg_removed_arr: np.ndarray,
+            pct_sum: np.ndarray,
 
-        Args:
-            gauss_labels: Labeled array of Gaussian branch detections.
-            pct_mask: Binary mask from phase congruency hysteresis detection.
-
-        Returns:
-            Filtered label array with non-overlapping labels zeroed out.
-        """
-        intersection = gauss_labels * pct_mask
-        overlap_labels = np.unique(intersection[intersection > 0])
-        max_label = int(gauss_labels.max())
-        if max_label == 0:
-            return gauss_labels.copy()
-        keep = np.zeros(max_label + 1, dtype=gauss_labels.dtype)
-        keep[overlap_labels] = overlap_labels
-        return keep[gauss_labels]
+    ):
+        return np.maximum(
+                bg_removed_arr,
+                pct_sum,
+        ).clip(min=0, max=1)
 
     # ── Phase 4 helpers ─────────────────────────────────────────────
 
