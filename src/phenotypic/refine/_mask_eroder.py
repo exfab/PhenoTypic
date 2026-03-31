@@ -35,7 +35,8 @@ class MaskEroder(ObjectRefiner, FootprintMixin):
     Args:
         shape: Structuring element. ``'auto'``, ``'disk'``, ``'square'``,
             ``'diamond'``, or custom ndarray. Default: ``None``.
-        width: Footprint width in pixels. Default: 5.
+        width: Footprint width in pixels. Default: 3.
+        n_iter: Number of erosion iterations. Default: 1.
 
     Returns:
         Image: Input image with ``objmask`` and ``objmap`` eroded.

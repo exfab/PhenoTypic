@@ -71,25 +71,6 @@ class ImageCropper(ImageCorrector):
         Raises:
             ValueError: If any parameter is negative. All crop margins must be
                 non-negative integers (or None).
-
-        Examples:
-            Create a cropper for symmetric margins:
-
-            >>> from phenotypic.correction import ImageCropper
-            >>> # Remove 50 pixels from all four edges
-            >>> cropper = ImageCropper(left=50, right=50, top=50, bottom=50)
-
-            Create a cropper for asymmetric margins:
-
-            >>> from phenotypic.correction import ImageCropper
-            >>> # Remove top (label) and right (artifact), keep left and bottom
-            >>> cropper = ImageCropper(top=100, right=75, left=None, bottom=None)
-
-            Create a cropper that only removes top margin:
-
-            >>> from phenotypic.correction import ImageCropper
-            >>> cropper = ImageCropper(top=80)
-            >>> # Equivalent to ImageCropper(left=None, right=None, top=80, bottom=None)
         """
         self.left = left
         self.right = right

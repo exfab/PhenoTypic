@@ -20,7 +20,7 @@ class GridAligner(GridCorrector):
     to minimize angular misalignment. Re-detection of objects after
     alignment is strongly recommended because pixel coordinates shift.
 
-    For algorithm details, see :doc:`/explanation/grid_alignment`.
+    For algorithm details, see :doc:`/explanation/grid_vs_non_grid_detection`.
 
     Best For:
         - Arrayed plates scanned at a slight angle where grid rows or
