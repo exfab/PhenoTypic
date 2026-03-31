@@ -14,13 +14,35 @@ from phenotypic.tools_.constants_ import OBJECT
 
 
 class GridSectionLargest(ObjectRefiner):
-    """Identifies and retains only the largest objects within each grid section.
+    """Retain only the largest object within each grid section by area.
 
-    This class processes an image that contains microbial colonies segmented into
-    grid sections on solid media agar plates. The goal is to identify and retain
-    only the largest object within each grid section of the image, effectively
-    filtering out smaller objects and noise.
+    Measures the pixel area of every detected object, groups them by grid
+    cell, and keeps only the largest per cell. Smaller fragments, debris,
+    and secondary detections within each grid position are removed.
 
+    Best For:
+        - Grid plates where the true colony is the largest detection in
+          each cell and smaller objects are noise or debris.
+        - Quick post-detection cleanup on 96-well or 384-well formats.
+        - Simplifying multi-detection grid cells to one object per position.
+
+    Consider Also:
+        - :class:`GridAlignmentRefiner` for full grid-aware dominant-object
+          selection with configurable strategies.
+        - :class:`CenterDeviationReducer` when the most centered object is
+          more reliable than the largest.
+        - :class:`ReduceMultipleGridObjects` for regression-based selection
+          using expected grid positions.
+
+    Returns:
+        Image: Input image with ``objmap`` reduced to the single largest
+        object per grid section.
+
+    See Also:
+        :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based
+        refinement workflows.
+        :doc:`/explanation/refinement_strategies` for an overview of
+        grid refinement approaches.
     """
 
     def _operate(self, image: GridImage) -> GridImage:

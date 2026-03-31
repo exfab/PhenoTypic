@@ -12,34 +12,46 @@ from phenotypic.abc_ import ImageEnhancer
 
 
 class SubtractWhiteTophat(ImageEnhancer):
-    """
-    White top-hat transform to suppress small bright structures.
+    """Suppress small bright artifacts in ``detect_mat`` by subtracting the white top-hat.
 
-    Computes the white top-hat (original minus opening) using a structuring
-    element, then subtracts it from the image here (i.e., remove small bright
-    blobs). In agar plate colony images, this helps reduce bright specks from
-    dust, glare, or condensation, making colonies stand out against a smoother
-    background.
+    Computes the white top-hat (original minus morphological opening) and
+    subtracts it from the image, removing small bright blobs such as dust
+    specks, glare highlights, and condensation artifacts while preserving
+    larger colony structures.
 
-    Use cases (agar plates):
-    - Remove small bright artifacts that can be mistaken for tiny colonies.
-    - Reduce glare highlights on shiny plates before thresholding.
+    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Tuning and effects:
-    - shape: The morphology shape geometry. 'diamond' or 'disk' are good
-      isotropic choices on plates; 'square' can align with pixel grids.
-    - width: Sets the maximum size of bright features to remove. Choose slightly
-      smaller than the minimum colony width so real colonies are preserved.
+    Best For:
+        - Removing small bright artifacts that could be mistaken for tiny
+          colonies.
+        - Reducing glare highlights on shiny plates before thresholding.
+        - Cleaning up dust and condensation artifacts that confuse
+          detection.
 
-    Caveats:
-    - If width is too large, real small colonies will be attenuated.
-    - Operates on bright features; for dark colonies on bright agar, it primarily
-      removes bright noise rather than enhancing the colonies themselves.
+    Consider Also:
+        - :class:`WhiteTophatEnhance` when you want to isolate (not
+          suppress) small bright structures.
+        - :class:`GrayOpening` for morphological smoothing that removes
+          small bright features without explicit subtraction.
+        - :class:`RankMedianEnhancer` for impulsive noise removal via
+          median filtering.
 
-    Attributes:
-        shape (str): Footprint shape: 'diamond', 'disk', 'square', 'sphere', 'cube'.
-        width (int | None): Footprint width in pixels; if None, a small default
-            is derived from the image size.
+    Args:
+        shape: Footprint geometry. ``'diamond'`` (default) or ``'disk'``
+            provide isotropic behavior; ``'square'`` can align with sensor
+            grid artifacts.
+        width: Maximum bright-object size (pixels) targeted for removal.
+            Set slightly smaller than the smallest colonies to preserve
+            them. ``None`` (default) derives a small value from image
+            dimensions.
+
+    Returns:
+        Image: Input image with ``detect_mat`` smoothed by subtracting
+        the white top-hat. ``rgb`` and ``gray`` are unchanged.
+
+    See Also:
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
+        visual walkthrough of artifact removal on plate images.
     """
 
     def __init__(self, shape: str = "diamond", width: int = None):

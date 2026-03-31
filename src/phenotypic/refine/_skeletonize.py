@@ -11,53 +11,48 @@ from phenotypic.abc_ import ObjectRefiner
 
 
 class Skeletonize(ObjectRefiner):
-    """Reduce object masks to single-pixel-wide skeletons using medial axis thinning.
+    """Reduce object masks to single-pixel-wide skeletons via medial axis thinning.
 
-    Intuition:
-        Skeletonization compresses object regions to their medial axes (centerlines),
-        preserving topological structure while reducing to 1-pixel width. On agar plates,
-        this distills colony morphology to its _core branching structure, useful for
-        analyzing filamentous or spreading phenotypes without boundary noise. The method
-        efficiently extracts the 'backbone' of colony shape.
+    Compresses each object region to its medial axis (centerline), preserving
+    topological connectivity while discarding boundary and interior pixels.
+    Useful for distilling colony morphology to its core branching structure
+    for filament or spreading phenotype analysis.
 
-    Why this is useful for agar plates:
-        Colonies may have ragged edges, uneven staining, or noise that obscures their true
-        spreading pattern. Skeletons expose the essential branching or directional growth,
-        enabling more robust morphological features (e.g., branch count, elongation)
-        and simplifying hyphae or filament tracking in fungal cultures.
+    Best For:
+        - Extracting colony centerlines for elongation or orientation
+          analysis.
+        - Analyzing branching patterns in filamentous fungi or spreading
+          bacterial phenotypes.
+        - Simplifying masks for spatial graph analysis or hyphae tracking.
+        - Reducing boundary noise before measuring advanced morphological
+          features.
 
-    Use cases:
-        - Extracting colony centerlines for elongation or orientation analysis.
-        - Analyzing branching patterns in spreading/filamentous phenotypes.
-        - Simplifying masks for spatial graph analysis or filament tracking.
-        - Reducing noise in masks before measuring advanced morphological features.
+    Consider Also:
+        - :class:`Thinning` for iterative boundary peeling with control
+          over the number of iterations.
+        - :class:`MaskGradient` when you need boundary outlines rather
+          than medial axes.
+        - :class:`MaskEroder` for uniform inward shrinking that preserves
+          filled regions.
 
-    Caveats:
-        - Skeletonization destroys width information; use only if you need topology,
-          not colony boundary details.
-        - Thin or poorly-defined colonies may produce fragmented or spurious skeleton branches.
-        - Method choice (Zhang vs. Lee) can affect branch detection; Zhang is optimized
-          for clean 2D images, Lee is more robust but may produce slightly thicker structures.
-        - Isolated noise pixels may create spurious skeleton branches; apply cleanup
-          (e.g., SmallObjectRemover) before skeletonizing.
+    Args:
+        method: Thinning algorithm. ``"zhang"`` is fast and optimized for
+            clean 2D masks. ``"lee"`` is more robust to noise and works on
+            2D/3D. ``None`` auto-selects based on dimensionality. Default:
+            None.
 
-    Attributes:
-        method (Literal["zhang", "lee"] | None): Thinning algorithm to use.
-            - "zhang": Fast, optimized for 2D images with clean topology. May produce
-              thin artifacts on noisy images.
-            - "lee": Works on 2D/3D, more robust to noise and irregular boundaries.
-              Slightly slower than Zhang.
-            - None: Auto-select based on image dimensionality (Zhang for 2D, Lee for 3D).
-
-    Examples:
-        Reduce filamentous colony to medial axis skeleton:
-
-        >>> from phenotypic.refine import Skeletonize
-        >>> op = Skeletonize(method="zhang")
-        >>> image = op.apply(image, inplace=True) # doctest: +SKIP
+    Returns:
+        Image: Input image with ``objmask`` replaced by the single-pixel-wide
+        skeleton.
 
     Raises:
-        ValueError: If an invalid ``method`` is provided (checked during operation).
+        ValueError: If an invalid ``method`` is provided.
+
+    See Also:
+        :doc:`/how_to/notebooks/refine_noisy_boundaries` for skeleton-based
+        analysis workflows.
+        :doc:`/explanation/refinement_strategies` for a comparison of
+        morphological refinement methods.
     """
 
     def __init__(self, method: Literal["zhang", "lee"] | None = None):

@@ -12,28 +12,46 @@ from phenotypic.tools_.mixin import FootprintMixin
 
 
 class GrayOpening(ImageEnhancer, FootprintMixin):
-    """Performs morphological opening on grayscale image arrays as a preprocessing step.
+    """Remove small bright artifacts from ``detect_mat`` via morphological opening.
 
-    This class applies morphological opening, which is an erosion followed by a dilation,
-    to grayscale image arrays. It is particularly useful for removing small artifacts
-    and noise from the image, such as dust particles or small microbe colonies, while
-    preserving the overall shape of larger structures. The operation is applied based
-    on a specified shape shape and size.
+    Applies erosion followed by dilation with a structuring element, removing
+    bright features smaller than the element while preserving the shape of
+    larger structures. Effectively suppresses dust particles, small noise
+    speckles, and tiny satellite colonies.
 
-    Attributes:
-        shape (Literal["square", "diamond", "disk"]): Specifies the shape of the
-            shape used for the morphological opening operation. Changing this
-            affects how structures in the image are eroded and dilated. For example,
-            a "square" may preserve edges better, "diamond" is more rounded at
-            diagonals, while "disk" provides uniform circular operations. Selecting
-            an improper shape might remove desired features or alter key microbe
-            colony structures.
-        width (int): Determines the size of the shape for the operation. Larger
-            values increase the area affected during erosion and dilation. This can
-            lead to the complete removal of smaller colonies or features, but a
-            sufficiently large width is required to remove noise. A width that is too
-            small may leave artifacts and undesired details, compromising image
-            preprocessing for larger features.
+    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
+
+    Best For:
+        - Removing dust particles and small bright noise from plate scans.
+        - Suppressing tiny satellite colonies that interfere with detection
+          of larger colonies.
+        - Smoothing the detection surface before background subtraction.
+
+    Consider Also:
+        - :class:`WhiteTophatEnhance` when you want to isolate (not remove)
+          small bright structures.
+        - :class:`SubtractWhiteTophat` for subtracting small bright artifacts
+          while retaining the background.
+        - :class:`BilateralDenoise` for noise reduction that preserves edges
+          without morphological assumptions.
+
+    Args:
+        shape: Structuring element geometry. ``'square'`` (default) preserves
+            edges; ``'diamond'`` is more rounded at diagonals; ``'disk'``
+            provides uniform circular operations.
+        width: Diameter of the structuring element in pixels. Larger values
+            remove larger features. Typical range: 3--15. Default: 5.
+        n_iter: Number of times to apply the opening. Repeated opening with
+            a small element produces smoother results than a single pass
+            with a larger element. Default: 1.
+
+    Returns:
+        Image: Input image with ``detect_mat`` morphologically opened.
+        ``rgb`` and ``gray`` are unchanged.
+
+    See Also:
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
+        visual walkthrough of enhancement pipelines on plate images.
     """
 
     def __init__(self, shape: Literal["square", "diamond", "disk"] = "square",

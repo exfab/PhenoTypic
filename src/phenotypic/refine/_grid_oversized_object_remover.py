@@ -13,39 +13,37 @@ from phenotypic.tools_.measurement_info_ import BBOX
 
 
 class GridOversizedObjectRemover(GridObjectRefiner):
-    """Remove objects that are larger than their grid cell allows.
+    """Remove objects whose bounding box exceeds the maximum grid cell dimension.
 
-    Intuition:
-        In pinned colony grids, each cell should contain at most one colony of
-        limited extent. Objects spanning nearly an entire cell width/height are
-        often merged colonies, agar edges, or segmentation spillover. Removing
-        these oversized objects improves the reliability of per-cell analysis.
+    Compares each object's width and height against the largest cell span in
+    the grid and discards objects that match or exceed it. Eliminates merged
+    colonies, agar rim intrusions, and segmentation spillover that span
+    entire grid cells.
 
-    Why this is useful for agar plates:
-        Grid-based assays assume spatial confinement. Oversized detections
-        disrupt row/column statistics and bias growth comparisons. Filtering
-        them stabilizes downstream measurements.
+    Best For:
+        - Dropping merged blobs that span adjacent grid positions.
+        - Removing strong edge artifacts near the plate rim that intrude
+          into the grid.
+        - Post-detection cleanup on pinned colony grids where each cell
+          should contain one confined colony.
 
-    Use cases:
-        - Dropping merged blobs that span adjacent positions.
-        - Removing strong edge artifacts near the plate rim that intrude into
-          the grid.
+    Consider Also:
+        - :class:`GridSectionLargest` when you want to keep the single
+          largest object per cell rather than removing oversized ones.
+        - :class:`GridAlignmentRefiner` for full grid-aware dominant-object
+          selection.
+        - :class:`SmallObjectRemover` when the problem is undersized debris
+          rather than oversized detections.
 
-    Caveats:
-        - If genuine colonies expand to fill the cell (late time points), this
-          remover may exclude real growth.
-        - Highly irregular grids or mis-registered edges can cause over-
-          removal; ensure grid metadata is accurate.
+    Returns:
+        Image: Input image with ``objmap`` and ``objmask`` updated to exclude
+        objects exceeding the grid cell size.
 
-    Attributes:
-        (No public attributes)
-
-    Examples:
-        Remove objects larger than their grid cell allows:
-
-        >>> from phenotypic.refine import GridOversizedObjectRemover
-        >>> op = GridOversizedObjectRemover()
-        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+    See Also:
+        :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based
+        refinement workflows.
+        :doc:`/explanation/refinement_strategies` for an overview of
+        grid refinement strategies.
     """
 
     def _operate(self, image: GridImage) -> GridImage:

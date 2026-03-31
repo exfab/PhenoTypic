@@ -13,209 +13,61 @@ from ..abc_ import ObjectRefiner
 
 
 class GMMCoreExtractor(ObjectRefiner):
-    """Extract compact bright cores from labelled colonies using Gaussian mixture modeling.
+    """Extract compact bright cores from labeled colonies using Gaussian mixture modeling.
+
+    Fits a two-component GMM to each colony's intensity histogram, separating
+    the bright inoculum core from the dimmer surrounding halo. Regions with
+    insufficient intensity contrast are left unchanged. Morphological
+    opening and closing refine the extracted core shape.
+
+    For algorithm details, see :doc:`/explanation/refinement_strategies`.
+
+    Best For:
+        - Rich media plates (YPD, LB) where colonies develop dense bright
+          centers with obvious halos.
+        - Pinned-array inoculation where sharp bright cores need to be
+          isolated from thin outgrowth.
+        - High-density plates (96-well, 384-well) where core extraction
+          reduces inter-well spillover.
+        - Pre-measurement cleanup to ensure features reflect the primary
+          growth mass rather than diffusion halos.
+
+    Consider Also:
+        - :class:`MaskEroder` for uniform inward shrinking when cores are
+          not intensity-distinct from halos.
+        - :class:`WhiteTophat` for removing small bright artifacts without
+          full core extraction.
+        - :class:`LowCircularityRemover` for shape-based filtering when
+          halos distort circularity measurements.
 
     Args:
-        n_components (int): Number of Gaussian mixture components to fit per region
-            (default 2 — separates bright core from surrounding halo). Keep at 2 for
-            canonical core-vs-surround splitting; higher values risk over-segmentation
-            and increase computational cost.
-        separation_threshold (float): Normalized mean separation below which the
-            original region is left unchanged (default 0.8, range 0.0–1.0+). Regions
-            with separation below this threshold show insufficient intensity contrast
-            for reliable core extraction. Raise to extract only high-confidence cores;
-            lower to include subtle separations at risk of false positives.
-        min_core_area (int): Minimum core area in pixels (default 30). Regions
-            or extracted cores smaller than this are kept as-is or discarded.
-            Prevents extraction of tiny noise fragments; raise for sparse inoculum
-            spots, lower for dense arrays.
-        morph_open_radius (int): Radius of elliptical morphological opening kernel
-            (default 1, set to 0 to disable). Removes thin protrusions from extracted
-            cores, improving shape compactness.
-        morph_close_radius (int): Radius of elliptical morphological closing kernel
-            (default 2, set to 0 to disable). Fills small gaps and holes within
-            extracted cores, improving connectivity.
+        n_components: Number of Gaussian components per region. Keep at 2
+            for canonical core-vs-surround splitting; higher values risk
+            over-segmentation. Default: 2.
+        separation_threshold: Normalized mean separation below which the
+            original region is left unchanged. Typical range: 0.5--1.2.
+            Higher values extract only high-confidence cores. Default: 0.8.
+        min_core_area: Minimum core area in pixels. Regions or extracted
+            cores smaller than this are kept as-is. Typical range: 10--500,
+            scale with resolution. Default: 30.
+        morph_open_radius: Radius of elliptical opening kernel. Removes
+            thin protrusions; 0 disables. Typical range: 0--5. Default: 1.
+        morph_close_radius: Radius of elliptical closing kernel. Fills
+            small gaps within cores; 0 disables. Typical range: 0--5.
+            Default: 2.
 
     Returns:
-        Image: Image with ``objmap`` refined to bright-core masks, preserving
-            original image components (rgb, gray, detect_mat) unchanged.
+        Image: Input image with ``objmap`` refined to bright-core masks.
 
     Raises:
-        ValueError: If *n_components* is not a positive integer or if
-            *separation_threshold* is negative.
+        ValueError: If ``n_components`` is not a positive integer or if
+            ``separation_threshold`` is negative.
 
-    Intuition:
-        Microbial colonies on agar plates typically consist of a compact, bright
-        inoculum core surrounded by a dimmer halo of diffuse outgrowth. This halo
-        arises from secreted metabolites, agar dissolution, or substrate depletion,
-        creating a radial intensity gradient. Fitting a two-component Gaussian mixture
-        model (GMM) to each colony's intensity histogram separates the bright core
-        from the dimmer surround, yielding tighter masks that better represent the
-        actively growing colony centre. This is particularly valuable in high-density
-        plates (96-well, 384-well arrays) and pin-inoculated experiments where cores
-        are visually distinct.
-
-    Use cases (agar plates):
-        - **Rich media with clear cores:** YPD, LB plates where colonies develop
-          dense bright centres with obvious halos; common in laboratory screening.
-          GMM easily separates intensity modes, yielding tight core masks.
-        - **Pinned-array inoculation:** Dense inoculum spots (e.g., from pin tools)
-          create sharp bright cores with thin outgrowth; GMM identifies the original
-          inoculum mass for replicability.
-        - **High-density plates:** 96-well or 384-well formats where colonies are
-          small (20–60 pixels at 512×768) but well-separated; core extraction reduces
-          spillover between wells when plates are imaged without physical separation.
-        - **Pre-measurement cleanup:** Extract cores before measuring size, shape, or
-          color; ensures features reflect the primary growth mass rather than
-          secondary diffusion.
-        - **Inoculum detection in timelapse:** In growth kinetics, distinguish
-          inoculum spot from emerging growth halo using early timepoints where
-          contrast is highest.
-
-    Parameter Effects:
-
-        **n_components** (int, default 2):
-            Fixed at 2 to model core vs. surround split.
-            - Value of 2: Canonical separation, standard practice.
-            - Higher values (3+): Capture additional intensity structure (e.g.,
-              satellite halo, edge gradient) but slow fitting and risk spurious modes
-              from noise. Not recommended unless colonies show complex multi-modal
-              intensity.
-            - Effect: Directly controls GMM flexibility; higher values increase fitting
-              cost ~O(K) where K is n_components.
-
-        **separation_threshold** (float, range 0.0–1.0+, default 0.8):
-            Normalized separation = |mu_bright - mu_dim| / (sigma_bright + sigma_dim).
-            - Typical range: 0.5–1.2
-            - Example values:
-              * 0.5: Extract cores even with subtle contrast (halo nearly as bright
-                as core); may include noise/artifacts.
-              * 0.8 (default): Moderate contrast requirement; balances sensitivity
-                and specificity for typical agar plates.
-              * 1.0+: Strict; require sharp separation (well-defined core and halo);
-                miss cores with gradual intensity gradients.
-            - Effect on colony morphology:
-              * Round, smooth colonies (yeast, e.g., S. cerevisiae): Typically high
-                separation (0.8–1.2); GMM cleanly splits core from halo.
-              * Irregular, rough colonies (bacteria, e.g., E. coli): Lower separation
-                (0.6–0.9) due to uneven pigmentation; halo may be patchy.
-              * Filamentous colonies (fungi, e.g., Aspergillus): Variable separation;
-                cores may be fuzzy; use 0.7–0.9.
-            - Note: This parameter does NOT scale with resolution (intensity range
-              and camera properties determine separation, not pixel counts).
-
-        **min_core_area** (int, range 10–500+, default 30):
-            Minimum core area in pixels to retain after extraction.
-            - Resolution scaling guidance (pixel-based parameter):
-              * Reference resolution: 512×768
-              * Scaling formula: adjusted_min_core_area = default × (image_width / 512)
-              * Examples:
-                - 512×768 (1×): 30 pixels
-                - 640×960 (1.25×): 38 pixels (~30 × 1.25)
-                - 1024×1536 (2×): 60 pixels (~30 × 2)
-                - 2000×3000 (3.9×): 117 pixels (~30 × 3.9)
-            - Colony diameter context (512×768 reference):
-              * Small yeast colonies (~20 pixels diameter): Set min_core_area to 50–100
-                (core typically 10–40% of colony area).
-              * Medium colonies (~60 pixels diameter): Set 50–150.
-              * Large mature colonies (>100 pixels): Set 100–300.
-            - Effect:
-              * Too high: Discards legitimate small cores (early timepoints, sparse
-                inoculum); inflates false negatives.
-              * Too low: Retains noise fragments and spurious cores; reduces precision.
-            - Morphology context:
-              * Yeast: Cores often 50–70% of colony area; set min_core_area to
-                0.5–0.7 × typical_colony_area.
-              * Bacteria: Cores often 40–60% of area (more uniform); use lower
-                thresholds.
-              * Fungi: Cores may be thin/dispersed; use lower thresholds (20–40 pixels).
-
-        **morph_open_radius** (int, range 0–5, default 1):
-            Radius of elliptical structuring element for morphological opening.
-            - Resolution scaling guidance:
-              * Scaling formula: adjusted_open_radius = default × (image_width / 512)
-              * Examples:
-                - 512×768: 1 pixel
-                - 1024×1536: 2 pixels
-                - 2000×3000: 3.9 pixels (→ 4)
-            - Effect on core extraction:
-              * 0 (disabled): No opening; cores retain GMM-predicted shape exactly,
-                including thin protrusions and noise speckles.
-              * 1 (default): Removes thin speckles (~1–3 pixels wide) and minor
-                protrusions; good for salt-and-pepper noise and edge jaggedness.
-              * 2–3: Removes larger protrusions (nail-like outgrowths 3–7 pixels);
-                rounds core shape more aggressively.
-              * >4: Excessive smoothing; merges multiple small cores or removes
-                legitimate core extensions.
-            - Morphology context:
-              * Yeast (smooth, round): 1 pixel usually sufficient; opens smooth noise.
-              * Bacteria (irregular): 1–2 pixels for rougher edges.
-              * Fungi (filamentous): 0–1 (preserve filaments) or use with care.
-
-        **morph_close_radius** (int, range 0–5, default 2):
-            Radius of elliptical structuring element for morphological closing.
-            - Resolution scaling guidance:
-              * Scaling formula: adjusted_close_radius = default × (image_width / 512)
-              * Examples:
-                - 512×768: 2 pixels
-                - 1024×1536: 4 pixels
-                - 2000×3000: 7.8 pixels (→ 8)
-            - Effect on core extraction:
-              * 0 (disabled): No closing; GMM core with open applied (if enabled).
-              * 1: Fills gaps and holes ~1–3 pixels wide within cores; useful for
-                uneven pigmentation or glare artifacts.
-              * 2 (default): Fills moderate gaps and consolidates core; balances
-                closure and core integrity.
-              * 3–4: Aggressively fills larger voids (5–8 pixels); may artificially
-                inflate small cores.
-              * >5: Risk bridging separate cores or creating artificial structures.
-            - Morphology context:
-              * Yeast (dense, compact): 2 pixels typical; closes internal voids.
-              * Bacteria: 1–2 pixels (less voids typically).
-              * Fungi: 0–1 (preserve internal complexity).
-
-    Caveats and Limitations:
-
-        - **Uniform intensity regions:** Regions with standard deviation < 1e-6 are left
-          unchanged because the GMM cannot separate components. Occurs with very small
-          colonies, extremely uniform media, or low-contrast imaging.
-        - **Small regions:** Regions with area < min_core_area are kept as-is before
-          extraction; useful for preserving small but real inoculum spots.
-        - **Computational cost:** GMM fitting scales linearly with number of labelled
-          objects and quadratically with region size. On 96-well plates (~80–96 objects),
-          fitting is <100 ms. On 384-well (>300 objects) or megapixel images, consider
-          memory and time constraints.
-        - **Fixed n_components=2 assumption:** If colonies show non-bimodal intensity
-          structure (e.g., multi-pigmented bacteria, fungi with internal rings), the
-          two-component model may miss nuance. Consider n_components=3 for advanced cases,
-          or use a different refinement strategy (e.g., threshold-based on quantiles).
-        - **Edge effects from morphological operations:** Opening and closing slightly
-          shrink/dilate core boundaries (~1–3 pixels depending on radius). This is usually
-          small relative to colony size but may bias measurements on very small colonies.
-          Quantified impact: ~5–10% edge erosion/dilation for typical parameters.
-        - **Separation threshold sensitivity:** Threshold is normalized and does NOT
-          scale with resolution, but IS sensitive to lighting, media color, and camera
-          properties. Same colony on YPD vs. LB media may have different separations;
-          threshold may need adjustment per imaging protocol.
-        - **Post-morphology connected components:** After open/close, the largest
-          connected component is retained. If cores fragment during operations or
-          splitting occurs, only the largest piece survives; smaller fragments are
-          discarded even if above min_core_area.
-
-    Mathematical/Technical Background:
-
-        The GMM fitting uses scikit-learn's `GaussianMixture` with covariance_type='full'
-        and 3 random initializations. For a 1-D intensity histogram of a region,
-        the model fits K Gaussians; the two components' means (mu) and standard deviations
-        (sigma) are extracted. Normalized separation is defined as:
-
-            sep = |mu_1 - mu_0| / (sigma_0 + sigma_1)
-
-        This ratio measures intensity contrast relative to within-component variance; higher
-        values indicate clearer separation. The bright component (argmax of means) is
-        selected as the core; pixels assigned to it (via predict) within the original region
-        mask are retained. This is more statistically grounded than simple thresholding and
-        naturally adapts to per-region intensity distributions.
+    See Also:
+        :doc:`/how_to/notebooks/refine_noisy_boundaries` for core
+        extraction workflows.
+        :doc:`/explanation/refinement_strategies` for a comparison of
+        refinement approaches including GMM-based extraction.
     """
 
     def __init__(

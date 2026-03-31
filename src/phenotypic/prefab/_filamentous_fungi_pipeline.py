@@ -87,29 +87,13 @@ class FilamentousFungiPipeline(PrefabPipeline):
         benchmark: Enable per-step timing and memory benchmarks.
         verbose: Enable verbose logging during pipeline execution.
 
-    Examples:
-        Detect filamentous fungi with default StableDenoise denoising and reconnection:
-
-        >>> from phenotypic.prefab import FilamentousFungiPipeline
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>>
-        >>> pipeline = FilamentousFungiPipeline()
-        >>> image = load_synth_yeast_plate()
-        >>> result = pipeline.apply(image)
-        >>> print(f"Detected {result.objmap[:].max()} colonies")
-
-        Tune quality threshold and use fast BM3D mode:
-
-        >>> from phenotypic.prefab import FilamentousFungiPipeline
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>>
-        >>> pipeline = FilamentousFungiPipeline(
-        ...     bm3d_stage_arg="hard_thresholding",
-        ...     quality_k=2.5,
-        ... )
-        >>> image = load_synth_yeast_plate()
-        >>> result = pipeline.apply(image)
-        >>> print(f"Detected {result.objmap[:].max()} colonies")
+    See Also:
+        :doc:`/tutorials/notebooks/10_detecting_filamentous_fungi` for a
+        visual walkthrough of filamentous fungi detection.
+        :doc:`/explanation/filamentous_fungi_algorithm` for the theory
+        behind the reconnection algorithm.
+        :doc:`/explanation/prefab_pipelines_guide` for guidance on choosing
+        a prefab pipeline.
     """
 
     def __init__(

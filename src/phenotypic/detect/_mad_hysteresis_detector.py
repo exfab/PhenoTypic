@@ -15,112 +15,73 @@ from ..abc_ import ThresholdDetector
 
 
 class MadHysteresisDetector(ThresholdDetector):
-    """MAD-based hysteresis detector for noise-aware colony segmentation.
+    """Detect colonies by MAD-based noise estimation and hysteresis thresholding.
 
-    MadHysteresisDetector estimates the background noise floor using the Median
-    Absolute Deviation (MAD), then applies hysteresis thresholding with
-    MAD-derived thresholds. Unlike histogram-based detectors (Otsu, Li, etc.)
-    that partition intensity space, this estimates the noise structure of a
-    response map — ideal for filter outputs (CED, Hessian, LoG) where the noise
-    floor is known to be approximately Gaussian.
+    Estimate the background noise floor using the Median Absolute Deviation
+    (MAD), then apply hysteresis thresholding with thresholds set as
+    multiples of the estimated noise standard deviation. Designed for
+    filter response maps (CED, Hessian, LoG, Frangi) where the noise
+    structure is approximately Gaussian and histogram-based methods produce
+    unstable thresholds. For a full comparison see
+    :doc:`/explanation/detection_strategies_compared`.
 
-    The noise standard deviation is estimated as ``sigma_noise = 1.4826 * MAD``,
-    where ``MAD = median(|data - median(data)|)``. The scale factor 1.4826
-    makes the estimator consistent with the standard deviation for normally
-    distributed data. Thresholds are then set as multiples of sigma_noise.
+    Best For:
+        * Filter response maps (CED, Hessian, LoG, Frangi) where the
+          noise floor is approximately Gaussian.
+        * Low-contrast colonies where signal is faint relative to
+          background texture and MAD provides a stable noise estimate.
+        * Standardised pipelines where multiplier-based thresholds
+          generalise across plates with varying colony density.
+
+    Consider Also:
+        * :class:`HysteresisDetector` when thresholds should be derived
+          from the intensity histogram rather than noise statistics.
+        * :class:`OtsuDetector` when the image is a raw intensity plate
+          with a bimodal histogram.
+        * :class:`ChanVeseDetector` when colonies have diffuse edges and
+          region-based segmentation is more appropriate.
 
     Args:
-        k_high: High threshold multiplier. The high threshold is set to
-            ``k_high * sigma_noise``. Pixels above this seed connected regions.
-            Higher values are more conservative. Default 5.0.
+        k_high: High-threshold multiplier. The high threshold is
+            ``k_high * sigma_noise``; pixels above this seed connected
+            regions. Higher values are more conservative. Typical range:
+            3.0--8.0. Default: 5.0.
 
-        k_low: Low threshold multiplier. The low threshold is set to
-            ``k_low * sigma_noise``. Pixels above this are included if connected
-            to high-threshold seeds. Must be less than k_high. Default 2.5.
+        k_low: Low-threshold multiplier. The low threshold is
+            ``k_low * sigma_noise``; pixels above this are included if
+            connected to a high-threshold seed. Must be less than
+            ``k_high``. Typical range: 1.5--4.0. Default: 2.5.
 
-        min_size: Minimum object size in pixels. Connected components smaller
-            than this are removed. Default 20.
+        min_size: Minimum colony area in pixels. Connected components
+            smaller than this are removed as noise. Default: 20.
 
-        connectivity: Connectivity for connected-component analysis. 1 for
-            4-connected, 2 for 8-connected. Default 2.
+        connectivity: Pixel connectivity for labelling connected
+            components. ``1`` for 4-connectivity, ``2`` for
+            8-connectivity. Default: 2.
 
-        ignore_zeros: If True (default), exclude zero-intensity pixels from MAD
-            computation. Essential for images with black borders or masks.
+        ignore_zeros: Exclude zero-intensity pixels from MAD computation.
+            Enable for plates with black borders or masked regions.
+            Default: True.
 
-        ignore_borders: If True (default), remove colonies touching image edges
-            via clear_border(). Eliminates partial colonies at boundaries.
-
-    Attributes:
-        k_high: High threshold multiplier.
-        k_low: Low threshold multiplier.
-        min_size: Minimum connected component size in pixels.
-        connectivity: Connectivity for labeling (1 or 2).
-        ignore_zeros: Whether to exclude zero pixels from MAD computation.
-        ignore_borders: Whether to remove edge-touching colonies.
+        ignore_borders: Remove colonies touching image edges via
+            ``clear_border()``. Recommended for grid-based colony counting
+            to eliminate partial colonies at plate boundaries. Default:
+            True.
 
     Returns:
-        Image: Input image with objmask set to binary mask. True pixels represent
-        detected colonies, False = background.
+        Image: Input image with ``objmask`` set to binary mask and
+        ``objmap`` set to labeled connected components.
 
     Raises:
-        ValueError: If k_low >= k_high.
+        ValueError: If ``k_low`` >= ``k_high``.
 
-    **Use cases**
-
-    - **Filter response maps:** CED, Hessian, LoG, or Frangi outputs where the
-      noise structure is approximately Gaussian and histogram-based methods
-      produce unstable thresholds.
-    - **Low-contrast colonies:** When colony signal is faint relative to
-      background texture. MAD is robust to outliers and provides stable noise
-      estimation.
-    - **Standardized pipelines:** Multiplier-based thresholds generalize across
-      plates with similar imaging conditions but varying colony density.
-
-    **Limitations**
-
-    - Assumes approximately Gaussian noise. Non-Gaussian noise (e.g., salt-and-
-      pepper) may cause over- or under-estimation of sigma_noise.
-    - Two multiplier parameters to tune. Start with defaults (k_high=5, k_low=2.5)
-      and adjust based on false positive/negative rates.
-    - Not suitable for raw intensity images with bimodal histograms — use Otsu or
-      HysteresisDetector instead.
-
-    **Parameter effects on colony detection**
-
-    - **k_high (float):** Controls seed strictness. Higher → fewer seeds, fewer
-      false positives, may miss faint colonies. Lower → more seeds, more noise.
-    - **k_low (float):** Controls expansion sensitivity. Lower → more aggressive
-      expansion from seeds, captures faint colony edges. Higher → tighter masks.
-    - **min_size (int):** Removes small noise components. Increase for noisy
-      images.
-    - **connectivity (int):** 2 (8-connected) captures diagonal connections.
-      Use 1 (4-connected) for stricter separation.
-
-    Examples:
-        Basic detection on a filter response map::
-
-            from phenotypic import Image
-            from phenotypic.detect import MadHysteresisDetector
-
-            plate = Image.imread("agar_plate.jpg")
-            detector = MadHysteresisDetector(k_high=5.0, k_low=2.5)
-            detected = detector.apply(plate)
-            mask = detected.objmask[:]
-            print(f"Detected {mask.sum()} colony pixels")
-
-        Pipeline with CED preprocessing::
-
-            from phenotypic import ImagePipeline
-            from phenotypic.enhance import GaussianBlur
-            from phenotypic.detect import MadHysteresisDetector
-
-            pipeline = ImagePipeline([
-                GaussianBlur(sigma=1.5),
-                MadHysteresisDetector(k_high=4.0, k_low=2.0, min_size=50)
-            ])
-
-            image = Image.imread("plate.jpg")
-            result = pipeline.apply(image)
+    See Also:
+        :doc:`/tutorials/notebooks/02_detecting_colonies`
+            Step-by-step tutorial for basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm`
+            Guide for selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared`
+            In-depth comparison of all detection strategies.
     """
 
     def __init__(

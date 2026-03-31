@@ -20,146 +20,103 @@ import skimage.morphology as morphology
 
 
 class SinePeakDetector(GridInferenceMixin, ObjectDetector):
-    """Grid-based colony detector using sinusoidal cross-correlation peak detection.
+    """Detect colonies on gridded plates using sinusoidal cross-correlation peak finding.
 
-    SinePeakDetector identifies colonies in gridded plate images by generating a
-    sinusoidal template matching expected colony periodicity, computing FFT-based
-    normalized cross-correlation against projection signals, and selecting peaks
-    from the correlation output. This implements a gitter-faithful approach
-    (Wagih & Parts, 2014) that is more robust to irregular colony intensities
-    than simple peak finding, because rank-based correlation is insensitive to
-    outliers and monotonic intensity transformations.
+    Generate a sinusoidal template matching the expected colony periodicity,
+    compute FFT-based rank (Spearman) cross-correlation against row and
+    column projection signals, and select peaks from the correlation output
+    to locate grid positions. Rank-based correlation is insensitive to
+    outlier colonies and monotonic intensity transformations, making this
+    more robust than direct peak finding on plates with heterogeneous
+    growth. For a full comparison see
+    :doc:`/explanation/detection_strategies_compared`.
 
-    The detector builds on the RoundPeaksDetector workflow (threshold, label,
-    grid assignment) but replaces the mixin's static ``_estimate_edges`` with an
-    instance method that uses sinusoidal cross-correlation for edge estimation.
+    Best For:
+        * Gridded plates (96-well, 384-well, pinned arrays) where colonies
+          are arranged in a regular periodic pattern.
+        * Plates with heterogeneous colony sizes or uneven growth where
+          rank-based correlation outperforms intensity-based peak finding.
+        * High-throughput batch processing of arrayed plates without
+          manual grid specification.
+
+    Consider Also:
+        * :class:`RoundPeaksDetector` for a simpler grid detector when
+          colony intensities are uniform and direct peak finding suffices.
+        * :class:`OtsuDetector` when colonies are not gridded and a global
+          threshold is appropriate.
+        * :class:`RankOtsuDetector` when spatial illumination variation is
+          the primary challenge rather than grid localisation.
 
     Args:
-        thresh_method: Thresholding method ('otsu', 'mean', 'local', 'triangle',
-            'minimum', 'isodata', 'li'). Default 'otsu'. Controls binary mask creation.
+        thresh_method: Thresholding method for binary mask creation.
+            Accepted values: ``'otsu'``, ``'mean'``, ``'local'``,
+            ``'triangle'``, ``'minimum'``, ``'isodata'``, ``'li'``.
+            Default: ``'otsu'``.
 
-        subtract_background: If True (default), apply white tophat transform to
-            remove uneven illumination before thresholding.
+        subtract_background: Apply white tophat transform to remove
+            uneven illumination before thresholding. Default: True.
 
-        remove_noise: If True (default), apply morphological opening to remove small
-            noise artifacts from the binary mask.
+        remove_noise: Apply morphological opening to remove small noise
+            artifacts from the binary mask. Default: True.
 
-        footprint_width: Width in pixels for the background subtraction kernel.
-            Default 6. When a GridImage is provided, an adaptive kernel sized to
-            1.5x colony spacing is used instead.
+        footprint_width: Width in pixels for the background subtraction
+            kernel. When a GridImage is provided, an adaptive kernel sized
+            to 1.5x colony spacing is used instead. Default: 6.
 
-        noise_radius: Radius for the diamond structuring element used in
-            morphological noise removal. Default 1 (3x3 diamond, matching gitter).
-            Increase for larger noise artifacts.
+        noise_radius: Radius of the diamond structuring element for
+            morphological noise removal. Default: 1.
 
-        smoothing_sigma: Gaussian smoothing of row/column intensity profiles before
-            cross-correlation. Default 2.0. Higher values smooth noise but may
-            merge peaks.
+        smoothing_sigma: Standard deviation for Gaussian smoothing of
+            row/column intensity profiles before cross-correlation. Higher
+            values smooth noise but may merge adjacent peaks. Set to 0 to
+            disable. Default: 2.0.
 
-        min_peak_distance: Minimum pixel distance between detected peaks. If None,
-            automatically estimated from grid dimensions.
+        min_peak_distance: Minimum pixel distance between detected peaks.
+            If ``None``, automatically estimated from grid dimensions.
+            Default: None.
 
-        peak_prominence: Minimum prominence threshold for peak detection. If None,
-            auto-calculated as 0.1 * signal range. Higher values are more selective.
+        peak_prominence: Minimum prominence for peak detection. If
+            ``None``, auto-calculated as 0.1 * signal range. Higher values
+            are more selective. Default: None.
 
-        edge_refinement: If True (default), refine grid edges using local intensity
-            profiles for improved accuracy.
+        edge_refinement: Refine grid edges using weighted local intensity
+            profiles for improved accuracy. Default: True.
 
-        correlation_threshold: Minimum normalized cross-correlation value for a
-            peak to be considered valid. Default 0.3. Correlation values below this
-            threshold are zeroed before peak detection. Lower values accept weaker
-            matches; higher values are more selective.
+        correlation_threshold: Minimum normalised cross-correlation for a
+            peak to be valid. Lower values accept weaker matches; higher
+            values are more selective. Typical range: 0.1--0.5. Default:
+            0.3.
 
-        selection_mode: Strategy for choosing one object per grid cell. ``"dominant"``
-            (default) keeps the largest object by pixel count. ``"centered"`` keeps
-            the object whose centroid is closest to the cell center. ``"regularized"``
-            uses a two-pass approach that fits a global regular-grid model from median
-            row/column centroids, then re-selects per cell. Best for pinned arrays.
+        selection_mode: Strategy for choosing one object per grid cell.
+            ``"dominant"`` keeps the largest object by pixel count.
+            ``"centered"`` keeps the object closest to the cell centre.
+            ``"regularized"`` fits a global regular-grid model from median
+            centroids, then re-selects per cell. Default: ``"dominant"``.
 
-        split_merged: If True (default), pre-split merged colonies that span
-            multiple grid cells using EDT watershed before grid assignment.
-
-    Attributes:
-        thresh_method, subtract_background, remove_noise, footprint_radius,
-        noise_radius, smoothing_sigma, min_peak_distance, peak_prominence,
-        edge_refinement, correlation_threshold, selection_mode, split_merged
+        split_merged: Pre-split merged colonies spanning multiple grid
+            cells using EDT watershed before grid assignment. Default:
+            True.
 
     Returns:
-        Image: Input image with objmask (binary colony mask) and objmap (labeled
-        colonies assigned to grid cells) set.
+        Image: Input image with ``objmask`` set to binary mask and
+        ``objmap`` set to labeled connected components.
 
     Raises:
-        ValueError: If invalid thresholding method specified.
-
-    **Use cases**
-
-    - **Gridded plate images:** Colonies arranged in regular arrays (96-well, 384-well
-      plates, pinned cultures). Sinusoidal cross-correlation exploits periodic structure
-      more robustly than direct peak finding.
-    - **Variable colony intensity:** Rank-based (Spearman) correlation is insensitive
-      to outlier colonies or uneven growth, making this detector suitable for plates
-      with heterogeneous colony sizes.
-    - **Batch processing:** Efficient FFT-based correlation enables high-throughput
-      analysis without manual grid specification (though GridImage with explicit
-      dimensions is more accurate).
-
-    **Limitations**
-
-    - Grid inference from binary mask alone is less accurate than explicit GridImage
-      specification. For best results, use with GridImage when grid parameters known.
-    - Assumes regular grid geometry. Works poorly with irregular colony spacing or
-      missing grid positions.
-    - Best for yeast-like morphologies. Less suitable for filamentous, spreading, or
-      irregular colony shapes.
-    - Slightly higher computational cost than RoundPeaksDetector due to FFT-based
-      cross-correlation.
-
-    **Parameter effects on colony detection**
-
-    - **thresh_method:** Different histogram assumptions (Otsu=variance, mean=simple,
-      local=adaptive). Affects mask quality and downstream correlation.
-    - **subtract_background, remove_noise:** Remove preprocessing artifacts (vignetting,
-      dust, noise) that can create spurious correlation peaks.
-    - **smoothing_sigma:** Balances noise robustness vs peak resolution. Higher values
-      smooth noise but may merge adjacent colonies.
-    - **correlation_threshold:** Controls sensitivity to weak matches. Lower values
-      detect more peaks (including false positives); higher values are more selective
-      but may miss faint colonies.
-
-    Examples:
-        Basic grid detection with sinusoidal cross-correlation::
-
-            from phenotypic import Image
-            from phenotypic.detect import SinePeakDetector
-
-            plate = Image.imread("plate_grid.jpg")
-            detector = SinePeakDetector()
-            detected = detector.apply(plate)
-            num_colonies = detected.objects.count
-            print(f"Detected {num_colonies} colonies in grid")
-
-        Pipeline with preprocessing for noisy plate images::
-
-            from phenotypic import ImagePipeline
-            from phenotypic.enhance import GaussianBlur, CLAHE
-            from phenotypic.detect import SinePeakDetector
-
-            pipeline = ImagePipeline([
-                GaussianBlur(sigma=1.5),
-                CLAHE(clip_limit=2.0),
-                SinePeakDetector(
-                    thresh_method='otsu',
-                    smoothing_sigma=2.0,
-                    correlation_threshold=0.25,
-                )
-            ])
-
-            image = Image.imread("plate_grid.jpg")
-            result = pipeline.apply(image)
+        ValueError: If ``thresh_method`` is not one of the accepted
+            values.
 
     References:
-        Wagih, O. and Parts, L. (2014). gitter: a robust and accurate method for
-        quantification of colony sizes from plate images. G3 (Bethesda), 4(3), 547-552.
+        [1] O. Wagih and L. Parts, "gitter: a robust and accurate method
+        for quantification of colony sizes from plate images,"
+        *G3 (Bethesda)*, vol. 4, no. 3, pp. 547--552, 2014.
+
+    See Also:
+        :doc:`/tutorials/notebooks/02_detecting_colonies`
+            Step-by-step tutorial for basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm`
+            Guide for selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared`
+            In-depth comparison of all detection strategies.
     """
 
     def __init__(

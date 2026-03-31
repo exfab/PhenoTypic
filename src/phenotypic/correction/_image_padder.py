@@ -11,85 +11,61 @@ from phenotypic.abc_ import ImageCorrector
 
 
 class ImagePadder(ImageCorrector):
-    """Add pixels to image edges using configurable padding modes.
+    """Extend image dimensions by adding pixels to any combination of edges.
 
-    ImagePadder extends images by adding pixels to any combination of edges (left, right,
-    top, bottom). This is useful for creating consistent image dimensions, adding safety
-    margins before rotation, or providing border space for edge-preserving operations.
+    Pad the image on the left, right, top, and/or bottom using a
+    configurable fill mode. All image components (RGB, gray, detect_mat,
+    objmap) are padded in sync; the object map is always zero-padded to
+    preserve label integrity. When applied to a GridImage, grid structure
+    is preserved and positions are recalculated automatically.
 
-    **Use cases for colony phenotyping:**
+    For usage context, see :doc:`/how_to/notebooks/crop_and_pad`.
 
-    - **Prevent clipping during rotation:** Add safety margin before rotating plate images
-      to ensure no colonies are cropped out at corners.
-    - **Standardize batch dimensions:** Pad images to consistent size for batch processing
-      pipelines that require uniform dimensions.
-    - **Create detection margin:** Add border space when colonies grow near plate edges,
-      improving grid detection accuracy.
-    - **Edge-preserving operations:** Pad with 'reflect' or 'edge' mode before convolution
-      operations to reduce boundary artifacts.
-    - **Align multi-timepoint images:** Pad images from different timepoints to align
-      coordinate systems when plate position varies.
+    Best For:
+        - Adding safety margins before rotation so corner colonies are
+          not clipped.
+        - Standardizing image dimensions across a batch for pipelines
+          that require uniform size.
+        - Creating border space when colonies grow near plate edges,
+          improving grid detection accuracy.
 
-    **Important caveats:**
+    Consider Also:
+        - :class:`ImageCropper` when the image needs to be reduced rather
+          than extended.
+        - :class:`GridAligner` for correcting plate rotation after
+          padding.
 
-    - Padding increases memory usage proportional to added pixels.
-    - Padded regions contain no real data (affects measurements near new edges).
-    - Constant padding creates artificial background that may affect detection thresholds.
-    - Reflect/edge modes can create false colony-like features if padding is large.
-    - GridImage grid positions are recalculated after padding (old positions invalid).
+    Args:
+        left: Pixels to add on the left edge. ``None`` means no padding.
+            Typical range: 50--200. Default: ``None``.
+        right: Pixels to add on the right edge. ``None`` means no padding.
+            Typical range: 50--200. Default: ``None``.
+        top: Pixels to add on the top edge. ``None`` means no padding.
+            Typical range: 50--200. Default: ``None``.
+        bottom: Pixels to add on the bottom edge. ``None`` means no
+            padding. Typical range: 50--200. Default: ``None``.
+        mode: Fill strategy passed to ``np.pad``. Accepted values:
+            ``'constant'``, ``'reflect'``, ``'edge'``, ``'symmetric'``,
+            ``'wrap'``, ``'linear_ramp'``, ``'maximum'``, ``'mean'``,
+            ``'median'``, ``'minimum'``, ``'empty'``. ``'edge'`` is safest
+            for colony analysis; ``'reflect'`` reduces convolution boundary
+            artifacts. Default: ``'constant'``.
+        constant_value: Fill value when ``mode='constant'``. ``0`` for
+            black borders, ``255`` for white. Default: ``0``.
 
-    **Grid-aware padding:** When applied to GridImage, the padder preserves grid structure
-    (nrows, ncols, grid_finder) while adapting grid positions to the padded dimensions.
-    Grid positions are automatically recalculated by grid_finder to align with new boundaries.
+    Returns:
+        Image: Input image with all components padded by the specified
+        amounts. GridImage grid positions are recalculated.
 
-    Attributes:
-        left (int | None): Pixels to add on left edge. If None, no left padding (equiv to 0).
-        right (int | None): Pixels to add on right edge. If None, no right padding (equiv to 0).
-        top (int | None): Pixels to add on top edge. If None, no top padding (equiv to 0).
-        bottom (int | None): Pixels to add on bottom edge. If None, no bottom padding
-            (equiv to 0).
-        mode (str): Padding mode for np.pad. Options: 'constant' (default), 'reflect', 'edge',
-            'symmetric', 'wrap', 'linear_ramp', 'maximum', 'mean', 'median', 'minimum',
-            'empty'. Default: 'constant'.
-        constant_value (int | float): Value for constant mode padding. Only used when
-            mode='constant'. Default: 0 (black).
+    Raises:
+        ValueError: If any padding value is negative.
+        ValueError: If ``mode`` is not a valid ``np.pad`` mode.
 
-    **Parameter effects:**
-
-    - left/right/top/bottom: Control padding amount. Larger values add more edge space but
-      increase memory. Typical values: 50-200 pixels depending on resolution.
-    - mode='constant': Creates uniform background (good for dark/light borders). Use
-      constant_value=0 for black, 255 for white background.
-    - mode='reflect': Mirrors image at boundaries (reduces artifacts but may create false
-      colonies if padding is large). Best for edge-preserving convolutions.
-    - mode='edge': Extends edge pixels (safest for colony analysis, minimal artifacts).
-    - mode='symmetric': Like reflect but includes edge pixel in mirror. Similar artifact
-      risk to reflect.
-
-    Examples:
-        Basic usage: add 50px black border to all edges:
-
-        >>> from phenotypic import Image
-        >>> from phenotypic.correction import ImagePadder
-        >>> image = Image.imread('plate_image.tiff')  # doctest: +SKIP
-        >>> print(f"Original size: {image.shape}")  # doctest: +SKIP
-        >>> padder = ImagePadder(left=50, right=50, top=50, bottom=50)
-        >>> padded = padder.apply(image)  # doctest: +SKIP
-        >>> print(f"Padded size: {padded.shape}")  # doctest: +SKIP
-
-        Pipeline: pad before rotation to prevent clipping:
-
-        >>> from phenotypic import Image, ImagePipeline
-        >>> from phenotypic.correction import ImagePadder
-        >>> from phenotypic.detect import OtsuDetector
-        >>> image = Image.imread('rotated_plate.jpg')  # doctest: +SKIP
-        >>> # Add 100px safety margin with reflection to avoid artifacts
-        >>> pipeline = ImagePipeline([
-        ...     ImagePadder(left=100, right=100, top=100, bottom=100, mode='reflect'),
-        ...     OtsuDetector()
-        ... ])
-        >>> result = pipeline.operate(image)  # doctest: +SKIP
-        >>> print(f"Detected {len(result.objects)} colonies")  # doctest: +SKIP
+    See Also:
+        :doc:`/how_to/notebooks/crop_and_pad` for a visual walkthrough
+        of padding and cropping plate images.
+        :doc:`/how_to/notebooks/correct_grid_rotation` for combining
+        padding with rotation correction.
     """
 
     def __init__(self,

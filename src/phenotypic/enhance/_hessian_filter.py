@@ -10,66 +10,57 @@ from phenotypic.abc_ import ImageEnhancer
 
 
 class HessianFilter(ImageEnhancer):
-    """Hessian-based multi-scale edge and boundary detection.
+    """Enhance edges and ridge-like structures via multi-scale Hessian filtering.
 
-    Computes eigenvalue-based Hessian filter across multiple scales to detect edges,
-    boundaries, and ridge-like structures by analyzing image curvature. On agar plate
-    images, this enhances colony edges, boundaries, and thin filamentous structures,
-    making detection more robust across varying colony sizes and morphologies.
+    Computes eigenvalue-based Hessian responses across multiple scales to
+    highlight colony boundaries, thin filamentous structures, and ridge-like
+    features in ``detect_mat``. Multi-scale analysis makes detection robust
+    across varying colony sizes and morphologies.
 
-    Use cases (agar plates):
-    - Enhance sharp boundaries between colonies and agar background.
-    - Detect thin or elongated structures (filaments, branching) with poor contrast.
-    - Preprocess before thresholding-based or morphological detection.
-    - Improve edge clarity for size-invariant colony segmentation.
-    - Analyze textured colonies or biofilms with complex internal structure.
+    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Tuning and effects:
-    - sigmas: Range of standard deviations for Gaussian derivatives. Smaller sigmas
-      detect finer edges; larger sigmas detect broader structural boundaries. Should
-      span the expected range of colony feature scales (e.g., sigmas=range(1, 5)
-      for 1-5 pixel width edges). Multi-scale analysis improves robustness.
-    - alpha: Sensitivity to plate-like (flat) structure deviations. Lower values are
-      more permissive; higher values stricter. Typical range: 0.1-1.0. Default 0.5.
-    - beta: Sensitivity to blob-like (spherical) structure deviations. Lower values
-      are more permissive; higher values stricter. Typical range: 0.1-1.0. Default 0.5.
-    - gamma: Background suppression parameter; suppresses low-curvature regions (agar
-      background). Larger values suppress background more aggressively. Typical
-      range: 10-20. Default 15.
-    - black_ridges: If True, detect dark ridges (colonies) on bright background.
-      If False, detect bright ridges on dark background. For plate imaging with
-      dark colonies on light agar, use True.
-    - mode: How to handle image boundaries ('reflect', 'constant', 'nearest', 'mirror',
-      'wrap'). Default 'reflect' works well for most images.
-    - cval: Constant value used if mode='constant'. Default 0.
+    Best For:
+        - Sharp boundaries between colonies and agar background.
+        - Thin or elongated structures (filaments, branching) with poor
+          contrast.
+        - Size-invariant colony edge enhancement before thresholding.
+        - Textured colonies or biofilms with complex internal structure.
 
-    Guidance:
-    - Hessian works best on images with relatively clear edges and contrast.
-    - Combine with mild smoothing (GaussianBlur) beforehand to suppress noise.
-    - Start with sigmas=range(1, 4) and adjust based on expected colony edge widths.
-    - For fine edges, use smaller sigmas; for broader boundaries, use larger sigmas.
-    - Output is a ridge response map (grayscale), not binary; thresholding may
-      be needed afterward for segmentation.
-    - Multi-scale analysis (multiple sigmas) is more robust than single-scale.
+    Consider Also:
+        - :class:`SatoRidgeFilter` for continuous tube-like structures where
+          Hessian eigenvalue ratios provide cleaner ridge responses.
+        - :class:`MeijeringRidgeFilter` for very fine neurite-like filaments.
+        - :class:`LaplaceEnhancer` for simpler second-derivative edge
+          detection without multi-scale analysis.
 
-    Caveats:
-    - Output is a ridge/edge probability measure, not binary. Thresholding required.
-    - Sensitive to noise and texture artifacts; noisy images may produce spurious edges.
-    - On textured agar or with dust/condensation, require prior smoothing.
-    - Computational cost increases with number of sigmas and image size.
-    - May over-emphasize fine texture if sigmas are too small or gamma too small.
-    - Parameters alpha, beta, gamma require tuning for different colony morphologies.
+    Args:
+        sigmas: Sequence of standard deviations for Gaussian derivatives.
+            Smaller values detect finer edges; larger values detect broader
+            structures. Typical range: ``(1, 2, 3)`` to ``(1, 5)``.
+            Default: ``(1, 2, 3)``.
+        alpha: Sensitivity to plate-like structure deviations. Lower values
+            are more permissive. Typical range: 0.1--1.0. Default: 0.5.
+        beta: Sensitivity to blob-like structure deviations. Lower values
+            are more permissive. Typical range: 0.1--1.0. Default: 0.5.
+        gamma: Background suppression threshold. Larger values suppress
+            low-curvature regions (agar background) more aggressively.
+            Typical range: 10--20. Default: 15.
+        black_ridges: If ``True``, detect dark ridges on bright background.
+            If ``False`` (default), detect bright ridges on dark background.
+        mode: Boundary handling. Accepted values: ``'reflect'``,
+            ``'constant'``, ``'nearest'``, ``'mirror'``, ``'wrap'``.
+            Default: ``'reflect'``.
+        cval: Fill value when ``mode='constant'``. Default: 0.
 
-    Attributes:
-        sigmas (tuple | list): Sequence of standard deviations for Hessian
-            computation. Each sigma represents a scale; default (1, 2, 3).
-        alpha (float): Plate-like structure sensitivity (0 to 1). Default 0.5.
-        beta (float): Blob-like structure sensitivity (0 to 1). Default 0.5.
-        gamma (float): Background suppression threshold. Default 15.
-        black_ridges (bool): If True, detect dark structures on bright background;
-            if False, detect bright structures on dark background. Default False.
-        mode (str): Boundary handling mode for Gaussian convolution. Default 'reflect'.
-        cval (float): Constant value for 'constant' mode boundary handling. Default 0.
+    Returns:
+        Image: Input image with ``detect_mat`` replaced by the Hessian
+        ridge response map. ``rgb`` and ``gray`` are unchanged.
+
+    See Also:
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
+        visual walkthrough of ridge and edge enhancement on plate images.
+        :doc:`/explanation/what_enhancement_does` for background on
+        Hessian-based structure detection.
     """
 
     def __init__(

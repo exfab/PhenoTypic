@@ -12,75 +12,59 @@ from ..abc_ import ImageCorrector
 
 
 class BayesShrinkCorrector(ImageCorrector):
-    """Adaptive wavelet denoising with BayesShrink for all image components.
+    """Denoise all image components using adaptive BayesShrink wavelet thresholding.
 
-    Applies BayesShrink wavelet denoising to RGB (if present), grayscale, and enhanced
-    grayscale simultaneously. BayesShrink computes adaptive thresholds for each wavelet
-    subband, producing higher quality results than VisuShrink by preserving fine details
-    while removing noise.
+    Apply subband-adaptive wavelet denoising to RGB (if present), grayscale,
+    and detection matrix simultaneously. BayesShrink estimates a separate
+    threshold for each wavelet subband, preserving fine colony detail while
+    suppressing noise more selectively than a universal threshold.
 
-    Use cases (agar plates):
-    - Denoise RGB images for publication while preserving colony color and texture.
-    - Remove spatially varying noise (e.g., from uneven illumination or aging cameras)
-      across all image components.
-    - Clean up scanner artifacts in archival RGB images with minimal detail loss.
-    - Pre-process for multi-channel feature extraction (color composition + morphology).
+    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Tuning and effects:
-    - sigma: Noise level. None (default) auto-estimates. BayesShrink uses sigma to
-      compute subband-adaptive thresholds, so accurate estimation improves quality.
-    - wavelet: 'db2' (default) balances smoothness and locality. 'db4' for finer details.
-    - mode: 'soft' (default) for smoother denoising, 'hard' for sharper edges.
-    - convert2ycbcr: If True (default), RGB is denoised in YCbCr space (luminance and
-      chrominance handled separately), which preserves colony color better.
+    Best For:
+        - Plates imaged with aging or high-ISO cameras that introduce
+          spatially varying sensor noise.
+        - RGB plate scans destined for publication where color fidelity
+          and fine detail must be preserved.
+        - Pre-processing before multi-channel feature extraction (color
+          composition and morphology).
 
-    Caveats:
-    - Modifies ALL image components irreversibly. For non-destructive preprocessing,
-      use BayesShrinkEnhancer instead.
-    - Requires more computation than VisuShrink due to adaptive threshold calculation.
-    - Assumes Gaussian noise; not ideal for impulse noise (salt-and-pepper).
-    - Does not correct illumination gradients; combine with background subtraction.
+    Consider Also:
+        - :class:`VisuShrinkCorrector` when a faster, simpler universal
+          threshold is acceptable.
+        - :class:`StableDenoise` for variance-stabilized BM3D denoising
+          of grayscale channels with Poisson-Gaussian noise.
+        - :class:`BayesShrinkEnhancer` when only the detection matrix
+          should be denoised (non-destructive to RGB and gray).
 
-    Attributes:
-        sigma (float | None): Noise std deviation. None = auto-estimate.
-        wavelet (str): Wavelet family. Default 'db2'.
-        mode (Literal['soft', 'hard']): Thresholding mode. Default 'soft'.
-        wavelet_levels (int | None): Decomposition levels. None = max-3.
-        convert2ycbcr (bool): Denoise RGB in YCbCr space. Default True.
+    Args:
+        sigma: Noise standard deviation. ``None`` auto-estimates from the
+            finest wavelet subband. Typical range: 0.01--0.1 for normalized
+            images. Default: ``None``.
+        wavelet: Wavelet family name. ``'db2'`` balances smoothness and
+            locality; ``'db4'`` preserves finer spatial detail. Default:
+            ``'db2'``.
+        mode: Thresholding mode. ``'soft'`` produces smoother results;
+            ``'hard'`` retains sharper edges with possible noise residue.
+            Default: ``'soft'``.
+        wavelet_levels: Number of decomposition levels. ``None`` uses the
+            maximum minus three (automatic). Default: ``None``.
+        convert2ycbcr: Denoise RGB in YCbCr space so luminance and
+            chrominance are handled separately, preserving colony color.
+            Only applies when RGB data is present. Default: ``True``.
 
-    Examples:
-        High-quality RGB denoising for publication:
+    Returns:
+        Image: Input image with all components (RGB, gray, detect_mat)
+        transformed by adaptive wavelet denoising.
 
-        >>> from phenotypic import Image
-        >>> from phenotypic.correction import BayesShrinkCorrector
-        >>> image = Image.imread('raw_plate_scan.jpg')  # doctest: +SKIP
-        >>> # BayesShrink preserves more detail than VisuShrink
-        >>> corrector = BayesShrinkCorrector()
-        >>> denoised = corrector.apply(image)  # doctest: +SKIP
-        >>> # All components denoised with adaptive thresholding
-        >>> assert not np.array_equal(denoised.rgb[:], image.rgb[:])  # doctest: +SKIP
-        >>> assert not np.array_equal(denoised.gray[:], image.gray[:])  # doctest: +SKIP
+    References:
+        [1] S. G. Chang, B. Yu, and M. Vetterli, "Adaptive wavelet
+        thresholding for image denoising and compression," *IEEE Trans.
+        Image Process.*, vol. 9, no. 9, pp. 1532--1546, Sep. 2000.
 
-        Fine detail preservation with db4 wavelet:
-
-        >>> from phenotypic import Image
-        >>> from phenotypic.correction import BayesShrinkCorrector
-        >>> image = Image.imread('high_res_plate.jpg')  # doctest: +SKIP
-        >>> # db4 preserves finer details than default db2
-        >>> corrector = BayesShrinkCorrector(wavelet='db4')
-        >>> denoised = corrector.apply(image)  # doctest: +SKIP
-        >>> # Better detail preservation for texture analysis
-
-        Spatially varying noise handling:
-
-        >>> from phenotypic import Image
-        >>> from phenotypic.correction import BayesShrinkCorrector
-        >>> # Image with uneven illumination (varying noise levels)
-        >>> image = Image.imread('vignette_plate.jpg')  # doctest: +SKIP
-        >>> # BayesShrink adapts to local noise levels
-        >>> corrector = BayesShrinkCorrector()
-        >>> denoised = corrector.apply(image)  # doctest: +SKIP
-        >>> # Aggressive denoising in high-noise regions, conservative in low-noise
+    See Also:
+        :doc:`/how_to/notebooks/correct_color_cast` for a walkthrough of
+        denoising plate images before color analysis.
     """
 
     def __init__(

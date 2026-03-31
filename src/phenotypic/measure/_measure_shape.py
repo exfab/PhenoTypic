@@ -18,94 +18,48 @@ from ..tools_.measurement_info_ import SHAPE
 
 
 class MeasureShape(MeasureFeatures):
-    r"""Measure morphological characteristics of detected microbial colonies.
+    r"""Measure comprehensive morphological characteristics of detected colonies.
 
-    This class extracts comprehensive geometric metrics from colony shapes, including area, perimeter,
-    circularity, convex hull properties, width-based measures, Feret diameters, elongation (eccentricity),
-    and ellipse fitting parameters. These measurements quantify colony morphology, growth patterns, and
-    spatial organization on agar plates.
+    Extract geometric metrics from each colony shape: area, perimeter,
+    circularity, convex hull properties, width-based measures, Feret
+    diameters, eccentricity, and best-fit ellipse parameters. The output
+    DataFrame provides a full morphological profile for phenotypic
+    classification and growth-pattern analysis.
 
-    **Intuition:** Colony shape encodes biological and environmental information. Regular circular colonies
-    indicate healthy, isotropic growth under uniform conditions. Irregular, elongated, or filamentous
-    morphologies suggest mutations, directional growth (chemotaxis), nutrient stress, or environmental
-    gradients on the agar surface. Shape measures are used to classify colony types, assess fitness,
-    and detect phenotypic variants in high-throughput screening.
+    Best For:
+        - Distinguishing colony morphotypes (smooth circular wild-type
+          vs wrinkled, branching, or invasive mutants).
+        - Assessing growth symmetry and directionality via eccentricity
+          and orientation.
+        - Detecting invasive or spreading growth through low solidity
+          values.
+        - Morphological clustering for automated strain identification.
 
-    **Use cases (agar plates):**
-    - Distinguish colony morphotypes: smooth circular (wild-type) vs wrinkled, branching, or invasive
-      (mutant phenotypes).
-    - Assess growth symmetry via eccentricity and orientation; colonies with high eccentricity may
-      indicate motility, chemotaxis, or unidirectional stress.
-    - Detect invasive or spreading growth via low solidity (indented periphery) or high convex area
-      relative to actual area.
-    - Enable morphological clustering and classification for automated strain identification or
-      phenotypic screening.
-    - Measure colony compactness to predict growth kinetics: compact colonies often have higher growth
-      rates than sprawling ones under nutrient limitation.
-
-    **Caveats:**
-    - Shape measurements depend entirely on segmentation quality; poor thresholding or edge detection
-      yield misleading morphology metrics.
-    - Perimeter is sensitive to pixel-level noise; small variations in boundary can inflate perimeter
-      and reduce circularity. Consider smoothing or filtering for robust estimates.
-    - Feret diameters and convex hull computation are sensitive to boundary artifacts; outlier or
-      misdetected pixels at the edge disproportionately affect these metrics.
-    - Radius-based measures (mean, median, max width) depend on centroid accuracy; off-center centroids
-      from irregular shapes can yield biased width values.
-    - Eccentricity ranges 0–1 (circle to line); values near 0 and 1 are rare for biological objects.
-      Interpret eccentricity alongside aspect ratio and orientation for robust shape classification.
+    Consider Also:
+        - :class:`MeasureSize` for a lightweight area-only measurement
+          when full morphology is not needed.
+        - :class:`MeasureTexture` for surface roughness and pattern
+          features that complement shape metrics.
+        - :class:`MeasureBounds` for bounding box and centroid data
+          without shape statistics.
 
     Returns:
-        pd.DataFrame: Object-level morphological measurements with columns:
-            - Label: Unique object identifier.
-            - Area: Number of pixels in the colony.
-            - Perimeter: Boundary length in pixels.
-            - Circularity: 4π·Area/Perimeter² (1.0 = perfect circle; <1 = irregular).
-            - Compactness: Perimeter²/(4π·Area) (inverse of circularity; >1 for irregular shapes).
-            - ConvexArea: Area of convex hull (smallest convex polygon containing the colony).
-            - Solidity: Area/ConvexArea (1.0 = convex; <1 = indented/spreading).
-            - Extent: Area/BboxArea (1.0 = fills bounding box; <1 = spread out).
-            - BboxArea: Area of axis-aligned bounding rectangle.
-            - MeanRadius, MedianRadius, MaxRadius: Distance from centroid to edge (robust size measures).
-            - MinFeretDiameter, MaxFeretDiameter: Minimum/maximum caliper diameters (orientation-independent).
-            - MajorAxisLength, MinorAxisLength: Axes of best-fit ellipse.
-            - Eccentricity: Ellipse elongation (0 = circle; 1 = line).
-            - Orientation: Angle of major axis (radians, –π/2 to π/2).
+        pd.DataFrame: Object-level morphological measurements with
+        columns:
 
-    Examples:
-        Measure colony morphology for phenotypic classification:
+            - Label, Area, Perimeter, Circularity, Compactness,
+              ConvexArea, Solidity, Extent, BboxArea.
+            - MeanRadius, MedianRadius, MaxRadius (distance-transform
+              based).
+            - MinFeretDiameter, MaxFeretDiameter (caliper diameters).
+            - MajorAxisLength, MinorAxisLength, Eccentricity,
+              Orientation.
 
-        >>> from phenotypic import Image
-        >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.measure import MeasureShape
-        >>> # Load plate with multiple morphotype colonies
-        >>> image = Image.imread("morphotype_plate.jpg")  # doctest: +SKIP
-        >>> detector = OtsuDetector()
-        >>> image = detector.operate(image)  # doctest: +SKIP
-        >>> # Measure morphology
-        >>> shaper = MeasureShape()
-        >>> shapes = shaper.operate(image)  # doctest: +SKIP
-        >>> # Classify morphotypes by circularity and solidity
-        >>> smooth_round = shapes[
-        ...     (shapes['Shape_Circularity'] > 0.8) &
-        ...     (shapes['Shape_Solidity'] > 0.95)
-        ... ]  # doctest: +SKIP
-        >>> invasive = shapes[shapes['Shape_Solidity'] < 0.85]  # doctest: +SKIP
-        >>> print(f"Smooth/round colonies: {len(smooth_round)}")  # doctest: +SKIP
-        >>> print(f"Invasive/spreading colonies: {len(invasive)}")  # doctest: +SKIP
-
-        Detect elongated or directional growth:
-
-        >>> # Use eccentricity and max width to find elongated colonies
-        >>> shapes = shaper.operate(image)  # doctest: +SKIP
-        >>> elongated = shapes[shapes['Shape_Eccentricity'] > 0.7]  # doctest: +SKIP
-        >>> print(f"Highly elongated colonies: {len(elongated)}")  # doctest: +SKIP
-        >>> # Visualize growth directionality
-        >>> import numpy as np
-        >>> for idx, row in elongated.iterrows():  # doctest: +SKIP
-        ...     angle = np.degrees(row['Shape_Orientation'])
-        ...     aspect = row['Shape_MajorAxisLength'] / row['Shape_MinorAxisLength']
-        ...     print(f"Colony {row['OBJECT_Label']}: angle={angle:.1f}deg, aspect={aspect:.2f}")
+    See Also:
+        :doc:`/tutorials/notebooks/07_measuring_and_exporting` for a
+        walkthrough of measuring and exporting colony data.
+        :doc:`/explanation/measurement_metrics_biological_meaning` for
+        interpreting shape metrics in a biological context.
     """
 
     _measurement_info_class = SHAPE

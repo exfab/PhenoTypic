@@ -12,81 +12,52 @@ from phenotypic.tools_.mixin import FootprintMixin
 
 
 class OpeningSubtractBg(ImageEnhancer, FootprintMixin):
-    """OpenCV-accelerated background subtraction via morphological opening.
+    """Subtract background from ``detect_mat`` via OpenCV-accelerated morphological opening.
 
-    Computes the white top-hat transform (original minus morphological opening)
-    using OpenCV's ``cv2.morphologyEx(MORPH_TOPHAT)``, which leverages C++/SIMD
-    for significantly better throughput than scikit-image equivalents. The result
-    isolates bright foreground structures smaller than the structuring element
-    while removing slow-varying background intensity.
+    Computes the white top-hat transform (original minus morphological
+    opening) using OpenCV's C++/SIMD backend, isolating bright foreground
+    structures smaller than the structuring element while removing
+    slow-varying background intensity. Significantly faster than
+    scikit-image equivalents for high-throughput workflows.
+
+    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
+
+    Best For:
+        - Fast background subtraction for high-throughput plate screening.
+        - Removing uneven illumination gradients and agar shading before
+          colony detection.
+        - Pipelines where speed matters (large batches, parameter sweeps).
+        - Drop-in performance upgrade over :class:`SubtractRollingBall`
+          when a flat structuring element is acceptable.
+
+    Consider Also:
+        - :class:`SubtractRollingBall` for parabolic background estimation
+          that handles gradual intensity ramps more accurately.
+        - :class:`SubtractGaussian` for Gaussian-based background
+          subtraction with continuous control over the background scale.
+        - :class:`WhiteTophatEnhance` when you want to keep only the
+          extracted small bright structures.
 
     Args:
-        shape (Literal["square", "diamond", "disk"]): Structuring element
-            geometry. ``"disk"`` gives isotropic removal suited to round
-            colonies; ``"square"`` is fastest but may introduce directional
-            artifacts; ``"diamond"`` is a compromise.
-        width (int): Diameter of the structuring element in pixels. Must be
-            larger than colony diameter to avoid subtracting colony signal.
-            Typical agar-plate values: 31-101 depending on resolution.
-        n_iter (int): Number of times to apply the morphological operation.
-            Higher values intensify background removal. Default: 1.
+        shape: Structuring element geometry. ``'disk'`` (default) gives
+            isotropic removal suited to round colonies; ``'square'`` is
+            fastest; ``'diamond'`` is a compromise.
+        width: Diameter of the structuring element in pixels. Must be
+            larger than colony diameter to avoid subtracting colony
+            signal. Typical range: 31--101. Default: 51.
+        n_iter: Number of morphological iterations. Higher values
+            intensify background removal. Default: 1.
 
     Returns:
-        Image: Modified image with ``detect_mat`` containing only foreground
-        structures smaller than the structuring element.
+        Image: Input image with ``detect_mat`` containing only foreground
+        structures smaller than the structuring element. ``rgb`` and
+        ``gray`` are unchanged.
 
-    Raises:
-        ValueError: If an unsupported footprint shape is provided.
-
-    Use cases (agar plates):
-        - Fast background subtraction for high-throughput plate screening.
-        - Remove uneven illumination gradients and agar shading before
-          colony detection.
-        - Drop-in performance upgrade over ``SubtractRollingBall`` when a
-          flat structuring element (rather than parabolic ball) is acceptable.
-        - Pre-processing step in pipelines where speed matters (large batches,
-          parameter sweeps).
-
-    Limitations:
-        - Flat SE approximation: unlike rolling-ball, the opening uses a flat
-          structuring element, so very gradual intensity ramps may leave
-          residual background.
-        - ``width`` must exceed the largest colony diameter; too-small values
-          erode colony signal.
-        - Very large ``width`` values increase memory use and may slow down
-          even the OpenCV backend.
-
-    Parameter effects:
-        - **shape:** ``"disk"`` preserves round colony morphology best and
-          avoids directional artifacts. ``"square"`` is marginally faster.
-          ``"diamond"`` is intermediate.
-        - **width:** Controls the scale of background removal. Increase to
-          preserve larger colonies; decrease to remove finer background
-          texture. A good starting point is 2-3x the largest colony diameter.
-
-    Examples:
-        Basic background subtraction:
-
-        >>> from phenotypic.enhance import OpeningSubtractBg
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>> image = load_synth_yeast_plate()
-        >>> enhancer = OpeningSubtractBg(shape='disk', width=51)
-        >>> result = enhancer.apply(image)
-        >>> result.detect_mat[:].min() >= 0.0
-        True
-
-        In a detection pipeline:
-
-        >>> from phenotypic import ImagePipeline
-        >>> from phenotypic.enhance import OpeningSubtractBg
-        >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>> image = load_synth_yeast_plate()
-        >>> pipeline = ImagePipeline([
-        ...     OpeningSubtractBg(shape='disk', width=51),
-        ...     OtsuDetector(),
-        ... ])
-        >>> result = pipeline.apply(image)
+    See Also:
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
+        visual walkthrough of background subtraction on plate images.
+        :doc:`/explanation/what_enhancement_does` for background on
+        morphological background removal strategies.
     """
 
     def __init__(

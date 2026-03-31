@@ -17,48 +17,48 @@ logger = logging.getLogger(__name__)
 
 
 class MeasureColorComposition(MeasureFeatures):
-    """
-    Performs perceptual color composition analysis on segmented image objects.
+    """Classify colony pixels into 11 perceptual color categories and measure composition.
 
-    This class extends the MeasureFeatures class to provide color composition
-    analysis using an 11-color perceptual model. The model applies a priority
-    hierarchy to classify pixels into categories that better match human color
-    perception than simple hue-based classification.
+    Applies a priority-based color model (neutrals → special colors → hues)
+    to classify each colony pixel into one of 11 categories: Black, White,
+    Gray, Pink, Brown, Red, Orange, Yellow, Green, Cyan, Blue, Purple.
+    Returns per-colony percentage breakdowns as DataFrame columns.
 
-    The 11 color categories are:
-    - Neutrals (Priority 1): Black, White, Gray
-    - Special Colors (Priority 2): Pink, Brown
-    - Standard Hues (Priority 3): Red, Orange, Yellow, Green, Cyan, Blue, Purple/Magenta
+    Best For:
+        - Quantifying pigmentation differences between strains or conditions.
+        - Detecting color-based phenotypes (sectoring, pigment production).
+        - Screening for metabolic changes that alter colony color.
 
-    Implementation uses NumPy vectorization for efficiency, with no pixel-level loops.
-    The classification follows human perception principles where neutrals take priority,
-    followed by special cases (pink/brown), and finally standard hue-based colors.
+    Consider Also:
+        - :class:`MeasureColor` for continuous color statistics (mean, std)
+          in CIELAB, HSV, and XYZ color spaces.
+        - :class:`MeasureIntensity` when only grayscale brightness matters.
 
     Args:
-        hue_normalization (float): Multiplier to normalize hue to 0-360 range. Default is 360.0
-            (assuming input hue is in 0-1 range from skimage).
-        sat_normalization (float): Multiplier to normalize saturation to 0-100 range. Default is 100.0.
-        val_normalization (float): Multiplier to normalize value/brightness to 0-100 range. Default is 100.0.
-        black_value_max (float): Maximum value threshold for black classification. Default is 20.
-        neutral_sat_max (float): Maximum saturation threshold for white and gray classification. Default is 15.
-        white_value_min (float): Minimum value threshold for white classification. Default is 85.
-        gray_value_min (float): Minimum value threshold for gray classification. Default is 20.
-        gray_value_max (float): Maximum value threshold for gray classification. Default is 85.
+        hue_normalization: Multiplier to normalize hue to 0--360 range.
+            Default: 360.0 (for skimage 0--1 hue input).
+        sat_normalization: Multiplier to normalize saturation to 0--100.
+            Default: 100.0.
+        val_normalization: Multiplier to normalize value to 0--100.
+            Default: 100.0.
+        black_value_max: Maximum value for black classification. Typical
+            range: 10--25. Default: 20.
+        neutral_sat_max: Maximum saturation for white/gray classification.
+            Default: 15.
+        white_value_min: Minimum value for white classification. Default: 85.
+        gray_value_min: Minimum value for gray classification. Default: 20.
+        gray_value_max: Maximum value for gray classification. Default: 85.
 
-    Example:
-        Measure and analyze color composition with custom thresholds:
+    Returns:
+        pd.DataFrame: One row per colony with percentage columns for each
+        of the 11 color categories (e.g., ``ColorComp_Red``,
+        ``ColorComp_White``).
 
-        >>> from phenotypic import Image
-        >>> from phenotypic.measure import MeasureColorComposition
-        >>> img = Image.load('path/to/image.tif')  # doctest: +SKIP
-        >>> measurer = MeasureColorComposition()
-        >>> composition = measurer.measure(img)  # doctest: +SKIP
-        >>> print(composition)  # doctest: +SKIP
-        >>> # Custom thresholds for different lighting conditions
-        >>> measurer_custom = MeasureColorComposition(
-        ...     black_value_max=15,  # Stricter black threshold
-        ...     white_value_min=90   # Stricter white threshold
-        ... )
+    See Also:
+        :doc:`/tutorials/notebooks/07_measuring_and_exporting` for a
+        walkthrough of colony measurement workflows.
+        :doc:`/explanation/measurement_metrics_biological_meaning` for
+        interpreting color metrics biologically.
     """
 
     _measurement_info_class = ColorComposition

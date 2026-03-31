@@ -23,84 +23,48 @@ def _safe_otsu(values: np.ndarray) -> float:
 
 
 class SecondaryOtsuDetector(ThresholdDetector):
-    """Two-stage Otsu refinement detector with per-object thresholding.
+    """Detect colonies by two-stage Otsu thresholding with per-object refinement.
 
-    SecondaryOtsuDetector applies Otsu's threshold in two stages: (1) initial Otsu
-    on full image (or use existing objmask), (2) re-apply Otsu independently to each
-    detected object. This refines boundaries by computing a local threshold for each
-    colony based on its own intensity distribution, improving edge accuracy when
-    colonies have varying intensities or backgrounds.
+    Apply an initial global Otsu threshold (or reuse an existing
+    ``objmask``), then re-threshold each detected object independently
+    using its own intensity distribution. This sharpens colony boundaries
+    on plates where colonies vary in brightness, removing soft halos while
+    preserving colony cores. For a full comparison see
+    :doc:`/explanation/detection_strategies_compared`.
 
-    Args:
-        None
+    Best For:
+        * Refining boundaries after an initial global threshold that leaves
+          soft or blurry colony edges.
+        * Heterogeneous plates where colonies differ in pigmentation or
+          optical density across the plate surface.
+        * Suppressing preprocessing halos that expand colony outlines
+          beyond their true boundaries.
 
-    Attributes:
-        None
+    Consider Also:
+        * :class:`OtsuDetector` when a single global threshold already
+          produces clean colony boundaries.
+        * :class:`HysteresisDetector` when colony intensity varies
+          smoothly and dual-threshold expansion is more appropriate than
+          per-object refinement.
+        * :class:`RankOtsuDetector` when spatially varying illumination is
+          the primary cause of boundary inaccuracy.
 
     Returns:
-        Image: Input image with objmask refined via per-object Otsu thresholding.
+        Image: Input image with ``objmask`` set to binary mask and
+        ``objmap`` set to labeled connected components.
 
-    Raises:
-        ValueError: If threshold computation fails (e.g., all pixels same value).
+    References:
+        [1] N. Otsu, "A threshold selection method from gray-level
+        histograms," *IEEE Trans. Syst., Man, Cybern.*, vol. 9, no. 1,
+        pp. 62--66, 1979.
 
-    **Use cases**
-
-    - **Boundary refinement:** Initial detection is correct but blurry at edges.
-      Per-object Otsu sharpens colony boundaries using local intensity distribution.
-    - **Heterogeneous plates:** Colonies vary in intensity across the plate. Each
-      object gets its own threshold adapted to local conditions.
-    - **Halo suppression:** Soft halos around colonies from preprocessing can blur
-      edges. Per-object thresholding removes halo while keeping colony centers.
-
-    **Limitations**
-
-    - Two-stage approach loses small colonies at edges. Initial Otsu may miss faint
-      or small objects; secondary stage can't recover them.
-    - Requires prior detection. If no objects initially detected (objmask all zeros),
-      falls back to applying Otsu twice on full image, which may not improve results.
-    - Small objects may fail thresholding. Objects with too few pixels or uniform
-      intensity cannot compute a meaningful Otsu threshold and are preserved as-is.
-    - Per-object processing adds overhead. For plates with many objects (>1000),
-      consider whether global secondary thresholding might suffice.
-
-    **Parameter effects on colony detection**
-
-    - No user-tunable parameters. Behavior is deterministic: apply Otsu to each
-      object independently. Results depend on input image intensity distribution
-      and initial objmask quality.
-
-    Examples:
-        Refine initial detection with secondary Otsu::
-
-            from phenotypic import Image
-            from phenotypic.detect import OtsuDetector, SecondaryOtsuDetector
-
-            plate = Image.imread("plate.jpg")
-
-            # Initial Otsu detection
-            detector1 = OtsuDetector()
-            intermediate = detector1.apply(plate)
-
-            # Refine boundaries with per-object secondary Otsu
-            detector2 = SecondaryOtsuDetector()
-            refined = detector2.apply(intermediate)
-            mask = refined.objmask[:]
-            print(f"Refined mask: {mask.sum()} colony pixels")
-
-        Pipeline combining threshold refinement::
-
-            from phenotypic import ImagePipeline
-            from phenotypic.enhance import GaussianBlur
-            from phenotypic.detect import OtsuDetector, SecondaryOtsuDetector
-
-            pipeline = ImagePipeline([
-                GaussianBlur(sigma=1.5),
-                OtsuDetector(),
-                SecondaryOtsuDetector()
-            ])
-
-            image = Image.imread("plate.jpg")
-            result = pipeline.apply(image)
+    See Also:
+        :doc:`/tutorials/notebooks/02_detecting_colonies`
+            Step-by-step tutorial for basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm`
+            Guide for selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared`
+            In-depth comparison of all detection strategies.
     """
 
     def _operate(self, image: Image) -> Image:

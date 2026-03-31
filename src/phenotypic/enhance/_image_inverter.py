@@ -11,35 +11,37 @@ from ..abc_ import ImageEnhancer
 
 
 class ImageInverter(ImageEnhancer):
-    """
-    Invert the detection matrix image (negate pixel intensities).
+    """Invert ``detect_mat`` pixel intensities (negate brightness).
 
-    Reverses the brightness scale so dark regions become bright and vice versa.
-    This can be useful for correcting inverted input images or for exploring
-    alternative visual representations before detection.
+    Reverses the brightness scale so dark regions become bright and vice
+    versa. For uint8 data the inversion is ``255 - pixel``; for
+    floating-point data it is ``max_value - pixel``. Use this when
+    detectors expect colonies as bright regions but the source image has
+    colonies as dark regions.
 
-    Use cases (agar plates):
-    - Correct for inverted scan output from some imaging systems.
-    - Invert low-contrast plates where colony boundaries are defined by dark
-      edges on a bright background (converted to bright edges on dark background).
-    - Preprocessing step before detectors that expect colonies as bright regions
-      when source images have colonies as dark regions.
+    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Tuning and effects:
-    - This operation has no parameters; it performs a simple brightness reversal.
-    - For uint8 images: values are inverted as `255 - pixel`.
-    - For floating-point images: values are inverted as `1.0 - pixel` (assumes
-      normalized [0, 1] range) or as `max_value - pixel` if range differs.
+    Best For:
+        - Correcting inverted scan output from imaging systems that
+          produce dark-on-bright colony images.
+        - Preprocessing before detectors that expect bright colonies on
+          dark backgrounds.
+        - Plates where colony boundaries are defined by dark edges on a
+          bright background.
 
-    Caveats:
-    - Inversion can amplify noise in low-signal regions.
-    - May not improve detection if the fundamental issue is poor contrast rather
-      than inverted polarity.
-    - Verify that inversion is actually needed before applying; use visual inspection
-      or test detection performance on a sample image.
+    Consider Also:
+        - :class:`SetDetectMode` when switching the detection channel
+          (e.g., to red or green) would resolve the contrast issue.
+        - :class:`UnsharpMask` when the issue is low contrast rather
+          than inverted polarity.
 
-    Attributes:
-        None. ImageInverter has no configurable parameters.
+    Returns:
+        Image: Input image with ``detect_mat`` intensity-inverted.
+        ``rgb`` and ``gray`` are unchanged.
+
+    See Also:
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
+        visual walkthrough of enhancement pipelines on plate images.
     """
 
     def __init__(self):

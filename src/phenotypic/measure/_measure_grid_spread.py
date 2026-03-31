@@ -13,71 +13,39 @@ from phenotypic.tools_.measurement_info_ import BBOX, GRID
 
 
 class MeasureGridSpread(GridMeasureFeatures):
-    """Quantify spatial distribution of colonies within grid sections of arrayed assays.
+    """Quantify within-well colony dispersion using pairwise centroid distances.
 
-    This class measures colony clustering and spread within each grid cell (well) of a high-throughput
-    microbial phenotyping plate. It computes the sum of squared pairwise distances between all colony
-    pairs in each section, revealing whether multiple colonies are dispersed within a well or tightly
-    clustered near the center.
+    Compute the sum of squared pairwise Euclidean distances between all
+    colony centroids in each grid section. High values indicate multiple
+    dispersed objects within a single well -- a sign of over-segmentation,
+    fragmented growth, or invasive spreading.
 
-    **Intuition:** In ideal arrayed assays, each well contains a single localized colony at the expected
-    position. High ObjectSpread values indicate multiple colonies, fragmented growth, or spread beyond
-    the well boundary. This metric helps identify sections with detection ambiguity or atypical growth
-    patterns that may compromise phenotypic measurements.
+    Best For:
+        - Detecting over-segmented wells where multiple objects were
+          found instead of a single cohesive colony.
+        - Identifying invasive or spreading growth that extends beyond
+          the designated grid position.
+        - Flagging wells with questionable data quality for manual
+          review or exclusion from downstream analysis.
 
-    **Use cases (agar plates):**
-    - Detect over-segmentation: Multiple detected objects in a single well instead of one cohesive colony.
-    - Identify spreading or invasive growth: Colonies extending far beyond their designated grid position
-      into adjacent areas.
-    - Flag wells with questionable data quality for manual review or exclusion from downstream analysis.
-    - Assess plate quality: Systematic high spread values across the plate suggest uneven agar surface,
-      condensation issues, or poor inoculation technique.
-    - Prioritize sections for refinement operations (e.g., object merging or filtering).
-
-    **Caveats:**
-    - ObjectSpread depends on colony density and size; small plates with tight spacing have inherently
-      different baselines than larger assays.
-    - Spread values are not normalized by well area; compare only within the same plate type and grid.
-    - Touching or overlapping colonies may register as a single large object (low spread) or two smaller
-      objects (high spread) depending on detection algorithm performance. Use in conjunction with object
-      count and boundary metrics for robust quality assessment.
-    - The metric is sensitive to very small or very large colonies; outliers in position or size can
-      disproportionately inflate spread values.
+    Consider Also:
+        - :class:`MeasureGridSpatial` for between-well neighbor
+          distances rather than within-well dispersion.
+        - :class:`MeasureGridLinRegStats` for positional accuracy
+          metrics based on linear regression.
+        - :class:`MeasureBounds` for raw centroid positions per colony.
 
     Returns:
-        pd.DataFrame: Section-level statistics with columns:
-            - Section numbers (index from grid).
-            - Count: Number of colonies detected in each section.
-            - ObjectSpread: Sum of squared pairwise Euclidean distances between colonies.
-                Sorted in descending order by ObjectSpread.
+        pd.DataFrame: Section-level statistics sorted by spread
+        (descending) with columns:
 
-    Examples:
-        Measure colony spread across a plate:
+            - count: number of colonies detected in the section.
+            - ObjectSpread: sum of squared pairwise Euclidean distances
+              between colony centroids in the section.
 
-        >>> from phenotypic import GridImage
-        >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.measure import MeasureGridSpread
-        >>> # Load a plate with grid
-        >>> grid_image = GridImage.imread("plate_384well.jpg", nrows=16, ncols=24)  # doctest: +SKIP
-        >>> # Detect colonies
-        >>> detector = OtsuDetector()
-        >>> grid_image = detector.operate(grid_image)  # doctest: +SKIP
-        >>> # Measure spread per well
-        >>> spreader = MeasureGridSpread()
-        >>> spread_results = spreader.operate(grid_image)  # doctest: +SKIP
-        >>> # Find wells with high spread (potential over-segmentation)
-        >>> high_spread = spread_results.nlargest(10, 'GridSpread_ObjectSpread')  # doctest: +SKIP
-        >>> print(f"Top 10 problematic wells:")  # doctest: +SKIP
-        >>> print(high_spread)  # doctest: +SKIP
-
-        Identify over-segmented wells:
-
-        >>> # Flag wells with both multiple detections AND high spread
-        >>> multi_obj = spread_results[spread_results['count'] > 1]  # doctest: +SKIP
-        >>> high_spread_multi = multi_obj[
-        ...     multi_obj['GridSpread_ObjectSpread'] > spread_results['GridSpread_ObjectSpread'].quantile(0.75)
-        ... ]  # doctest: +SKIP
-        >>> print(f"Wells needing refinement: {list(high_spread_multi.index)}")  # doctest: +SKIP
+    See Also:
+        :doc:`/tutorials/notebooks/07_measuring_and_exporting` for a
+        walkthrough of grid-level measurements.
     """
 
     _measurement_info_class = GRID_SPREAD

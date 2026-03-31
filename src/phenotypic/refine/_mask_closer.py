@@ -38,6 +38,7 @@ class MaskCloser(ObjectRefiner, FootprintMixin):
         width: Footprint width in pixels. Larger values bridge wider gaps
             but risk merging distinct colonies. Typical range: 3--9.
             Default: 5.
+        n_iter: Number of closing iterations. Default: 1.
 
     Returns:
         Image: Input image with ``objmask`` and ``objmap`` morphologically

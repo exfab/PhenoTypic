@@ -10,68 +10,54 @@ from phenotypic.abc_ import ImageEnhancer
 
 
 class MeijeringRidgeFilter(ImageEnhancer):
-    """
-    Meijering neuriteness filter to detect fine ridge-like structures and delicate features.
+    """Enhance fine ridge-like structures in ``detect_mat`` with the Meijering neuriteness filter.
 
-    Computes the Meijering neuriteness measure using the Hessian matrix eigenvalues
-    to enhance elongated, thread-like structures (neurites, delicate filaments, thin
-    wrinkles, and river-like features). On agar plate images, this highlights fine
-    ridge-like features and is particularly useful for organisms that form delicate
-    filamentous or network-like morphologies (e.g., actinomycetes, fungal hyphae,
-    bacterial networks).
+    Computes the Meijering neuriteness measure from Hessian matrix eigenvalues
+    to highlight elongated, thread-like structures such as delicate filaments,
+    thin wrinkles, and network-like features. More selective than
+    :class:`SatoRidgeFilter` for very fine, well-separated ridges.
 
-    Use cases (agar plates):
-    - Enhance delicate filamentous structures too thin for standard detection.
-    - Detect fine wrinkles, grooves, or network features in biofilms.
-    - Improve segmentation of sparse mycelial networks or bacterial filaments.
-    - Preprocess images from organisms with fine, branching morphologies.
+    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Tuning and effects:
-    - sigmas: Range of standard deviations for Gaussian derivatives. Smaller sigmas
-      detect finer structures; larger sigmas detect thicker features. Should span
-      the expected range of colony feature scales (e.g., sigmas=range(1, 5)
-      for 1-5 pixel width structures, or range(3, 10) for thicker features).
-    - alpha: Shape parameter controlling sensitivity to elongated vs. blob-like
-      structures. Default None uses -1/(ndim+1). For 2D images, this becomes -1/3.
-      Larger (less negative) values detect more blob-like features; smaller
-      (more negative) values are stricter about linearity. Rarely requires manual
-      tuning.
-    - black_ridges: If True, detect dark ridges (colonies) on bright background.
-      If False, detect bright ridges on dark background. For plate imaging, use
-      True when colonies appear darker than agar.
-    - mode: Boundary handling when computing derivatives ('constant', 'reflect',
-      'wrap', 'nearest', 'mirror'). Default 'reflect' usually works best.
-    - cval: Fill value for 'constant' mode (default 0).
+    Best For:
+        - Delicate filamentous structures too thin for standard detection
+          (actinomycetes, fungal hyphae, bacterial networks).
+        - Fine wrinkles, grooves, or network features in biofilms.
+        - Sparse mycelial networks or bacterial filaments that require
+          sensitive ridge detection.
 
-    Guidance:
-    - Combine with mild smoothing (GaussianBlur) beforehand to suppress noise;
-      Meijering is sensitive to high-frequency artifacts, especially with small sigmas.
-    - Start with sigmas=range(1, 5) for detecting fine filaments.
-    - Leave alpha=None unless you have specific knowledge of structure linearity.
-    - Choose sigmas smaller than for Sato when targeting very fine features.
-    - Meijering is often more selective than Sato; use when you want to isolate
-      thin, well-separated ridge structures.
+    Consider Also:
+        - :class:`SatoRidgeFilter` for thicker, continuous tubular
+          structures with less sensitivity to parameter tuning.
+        - :class:`HessianFilter` for combined edge and ridge detection
+          with blob sensitivity control.
+        - :class:`CoherenceEnhancingDiffusion` for enhancing directional
+          structures via anisotropic smoothing before ridge detection.
 
-    Caveats:
-    - Output is a neuriteness map (probability measure), not binary. Thresholding is
-      typically needed afterward.
-    - Computationally expensive for large sigma ranges; consider limiting to 3-5
-      different scales for speed.
-    - May miss thick, blob-like structures; use Frangi for mixed blob/tube detection.
-    - Less responsive than Frangi to blobness/structuredness tuning; use Frangi
-      if you need finer control over feature characteristics.
-    - Due to edge effects, results may be cropped by ~4 pixels (scikit-image behavior).
+    Args:
+        sigmas: Sequence of standard deviations for Gaussian derivatives.
+            Smaller values detect finer structures; larger values detect
+            thicker features. Typical range: ``(1, 2, 3)`` to
+            ``range(1, 10)``. Default: ``(1, 2, 3)``.
+        alpha: Shape parameter controlling linearity sensitivity. ``None``
+            (default) uses ``-1/(ndim+1)`` which is ``-1/3`` for 2D
+            images. Rarely requires manual tuning.
+        black_ridges: If ``True``, detect dark ridges on bright background.
+            If ``False`` (default), detect bright ridges on dark background.
+        mode: Boundary handling. Accepted values: ``'constant'``,
+            ``'reflect'``, ``'wrap'``, ``'nearest'``, ``'mirror'``.
+            Default: ``'reflect'``.
+        cval: Fill value when ``mode='constant'``. Default: 0.
 
-    Attributes:
-        sigmas (tuple | list): Sequence of standard deviations for Hessian
-            computation. Each sigma represents a scale; default (1, 2, 3).
-        alpha (float | None): Shape parameter for elongated feature sensitivity.
-            Default None uses -1/(ndim+1) for 2D images.
-        black_ridges (bool): If True, detect dark structures on bright background;
-            if False, detect bright structures on dark background. Default False.
-        mode (str): Boundary handling mode ('constant', 'reflect', 'wrap',
-            'nearest', 'mirror'). Default 'reflect'.
-        cval (float): Fill value for 'constant' mode. Default 0.
+    Returns:
+        Image: Input image with ``detect_mat`` replaced by the Meijering
+        neuriteness response map. ``rgb`` and ``gray`` are unchanged.
+
+    See Also:
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
+        visual walkthrough of ridge enhancement on plate images.
+        :doc:`/explanation/what_enhancement_does` for background on
+        Hessian-based ridge detection methods.
     """
 
     def __init__(

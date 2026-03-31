@@ -23,95 +23,63 @@ from ..tools_.measurement_info_ import TEXTURE
 class MeasureTexture(MeasureFeatures):
     """Measure colony surface texture using Haralick features from gray-level co-occurrence matrices.
 
-    This class extracts second-order texture features (Haralick features) from colony grayscale images,
-    quantifying surface roughness, regularity, and directional patterns. Features are computed at specified
-    pixel offsets (scales) and across four directional angles (0°, 45°, 90°, 135°), then averaged.
+    Compute 13 second-order Haralick texture features per colony at one
+    or more pixel-offset scales, across four directional angles (0, 45,
+    90, 135 degrees), plus direction-averaged values. These features
+    quantify surface roughness, regularity, and directional patterns
+    that distinguish colony morphotypes.
 
-    **Intuition:** Colony texture reflects mycelial structure, growth patterns, and physiological state.
-    Smooth, glabrous colonies have low texture contrast and entropy. Wrinkled, powdery, or sporulated
-    colonies exhibit high contrast and energy. Radial growth patterns show angular correlation; random
-    growth shows low correlation. Texture metrics capture morphological complexity beyond area and
-    perimeter, enabling fine-grained phenotypic discrimination.
+    Best For:
+        - Distinguishing smooth wild-type colonies from rough, wrinkled,
+          or sporulated mutants.
+        - Assessing mycelial organization in filamentous fungi (radial
+          vs cottony growth).
+        - Multi-feature phenotypic clustering when combined with size,
+          shape, and color measurements.
 
-    **Use cases (agar plates):**
-    - Distinguish wild-type smooth colonies from rough/wrinkled mutants (e.g., Bacillus subtilis biofilm
-      morphologies, Pseudomonas aeruginosa rough variants).
-    - Detect sporulation and powdery growth via high contrast and entropy.
-    - Assess mycelial organization in fungi: organized radial hyphae (high correlation) vs diffuse cottony
-      growth (low correlation).
-    - Identify growth stress or nutrient depletion via texture changes within the same strain over time.
-    - Enable multi-feature clustering combining size, shape, color, and texture for robust phenotyping.
+    Consider Also:
+        - :class:`MeasureShape` for geometric morphology metrics
+          (circularity, Feret diameters) that complement texture.
+        - :class:`MeasureIntensity` for brightness statistics without
+          spatial co-occurrence information.
+        - :class:`MeasureColor` for pigmentation-based phenotyping.
 
-    **Caveats:**
-    - Haralick features depend on image quantization level (quant_lvl); lower levels (8) reduce texture
-      nuance but are faster; higher levels (64) capture detail but are sensitive to noise.
-    - Scale parameter affects the neighborhood size; small scales (1-2 px) capture fine texture (mycelial
-      threads), large scales (5-10 px) capture coarse patterns (overall wrinkles). No single scale is
-      universal; use multiple scales and average or compare within-plate.
-    - Texture metrics are sensitive to uneven illumination and shadow; preprocess with illumination
-      correction or histogram equalization if images show strong gradients.
-    - Enhancement (rescale_intensity) improves texture detail but can inflate contrast in low-variance
-      regions (e.g., uniform smooth colonies); use judiciously and validate with manual inspection.
-    - Computation is slow for large colonies and high quantization levels; optimize scale and quant_lvl
-      for your specific assay.
-
-    Attributes:
-        scale (list[int]): Distance parameter(s) for Haralick co-occurrence matrix, typically 1–10 pixels.
-            Larger values capture coarse texture; smaller values capture fine detail.
-        quant_lvl (Literal[8, 16, 32, 64]): Gray-level quantization (number of bins). Lower values
-            (8, 16) reduce dimensionality and computation time; higher values (32, 64) preserve texture
-            nuance but increase noise sensitivity.
-        enhance (bool): Whether to rescale intensity within each colony to [0,1] before Haralick
-            computation. Improves contrast in low-variance regions but can bias comparisons. Defaults to False.
-        warn (bool): Whether to issue warnings if Haralick computation fails for specific objects.
-            Failures typically occur with very small colonies or empty regions. Defaults to False.
+    Args:
+        scale: Pixel offset(s) for the co-occurrence matrix. A single
+            integer or list of integers. Small values (1--2) capture fine
+            texture; large values (5--10) capture coarse patterns.
+            Default: ``5``.
+        quant_lvl: Number of gray-level bins for quantization. Accepted
+            values: ``8``, ``16``, ``32``, ``64``. Lower values are
+            faster; higher values preserve texture nuance but are more
+            noise-sensitive. Default: ``32``.
+        enhance: Rescale each colony's intensity to [0, 1] before
+            computing Haralick features. Improves contrast in
+            low-variance regions but can bias cross-colony comparisons.
+            Default: ``False``.
+        warn: Emit warnings when Haralick computation fails for
+            individual colonies (typically very small objects).
+            Default: ``False``.
 
     Returns:
         pd.DataFrame: Object-level texture measurements with columns:
-            - Label: Unique object identifier.
-            - Texture measurements by scale and direction: AngularSecondMoment-deg000-scale##,
-              Contrast-deg045-scale##, ..., Correlation-avg-scale##, etc.
-            - 13 Haralick features × 4 angles = 52 directional columns per scale.
-            - Final 13 columns: averages across angles for each feature at the given scale.
+
+            - Label: unique object identifier.
+            - 13 Haralick features x 4 angles = 52 directional columns
+              per scale (e.g., ``Contrast-deg000-scale05``).
+            - 13 direction-averaged columns per scale (e.g.,
+              ``Contrast-avg-scale05``).
 
     References:
-        [1] https://mahotas.readthedocs.io/en/latest/api.html#mahotas.features.haralick
-        [2] R. M. Haralick, K. Shanmugam, and I. Dinstein, "Textural Features for Image Classification,"
-            IEEE Transactions on Systems, Man, and Cybernetics, vol. SMC-3, no. 6, pp. 610–621, Nov. 1973,
-            doi: 10.1109/TSMC.1973.4309314.
+        [1] R. M. Haralick, K. Shanmugam, and I. Dinstein, "Textural
+        features for image classification," *IEEE Trans. Syst., Man,
+        Cybern.*, vol. SMC-3, no. 6, pp. 610--621, Nov. 1973.
 
-    Examples:
-        Measure texture to distinguish morphotypes:
-
-        >>> from phenotypic import Image
-        >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.measure import MeasureTexture
-        >>> # Load plate with smooth and wrinkled colonies
-        >>> image = Image.imread("morphotype_plate.jpg")  # doctest: +SKIP
-        >>> detector = OtsuDetector()
-        >>> image = detector.operate(image)  # doctest: +SKIP
-        >>> # Measure texture at a single scale with default quantization
-        >>> measurer = MeasureTexture(scale=3, quant_lvl=32, enhance=False)
-        >>> texture = measurer.operate(image)  # doctest: +SKIP
-        >>> # High contrast and energy indicate wrinkled/rough morphology
-        >>> wrinkled = texture[
-        ...     texture['TextureGray_Contrast-avg-scale03'] > texture['TextureGray_Contrast-avg-scale03'].quantile(0.75)
-        ... ]  # doctest: +SKIP
-        >>> print(f"Wrinkled colonies: {len(wrinkled)}")  # doctest: +SKIP
-
-        Multi-scale texture analysis for fine/coarse features:
-
-        >>> # Use multiple scales to capture fine and coarse texture
-        >>> measurer = MeasureTexture(scale=[1, 3, 5], quant_lvl=32, enhance=True, warn=False)
-        >>> texture = measurer.operate(image)  # doctest: +SKIP
-        >>> # Compare entropy across scales to assess texture organization
-        >>> # Fine texture (scale 1): high entropy -> many small features
-        >>> # Coarse texture (scale 5): low entropy -> organized large structures
-        >>> for scale in [1, 3, 5]:  # doctest: +SKIP
-        ...     col = f'TextureGray_Entropy-avg-scale0{scale}'
-        ...     if col in texture.columns:
-        ...         avg_entropy = texture[col].mean()
-        ...         print(f"Scale {scale}px: avg entropy = {avg_entropy:.2f}")
+    See Also:
+        :doc:`/tutorials/notebooks/07_measuring_and_exporting` for a
+        walkthrough of measuring and exporting colony data.
+        :doc:`/explanation/measurement_metrics_biological_meaning` for
+        interpreting texture metrics in a biological context.
     """
 
     _measurement_info_class = TEXTURE

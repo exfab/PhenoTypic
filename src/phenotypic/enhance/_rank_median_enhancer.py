@@ -12,40 +12,44 @@ from phenotypic.abc_ import ImageEnhancer
 
 
 class RankMedianEnhancer(ImageEnhancer):
-    """
-    Rank-based median filtering with configurable shape.
+    """Suppress impulsive noise in ``detect_mat`` with rank-based median filtering.
 
-    Applies a local median using rank filters with a user-defined shape
-    shape and width. For agar plate colony images, this enables targeted
-    suppression of impulsive noise while tailoring the spatial scale to colony
-    size and shape, offering more control than a default median.
+    Applies a local median using rank filters with a configurable structuring
+    element shape and size. Effectively removes salt-and-pepper noise, dust
+    speckles, and pixel-level artifacts while preserving colony boundaries
+    when the footprint is smaller than the minimum colony diameter.
 
-    Use cases (agar plates):
-    - Denoise while preserving colony boundaries by matching the shape width
-      to be smaller than colony diameters.
-    - Use anisotropic or non-circular footprints (e.g., squares) for grid-like
-      artifacts from imaging hardware.
+    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Tuning and effects:
-    - shape: Choose 'disk' for circular isotropic smoothing on plates;
-      'square' or 'cube' can align with grid artifacts; 'ball' for 3D stacks.
-    - width: Controls neighborhood size. Larger radii remove more
-      noise but can erode small colonies and close tight gaps.
-    - shift_x/shift_y: Offset the shape center to bias the neighborhood
-      if imaging introduces directional streaks; typically left at 0.
+    Best For:
+        - Salt-and-pepper or impulsive noise from sensor defects.
+        - Dust speckles and pixel-level artifacts on scanned plates.
+        - Grid-like imaging artifacts when using a ``'square'`` footprint.
 
-    Caveats:
-    - Very large footprints may over-smooth and merge nearby colonies.
-    - Rank filters operate on uint8 here; intensity scaling occurs internally.
-      Ensure consistency if comparing raw intensities elsewhere.
+    Consider Also:
+        - :class:`BilateralDenoise` for edge-preserving Gaussian noise
+          removal without the intensity quantization of rank filters.
+        - :class:`NonLocalMeansDenoiser` for patch-based denoising that
+          preserves texture better on noisy plates.
+        - :class:`GrayOpening` for morphological artifact removal that
+          does not require uint8 conversion.
 
-    Attributes:
-        shape (str): 'disk', 'square', 'sphere', or 'cube' defining
-            the shape geometry.
-        width (int | None): Width (pixels). If None, a small default
-            derived from image size is used.
-        shift_x (int): Horizontal shape offset for advanced use.
-        shift_y (int): Vertical shape offset for advanced use.
+    Args:
+        shape: Footprint geometry. ``'disk'`` for isotropic smoothing;
+            ``'square'`` (default) to align with grid artifacts.
+        width: Footprint width in pixels. Set smaller than the minimum
+            colony diameter to preserve colony edges. ``None`` (default)
+            derives a small value from image size.
+        shift_x: Horizontal footprint offset. Typically 0. Default: 0.
+        shift_y: Vertical footprint offset. Typically 0. Default: 0.
+
+    Returns:
+        Image: Input image with ``detect_mat`` median-filtered. ``rgb``
+        and ``gray`` are unchanged.
+
+    See Also:
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
+        visual walkthrough of denoising pipelines on plate images.
     """
 
     def __init__(self, shape: str = "square", width: int = None, shift_x=0, shift_y=0):

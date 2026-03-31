@@ -13,135 +13,83 @@ from ..abc_ import ObjectDetector
 
 
 class ChanVeseDetector(ObjectDetector):
-    """Region-based active contour detector for colonies with fuzzy or soft edges.
+    """Detect colonies by region-based level-set segmentation using the Chan-Vese energy functional.
 
-    ChanVeseDetector applies the Chan-Vese level-set segmentation algorithm, which
-    partitions an image into foreground and background by minimizing an energy
-    functional based on intensity homogeneity within each region. Unlike threshold
-    or edge detectors, Chan-Vese does not rely on sharp intensity gradients and can
-    segment colonies with diffuse boundaries, uneven internal texture, or gradual
-    transitions into the agar background.
+    Partition the image into foreground and background by minimising an
+    energy functional based on intensity homogeneity within each region.
+    Because segmentation is driven by region statistics rather than edge
+    gradients, colonies with diffuse boundaries, uneven texture, or gradual
+    transitions into the agar background are captured cleanly. For algorithm
+    details see :doc:`/explanation/detection_strategies_compared`.
+
+    Best For:
+        * Mucoid or fuzzy colonies whose edges lack sharp intensity gradients.
+        * Plates with uneven colony pigmentation or heterogeneous surface
+          texture that fragments threshold-based masks.
+        * Low-contrast imaging where colony and agar intensities are similar.
+        * Morphology studies where smooth, accurate colony outlines are
+          required.
+
+    Consider Also:
+        * :class:`OtsuDetector` when colonies and background form two clear
+          histogram peaks and a fast global threshold suffices.
+        * :class:`HysteresisDetector` when colony brightness varies but edges
+          are still reasonably sharp.
+        * :class:`CannyDetector` when colonies are best delineated by edge
+          contrast rather than region homogeneity.
 
     Args:
-        mu: Edge length weight (default 0.25). Higher values penalize boundary
-            length, producing smoother/rounder colony outlines. Primary tuning
-            knob for colony morphology. Increase for noisy images or to suppress
-            irregular protrusions; decrease to preserve fine boundary detail.
+        mu: Edge-length penalty weight. Higher values produce smoother,
+            rounder colony outlines; lower values preserve fine boundary
+            detail. Typical range: 0.05--1.0. Default: 0.25.
 
-        lambda1: Weight for intensity deviation inside detected regions
-            (default 1.0). Higher values force detected regions toward uniform
-            internal intensity. Increase when colonies have consistent brightness.
+        lambda1: Weight for intensity deviation inside detected regions.
+            Increase to enforce uniform colony brightness. Default: 1.0.
 
-        lambda2: Weight for intensity deviation outside detected regions
-            (default 1.0). Higher values force the background toward uniform
-            intensity. Increase when agar background is homogeneous.
+        lambda2: Weight for intensity deviation outside detected regions.
+            Increase when the agar background is homogeneous. Default: 1.0.
 
-        max_num_iter: Maximum iterations before stopping (default 500). Increase
-            for complex images where convergence is slow; decrease for faster
-            (but potentially incomplete) segmentation.
+        max_num_iter: Maximum level-set iterations. Increase for complex
+            images where convergence is slow; decrease for faster (but
+            potentially incomplete) segmentation. Default: 500.
 
-        tol: Convergence tolerance as L2 norm of level set change (default 1e-3).
-            Smaller values require tighter convergence but more iterations.
+        tol: Convergence tolerance (L2 norm of level-set change). Smaller
+            values require tighter convergence but more iterations.
+            Default: 1e-3.
 
-        dt: Step size multiplier for level set evolution (default 0.5). Larger
-            values evolve faster but risk instability; smaller values are more
-            stable but slower.
+        dt: Step-size multiplier for level-set evolution. Larger values
+            evolve faster but risk instability. Default: 0.5.
 
-        init_level_set: Initialization method for the level set (default
-            ``"checkerboard"``). Options: ``"checkerboard"``, ``"disk"``,
-            ``"small disk"``. Checkerboard is robust for most plate images.
+        init_level_set: Initialisation method for the level set. Accepted
+            values: ``"checkerboard"``, ``"disk"``, ``"small disk"``.
+            Checkerboard is robust for most plate images. Default:
+            ``"checkerboard"``.
 
-        min_size: Minimum object area in pixels (default 50). Post-detection
-            filter to remove noise, dust, or spurious small regions.
+        min_size: Minimum colony area in pixels. Connected components
+            smaller than this are removed as noise. Default: 50.
 
-        connectivity: Connectivity for connected-component labeling (default 2).
-            1 = 4-connected, 2 = 8-connected. Higher connectivity merges
-            diagonally adjacent pixels into the same colony.
-
-    Attributes:
-        mu, lambda1, lambda2, max_num_iter, tol, dt, init_level_set,
-        min_size, connectivity
+        connectivity: Pixel connectivity for labelling connected components.
+            ``1`` for 4-connectivity, ``2`` for 8-connectivity. Default: 2.
 
     Returns:
-        Image: Input image with objmap set to labeled colonies from Chan-Vese
-        segmentation. Each unique positive integer identifies a distinct colony;
-        background is 0.
+        Image: Input image with ``objmask`` set to binary mask and
+        ``objmap`` set to labeled connected components.
 
     Raises:
-        ValueError: If init_level_set is not a recognized initialization method.
+        ValueError: If ``init_level_set`` is not a recognised initialisation
+            method.
 
-    **Use cases**
+    References:
+        [1] T. F. Chan and L. A. Vese, "Active contours without edges,"
+        *IEEE Trans. Image Process.*, vol. 10, no. 2, pp. 266--277, 2001.
 
-    - **Fuzzy or mucoid colonies:** Colonies with soft, diffuse edges that lack
-      sharp intensity gradients. Threshold and Canny methods fragment or miss
-      these boundaries; Chan-Vese segments by region homogeneity instead.
-    - **Uneven colony texture:** Heterogeneous internal pigmentation or surface
-      texture that causes threshold-based methods to fragment colonies.
-    - **Low-contrast plates:** Faint colonies on similarly toned agar where
-      intensity differences are subtle. Chan-Vese leverages region statistics
-      rather than absolute intensity cutoffs.
-    - **Smooth boundary recovery:** When accurate colony outlines matter (e.g.,
-      morphology measurements), Chan-Vese's mu parameter controls boundary
-      smoothness directly.
-
-    **Limitations**
-
-    - **Computational cost:** Iterative level-set evolution is significantly slower
-      than single-pass threshold or edge methods. Not suitable for real-time
-      processing or very large batch jobs without reducing max_num_iter.
-    - **Two-phase assumption:** Chan-Vese partitions into exactly two regions
-      (foreground/background). Plates with multiple intensity populations (e.g.,
-      mixed species with different pigmentation) may require post-processing.
-    - **Parameter sensitivity:** mu, lambda1, and lambda2 interact. Poor choices
-      can over-smooth (high mu) or produce noisy boundaries (low mu). Test on
-      representative images before batch processing.
-    - **Initialization dependence:** Results can vary with init_level_set choice,
-      though ``"checkerboard"`` is robust for most cases.
-    - **No edge awareness:** Unlike Canny, Chan-Vese does not explicitly detect
-      edges. Colonies defined primarily by boundary sharpness (not region
-      homogeneity) may be better served by edge-based detectors.
-
-    **Parameter effects on colony detection**
-
-    - **mu:** Primary control for boundary smoothness. Low mu (< 0.1) → jagged,
-      detailed boundaries that follow noise. High mu (> 1.0) → very smooth,
-      circular boundaries that may merge nearby colonies.
-    - **lambda1/lambda2:** Balance foreground vs background homogeneity. Equal
-      values (default) treat both symmetrically. Increase lambda1 to tighten
-      foreground uniformity; increase lambda2 to enforce cleaner background.
-    - **max_num_iter/tol:** Control convergence trade-off. More iterations with
-      tighter tolerance → better segmentation but slower. For quick screening,
-      reduce max_num_iter to 200.
-    - **min_size:** Post-processing filter. Increase to suppress dust/debris;
-      decrease to retain tiny colonies.
-
-    Examples:
-        Basic Chan-Vese detection for fuzzy colonies::
-
-            from phenotypic import Image
-            from phenotypic.detect import ChanVeseDetector
-
-            plate = Image.imread("mucoid_plate.jpg")
-            detector = ChanVeseDetector(mu=0.25, max_num_iter=500)
-            detected = detector.apply(plate)
-            num_colonies = detected.objects.count
-            print(f"Detected {num_colonies} colonies via Chan-Vese")
-
-        Pipeline with preprocessing for low-contrast plates::
-
-            from phenotypic import ImagePipeline
-            from phenotypic.enhance import GaussianBlur, CLAHE
-            from phenotypic.detect import ChanVeseDetector
-
-            pipeline = ImagePipeline([
-                GaussianBlur(sigma=1.5),
-                CLAHE(clip_limit=2.0),
-                ChanVeseDetector(mu=0.3, lambda1=1.0, lambda2=1.0,
-                                 max_num_iter=500, min_size=100)
-            ])
-
-            image = Image.imread("low_contrast_plate.jpg")
-            result = pipeline.apply(image)
+    See Also:
+        :doc:`/tutorials/notebooks/02_detecting_colonies`
+            Step-by-step tutorial for basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm`
+            Guide for selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared`
+            In-depth comparison of all detection strategies.
     """
 
     def __init__(

@@ -11,58 +11,58 @@ from ..abc_ import ImageEnhancer
 
 
 class BM3DDenoiser(ImageEnhancer):
-    """
-    Block-matching and 3D collaborative filtering denoising for plate images.
+    """Denoise ``detect_mat`` with block-matching and 3D collaborative filtering.
 
-    Applies BM3D, a state-of-the-art denoising algorithm that groups similar
-    image patches and performs collaborative filtering in the transform domain.
-    This is particularly effective for removing structured noise patterns and
-    preserving fine colony details on agar plates (e.g., scanner artifacts,
-    systematic CCD noise, or subtle textures from imaging hardware).
+    Groups similar image patches and filters them jointly in the transform
+    domain, preserving fine colony details while removing structured noise
+    patterns (scanner artifacts, systematic CCD noise, imaging hardware
+    texture). Produces higher-quality results than simple Gaussian blur at
+    significantly higher computational cost.
 
-    Use cases (agar plates):
-    - Remove structured camera/scanner noise while preserving sharp colony edges
-      and fine morphological features (e.g., wrinkles, satellite colonies).
-    - Suppress noise from low-light imaging or high ISO settings without the
-      over-smoothing typical of simple Gaussian blur.
-    - Pre-process before edge detection or feature extraction when image
-      quality is poor but colony structures must remain intact.
+    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Tuning and effects:
-    - sigma_psd: Estimated noise standard deviation in [0, 1] scale (matching
-      normalized image range). Start with automatic estimation (None) or typical
-      values 0.01-0.05 for moderate noise, 0.05-0.15 for very noisy images.
-      For reference: 8-bit noise of σ=10/255 ≈ 0.04; 16-bit noise of σ=300/65535
-      ≈ 0.005. Too low preserves noise; too high removes real colony texture.
-    - stage_arg: Controls whether to run fast ('hard_thresholding') or complete
-      ('all_stages') denoising. 'all_stages' produces cleaner results but is
-      slower; 'hard_thresholding' is faster and often sufficient for plates.
-    - Operates on normalized [0,1] float data directly from detect_mat.
+    Best For:
+        - Structured camera or scanner noise on plate images.
+        - Low-light imaging where high ISO introduces patterned noise.
+        - Preserving fine morphological features (wrinkles, satellite
+          colonies) during denoising.
 
-    Caveats:
-    - Computationally expensive, especially on high-resolution images. Consider
-      downsampling or cropping for exploratory analysis.
-    - Requires accurate `sigma_psd` estimate in [0, 1] scale. If unknown, use
-      None for auto-estimation or test multiple values to avoid under/over-
-      denoising. Noise magnitude differs between 8-bit and 16-bit originals.
-    - Does not correct illumination gradients; combine with background
-      subtraction (e.g., `SubtractGaussian`, `SubtractRollingBall`) if needed.
-    - May slightly blur very fine colony features if sigma_psd is too high.
-    - When using between ``AnscombeForward`` / ``AnscombeInverse`` transforms,
-      set ``clip=False``. GAT-domain values fall outside [0, 1] (typically
-      ~1-32 for 8-bit images), and clipping would destroy the transformed
-      signal. For a single-step alternative, see
-      :class:`~phenotypic.correction.StableDenoise`.
+    Consider Also:
+        - :class:`BilateralDenoise` for faster edge-preserving denoising
+          when structured noise is not the primary concern.
+        - :class:`NonLocalMeansDenoiser` for patch-based denoising with
+          lower computational overhead.
+        - :class:`VisuShrinkEnhancer` for fast wavelet denoising when
+          speed matters more than quality.
 
-    Attributes:
-        sigma_psd (float): Noise standard deviation in [0, 1] normalized
-            scale. Typical values: 0.01-0.05 for moderate noise
-            (e.g., 8-bit with σ=5-15), 0.05-0.15 for heavy noise. 16-bit images
-            typically have lower relative noise.
-        stage_arg (Literal["all_stages", "hard_thresholding"]): Processing mode.
-            'all_stages' applies both hard thresholding and Wiener filtering
-            (slower, highest quality); 'hard_thresholding' runs only the first
-            stage (faster, good for most plates).
+    Args:
+        sigma_psd: Noise standard deviation in [0, 1] normalized scale.
+            Typical range: 0.01--0.05 for moderate noise, 0.05--0.15 for
+            heavy noise. Too low preserves noise; too high removes colony
+            texture. Default: 0.02.
+        block_size: Block size for BM3D patch matching. Default: 8.
+        stage_arg: Processing mode. ``'all_stages'`` (default) applies both
+            hard thresholding and Wiener filtering for highest quality;
+            ``'hard_thresholding'`` runs only the first stage for faster
+            processing.
+        clip: Clip output to [0, 1]. Default: ``True``. Set to ``False``
+            when using with variance-stabilizing transforms (e.g., GAT).
+
+    Returns:
+        Image: Input image with ``detect_mat`` denoised via BM3D
+        collaborative filtering. ``rgb`` and ``gray`` are unchanged.
+
+    References:
+        [1] K. Dabov, A. Foi, V. Katkovnik, and K. Egiazarian, "Image
+        denoising by sparse 3-D transform-domain collaborative filtering,"
+        *IEEE Trans. Image Process.*, vol. 16, no. 8, pp. 2080--2095,
+        Aug. 2007.
+
+    See Also:
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
+        visual walkthrough of denoising pipelines on plate images.
+        :doc:`/how_to/notebooks/denoise_low_light` for BM3D and other
+        denoising strategies on low-light plate images.
     """
 
     def __init__(

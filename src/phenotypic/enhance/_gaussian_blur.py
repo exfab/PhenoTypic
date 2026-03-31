@@ -10,7 +10,7 @@ from ..abc_ import ImageEnhancer
 
 
 class GaussianBlur(ImageEnhancer):
-    “””Smooth noise in detect_mat using isotropic Gaussian convolution.
+    """Smooth noise in detect_mat using isotropic Gaussian convolution.
 
     Reduces high-frequency noise, scanner artifacts, and minor agar texture
     so that downstream thresholding responds to colony signal rather than
@@ -55,7 +55,7 @@ class GaussianBlur(ImageEnhancer):
         visual walkthrough of enhancement before detection.
         :doc:`/how_to/notebooks/denoise_low_light` for a comparison of
         denoising methods.
-    “””
+    """
 
     def __init__(
             self, sigma: float = 2.0, *, mode: str = "reflect", cval=0.0,

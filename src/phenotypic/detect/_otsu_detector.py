@@ -49,7 +49,8 @@ class OtsuDetector(ThresholdDetector):
 
     Returns:
         Image: Input image with ``objmask`` set to a binary colony mask
-        produced by Otsu thresholding. ``objmap`` is not modified.
+        produced by Otsu thresholding and ``objmap`` set to labeled
+        connected components.
 
     Raises:
         ValueError: If threshold computation fails (e.g., all pixels share

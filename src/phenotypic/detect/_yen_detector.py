@@ -11,77 +11,60 @@ from ..abc_ import ThresholdDetector
 
 
 class YenDetector(ThresholdDetector):
-    """Yen's correlation coefficient threshold detector for colony segmentation.
+    """Detect colonies by maximising the correlation between the original and binarised image.
 
-    YenDetector applies Yen's thresholding method, which maximizes the correlation
-    coefficient between the original and binarized images. This method performs well
-    on high-contrast images and handles skewed histograms better than Otsu in some
-    scenarios, offering a middle ground between Otsu and Li methods.
+    Compute a threshold that maximises the correlation coefficient between
+    the original intensity image and its binarised version. Handles skewed
+    histograms better than Otsu in some scenarios, offering a middle ground
+    between variance-based (Otsu) and entropy-based (Li) criteria. For a
+    full comparison see :doc:`/explanation/detection_strategies_compared`.
+
+    Best For:
+        * High-contrast plates with clear intensity separation between
+          colonies and agar.
+        * Images with skewed histograms where one class is larger than
+          the other.
+        * Exploratory analysis when unsure whether a variance-based or
+          entropy-based criterion fits the data better.
+
+    Consider Also:
+        * :class:`OtsuDetector` for a faster variance-based threshold when
+          the histogram is balanced and bimodal.
+        * :class:`LiDetector` when the histogram is low-contrast or
+          unimodal and entropy-based separation is more appropriate.
+        * :class:`TriangleDetector` when colonies are very sparse and the
+          histogram is strongly background-dominated.
 
     Args:
-        ignore_zeros: If True (default), exclude zero-intensity pixels from threshold
-            computation. Essential for images with black borders or masks.
+        ignore_zeros: Exclude zero-intensity pixels from threshold
+            computation. Enable for plates with black borders or masked
+            regions; disable only when zero is a meaningful intensity value.
+            Default: True.
 
-        ignore_borders: If True (default), remove colonies touching image edges via
-            clear_border(). Eliminates partial colonies at plate boundaries.
-
-    Attributes:
-        ignore_zeros, ignore_borders
+        ignore_borders: Remove colonies touching image edges via
+            ``clear_border()``. Recommended for grid-based colony counting
+            to eliminate partial colonies at plate boundaries. Default: True.
 
     Returns:
-        Image: Input image with objmask set to binary mask from Yen thresholding.
+        Image: Input image with ``objmask`` set to binary mask and
+        ``objmap`` set to labeled connected components.
 
     Raises:
-        ValueError: If threshold computation fails.
+        ValueError: If threshold computation fails (e.g., degenerate
+            histogram with insufficient intensity variation).
 
-    **Use cases**
+    References:
+        [1] J. C. Yen, F. J. Chang, and S. Chang, "A new criterion for
+        automatic multilevel thresholding," *IEEE Trans. Image Process.*,
+        vol. 4, no. 3, pp. 370--378, 1995.
 
-    - **High-contrast imagery:** Excels on images with clear separation and distinct
-      intensity peaks between colonies and background.
-    - **Skewed histograms:** Better than Otsu when foreground/background peaks unequal.
-    - **Hybrid approach:** Falls between Otsu (variance minimization) and Li (entropy).
-      Good when uncertain which method fits image distribution.
-
-    **Limitations**
-
-    - Less commonly used. Limited validation compared to Otsu/Li; behavior on edge
-      cases less well-characterized.
-    - May over-segment on low-contrast images. Correlation maximization assumes
-      detectable signal.
-    - Slower than Otsu. More computation than fast variance-minimization method.
-    - Limited literature on failure modes. Harder to understand when/why it fails
-      compared to Otsu or Li.
-
-    **Parameter effects on colony detection**
-
-    - **ignore_zeros:** Enable for black borders. Disable only if zero is meaningful.
-    - **ignore_borders:** Recommended for grid analysis.
-
-    Examples:
-        Basic Yen detection::
-
-            from phenotypic import Image
-            from phenotypic.detect import YenDetector
-
-            plate = Image.imread("high_contrast_plate.jpg")
-            detector = YenDetector()
-            detected = detector.apply(plate)
-            mask = detected.objmask[:]
-            print(f"Detected {mask.sum()} colony pixels via Yen")
-
-        Pipeline with Yen::
-
-            from phenotypic import ImagePipeline
-            from phenotypic.enhance import GaussianBlur
-            from phenotypic.detect import YenDetector
-
-            pipeline = ImagePipeline([
-                GaussianBlur(sigma=1.5),
-                YenDetector(ignore_zeros=True, ignore_borders=True)
-            ])
-
-            image = Image.imread("plate.jpg")
-            result = pipeline.apply(image)
+    See Also:
+        :doc:`/tutorials/notebooks/02_detecting_colonies`
+            Step-by-step tutorial for basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm`
+            Guide for selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared`
+            In-depth comparison of all detection strategies.
     """
 
     def __init__(self, ignore_zeros: bool = True, ignore_borders: bool = True):

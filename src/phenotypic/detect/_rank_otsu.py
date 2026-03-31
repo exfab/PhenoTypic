@@ -12,91 +12,61 @@ if TYPE_CHECKING:
 
 
 class RankOtsuDetector(ObjectDetector, FootprintMixin):
-    """Local/rank-based Otsu detector for spatially varying illumination.
+    """Detect colonies by adaptive local Otsu thresholding within a sliding footprint.
 
-    RankOtsuDetector applies Otsu's threshold method locally within a spatial
-    footprint, enabling per-pixel adaptive thresholding. Unlike global Otsu,
-    this adapts to spatial intensity variations (vignetting, gradients, uneven
-    lighting), detecting colonies across the entire plate even when illumination
-    is non-uniform or background intensity varies spatially.
+    Compute an Otsu threshold independently for every pixel using a local
+    spatial neighbourhood, producing a per-pixel adaptive threshold map.
+    This compensates for vignetting, lighting gradients, and spatially
+    varying agar colour that cause a single global threshold to over- or
+    under-segment parts of the plate. For a full comparison see
+    :doc:`/explanation/detection_strategies_compared`.
+
+    Best For:
+        * Plates with vignetting, hot-spots, or centre-to-edge illumination
+          gradients.
+        * Large-format plates (384-well or larger) where lighting uniformity
+          is difficult to achieve.
+        * Images with spatially varying agar colour or reflectance.
+
+    Consider Also:
+        * :class:`OtsuDetector` when illumination is uniform and a fast
+          global threshold suffices.
+        * :class:`HysteresisDetector` when colony brightness varies but
+          spatial illumination is reasonably even.
+        * :class:`ChanVeseDetector` when colonies have diffuse edges and
+          region-based segmentation is more appropriate.
 
     Args:
-        shape: Footprint shape for local neighborhood ('square', 'diamond', or
-            'disk', default 'square'). Controls which pixels influence local
-            threshold computation.
+        shape: Footprint shape for the local neighbourhood. Accepted
+            values: ``'square'``, ``'diamond'``, ``'disk'``. Disk and
+            diamond are rotationally symmetric; square is faster. Default:
+            ``'square'``.
 
-        width: Footprint width/radius in pixels (default None). If None, auto-scales
-            to min(image_height, image_width) // 8. Larger footprints average
-            threshold over larger regions (more smoothing, less local adaptation).
-            Smaller footprints enable finer spatial adaptation but may oversegment.
+        width: Footprint width (or radius for disk/diamond) in pixels.
+            If ``None``, auto-scales to ``min(height, width) // 8``.
+            Larger values smooth the threshold spatially (less local
+            adaptation); smaller values track finer illumination changes
+            but may over-segment. Default: None.
 
-        ignore_zeros: If True, exclude zero-intensity pixels from local threshold
-            computation. Default False. Set True if images have black borders/masks.
-
-    Attributes:
-        shape, width, ignore_zeros
+        ignore_zeros: Exclude zero-intensity pixels from the local
+            threshold computation. Enable for plates with black borders
+            or masked regions. Default: False.
 
     Returns:
-        Image: Input image with objmask set to binary mask from local Otsu thresholding.
+        Image: Input image with ``objmask`` set to binary mask and
+        ``objmap`` set to labeled connected components.
 
     Raises:
-        ValueError: If invalid footprint shape or width specified.
+        ValueError: If ``shape`` is not one of the accepted values or
+            ``width`` is not positive.
 
-    **Use cases**
-
-    - **Uneven plate illumination:** Vignetting, gradient lighting, or hotspots
-      where single Otsu threshold fails to detect colonies uniformly.
-    - **Varying background intensity:** Agar color variations, dust layers, or
-      inconsistent substrate reflectance across the plate.
-    - **Large plates with illumination falloff:** 384-well or larger plates with
-      center-to-edge lighting gradients common in high-throughput setups.
-
-    **Limitations**
-
-    - Computationally expensive. Local Otsu for every pixel requires more operations
-      than global Otsu. Slower on large images.
-    - Requires footprint size tuning. Too large = insufficient adaptation to local
-      variations; too small = oversegmentation, noisy thresholds.
-    - Edge artifacts. Pixels near image borders have incomplete neighborhoods,
-      causing unreliable local thresholds. Consider borders pre-masking.
-    - Parameter dependent. Footprint shape and width significantly affect results.
-      Different plate sizes may require different widths.
-
-    **Parameter effects on colony detection**
-
-    - **shape:** Determines neighborhood geometry. Disk/diamond more circular; square
-      is faster. Choice affects which neighboring pixels influence local threshold.
-    - **width:** Larger widths smooth spatial variations but reduce local adaptation.
-      Auto-default (image_size/8) works well for most plates. Tune if detection
-      quality varies spatially.
-    - **ignore_zeros:** Enable if black borders create spurious local thresholds.
-
-    Examples:
-        Basic local Otsu detection for uneven illumination::
-
-            from phenotypic import Image
-            from phenotypic.detect import RankOtsuDetector
-
-            plate = Image.imread("unevenly_lit_plate.jpg")
-            detector = RankOtsuDetector(shape='disk', width=20)
-            detected = detector.apply(plate)
-            mask = detected.objmask[:]
-            print(f"Detected {mask.sum()} colony pixels with local adaptation")
-
-        Pipeline with local Otsu for high-throughput imaging::
-
-            from phenotypic import ImagePipeline
-            from phenotypic.enhance import GaussianBlur, CLAHE
-            from phenotypic.detect import RankOtsuDetector
-
-            pipeline = ImagePipeline([
-                GaussianBlur(sigma=1.5),
-                CLAHE(clip_limit=2.0),
-                RankOtsuDetector(shape='disk', width=30)
-            ])
-
-            image = Image.imread("plate_with_vignetting.jpg")
-            result = pipeline.apply(image)
+    See Also:
+        :doc:`/tutorials/notebooks/02_detecting_colonies`
+            Step-by-step tutorial for basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm`
+            Guide for selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared`
+            In-depth comparison of all detection strategies.
     """
 
     def __init__(

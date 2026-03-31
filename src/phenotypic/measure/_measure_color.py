@@ -17,83 +17,53 @@ logger = logging.getLogger(__name__)
 
 
 class MeasureColor(MeasureFeatures):
-    """Measure color characteristics of colonies across multiple perceptual color spaces.
+    """Measure colony color statistics across multiple perceptual color spaces.
 
-    This class extracts quantitative color statistics from segmented colonies using CIE XYZ,
-    chromaticity (xy), CIE Lab (perceptually uniform), and HSV (hue-saturation-value) color spaces.
-    For each color space, it computes intensity-independent statistical features (min, Q1, mean, median,
-    Q3, max, standard deviation, coefficient of variation) per colony, plus chroma estimates in Lab space.
+    Extract per-colony color features from CIE XYZ, chromaticity (xy),
+    CIE Lab (perceptually uniform), and HSV color spaces. For each
+    channel the standard statistical suite is computed (min, Q1, mean,
+    median, Q3, max, std dev, coefficient of variation), plus Lab chroma
+    estimates.
 
-    **Intuition:** Colony color provides phenotypic information about pigmentation, sporulation,
-    metabolic products, and stress responses. Measuring color in multiple spaces captures different
-    aspects: XYZ and xy are standardized for illuminant-independent comparisons, Lab is perceptually
-    uniform (equal Euclidean distances reflect equal perceived color differences), and HSV separates
-    hue (pigment type) from saturation and brightness. Colony-level color variation (e.g., std dev)
-    indicates uneven growth, zonation, or heterogeneous populations.
+    Best For:
+        - Distinguishing pigmented colonies (carotenoid, melanin) from
+          colorless ones to stratify phenotypes by pigmentation profile.
+        - Detecting sectoring and growth heterogeneity via high
+          within-colony color variance.
+        - Cross-plate comparison of colony pigmentation using
+          perceptually uniform Lab distances.
 
-    **Use cases (agar plates):**
-    - Distinguish pigmented colonies (e.g., red/yellow carotenoid-producing bacteria, dark melanin)
-      from colorless ones; stratify phenotypes by pigmentation profile.
-    - Detect sectoring and growth heterogeneity via high color variance within single colonies.
-    - Use chromaticity (xy) or hue to identify mixed cultures or secondary growth on a plate.
-    - Enable image-based selection of colonies with specific pigmentation traits (e.g., high-chroma red vs pale).
-    - Assess whether color measurements cluster by genotype or growth condition for cross-plate comparisons.
-
-    **Caveats:**
-    - Color measurements are highly sensitive to illumination, camera white balance, and exposure settings;
-      normalize and calibrate your imaging setup before comparing colors across plates or experiments.
-    - Lab and HSV assume RGB input is correctly gamma-corrected and linearized; use image.gray or
-      image.detect_mat if raw RGB is uncalibrated.
-    - High saturation and brightness variance within a colony can indicate shadow regions, uneven
-      lighting, or non-uniform mycelial depth; interpret texture variance alongside color variance.
-    - Chroma estimates use simplified arithmetic; for critical applications, use reference color charts
-      or spectrophotometry to validate color classifications.
-    - XYZ inclusion is optional and slow; enable only if standardized color space analysis is essential.
+    Consider Also:
+        - :class:`MeasureIntensity` for grayscale-only brightness and
+          variability statistics.
+        - :class:`MeasureColorComposition` for proportion-based color
+          classification of colony pixels.
+        - :class:`MeasureTexture` for surface-roughness features that
+          complement color metrics.
 
     Args:
-        white_chroma_max (float, optional): Chroma threshold below which a colony is classified as
-            "white" (achromatic). Used to filter Lab chroma calculations. Defaults to 4.0.
-        chroma_min (float, optional): Minimum chroma value to retain in analysis; colonies below this
-            are sometimes treated as colorless. Defaults to 8.0.
-        include_XYZ (bool, optional): Whether to compute CIE XYZ measurements (slower, less common).
-            Defaults to False.
+        white_chroma_max: Lab chroma threshold below which a colony is
+            classified as achromatic (white). Default: ``4.0``.
+        chroma_min: Minimum chroma value retained in analysis; colonies
+            below this are treated as colorless. Default: ``8.0``.
+        include_XYZ: Compute CIE XYZ tristimulus statistics (slower).
+            Default: ``False``.
 
     Returns:
-        pd.DataFrame: Object-level color statistics with columns organized by color space:
-            - ColorXYZ: X, Y, Z tristimulus values (if include_XYZ=True).
-            - Colorxy: Chromaticity coordinates x, y (perceptual color without brightness).
-            - ColorLab: L* (lightness), a* (green-red), b* (blue-yellow), and chroma estimates.
-            - ColorHSV: Hue (angle, color identity), Saturation (intensity of color), Brightness (luminosity).
-            For each channel: Min, Q1, Mean, Median, Q3, Max, StdDev, CoeffVar.
+        pd.DataFrame: Object-level color statistics with column groups:
 
-    Examples:
-        Measure colony color to detect pigmented mutants:
+            - ColorXYZ (X, Y, Z) -- only when ``include_XYZ=True``.
+            - Colorxy (x, y chromaticity).
+            - ColorLab (L*, a*, b*, ChromaEstimated).
+            - ColorHSV (Hue, Saturation, Brightness).
+            - Each channel has Min, Q1, Mean, Median, Q3, Max, StdDev,
+              CoeffVar sub-columns.
 
-        >>> from phenotypic import Image
-        >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.measure import MeasureColor
-        >>> # Load image of colonies (may include pigmented and non-pigmented strains)
-        >>> image = Image.imread("mixed_pigment_plate.jpg")  # doctest: +SKIP
-        >>> detector = OtsuDetector()
-        >>> image = detector.operate(image)  # doctest: +SKIP
-        >>> # Measure color
-        >>> measurer = MeasureColor(include_XYZ=False)
-        >>> colors = measurer.operate(image)  # doctest: +SKIP
-        >>> # Identify pigmented colonies by hue and saturation
-        >>> pigmented = colors[colors['ColorHSV_SaturationMean'] > 15]  # doctest: +SKIP
-        >>> print(f"Found {len(pigmented)} pigmented colonies")  # doctest: +SKIP
-
-        Use Lab color space for perceptually uniform analysis:
-
-        >>> # Measure using Lab space (perceptually uniform)
-        >>> measurer = MeasureColor()
-        >>> colors = measurer.operate(image)  # doctest: +SKIP
-        >>> # Chroma estimates reflect perceived "colorfulness"
-        >>> bright_red = colors[
-        ...     (colors['ColorLab_L*Mean'] > 50) &
-        ...     (colors['ColorLab_ChromaEstimatedMean'] > 20)
-        ... ]  # doctest: +SKIP
-        >>> print(f"Bright red colonies: {len(bright_red)}")  # doctest: +SKIP
+    See Also:
+        :doc:`/tutorials/notebooks/07_measuring_and_exporting` for a
+        walkthrough of measuring and exporting colony data.
+        :doc:`/explanation/measurement_metrics_biological_meaning` for
+        interpreting color metrics in a biological context.
     """
 
     _measurement_info_classes = [ColorXYZ, Colorxy, ColorLab, ColorHSV]

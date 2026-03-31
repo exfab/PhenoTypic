@@ -15,67 +15,65 @@ from ..enhance._anscombe_inverse import AnscombeInverse
 
 
 class StableDenoise(ImageCorrector):
-    """Variance-stabilized BM3D denoising for grayscale via accessor cascade.
+    """Denoise grayscale channels using variance-stabilized BM3D collaborative filtering.
 
-    Combines the Generalized Anscombe Transform (GAT) with BM3D collaborative
-    filtering into a single corrector step. The GAT stabilizes Poisson-Gaussian
-    noise variance so that BM3D operates optimally, then the inverse GAT restores
-    the original intensity scale. This directly improves intensity measurement
-    quality for downstream colony phenotyping.
+    Combine the Generalized Anscombe Transform (GAT) with BM3D denoising
+    in a single corrector step. The GAT stabilizes Poisson-Gaussian noise
+    variance so that BM3D operates optimally, then the inverse GAT
+    restores the original intensity scale. Writing through the gray
+    accessor triggers a detect_mat reset, so downstream reads reflect
+    the denoised result.
 
-    Use cases (agar plates):
-    - Denoise grayscale intensity and detection channels simultaneously for
-      more accurate colony size and opacity measurements.
-    - Remove photon-counting noise from low-light or high-ISO plate images
-      while preserving fine colony morphology.
-    - Pre-process scanned plates with mixed Poisson-Gaussian noise (common in
-      CCD/CMOS sensors) before thresholding or feature extraction.
+    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Tuning and effects:
-    - block_size: BM3D patch size. 8 (default) is standard; larger values
-      capture more context but slow computation.
-    - stage_arg: 'all_stages' (default) runs both hard thresholding and Wiener
-      filtering for best quality. 'hard_thresholding' is faster and often
-      sufficient for routine plate analysis.
-    - GAT parameters (gain, mu, sigma) model the camera noise. Defaults assume
-      pure Poisson noise (gain=1, mu=0, sigma=0), which is appropriate for most
-      plate scanners and cameras.
+    Best For:
+        - Low-light or high-ISO plate images with photon-counting
+          (Poisson-Gaussian) noise.
+        - Improving intensity measurement accuracy before colony size
+          or opacity quantification.
+        - CCD/CMOS scanned plates where mixed noise models apply.
 
-    Caveats:
-    - Modifies gray irreversibly via accessor cascade (triggers detect_mat
-      reset for detect_mode="gray"). RGB is unchanged (BM3D is a 2D
-      grayscale algorithm).
-    - Computationally expensive, especially with 'all_stages' on large images.
-    - The internal noise PSD is fixed at 1.0 (the theoretically correct value
-      for GAT-domain Poisson noise per Makitalo & Foi 2013). Do not confuse
-      this with the ``sigma_psd`` parameter of :class:`BM3DDenoiser`.
+    Consider Also:
+        - :class:`BayesShrinkCorrector` when all components (including
+          RGB) need denoising simultaneously.
+        - :class:`BM3DDenoiser` for enhancer-only BM3D on the detection
+          matrix without modifying grayscale.
+        - :class:`VisuShrinkCorrector` for a faster wavelet-based
+          alternative when Poisson noise modelling is not required.
 
-    Attributes:
-        block_size (int): BM3D patch size. Default 8.
-        stage_arg (str): Processing mode. Default 'all_stages'.
-        gain (float): Camera gain (electrons/ADU). Default 1.0.
-        mu (float): Read noise mean. Default 0.0.
-        sigma (float): Read noise standard deviation. Default 0.0.
-        scale_factor (float | None): Converts [0,1] to counts. None = auto.
+    Args:
+        block_size: BM3D patch side length in pixels. Larger values
+            capture more context but increase computation. Default: ``8``.
+        stage_arg: Processing stages. ``'all_stages'`` runs hard
+            thresholding followed by Wiener filtering for best quality;
+            ``'hard_thresholding'`` is faster. Default: ``'all_stages'``.
+        gain: Camera gain in electrons per ADU. Default: ``1.0``.
+        mu: Read-noise mean (baseline offset). Default: ``0.0``.
+        sigma: Read-noise standard deviation. ``0.0`` assumes pure
+            Poisson noise, appropriate for most plate scanners.
+            Default: ``0.0``.
+        scale_factor: Multiplier converting normalized [0, 1] data to
+            photon counts. ``None`` auto-detects from image bit depth.
+            Default: ``None``.
+
+    Returns:
+        Image: Input image with grayscale channel denoised via the
+        accessor cascade. RGB is unchanged.
+
+    Raises:
+        ValueError: If ``gain`` is not positive, ``sigma`` is negative,
+            ``scale_factor`` is not positive, or ``stage_arg`` is not a
+            recognized value.
 
     References:
-        - M. Makitalo and A. Foi, "Optimal Inversion of the Generalized
-          Anscombe Transformation for Poisson-Gaussian Noise", IEEE Trans.
-          Image Process., 2013.
+        [1] M. Makitalo and A. Foi, "Optimal inversion of the
+        generalized Anscombe transformation for Poisson-Gaussian noise,"
+        *IEEE Trans. Image Process.*, vol. 22, no. 1, pp. 91--103,
+        Jan. 2013.
 
-    Examples:
-        One-step variance-stabilized denoising:
-
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>> from phenotypic.correction import StableDenoise
-        >>> image = load_synth_yeast_plate()
-        >>> corrector = StableDenoise()
-        >>> denoised = corrector.apply(image)  # doctest: +SKIP
-
-        Fast mode with hard thresholding only:
-
-        >>> from phenotypic.correction import StableDenoise
-        >>> corrector = StableDenoise(stage_arg='hard_thresholding')
+    See Also:
+        :doc:`/how_to/notebooks/correct_color_cast` for combining
+        denoising with color correction workflows.
     """
 
     def __init__(

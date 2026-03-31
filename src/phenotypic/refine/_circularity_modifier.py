@@ -15,40 +15,46 @@ from ..tools_.constants_ import OBJECT
 
 
 class LowCircularityRemover(ObjectRefiner):
-    """Remove objects with circularity below a specified cutoff.
+    """Remove objects whose Polsby-Popper circularity falls below a cutoff.
 
-    Intuition:
-        Single bacterial/fungal colonies on agar often appear approximately
-        round. Irregular, elongated, or fragmented shapes can indicate merged
-        colonies, scratches, agar texture, or segmentation errors. Filtering by
-        circularity keeps well-formed colonies and removes unlikely shapes.
+    Computes circularity as ``4 * pi * area / perimeter^2`` for each labeled
+    object and discards those below the threshold. Keeps well-formed, roughly
+    circular colonies while filtering out elongated artifacts, merged blobs,
+    and segmentation debris.
 
-    Why this is useful for agar plates:
-        Circular colonies produce more reliable area and intensity measurements.
-        Removing low-circularity detections reduces bias from streaks, debris,
-        or incomplete segmentation near plate edges and grid borders.
-
-    Use cases:
-        - Post-threshold cleanup to exclude elongated artifacts or merged
-          colonies before counting or phenotyping.
+    Best For:
+        - Post-threshold cleanup to exclude elongated scratches or merged
+          colonies before phenotyping.
         - Enforcing morphology consistency in high-throughput grid assays.
+        - Plates with round yeast or bacterial colonies where irregular
+          detections indicate artifacts.
 
-    Caveats:
-        - Some colonies are intrinsically irregular (wrinkled, spreading,
-          filamentous). A high cutoff may incorrectly remove these phenotypes.
-        - Perimeter estimates on low-resolution masks can be noisy, slightly
-          biasing the circularity calculation.
+    Consider Also:
+        - :class:`SmallObjectRemover` when artifacts are distinguished by
+          size rather than shape.
+        - :class:`BorderObjectRemover` when irregular detections cluster
+          near plate edges.
+        - :class:`MaskOpener` for smoothing jagged boundaries before
+          circularity filtering.
 
-    Attributes:
-        cutoff (float): Minimum Polsby–Popper circularity required to keep an
-            object, in [0, 1]. Higher values retain only near-circular shapes
-            (sharper shape constraints) and can improve edge sharpness in the
-            kept set but may reduce recall for irregular colonies.
+    Args:
+        cutoff: Minimum Polsby-Popper circularity in ``[0, 1]`` required to
+            retain an object. Typical range: 0.5--0.9. Higher values keep
+            only near-circular shapes; lower values tolerate irregular
+            morphologies. Default: 0.785.
 
-    Examples:
-        >>> from phenotypic.refine import LowCircularityRemover
-        >>> op = LowCircularityRemover(cutoff=0.8)
-        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+    Returns:
+        Image: Input image with ``objmap`` and ``objmask`` updated to exclude
+        objects below the circularity cutoff.
+
+    Raises:
+        ValueError: If ``cutoff`` is outside ``[0, 1]``.
+
+    See Also:
+        :doc:`/how_to/notebooks/refine_noisy_boundaries` for shape-based
+        cleanup workflows.
+        :doc:`/explanation/refinement_strategies` for a comparison of
+        morphological refinement methods.
     """
 
     def __init__(self, cutoff: float = 0.785):

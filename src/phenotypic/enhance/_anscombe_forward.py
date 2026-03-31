@@ -19,81 +19,61 @@ from ..abc_ import ImageEnhancer
 
 
 class AnscombeForward(ImageEnhancer):
-    """Forward Generalized Anscombe Transform for variance stabilization.
+    """Apply the forward Generalized Anscombe Transform for variance stabilization.
 
-    Applies the forward Generalized Anscombe Transform (GAT) to convert
-    Poisson-Gaussian noise (common in photon-counting imaging, fluorescence
-    microscopy, and low-light photography) into approximately Gaussian noise.
-    After this transform, standard Gaussian denoisers (wavelets, BM3D,
-    bilateral filters) work effectively on the stabilized signal.
+    Converts Poisson-Gaussian noise into approximately Gaussian noise by
+    applying a variance-stabilizing square-root transformation to ``detect_mat``.
+    After this transform, standard Gaussian denoisers (wavelets, BM3D, bilateral
+    filters) work effectively on the stabilized signal. Always pair with
+    :class:`AnscombeInverse` in a pipeline, with denoising operations between
+    them; both must use identical parameter values.
+
+    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
+
+    Best For:
+        - Low-light or fluorescence plate images with photon-counting noise.
+        - Images from CCD/CMOS sensors where noise is Poisson-dominated.
+        - Enabling Gaussian denoisers on data with signal-dependent noise.
+
+    Consider Also:
+        - :class:`BM3DDenoiser` for direct denoising without domain transforms.
+        - :class:`BilateralDenoise` when edge preservation matters more than
+          noise model accuracy.
+        - :class:`VisuShrinkEnhancer` for wavelet denoising without a
+          variance-stabilizing step.
 
     Args:
-        gain: Camera gain in electrons per ADU. Default 1.0.
-        mu: Read noise mean (baseline offset). Default 0.0.
-        sigma: Read noise standard deviation. Default 0.0 (pure Poisson).
-        scale_factor: Converts normalized [0,1] data to counts. If None
+        gain: Camera gain in electrons per ADU. Typical range: 0.1--10.0.
+            Default: 1.0.
+        mu: Read noise mean (baseline offset). Typical range: 0.0--50.0.
+            Default: 0.0.
+        sigma: Read noise standard deviation. Set to 0 for pure Poisson
+            noise. Typical range: 0.0--10.0. Default: 0.0.
+        scale_factor: Converts normalized [0,1] data to counts. If ``None``
             (default), auto-detects from image metadata: 255 for 8-bit,
-            65535 for 16-bit, or falls back to 255.
+            65535 for 16-bit.
 
     Returns:
-        Image with detect_mat in variance-stabilized (sqrt-scaled) domain.
-        Values are typically in the range ~1-32 for 8-bit source images.
+        Image: Input image with ``detect_mat`` in variance-stabilized
+        (sqrt-scaled) domain. ``rgb`` and ``gray`` are unchanged.
 
     Raises:
-        ValueError: If gain <= 0, sigma < 0, or scale_factor <= 0.
-
-    Always use ``AnscombeForward`` paired with :class:`AnscombeInverse` in a
-    pipeline, with denoising operations between them. Both must use identical
-    ``gain``, ``mu``, ``sigma``, and ``scale_factor`` values.
-
-    Any intermediate operations that have a ``clip`` parameter **must** set
-    ``clip=False``, because the GAT domain produces values outside [0, 1]
-    (typically ~1-32 for 8-bit images). Clipping would destroy the
-    transformed signal.
-
-    Attributes:
-        gain (float): Camera gain (electrons/ADU). Default 1.0.
-        mu (float): Read noise mean. Default 0.0.
-        sigma (float): Read noise standard deviation. Default 0.0.
-        scale_factor (float | None): Converts normalized data to counts.
+        ValueError: If ``gain`` <= 0, ``sigma`` < 0, or ``scale_factor`` <= 0.
 
     References:
-        - Generalized Anscombe Transform implementation adapted from
-          pymultiscale (https://github.com/broxtronix/pymultiscale) by
-          Michael Broxton (broxtronix).
-        - M. Makitalo and A. Foi, "Optimal Inversion of the Generalized
-          Anscombe Transformation for Poisson-Gaussian Noise", IEEE Trans.
-          Image Process., 2013.
+        [1] F. J. Anscombe, "The transformation of Poisson, binomial and
+        negative-binomial data," *Biometrika*, vol. 35, no. 3/4,
+        pp. 246--254, Dec. 1948.
 
-    Examples:
-        Pair with AnscombeInverse in a pipeline for Poisson noise handling:
+        [2] M. Makitalo and A. Foi, "Optimal inversion of the generalized
+        Anscombe transformation for Poisson-Gaussian noise," *IEEE Trans.
+        Image Process.*, vol. 22, no. 1, pp. 91--103, Jan. 2013.
 
-        >>> from phenotypic import ImagePipeline
-        >>> from phenotypic.enhance import (
-        ...     AnscombeForward, AnscombeInverse, GaussianBlur,
-        ...     BilateralDenoise,
-        ... )
-        >>> pipeline = ImagePipeline([
-        ...     AnscombeForward(gain=1.0, sigma=0.0, scale_factor=255.0),
-        ...     GaussianBlur(sigma=1.0),
-        ...     BilateralDenoise(sigma_spatial=10, clip=False),
-        ...     AnscombeInverse(gain=1.0, sigma=0.0, scale_factor=255.0),
-        ... ])
-
-        Apply to a colony plate image:
-
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>> from phenotypic.enhance import (
-        ...     AnscombeForward, AnscombeInverse, GaussianBlur,
-        ... )
-        >>> from phenotypic import ImagePipeline
-        >>> image = load_synth_yeast_plate()
-        >>> pipeline = ImagePipeline([
-        ...     AnscombeForward(gain=1.0, sigma=0.0, scale_factor=255.0),
-        ...     GaussianBlur(sigma=1.0),
-        ...     AnscombeInverse(gain=1.0, sigma=0.0, scale_factor=255.0),
-        ... ])
-        >>> result = pipeline.apply(image)
+    See Also:
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
+        visual walkthrough of enhancement pipelines on plate images.
+        :doc:`/explanation/what_enhancement_does` for background on
+        variance-stabilizing transforms and denoising strategies.
     """
 
     def __init__(

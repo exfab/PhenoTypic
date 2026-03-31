@@ -19,114 +19,51 @@ from phenotypic.abc_ import ObjectRefiner
 
 
 class SeparateObjects(ObjectRefiner):
-    """Separate touching/merged colonies using distance-based peak detection and watershed.
+    """Separate touching or merged colonies using distance-transform watershed segmentation.
 
-    SeparateObjects segments colonies by finding peaks in the distance transform as seed
-    markers for watershed segmentation. For GridImages, peaks are constrained to one per
-    grid cell using grid metadata. For regular Images, peaks are detected globally with
-    minimum distance spacing. This region-growing approach effectively separates touching
-    colonies that may have been merged by thresholding.
+    Finds peaks in the Euclidean distance transform as seed markers for
+    watershed region growing. For GridImages, peaks are constrained to one
+    per grid cell; for regular Images, peaks are detected globally with
+    minimum distance spacing. Effectively individualizes colonies that
+    were merged by thresholding.
+
+    Best For:
+        - GridImage plates (96-well, 384-well, pinned cultures) where
+          touching colonies need individualization.
+        - Post-detection refinement when thresholding merges adjacent
+          colonies into a single detection.
+        - Variable colony sizes where the distance transform naturally
+          adapts peak strength to colony diameter.
+        - Non-grid images using global peak detection with spacing
+          constraints.
+
+    Consider Also:
+        - :class:`MaskOpener` for gentle separation of lightly touching
+          colonies without watershed.
+        - :class:`MaskEroder` for uniform inward shrinking that may
+          separate touching edges.
+        - :class:`GridAlignmentRefiner` when off-grid artifacts are the
+          main concern rather than merged colonies.
 
     Args:
-        min_distance: Minimum pixel distance between peaks for regular Images. Ignored
-            for GridImages (which use one peak per grid cell). Default 10. Increase
-            for sparse colony patterns; decrease for dense colonies.
+        min_distance: Minimum pixel distance between peaks for regular
+            Images. Ignored for GridImages (one peak per cell). Typical
+            range: 5--50. Higher values reduce over-segmentation; lower
+            values detect more peaks. Default: 10.
 
     Returns:
-        Image: Input image with refined objmap where touching colonies are separated
-            into distinct regions. objmask is automatically updated. All image data
-            (rgb, gray, detect_mat) remain unchanged.
+        Image: Input image with ``objmap`` refined so that touching colonies
+        are separated into distinct labeled regions.
 
     Raises:
-        ValueError: If no peaks detected or image lacks detection results (no objmap).
+        ValueError: If no peaks are detected or the image lacks detection
+            results.
 
-    **Use cases**
-
-    - **GridImage processing:** Leverages grid metadata to ensure one peak per well,
-      ideal for arrayed formats (96-well, 384-well, pinned cultures).
-    - **Touching/overlapping colonies:** Separates colonies that touch or overlap
-      where simple thresholding merges them into a single detection.
-    - **Post-detection refinement:** Apply after ObjectDetector (e.g., CompositeDetector)
-      when detections contain merged objects that need individualization.
-    - **Variable colony sizes:** Distance transform automatically adapts to colony size,
-      creating stronger peaks at centers of larger colonies.
-    - **Non-grid images:** Works on regular Images using global peak detection with
-      minimum distance constraints.
-
-    **Limitations**
-
-    - Requires detected objects (objmask) as input; cannot detect colonies from scratch.
-    - GridImage mode assumes colonies cluster near grid centers; fails if colonies
-      straddle cell boundaries or multiple colonies occupy one cell.
-    - Regular Image mode may over- or under-segment depending on min_distance parameter.
-    - Best for roughly circular colonies; less effective for highly irregular morphologies.
-    - Peak detection may fail on very small objects where distance transform has few pixels.
-
-    **Parameter effects on separation quality**
-
-    - **min_distance (regular Images only):** Higher values create sparser peaks,
-      reducing over-segmentation but potentially missing small colonies. Lower values
-      detect more peaks but may split single colonies. Tune based on expected colony
-      spacing and image resolution.
-
-    Examples:
-        Basic usage with GridImage to separate touching colonies (uses grid metadata):
-
-        >>> from phenotypic.detect import CompositeDetector
-        >>> from phenotypic.refine import SeparateObjects
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>>
-        >>> # Load GridImage with known grid structure
-        >>> image = load_synth_yeast_plate()  # Returns GridImage (6 rows × 10 cols)
-        >>> detector = CompositeDetector(...)
-        >>> detected = detector.apply(image)
-        >>>
-        >>> # Separate touching colonies using peak detection (one peak per cell)
-        >>> separator = SeparateObjects()
-        >>> separated = separator.apply(detected)
-        >>>
-        >>> print(f"Before: {detected.objmap[:].max()} colonies")
-        >>> print(f"After:  {separated.objmap[:].max()} colonies (touching separated)")
-
-        Integration into full processing pipeline:
-
-        >>> from phenotypic import ImagePipeline
-        >>> from phenotypic.enhance import GaussianBlur, CLAHE
-        >>> from phenotypic.detect import CompositeDetector
-        >>> from phenotypic.refine import SeparateObjects, MaskEroder
-        >>> from phenotypic.measure import MeasureShape
-        >>>
-        >>> # Build pipeline with detection, separation, and measurement
-        >>> pipeline = ImagePipeline(ops=[
-        ...     GaussianBlur(sigma=1.5),
-        ...     CLAHE(clip_limit=2.0),
-        ...     CompositeDetector(...),
-        ...     SeparateObjects(),  # GridImage: one peak per cell
-        ...     MaskEroder(radius=2),
-        ...
-        ... ], meas=[MeasureShape()])
-        >>>
-        >>> # Process GridImage
-        >>> image = load_synth_yeast_plate()
-        >>> result = pipeline.apply(image)
-        >>>
-        >>> print(f"Separated and measured: {len(result.objects)} individual colonies")
-
-        Usage with regular Image (non-grid):
-
-        >>> from phenotypic import Image
-        >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.refine import SeparateObjects
-        >>>
-        >>> # Load regular image (no grid metadata)
-        >>> image = Image.imread("colonies.jpg")
-        >>> detected = OtsuDetector().apply(image)
-        >>>
-        >>> # Separate using global peak detection with min_distance constraint
-        >>> separator = SeparateObjects(min_distance=20)
-        >>> separated = separator.apply(detected)
-        >>>
-        >>> print(f"Detected {separated.objmap[:].max()} separated colonies")
+    See Also:
+        :doc:`/how_to/notebooks/merge_fragmented_detections` for separation
+        and merging workflows.
+        :doc:`/explanation/refinement_strategies` for a comparison of
+        colony separation approaches.
     """
 
     def __init__(

@@ -14,67 +14,50 @@ from ..abc_ import ObjectRefiner
 
 
 class TransitiveDistanceMerger(ObjectRefiner):
-    """Merge colonies with centroids within distance threshold using transitive closure.
+    """Merge nearby colony fragments using transitive closure of centroid distances.
 
-    Intuition:
-        Fragmented colony detections from uneven illumination or pigment heterogeneity
-        often appear as multiple small regions clustered together. When colonies are
-        close enough spatially, they likely represent fragments of a single organism.
-        This operation uses transitive closure to merge all connected fragments: if
-        colony A is near B, and B is near C, then A, B, and C all merge into a single
-        detection, even if A and C are not directly within the threshold distance.
+    Finds all pairs of objects with centroids within the distance threshold,
+    then applies union-find with path compression to transitively merge
+    connected groups. If A is near B and B is near C, all three merge into
+    one detection even if A and C are not directly within threshold. Labels
+    are relabeled consecutively after merging.
 
-    Why this is useful for agar plates:
-        Aggressive thresholding or contrast enhancement can fragment a single colony
-        into multiple labeled regions. Merging by proximity reconstructs the true
-        colony shape, correcting inflated colony counts and improving downstream
-        area and intensity measurements. This is particularly effective for colonies
-        with heterogeneous pigmentation or those growing on plates with uneven lighting.
+    Best For:
+        - Repairing fragmented detections from watershed over-segmentation
+          where a single colony splits into multiple touching regions.
+        - Consolidating micro-fragments and satellite spots caused by
+          thresholding artifacts or agar texture.
+        - Correcting detections on plates with harsh shadows or glare that
+          create internal voids within colony masks.
+        - Post-processing after aggressive noise removal that leaves
+          fragmented edges.
 
-    Use cases:
-        - Repairing fragmented detections from watershed over-segmentation where a
-          single colony is split into multiple touching regions.
-        - Consolidating micro-fragments (satellite spots) around main colonies caused
-          by thresholding artifacts or agar texture.
-        - Post-processing after aggressive noise removal that leaves fragmented edges.
-        - Correcting detections in images with harsh shadows or glare that create
-          internal voids within colony masks.
+    Consider Also:
+        - :class:`SmallToLargeMerger` when only small fragments should
+          merge into large anchors, preserving distinct large colonies.
+        - :class:`NearestNeighborMerger` for simple pairwise nearest-
+          neighbor merging without transitive closure.
+        - :class:`MaskCloser` for morphological closing that bridges small
+          gaps without relabeling.
 
-    Caveats:
-        - Setting distance_threshold too high incorrectly merges distinct colonies
-          that happen to be close together, reducing count accuracy and creating
-          artificially large merged objects.
-        - Transitive closure can cascade through long chains of nearby objects,
-          potentially merging objects that are far apart if connected through
-          intermediate fragments. Choose threshold conservatively to avoid this.
-        - Does not consider size, shape, or intensity similarity—purely spatial
-          proximity. May merge unrelated artifacts if they happen to be close.
-        - More computationally expensive than NearestNeighborMerger for large
-          numbers of objects due to pairwise distance calculations and union-find
-          operations.
-        - Cannot distinguish between legitimate separate colonies and fragments of
-          a single colony based on spatial information alone.
+    Args:
+        distance_threshold: Maximum centroid-to-centroid distance in pixels
+            for merging. Typical range: 10--30. Lower values are
+            conservative; higher values merge more aggressively but risk
+            combining distinct colonies via transitive chains. Default: 20.0.
 
-    Attributes:
-        distance_threshold (float): Maximum centroid-to-centroid distance in pixels
-            for merging colonies. Lower values (5-15 pixels) are safer and produce
-            fewer false merges, suitable for high-resolution images with well-separated
-            colonies. Higher values (20-50 pixels) merge more aggressively, useful for
-            fragmented detections in noisy images but risk combining distinct colonies.
-            Typical range: 10-30 pixels depending on imaging resolution and colony
-            density.
+    Returns:
+        Image: Input image with ``objmap`` updated so that transitively
+        connected fragments share a single label, relabeled consecutively.
 
-    Examples:
-        Merge fragmented colonies using transitive distance threshold:
+    Raises:
+        ValueError: If ``distance_threshold`` is not positive.
 
-        >>> from phenotypic.refine import TransitiveDistanceMerger
-        >>> from phenotypic import Image
-        >>> from phenotypic.detect import OtsuDetector
-        >>> image = Image.imread('fragmented_plate.jpg')
-        >>> detected = OtsuDetector().apply(image)
-        >>> merger = TransitiveDistanceMerger(distance_threshold=25.0)
-        >>> merged = merger.apply(detected)  # doctest: +SKIP
-        >>> print(f"Merged {detected.objmap[:].max()} fragments into {merged.objmap[:].max()} colonies")  # doctest: +SKIP
+    See Also:
+        :doc:`/how_to/notebooks/merge_fragmented_detections` for fragment
+        merging workflows.
+        :doc:`/explanation/refinement_strategies` for a comparison of
+        merging strategies.
     """
 
     def __init__(self, distance_threshold: float = 20.0):

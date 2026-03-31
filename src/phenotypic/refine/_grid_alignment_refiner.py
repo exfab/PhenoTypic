@@ -20,109 +20,57 @@ from phenotypic.tools_.funcs_ import validate_operation_integrity
 
 
 class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
-    """Refines detected objects by keeping only grid-aligned colonies using dominant-object-per-cell filtering.
+    """Retain only grid-aligned colonies by keeping the dominant object per cell.
 
-    GridAlignmentRefiner filters detection results to retain only one dominant object per
-    grid cell, removing off-grid artifacts and enforcing regular grid structure on colony
-    detections. This is particularly useful for high-throughput arrayed cultures where
-    colonies should align with known well positions.
+    Infers or reads grid geometry, partitions the image into cells, and keeps
+    one object per cell according to the chosen selection strategy. Off-grid
+    artifacts, dust, and spurious detections are removed, enforcing regular
+    grid structure on colony detection results.
+
+    Best For:
+        - High-throughput arrayed plates (96-well, 384-well, pinned cultures)
+          where colonies should align with known well positions.
+        - Post-detection cleanup when detections contain off-grid artifacts.
+        - Explicit grid enforcement when used with GridImage and known grid
+          coordinates.
+
+    Consider Also:
+        - :class:`SineAlignmentRefiner` when colony intensities are
+          heterogeneous and rank-based correlation improves grid estimation.
+        - :class:`GridSectionLargest` for a simpler largest-per-cell strategy
+          on GridImage inputs.
+        - :class:`ReduceMultipleGridObjects` for regression-based multi-
+          detection reduction within grid cells.
 
     Args:
-        smoothing_sigma: Gaussian smoothing standard deviation for row/column intensity
-            profiles during grid inference. Default 2.0. Higher values smooth noise but
-            may merge adjacent peaks.
-        min_peak_distance: Minimum pixel distance between detected grid peaks. If None
-            (default), automatically estimated as half the expected colony spacing.
-        peak_prominence: Minimum prominence threshold for peak detection. If None (default),
-            auto-calculated as 10% of signal range.
-        edge_refinement: If True (default), refine grid edges using local intensity minima
-            to improve grid alignment accuracy.
-        selection_mode: Strategy for choosing one object per grid cell. ``"dominant"``
-            (default) keeps the largest object by pixel count. ``"centered"`` keeps
-            the object whose centroid is closest to the cell center. ``"regularized"``
-            uses a two-pass approach that fits a global regular-grid model from median
-            row/column centroids, then re-selects per cell. Best for pinned arrays.
+        smoothing_sigma: Gaussian smoothing sigma for row/column intensity
+            profiles during grid inference. Typical range: 0.5--5.0.
+            Higher values smooth noise but may merge adjacent peaks.
+            Default: 2.0.
+        min_peak_distance: Minimum pixel distance between detected grid
+            peaks. ``None`` auto-estimates as half the expected colony
+            spacing. Default: None.
+        peak_prominence: Minimum prominence for peak detection. ``None``
+            auto-calculates as 10% of signal range. Default: None.
+        edge_refinement: Refine grid edges using local intensity minima.
+            Improves accuracy for unevenly lit plates. Default: True.
+        selection_mode: Strategy for choosing one object per cell.
+            ``"dominant"`` keeps the largest by pixel count, ``"centered"``
+            keeps the most centered, ``"regularized"`` fits a global
+            regular-grid model then re-selects. Default: ``"dominant"``.
 
     Returns:
-        Image: Input image with filtered objmap containing only grid-aligned objects.
-            objmask is automatically updated to match refined objmap. All image data
-            (rgb, gray, detect_mat) remain unchanged.
+        Image: Input image with ``objmap`` filtered to grid-aligned objects
+        and ``objmask`` updated to match.
 
     Raises:
-        ValueError: If grid inference fails or image lacks detection results (no objmap).
+        ValueError: If grid inference fails or image lacks detection results.
 
-    **Use cases**
-
-    - **Gridded plate images:** Remove off-grid noise and dust for accurate well-based
-      phenotyping on 96-well, 384-well, or pinned culture formats.
-    - **Post-detection cleanup:** Apply after ObjectDetector when detections contain
-      spurious off-grid objects or artifacts.
-    - **Explicit grid enforcement:** Use with GridImage to snap detections to known
-      well positions when exact grid coordinates are available.
-    - **Multi-detector workflows:** Combine outputs from different detectors and keep
-      grid-aligned objects from highest-confidence detection.
-
-    **Limitations**
-
-    - Assumes regular grid geometry; fails on irregular colony spacing or missing positions.
-    - Grid inference on regular Image is less accurate than explicit GridImage specification.
-    - Requires colonies to cluster within grid cells; fails if colonies straddle boundaries.
-    - Best for yeast-like circular colonies; less suitable for filamentous or irregular
-      morphologies that may not align cleanly with grid.
-    - Removes off-grid objects entirely; use GridObjectRefiner for gentler boundary handling.
-
-    **Parameter effects on grid detection**
-
-    - **smoothing_sigma:** Higher values improve robustness to noise but may merge
-      adjacent peaks. Set to 0 to disable smoothing (faster, less robust).
-    - **edge_refinement:** When True, places grid edges at valleys between colonies
-      rather than fixed positions, improving accuracy for uneven plate lighting.
-    - **min_peak_distance, peak_prominence:** Lower values detect more peaks (find more
-      grid positions); higher values are more selective. Auto-tuning usually works well.
-
-    Examples:
-        Basic usage with GridImage and explicit grid dimensions:
-
-        >>> from phenotypic import GridImage
-        >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.refine import GridAlignmentRefiner
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>>
-        >>> # Load gridded plate image
-        >>> grid_image = load_synth_yeast_plate()  # Returns GridImage with 8x12 grid
-        >>> detector = OtsuDetector()
-        >>> detected = detector.apply(grid_image)
-        >>>
-        >>> # Refine to keep only grid-aligned objects
-        >>> refiner = GridAlignmentRefiner()
-        >>> refined = refiner.apply(detected)
-        >>>
-        >>> # Check results
-        >>> print(f"Before: {detected.objmap[:].max()} objects")
-        >>> print(f"After:  {refined.objmap[:].max()} objects (grid-aligned)")
-
-        Integration into full processing pipeline with grid inference:
-
-        >>> from phenotypic import Image, ImagePipeline
-        >>> from phenotypic.enhance import GaussianBlur, CLAHE
-        >>> from phenotypic.detect import RoundPeaksDetector
-        >>> from phenotypic.refine import GridAlignmentRefiner
-        >>> from phenotypic.measure import MeasureShape
-        >>>
-        >>> # Build pipeline with detection and refinement
-        >>> pipeline = ImagePipeline([
-        ...     GaussianBlur(sigma=1.5),
-        ...     CLAHE(clip_limit=2.0),
-        ...     RoundPeaksDetector(smoothing_sigma=2.0),
-        ...     GridAlignmentRefiner(edge_refinement=True),  # Clean up detection
-        ...     MeasureShape()
-        ... ])
-        >>>
-        >>> # Process image (no explicit grid needed)
-        >>> image = Image.imread("noisy_plate.jpg")
-        >>> result = pipeline.apply(image)
-        >>>
-        >>> print(f"Cleaned colonies: {len(result.objects)}")
+    See Also:
+        :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based
+        cleanup workflows.
+        :doc:`/explanation/refinement_strategies` for a comparison of
+        grid refinement approaches.
     """
 
     def __init__(

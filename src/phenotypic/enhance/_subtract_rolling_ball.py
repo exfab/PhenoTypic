@@ -12,39 +12,49 @@ from phenotypic.abc_ import ImageEnhancer
 
 
 class SubtractRollingBall(ImageEnhancer):
-    """
-    Rolling-ball background removal (ImageJ-style) for agar plates.
+    """Remove background from ``detect_mat`` with ImageJ-style rolling-ball subtraction.
 
-    Models the background as the surface traced by rolling a ball under the
-    image intensity landscape, then subtracts it. For colony images, this
-    effectively removes slow illumination gradients and agar shading while
-    preserving colony structures.
+    Models the background as the surface traced by rolling a parabolic ball
+    under the image intensity landscape, then subtracts it. Effectively
+    removes slow illumination gradients and agar shading while preserving
+    colony structures. Handles non-Gaussian intensity ramps better than
+    :class:`SubtractGaussian`.
 
-    Use cases (agar plates):
-    - Correct uneven backgrounds from scanner vignetting, lid glare, or agar
-      thickness variations.
-    - Improve segmentation of dark colonies on bright agar by flattening the
-      background.
+    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Tuning and effects:
-    - width: Core scale of the rolling ball. Set larger than typical colony
-      diameter so colonies are not smoothed into the background. Too small
-      a width will erode colonies and create halos.
-    - kernel: Custom structuring element defining the ball shape. Providing a
-      kernel overrides `width` and allows non-spherical shapes if needed.
-    - nansafe: Enable if your images contain masked/NaN regions (e.g., plate
-      outside masked to NaN). When False, NaNs may propagate or cause artifacts.
+    Best For:
+        - Scanner vignetting, lid glare, or agar thickness variations.
+        - Flattening backgrounds to improve segmentation of dark colonies
+          on bright agar.
+        - Images with non-linear illumination gradients where Gaussian
+          subtraction leaves residual background.
 
-    Caveats:
-    - Overly small width removes real features and can bias size/area metrics.
-    - May introduce edge effects near the plate boundary; consider masking the
-      plate region or using `nansafe` with an appropriate mask.
+    Consider Also:
+        - :class:`SubtractGaussian` for faster Gaussian-based subtraction
+          with continuous sigma control.
+        - :class:`OpeningSubtractBg` for OpenCV-accelerated morphological
+          background removal in high-throughput pipelines.
+        - :class:`WhiteTophatEnhance` when you want to isolate small
+          bright structures rather than subtract background.
 
-    Attributes:
-        radius (int): Ball width (in pixels) controlling the background scale;
-            choose > colony diameter.
-        kernel (np.ndarray): Optional custom kernel; overrides `width` when set.
-        nansafe (bool): Handle NaNs during computation to respect masked regions.
+    Args:
+        radius: Rolling-ball radius in pixels. Must be larger than the
+            typical colony diameter to avoid subtracting colony signal.
+            Typical range: 50--200. Default: 100.
+        kernel: Optional custom ball/shape array. When provided, overrides
+            ``radius``. Default: ``None``.
+        nansafe: If ``True``, treat NaNs as missing data to avoid artifacts
+            when using masked images. Default: ``False``.
+
+    Returns:
+        Image: Input image with ``detect_mat`` background-subtracted.
+        ``rgb`` and ``gray`` are unchanged.
+
+    See Also:
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
+        visual walkthrough of background subtraction on plate images.
+        :doc:`/explanation/what_enhancement_does` for background on
+        rolling-ball and other illumination correction strategies.
     """
 
     def __init__(

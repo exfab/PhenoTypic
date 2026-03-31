@@ -36,19 +36,9 @@ class TriangleDetector(ThresholdDetector):
         * :class:`ManualDetector` when an empirically determined threshold is
           known to outperform automatic methods for your plate type.
 
-    Args:
-        ignore_zeros: If True (default), exclude zero-intensity pixels from
-            threshold computation. Enable for plates with black borders or
-            masked regions; disable only when zero is a meaningful intensity
-            value. Typical range: True for most workflows.
-
-        ignore_borders: If True (default), remove colonies touching image
-            edges via ``clear_border()``. Recommended for grid-based colony
-            counting to eliminate partial colonies at plate boundaries.
-
     Returns:
-        Image: Input image with ``objmask`` set to a binary colony mask
-        produced by triangle thresholding. ``objmap`` is not modified.
+        Image: Input image with ``objmask`` set to the thresholded binary
+        mask and ``objmap`` set to labeled connected components.
 
     Raises:
         ValueError: If threshold computation fails (e.g., degenerate

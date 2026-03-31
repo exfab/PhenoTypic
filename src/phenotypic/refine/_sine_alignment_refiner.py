@@ -26,123 +26,65 @@ from phenotypic.tools_.funcs_ import validate_operation_integrity
 
 
 class SineAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
-    """Refines detected objects by keeping only grid-aligned colonies using sinusoidal cross-correlation.
+    """Retain only grid-aligned colonies using sinusoidal cross-correlation for grid estimation.
 
-    SineAlignmentRefiner filters detection results to retain only one dominant object per
-    grid cell, using FFT-based normalized cross-correlation against a sinusoidal template
-    for grid edge estimation. This implements a gitter-faithful approach (Wagih & Parts,
-    2014) that is more robust to irregular colony intensities than the simple peak-finding
-    used by GridAlignmentRefiner, because rank-based (Spearman) correlation is insensitive
-    to outliers and monotonic intensity transformations.
+    Estimates grid edges by computing FFT-based normalized cross-correlation
+    against a sinusoidal template of expected colony periodicity, then keeps
+    one dominant object per cell. Rank-based (Spearman) correlation provides
+    robustness to outlier colony intensities and monotonic intensity
+    transformations compared to simple peak-finding.
+
+    Best For:
+        - Gridded plates (96-well, 384-well, pinned cultures) where colony
+          intensities are heterogeneous or unevenly grown.
+        - Post-detection cleanup when simple peak-finding grid estimation
+          is unreliable.
+        - Plates with variable colony sizes or uneven growth where rank-based
+          correlation outperforms direct intensity matching.
+
+    Consider Also:
+        - :class:`GridAlignmentRefiner` for faster grid estimation when
+          colony intensities are relatively uniform.
+        - :class:`GridSectionLargest` for a simpler largest-per-cell
+          strategy on GridImage inputs.
+        - :class:`ReduceMultipleGridObjects` for regression-based multi-
+          detection reduction within grid cells.
 
     Args:
-        smoothing_sigma: Gaussian smoothing standard deviation for row/column intensity
-            profiles during grid inference. Default 2.0. Higher values smooth noise but
-            may merge adjacent peaks.
-        min_peak_distance: Minimum pixel distance between detected grid peaks. If None
-            (default), automatically estimated as half the expected colony spacing.
-        peak_prominence: Minimum prominence threshold for peak detection. If None (default),
-            auto-calculated as 10% of signal range.
-        edge_refinement: If True (default), refine grid edges using local intensity minima
-            to improve grid alignment accuracy.
-        correlation_threshold: Minimum normalized cross-correlation value for a peak to
-            be considered valid. Default 0.3. Correlation values below this threshold are
-            zeroed before peak detection. Lower values accept weaker matches; higher
-            values are more selective.
-        selection_mode: Strategy for choosing one object per grid cell. ``"dominant"``
-            (default) keeps the largest object by pixel count. ``"centered"`` keeps
-            the object whose centroid is closest to the cell center. ``"regularized"``
-            uses a two-pass approach that fits a global regular-grid model from median
-            row/column centroids, then re-selects per cell. Best for pinned arrays.
+        smoothing_sigma: Gaussian smoothing sigma for intensity profiles.
+            Typical range: 0.5--5.0. Higher values smooth noise but may
+            merge adjacent peaks. Default: 2.0.
+        min_peak_distance: Minimum pixel distance between grid peaks.
+            ``None`` auto-estimates. Default: None.
+        peak_prominence: Minimum prominence for peak detection. ``None``
+            auto-calculates. Default: None.
+        edge_refinement: Refine grid edges using local intensity minima.
+            Default: True.
+        correlation_threshold: Minimum NCC value for a valid peak.
+            Typical range: 0.1--0.6. Lower values accept weaker matches;
+            higher values are more selective. Default: 0.3.
+        selection_mode: Strategy for choosing one object per cell.
+            ``"dominant"`` keeps the largest, ``"centered"`` keeps the
+            most centered, ``"regularized"`` fits a global model.
+            Default: ``"dominant"``.
 
     Returns:
-        Image: Input image with filtered objmap containing only grid-aligned objects.
-            objmask is automatically updated to match refined objmap. All image data
-            (rgb, gray, detect_mat) remain unchanged.
+        Image: Input image with ``objmap`` filtered to grid-aligned objects
+        and ``objmask`` updated to match.
 
     Raises:
-        ValueError: If grid inference fails or image lacks detection results (no objmap).
-
-    **Use cases**
-
-    - **Gridded plate images:** Remove off-grid noise and dust for accurate well-based
-      phenotyping on 96-well, 384-well, or pinned culture formats.
-    - **Post-detection cleanup:** Apply after ObjectDetector when detections contain
-      spurious off-grid objects or artifacts. More robust than GridAlignmentRefiner
-      when colony intensities are heterogeneous.
-    - **Explicit grid enforcement:** Use with GridImage to snap detections to known
-      well positions when exact grid coordinates are available.
-    - **Variable colony intensity:** Rank-based correlation handles plates with
-      heterogeneous colony sizes or uneven growth better than direct peak finding.
-
-    **Limitations**
-
-    - Assumes regular grid geometry; fails on irregular colony spacing or missing positions.
-    - Grid inference on regular Image is less accurate than explicit GridImage specification.
-    - Requires colonies to cluster within grid cells; fails if colonies straddle boundaries.
-    - Slightly higher computational cost than GridAlignmentRefiner due to FFT-based
-      cross-correlation.
-    - Best for yeast-like circular colonies; less suitable for filamentous or irregular
-      morphologies that may not align cleanly with grid.
-
-    **Parameter effects on grid detection**
-
-    - **smoothing_sigma:** Higher values improve robustness to noise but may merge
-      adjacent peaks. Set to 0 to disable smoothing (faster, less robust).
-    - **edge_refinement:** When True, places grid edges at valleys between colonies
-      rather than fixed positions, improving accuracy for uneven plate lighting.
-    - **correlation_threshold:** Controls sensitivity to weak matches. Lower values
-      detect more peaks (including false positives); higher values are more selective
-      but may miss faint colonies.
-    - **min_peak_distance, peak_prominence:** Lower values detect more peaks (find more
-      grid positions); higher values are more selective. Auto-tuning usually works well.
-
-    Examples:
-        Basic usage with GridImage and explicit grid dimensions:
-
-        >>> from phenotypic import GridImage
-        >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.refine import SineAlignmentRefiner
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>>
-        >>> # Load gridded plate image
-        >>> grid_image = load_synth_yeast_plate()  # Returns GridImage with 8x12 grid
-        >>> detector = OtsuDetector()
-        >>> detected = detector.apply(grid_image)
-        >>>
-        >>> # Refine to keep only grid-aligned objects (sine cross-correlation)
-        >>> refiner = SineAlignmentRefiner()
-        >>> refined = refiner.apply(detected)
-        >>>
-        >>> print(f"Before: {detected.objmap[:].max()} objects")
-        >>> print(f"After:  {refined.objmap[:].max()} objects (grid-aligned)")
-
-        Integration into full processing pipeline with grid inference:
-
-        >>> from phenotypic import Image, ImagePipeline
-        >>> from phenotypic.enhance import GaussianBlur, CLAHE
-        >>> from phenotypic.detect import RoundPeaksDetector
-        >>> from phenotypic.refine import SineAlignmentRefiner
-        >>> from phenotypic.measure import MeasureShape
-        >>>
-        >>> # Build pipeline with detection and sine-based refinement
-        >>> pipeline = ImagePipeline([
-        ...     GaussianBlur(sigma=1.5),
-        ...     CLAHE(clip_limit=2.0),
-        ...     RoundPeaksDetector(smoothing_sigma=2.0),
-        ...     SineAlignmentRefiner(correlation_threshold=0.25),
-        ...     MeasureShape()
-        ... ])
-        >>>
-        >>> # Process image (no explicit grid needed)
-        >>> image = Image.imread("noisy_plate.jpg")
-        >>> result = pipeline.apply(image)
-        >>>
-        >>> print(f"Cleaned colonies: {len(result.objects)}")
+        ValueError: If grid inference fails or image lacks detection results.
 
     References:
-        Wagih, O. and Parts, L. (2014). gitter: a robust and accurate method for
-        quantification of colony sizes from plate images. G3 (Bethesda), 4(3), 547-552.
+        [1] O. Wagih and L. Parts, "gitter: a robust and accurate method
+        for quantification of colony sizes from plate images," *G3
+        (Bethesda)*, vol. 4, no. 3, pp. 547--552, 2014.
+
+    See Also:
+        :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based
+        cleanup workflows.
+        :doc:`/explanation/refinement_strategies` for a comparison of
+        grid refinement approaches.
     """
 
     def __init__(

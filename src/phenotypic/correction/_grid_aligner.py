@@ -13,11 +13,46 @@ from phenotypic.tools_.measurement_info_ import BBOX, GRID
 
 
 class GridAligner(GridCorrector):
-    """Calculates the optimal gridding orientation based on the alignment of the objects in the image and rotates the image accordingly.
+    """Correct grid rotation by aligning colony centroids to row or column axes.
 
-    This class inherits from `GridCorrector` and is designed to calculate the optimal gridding orientation. This is used to align the image,
-    and helps to improve the quality of automated gridding results. It's highly recommended to redetect objects in the image after alignment.
+    Compute the optimal rotation angle from linear regression of colony
+    centroid positions along the chosen axis, then rotate the entire image
+    to minimize angular misalignment. Re-detection of objects after
+    alignment is strongly recommended because pixel coordinates shift.
 
+    For algorithm details, see :doc:`/explanation/grid_alignment`.
+
+    Best For:
+        - Arrayed plates scanned at a slight angle where grid rows or
+          columns are not axis-aligned.
+        - High-throughput imaging setups with inconsistent plate
+          orientation between scans.
+        - Pre-processing before grid-based measurement to ensure accurate
+          row and column assignment.
+
+    Consider Also:
+        - :class:`ImagePadder` to add safety margins before rotation so
+          corner colonies are not clipped.
+        - :class:`ImageCropper` to remove excess background after
+          alignment.
+
+    Args:
+        axis: Alignment axis. ``0`` aligns rows (row-wise regression on
+            column centroid positions); ``1`` aligns columns. Default: ``0``.
+        mode: Edge-fill mode passed to the rotation function. ``'edge'``
+            replicates border pixels; ``'constant'`` fills with zeros.
+            Default: ``'edge'``.
+
+    Returns:
+        GridImage: Input image rotated so that colony centroids align with
+        the specified axis. All image components are transformed.
+
+    Raises:
+        ValueError: If ``axis`` is not ``0`` or ``1``.
+
+    See Also:
+        :doc:`/how_to/notebooks/correct_grid_rotation` for a visual
+        walkthrough of grid alignment on real plate images.
     """
 
     def __init__(self, axis: int = 0, mode: str = "edge"):

@@ -12,76 +12,52 @@ from ..abc_ import ImageCorrector
 
 
 class VisuShrinkCorrector(ImageCorrector):
-    """Wavelet denoising with VisuShrink for all image components (RGB, gray, detect_mat).
+    """Denoise all image components using a universal VisuShrink wavelet threshold.
 
-    Applies VisuShrink wavelet denoising to the entire image, modifying RGB (if present),
-    grayscale, and detection matrix simultaneously. Unlike VisuShrinkEnhancer (which
-    modifies only detect_mat), this corrector updates all image representations, ensuring
-    consistency across components.
+    Apply VisuShrink wavelet denoising to RGB (if present), grayscale, and
+    detection matrix simultaneously. Unlike :class:`VisuShrinkEnhancer`,
+    which modifies only the detection matrix, this corrector transforms all
+    image representations to maintain cross-component consistency.
 
-    Use cases (agar plates):
-    - Denoise raw RGB plate images for archival/publication while maintaining color fidelity.
-    - Remove scanner noise from all image components before downstream analysis.
-    - Clean up camera noise in RGB images while denoising the grayscale simultaneously.
-    - Pre-process images for multi-channel analysis (color + morphology).
+    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Tuning and effects:
-    - sigma: Noise level. For RGB, denoise_wavelet handles channel-specific scaling
-      internally. For grayscale, sigma is in [0, 1] scale. None (default) auto-estimates.
-    - wavelet: 'db2' (default) for general use. 'db4' for finer details.
-    - mode: 'soft' (default) for smoother results, 'hard' for sharper edges.
-    - convert2ycbcr: If True (default), RGB denoising happens in YCbCr color space
-      (Y=luminance, CbCr=chrominance). This typically produces better results because
-      luminance and color are denoised separately, preserving colony color better.
+    Best For:
+        - Quick, uniform denoising of raw plate scans for archival or
+          publication where a single threshold is acceptable.
+        - Removing scanner noise from all image components before
+          downstream multi-channel analysis.
+        - Plates with relatively uniform noise where adaptive subband
+          thresholding is not necessary.
 
-    Caveats:
-    - Modifies ALL image components, including original RGB. Cannot be undone without
-      reloading the image. For non-destructive preprocessing, use VisuShrinkEnhancer.
-    - VisuShrink's universal threshold tends to over-smooth; consider BayesShrinkCorrector
-      for adaptive, detail-preserving denoising.
-    - Does not handle illumination gradients; combine with background correction.
-    - Slower than simple Gaussian blur, especially for RGB images.
+    Consider Also:
+        - :class:`BayesShrinkCorrector` for adaptive subband thresholds
+          that preserve finer colony detail.
+        - :class:`StableDenoise` for variance-stabilized BM3D denoising
+          when Poisson-Gaussian noise modelling is important.
+        - :class:`VisuShrinkEnhancer` when only the detection matrix
+          should be denoised (non-destructive to RGB and gray).
 
-    Attributes:
-        sigma (float | None): Noise std deviation. None = auto-estimate.
-        wavelet (str): Wavelet family. Default 'db2'.
-        mode (Literal['soft', 'hard']): Thresholding mode. Default 'soft'.
-        wavelet_levels (int | None): Decomposition levels. None = max-3.
-        convert2ycbcr (bool): Denoise RGB in YCbCr space. Default True.
+    Args:
+        sigma: Noise standard deviation. ``None`` auto-estimates from
+            the image. For RGB, internal channel scaling is handled
+            automatically. Default: ``None``.
+        wavelet: Wavelet family name. ``'db2'`` is general-purpose;
+            ``'db4'`` preserves finer detail. Default: ``'db2'``.
+        mode: Thresholding mode. ``'soft'`` produces smoother results;
+            ``'hard'`` retains sharper edges. Default: ``'soft'``.
+        wavelet_levels: Number of decomposition levels. ``None`` uses
+            the maximum minus three (automatic). Default: ``None``.
+        convert2ycbcr: Denoise RGB in YCbCr space so luminance and
+            chrominance are handled separately, preserving colony color.
+            Only applies when RGB data is present. Default: ``True``.
 
-    Examples:
-        Denoise RGB image for archival quality:
+    Returns:
+        Image: Input image with all components (RGB, gray, detect_mat)
+        transformed by VisuShrink wavelet denoising.
 
-        >>> from phenotypic import Image
-        >>> from phenotypic.correction import VisuShrinkCorrector
-        >>> image = Image.imread('raw_plate_scan.jpg')  # doctest: +SKIP
-        >>> corrector = VisuShrinkCorrector()
-        >>> denoised = corrector.apply(image)  # doctest: +SKIP
-        >>> # All components modified
-        >>> assert not np.array_equal(denoised.rgb[:], image.rgb[:])  # doctest: +SKIP
-        >>> assert not np.array_equal(denoised.gray[:], image.gray[:])  # doctest: +SKIP
-
-        Denoise grayscale-only image gracefully:
-
-        >>> from phenotypic import Image
-        >>> from phenotypic.correction import VisuShrinkCorrector
-        >>> # Grayscale image (no RGB)
-        >>> image = Image.imread('gray_plate.tif')  # doctest: +SKIP
-        >>> # Works without error, denoises gray and detect_mat
-        >>> corrector = VisuShrinkCorrector()
-        >>> denoised = corrector.apply(image)  # doctest: +SKIP
-        >>> # Only gray and detect_mat modified (no RGB to modify)
-        >>> assert not np.array_equal(denoised.gray[:], image.gray[:])  # doctest: +SKIP
-
-        Color-preserving denoising with YCbCr conversion:
-
-        >>> from phenotypic import Image
-        >>> from phenotypic.correction import VisuShrinkCorrector
-        >>> image = Image.imread('color_plate.jpg')  # doctest: +SKIP
-        >>> # Default: denoise in YCbCr (better color preservation)
-        >>> corrector = VisuShrinkCorrector(convert2ycbcr=True)
-        >>> result = corrector.apply(image)  # doctest: +SKIP
-        >>> # Colony colors preserved better than RGB-space denoising
+    See Also:
+        :doc:`/how_to/notebooks/correct_color_cast` for combining
+        denoising with color correction workflows.
     """
 
     def __init__(

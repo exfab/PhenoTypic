@@ -11,113 +11,54 @@ from ..abc_ import ImageEnhancer
 
 
 class UnsharpMask(ImageEnhancer):
-    """
-    Unsharp masking for enhanced colony edge definition on agar plates.
+    """Sharpen colony edges in ``detect_mat`` with unsharp masking.
 
-    Unsharp masking is a classical sharpening technique that enhances edges by
-    subtracting a blurred copy of the image from the original, then scaling the
-    difference to emphasize high-contrast boundaries. On fungal colony plates,
-    this makes soft or indistinct colony edges more pronounced, improving the
-    ability of thresholding and edge-detection algorithms to identify colony
-    boundaries precisely.
+    Subtracts a Gaussian-blurred copy from the original and scales the
+    difference to emphasize high-contrast boundaries. Makes soft or
+    indistinct colony edges more pronounced, improving thresholding and
+    edge-detection accuracy.
 
-    Use cases (agar plates):
-    - Low-contrast colonies with soft, gradual edges (translucent growth)
-    - Dense plates where colonies blend into background
-    - Pre-threshold sharpening to improve segmentation accuracy
-    - Enhancing subtle colony morphologies before downstream measurement
-    - Improving edge definition when scanner or lens causes slight blurring
+    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Tuning and effects:
-    - width: Controls the scale of features enhanced. Small values (0.5–2) sharpen
-      fine details like small colony boundaries and surface texture; larger values
-      (5–15+) enhance broader features and colony-background contrast. For fungal
-      colonies, keep width smaller than the minimum colony width to avoid creating
-      visible halos or merging adjacent colonies. Start at 2.0 for general-purpose
-      enhancement.
-    - amount: Determines the magnitude of edge enhancement (how much darker/brighter
-      the edges become). Low values (0.3–0.7) produce subtle improvements safe for
-      noisy images; standard values (1.0–1.5) give moderate sharpening suitable for
-      most colony plates; high values (2.0+) create aggressive enhancement but risk
-      amplifying noise and creating visible bright/dark halos around colonies.
-      Negative amounts produce blur (opposite effect).
-    - preserve_range: Leave as False for consistency with other enhancers in the
-      framework.
+    Best For:
+        - Low-contrast colonies with soft, gradual edges (translucent
+          growth).
+        - Dense plates where colonies blend into background.
+        - Pre-threshold sharpening to improve segmentation accuracy.
+        - Slight scanner or lens blur that softens colony boundaries.
 
-    Caveats:
-    - Amplifies noise: In noisy images, unsharp masking sharpens both signal
-      (colony edges) and noise artifacts. Consider denoising first (e.g., with
-      GaussianBlur, BilateralDenoise, or MedianFilter) on very grainy agar scans.
-    - Halo artifacts: Excessive width or amount creates bright/dark rims around
-      colonies, which can be mistaken for separate objects or cause thresholding
-      to fail.
-    - Already-sharp images: Applying unsharp mask to crisp, high-contrast colonies
-      may be redundant and introduce artifacts. Reserve for low-contrast scenarios.
+    Consider Also:
+        - :class:`BilateralDenoise` for denoising before sharpening on
+          grainy images to avoid amplifying noise.
+        - :class:`LaplaceEnhancer` for second-derivative edge detection
+          that replaces rather than enhances the intensity profile.
+        - :class:`PhaseCongruencyEnhancer` for contrast-invariant edge
+          detection under uneven illumination.
 
-    Attributes:
-        radius (float): Standard deviation of Gaussian blur used to compute edges,
-            in pixels. Controls the scale of features enhanced.
-        amount (float): Multiplier for the sharpening effect. Controls intensity
-            of edge enhancement.
-        preserve_range (bool): Whether to keep the original range of pixel values
-            (False by default).
-        n_iter (int): Number of successive unsharp mask passes to apply. One pass applies
-            the filter once; multiple passes (2+) compound the sharpening effect for more
-            aggressive enhancement. Defaults to 1.
+    Args:
+        radius: Standard deviation of the Gaussian blur in pixels.
+            Controls the scale of features enhanced. Small values
+            (0.5--2.0) sharpen fine details; larger values (5--15)
+            enhance broader features. Default: 2.0.
+        amount: Multiplier for the sharpening effect. Low values
+            (0.3--0.7) produce subtle enhancement; standard values
+            (1.0--1.5) give moderate sharpening; high values (2.0+)
+            create aggressive enhancement with risk of halo artifacts.
+            Default: 1.0.
+        preserve_range: Preserve the original pixel value range.
+            Default: ``False``.
+        n_iter: Number of successive sharpening passes. Multiple passes
+            compound the effect. Typical range: 1--3. Default: 1.
 
-    Examples:
-        Sharpening low-contrast fungal colonies before detection:
+    Returns:
+        Image: Input image with ``detect_mat`` sharpened via unsharp
+        masking. ``rgb`` and ``gray`` are unchanged.
 
-        >>> from phenotypic import Image
-        >>> from phenotypic.enhance import UnsharpMask
-        >>> from phenotypic.detect import OtsuDetector
-        >>> # Load image of low-contrast plate (e.g., translucent yeasts)
-        >>> image = Image("yeast_plate.jpg")  # doctest: +SKIP
-        >>> # Apply unsharp masking with moderate settings
-        >>> sharpener = UnsharpMask(radius=2.0, amount=1.2)
-        >>> sharpened = sharpener.apply(image)  # doctest: +SKIP
-        >>> # Detect colonies in sharpened detection matrix
-        >>> detector = OtsuDetector()
-        >>> detected = detector.apply(sharpened)  # doctest: +SKIP
-        >>> # Original image untouched, detection on enhanced data
-        >>> colonies = detected.objects  # doctest: +SKIP
-        >>> print(f"Detected {len(colonies)} colonies")  # doctest: +SKIP
-
-        Tuning width and amount for dense high-throughput plates:
-
-        >>> from phenotypic import Image, ImagePipeline
-        >>> from phenotypic.enhance import UnsharpMask, GaussianBlur
-        >>> from phenotypic.detect import OtsuDetector
-        >>> # For high-resolution 384-well plate scans with tiny colonies,
-        >>> # use small width to avoid merging adjacent growth
-        >>> pipeline = ImagePipeline()
-        >>> # Step 1: Light blur to reduce scanner noise
-        >>> pipeline.add(GaussianBlur(sigma=1))
-        >>> # Step 2: Enhance edges with small width for dense plates
-        >>> # radius=1.0 emphasizes only fine features (individual colonies)
-        >>> pipeline.add(UnsharpMask(radius=1.0, amount=1.5))
-        >>> # Step 3: Detect in detection matrix
-        >>> pipeline.add(OtsuDetector())
-        >>> # Process a batch of images
-        >>> images = [Image(f) for f in image_paths]  # doctest: +SKIP
-        >>> results = pipeline.operate(images)  # doctest: +SKIP
-        >>> for i, result in enumerate(results):  # doctest: +SKIP
-        ...     print(f"Plate {i}: {len(result.objects)} colonies")
-
-        Aggressive sharpening for very translucent colonies:
-
-        >>> from phenotypic import Image
-        >>> from phenotypic.enhance import UnsharpMask
-        >>> # For extremely low-contrast colonies (e.g., slow-growing mutants,
-        >>> # low-turbidity liquid culture plates), use higher amount
-        >>> image = Image("faint_colonies.jpg")  # doctest: +SKIP
-        >>> # Aggressive parameters: larger width for broader features,
-        >>> # higher amount for stronger enhancement
-        >>> aggressive_sharpener = UnsharpMask(radius=5.0, amount=2.5)
-        >>> enhanced = aggressive_sharpener.apply(image)  # doctest: +SKIP
-        >>> # Inspect result for artifacts (halos); adjust if needed
-        >>> # If halos appear, reduce amount to 1.5-2.0
-        >>> print("Sharpening applied. Check for halo artifacts around large colonies.")  # doctest: +SKIP
+    See Also:
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
+        visual walkthrough of edge sharpening on plate images.
+        :doc:`/explanation/what_enhancement_does` for background on
+        unsharp masking and sharpening strategies.
     """
 
     def __init__(

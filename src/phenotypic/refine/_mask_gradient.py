@@ -13,64 +13,50 @@ from skimage.morphology import dilation, erosion
 
 
 class MaskGradient(ObjectRefiner, FootprintMixin):
-    """Extract object boundaries via morphological gradient.
+    """Extract object boundaries via morphological gradient (dilation minus erosion).
 
-    Intuition:
-        The morphological gradient is the difference between dilation and erosion
-        of the same mask. It produces a thin outline showing the boundary pixels
-        of each object, preserving edges while removing interior and exterior
-        pixels. On agar plates, this extracts colony perimeters for edge-based
-        analysis, boundary visualization, or edge-specific measurements without
-        the interior colony mass.
+    Computes the difference between dilation and erosion of the binary mask,
+    producing a thin outline of each object's boundary pixels. Interior and
+    exterior pixels are removed, leaving only the colony perimeter for
+    edge-focused analysis or visualization.
 
-    Why this is useful for agar plates:
-        Colony edges carry information about growth morphology, spreading,
-        filamentous extensions, and optical properties. Extracting edges via
-        morphological gradient enables edge-focused phenotyping (e.g., boundary
-        roughness, circularity), visualization of colony contours, and detection
-        of edge-specific features (halos, haloes, pigmentation patterns).
+    Best For:
+        - Extracting colony perimeters for boundary roughness or circularity
+          measurements.
+        - Creating boundary masks for edge-specific color or texture analysis.
+        - Visualizing colony contours as QC overlays on raw images.
+        - Detecting spreading or filamentous edges extending from colony cores.
 
-    Use cases:
-        - Extract colony perimeters for edge-based morphological measurements.
-        - Create boundary masks for edge-specific color or texture analysis.
-        - Visualize colony outlines for QC overlays on raw images.
-        - Detect spreading or filamentous edges extending from colony cores.
+    Consider Also:
+        - :class:`Skeletonize` when you need medial-axis topology rather
+          than boundary outlines.
+        - :class:`MaskEroder` for uniform inward shrinking without
+          extracting boundaries.
+        - :class:`Thinning` for iterative boundary peeling that preserves
+          connectivity.
 
-    Caveats:
-        - Produces hollow edge masks, not filled objects suitable for standard
-          morphological measurements (use on filled masks for meaningful results).
-        - Large footprints produce thick, imprecise boundaries that lose detail
-          and smooth away fine features.
-        - Not suitable for downstream operations expecting solid filled masks
-          (e.g., area measurements); intended for boundary analysis only.
-        - Gradient edges may appear disconnected for colonies with complex or
-          highly irregular shapes.
+    Args:
+        shape: Structuring element for gradient computation. ``"auto"``
+            selects a disk scaled to image size, ``"disk"``, ``"square"``,
+            or ``"diamond"`` use a named shape at the given width, a NumPy
+            array provides a custom element, and ``None`` uses the library
+            default. Default: None.
+        width: Footprint width in pixels when using named shapes or
+            auto-scaling. Larger values produce thicker boundaries.
+            Typical range: 1--5. Default: 1.
 
-    Attributes:
-        shape (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
-            Structuring element used for gradient computation. Controls edge
-            thickness and neighborhood size.
-        width (int): Footprint width in pixels. Larger values produce thicker,
-            less precise boundaries.
-
-    Examples:
-        Extract colony boundaries for edge analysis:
-
-        >>> from phenotypic.refine import MaskGradient
-        >>> from phenotypic import Image
-        >>> from phenotypic.detect import OtsuDetector
-        >>> image = Image.imread("colony_plate.jpg")  # doctest: +SKIP
-        >>> detected = OtsuDetector().apply(image)  # doctest: +SKIP
-        >>> # Extract edges with auto-scaled shape
-        >>> refiner = MaskGradient(shape='auto')  # doctest: +SKIP
-        >>> edges = refiner.apply(detected)  # doctest: +SKIP
-        >>> # Or use a small disk shape (width 1) for thin, precise edges
-        >>> refiner = MaskGradient(shape='disk', width=1)  # doctest: +SKIP
-        >>> edges = refiner.apply(detected, inplace=False)  # doctest: +SKIP
+    Returns:
+        Image: Input image with ``objmask`` replaced by the gradient
+        boundary mask.
 
     Raises:
-        AttributeError: If an invalid ``shape`` type is provided (checked
-            during operation).
+        AttributeError: If an invalid ``shape`` type is provided.
+
+    See Also:
+        :doc:`/how_to/notebooks/refine_noisy_boundaries` for boundary
+        extraction workflows.
+        :doc:`/explanation/refinement_strategies` for a comparison of
+        morphological refinement methods.
     """
 
     def __init__(

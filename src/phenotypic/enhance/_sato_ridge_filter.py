@@ -11,58 +11,52 @@ from phenotypic.abc_ import ImageEnhancer
 
 
 class SatoRidgeFilter(ImageEnhancer):
-    """
-    Sato tubeness filter to detect continuous ridge-like structures and colonies.
+    """Enhance tubular and ridge-like structures in ``detect_mat`` with the Sato tubeness filter.
 
-    Computes the Sato tubeness measure using the Hessian matrix eigenvalues
-    to enhance continuous ridge structures (tubes, wrinkles, filamentous colonies,
-    mycelial networks, and river-like features). On agar plate images, this highlights
-    tube-like or ridge-like features and is particularly useful for organisms that form
-    filamentous or branching morphologies (e.g., fungi, Bacillus, streptomycetes).
+    Computes the Sato tubeness measure from Hessian matrix eigenvalues to
+    highlight continuous ridge structures such as filamentous colonies,
+    mycelial networks, and branching morphologies. Less sensitive to
+    parameter tuning than Frangi, making it a good first choice for ridge
+    detection.
 
-    Use cases (agar plates):
-    - Enhance thin filamentous colonies or mycelial networks for better detection.
-    - Detect continuous ridge-like structures that global thresholding might miss.
-    - Improve segmentation of interconnected fungal networks or biofilm structures.
-    - Preprocess images from filamentous organisms (molds, hyphae, root-like colonies).
+    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Tuning and effects:
-    - sigmas: Range of standard deviations for Gaussian derivatives. Smaller sigmas
-      detect finer structures; larger sigmas detect thicker features. Should span
-      the expected range of colony feature scales (e.g., sigmas=range(1, 10, 2)
-      for 1-10 pixel width structures).
-    - black_ridges: If True, detect dark ridges (colonies) on bright background.
-      If False, detect bright ridges on dark background. For plate imaging, use
-      True when colonies appear darker than agar.
-    - mode: Boundary handling when computing derivatives ('constant', 'reflect',
-      'wrap', 'nearest', 'mirror'). Default 'reflect' usually works best.
-    - cval: Fill value for 'constant' mode (default 0).
+    Best For:
+        - Thin filamentous colonies or mycelial networks (fungi, Bacillus,
+          streptomycetes).
+        - Continuous ridge-like structures that global thresholding misses.
+        - Interconnected fungal networks or biofilm structures.
+        - Organisms with branching or root-like colony morphologies.
 
-    Guidance:
-    - Combine with mild smoothing (GaussianBlur) beforehand to suppress noise;
-      Sato is sensitive to high-frequency artifacts, especially with small sigmas.
-    - Start with sigmas=range(1, 5) for small features or range(3, 10) for thick tubes.
-    - Choose sigmas that match expected feature widths (e.g., typical colony radius).
-    - Sato typically has less sensitivity to parameter tuning compared to Frangi,
-      making it a good first choice for ridge detection.
+    Consider Also:
+        - :class:`MeijeringRidgeFilter` for very fine neurite-like filaments
+          where higher selectivity is needed.
+        - :class:`HessianFilter` for combined edge and ridge detection with
+          blob sensitivity control.
+        - :class:`CoherenceEnhancingDiffusion` for anisotropic smoothing
+          that enhances directional structures before ridge detection.
 
-    Caveats:
-    - Output is a tubeness map (probability measure), not binary. Thresholding is
-      typically needed afterward.
-    - Computationally expensive for large sigma ranges; consider limiting to 3-5
-      different scales for speed.
-    - May amplify noise if sigmas are too small; pre-smoothing helps.
-    - Less responsive than Frangi to blobness/structuredness tuning; use Frangi
-      if you need finer control over blob vs. tube detection.
+    Args:
+        sigmas: Sequence of standard deviations for Gaussian derivatives.
+            Smaller values detect finer structures; larger values detect
+            thicker features. Typical range: ``(1, 2, 3)`` to
+            ``range(1, 10, 2)``. Default: ``(1, 2, 3)``.
+        black_ridges: If ``True``, detect dark ridges on bright background.
+            If ``False`` (default), detect bright ridges on dark background.
+        mode: Boundary handling. Accepted values: ``'constant'``,
+            ``'reflect'``, ``'wrap'``, ``'nearest'``, ``'mirror'``.
+            Default: ``'reflect'``.
+        cval: Fill value when ``mode='constant'``. Default: 0.
 
-    Attributes:
-        sigmas (tuple | list): Sequence of standard deviations for Hessian
-            computation. Each sigma represents a scale; default (1, 2, 3).
-        black_ridges (bool): If True, detect dark structures on bright background;
-            if False, detect bright structures on dark background. Default False.
-        mode (str): Boundary handling mode ('constant', 'reflect', 'wrap',
-            'nearest', 'mirror'). Default 'reflect'.
-        cval (float): Fill value for 'constant' mode. Default 0.
+    Returns:
+        Image: Input image with ``detect_mat`` replaced by the Sato
+        tubeness response map. ``rgb`` and ``gray`` are unchanged.
+
+    See Also:
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
+        visual walkthrough of ridge enhancement on plate images.
+        :doc:`/explanation/what_enhancement_does` for background on
+        Hessian-based ridge detection methods.
     """
 
     def __init__(

@@ -11,91 +11,57 @@ from ..abc_ import ImageEnhancer
 
 
 class VisuShrinkEnhancer(ImageEnhancer):
-    """Wavelet denoising with universal VisuShrink thresholding for plate images.
+    """Denoise ``detect_mat`` with universal VisuShrink wavelet thresholding.
 
-    Applies wavelet-domain denoising using the VisuShrink method, which uses a single
-    universal threshold across all wavelet subbands. This is effective for removing
-    Gaussian noise from agar plates (scanner artifacts, CCD noise) while preserving
-    sharp colony edges better than Gaussian blur.
+    Applies wavelet-domain denoising with a single universal threshold across
+    all subbands, designed to remove all Gaussian noise with high probability.
+    Faster than :class:`BayesShrinkEnhancer` but may over-smooth regions with
+    low noise. Preserves colony edges better than Gaussian blur.
 
-    Use cases (agar plates):
-    - Remove scanner banding and flatbed scanner noise without blurring colonies.
-    - Denoise high-ISO camera images while preserving colony boundaries.
-    - Suppress agar granularity and condensation speckle before detection.
-    - Pre-filter before edge detection (Sobel, Canny) to avoid noise amplification.
+    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Tuning and effects:
-    - sigma: Noise standard deviation in [0, 1] scale (matching detect_mat range).
-      None (default) auto-estimates via MAD. Typical values: 0.01-0.05 for
-      moderate noise (equivalent to σ=2.5-12.75 on 8-bit). Too high causes
-      over-smoothing and colony merging.
-    - wavelet: 'db2' (default) balances smoothness and locality. 'db4' captures
-      more detail. 'sym2' offers symmetric filters. Must be orthogonal wavelet.
-    - mode: 'soft' (default) for additive noise produces smoother results;
-      'hard' preserves more edges but may leave residual noise.
-    - wavelet_levels: None (default) uses max-3 levels automatically. More
-      levels = finer noise removal but higher computation.
+    Best For:
+        - Scanner banding and flatbed scanner noise removal.
+        - High-ISO camera images where colony boundaries must remain sharp.
+        - Agar granularity and condensation speckle suppression before
+          detection.
+        - Pre-filtering before edge detection to avoid noise amplification.
 
-    Caveats:
-    - VisuShrink uses a universal threshold designed to remove ALL noise with
-      high probability, which can over-smooth compared to BayesShrinkEnhancer.
-    - Not suitable for images with spatially varying noise levels (use
-      BayesShrinkEnhancer instead for adaptive thresholding).
-    - Does not correct illumination gradients; combine with background
-      subtraction (GaussianSubtract, SubtractRollingBall) if needed.
-    - Slower than Gaussian blur but faster than BM3D or non-local means.
+    Consider Also:
+        - :class:`BayesShrinkEnhancer` for adaptive thresholding that
+          preserves more detail in regions with varying noise levels.
+        - :class:`BM3DDenoiser` for state-of-the-art structured noise
+          removal at higher computational cost.
+        - :class:`BilateralDenoise` for edge-preserving smoothing without
+          wavelet decomposition.
 
-    Attributes:
-        sigma (float | None): Noise standard deviation in [0, 1]. None = auto-
-            estimate via MAD. Typical: 0.01-0.05 for scanner/camera noise.
-        wavelet (str): Wavelet family ('db2', 'db4', 'sym2', etc.). Default 'db2'.
-        mode (Literal['soft', 'hard']): Thresholding mode. 'soft' recommended
-            for additive noise. Default 'soft'.
-        wavelet_levels (int | None): Decomposition levels. None = max-3 (auto).
+    Args:
+        sigma: Noise standard deviation in [0, 1] scale. ``None`` (default)
+            auto-estimates via MAD. Typical range: 0.01--0.05 for moderate
+            scanner/camera noise. Too high causes over-smoothing.
+        wavelet: Wavelet family. ``'db2'`` (default) balances smoothness and
+            locality; ``'db4'`` captures more detail. Must be orthogonal.
+        mode: Thresholding mode. ``'soft'`` (default) produces smoother
+            results for additive noise; ``'hard'`` preserves edges more.
+        wavelet_levels: Decomposition depth. ``None`` (default) uses max-3
+            automatically. Higher values give finer denoising.
+        clip: Clip output to [0, 1]. Default: ``True``. Set to ``False``
+            when using with variance-stabilizing transforms (e.g., GAT).
 
-    Examples:
-        Basic denoising of scanner noise with defaults:
+    Returns:
+        Image: Input image with ``detect_mat`` denoised via universal
+        wavelet thresholding. ``rgb`` and ``gray`` are unchanged.
 
-        >>> from phenotypic import Image
-        >>> from phenotypic.enhance import VisuShrinkEnhancer
-        >>> image = Image.imread('agar_plate.jpg')  # doctest: +SKIP
-        >>> enhancer = VisuShrinkEnhancer()
-        >>> denoised = enhancer.apply(image)  # doctest: +SKIP
-        >>> # Original RGB/gray untouched, detect_mat is denoised
-        >>> assert np.array_equal(image.rgb[:], denoised.rgb[:])  # doctest: +SKIP
-        >>> assert np.array_equal(image.gray[:], denoised.gray[:])  # doctest: +SKIP
-        >>> # detect_mat is different
-        >>> assert not np.array_equal(image.detect_mat[:], denoised.detect_mat[:])  # doctest: +SKIP
+    References:
+        [1] D. L. Donoho and I. M. Johnstone, "Ideal spatial adaptation by
+        wavelet shrinkage," *Biometrika*, vol. 81, no. 3, pp. 425--455,
+        Sep. 1994.
 
-        Custom parameters for heavily noisy images:
-
-        >>> from phenotypic import Image
-        >>> from phenotypic.enhance import VisuShrinkEnhancer
-        >>> image = Image.imread('high_noise_plate.jpg')  # doctest: +SKIP
-        >>> # Use db4 for finer details, more decomposition levels
-        >>> enhancer = VisuShrinkEnhancer(
-        ...     wavelet='db4',
-        ...     wavelet_levels=5,
-        ...     sigma=0.08  # Higher noise estimate
-        ... )
-        >>> denoised = enhancer.apply(image)  # doctest: +SKIP
-
-        Chaining with other enhancers for robust preprocessing:
-
-        >>> from phenotypic import Image, ImagePipeline
-        >>> from phenotypic.enhance import (
-        ...     VisuShrinkEnhancer, CLAHE, SubtractGaussian
-        ... )
-        >>> from phenotypic.detect import OtsuDetector
-        >>> image = Image.imread('plate.jpg')  # doctest: +SKIP
-        >>> # Build preprocessing pipeline
-        >>> pipeline = ImagePipeline()
-        >>> pipeline.add(SubtractGaussian(sigma=50))  # Remove background
-        >>> pipeline.add(VisuShrinkEnhancer(sigma=0.03))  # Denoise
-        >>> pipeline.add(CLAHE(clip_limit=0.02))  # Enhance local contrast
-        >>> pipeline.add(OtsuDetector())  # Detect colonies
-        >>> result = pipeline.apply(image)  # doctest: +SKIP
-        >>> colonies = result.objects  # doctest: +SKIP
+    See Also:
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
+        visual walkthrough of denoising pipelines on plate images.
+        :doc:`/explanation/what_enhancement_does` for background on
+        wavelet denoising and threshold selection strategies.
     """
 
     def __init__(

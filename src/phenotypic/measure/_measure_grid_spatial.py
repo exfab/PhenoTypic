@@ -16,82 +16,41 @@ from phenotypic.tools_.measurement_info_ import GRID_SPATIAL, BBOX, GRID
 
 
 class MeasureGridSpatial(GridMeasureFeatures):
-    """Measure spatial relationships between neighboring colonies in grid cells.
+    """Measure edge-to-edge distances to neighbors in adjacent grid cells.
 
-    For each detected colony, identifies neighbors in adjacent grid cells (left, right,
-    above, below) and computes the minimum edge-to-edge distance between bounding boxes.
+    For each detected colony, identify the nearest object in the left,
+    right, above, and below grid cells and compute the minimum
+    bounding-box edge-to-edge distance. Edge and corner colonies report
+    ``NaN`` for directions beyond the plate boundary.
 
-    **Intuition:** In arrayed microbial assays (96-well, 384-well plates), knowing which
-    colonies neighbor each other and how far apart they are enables spatial analysis of
-    colony interactions, competition effects, and contamination risk. This measurement
-    provides the foundation for neighbor-aware analysis in plate-based experiments.
+    Best For:
+        - Quantifying colony spacing and crowding to assess nutrient
+          competition risk on arrayed plates.
+        - Flagging closely spaced colonies that may cross-contaminate.
+        - Enabling neighbor-aware paired statistical comparisons for
+          competition or cooperation studies.
 
-    **Use cases (agar plates):**
-
-    - **Quantify colony spacing and crowding:** Identify tightly packed wells where colonies
-      may interact or compete for nutrients.
-    - **Detect contamination risk:** Flag colonies that are unusually close to neighbors,
-      increasing cross-contamination likelihood.
-    - **Identify edge wells with missing neighbors:** Edge and corner colonies will have NaN
-      for neighbors in directions beyond the plate boundary, enabling spatial bias correction.
-    - **Track neighbor interactions:** Enable competition/cooperation studies by linking each
-      colony to its immediate neighbors for paired statistical comparisons.
-    - **Assess growth uniformity:** Large distance variations may indicate uneven inoculation
-      or inconsistent growth conditions across the plate.
-
-    **Caveats:**
-
-    - Requires valid grid structure: The input must be a GridImage with detected grid
-      (rows, columns) and colony assignments to grid cells.
-    - Edge/corner colonies will have NaN: Colonies at plate boundaries lack neighbors in
-      certain directions by definition.
-    - Distance is edge-to-edge: Uses minimum bounding box distance, not centroid-to-centroid.
-      Overlapping bounding boxes have distance 0.
-    - Multiple objects per cell: When a neighbor cell contains multiple detected colonies
-      (e.g., due to over-segmentation), the closest one is selected as the neighbor.
-    - Grid-relative neighbors only: Only colonies in immediately adjacent grid cells are
-      considered neighbors, not all nearby colonies in pixel space.
+    Consider Also:
+        - :class:`MeasureGridLinRegStats` for regression-based
+          positional quality metrics.
+        - :class:`MeasureGridSpread` for within-well colony dispersion
+          rather than between-well distances.
+        - :class:`MeasureBounds` for raw bounding boxes and centroids
+          without neighbor lookups.
 
     Returns:
         pd.DataFrame: Object-level neighbor measurements with columns:
 
-            - ObjectLabel: Unique identifier for each detected colony
-            - GridSpatial_LeftNeighborObjLabel: Object label of the left neighbor (NaN if none)
-            - GridSpatial_LeftDistance: Minimum edge-to-edge distance to left neighbor (NaN if none)
-            - GridSpatial_RightNeighborObjLabel: Object label of the right neighbor (NaN if none)
-            - GridSpatial_RightDistance: Minimum edge-to-edge distance to right neighbor (NaN if none)
-            - GridSpatial_AboveNeighborObjLabel: Object label of the above neighbor (NaN if none)
-            - GridSpatial_AboveDistance: Minimum edge-to-edge distance to above neighbor (NaN if none)
-            - GridSpatial_UnderNeighborObjLabel: Object label of the below neighbor (NaN if none)
-            - GridSpatial_UnderDistance: Minimum edge-to-edge distance to below neighbor (NaN if none)
+            - Label: unique object identifier.
+            - LeftNeighborObjLabel, LeftDistance.
+            - RightNeighborObjLabel, RightDistance.
+            - AboveNeighborObjLabel, AboveDistance.
+            - UnderNeighborObjLabel, UnderDistance.
+            - ``NaN`` where no neighbor exists in a given direction.
 
-    Examples:
-        Measure neighbor relationships across a plate:
-
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>> from phenotypic.measure import MeasureGridSpatial
-        >>> # Load synthetic plate with detected colonies
-        >>> grid_image = load_synth_yeast_plate()
-        >>> # Measure spatial relationships
-        >>> measurer = MeasureGridSpatial()
-        >>> spatial_df = measurer.measure(grid_image)
-        >>> # Check output structure
-        >>> print(spatial_df.columns.tolist())  # doctest: +SKIP
-        ['ObjectLabel', 'GridSpatial_LeftNeighborObjLabel', 'GridSpatial_LeftDistance', ...]
-        >>> # Find colonies with no left neighbor (leftmost column)
-        >>> leftmost = spatial_df[spatial_df['GridSpatial_LeftNeighborObjLabel'].isna()]
-        >>> print(f"Colonies on left edge: {len(leftmost)}")  # doctest: +SKIP
-
-        Identify closely spaced colony pairs:
-
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>> from phenotypic.measure import MeasureGridSpatial
-        >>> grid_image = load_synth_yeast_plate()
-        >>> measurer = MeasureGridSpatial()
-        >>> spatial_df = measurer.measure(grid_image)
-        >>> # Find colonies with close left neighbors (potential interaction)
-        >>> close_pairs = spatial_df[ spatial_df['GridSpatial_LeftDistance'] < 10]  # doctest: +SKIP
-        >>> print(f"Closely spaced horizontal pairs: {len(close_pairs)}")  # doctest: +SKIP
+    See Also:
+        :doc:`/tutorials/notebooks/07_measuring_and_exporting` for a
+        walkthrough of grid-level measurements.
     """
 
     _measurement_info_class = GRID_SPATIAL

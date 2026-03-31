@@ -11,78 +11,55 @@ from ..abc_ import ThresholdDetector
 
 
 class MinimumDetector(ThresholdDetector):
-    """Minimum valley threshold detector for bimodal histogram segmentation.
+    """Detect colonies by finding the valley between two histogram peaks.
 
-    MinimumDetector finds the minimum value (histogram valley) between two distinct
-    peaks, using this valley as the threshold. This method works well on clearly
-    bimodal histograms where background and foreground form two separate peaks with
-    a distinct valley between them, common in high-contrast imaging.
+    Locate the intensity minimum (valley) between the two dominant peaks of
+    the image histogram and threshold at that point. This works well when
+    colonies and background form two clearly separated intensity populations,
+    as the valley provides a natural separation boundary. For a full
+    comparison see :doc:`/explanation/detection_strategies_compared`.
+
+    Best For:
+        * High-contrast plates where colony and background intensities form
+          two distinct, well-separated histogram peaks.
+        * Standardised imaging setups producing consistently bimodal
+          histograms across plates.
+        * Images where the intensity gap between colonies and agar is wide
+          and the valley is unambiguous.
+
+    Consider Also:
+        * :class:`OtsuDetector` when the histogram is bimodal but peaks
+          are broad or partially overlapping.
+        * :class:`LiDetector` when the histogram is unimodal or weakly
+          bimodal and a cross-entropy criterion is more appropriate.
+        * :class:`HysteresisDetector` when colony brightness varies and a
+          single valley-based threshold under-segments faint regions.
 
     Args:
-        ignore_zeros: If True (default), exclude zero-intensity pixels from threshold
-            computation. Essential for images with black borders or masks.
+        ignore_zeros: Exclude zero-intensity pixels from threshold
+            computation. Enable for plates with black borders or masked
+            regions; disable only when zero is a meaningful intensity value.
+            Default: True.
 
-        ignore_borders: If True (default), remove colonies touching image edges via
-            clear_border(). Eliminates partial colonies at plate boundaries.
-
-    Attributes:
-        ignore_zeros, ignore_borders
+        ignore_borders: Remove colonies touching image edges via
+            ``clear_border()``. Recommended for grid-based colony counting
+            to eliminate partial colonies at plate boundaries. Default: True.
 
     Returns:
-        Image: Input image with objmask set to binary mask from minimum thresholding.
+        Image: Input image with ``objmask`` set to binary mask and
+        ``objmap`` set to labeled connected components.
 
     Raises:
-        ValueError: If threshold computation fails (e.g., no clear bimodal distribution).
+        ValueError: If the histogram has no clear bimodal distribution and
+            no valley can be found.
 
-    **Use cases**
-
-    - **Clearly bimodal histograms:** Distinct foreground and background peaks with
-      clear valley between them.
-    - **High-contrast imaging:** Strong separation between colonies and background
-      intensities.
-    - **Well-defined regions:** When image has only two intensity clusters.
-
-    **Limitations**
-
-    - Requires clear bimodality. Fails on unimodal or multimodal histograms or when
-      background/foreground intensities overlap.
-    - Sensitive to noise near peak/valley. Spurious peaks from noise can create false
-      valleys.
-    - No multi-peak support. Can't handle images with more than two distinct intensity
-      groups.
-    - May fail on low-contrast images. When peaks are shallow or valleys are gradual,
-      method produces poor results.
-
-    **Parameter effects on colony detection**
-
-    - **ignore_zeros:** Enable for black borders. Disable only if zero is meaningful.
-    - **ignore_borders:** Recommended for grid analysis.
-
-    Examples:
-        Basic minimum detection on bimodal histogram::
-
-            from phenotypic import Image
-            from phenotypic.detect import MinimumDetector
-
-            plate = Image.imread("high_contrast_plate.jpg")
-            detector = MinimumDetector()
-            detected = detector.apply(plate)
-            mask = detected.objmask[:]
-            print(f"Detected {mask.sum()} colony pixels via minimum")
-
-        Pipeline with minimum thresholding::
-
-            from phenotypic import ImagePipeline
-            from phenotypic.enhance import GaussianBlur
-            from phenotypic.detect import MinimumDetector
-
-            pipeline = ImagePipeline([
-                GaussianBlur(sigma=1.5),
-                MinimumDetector(ignore_zeros=True, ignore_borders=True)
-            ])
-
-            image = Image.imread("plate.jpg")
-            result = pipeline.apply(image)
+    See Also:
+        :doc:`/tutorials/notebooks/02_detecting_colonies`
+            Step-by-step tutorial for basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm`
+            Guide for selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared`
+            In-depth comparison of all detection strategies.
     """
 
     def __init__(self, ignore_zeros: bool = True, ignore_borders: bool = True):

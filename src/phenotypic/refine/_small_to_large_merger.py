@@ -14,78 +14,55 @@ from ..abc_ import ObjectRefiner
 
 
 class SmallToLargeMerger(ObjectRefiner):
-    """Merge small colony fragments into nearby large colonies (hierarchical merging).
+    """Merge small colony fragments into their nearest large colony using hierarchical size-based merging.
 
-    Intuition:
-        Fragmented colonies often produce one large central detection plus small
-        satellite fragments from uneven pigmentation or lighting. This refiner
-        implements hierarchical merging: small fragments are absorbed into their
-        nearest large neighbor (which never merge), preserving large colonies as
-        stable anchors. This is more targeted than distance-based merging and
-        explicitly preserves the structure of well-formed colonies.
+    Partitions objects into small (below size threshold) and large (at or
+    above), then absorbs each small fragment into the nearest large neighbor
+    within the distance threshold. Large colonies serve as stable anchors
+    and never merge with each other, preventing false consolidation of
+    distinct colonies.
 
-    Why this is useful for agar plates:
-        Heterogeneous pigmentation, uneven illumination, or aggressive thresholding
-        can fragment a single colony into a large central region plus small satellites.
-        Size-based filtering assumes large = real colony and small = artifact or
-        fragment. By merging only small objects into large neighbors, you reconstruct
-        the full colony shape while avoiding the risk of merging two distinct
-        large colonies that happen to be close together.
+    Best For:
+        - Fragmented detections from heterogeneous pigmentation or uneven
+          illumination where satellites cluster around a main colony.
+        - Post-watershed over-segmentation where one colony splits into a
+          large core plus small peripheral regions.
+        - Removing small debris near real colonies without merging distinct
+          large colonies.
+        - Plates with severe lighting gradients that produce satellite
+          fragments around main detections.
 
-    Use cases:
-        - Cleaning up fragmented detections from heterogeneous colony pigmentation
-          (e.g., highly pigmented or mucoid colonies with internal voids).
-        - Removing small debris/dust artifacts near real colonies without merging
-          distinct colonies.
-        - Post-processing watershed over-segmentation where one colony becomes
-          multiple regions.
-        - Correcting detections on plates with severe lighting gradients that
-          create satellite fragments around main colonies.
+    Consider Also:
+        - :class:`TransitiveDistanceMerger` when all nearby objects should
+          merge regardless of size, including large-to-large merging.
+        - :class:`NearestNeighborMerger` for simple nearest-neighbor
+          merging without size partitioning.
+        - :class:`SmallObjectRemover` when small fragments should be
+          discarded entirely rather than absorbed.
 
-    Caveats:
-        - If no large colonies exist (all objects below size_threshold), no
-          merging occurs. May require tuning size_threshold to your image
-          characteristics.
-        - Small colonies far from any large colony remain independent. This is
-          usually desired (preserves isolated small colonies) but may leave some
-          noise artifacts if distance_threshold is small.
-        - Large colonies never merge, even if they are extremely close together.
-          If you need to merge large colonies, use TransitiveDistanceMerger instead.
-        - Cannot distinguish between legitimate small colonies and noise fragments
-          based on size alone. A small but viable colony below size_threshold will
-          be absorbed into a nearby large colony.
-        - Multiple small fragments near the same large colony all merge to that
-          colony, potentially distorting its shape if fragments are far from the
-          main body.
+    Args:
+        distance_threshold: Maximum centroid-to-centroid distance in pixels
+            for merging a small fragment into a large colony. Typical
+            range: 10--50. Should be smaller than the minimum distance
+            between distinct large colonies. Default: 30.0.
+        size_threshold: Pixel area separating small fragments from large
+            anchor colonies. Objects below this are merge candidates;
+            objects at or above are preserved as anchors. Typical range:
+            50--200. Default: 100.
 
-    Attributes:
-        distance_threshold (float): Maximum distance in pixels from small fragment
-            to large colony for merging. Smaller values (10-20) are conservative
-            and reduce risk of merging unrelated fragments. Larger values (30-50)
-            clean more aggressively but may merge distant small colonies. Should
-            be smaller than minimum distance between distinct large colonies.
-        size_threshold (int): Pixel area separating "small" fragments from "large"
-            anchor colonies. Objects with area < size_threshold are candidates for
-            merging; objects >= size_threshold are preserved as anchors. Tune based
-            on expected colony size. Typical range: 50-200 pixels depending on
-            imaging resolution. Smaller values classify more objects as large
-            anchors; larger values classify more as small fragments.
+    Returns:
+        Image: Input image with ``objmap`` updated so that small fragments
+        are relabeled to their nearest large colony.
 
-    Examples:
-        Merge small fragments into parent colonies:
+    Raises:
+        ValueError: If ``distance_threshold`` or ``size_threshold`` is not
+            positive.
 
-        >>> from phenotypic.refine import SmallToLargeMerger
-        >>> from phenotypic import Image
-        >>> from phenotypic.detect import OtsuDetector
-        >>> image = Image('fragmented_plate.jpg')
-        >>> detected = OtsuDetector().apply(image)
-        >>> # Merge fragments <100px into nearby colonies >100px
-        >>> merger = SmallToLargeMerger(
-        ...     distance_threshold=40,
-        ...     size_threshold=100
-        ... )
-        >>> refined = merger.apply(detected)  # doctest: +SKIP
-        >>> print(f"Consolidated fragments: {detected.objmap[:].max()} -> {refined.objmap[:].max()}")  # doctest: +SKIP
+    See Also:
+        :doc:`/how_to/notebooks/merge_fragmented_detections` for fragment
+        merging workflows.
+        :doc:`/explanation/refinement_strategies` for a comparison of
+        merging strategies.
     """
 
     def __init__(self, distance_threshold: float = 30.0, size_threshold: int = 100):

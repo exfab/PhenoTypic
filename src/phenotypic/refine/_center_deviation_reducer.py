@@ -12,39 +12,35 @@ from phenotypic.tools_.measurement_info_ import BBOX
 
 
 class CenterDeviationReducer(ObjectRefiner):
-    """Keep the object closest to center and remove off-center detections.
+    """Retain only the object whose centroid is closest to the image center.
 
-    Intuition:
-        For isolated-colony images (e.g., single-spot captures or per-grid-cell
-        crops), the true colony is typically near the center. Spurious blobs from
-        glare, dust, or agar texture may appear off-center. This operation keeps
-        only the object whose centroid is closest to the image center, removing
-        all others.
+    Computes the Euclidean distance from each object's centroid to the image
+    center and keeps the single nearest object, removing all others. Useful
+    for per-cell crops where the intended colony sits near the center and
+    peripheral detections are artifacts.
 
-    Why this is useful for agar plates:
-        When imaging a grid of pinned colonies, per-cell crops may contain extra
-        detections (ringing, condensation, halo). Selecting the most centered
-        object stabilizes downstream phenotyping by focusing on the intended
-        colony in each crop.
-
-    Use cases:
-        - Single-colony crops from a grid plate where occasional debris is picked
-          up near edges.
+    Best For:
+        - Single-colony crops from grid plates where debris appears near edges.
         - Automated pipelines that assume one colony per field-of-view.
-        - Use in conjunction with `phenotypic.grid.GridApply`.
+        - Post-crop cleanup in conjunction with grid-based workflows.
 
-    Caveats:
-        - If the true colony is notably off-center (misalignment, drift), this
-          method can remove it and keep a distractor.
-        - Not suitable for multi-colony fields; it will drop all but one object.
+    Consider Also:
+        - :class:`GridSectionLargest` when the largest object per grid cell is
+          more reliable than the most centered.
+        - :class:`SmallObjectRemover` when peripheral artifacts are simply
+          smaller than the true colony.
+        - :class:`ReduceMultipleGridObjects` for grid-aware multi-detection
+          reduction using positional regression.
 
-    Attributes:
-        (No public attributes)
+    Returns:
+        Image: Input image with ``objmap`` reduced to the single most centered
+        object.
 
-    Examples:
-        >>> from phenotypic.refine import CenterDeviationReducer
-        >>> op = CenterDeviationReducer()
-        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+    See Also:
+        :doc:`/how_to/notebooks/refine_noisy_boundaries` for boundary cleanup
+        workflows.
+        :doc:`/explanation/refinement_strategies` for an overview of
+        refinement approaches.
     """
 
     def _operate(self, image: Image):

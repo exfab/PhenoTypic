@@ -12,40 +12,38 @@ from phenotypic.tools_.measurement_info_ import GRID_LINREG_STATS
 
 
 class ReduceMultipleGridObjects(GridObjectRefiner):
-    """Reduce multi-detections per grid cell by keeping objects closest to a
-    linear-regression prediction of expected positions.
+    """Reduce multi-detections per grid cell by keeping the object closest to a linear-regression prediction.
 
-    Intuition:
-        In grid assays, some cells contain multiple detections due to halos,
-        debris, or over-segmentation. By modeling the expected colony position
-        in each row/column with linear regression, we can retain the object with
-        the smallest residual error (closest to the predicted location) and
-        remove the rest. This iterates across the grid until each cell is
-        simplified.
+    Models expected colony positions along each row and column using linear
+    regression, then iteratively removes objects with the largest positional
+    residuals until each grid cell contains at most one detection. Cells with
+    the most objects are processed first to stabilize the regression fit.
 
-    Why this is useful for agar plates:
-        Pinned arrays assume consistent spatial layout. Selecting the object
-        nearest the learned grid trend eliminates off-grid artifacts while
-        preserving the most plausible colony per cell.
+    Best For:
+        - Grid cells with multiple detections from halos, debris, or
+          over-segmentation.
+        - Condensation or glare artifacts that create extra detections near
+          true colonies.
+        - Pinned arrays where consistent spatial layout makes positional
+          prediction reliable.
 
-    Use cases:
-        - Over-segmentation yields several blobs per grid position.
-        - Condensation or glare introduces extra detections near a colony.
+    Consider Also:
+        - :class:`GridAlignmentRefiner` for faster dominant-object-per-cell
+          selection without regression modeling.
+        - :class:`GridSectionLargest` for a simpler largest-per-cell
+          strategy.
+        - :class:`ResidualOutlierRemover` for removing outliers within noisy
+          rows or columns rather than reducing to one per cell.
 
-    Caveats:
-        - If the grid fit is inaccurate (bad registration, warped plates), the
-          closest-to-trend object may not be the true colony.
-        - Relatively slow due to repeated measurement and iteration over cells.
+    Returns:
+        Image: Input image with ``objmap`` and ``objmask`` reduced to at most
+        one object per grid cell based on minimum residual error.
 
-    Attributes:
-        (No public attributes)
-
-    Examples:
-        Reduce multi-detections per grid cell using residual error:
-
-        >>> from phenotypic.refine import ReduceMultipleGridObjects
-        >>> op = ReduceMultipleGridObjects()
-        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+    See Also:
+        :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based
+        refinement workflows.
+        :doc:`/explanation/refinement_strategies` for a comparison of
+        grid refinement approaches.
     """
 
     # TODO: Add a setting to retain a certain number of objects in the event of removal

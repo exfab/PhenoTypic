@@ -29,17 +29,21 @@ class ContrastStretching(ImageEnhancer):
         - :class:`HomomorphicFilter` when the primary issue is a brightness
           gradient rather than narrow dynamic range.
 
-    Caveats:
-        Heavy percentile clipping can reduce the apparent intensity of
-        biologically bright colonies and bias downstream measurements.
-    - Contrast stretching is global; it will not fix spatially varying illumination
-      on its own (consider `SubtractGaussian` or `SubtractRollingBall`).
+    Args:
+        lower_percentile: Dark clipping point. Pixels below this percentile
+            are mapped to the minimum. Typical range: 1--5. Default: 2.
+        upper_percentile: Bright clipping point. Pixels above this percentile
+            are mapped to the maximum. Typical range: 95--99. Default: 98.
 
-    Parameters:
-        lower_percentile (int): Lower percentile used to define the input range
-            for rescaling. Pixels below this are mapped to the minimum.
-        upper_percentile (int): Upper percentile used to define the input range
-            for rescaling. Pixels above this are mapped to the maximum.
+    Returns:
+        Image: Input image with ``detect_mat`` rescaled to the full dynamic
+        range. ``rgb`` and ``gray`` are unchanged.
+
+    See Also:
+        :doc:`/how_to/notebooks/enhance_low_contrast` for a comparison of
+        contrast enhancement methods.
+        :doc:`/explanation/what_enhancement_does` for how enhancement fits
+        into the pipeline model.
     """
 
     def __init__(self, lower_percentile: int = 2, upper_percentile: int = 98):

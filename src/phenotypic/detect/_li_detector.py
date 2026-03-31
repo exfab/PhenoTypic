@@ -11,78 +11,60 @@ from ..abc_ import ThresholdDetector
 
 
 class LiDetector(ThresholdDetector):
-    """Li's minimum cross-entropy threshold detector for colony segmentation.
+    """Detect colonies by minimising cross-entropy between the original and thresholded image.
 
-    LiDetector applies Li's iterative minimum cross-entropy thresholding method,
-    which minimizes the information loss between original and thresholded images.
-    This method assumes Gaussian distribution of intensities and performs well on
-    low-contrast or noisy images where Otsu's bimodal assumption may not hold.
+    Iteratively refine a threshold that minimises the information loss
+    (cross-entropy) between the original intensity distribution and the
+    binarised result. Performs well on low-contrast or noisy plates where
+    the histogram is not clearly bimodal and Otsu's variance-based
+    assumption does not hold. For a full comparison see
+    :doc:`/explanation/detection_strategies_compared`.
+
+    Best For:
+        * Low-contrast plates where colony and background intensities
+          overlap significantly.
+        * Noisy or textured agar backgrounds that create histogram
+          irregularities breaking bimodal assumptions.
+        * Images where the intensity distribution is unimodal or only
+          weakly bimodal.
+
+    Consider Also:
+        * :class:`OtsuDetector` when the histogram is clearly bimodal and
+          a fast single-pass threshold suffices.
+        * :class:`YenDetector` for a correlation-based alternative that
+          handles skewed histograms.
+        * :class:`HysteresisDetector` when colony brightness varies across
+          the plate and a single threshold under-segments faint regions.
 
     Args:
-        ignore_zeros: If True (default), exclude zero-intensity pixels from threshold
-            computation. Essential for images with black borders or masks.
+        ignore_zeros: Exclude zero-intensity pixels from threshold
+            computation. Enable for plates with black borders or masked
+            regions; disable only when zero is a meaningful intensity value.
+            Default: True.
 
-        ignore_borders: If True (default), remove colonies touching image edges via
-            clear_border(). Eliminates partial colonies at plate boundaries.
-
-    Attributes:
-        ignore_zeros, ignore_borders
+        ignore_borders: Remove colonies touching image edges via
+            ``clear_border()``. Recommended for grid-based colony counting
+            to eliminate partial colonies at plate boundaries. Default: True.
 
     Returns:
-        Image: Input image with objmask set to binary mask from Li thresholding.
+        Image: Input image with ``objmask`` set to binary mask and
+        ``objmap`` set to labeled connected components.
 
     Raises:
-        ValueError: If threshold computation fails.
+        ValueError: If threshold computation fails (e.g., degenerate
+            histogram with insufficient intensity variation).
 
-    **Use cases**
+    References:
+        [1] C. H. Li and C. K. Lee, "Minimum cross entropy thresholding,"
+        *Pattern Recognit.*, vol. 26, no. 4, pp. 617--625, 1993.
 
-    - **Low-contrast imaging:** Works better than Otsu on images with low signal-to-noise
-      or subtle intensity differences between colonies and background.
-    - **Non-bimodal histograms:** Handles images where colony intensity distribution
-      doesn't fit Otsu's bimodal assumption.
-    - **Noisy backgrounds:** More robust to textured agar or scanner artifacts that
-      create histogram irregularities.
-
-    **Limitations**
-
-    - Gaussian assumption. Assumes intensities follow Gaussian distribution; violates
-      on highly skewed or multimodal distributions.
-    - Slower than Otsu. Iterative refinement takes more computation time.
-    - May under-segment variable intensity colonies. Less effective than Otsu when
-      images are truly bimodal.
-    - Parameter-free but less intuitive. Difficult to understand or debug threshold
-      selection compared to Otsu's clear variance minimization objective.
-
-    **Parameter effects on colony detection**
-
-    - **ignore_zeros:** Enable for black borders. Disable only if zero is meaningful.
-    - **ignore_borders:** Recommended for grid analysis.
-
-    Examples:
-        Basic Li detection::
-
-            from phenotypic import Image
-            from phenotypic.detect import LiDetector
-
-            plate = Image.imread("low_contrast_plate.jpg")
-            detector = LiDetector()
-            detected = detector.apply(plate)
-            mask = detected.objmask[:]
-            print(f"Detected {mask.sum()} colony pixels via Li")
-
-        Pipeline with Li for noisy imaging::
-
-            from phenotypic import ImagePipeline
-            from phenotypic.enhance import GaussianBlur
-            from phenotypic.detect import LiDetector
-
-            pipeline = ImagePipeline([
-                GaussianBlur(sigma=2.0),
-                LiDetector(ignore_zeros=True, ignore_borders=True)
-            ])
-
-            image = Image.imread("plate.jpg")
-            result = pipeline.apply(image)
+    See Also:
+        :doc:`/tutorials/notebooks/02_detecting_colonies`
+            Step-by-step tutorial for basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm`
+            Guide for selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared`
+            In-depth comparison of all detection strategies.
     """
 
     def __init__(self, ignore_zeros: bool = True, ignore_borders: bool = True):

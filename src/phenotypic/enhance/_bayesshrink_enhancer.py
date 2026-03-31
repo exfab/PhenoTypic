@@ -11,85 +11,53 @@ from ..abc_ import ImageEnhancer
 
 
 class BayesShrinkEnhancer(ImageEnhancer):
-    """Wavelet denoising with adaptive BayesShrink thresholding for plate images.
+    """Denoise ``detect_mat`` with adaptive BayesShrink wavelet thresholding.
 
-    Applies wavelet-domain denoising using the BayesShrink method, which computes
-    separate adaptive thresholds for each wavelet subband based on local statistics.
-    This produces higher quality denoising than VisuShrink by preserving more detail
-    in regions with low noise and aggressive denoising in noisy regions.
+    Applies wavelet-domain denoising with per-subband adaptive thresholds
+    computed from local statistics. Preserves more fine detail than
+    :class:`VisuShrinkEnhancer` by denoising aggressively only where noise
+    is high and gently where signal dominates.
 
-    Use cases (agar plates):
-    - Remove scanner noise and camera artifacts while preserving fine colony details.
-    - Denoise images with spatially varying noise (uneven illumination causes
-      varying noise levels across the plate).
-    - Preserve colony texture and morphology better than VisuShrink or Gaussian blur.
-    - Pre-filter for feature extraction when colony internal structure matters.
+    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Tuning and effects:
-    - sigma: Noise standard deviation in [0, 1] scale. None (default) auto-estimates
-      via MAD. Typical: 0.01-0.05 for scanner/camera noise. BayesShrink uses this
-      to compute subband-specific thresholds, so accurate estimation improves quality.
-    - wavelet: 'db2' (default) balances smoothness and locality. 'db4' preserves
-      finer details. Must be orthogonal wavelet for proper noise statistics.
-    - mode: 'soft' (default) produces smoother results; 'hard' preserves edges
-      more aggressively but may leave noise.
-    - wavelet_levels: None (default) uses max-3 automatically. More levels allow
-      finer noise/signal separation.
+    Best For:
+        - Images with spatially varying noise from uneven illumination.
+        - Preserving colony texture and internal morphology during denoising.
+        - Scanner noise and camera artifacts on plates where fine detail
+          matters for downstream measurement.
+        - Pre-filtering before feature extraction or texture analysis.
 
-    Caveats:
-    - Requires more computation than VisuShrink due to subband-specific threshold
-      calculation, but typically better quality.
-    - Assumes Gaussian noise; may underperform with impulse noise (use MedianFilter).
-    - Does not correct illumination gradients; use background subtraction first.
-    - For very small colonies (few pixels), may slightly blur boundaries; consider
-      VisuShrink or reduce wavelet_levels.
+    Consider Also:
+        - :class:`VisuShrinkEnhancer` for faster denoising with a universal
+          threshold when spatial noise uniformity is acceptable.
+        - :class:`BM3DDenoiser` for state-of-the-art denoising of structured
+          noise patterns.
+        - :class:`BilateralDenoise` for edge-preserving smoothing without
+          wavelet decomposition.
 
-    Attributes:
-        sigma (float | None): Noise standard deviation in [0, 1]. None = auto-
-            estimate. Accurate sigma improves adaptive threshold quality.
-        wavelet (str): Wavelet family ('db2', 'db4', 'sym2'). Default 'db2'.
-        mode (Literal['soft', 'hard']): Thresholding mode. 'soft' recommended.
-        wavelet_levels (int | None): Decomposition levels. None = max-3.
+    Args:
+        sigma: Noise standard deviation in [0, 1] scale. ``None`` (default)
+            auto-estimates via MAD. Typical range: 0.01--0.05 for moderate
+            scanner/camera noise. Accurate estimation improves adaptive
+            threshold quality.
+        wavelet: Wavelet family. ``'db2'`` (default) balances smoothness and
+            locality; ``'db4'`` preserves finer details. Must be orthogonal.
+        mode: Thresholding mode. ``'soft'`` (default) produces smoother
+            results; ``'hard'`` preserves edges more aggressively.
+        wavelet_levels: Decomposition depth. ``None`` (default) uses max-3
+            automatically. Higher values allow finer noise/signal separation.
+        clip: Clip output to [0, 1]. Default: ``True``. Set to ``False``
+            when using with variance-stabilizing transforms (e.g., GAT).
 
-    Examples:
-        Basic denoising with adaptive BayesShrink:
+    Returns:
+        Image: Input image with ``detect_mat`` denoised via adaptive wavelet
+        thresholding. ``rgb`` and ``gray`` are unchanged.
 
-        >>> from phenotypic import Image
-        >>> from phenotypic.enhance import BayesShrinkEnhancer
-        >>> image = Image.imread('agar_plate.jpg')  # doctest: +SKIP
-        >>> enhancer = BayesShrinkEnhancer()
-        >>> denoised = enhancer.apply(image)  # doctest: +SKIP
-        >>> # Original data preserved, detect_mat denoised
-        >>> assert np.array_equal(image.rgb[:], denoised.rgb[:])  # doctest: +SKIP
-        >>> assert np.array_equal(image.gray[:], denoised.gray[:])  # doctest: +SKIP
-
-        BayesShrink vs VisuShrink comparison:
-
-        >>> from phenotypic import Image
-        >>> from phenotypic.enhance import BayesShrinkEnhancer, VisuShrinkEnhancer
-        >>> image = Image.imread('plate.jpg')  # doctest: +SKIP
-        >>> # BayesShrink: Adaptive, preserves more detail
-        >>> bayes = BayesShrinkEnhancer().apply(image)  # doctest: +SKIP
-        >>> # VisuShrink: Universal threshold, more aggressive smoothing
-        >>> visu = VisuShrinkEnhancer().apply(image)  # doctest: +SKIP
-        >>> # Results are different
-        >>> assert not np.array_equal(bayes.detect_mat[:], visu.detect_mat[:])  # doctest: +SKIP
-        >>> # BayesShrink typically preserves more fine structure
-
-        Fine detail preservation for texture analysis:
-
-        >>> from phenotypic import Image, ImagePipeline
-        >>> from phenotypic.enhance import BayesShrinkEnhancer, UnsharpMask
-        >>> from phenotypic.measure import MeasureFeatures
-        >>> image = Image.imread('high_res_plate.jpg')  # doctest: +SKIP
-        >>> # Denoise while preserving colony texture
-        >>> pipeline = ImagePipeline()
-        >>> pipeline.add(BayesShrinkEnhancer(wavelet='db4'))  # Fine details
-        >>> pipeline.add(UnsharpMask(radius=1.5, amount=1.0))  # Enhance edges
-        >>> result = pipeline.apply(image)  # doctest: +SKIP
-        >>> # Now measure morphology with full texture information
-        >>> measured = MeasureFeatures().apply(result)  # doctest: +SKIP
-        >>> features = measured.objects  # doctest: +SKIP
+    See Also:
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
+        visual walkthrough of enhancement pipelines on plate images.
+        :doc:`/explanation/what_enhancement_does` for background on
+        wavelet denoising and threshold selection strategies.
     """
 
     def __init__(

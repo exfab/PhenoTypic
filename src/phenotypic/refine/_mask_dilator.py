@@ -34,7 +34,7 @@ class MaskDilator(ObjectRefiner, FootprintMixin):
     Args:
         shape: Structuring element. ``'auto'``, ``'disk'``, ``'square'``,
             ``'diamond'``, or custom ndarray. Default: ``None``.
-        width: Footprint width in pixels. Default: 5.
+        width: Footprint width in pixels. Default: 3.
 
     Returns:
         Image: Input image with ``objmask`` and ``objmap`` dilated.

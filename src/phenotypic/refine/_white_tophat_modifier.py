@@ -13,44 +13,47 @@ from phenotypic.tools_.mixin import FootprintMixin
 
 
 class WhiteTophat(ObjectRefiner, FootprintMixin):
-    """Suppress small bright structures in the mask using white tophat.
+    """Remove small bright mask structures using white tophat subtraction.
 
-    Intuition:
-        White tophat highlights small, bright features relative to their local
-        background. On agar plates, glare, dust, or bright halos can create
-        thin connections or speckles that pollute colony masks. This modifier
-        detects those bright micro-structures and subtracts them from the
-        binary mask to improve separation and mask quality.
+    Applies a white tophat transform to the binary mask to detect small
+    bright features (glare bridges, dust speckles, thin connections) and
+    subtracts them. Produces cleaner, more compact masks that better match
+    colony boundaries under uneven illumination.
 
-    Why this is useful for agar plates:
-        Bright artifacts can bridge adjacent colonies or inflate perimeters.
-        Removing those tiny bright elements yields cleaner, more compact masks
-        that better match colony boundaries under uneven illumination.
-
-    Use cases:
+    Best For:
         - Reducing glare-induced bridges between neighboring colonies.
-        - Removing bright speckles/dust that become embedded in masks after
+        - Removing bright speckles or dust embedded in masks after
           thresholding.
+        - Cleaning up thin bright connections that inflate colony
+          perimeters.
 
-    Caveats:
-        - Large footprints may remove real bright edges of colonies (e.g.,
-          highly reflective rims), slightly eroding edge sharpness.
-        - If the shape is too small, bright artifacts may remain.
+    Consider Also:
+        - :class:`MaskOpener` for general morphological opening that
+          removes thin protrusions without tophat detection.
+        - :class:`SmallObjectRemover` when small artifacts are entire
+          disconnected objects rather than thin bridges.
+        - :class:`GMMCoreExtractor` for intensity-based core extraction
+          when halos are the primary artifact.
 
-    Attributes:
-        footprint (str): Shape for the shape used in the tophat
-            transform. Supported: 'disk', 'square'. Disk tends to preserve
-            round features, while square can be more aggressive along axes.
-        width (int | None): Width of the shape. Larger values
-            remove broader bright features but risk shrinking thin colony
-            appendages. ``None`` auto-scales with image size.
+    Args:
+        shape: Structuring element shape. ``"disk"`` preserves round
+            features, ``"square"`` is more aggressive along axes,
+            ``"diamond"`` provides a compromise. A NumPy array provides
+            a custom element. Default: ``"disk"``.
+        width: Footprint width in pixels. Larger values remove broader
+            bright features but risk shrinking thin colony appendages.
+            ``None`` auto-scales to ~0.4% of the smallest image
+            dimension. Default: None.
 
-    Examples:
-        Suppress small bright structures in the mask using white tophat:
+    Returns:
+        Image: Input image with ``objmask`` updated by subtracting the
+        white tophat result.
 
-        >>> from phenotypic.refine import WhiteTophat
-        >>> op = WhiteTophat(shape='disk', width=5)
-        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+    See Also:
+        :doc:`/how_to/notebooks/refine_noisy_boundaries` for tophat-based
+        cleanup workflows.
+        :doc:`/explanation/refinement_strategies` for a comparison of
+        morphological refinement methods.
     """
 
     def __init__(self,

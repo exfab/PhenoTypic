@@ -45,96 +45,66 @@ class _PhaseCong3Result:
 
 
 class PhaseCongruencyEnhancer(ImageEnhancer):
-    """Phase congruency enhancement for contrast-invariant colony edge detection.
+    """Enhance colony edges in ``detect_mat`` with contrast-invariant phase congruency.
 
-    Phase congruency is a dimensionless measure of local feature significance based
-    on the Local Energy Model. Features are detected where Fourier components are
-    maximally in phase, regardless of their amplitude. This makes phase congruency
-    invariant to image contrast and illumination changes - ideal for colony plates
-    with uneven lighting or varying colony opacity.
+    Detects features where Fourier components are maximally in phase,
+    regardless of amplitude. This makes the response invariant to image
+    contrast and illumination changes, making it ideal for plates with
+    uneven lighting, scanner vignetting, or varying colony opacity.
 
-    Use cases (agar plates):
-    - Detecting colony boundaries independent of colony color/opacity
-    - Processing images with uneven illumination or scanner vignetting
-    - Enhancing faint colony edges that gradient-based methods miss
-    - Preprocessing before adaptive thresholding for robust segmentation
-    - Analyzing translucent or low-contrast colonies on agar
+    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Tuning and effects:
-    - n_scale: Number of wavelet scales. More scales capture wider range of feature
-      sizes. 3-4 for fine features, 5-6 for broader range. Higher values increase
-      computation time.
-    - n_orient: Number of filter orientations. 6 gives 30 degree spacing with good
-      angular coverage. 4 is faster but may miss diagonal edges.
-    - min_wavelength: Wavelength of smallest scale filter in pixels. Should match
-      minimum expected colony edge width. 3.0 works for most colony imaging.
-    - mult: Scaling factor between successive wavelengths. Controls spectral overlap.
-      2.1 provides good coverage; smaller values give finer frequency resolution.
-    - sigma_onf: Log-Gabor bandwidth parameter. 0.55 gives ~2 octave bandwidth with
-      good frequency localization. 0.75 gives ~1 octave (narrower).
-    - k: Number of noise standard deviations for threshold. Higher values (5-20)
-      increase noise rejection but may miss faint colony edges.
-    - noise_method: -1 for median-based estimation (robust), -2 for mode-based
-      (Rayleigh distribution), or fixed value >= 0 for known noise levels.
-    - output: Which result to use for enhancement. "pc_sum" (default) gives scalar
-      phase congruency, "M" gives edge strength, "m" gives corner strength.
+    Best For:
+        - Colony boundaries independent of colony color or opacity.
+        - Images with uneven illumination or scanner vignetting.
+        - Faint colony edges that gradient-based methods miss.
+        - Translucent or low-contrast colonies on agar.
 
-    Caveats:
-    - Computationally intensive: FFT-based processing scales as O(N log N) per
-      scale-orientation pair. For large images, consider downsampling first.
-    - Memory usage: Stores filter responses for all scale-orientation combinations.
-      For very large images, reduce n_scale or n_orient.
-    - Output range: Phase congruency values are typically in [0, 1] but may exceed
-      1 in high-contrast regions. Values are clipped to [0, 1] for detect_mat.
-    - Not suitable for texture analysis: Designed for edge/line detection, not
-      for characterizing surface texture or colony interior patterns.
+    Consider Also:
+        - :class:`LaplaceEnhancer` for simpler edge detection when
+          illumination is uniform.
+        - :class:`HessianFilter` for multi-scale ridge and edge detection
+          with blob sensitivity control.
+        - :class:`UnsharpMask` for edge sharpening that preserves the
+          original intensity profile.
 
-    Attributes:
-        n_scale: Number of wavelet scales (default 4).
-        n_orient: Number of filter orientations (default 6).
-        min_wavelength: Smallest scale wavelength in pixels (default 3.0).
-        mult: Scaling factor between successive filters (default 2.1).
-        sigma_onf: Log-Gabor bandwidth parameter (default 0.55).
-        k: Noise threshold multiplier (default 2.0).
-        cutoff: Frequency spread penalty threshold (default 0.5).
-        g: Sigmoid sharpness for frequency spread weighting (default 10.0).
-        noise_method: Noise estimation method (default -1 for median).
-        output: Which result to store in detect_mat (default "pc_sum").
+    Args:
+        n_scale: Number of wavelet scales. Typical range: 3--6. More
+            scales capture a wider range of feature sizes. Default: 4.
+        n_orient: Number of filter orientations. 6 gives 30-degree
+            angular spacing. Default: 6.
+        min_wavelength: Wavelength of smallest scale filter in pixels.
+            Match to minimum expected colony edge width. Default: 3.0.
+        mult: Scaling factor between successive wavelengths. Controls
+            spectral overlap. Default: 2.1.
+        sigma_onf: Log-Gabor bandwidth parameter. 0.55 gives ~2 octave
+            bandwidth; 0.75 gives ~1 octave. Default: 0.55.
+        k: Noise threshold multiplier. Higher values (5--20) increase
+            noise rejection but may miss faint edges. Default: 2.0.
+        cutoff: Frequency spread penalty threshold. Default: 0.5.
+        g: Sigmoid sharpness for frequency spread weighting. Default: 10.
+        noise_method: Noise estimation method. ``-1`` (default) uses
+            median-based estimation; ``-2`` uses mode-based (Rayleigh);
+            values >= 0 set a fixed noise threshold.
+        output: Result to store in ``detect_mat``. ``'pc_sum'`` (default)
+            for scalar phase congruency, ``'M'`` for edge strength,
+            ``'m'`` for corner strength.
 
-    Examples:
-        Basic phase congruency enhancement:
+    Returns:
+        Image: Input image with ``detect_mat`` replaced by the phase
+        congruency map (clipped to [0, 1]). ``rgb`` and ``gray`` are
+        unchanged.
 
-        >>> from phenotypic.enhance import PhaseCongruencyEnhancer
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>> image = load_synth_yeast_plate()
-        >>> enhancer = PhaseCongruencyEnhancer()
-        >>> enhanced = enhancer.apply(image)
-        >>> # Detection matrix now contains phase congruency map
-        >>> enhanced.detect_mat[:].min() >= 0
-        True
+    References:
+        [1] P. Kovesi, "Image features from phase congruency," *Videre:
+        J. Comput. Vis. Res.*, vol. 1, no. 3, pp. 1--26, 1999.
 
-        Edge-focused enhancement for segmentation pipeline:
-
-        >>> from phenotypic import ImagePipeline
-        >>> from phenotypic.enhance import PhaseCongruencyEnhancer, GaussianBlur
-        >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>> image = load_synth_yeast_plate()
-        >>> pipeline = ImagePipeline([
-        ...     GaussianBlur(sigma=1.0),  # Light denoising first
-        ...     PhaseCongruencyEnhancer(output="M", k=3.0),  # Edge map
-        ...     OtsuDetector()
-        ... ])
-        >>> result = pipeline.apply(image)
-
-        High noise tolerance for grainy images:
-
-        >>> from phenotypic.enhance import PhaseCongruencyEnhancer
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>> image = load_synth_yeast_plate()
-        >>> # Increase k for aggressive noise rejection
-        >>> enhancer = PhaseCongruencyEnhancer(k=10.0, noise_method=-2)
-        >>> enhanced = enhancer.apply(image)
+    See Also:
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
+        visual walkthrough of contrast-invariant enhancement on plate
+        images.
+        :doc:`/explanation/what_enhancement_does` for background on
+        phase congruency and the Local Energy Model.
     """
 
     def __init__(

@@ -11,52 +11,58 @@ from ..abc_ import ImageEnhancer
 
 
 class NonLocalMeansDenoiser(ImageEnhancer):
-    """
-    Non-local means denoising for suppressing noise while preserving texture.
+    """Denoise ``detect_mat`` with non-local means patch-based filtering.
 
-    Performs non-local means denoising on images, which is particularly effective
-    at removing Gaussian noise from agar plates while preserving fine colony details
-    and edges. Unlike simple Gaussian or median filtering, non-local means compares
-    patches across the image to identify similar structures, enabling preservation
-    of thin colony boundaries and internal texture.
+    Compares patches across the image to identify similar structures and
+    averages them, preserving thin colony boundaries and internal texture
+    better than simple Gaussian or median filtering. Particularly effective
+    at removing Gaussian noise and agar granularity.
 
-    Use cases (agar plates):
-    - Remove scanner noise and agar granularity without excessive blurring of colony edges.
-    - Denoise low-contrast or faint colonies where Gaussian blur would cause loss of detail.
-    - Preserve colony texture and morphology while reducing speckle and dust artifacts.
-    - Pre-filter before edge detection (e.g., `SobelFilter`) to avoid amplifying noise.
+    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Tuning and effects:
-    - patch_size: Larger patches (e.g., 7-15) capture more structure and are slower;
-      smaller patches (5-7) are faster but may miss textures. For colonies, 7 is typically
-      a good balance.
-    - search_dist: Larger search width (e.g., 11-21) considers more similar patches
-      at higher computational cost; smaller values (5-7) run faster but may miss good
-      matches far from the pixel. Default of 11 usually works well.
-    - h: Controls the decay in patch weights. Larger h allows more smoothing between
-      dissimilar patches (more blur); smaller h is more conservative. A rule of thumb:
-      h ≈ sigma (noise level). Too large h causes over-smoothing and colony merging.
-    - fast_mode: If True (default), uses a faster algorithm with slightly lower quality
-      but much better performance. For interactive work, fast_mode=True. For publication-quality
-      results, consider fast_mode=False, but with longer runtime.
-    - sigma: The expected noise standard deviation. If provided, the algorithm accounts
-      for this when computing patch similarity, often improving denoising quality. Set to 0
-      (default) to disable.
+    Best For:
+        - Scanner noise and agar granularity where colony edges must stay
+          sharp.
+        - Low-contrast or faint colonies where Gaussian blur would cause
+          loss of detail.
+        - Preserving colony texture and morphology during speckle and dust
+          removal.
+        - Pre-filtering before edge detection to avoid amplifying noise.
 
-    Caveats:
-    - Non-local means is slower than Gaussian blur, especially with fast_mode=False.
-    - Computational complexity grows with search_dist and patch_size.
-    - For very large search radii or patch sizes, memory usage can become significant.
-    - Excessive smoothing (large h) can merge adjacent colonies just like Gaussian blur.
-    - Not suitable for images with strong structural artifacts (e.g., dust particles larger
-      than patch_size); morphological operations may be preferable.
+    Consider Also:
+        - :class:`BM3DDenoiser` for state-of-the-art structured noise
+          removal at higher computational cost.
+        - :class:`BilateralDenoise` for faster edge-preserving denoising
+          without patch comparison.
+        - :class:`BayesShrinkEnhancer` for adaptive wavelet denoising with
+          spatially varying thresholds.
 
-    Attributes:
-        patch_size (int): Size of patches (in pixels) used for similarity comparison.
-        search_dist (int): Maximal distance in pixels where to search for similar patches.
-        h (float): Cut-off distance controlling patch weight decay (higher = more smoothing).
-        fast_mode (bool): If True, use faster algorithm; if False, use original algorithm.
-        sigma (float): Expected noise standard deviation for improved patch weighting.
+    Args:
+        patch_size: Size of patches used for comparison in pixels. Larger
+            patches capture more structure but are slower. Typical range:
+            5--15. Default: 5.
+        search_dist: Maximum search distance for similar patches in pixels.
+            Larger values find more candidates at higher cost. Typical
+            range: 5--21. Default: 11.
+        h: Cut-off distance controlling smoothness. Rule of thumb:
+            ``h`` ~= noise level (sigma). Higher values produce more
+            smoothing. Default: 0.5.
+        fast_mode: If ``True``, use faster variant with uniform spatial
+            weighting. If ``False`` (default), use original algorithm
+            with Gaussian spatial weighting.
+        sigma: Expected noise standard deviation. Values > 0 improve
+            patch weighting by accounting for expected noise variance.
+            Default: 0.0 (disabled).
+
+    Returns:
+        Image: Input image with ``detect_mat`` denoised via non-local
+        means filtering. ``rgb`` and ``gray`` are unchanged.
+
+    See Also:
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
+        visual walkthrough of denoising pipelines on plate images.
+        :doc:`/how_to/notebooks/denoise_low_light` for non-local means
+        and other denoising strategies on low-light plate images.
     """
 
     def __init__(

@@ -12,35 +12,43 @@ from ..abc_ import ImageEnhancer
 
 
 class LaplaceEnhancer(ImageEnhancer):
-    """
-    Laplacian edge enhancement for colony boundaries.
+    """Enhance colony edges in ``detect_mat`` with a Laplacian operator.
 
-    Applies a Laplacian operator that responds to rapid intensity changes and
-    highlights edges. In agar plate images, this can delineate colony margins
-    and ring-like features, improving contour detection or watershed seeds.
+    Applies a discrete Laplacian that responds to rapid intensity changes,
+    highlighting colony margins and ring-like features such as swarming
+    fronts. Useful as a preprocessing step for contour detection, watershed
+    seeding, or separating touching colonies.
 
-    Use cases (agar plates):
-    - Emphasize colony edges prior to edge-based segmentation or as a cue for
-      separating touching colonies.
-    - Detect ring patterns around colonies (e.g., swarming fronts) for phenotyping.
+    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Tuning and effects:
-    - kernel_size: Larger kernels produce a smoother, more global edge response
-      and can suppress small noise; smaller kernels capture fine edges but may
-      amplify noise and agar texture.
-    - mask: Restrict processing to the plate region to avoid dish edge glare or
-      labels. A binary mask focusing on the circular plate is often useful.
+    Best For:
+        - Emphasizing colony edges before edge-based segmentation.
+        - Detecting ring patterns around colonies for swarming phenotyping.
+        - Generating watershed seeds by highlighting boundary regions.
 
-    Caveats:
-    - Laplacian is sensitive to noise; consider a light `GaussianBlur` first.
-    - May enhance non-biological artifacts (scratches, dust). Combine with masking
-      or artifact removal if necessary.
+    Consider Also:
+        - :class:`HessianFilter` for multi-scale edge and ridge detection
+          with more tuning control.
+        - :class:`UnsharpMask` for edge enhancement that retains the
+          original intensity profile.
+        - :class:`PhaseCongruencyEnhancer` for contrast-invariant edge
+          detection under uneven illumination.
 
-    Parameters:
-        kernel_size (Optional[int]): Size of the Laplacian kernel controlling
-            edge scale; smaller captures fine edges, larger smooths noise.
-        mask (Optional[numpy.ndarray]): Optional boolean/0-1 mask to limit the
-            operation to specific regions (e.g., the plate area).
+    Args:
+        kernel_size: Size of the Laplacian kernel. Smaller values (3)
+            capture fine edges but amplify noise; larger values (5--7)
+            smooth noise and emphasize broader boundaries. Default: 3.
+        mask: Boolean or 0/1 mask to restrict processing to regions of
+            interest (e.g., the circular plate area). ``None`` (default)
+            processes the full image.
+
+    Returns:
+        Image: Input image with ``detect_mat`` replaced by the Laplacian
+        edge response. ``rgb`` and ``gray`` are unchanged.
+
+    See Also:
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
+        visual walkthrough of edge enhancement on plate images.
     """
 
     def __init__(

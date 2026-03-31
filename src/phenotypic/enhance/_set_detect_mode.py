@@ -12,28 +12,36 @@ from phenotypic.tools_.typing_ import DetectMode
 class SetDetectMode(ImageOperation):
     """Switch the detection matrix source channel mid-pipeline.
 
-    Resets the detection matrix to a fresh copy of the chosen channel,
-    discarding any enhancements applied so far.
+    Resets ``detect_mat`` to a fresh copy of the chosen channel, discarding
+    any enhancements applied so far. Useful when different pipeline stages
+    need to operate on different color channels.
+
+    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
+
+    Best For:
+        - Switching to a specific color channel (e.g., red) that provides
+          better colony-background contrast.
+        - Resetting enhancements mid-pipeline to start fresh on a
+          different channel.
+        - Plates where colonies are more visible in a single color channel
+          than in grayscale.
+
+    Consider Also:
+        - :class:`ImageInverter` when the issue is inverted polarity
+          rather than channel selection.
 
     Args:
-        mode: Channel to use for the detection matrix.
+        mode: Channel to use for the detection matrix. Accepted values:
             ``'gray'`` (default), ``'red'``, ``'green'``, ``'blue'``,
-            or ``'min_rgb'``.
+            ``'min_rgb'``.
 
     Returns:
-        Image: The image with ``detect_mode`` and ``detect_mat`` updated.
+        Image: Input image with ``detect_mode`` and ``detect_mat``
+        updated to the chosen channel.
 
-    Examples:
-        Switch to the red channel before detection:
-
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>> from phenotypic.enhance import SetDetectMode, GaussianBlur
-        >>> from phenotypic import ImagePipeline
-        >>> image = load_synth_yeast_plate()
-        >>> pipeline = ImagePipeline([SetDetectMode(mode='red'), GaussianBlur(sigma=1)])
-        >>> result = pipeline.apply(image)
-        >>> result.detect_mode
-        'red'
+    See Also:
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
+        visual walkthrough of channel selection strategies.
     """
 
     def __init__(self, mode: DetectMode = "gray"):

@@ -11,77 +11,57 @@ from ..abc_ import ThresholdDetector
 
 
 class MeanDetector(ThresholdDetector):
-    """Mean intensity threshold detector for conservative colony segmentation.
+    """Detect colonies by thresholding at the mean image intensity.
 
-    MeanDetector applies the simplest thresholding approach: using the mean
-    (average) intensity of the image as the threshold. Pixels above mean are
-    foreground (colonies), below mean are background. This extremely simple,
-    fast, parameter-free method serves as a baseline or fallback when more
-    sophisticated methods fail.
+    Use the arithmetic mean of all pixel intensities as the threshold,
+    classifying pixels above the mean as colony foreground. This
+    parameter-free baseline is fast and deterministic, making it useful for
+    quick sanity checks or as a fallback when histogram-adaptive methods
+    produce unexpected results. For a full comparison see
+    :doc:`/explanation/detection_strategies_compared`.
+
+    Best For:
+        * Quick baseline detection requiring no parameter tuning.
+        * Sanity-checking preprocessing steps before applying a more
+          specialised detector.
+        * Plates where colony and background areas are roughly equal in
+          size.
+        * Debugging pipelines where a simple, predictable threshold is
+          needed.
+
+    Consider Also:
+        * :class:`OtsuDetector` for a statistically optimal threshold that
+          adapts to the histogram shape.
+        * :class:`TriangleDetector` when colonies are sparse and the
+          histogram is strongly skewed toward background.
+        * :class:`IsodataDetector` for an iterative refinement that
+          converges beyond the simple mean.
 
     Args:
-        ignore_zeros: If True (default), exclude zero-intensity pixels from threshold
-            computation. Essential for images with black borders or masks.
+        ignore_zeros: Exclude zero-intensity pixels from threshold
+            computation. Enable for plates with black borders or masked
+            regions; disable only when zero is a meaningful intensity value.
+            Default: True.
 
-        ignore_borders: If True (default), remove colonies touching image edges via
-            clear_border(). Eliminates partial colonies at plate boundaries.
-
-    Attributes:
-        ignore_zeros, ignore_borders
+        ignore_borders: Remove colonies touching image edges via
+            ``clear_border()``. Recommended for grid-based colony counting
+            to eliminate partial colonies at plate boundaries. Default: True.
 
     Returns:
-        Image: Input image with objmask set to binary mask from mean thresholding.
+        Image: Input image with ``objmask`` set to binary mask and
+        ``objmap`` set to labeled connected components.
 
     Raises:
-        ValueError: If threshold computation fails.
+        ValueError: If threshold computation fails (e.g., all pixels share
+            the same intensity value).
 
-    **Use cases**
-
-    - **Quick baseline detection:** Simple, fast method for initial assessment.
-    - **Parameter-free baseline:** No tuning needed; useful when method choice uncertain.
-    - **Fallback method:** When sophisticated methods fail, mean provides baseline result.
-    - **Debugging:** Test if image preprocessing is working at basic level.
-
-    **Limitations**
-
-    - Too simplistic for most real images. Assumes equal foreground/background areas,
-      rarely true for agar plates.
-    - Sensitive to outliers. Noise or bright artifacts skew mean intensity significantly.
-    - Unbalanced histograms. Fails if colonies occupy much smaller/larger fraction
-      than background.
-    - No adaptation to image content. Ignores histogram shape, distribution, or
-      statistical properties.
-
-    **Parameter effects on colony detection**
-
-    - **ignore_zeros:** Enable for black borders. Disable only if zero is meaningful.
-    - **ignore_borders:** Recommended for grid analysis.
-
-    Examples:
-        Basic mean detection as baseline::
-
-            from phenotypic import Image
-            from phenotypic.detect import MeanDetector
-
-            plate = Image.imread("plate.jpg")
-            detector = MeanDetector()
-            detected = detector.apply(plate)
-            mask = detected.objmask[:]
-            print(f"Detected {mask.sum()} colony pixels via mean")
-
-        Pipeline with mean as fallback::
-
-            from phenotypic import ImagePipeline
-            from phenotypic.enhance import GaussianBlur
-            from phenotypic.detect import MeanDetector
-
-            pipeline = ImagePipeline([
-                GaussianBlur(sigma=1.5),
-                MeanDetector(ignore_zeros=True, ignore_borders=True)
-            ])
-
-            image = Image.imread("plate.jpg")
-            result = pipeline.apply(image)
+    See Also:
+        :doc:`/tutorials/notebooks/02_detecting_colonies`
+            Step-by-step tutorial for basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm`
+            Guide for selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared`
+            In-depth comparison of all detection strategies.
     """
 
     def __init__(self, ignore_zeros: bool = True, ignore_borders: bool = True):

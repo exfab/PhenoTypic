@@ -64,14 +64,6 @@ class FrangiVesselness(ImageEnhancer):
         :doc:`/explanation/filamentous_fungi_algorithm` for the theory behind
         Hessian-based vesselness filtering.
 
-    Attributes:
-        sigmas (tuple | list): Sequence of standard deviations for Hessian
-            computation. Each sigma represents a scale; default (1, 2, 3).
-        alpha (float): Blobness parameter (0 to 1). Default 0.5.
-        beta (float): Structuredness parameter (0 to 1). Default 0.5.
-        gamma (float): Background suppression threshold. Default 15.
-        black_ridges (bool): If True, detect dark structures on bright background;
-            if False, detect bright structures on dark background. Default False.
     """
 
     def __init__(

@@ -12,70 +12,50 @@ from phenotypic.abc_ import ImageEnhancer
 
 
 class WhiteTophatEnhance(ImageEnhancer):
-    """White top-hat transform to isolate small bright structures.
+    """Isolate small bright structures in ``detect_mat`` with the white top-hat transform.
 
-    Computes the white top-hat (original minus morphological opening) and keeps
-    the result, effectively extracting bright features smaller than the
-    structuring element. In agar plate colony images, this highlights small
-    bright colonies or specks while suppressing larger background structures.
+    Computes the white top-hat (original minus morphological opening) and
+    retains the result, extracting bright features smaller than the
+    structuring element while suppressing larger background structures.
+    Highlights small bright colonies, inocula, or specks against uneven
+    illumination.
+
+    For algorithm details, see :doc:`/explanation/what_enhancement_does`.
+
+    Best For:
+        - Isolating small bright colonies from larger background structures.
+        - Highlighting faint small colonies against uneven illumination.
+        - Extracting tiny bright specks for detection or quantification.
+        - Preprocessing before detecting small colony phenotypes.
+
+    Consider Also:
+        - :class:`SubtractWhiteTophat` when you want to suppress (not
+          isolate) small bright artifacts.
+        - :class:`OpeningSubtractBg` for OpenCV-accelerated white top-hat
+          background subtraction.
+        - :class:`MultiscaleLoGEnhancer` for scale-invariant blob detection
+          that responds to both small and large colonies.
 
     Args:
-        shape (str): Footprint geometry controlling which bright features are
-            extracted. 'diamond' or 'disk' provide isotropic behavior on plates;
-            'square' can align with sensor grid artifacts.
-        width (int | None): Maximum bright-object width (in pixels) targeted
-            for extraction. Objects smaller than this width will be highlighted.
-            None picks a small default based on image dimensions.
+        shape: Footprint geometry. ``'disk'`` (default) preserves rounded
+            colony shapes; ``'diamond'`` is computationally efficient;
+            ``'square'`` can align with sensor grid artifacts.
+        width: Maximum bright-object size (pixels) targeted for extraction.
+            Set slightly larger than the maximum size of colonies you want
+            to isolate. ``None`` (default) derives a small value from
+            image dimensions.
 
     Returns:
-        Image: Modified image with `detect_mat` containing only the extracted
-        small bright structures.
+        Image: Input image with ``detect_mat`` containing only the
+        extracted small bright structures. ``rgb`` and ``gray`` are
+        unchanged.
 
     Raises:
         ValueError: If an unsupported footprint shape is provided.
 
-    Use cases (agar plates):
-        - Isolate small bright colonies from larger background structures.
-        - Extract tiny bright specks for detection or quantification.
-        - Highlight faint small colonies against uneven illumination.
-        - Pre-processing step before detecting small colony phenotypes.
-
-    Limitations:
-        - Large colonies will be suppressed or removed entirely.
-        - If width is too small, only noise/artifacts will be extracted.
-        - Output is typically lower intensity than input; may need rescaling.
-        - Best suited for images where colonies are brighter than background.
-
-    Parameter effects:
-        - shape: 'disk' preserves rounded colony shapes best; 'diamond' is
-          computationally efficient; 'square' may introduce grid artifacts.
-        - width: Larger values extract larger bright features. Set slightly
-          larger than the maximum size of colonies you want to isolate.
-
-    Examples:
-        Basic usage to isolate small bright colonies:
-
-        >>> from phenotypic.enhance import WhiteTophatEnhance
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>> image = load_synth_yeast_plate()
-        >>> enhancer = WhiteTophatEnhance(shape='disk', width=15)
-        >>> enhanced = enhancer.apply(image)
-        >>> # detect_mat now contains only small bright structures
-        >>> enhanced.detect_mat[:].max() <= image.detect_mat[:].max()
-        True
-
-        Using in a pipeline to detect small colonies:
-
-        >>> from phenotypic import ImagePipeline
-        >>> from phenotypic.enhance import WhiteTophatEnhance
-        >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>> image = load_synth_yeast_plate()
-        >>> pipeline = ImagePipeline([
-        ...     WhiteTophatEnhance(shape='disk', width=20),
-        ...     OtsuDetector()
-        ... ])
-        >>> result = pipeline.apply(image)
+    See Also:
+        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a
+        visual walkthrough of morphological enhancement on plate images.
     """
 
     def __init__(self, shape: str = "disk", width: int = None):
