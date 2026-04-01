@@ -10,7 +10,7 @@ from skimage.filters import median
 
 
 class MedianFilter(ImageEnhancer):
-    “””Remove impulsive noise from detect_mat while preserving colony edges.
+    """Remove impulsive noise from detect_mat while preserving colony edges.
 
     Replaces each pixel with the median of its local neighborhood, making it
     robust to outlier pixels (condensation droplets, dust specks, sensor noise).
@@ -49,7 +49,7 @@ class MedianFilter(ImageEnhancer):
         denoising methods on low-light plates.
         :doc:`/explanation/what_enhancement_does` for how enhancement fits
         into the pipeline model.
-    “””
+    """
 
     def __init__(
             self,

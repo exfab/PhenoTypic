@@ -11,7 +11,7 @@ from ..abc_ import ObjectRefiner
 
 
 class SmallObjectRemover(ObjectRefiner):
-    “””Remove objects smaller than a minimum area from the detection mask.
+    """Remove objects smaller than a minimum area from the detection mask.
 
     Eliminates dust, condensation specks, and noise fragments that appear
     as tiny labeled objects after thresholding. Reduces false positives
@@ -42,7 +42,7 @@ class SmallObjectRemover(ObjectRefiner):
         of refinement operations.
         :doc:`/explanation/refinement_strategies` for choosing the right
         refinement sequence.
-    “””
+    """
 
     def __init__(self, min_size=64):
         """Initialize the remover.

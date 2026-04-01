@@ -485,13 +485,9 @@ def generate_downloadables_rst(app):
     # Collect Jupyter notebooks from examples and tutorials so they can also be
     # offered as downloads on this page.
     notebook_dirs = [
-        # New Diataxis structure
         os.path.join(source_dir, "tutorials", "notebooks"),
         os.path.join(source_dir, "how_to", "notebooks"),
         os.path.join(source_dir, "extending", "notebooks"),
-        # Legacy locations (kept during transition)
-        os.path.join(source_dir, "user_guide", "examples", "notebooks"),
-        os.path.join(source_dir, "user_guide", "tutorial", "notebooks"),
     ]
 
     # Insert a separate grid for notebooks if we find any

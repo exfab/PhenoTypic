@@ -285,8 +285,8 @@ Every tutorial and how-to notebook follows this cell pattern:
 
 Link between documentation sections to help readers navigate.
 
-- **Tutorials** link forward to related how-to guides: "For more on vignetting
-  correction, see [How to correct vignetting](../how_to/notebooks/vignetting)."
+- **Tutorials** link forward to related how-to guides: "For more on contrast
+  enhancement, see [How to enhance low-contrast images](../how_to/notebooks/enhance_low_contrast)."
 - **How-to guides** link to Explanation pages for theory and to API Reference for
   parameter details.
 - **Explanation pages** link to relevant how-to guides for practical application.

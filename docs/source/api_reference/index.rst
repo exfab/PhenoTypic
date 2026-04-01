@@ -32,6 +32,16 @@ ImagePipeline
 
    core/image_pipeline_methods
 
+Reference Pages
+---------------
+
+.. toctree::
+   :maxdepth: 1
+
+   cli_reference
+   config_reference
+   glossary
+
 Modules
 -------
 .. currentmodule:: phenotypic
