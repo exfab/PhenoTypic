@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import os
+import shutil
 import tempfile
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, TYPE_CHECKING
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from ._cli_types import Dataset
-from ._cli_utils import scan_parquets
+from ._cli_utils import _scan_direct, scan_parquets
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +61,132 @@ def _atomic_write(target: Path, write_func: Callable[[str], None]) -> None:
         raise
 
 
+def join_metadata(df: "pl.DataFrame", metadata_csv: Path) -> "pl.DataFrame":
+    """Join external metadata CSV onto a measurements DataFrame.
+
+    Identifies columns common to both the measurements and metadata,
+    casts them to ``String`` for a safe join, performs a left join
+    (preserving all measurement rows), and warns if the row count
+    changes (which indicates duplicate keys in the metadata).
+
+    Args:
+        df: Measurements DataFrame (must have columns to join on).
+        metadata_csv: Path to the metadata CSV file.
+
+    Returns:
+        DataFrame with metadata columns appended.
+    """
+    metadata_df = pl.read_csv(metadata_csv)
+    common = list(set(df.columns) & set(metadata_df.columns))
+    if not common:
+        logger.warning(
+            "Metadata CSV has no columns in common with measurements — skipping join"
+        )
+        return df
+
+    logger.info("Joining metadata on columns: %s", common)
+    df = df.with_columns(pl.col(col).cast(pl.String) for col in common)
+    metadata_df = metadata_df.with_columns(
+        pl.col(col).cast(pl.String) for col in common
+    )
+    n_rows_before = df.height
+    n_cols_before = len(df.columns)
+    df = df.join(metadata_df, on=common, how="left")
+    n_new_cols = len(df.columns) - n_cols_before
+    if df.height > n_rows_before:
+        logger.warning(
+            "Metadata join increased row count from %d to %d — "
+            "metadata CSV likely has duplicate keys on columns %s. "
+            "Verify your metadata CSV has unique values on join columns.",
+            n_rows_before,
+            df.height,
+            common,
+        )
+    logger.info(
+        "Metadata join: added %d columns, %d/%d rows matched",
+        n_new_cols,
+        df.height,
+        n_rows_before,
+    )
+    return df
+
+
+def _scratch_dest_name(pq: Path) -> str:
+    """Build a collision-safe filename for a parquet staged to $SCRATCH."""
+    return f"{pq.parent.parent.name}_{pq.name}"
+
+
+def _stage_to_scratch(parquet_files: List[Path]) -> Optional[Path]:
+    """Copy parquet files to $SCRATCH for faster reading.
+
+    Creates a staging directory using SLURM job/task IDs to avoid
+    collisions when multiple aggregation tasks run on the same node.
+
+    Args:
+        parquet_files: Paths to copy.
+
+    Returns:
+        Path to staging directory, or ``None`` if $SCRATCH is unavailable.
+    """
+    scratch = os.environ.get("SCRATCH")
+    if not scratch:
+        return None
+
+    scratch_path = Path(scratch)
+    if not scratch_path.is_dir():
+        return None
+
+    job_id = os.environ.get("SLURM_JOB_ID", "")
+    task_id = os.environ.get("SLURM_ARRAY_TASK_ID", "")
+    if job_id and task_id:
+        suffix = f"{job_id}_{task_id}"
+    elif job_id:
+        suffix = job_id
+    else:
+        suffix = str(os.getpid())
+
+    staging_dir = scratch_path / f".phenotypic_stage_{suffix}"
+    try:
+        staging_dir.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return None
+
+    try:
+        for pq in parquet_files:
+            shutil.copy2(pq, staging_dir / _scratch_dest_name(pq))
+    except Exception:
+        _cleanup_scratch(staging_dir)
+        return None
+
+    return staging_dir
+
+
+def _remap_to_scratch(
+    path_to_dataset: Dict[Path, str], scratch_dir: Path
+) -> Dict[Path, str]:
+    """Remap GPFS paths to their $SCRATCH copies.
+
+    Args:
+        path_to_dataset: Original path to dataset name mapping.
+        scratch_dir: Staging directory on $SCRATCH.
+
+    Returns:
+        New mapping with paths pointing to scratch copies.
+    """
+    remapped: Dict[Path, str] = {}
+    for original_path, dataset_name in path_to_dataset.items():
+        remapped[scratch_dir / _scratch_dest_name(original_path)] = dataset_name
+    return remapped
+
+
+def _cleanup_scratch(staging_dir: Path) -> None:
+    """Remove staging directory with error suppression."""
+    try:
+        shutil.rmtree(staging_dir)
+    except Exception:
+        pass
+
+
 def aggregate_measurements(
     output_dir: Path,
     dataset_names: List[str],
@@ -72,6 +199,11 @@ def aggregate_measurements(
     adds a ``Metadata_Dataset`` column, and writes a concatenated
     ``master_measurements.csv`` to *output_dir* using an atomic write.
 
+    Prefers pre-aggregated ``_dataset_aggregated.parquet`` files when available,
+    falling back to individual per-image Parquet files. When ``$SCRATCH`` is
+    available (node-local SSD), files are staged there to avoid GPFS
+    metadata overhead.
+
     Works without an :class:`OutputManager` instance so it can be called
     from the SLURM sentinel job.
 
@@ -82,7 +214,7 @@ def aggregate_measurements(
             into each Parquet file that lacks it.
         metadata_csv: Optional path to an external CSV file. When
             provided, shared columns are used as join keys for a left
-            merge, adding any extra columns from the metadata CSV to
+            join, adding any extra columns from the metadata CSV to
             the master DataFrame.
 
     Returns:
@@ -93,19 +225,29 @@ def aggregate_measurements(
     all_measurements: List[pl.DataFrame] = []
     n_skipped = 0
 
-    # Collect all Parquet paths first, then stream-read in one batch.
     path_to_dataset: Dict[Path, str] = {}
     for dataset_name in dataset_names:
-        dataset_meas_dir = results_dir / dataset_name / "measurements"
-        if not dataset_meas_dir.is_dir():
+        meas_dir = results_dir / dataset_name / "measurements"
+        if not meas_dir.is_dir():
             continue
-        for parquet_file in sorted(dataset_meas_dir.glob("*.parquet")):
-            path_to_dataset[parquet_file] = dataset_name
+        agg = meas_dir / "_dataset_aggregated.parquet"
+        if agg.exists():
+            path_to_dataset[agg] = dataset_name
+        else:
+            for pq in sorted(meas_dir.glob("*.parquet")):
+                if pq.name != "_dataset_aggregated.parquet":
+                    path_to_dataset[pq] = dataset_name
 
-    lazy_frames = scan_parquets(list(path_to_dataset.keys()))
+    scratch_dir = _stage_to_scratch(list(path_to_dataset.keys()))
+    if scratch_dir is not None:
+        active_mapping = _remap_to_scratch(path_to_dataset, scratch_dir)
+        lazy_frames = _scan_direct(list(active_mapping.keys()))
+    else:
+        active_mapping = path_to_dataset
+        lazy_frames = scan_parquets(list(active_mapping.keys()))
 
     for pq_path, lf in lazy_frames.items():
-        dataset_name = path_to_dataset[pq_path]
+        dataset_name = active_mapping[pq_path]
         try:
             df = lf.collect()
             if include_dataset_column and "Metadata_Dataset" not in df.columns:
@@ -121,6 +263,9 @@ def aggregate_measurements(
                 e,
             )
             n_skipped += 1
+
+    if scratch_dir is not None:
+        _cleanup_scratch(scratch_dir)
 
     if n_skipped:
         logger.warning(
@@ -144,53 +289,9 @@ def aggregate_measurements(
         master_df.estimated_size("mb"),
     )
 
-    # Join external metadata if provided
     if metadata_csv is not None:
         try:
-            metadata_df = pl.read_csv(metadata_csv)
-            common = list(set(master_df.columns) & set(metadata_df.columns))
-            if not common:
-                logger.warning(
-                    "Metadata CSV has no columns in common with measurements — skipping join"
-                )
-            else:
-                logger.info("Joining metadata on columns: %s", common)
-                # Cast join keys to string so mismatched dtypes don't
-                # cause silent null results (e.g. int vs str plate IDs)
-                master_df = master_df.with_columns(
-                    pl.col(col).cast(pl.String) for col in common
-                )
-                metadata_df = metadata_df.with_columns(
-                    pl.col(col).cast(pl.String) for col in common
-                )
-                n_rows_before = master_df.height
-                n_cols_before = len(master_df.columns)
-                master_df = master_df.join(metadata_df, on=common, how="inner")
-                n_new_cols = len(master_df.columns) - n_cols_before
-                if master_df.height > n_rows_before:
-                    logger.warning(
-                        "Metadata join increased row count from %d to %d — "
-                        "metadata CSV likely has duplicate keys on columns %s. "
-                        "Verify your metadata CSV has unique values on join columns.",
-                        n_rows_before,
-                        master_df.height,
-                        common,
-                    )
-                n_dropped = n_rows_before - master_df.height
-                if n_dropped > 0:
-                    logger.warning(
-                        "Metadata inner join dropped %d/%d measurement rows "
-                        "with no matching metadata on columns %s",
-                        n_dropped,
-                        n_rows_before,
-                        common,
-                    )
-                logger.info(
-                    "Metadata join: added %d columns, %d/%d rows matched",
-                    n_new_cols,
-                    master_df.height,
-                    n_rows_before,
-                )
+            master_df = join_metadata(master_df, metadata_csv)
         except Exception as e:
             logger.warning("Failed to join metadata CSV: %s: %s", type(e).__name__, e)
 

@@ -31,6 +31,7 @@ _TERMINAL_STATES = frozenset({
     "TIMEOUT",
     "CANCELLED",
     "NODE_FAIL",
+    "PREEMPTED",
 })
 
 # SLURM states indicating a failure of some kind.
@@ -40,7 +41,13 @@ _FAILURE_STATES = frozenset({
     "TIMEOUT",
     "CANCELLED",
     "NODE_FAIL",
+    "PREEMPTED",
 })
+
+# Module-level cache for jobs that have reached a terminal state.
+# Once a job is COMPLETED/FAILED/etc. it will never change, so we avoid
+# re-querying sacct for it on subsequent manifest builds.
+_terminal_job_cache: Dict[str, Dict[str, str]] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -113,6 +120,75 @@ def query_sacct_job_states(job_id: str) -> Optional[Dict[str, str]]:
     return states
 
 
+def query_sacct_batch(
+    job_ids: List[str],
+) -> Optional[Dict[str, Dict[str, str]]]:
+    """Query sacct for multiple jobs in a single call.
+
+    Args:
+        job_ids: SLURM job IDs to query.
+
+    Returns:
+        Mapping of job ID to a dict of ``"jobid_taskid"`` -> SLURM state
+        string for that job, or ``None`` if ``sacct`` is unavailable or
+        the command fails.
+    """
+    if not job_ids:
+        return {}
+
+    try:
+        result = subprocess.run(
+            [
+                "sacct",
+                "-j", ",".join(str(jid) for jid in job_ids),
+                "--noheader",
+                "--parsable2",
+                "--format=JobID,State,ExitCode,MaxRSS",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except FileNotFoundError:
+        logger.debug("sacct not found on this system")
+        return None
+    except PermissionError:
+        logger.debug("sacct: permission denied")
+        return None
+    except subprocess.TimeoutExpired:
+        logger.warning("sacct timed out after 30s for batch query (%d jobs)", len(job_ids))
+        return None
+
+    if result.returncode != 0:
+        logger.debug(
+            "sacct returned non-zero exit code %d for batch query: %s",
+            result.returncode,
+            result.stderr.strip(),
+        )
+        return None
+
+    per_job: Dict[str, Dict[str, str]] = {jid: {} for jid in job_ids}
+    for line in result.stdout.strip().splitlines():
+        parts = line.split("|")
+        if len(parts) < 2:
+            continue
+
+        raw_job_id = parts[0]
+        state = parts[1]
+
+        if "." in raw_job_id:
+            continue
+
+        # Determine which parent job this line belongs to.
+        # raw_job_id is either "12345" or "12345_0"; the parent is the
+        # portion before the underscore (or the whole string).
+        parent = raw_job_id.split("_")[0]
+        if parent in per_job:
+            per_job[parent][raw_job_id] = state
+
+    return per_job
+
+
 def query_sacct_chunk_states(
     chunk_job_ids: Dict[str, str],
 ) -> Tuple[List[int], List[int], List[int]]:
@@ -132,16 +208,44 @@ def query_sacct_chunk_states(
     completed: List[int] = []
     pending: List[int] = []
 
+    # Separate cached (terminal) jobs from those needing a fresh query.
+    uncached_job_ids: Dict[str, str] = {}
+    cached_results: Dict[str, Dict[str, str]] = {}
+
+    for chunk_idx_str, job_id in chunk_job_ids.items():
+        if job_id in _terminal_job_cache:
+            cached_results[job_id] = _terminal_job_cache[job_id]
+        else:
+            uncached_job_ids[chunk_idx_str] = job_id
+
+    # Batch-query all uncached jobs in a single sacct call.
+    fresh_results: Dict[str, Dict[str, str]] = {}
+    if uncached_job_ids:
+        unique_ids = list(dict.fromkeys(uncached_job_ids.values()))
+        batch = query_sacct_batch(unique_ids)
+        if batch is None:
+            # sacct unavailable -- fall back to cached results only
+            pass
+        else:
+            fresh_results = batch
+            # Cache any jobs that have reached a terminal state.
+            for job_id, task_states in fresh_results.items():
+                if task_states:
+                    state_values = set(task_states.values())
+                    if state_values <= _TERMINAL_STATES:
+                        _terminal_job_cache[job_id] = task_states
+
+    # Merge cached and fresh results, then classify each chunk.
+    all_results: Dict[str, Dict[str, str]] = {**fresh_results, **cached_results}
+
     for chunk_idx_str, job_id in chunk_job_ids.items():
         chunk_idx = int(chunk_idx_str)
-        task_states = query_sacct_job_states(job_id)
+        task_states = all_results.get(job_id)
 
         if task_states is None:
-            # sacct unavailable -- cannot classify this chunk
             continue
 
         if not task_states:
-            # No tasks reported yet -- treat as pending
             pending.append(chunk_idx)
             continue
 
@@ -154,10 +258,8 @@ def query_sacct_chunk_states(
         elif state_values == {"PENDING"}:
             pending.append(chunk_idx)
         elif "PENDING" in state_values and state_values <= (_TERMINAL_STATES | {"PENDING"}):
-            # Some done, rest pending -- still active from user's perspective
             active.append(chunk_idx)
         else:
-            # Mixed or unknown -- assume active
             active.append(chunk_idx)
 
     active.sort()
@@ -367,10 +469,21 @@ def build_manifest(
     pending_chunks: List[int] = []
 
     if is_slurm and slurm_job_ids:
-        # Query chunk-level states.
-        active_chunks, completed_chunks, pending_chunks = (
-            query_sacct_chunk_states(slurm_job_ids)
+        # Early exit: skip sacct entirely when event log already shows all
+        # images have reached a terminal state (completed or failed).
+        total_images_for_check = sum(datasets.values())
+        event_completed = sum(
+            len(ds.completed) for ds in dataset_states.values()
         )
+        event_failed = sum(
+            len(ds.failed) for ds in dataset_states.values()
+        )
+        if (event_completed + event_failed) >= total_images_for_check:
+            completed_chunks = sorted(int(k) for k in slurm_job_ids)
+        else:
+            active_chunks, completed_chunks, pending_chunks = (
+                query_sacct_chunk_states(slurm_job_ids)
+            )
 
         # Detect OOM / silent failures (needs image_task_mapping -- build
         # from event log SLURM fields if possible).  The caller may not

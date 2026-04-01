@@ -11,14 +11,14 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 import click
 import polars as pl
 
 from ._cli_file_locking import file_lock
-from ._cli_output_manager import _atomic_write
-from ._cli_utils import scan_parquets
+from ._cli_output_manager import _atomic_write, join_metadata
+from ._cli_utils import load_job_metadata, scan_parquets
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +98,7 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
     _write_json(manifest, manifest_path)
 
     combined = _incremental_combined(chunk_df, progress_dir / "analysis_full.parquet")
+    combined_with_metadata: Optional[pl.DataFrame] = None
     if combined is not None:
         _atomic_write(
             progress_dir / "analysis_full.parquet",
@@ -105,10 +106,30 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
                 p, compression="zstd", compression_level=3
             ),
         )
+
+        job_meta = load_job_metadata(progress_dir)
+        csv_str = job_meta.get("metadata_csv") if job_meta else None
+        metadata_csv = Path(csv_str) if csv_str else None
+        combined_with_metadata = combined
+        if metadata_csv is not None:
+            try:
+                combined_with_metadata = join_metadata(combined, metadata_csv)
+            except Exception:
+                logger.warning(
+                    "Metadata join failed, writing CSV without metadata",
+                    exc_info=True,
+                )
+                combined_with_metadata = combined
+
         _atomic_write(
             output_dir / "master_measurements.csv",
-            lambda p: combined.write_csv(p),
+            lambda p: combined_with_metadata.write_csv(p),  # type: ignore[union-attr]
         )
+
+        _run_analysis_plugins(output_dir, progress_dir, combined_with_metadata)
+
+    for ds_name, ds_df in chunk_df.group_by("Metadata_Dataset"):
+        _update_dataset_parquet(output_dir, str(ds_name[0]), ds_df)
 
     logger.info(
         "Chunk %s written: %d new files, %d rows (total: %d rows across %d chunks)",
@@ -149,6 +170,8 @@ def _scan_unchunked_parquets(
         if not meas_dir.is_dir():
             continue
         for pq_file in sorted(meas_dir.glob("*.parquet")):
+            if pq_file.name.startswith("_"):
+                continue
             rel_key = f"{dataset_dir.name}/{pq_file.name}"
             if rel_key not in chunked_files:
                 new_files.append(pq_file)
@@ -178,6 +201,7 @@ def _read_and_concat(parquet_files: list[Path]) -> pl.DataFrame | None:
     for pq_path, lf in lazy_frames.items():
         try:
             df = lf.collect()
+            df = df.with_columns(pl.lit(pq_path.stem).alias("Metadata_ImageFile"))
             if "Metadata_Dataset" not in df.columns:
                 dataset_name = pq_path.parent.parent.name
                 df = df.insert_column(
@@ -235,6 +259,74 @@ def _rebuild_combined(chunks_dir: Path) -> pl.DataFrame | None:
     if not frames:
         return None
     return pl.concat(frames, how="diagonal_relaxed")
+
+
+# ---------------------------------------------------------------------------
+# Metadata / analysis helpers
+# ---------------------------------------------------------------------------
+
+
+def _run_analysis_plugins(
+    output_dir: Path, progress_dir: Path, merged_df: Optional["pl.DataFrame"]
+) -> None:
+    """Dispatch to analysis plugins with the combined DataFrame.
+
+    Args:
+        output_dir: Root output directory.
+        progress_dir: Progress directory for sidecar files.
+        merged_df: Merged measurement DataFrame, or ``None``.
+    """
+    try:
+        from ._dashboard._analysis._prepare_context import AnalysisPrepareContext
+        from phenotypic.tools_.register import AnalysisPluginRegistry
+        # Trigger plugin registration
+        from ._dashboard._analysis import (  # noqa: F401
+            _image_viewer,
+            _raw_table,
+            _scatter_plot,
+            _summary_stats,
+        )
+    except ImportError:
+        logger.debug("Analysis plugins not available")
+        return
+
+    if merged_df is None:
+        return
+
+    ctx = AnalysisPrepareContext(
+        output_dir=output_dir, progress_dir=progress_dir, merged_df=merged_df
+    )
+    for name in AnalysisPluginRegistry.available():
+        plugin = AnalysisPluginRegistry.get(name)()
+        try:
+            plugin.prepare_data(ctx)
+        except Exception:
+            logger.exception("Plugin %r failed during prepare_data", name)
+
+
+def _update_dataset_parquet(
+    output_dir: Path, dataset_name: str, new_df: pl.DataFrame
+) -> None:
+    """Append new measurements to the dataset-level aggregated parquet.
+
+    Args:
+        output_dir: Root output directory.
+        dataset_name: Name of the dataset.
+        new_df: DataFrame of newly chunked measurements for this dataset.
+    """
+    agg_path = (
+        output_dir / "results" / dataset_name / "measurements" / "_dataset_aggregated.parquet"
+    )
+    if agg_path.exists():
+        try:
+            prev = pl.read_parquet(agg_path)
+            new_df = pl.concat([prev, new_df], how="diagonal_relaxed")
+        except Exception:
+            logger.warning("Corrupt %s, rebuilding from new data", agg_path)
+    _atomic_write(
+        agg_path,
+        lambda p: new_df.write_parquet(p, compression="zstd", compression_level=3),
+    )
 
 
 # ---------------------------------------------------------------------------

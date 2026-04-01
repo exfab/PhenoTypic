@@ -20,12 +20,13 @@ Examples:
 from __future__ import annotations
 
 import io
+import json
 import logging
 import shutil
 import subprocess
 import tarfile
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import click
 
@@ -45,6 +46,26 @@ export POLARS_SKIP_CPU_CHECK=1"""
 
 # Minimum file count to justify tar subprocess overhead.
 _TAR_MIN_FILES = 8
+
+
+def load_job_metadata(progress_dir: Path) -> Optional[Dict[str, Any]]:
+    """Load ``job_metadata.json`` from a progress directory.
+
+    Args:
+        progress_dir: Directory containing ``job_metadata.json``.
+
+    Returns:
+        Parsed dict, or ``None`` if the file is missing or unreadable.
+    """
+    meta_path = progress_dir / "job_metadata.json"
+    if not meta_path.exists():
+        return None
+    try:
+        with open(meta_path, encoding="utf-8") as fh:
+            return json.load(fh)
+    except Exception:
+        logger.warning("Failed to read job_metadata.json", exc_info=True)
+        return None
 
 
 def scan_parquets(

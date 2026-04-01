@@ -18,11 +18,16 @@ from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
 
 # Sentinel value inserted into the image list to trigger checkpoint aggregation
 _CHECKPOINT_SENTINEL = "__PHENOTYPIC_CHECKPOINT__"
+# Sentinel value inserted after each checkpoint to trigger manifest rebuild
+_MANIFEST_SENTINEL = "__PHENOTYPIC_MANIFEST__"
+# Sentinel value appended as the last entry in the final chunk to trigger finalization
+_FINALIZER_SENTINEL = "__PHENOTYPIC_FINALIZER__"
 
 
 def _build_entry_list(
     chunk_images: List[Path],
     checkpoint_interval: Optional[int],
+    is_last_chunk: bool = False,
 ) -> List[str]:
     """Build the task entry list, optionally interleaving checkpoint sentinels.
 
@@ -30,6 +35,8 @@ def _build_entry_list(
         chunk_images: Image paths for this chunk.
         checkpoint_interval: Insert a sentinel every N images, or ``None``
             to skip sentinel insertion.
+        is_last_chunk: If ``True``, append a finalizer sentinel as the
+            absolute last entry so the last array task triggers finalization.
 
     Returns:
         List of absolute path strings with optional sentinel markers.
@@ -40,9 +47,22 @@ def _build_entry_list(
             entries.append(str(img_path.absolute()))
             if (i + 1) % checkpoint_interval == 0:
                 entries.append(_CHECKPOINT_SENTINEL)
+                entries.append(_MANIFEST_SENTINEL)
+        if is_last_chunk:
+            # Always checkpoint trailing images before finalization so
+            # _dataset_aggregated.parquet is up-to-date for the finalizer.
+            if not entries or entries[-1] != _MANIFEST_SENTINEL:
+                entries.append(_CHECKPOINT_SENTINEL)
+                entries.append(_MANIFEST_SENTINEL)
+            entries.append(_FINALIZER_SENTINEL)
         return entries
 
-    return [str(img_path.absolute()) for img_path in chunk_images]
+    entries = [str(img_path.absolute()) for img_path in chunk_images]
+    if is_last_chunk:
+        entries.append(_CHECKPOINT_SENTINEL)
+        entries.append(_MANIFEST_SENTINEL)
+        entries.append(_FINALIZER_SENTINEL)
+    return entries
 
 
 def _resolve_checkpoint_interval(config: ExecutionConfig) -> int:
@@ -82,6 +102,7 @@ def generate_array_job_script(
     output_dir: Path,
     chunk_id: int = 0,
     checkpoint_interval: Optional[int] = None,
+    is_last_chunk: bool = False,
 ) -> Path:
     """
     Generate a SLURM array job script for processing a dataset chunk.
@@ -98,6 +119,8 @@ def generate_array_job_script(
         chunk_id: Chunk number for multi-chunk datasets (default: 0)
         checkpoint_interval: If set, insert checkpoint sentinel entries
             every N images so SLURM tasks can trigger chunk aggregation
+        is_last_chunk: If ``True``, append a finalizer sentinel as the
+            last entry so the final array task triggers finalization
 
     Returns:
         Path to generated array job script
@@ -131,7 +154,7 @@ def generate_array_job_script(
         )
 
     # Build task entries, interleaving checkpoint sentinels at regular intervals
-    entries = _build_entry_list(chunk_images, checkpoint_interval)
+    entries = _build_entry_list(chunk_images, checkpoint_interval, is_last_chunk)
 
     # Create script directory
     script_dir = output_dir / "slurm_scripts" / dataset.name
@@ -231,6 +254,21 @@ def generate_array_job_script(
     ]
     checkpoint_cmd = " \\\n    ".join(checkpoint_cmd_parts)
 
+    python_str = " ".join(python_cmd)
+    q_output_dir = shlex.quote(str(output_dir.absolute()))
+
+    manifest_cmd = (
+        f"{python_str} -m phenotypic._cli._cli_checkpoint_handler "
+        f"--output-dir {q_output_dir} "
+        f"--checkpoint-type manifest"
+    )
+
+    finalizer_cmd = (
+        f"{python_str} -m phenotypic._cli._cli_checkpoint_handler "
+        f"--output-dir {q_output_dir} "
+        f"--checkpoint-type finalize"
+    )
+
     # Generate complete script
     script_content = f"""#!/bin/bash
 {directives}
@@ -255,7 +293,7 @@ echo "Start Time: $(date)"
 echo "======================================"
 
 # Build image list (0-based indexing)
-# Entries may include {_CHECKPOINT_SENTINEL} sentinels for checkpoint aggregation
+# Entries may include sentinel markers for checkpoint, manifest, and finalizer tasks
 IMAGE_LIST=(
 {image_list_content}
 )
@@ -280,6 +318,22 @@ if [ "$CURRENT_IMAGE" = "{_CHECKPOINT_SENTINEL}" ]; then
     echo ""
 
     {checkpoint_cmd}
+
+    EXIT_CODE=$?
+elif [ "$CURRENT_IMAGE" = "{_MANIFEST_SENTINEL}" ]; then
+    # Manifest task: rebuild manifest after checkpoint aggregation
+    echo "Running manifest rebuild (task $SLURM_ARRAY_TASK_ID)"
+    echo ""
+
+    {manifest_cmd}
+
+    EXIT_CODE=$?
+elif [ "$CURRENT_IMAGE" = "{_FINALIZER_SENTINEL}" ]; then
+    # Finalizer task: final aggregation and cleanup for the last chunk
+    echo "Running finalizer (task $SLURM_ARRAY_TASK_ID)"
+    echo ""
+
+    {finalizer_cmd}
 
     EXIT_CODE=$?
 else
@@ -351,21 +405,34 @@ def generate_all_array_job_scripts(
     checkpoint_interval = _resolve_checkpoint_interval(config)
     all_scripts: Dict[str, List[Path]] = {}
 
-    for dataset in datasets:
-        if not dataset.images:
-            continue
+    # Pre-compute chunk lists per dataset so we can identify the last chunk
+    # across all datasets for finalizer sentinel placement.
+    active_datasets = [ds for ds in datasets if ds.images]
+    dataset_chunks = [
+        (ds, calculate_optimal_array_chunks(len(ds.images), array_limit))
+        for ds in active_datasets
+    ]
 
-        chunks = calculate_optimal_array_chunks(len(dataset.images), array_limit)
-        all_scripts[dataset.name] = [
-            generate_array_job_script(
-                dataset=dataset,
-                array_indices=(start, end),
-                config=config,
-                output_dir=output_dir,
-                chunk_id=chunk_id,
-                checkpoint_interval=checkpoint_interval,
+    # Total number of chunks across all datasets
+    total_chunks = sum(len(chunks) for _, chunks in dataset_chunks)
+    chunk_counter = 0
+
+    for dataset, chunks in dataset_chunks:
+        scripts: List[Path] = []
+        for chunk_id, (start, end) in enumerate(chunks):
+            chunk_counter += 1
+            last_chunk = chunk_counter == total_chunks
+            scripts.append(
+                generate_array_job_script(
+                    dataset=dataset,
+                    array_indices=(start, end),
+                    config=config,
+                    output_dir=output_dir,
+                    chunk_id=chunk_id,
+                    checkpoint_interval=checkpoint_interval,
+                    is_last_chunk=last_chunk,
+                )
             )
-            for chunk_id, (start, end) in enumerate(chunks)
-        ]
+        all_scripts[dataset.name] = scripts
 
     return all_scripts

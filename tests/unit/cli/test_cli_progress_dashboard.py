@@ -474,14 +474,21 @@ class TestSacctParsing:
         assert "12345_0.batch" not in result
 
     def test_sacct_chunk_states_unavailable(self):
-        with patch(
-            "phenotypic._cli._dashboard._manifest_builder.query_sacct_job_states",
-            return_value=None,
-        ):
-            active, completed, pending = query_sacct_chunk_states({"0": "12345"})
-        assert active == []
-        assert completed == []
-        assert pending == []
+        import phenotypic._cli._dashboard._manifest_builder as mb
+        saved = mb._terminal_job_cache.copy()
+        mb._terminal_job_cache.clear()
+        try:
+            with patch(
+                "phenotypic._cli._dashboard._manifest_builder.query_sacct_batch",
+                return_value=None,
+            ):
+                active, completed, pending = query_sacct_chunk_states({"0": "12345"})
+            assert active == []
+            assert completed == []
+            assert pending == []
+        finally:
+            mb._terminal_job_cache.clear()
+            mb._terminal_job_cache.update(saved)
 
 
 # ──────────────────────────────────────────────────────────────────────

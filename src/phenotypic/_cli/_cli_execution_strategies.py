@@ -41,7 +41,7 @@ from ._cli_slurm_array_scripts import generate_all_array_job_scripts
 from ._cli_update_state import append_event, append_completion_event, aggregate_state_from_events
 from ._cli_failure_tracker import append_failure, read_failures
 from ._dashboard import build_manifest, generate_dashboard
-from ._cli_sentinel_scripts import generate_sentinel_script
+
 from ._cli_constants import MAX_TRACEBACK_LINES
 
 logger = logging.getLogger(__name__)
@@ -502,41 +502,12 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         )
         console.print(f"[green]✓[/green] Job metadata: [dim]{metadata_path}[/dim]")
 
-        # Generate sentinel script and submit
-        sentinel_script = generate_sentinel_script(
-            output_dir=output_dir,
-            progress_dir=progress_dir,
-            slurm_args=self.config.slurm_args,
+        # Checkpoint, manifest, and finalizer tasks are embedded in the
+        # array job scripts — no separate sentinel job needed.
+        console.print(
+            "[green]✓[/green] Checkpoint tasks embedded in array scripts "
+            "(manifest + finalizer)"
         )
-        console.print(f"[green]✓[/green] Sentinel script: [dim]{sentinel_script}[/dim]")
-
-        try:
-            result = subprocess.run(
-                [
-                    "sbatch",
-                    "--parsable",
-                    f"--dependency=after:{job_ids[0]}",
-                    str(sentinel_script),
-                ],
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-            if result.returncode == 0:
-                sentinel_job_id = result.stdout.strip()
-                console.print(
-                    f"  Sentinel: [green]Job {sentinel_job_id}[/green] "
-                    f"(starts after chunk 0)"
-                )
-            else:
-                console.print(
-                    f"  [yellow]Warning: Could not submit sentinel: "
-                    f"{result.stderr.strip()}[/yellow]"
-                )
-        except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
-            console.print(
-                f"  [yellow]Warning: Could not submit sentinel: {exc}[/yellow]"
-            )
 
         # Generate dashboard HTML
         generate_dashboard(output_dir, execution_mode="slurm")

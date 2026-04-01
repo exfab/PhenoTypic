@@ -415,10 +415,14 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
 @click.argument(
     "pipeline_json",
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    required=False,
 )
 @click.argument(
     "input_path",
     type=click.Path(exists=True, dir_okay=True, file_okay=True, path_type=Path),
+    default=None,
+    required=False,
 )
 @click.option(
     "-o",
@@ -563,9 +567,17 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
     is_flag=True,
     help="Skip pipeline validation (for advanced users)",
 )
+@click.option(
+    "--recompile",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Recompile master measurements from existing output directory. "
+         "Skips pipeline execution — re-aggregates parquets, runs analysis, "
+         "rebuilds manifest, and regenerates dashboard.",
+)
 def phenotypic_cli(
-    pipeline_json: Path,
-    input_path: Path,
+    pipeline_json: Optional[Path],
+    input_path: Optional[Path],
     output_dir: Optional[Path],
     image_type: str,
     nrows: int,
@@ -589,6 +601,7 @@ def phenotypic_cli(
     metadata_csv: Optional[Path],
     checkpoint_interval: Optional[int],
     skip_validation: bool,
+    recompile: Optional[Path],
 ):
     """
     Execute a PhenoTypic pipeline on images.
@@ -598,6 +611,15 @@ def phenotypic_cli(
     INPUT_PATH: Image file or directory to process
     """
     try:
+        if recompile is not None:
+            _handle_recompile(recompile, metadata_csv, include_dataset_column)
+            sys.exit(0)
+
+        if pipeline_json is None or input_path is None:
+            raise click.UsageError(
+                "PIPELINE_JSON and INPUT_PATH are required unless --recompile is set."
+            )
+
         resume_state = None
 
         # Validate extension argument
@@ -1066,6 +1088,112 @@ def phenotypic_cli(
 
         traceback.print_exc()
         sys.exit(1)
+
+
+def _handle_recompile(
+    output_dir: Path,
+    metadata_csv: Optional[Path],
+    include_dataset_column: bool,
+) -> None:
+    """Recompile master measurements and dashboard from existing results.
+
+    Auto-discovers datasets under ``output_dir/results``, re-aggregates
+    measurement Parquet files into ``master_measurements.csv``, runs
+    analysis plugins, rebuilds the progress manifest, and regenerates
+    the HTML dashboard.
+
+    Args:
+        output_dir: Existing output directory containing ``results/``.
+        metadata_csv: Optional path to an external metadata CSV for
+            left-joining onto measurements.
+        include_dataset_column: Whether to insert ``Metadata_Dataset``
+            into measurements that lack it.
+    """
+    from rich.console import Console
+
+    from phenotypic._cli._cli_output_manager import aggregate_measurements
+    from phenotypic._cli._cli_utils import load_job_metadata
+    from phenotypic._cli._dashboard import (
+        build_manifest,
+        generate_dashboard,
+        write_analysis_sidecar,
+    )
+
+    console = Console()
+    results_dir = output_dir / "results"
+    progress_dir = output_dir / "progress"
+    job_meta = load_job_metadata(progress_dir)
+
+    dataset_names: list[str] = []
+    if results_dir.is_dir():
+        dataset_names = sorted(
+            d.name
+            for d in results_dir.iterdir()
+            if d.is_dir() and (d / "measurements").is_dir()
+        )
+
+    if not dataset_names and job_meta:
+        dataset_names = sorted(job_meta.get("datasets", {}).keys())
+
+    if not dataset_names:
+        error_exit("No datasets found in output directory", str(output_dir))
+
+    console.print(
+        f"[bold]Recompiling[/bold] from {output_dir} "
+        f"({len(dataset_names)} dataset(s))"
+    )
+
+    console.print("[cyan]Aggregating measurements...")
+    master_path = aggregate_measurements(
+        output_dir=output_dir,
+        dataset_names=dataset_names,
+        include_dataset_column=include_dataset_column,
+        metadata_csv=metadata_csv,
+    )
+    if master_path:
+        console.print(f"[green]Master measurements: {master_path}")
+    else:
+        console.print("[yellow]No measurements found for aggregation")
+
+    console.print("[cyan]Running analysis plugins...")
+    try:
+        write_analysis_sidecar(output_dir, metadata_csv=metadata_csv)
+        console.print("[green]Analysis sidecar data written")
+    except Exception:
+        logger.warning("Analysis sidecar write failed", exc_info=True)
+        console.print("[yellow]Analysis sidecar write failed (see logs)")
+
+    console.print("[cyan]Rebuilding manifest...")
+    progress_dir.mkdir(parents=True, exist_ok=True)
+
+    datasets_totals: dict[str, int] = {}
+    for name in dataset_names:
+        meas_dir = results_dir / name / "measurements"
+        if meas_dir.is_dir():
+            datasets_totals[name] = len(
+                [p for p in meas_dir.glob("*.parquet") if not p.name.startswith("_")]
+            )
+        else:
+            datasets_totals[name] = 0
+
+    build_manifest(
+        output_dir=output_dir,
+        progress_dir=progress_dir,
+        datasets=datasets_totals,
+        execution_mode=job_meta.get("execution_mode", "local") if job_meta else "local",
+        start_time=job_meta.get("start_time", "") if job_meta else "",
+        slurm_job_ids=job_meta.get("chunk_job_ids") if job_meta else None,
+        chunk_scripts=job_meta.get("chunk_scripts") if job_meta else None,
+        input_path=job_meta.get("input_path") if job_meta else None,
+    )
+    console.print("[green]Manifest rebuilt")
+
+    console.print("[cyan]Regenerating dashboard...")
+    execution_mode = job_meta.get("execution_mode", "local") if job_meta else "local"
+    generate_dashboard(output_dir, execution_mode=execution_mode)
+    console.print(f"[green]Dashboard: {output_dir / 'dashboard.html'}")
+
+    console.print(f"\n[bold green]Recompilation complete: {output_dir}")
 
 
 def _copy_pipeline_to_output(
