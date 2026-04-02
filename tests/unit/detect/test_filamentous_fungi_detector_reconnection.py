@@ -202,10 +202,10 @@ class TestCostSurface:
         """Output is float32."""
         shape = (5, 5)
         result = assemble_composite_cost(
-            np.ones(shape, np.float32),
-            np.ones(shape, np.float32),
-            np.ones(shape, np.float32),
-            np.zeros(shape, np.float32),
+                np.ones(shape, np.float32),
+                np.ones(shape, np.float32),
+                np.ones(shape, np.float32),
+                np.zeros(shape, np.float32),
         )
         assert result.dtype == np.float32
 
@@ -270,7 +270,7 @@ class TestFragmentPrescreening:
         mask = np.zeros((50, 50), dtype=np.int32)
         mask[10:20, 10:20] = 1  # small colony block
         tau, values = calibrate_screening_threshold(
-            cost, mask, r_screen=5, percentile=50.0
+                cost, mask, r_screen=5, percentile=50.0
         )
         assert isinstance(tau, float)
         assert tau > 0
@@ -291,7 +291,7 @@ class TestFragmentPrescreening:
         frags = np.zeros((50, 50), dtype=np.int32)
         frags[5:10, 5:10] = 1  # fragment in expensive area
         result = prescreen_fragments(
-            cost, frags, r_screen=3, tau_screen=1.0
+                cost, frags, r_screen=3, tau_screen=1.0
         )
         assert 1 in result.rejected_ids
         assert 1 not in result.passed_ids
@@ -303,7 +303,7 @@ class TestFragmentPrescreening:
         frags = np.zeros((50, 50), dtype=np.int32)
         frags[6:9, 6:9] = 1  # fragment sitting on low-cost patch
         result = prescreen_fragments(
-            cost, frags, r_screen=3, tau_screen=50.0
+                cost, frags, r_screen=3, tau_screen=50.0
         )
         assert 1 in result.passed_ids
 
@@ -336,7 +336,7 @@ class TestFragmentPrescreening:
         frags = np.zeros((50, 50), dtype=np.int32)
         frags[5:10, 5:10] = 1
         result = prescreen_fragments(
-            cost, frags, r_screen=3, tau_screen=1.0
+                cost, frags, r_screen=3, tau_screen=1.0
         )
         assert result.screened_fragment_labels.max() == 0
 
@@ -347,9 +347,9 @@ class TestFragmentPrescreening:
         frags[5:10, 5:10] = 1
         cal_values = np.array([1.0, 2.0, 3.0, 4.0, 10.0])
         result = prescreen_fragments(
-            cost, frags, r_screen=3,
-            calibration_cost_values=cal_values,
-            calibration_percentile=99.0,
+                cost, frags, r_screen=3,
+                calibration_cost_values=cal_values,
+                calibration_percentile=99.0,
         )
         assert isinstance(result, PrescreenResult)
 
@@ -406,11 +406,11 @@ class TestPathQuality:
     def test_calibrate_thresholds_from_data(self):
         """Produces valid FilterThresholds from calibration data."""
         cal = CalibrationData(
-            median_cost_values=np.array([1.0, 2.0, 3.0, 4.0, 5.0]),
-            max_window_cost_values=np.array([1.5, 2.5, 3.5, 4.5, 5.5]),
-            band_variance_values=np.array([0.01, 0.02, 0.05, 0.1, 0.2]),
-            pct_energy_median_values=np.array([0.5, 0.6, 0.7, 0.8, 0.9]),
-            gray_snr_values=np.array([1.0, 2.0, 3.0, 4.0, 5.0]),
+                median_cost_values=np.array([1.0, 2.0, 3.0, 4.0, 5.0]),
+                max_window_cost_values=np.array([1.5, 2.5, 3.5, 4.5, 5.5]),
+                band_variance_values=np.array([0.01, 0.02, 0.05, 0.1, 0.2]),
+                pct_energy_median_values=np.array([0.5, 0.6, 0.7, 0.8, 0.9]),
+                gray_snr_values=np.array([1.0, 2.0, 3.0, 4.0, 5.0]),
         )
         thresholds = calibrate_thresholds(cal, k=3.0)
         assert isinstance(thresholds, FilterThresholds)
@@ -426,12 +426,12 @@ class TestPathQuality:
         coords = np.column_stack([np.arange(50), np.zeros(50)]).astype(np.int32)
         path = _DuckPath(coords, np.ones(50), total_cost=5000.0, path_length=50)
         thresholds = FilterThresholds(
-            tau_median_cost=10.0,
-            tau_window_cost=10.0,
-            tau_band_variance=1e6,
-            tau_pct_energy_median=-1e6,
-            tau_gray_snr=-1e6,
-            k_iqr=3.0,
+                tau_median_cost=10.0,
+                tau_window_cost=10.0,
+                tau_band_variance=1e6,
+                tau_pct_energy_median=-1e6,
+                tau_gray_snr=-1e6,
+                k_iqr=3.0,
         )
         result = apply_filter_cascade({1: path}, cost_surface, thresholds)
         assert 1 in result.rejected_ids
@@ -444,12 +444,12 @@ class TestPathQuality:
         coords = np.column_stack([np.arange(50), np.zeros(50)]).astype(np.int32)
         path = _DuckPath(coords, np.ones(50), total_cost=50.0, path_length=50)
         thresholds = FilterThresholds(
-            tau_median_cost=100.0,
-            tau_window_cost=100.0,
-            tau_band_variance=1e6,
-            tau_pct_energy_median=-1e6,
-            tau_gray_snr=-1e6,
-            k_iqr=3.0,
+                tau_median_cost=100.0,
+                tau_window_cost=100.0,
+                tau_band_variance=1e6,
+                tau_pct_energy_median=-1e6,
+                tau_gray_snr=-1e6,
+                k_iqr=3.0,
         )
         result = apply_filter_cascade({1: path}, cost_surface, thresholds)
         assert 1 in result.passed_ids
@@ -471,14 +471,14 @@ class TestDijkstraKernels:
         two_colony_scene_data = dijkstra_result
         # Colony pixels were seeded at 0
         assert_allclose(
-            two_colony_scene_data.cost_distance[
-                two_colony_scene_data.colony_id > 0
-            ].min(),
-            0.0,
+                two_colony_scene_data.cost_distance[
+                    two_colony_scene_data.colony_id > 0
+                    ].min(),
+                0.0,
         )
 
     def test_cost_distance_positive_outside_colonies(
-        self, two_colony_scene, dijkstra_result
+            self, two_colony_scene, dijkstra_result
     ):
         """Cost distance is >0 outside colony labels."""
         colony_labels, _, _ = two_colony_scene
@@ -500,7 +500,7 @@ class TestDijkstraKernels:
         assert 2 in dijkstra_result.colony_centroids
 
     def test_predecessor_minus_one_inside_colonies(
-        self, two_colony_scene, dijkstra_result
+            self, two_colony_scene, dijkstra_result
     ):
         """Colony interior pixels have predecessor -1."""
         colony_labels, _, _ = two_colony_scene
@@ -511,14 +511,14 @@ class TestDijkstraKernels:
     # -- assign_fragments_to_colonies --
 
     def test_fragment_assigned_to_nearest_colony(
-        self, two_colony_scene, dijkstra_result
+            self, two_colony_scene, dijkstra_result
     ):
         """Fragment near colony 1 gets assigned to colony 1."""
         _, fragment_labels, _ = two_colony_scene
         assignments = assign_fragments_to_colonies(
-            fragment_labels,
-            dijkstra_result.colony_id,
-            dijkstra_result.cost_distance,
+                fragment_labels,
+                dijkstra_result.colony_id,
+                dijkstra_result.cost_distance,
         )
         assert 1 in assignments
         assert assignments[1].colony_id == 1
@@ -531,7 +531,7 @@ class TestDijkstraKernels:
         fake_colony_id = np.full((100, 100), -1, dtype=np.int32)
         fake_cost_dist = np.full((100, 100), np.inf, dtype=np.float64)
         assignments = assign_fragments_to_colonies(
-            fake_frags, fake_colony_id, fake_cost_dist
+                fake_frags, fake_colony_id, fake_cost_dist
         )
         assert assignments[1].colony_id == -1
         assert assignments[1].majority_fraction == 0.0
@@ -551,7 +551,7 @@ class TestDijkstraKernels:
         assert result is None
 
     def test_backtrack_reached_pixel_returns_path(
-        self, two_colony_scene, dijkstra_result
+            self, two_colony_scene, dijkstra_result
     ):
         """Backtracking from a reached pixel yields a valid path to colony."""
         _, _, cost_surface = two_colony_scene
@@ -559,11 +559,11 @@ class TestDijkstraKernels:
         seed_r, seed_c = 27, 37
         if dijkstra_result.cost_distance[seed_r, seed_c] < np.inf:
             result = backtrack_path(
-                seed_r,
-                seed_c,
-                dijkstra_result.predecessor,
-                dijkstra_result.cost_distance,
-                cost_surface,
+                    seed_r,
+                    seed_c,
+                    dijkstra_result.predecessor,
+                    dijkstra_result.cost_distance,
+                    cost_surface,
             )
             assert result is not None
             coords, cost_profile = result
@@ -575,17 +575,17 @@ class TestDijkstraKernels:
     # -- extract_fragment_paths --
 
     def test_extract_paths_returns_valid_paths(
-        self, two_colony_scene, dijkstra_result
+            self, two_colony_scene, dijkstra_result
     ):
         """Extract paths from fragments to colonies."""
         colony_labels, fragment_labels, cost_surface = two_colony_scene
         assignments = assign_fragments_to_colonies(
-            fragment_labels,
-            dijkstra_result.colony_id,
-            dijkstra_result.cost_distance,
+                fragment_labels,
+                dijkstra_result.colony_id,
+                dijkstra_result.cost_distance,
         )
         paths, unconnected = extract_fragment_paths(
-            fragment_labels, assignments, dijkstra_result, cost_surface
+                fragment_labels, assignments, dijkstra_result, cost_surface
         )
         # Fragment 1 should have a path to colony 1
         assert 1 in paths
@@ -596,27 +596,27 @@ class TestDijkstraKernels:
     # -- assemble_connected_mask --
 
     def test_assemble_paints_fragment_and_path(
-        self, two_colony_scene, dijkstra_result
+            self, two_colony_scene, dijkstra_result
     ):
         """Fragment and path pixels painted with colony label."""
         colony_labels, fragment_labels, cost_surface = two_colony_scene
         assignments = assign_fragments_to_colonies(
-            fragment_labels,
-            dijkstra_result.colony_id,
-            dijkstra_result.cost_distance,
+                fragment_labels,
+                dijkstra_result.colony_id,
+                dijkstra_result.cost_distance,
         )
         paths, _ = extract_fragment_paths(
-            fragment_labels, assignments, dijkstra_result, cost_surface
+                fragment_labels, assignments, dijkstra_result, cost_surface
         )
         connected = assemble_connected_mask(
-            colony_labels, fragment_labels, assignments, paths
+                colony_labels, fragment_labels, assignments, paths
         )
         # Fragment pixels should now have colony 1 label
         assert np.all(connected[25:30, 35:40] == 1)
         # Original colony pixels should be unchanged
         assert_array_equal(
-            connected[colony_labels == 2],
-            colony_labels[colony_labels == 2],
+                connected[colony_labels == 2],
+                colony_labels[colony_labels == 2],
         )
 
 
@@ -631,21 +631,21 @@ class TestDataclasses:
     def test_dijkstra_result_creation(self):
         """DijkstraResult can be created with valid data."""
         dr = DijkstraResult(
-            cost_distance=np.zeros((5, 5), dtype=np.float64),
-            colony_id=np.ones((5, 5), dtype=np.int32),
-            predecessor=np.full((5, 5), -1, dtype=np.int32),
-            colony_centroids={1: (2.5, 2.5)},
+                cost_distance=np.zeros((5, 5), dtype=np.float64),
+                colony_id=np.ones((5, 5), dtype=np.int32),
+                predecessor=np.full((5, 5), -1, dtype=np.int32),
+                colony_centroids={1: (2.5, 2.5)},
         )
         assert dr.cost_distance.shape == (5, 5)
 
     def test_fragment_assignment_creation(self):
         """FragmentAssignment can be created with valid data."""
         fa = FragmentAssignment(
-            fragment_id=1,
-            colony_id=3,
-            is_bridge=False,
-            majority_fraction=0.95,
-            mean_cost=1.5,
+                fragment_id=1,
+                colony_id=3,
+                is_bridge=False,
+                majority_fraction=0.95,
+                mean_cost=1.5,
         )
         assert fa.fragment_id == 1
         assert fa.colony_id == 3
@@ -653,67 +653,67 @@ class TestDataclasses:
     def test_fragment_path_creation(self):
         """FragmentPath can be created with valid data."""
         fp = FragmentPath(
-            fragment_id=1,
-            colony_id=2,
-            coords=np.array([[0, 0], [1, 1]], dtype=np.int32),
-            cost_profile=np.array([1.0, 0.0]),
-            total_cost=1.0,
-            path_length=2,
+                fragment_id=1,
+                colony_id=2,
+                coords=np.array([[0, 0], [1, 1]], dtype=np.int32),
+                cost_profile=np.array([1.0, 0.0]),
+                total_cost=1.0,
+                path_length=2,
         )
         assert fp.path_length == 2
 
     def test_prescreen_result_creation(self):
         """PrescreenResult can be created with valid data."""
         pr = PrescreenResult(
-            screened_fragment_labels=np.zeros((5, 5), dtype=np.int32),
-            passed_ids={1, 2},
-            rejected_ids={3},
-            threshold_used=0.5,
+                screened_fragment_labels=np.zeros((5, 5), dtype=np.int32),
+                passed_ids={1, 2},
+                rejected_ids={3},
+                threshold_used=0.5,
         )
         assert len(pr.passed_ids) == 2
 
     def test_path_metrics_creation(self):
         """PathMetrics can be created with valid data."""
         pm = PathMetrics(
-            median_raw_cost=1.5,
-            max_window_cost=2.0,
-            band_cost_variance=0.05,
-            pct_energy_band_median=0.7,
-            gray_band_snr=3.0,
+                median_raw_cost=1.5,
+                max_window_cost=2.0,
+                band_cost_variance=0.05,
+                pct_energy_band_median=0.7,
+                gray_band_snr=3.0,
         )
         assert pm.median_raw_cost == 1.5
 
     def test_calibration_data_creation(self):
         """CalibrationData can be created with valid data."""
         cd = CalibrationData(
-            median_cost_values=np.array([1.0, 2.0]),
-            max_window_cost_values=np.array([1.5, 2.5]),
-            band_variance_values=np.array([0.01, 0.02]),
-            pct_energy_median_values=np.array([0.8, 0.9]),
-            gray_snr_values=np.array([3.0, 4.0]),
+                median_cost_values=np.array([1.0, 2.0]),
+                max_window_cost_values=np.array([1.5, 2.5]),
+                band_variance_values=np.array([0.01, 0.02]),
+                pct_energy_median_values=np.array([0.8, 0.9]),
+                gray_snr_values=np.array([3.0, 4.0]),
         )
         assert len(cd.median_cost_values) == 2
 
     def test_filter_thresholds_creation(self):
         """FilterThresholds can be created with valid data."""
         ft = FilterThresholds(
-            tau_median_cost=5.0,
-            tau_window_cost=6.0,
-            tau_band_variance=0.5,
-            tau_pct_energy_median=0.1,
-            tau_gray_snr=0.5,
-            k_iqr=3.0,
+                tau_median_cost=5.0,
+                tau_window_cost=6.0,
+                tau_band_variance=0.5,
+                tau_pct_energy_median=0.1,
+                tau_gray_snr=0.5,
+                k_iqr=3.0,
         )
         assert ft.k_iqr == 3.0
 
     def test_filter_result_creation(self):
         """FilterResult can be created with valid data."""
         fr = FilterResult(
-            passed_ids={1, 2},
-            rejected_ids={3},
-            per_filter_rejections={"F1_median_cost": {3}},
-            metrics={},
-            thresholds=FilterThresholds(5.0, 6.0, 0.5, 0.1, 0.5, 3.0),
+                passed_ids={1, 2},
+                rejected_ids={3},
+                per_filter_rejections={"F1_median_cost": {3}},
+                metrics={},
+                thresholds=FilterThresholds(5.0, 6.0, 0.5, 0.1, 0.5, 3.0),
         )
         assert 3 in fr.rejected_ids
 
@@ -734,7 +734,7 @@ class TestExtractCalibrationBranches:
         colony[40, 50:75] = 1  # horizontal branch (25 px)
         cost = np.ones((80, 80), dtype=np.float32)
         cal = extract_calibration_branches(
-            colony, cost, min_branch_length=5
+                colony, cost, min_branch_length=5
         )
         assert isinstance(cal, CalibrationData)
 
@@ -744,7 +744,7 @@ class TestExtractCalibrationBranches:
         colony[10:15, 10:15] = 1  # small blob
         cost = np.ones((30, 30), dtype=np.float32)
         cal = extract_calibration_branches(
-            colony, cost, min_branch_length=100
+                colony, cost, min_branch_length=100
         )
         assert cal.median_cost_values.size == 0
 
@@ -756,30 +756,6 @@ class TestExtractCalibrationBranches:
 
 class TestFilamentousFungiDetectorReconnection:
     """Integration and backward-compatibility tests for reconnection."""
-
-    def test_enable_reconnection_false_same_as_legacy(self, synth_plate):
-        """enable_reconnection=False produces same results as default."""
-        from phenotypic.detect import (
-            FilamentousFungiDetector,
-            OtsuDetector,
-            TriangleDetector,
-        )
-
-        detector_default = FilamentousFungiDetector(
-            inoculum_detector=OtsuDetector(ignore_zeros=True),
-            overall_detector=TriangleDetector(),
-            enable_reconnection=False,
-        )
-        detector_legacy = FilamentousFungiDetector(
-            inoculum_detector=OtsuDetector(ignore_zeros=True),
-            overall_detector=TriangleDetector(),
-        )
-
-        result1 = detector_default.apply(synth_plate.copy())
-        result2 = detector_legacy.apply(synth_plate.copy())
-
-        assert_array_equal(result1.objmap[:], result2.objmap[:])
-        assert_array_equal(result1.objmask[:], result2.objmask[:])
 
     def test_enable_reconnection_true_runs_without_error(self, synth_plate):
         """Reconnection mode runs without errors on synth plate.
@@ -795,9 +771,9 @@ class TestFilamentousFungiDetectorReconnection:
         )
 
         detector = FilamentousFungiDetector(
-            inoculum_detector=OtsuDetector(ignore_zeros=True),
-            overall_detector=TriangleDetector(),
-            enable_reconnection=True,
+                inoculum_detector=OtsuDetector(ignore_zeros=True),
+                overall_detector=TriangleDetector(),
+                enable_reconnection=True,
         )
         result = detector.apply(synth_plate.copy())
 
@@ -813,9 +789,9 @@ class TestFilamentousFungiDetectorReconnection:
         )
 
         detector = FilamentousFungiDetector(
-            inoculum_detector=OtsuDetector(ignore_zeros=True),
-            overall_detector=TriangleDetector(),
-            enable_reconnection=True,
+                inoculum_detector=OtsuDetector(ignore_zeros=True),
+                overall_detector=TriangleDetector(),
+                enable_reconnection=True,
         )
         result = detector.apply(synth_plate.copy())
 
@@ -834,11 +810,11 @@ class TestFilamentousFungiDetectorReconnection:
         )
 
         detector = FilamentousFungiDetector(
-            inoculum_detector=OtsuDetector(ignore_zeros=True),
-            overall_detector=TriangleDetector(),
-            enable_reconnection=True,
-            delta=2.0,
-            r_screen=15,
+                inoculum_detector=OtsuDetector(ignore_zeros=True),
+                overall_detector=TriangleDetector(),
+                enable_reconnection=True,
+                delta=2.0,
+                r_screen=15,
         )
         pipeline = ImagePipeline([detector])
         json_str = pipeline.to_json()

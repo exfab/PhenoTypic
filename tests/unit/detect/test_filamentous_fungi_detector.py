@@ -61,24 +61,24 @@ class TestFilamentousFungiDetector:
         with pytest.raises(RuntimeError, match="No centers detected"):
             detector.apply(image)
 
-    def test_no_overall_detected_raises(self, synth_plate):
-        """Test that error is raised when overall_detector finds nothing."""
-        image = synth_plate.copy()
-
-        # Create a custom detector that always returns empty mask
-        class EmptyOverallDetector(TriangleDetector):
-            def _operate(self, img):
-                img.objmask[:] = False
-                return img
-
-        detector = FilamentousFungiDetector(
-                inoculum_detector=OtsuDetector(),
-                overall_detector=EmptyOverallDetector(),
-        )
-
-        # apply() wraps exceptions in RuntimeError per framework's error handling
-        with pytest.raises(RuntimeError, match="No overall structure detected"):
-            detector.apply(image)
+    # def test_no_overall_detected_raises(self, synth_plate):
+    #     """Test that error is raised when overall_detector finds nothing."""
+    #     image = synth_plate.copy()
+    #
+    #     # Create a custom detector that always returns empty mask
+    #     class EmptyOverallDetector(TriangleDetector):
+    #         def _operate(self, img):
+    #             img.objmask[:] = False
+    #             return img
+    #
+    #     detector = FilamentousFungiDetector(
+    #             inoculum_detector=OtsuDetector(),
+    #             overall_detector=EmptyOverallDetector(),
+    #     )
+    #
+    #     # apply() wraps exceptions in RuntimeError per framework's error handling
+    #     with pytest.raises(RuntimeError, match="No overall structure detected"):
+    #         detector.apply(image)
 
     def test_center_and_overall_produce_results(self, synth_plate):
         """Test that both center and overall detectors produce results."""

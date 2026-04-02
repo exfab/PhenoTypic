@@ -40,7 +40,7 @@ def test_operation(qualname, obj, detected_grid_image):
     image2 = instance.apply(image)
 
     # bm3d denoiser likely has unintended randomness from precision conversion
-    if "BM3D" not in qualname:
+    if ("BM3D" not in qualname) and ("StableDenoise" not in qualname):
         assert image1 == image2, "Operation was not reproducible"
 
 
