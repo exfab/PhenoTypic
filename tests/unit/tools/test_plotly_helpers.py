@@ -11,7 +11,6 @@ go = pytest.importorskip("plotly.graph_objects")
 
 from phenotypic.tools_._plotly_helpers import (  # noqa: E402
     PLOTLY_CONFIG,
-    _auto_figsize,
     add_plotly_gridlines,
     add_plotly_obj_labels,
     mpl_cmap_to_plotly,
@@ -46,35 +45,6 @@ class TestMplCmapToPlotly:
     def test_unknown_colormap_invalid_raises(self):
         with pytest.raises(KeyError):
             mpl_cmap_to_plotly("not_a_real_colormap_xyz")
-
-
-# ---------------------------------------------------------------------------
-# _auto_figsize
-# ---------------------------------------------------------------------------
-
-
-class TestAutoFigsize:
-    def test_square_image(self):
-        arr = np.zeros((100, 100), dtype=np.uint8)
-        w, h = _auto_figsize(arr)
-        assert w == h
-        assert 6 <= w <= 30
-
-    def test_wide_image(self):
-        arr = np.zeros((100, 300), dtype=np.uint8)
-        w, h = _auto_figsize(arr)
-        assert w > h
-
-    def test_tall_image(self):
-        arr = np.zeros((300, 100), dtype=np.uint8)
-        w, h = _auto_figsize(arr)
-        assert h > w
-
-    def test_3d_array(self):
-        arr = np.zeros((200, 400, 3), dtype=np.uint8)
-        w, h = _auto_figsize(arr)
-        assert w >= 6
-        assert h >= 6
 
 
 # ---------------------------------------------------------------------------
@@ -123,8 +93,8 @@ class TestPlotlyImshow:
     def test_auto_figsize(self):
         arr = np.zeros((50, 60), dtype=np.uint8)
         fig = plotly_imshow(arr)
-        assert fig.layout.width is not None
-        assert fig.layout.height is not None
+        assert fig.layout.width is None
+        assert fig.layout.autosize is True
 
     def test_layout_defaults(self):
         arr = np.zeros((50, 60, 3), dtype=np.uint8)

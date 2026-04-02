@@ -445,3 +445,107 @@ class TestLogGrowthModel:
         # Results may differ due to different aggregation
         assert not results_mean.empty
         assert not results_median.empty
+
+    def test_dash_returns_figure(self, sample_data):
+        """Test that dash() returns a Plotly figure with traces."""
+        go = pytest.importorskip("plotly.graph_objects")
+
+        model = LogGrowthModel(
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+        )
+        model.analyze(sample_data)
+
+        fig = model.dash(criteria={"Metadata_Dataset": "Test"})
+        assert isinstance(fig, go.Figure)
+        # 1 group -> 2 traces (line + markers)
+        assert len(fig.data) >= 2
+
+    def test_dash_with_criteria(self, sample_data):
+        """Test dash() filtering produces correct trace count."""
+        go = pytest.importorskip("plotly.graph_objects")
+
+        strain2_data = sample_data.copy()
+        strain2_data["Metadata_Strain"] = "Strain2"
+        combined_data = pd.concat(
+                [sample_data, strain2_data], ignore_index=True
+        )
+
+        model = LogGrowthModel(
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+        )
+        model.analyze(combined_data)
+
+        # Filter to one strain -> 2 traces (1 line + 1 scatter)
+        fig = model.dash(criteria={"Metadata_Strain": "Strain1"})
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) == 2
+
+    def test_dash_empty_criteria_warns(self, sample_data):
+        """Test dash() with non-matching criteria warns and returns empty."""
+        go = pytest.importorskip("plotly.graph_objects")
+
+        model = LogGrowthModel(
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+        )
+        model.analyze(sample_data)
+
+        with pytest.warns(UserWarning, match="No data found"):
+            fig = model.dash(criteria={"Metadata_Dataset": "NonExistent"})
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) == 0
+
+    def test_dash_hover_data(self, sample_data):
+        """Test that dash() traces contain expected hover information."""
+        pytest.importorskip("plotly.graph_objects")
+
+        model = LogGrowthModel(
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+        )
+        model.analyze(sample_data)
+
+        fig = model.dash(criteria={"Metadata_Dataset": "Test"})
+
+        line_trace = fig.data[0]
+        assert line_trace.mode == "lines"
+        assert "r =" in line_trace.hovertemplate
+        assert "RMSE =" in line_trace.hovertemplate
+
+        marker_trace = fig.data[1]
+        assert marker_trace.mode == "markers"
+        assert marker_trace.customdata is not None
+        assert "Mean:" in marker_trace.hovertemplate
+        assert "SE:" in marker_trace.hovertemplate
+
+    def test_dash_no_legend(self, sample_data):
+        """Test dash() with legend disabled."""
+        pytest.importorskip("plotly.graph_objects")
+
+        model = LogGrowthModel(
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+        )
+        model.analyze(sample_data)
+
+        fig = model.dash(criteria={"Metadata_Dataset": "Test"}, legend=False)
+        assert fig.layout.showlegend is False
+
+    def test_dash_tmax(self, sample_data):
+        """Test dash() with custom tmax limits prediction range."""
+        pytest.importorskip("plotly.graph_objects")
+
+        model = LogGrowthModel(
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+        )
+        model.analyze(sample_data)
+
+        fig = model.dash(criteria={"Metadata_Dataset": "Test"}, tmax=5)
+        line_trace = fig.data[0]
+        assert max(line_trace.x) <= 6.0  # tmax + step
+
+
+def test_set_analyzer_dash_not_implemented():
+    """Test that SetAnalyzer.dash() raises NotImplementedError."""
+    from phenotypic.analysis._tukey_outlier import TukeyOutlierRemover
+
+    analyzer = TukeyOutlierRemover(on="Shape_Area", groupby=["Group"], k=1.5)
+    with pytest.raises(NotImplementedError, match="does not implement"):
+        analyzer.dash()

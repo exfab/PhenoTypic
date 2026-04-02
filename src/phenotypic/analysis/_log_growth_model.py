@@ -1,5 +1,5 @@
 import itertools
-from typing import Any, Callable, Dict, List, Literal, Tuple, Union
+from typing import Any, Callable, Dict, List, Literal, Tuple, TYPE_CHECKING, Union
 
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
@@ -15,6 +15,9 @@ from sklearn.metrics import (
 
 from phenotypic.analysis.abc_ import ModelFitter
 from phenotypic.tools_.measurement_info_ import LOG_GROWTH_MODEL
+
+if TYPE_CHECKING:
+    import plotly.graph_objects as go
 
 
 class LogGrowthModel(ModelFitter):
@@ -381,6 +384,273 @@ class LogGrowthModel(ModelFitter):
 
         ax.set_title("mean±SE")
         return fig, ax
+
+    def dash(
+            self,
+            tmax: int | float | None = None,
+            criteria: Dict[str, Union[Any, List[Any]]] | None = None,
+            figsize=(6, 4),
+            cmap: str | None = "tab20",
+            legend: bool = True,
+            **kwargs,
+    ) -> "go.Figure":
+        """Interactive Plotly visualization of model predictions and measurements.
+
+        Produces the same plot as ``show()`` but as an interactive Plotly figure
+        with hover information displaying fitted model parameters.
+
+        Args:
+            tmax (int | float | None): Maximum time value for the prediction
+                curve. If None, determined from the data automatically.
+            criteria (Dict[str, Union[Any, List[Any]]] | None): Filtering
+                criteria for data selection. Only matching data is plotted.
+            figsize (tuple): Figure size as ``(width_inches, height_inches)``.
+                Converted to pixels at 100 dpi. Defaults to (6, 4).
+            cmap (str | None): Matplotlib colormap name for series colors, or a
+                single color string. If None, uses the Okabe-Ito palette.
+                Defaults to ``"tab20"``.
+            legend (bool): Whether to display the legend. Defaults to True.
+            **kwargs: Additional layout options:
+                - title: Custom figure title
+                - xlabel: Custom x-axis label
+                - ylabel: Custom y-axis label
+
+        Returns:
+            plotly.graph_objects.Figure: An interactive Plotly figure.
+
+        Raises:
+            ImportError: If plotly is not installed.
+        """
+        from phenotypic.tools_._plotly_helpers import _require_plotly
+        _require_plotly()
+        import plotly.graph_objects as go
+
+        # --- Filter data ---
+        if criteria is not None:
+            filtered_model_scores = self._filter_by(
+                    df=self._latest_model_scores, criteria=criteria, copy=True
+            )
+            filtered_measurements = self._filter_by(
+                    df=self._latest_measurements, criteria=criteria, copy=True
+            )
+        else:
+            filtered_model_scores = self._latest_model_scores.copy()
+            filtered_measurements = self._latest_measurements.copy()
+
+        if filtered_measurements.empty:
+            import warnings
+            warnings.warn(
+                "No data found matching the criteria. Returning empty figure."
+            )
+            return go.Figure()
+
+        # --- Group data ---
+        model_groups = {
+            model_keys: model_group
+            for model_keys, model_group in filtered_model_scores.groupby(
+                    by=self.groupby
+            )
+        }
+        meas_groups = {
+            meas_keys: meas_group
+            for meas_keys, meas_group in filtered_measurements.groupby(
+                    by=self.groupby
+            )
+        }
+
+        filtered_measurements.loc[:, self.time_label] = self._ensure_float_array(
+                filtered_measurements.loc[:, self.time_label]
+        )
+
+        timepoints = pd.Series(
+            filtered_measurements.loc[:, self.time_label].unique()
+        )
+        step = np.abs(np.mean(timepoints.sort_values().diff().dropna()))
+
+        if np.isnan(step) or step <= 0:
+            step = 1.0
+
+        tmax = timepoints.max() if tmax is None else tmax
+        t = np.arange(stop=tmax + step, step=step)
+
+        # --- Color cycling ---
+        _OKABE_ITO = [
+            "#003660", "#E69F00", "#56B4E9",
+            "#009E73", "#0072B2", "#CC79A7",
+        ]
+
+        if cmap is not None:
+            try:
+                import matplotlib
+                cmap_obj = matplotlib.colormaps[cmap]
+                colors = [
+                    f"rgb({int(c[0] * 255)},{int(c[1] * 255)},{int(c[2] * 255)})"
+                    for c in cmap_obj(
+                        np.linspace(0, 1, max(len(model_groups), 1),
+                                    endpoint=False)
+                    )
+                ]
+                color_iter = itertools.cycle(colors)
+            except (ValueError, KeyError):
+                color_iter = itertools.cycle([cmap])
+        else:
+            color_iter = itertools.cycle(_OKABE_ITO)
+
+        # --- Build traces ---
+        fig = go.Figure()
+
+        for model_key, model_group in model_groups.items():
+            curr_meas = meas_groups[model_key]
+            curr_color = next(color_iter)
+
+            r_val = model_group[LOG_GROWTH_MODEL.R_FIT].iloc[0]
+            K_val = model_group[LOG_GROWTH_MODEL.K_FIT].iloc[0]
+            N0_val = model_group[LOG_GROWTH_MODEL.N0_FIT].iloc[0]
+            mu_max = model_group[LOG_GROWTH_MODEL.GROWTH_RATE].iloc[0]
+            rmse_val = model_group[LOG_GROWTH_MODEL.RMSE].iloc[0]
+
+            y_pred = self.model_func(t=t, r=r_val, K=K_val, N0=N0_val)
+
+            if isinstance(model_key, tuple):
+                label = ", ".join(str(k) for k in model_key)
+            else:
+                label = str(model_key)
+
+            # Model prediction line
+            fig.add_trace(go.Scatter(
+                x=t,
+                y=y_pred,
+                mode="lines",
+                name=label,
+                line=dict(color=curr_color, width=2),
+                legendgroup=label,
+                hovertemplate=(
+                    "<b>%{fullData.name}</b><br>"
+                    "Time: %{x:.1f}<br>"
+                    "Predicted: %{y:.2f}<br>"
+                    "<extra>"
+                    f"r = {r_val:.4f}<br>"
+                    f"K = {K_val:.2f}<br>"
+                    f"N\u2080 = {N0_val:.2f}<br>"
+                    f"\u00b5max = {mu_max:.4f}<br>"
+                    f"RMSE = {rmse_val:.4f}"
+                    "</extra>"
+                ),
+            ))
+
+            # Data points with error bars
+            curr_time_groups = curr_meas.groupby(by=self.time_label)
+            curr_mean = curr_time_groups[self.on].mean()
+            curr_stddev = curr_time_groups[self.on].std()
+            curr_count = curr_time_groups[self.on].count()
+            curr_stderr = curr_stddev / np.sqrt(curr_count)
+
+            time_vals = curr_mean.index.values.astype(float)
+            mean_vals = curr_mean.values
+            stderr_vals = np.nan_to_num(curr_stderr.values, nan=0.0)
+
+            fig.add_trace(go.Scatter(
+                x=time_vals,
+                y=mean_vals,
+                mode="markers",
+                name=label,
+                legendgroup=label,
+                showlegend=False,
+                marker=dict(
+                    color=curr_color,
+                    size=7,
+                    line=dict(color=curr_color, width=1),
+                ),
+                error_y=dict(
+                    type="data",
+                    array=stderr_vals,
+                    visible=True,
+                    color=curr_color,
+                    thickness=1,
+                ),
+                customdata=np.column_stack([
+                    time_vals, mean_vals, stderr_vals,
+                ]),
+                hovertemplate=(
+                    "<b>%{fullData.name}</b><br>"
+                    "Time: %{customdata[0]:.1f}<br>"
+                    "Mean: %{customdata[1]:.2f}<br>"
+                    "SE: %{customdata[2]:.4f}<br>"
+                    "<extra></extra>"
+                ),
+            ))
+
+        # --- Layout ---
+        width_px = figsize[0] * 100
+        height_px = figsize[1] * 100
+
+        fig.update_layout(
+            width=width_px,
+            height=height_px,
+            title=dict(
+                text=kwargs.get("title", "mean\u00b1SE"),
+                font=dict(
+                    family="DM Sans, system-ui, sans-serif",
+                    size=13,
+                    color="#003660",
+                ),
+            ),
+            xaxis=dict(
+                title=dict(
+                    text=kwargs.get("xlabel", self.time_label),
+                    font=dict(
+                        family="DM Mono, Courier New, monospace",
+                        size=9,
+                        color="#2e3a4e",
+                    ),
+                ),
+                tickfont=dict(
+                    family="DM Mono, Courier New, monospace",
+                    size=8,
+                    color="#8892a4",
+                ),
+                gridcolor="#e8ecf2",
+                gridwidth=1,
+                linecolor="#dde3ed",
+                linewidth=1.5,
+                showline=True,
+                zeroline=False,
+            ),
+            yaxis=dict(
+                title=dict(
+                    text=kwargs.get("ylabel", self.on),
+                    font=dict(
+                        family="DM Mono, Courier New, monospace",
+                        size=9,
+                        color="#2e3a4e",
+                    ),
+                ),
+                tickfont=dict(
+                    family="DM Mono, Courier New, monospace",
+                    size=8,
+                    color="#8892a4",
+                ),
+                gridcolor="#e8ecf2",
+                gridwidth=1,
+                linecolor="#dde3ed",
+                linewidth=1.5,
+                showline=True,
+                zeroline=False,
+            ),
+            plot_bgcolor="#ffffff",
+            paper_bgcolor="#f5f7fa",
+            showlegend=legend,
+            legend=dict(
+                font=dict(
+                    family="DM Sans, system-ui, sans-serif",
+                    size=11,
+                    color="#2e3a4e",
+                ),
+            ),
+            hovermode="closest",
+        )
+
+        return fig
 
     def results(self) -> pd.DataFrame:
         return self._latest_model_scores

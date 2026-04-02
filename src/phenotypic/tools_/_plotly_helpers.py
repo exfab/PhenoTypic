@@ -76,33 +76,6 @@ def mpl_cmap_to_plotly(cmap_name: str) -> str | list:
     return scale
 
 
-def _auto_figsize(arr: np.ndarray) -> tuple[int, int]:
-    """Calculate figure size in inches from array aspect ratio.
-
-    Args:
-        arr: Image array (2D or 3D).
-
-    Returns:
-        Tuple of (width_inches, height_inches).
-    """
-    height, width = arr.shape[:2]
-    aspect_ratio = width / height
-
-    best_figsize = (6, 6)
-    best_error = float("inf")
-
-    for h in range(6, 31):
-        w = round(h * aspect_ratio)
-        w = max(6, min(30, w))
-        error = abs(w / h - aspect_ratio)
-        if error < best_error or (
-            error == best_error and w * h < best_figsize[0] * best_figsize[1]
-        ):
-            best_error = error
-            best_figsize = (w, h)
-
-    return best_figsize
-
 
 def plotly_imshow(
     arr: np.ndarray,
@@ -119,18 +92,13 @@ def plotly_imshow(
         cmap: Matplotlib colormap name for 2D arrays. Ignored for 3D.
             Defaults to ``"gray"``.
         figsize: Figure size as ``(width_inches, height_inches)``.
-            Converted to pixels at 100 dpi. If None, auto-calculated
-            from the array aspect ratio.
+            Converted to pixels at 100 dpi. If None, the figure
+            autosizes to fill the container width (notebook cell).
 
     Returns:
         A ``plotly.graph_objects.Figure`` with zoom-friendly defaults.
     """
     _require_plotly()
-    if figsize is None:
-        figsize = _auto_figsize(arr)
-
-    width_px = figsize[0] * 100
-    height_px = figsize[1] * 100
 
     if arr.ndim == 3:
         fig = px.imshow(arr, binary_string=True)
@@ -138,9 +106,15 @@ def plotly_imshow(
         colorscale = mpl_cmap_to_plotly(cmap)
         fig = px.imshow(arr, color_continuous_scale=colorscale)
 
+    if figsize is not None:
+        width_px = figsize[0] * 100
+        height_px = figsize[1] * 100
+        size_kwargs: dict = {"width": width_px, "height": height_px}
+    else:
+        size_kwargs = {"autosize": True}
+
     fig.update_layout(
-        width=width_px,
-        height=height_px,
+        **size_kwargs,
         dragmode="zoom",
         xaxis=dict(showticklabels=False, showgrid=False),
         yaxis=dict(showticklabels=False, showgrid=False, scaleanchor="x"),
