@@ -21,25 +21,8 @@ class RawTablePlugin(BaseAnalysisPlugin):
     sort_order = 5
 
     def prepare_data(self, ctx: AnalysisPrepareContext) -> None:
-        """Write ``analysis_table.json`` to *ctx.progress_dir*."""
-        if ctx.merged_df is None:
-            return
-
-        from .._analysis_helpers import (
-            stratified_sample,
-            to_columnar,
-            write_json_atomic,
-        )
-
-        df = ctx.merged_df
-        max_rows = 5_000
-        total_rows = df.height
-        sampled = total_rows > max_rows
-        if sampled:
-            df = stratified_sample(df, max_rows)
-
-        payload = to_columnar(df, total_rows, sampled)
-        write_json_atomic(payload, ctx.progress_dir / "analysis_table.json")
+        """No-op — table data is loaded client-side from Parquet via hyparquet."""
+        return
 
     def css(self) -> str:
         """Return CSS scoped with the plugin's call_name prefix."""
@@ -180,25 +163,51 @@ class RawTablePlugin(BaseAnalysisPlugin):
         """Return JS including an ``initAnalysis_table()`` function."""
         return (
             "var tableState = { page: 0, pageSize: 50, sortCol: null,"
-            " sortAsc: true, visibleCols: null, data: null };\n"
+            " sortAsc: true, visibleCols: null, data: null,"
+            " indices: null };\n"
             "\n"
             "function initAnalysis_table() {\n"
+            "  var container = document.getElementById("
+            "'analysis-table-container');\n"
+            "  if (!sharedParquetState.loaded"
+            " || sharedParquetState.nRows <= 0) {\n"
+            "    container.innerHTML = '<div class=\"analysis-empty\">"
+            "No data available yet.</div>';\n"
+            "    return;\n"
+            "  }\n"
             "  renderRawTable();\n"
             "}\n"
             "\n"
             "function renderRawTable() {\n"
             "  var container = document.getElementById("
             "'analysis-table-container');\n"
-            "  var d = analysisData.table;\n"
-            "  if (!d || !d.columns || d.columns.length === 0) {\n"
-            "    container.innerHTML = '<div class=\"analysis-empty\">"
-            "No data available yet.</div>';\n"
-            "    return;\n"
+            "  var totalRows = sharedParquetState.nRows;\n"
+            "  var maxRows = 5000;\n"
+            "  var sampled = totalRows > maxRows;\n"
+            "  tableState.data = {\n"
+            "    columns: sharedParquetState.allColumns,\n"
+            "    data: sharedParquetState.allData,\n"
+            "    total_rows: totalRows,\n"
+            "    sampled: sampled\n"
+            "  };\n"
+            "  if (sampled) {\n"
+            "    var allIdx = [];\n"
+            "    for (var i = 0; i < totalRows; i++) allIdx.push(i);\n"
+            "    for (var j = allIdx.length - 1; j > 0; j--) {\n"
+            "      var k = Math.floor(Math.random() * (j + 1));\n"
+            "      var tmp = allIdx[j];\n"
+            "      allIdx[j] = allIdx[k];\n"
+            "      allIdx[k] = tmp;\n"
+            "    }\n"
+            "    tableState.indices = allIdx.slice(0, maxRows);\n"
+            "  } else {\n"
+            "    tableState.indices = Array.from({length: totalRows},"
+            " function(_, i) { return i; });\n"
             "  }\n"
-            "  tableState.data = d;\n"
             "  if (!tableState.visibleCols) tableState.visibleCols ="
-            " new Set(d.columns.slice(0, 20));\n"
+            " new Set(tableState.data.columns.slice(0, 20));\n"
             "  tableState.page = 0;\n"
+            "  tableState.sortCol = null;\n"
             "  renderTableContent(container);\n"
             "}\n"
             "\n"
@@ -207,11 +216,11 @@ class RawTablePlugin(BaseAnalysisPlugin):
             "  if (!d) return;\n"
             "  var cols = d.columns.filter(function(c) {"
             " return tableState.visibleCols.has(c); });\n"
-            "  var nRows = d.data[d.columns[0]].length;\n"
-            "  var indices = Array.from({length: nRows},"
-            " function(_, i) { return i; });\n"
+            "  var indices = tableState.indices;\n"
+            "  var nRows = indices.length;\n"
             "  if (tableState.sortCol && d.data[tableState.sortCol]) {\n"
             "    var vals = d.data[tableState.sortCol];\n"
+            "    indices = indices.slice();\n"
             "    indices.sort(function(a, b) {\n"
             "      var va = vals[a], vb = vals[b];\n"
             "      if (va === null || va === undefined) return 1;\n"
@@ -318,14 +327,12 @@ class RawTablePlugin(BaseAnalysisPlugin):
             "document.getElementById('analysis-table-container'));"
             " } }\n"
             "function tableNextPage() {"
-            " var d = tableState.data;"
-            " if (d) {"
-            " var n = d.data[d.columns[0]].length;"
+            " var n = tableState.indices ? tableState.indices.length : 0;"
             " if ((tableState.page+1)*tableState.pageSize < n) {"
             " tableState.page++;"
             " renderTableContent("
             "document.getElementById('analysis-table-container'));"
-            " } } }\n"
+            " } }\n"
             "function toggleColumnPanel() {"
             " document.getElementById('col-toggle-panel')"
             ".classList.toggle('open'); }\n"

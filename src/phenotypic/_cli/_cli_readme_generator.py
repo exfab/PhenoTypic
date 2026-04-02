@@ -137,6 +137,27 @@ No measurements configured in this pipeline."""
             "The following measurements are extracted for each detected object:",
         ]
 
+        from phenotypic.tools_.constants_ import OBJECT
+        from phenotypic.tools_.measurement_info_ import BBOX
+
+        sections.append(
+            "\n### Object\n\n"
+            "| Column | Description |\n"
+            "|--------|-------------|\n"
+            f"| `{OBJECT.LABEL}` "
+            "| Unique integer label identifying each detected object. |"
+        )
+        bbox_table = self._generate_measurement_table(BBOX)
+        if bbox_table:
+            sections.append(bbox_table)
+
+        if self.config.image_type == "GridImage":
+            from phenotypic.tools_.measurement_info_ import GRID
+
+            grid_table = self._generate_measurement_table(GRID)
+            if grid_table:
+                sections.append(grid_table)
+
         for meas_name, measurer in self.pipeline._meas.items():
             if not isinstance(measurer, MeasureFeatures):
                 continue
@@ -174,6 +195,7 @@ No measurements configured in this pipeline."""
             BBOX,
             GRID_SPREAD,
             GRID_LINREG_STATS,
+            GRID_SPATIAL,
         )
 
         # Map measurer class names to their MeasurementInfo classes
@@ -187,6 +209,7 @@ No measurements configured in this pipeline."""
             "MeasureBounds": [BBOX],
             "MeasureGridLinRegStats": [GRID_LINREG_STATS],
             "MeasureGridSpread": [GRID_SPREAD],
+            "MeasureGridSpatial": [GRID_SPATIAL],
         }
 
         class_name = measurer.__class__.__name__

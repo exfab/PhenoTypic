@@ -319,13 +319,6 @@ class TestAnalysisData:
 
         write_analysis_sidecar(tmp_dir)
 
-        scatter = json.loads(
-            (tmp_dir / "progress" / "analysis_scatter.json").read_text()
-        )
-        assert "columns" in scatter
-        assert "data" in scatter
-        assert scatter["total_rows"] == 10
-
         stats = json.loads(
             (tmp_dir / "progress" / "analysis_stats.json").read_text()
         )
@@ -365,14 +358,11 @@ class TestAnalysisData:
 
         write_analysis_sidecar(tmp_dir, metadata_csv=metadata_csv)
 
-        scatter = json.loads(
-            (tmp_dir / "progress" / "analysis_scatter.json").read_text()
+        stats = json.loads(
+            (tmp_dir / "progress" / "analysis_stats.json").read_text()
         )
-        assert "Metadata_Treatment" in scatter["columns"]
-        assert "Metadata_Treatment" in scatter["data"]
-        assert scatter["data"]["Metadata_Treatment"] == [
-            "ctrl", "drugA", "drugB", "drugA", "ctrl"
-        ]
+        assert "datasets" in stats
+        assert "plate1" in stats["datasets"]
 
     def test_stratified_sampling(self):
         """Stratified sampling should maintain proportional representation."""
@@ -493,8 +483,5 @@ class TestPluginPrepareData:
             plugin = AnalysisPluginRegistry.get(name)()
             plugin.prepare_data(ctx)
 
-        assert (progress_dir / "analysis_scatter.json").exists()
-        assert (progress_dir / "analysis_table.json").exists()
         assert (progress_dir / "analysis_stats.json").exists()
-        assert (progress_dir / "analysis_full.parquet").exists()
         assert (progress_dir / "overlay_manifest.json").exists()

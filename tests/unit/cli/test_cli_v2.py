@@ -1550,6 +1550,10 @@ class TestAggregateMeasurements:
         assert "Metadata_Dataset" in master.columns
         assert list(master["Metadata_Dataset"].unique()) == ["ds1"]
 
+        # Verify master Parquet is also written
+        master_parquet = temp_output_dir / "master_measurements.parquet"
+        assert master_parquet.exists(), "master_measurements.parquet should be written"
+
     def test_aggregate_measurements_multi_dataset(self, temp_output_dir):
         """Two datasets: all rows present with correct dataset labels."""
         import pandas as pd
@@ -1689,10 +1693,10 @@ class TestAggregateMeasurements:
         # No new columns added since there were no shared columns to join on
         assert "strain" not in master.columns
         assert "concentration" not in master.columns
-        assert list(master.columns) == ["area"]
+        assert "area" in master.columns
 
     def test_aggregate_measurements_metadata_partial_match(self, temp_output_dir):
-        """Left join: unmatched rows get NaN in metadata columns."""
+        """Inner join: unmatched measurement rows are dropped."""
         import pandas as pd
 
         self._create_measurement_csvs(temp_output_dir, {
@@ -1717,10 +1721,11 @@ class TestAggregateMeasurements:
 
         assert result is not None
         master = pd.read_csv(result)
-        assert len(master) == 3
+        # Plate C dropped — no matching metadata
+        assert len(master) == 2
         assert "treatment" in master.columns
-        # Plate C should have NaN for treatment
-        assert pd.isna(master.loc[master["plate"] == "C", "treatment"].iloc[0])
+        assert set(master["plate"].tolist()) == {"A", "B"}
+        assert master["treatment"].notna().all()
 
     def test_aggregate_measurements_metadata_duplicate_keys_warns(self, temp_output_dir, caplog):
         """Duplicate keys in metadata CSV inflate rows and produce a warning."""
@@ -1784,3 +1789,32 @@ class TestAggregateMeasurements:
         assert "treatment" in master.columns
         # Both rows should match (no NaN in treatment)
         assert master["treatment"].notna().all()
+
+    def test_aggregate_measurements_parquet_with_duckdb(self, temp_output_dir):
+        """Standard .parquet files aggregate correctly via DuckDB."""
+        import pandas as pd
+        import polars as pl
+
+        # Write PARQUET files (not arrow) to simulate pre-migration data
+        meas_dir = temp_output_dir / "results" / "ds1" / "measurements"
+        meas_dir.mkdir(parents=True, exist_ok=True)
+        for stem, df in [
+            ("img_001", pd.DataFrame({"area": [10, 20]})),
+            ("img_002", pd.DataFrame({"area": [30]})),
+        ]:
+            pl.from_pandas(df).write_parquet(
+                meas_dir / f"{stem}.parquet",
+                compression="zstd",
+                compression_level=3,
+            )
+
+        result = aggregate_measurements(
+            output_dir=temp_output_dir,
+            dataset_names=["ds1"],
+            include_dataset_column=True,
+        )
+
+        assert result is not None
+        master = pd.read_csv(result)
+        assert len(master) == 3
+        assert "Metadata_Dataset" in master.columns

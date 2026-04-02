@@ -1,7 +1,7 @@
 """Checkpoint chunk writer for SLURM array jobs.
 
 Aggregates unchunked per-image Parquet files into dashboard chunks,
-rebuilds the combined analysis Parquet, and updates the master CSV
+rebuilds the combined analysis file, and updates the master CSV
 so users can download partial results mid-run.
 """
 
@@ -11,7 +11,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import click
 import polars as pl
@@ -30,12 +30,12 @@ logger = logging.getLogger(__name__)
     required=True,
 )
 def aggregate_chunks(output_dir: Path) -> None:
-    """Aggregate unchunked per-image Parquets into a dashboard chunk.
+    """Aggregate unchunked per-image measurement files into a dashboard chunk.
 
     The entire read-scan-write cycle is serialised via an exclusive
     file lock on ``progress/.chunk_lock`` so that concurrent checkpoint
     tasks (SLURM may schedule multiple sentinels near-simultaneously)
-    do not race on the shared state files or duplicate Parquet data.
+    do not race on the shared state files or duplicate data.
     """
     progress_dir = output_dir / "progress"
     progress_dir.mkdir(parents=True, exist_ok=True)
@@ -60,7 +60,8 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
 
     new_files = _scan_unchunked_parquets(output_dir / "results", chunked_files)
     if not new_files:
-        logger.info("No new Parquet files to chunk")
+        logger.info("No new measurement files to chunk")
+        _ensure_overlay_manifest(output_dir, progress_dir)
         return
 
     chunk_df = _read_and_concat(new_files)
@@ -102,9 +103,7 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
     if combined is not None:
         _atomic_write(
             progress_dir / "analysis_full.parquet",
-            lambda p: combined.write_parquet(
-                p, compression="zstd", compression_level=3
-            ),
+            lambda p: combined.write_parquet(p, compression="zstd", compression_level=3),
         )
 
         job_meta = load_job_metadata(progress_dir)
@@ -124,6 +123,12 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
         _atomic_write(
             output_dir / "master_measurements.csv",
             lambda p: combined_with_metadata.write_csv(p),  # type: ignore[union-attr]
+        )
+        _atomic_write(
+            output_dir / "master_measurements.parquet",
+            lambda p: combined_with_metadata.write_parquet(  # type: ignore[union-attr]
+                p, compression="zstd", compression_level=3
+            ),
         )
 
         _run_analysis_plugins(output_dir, progress_dir, combined_with_metadata)
@@ -157,7 +162,7 @@ def _scan_unchunked_parquets(
             to include newly discovered files).
 
     Returns:
-        Sorted list of new Parquet file paths.
+        Sorted list of new measurement file paths.
     """
     new_files: list[Path] = []
     if not results_dir.is_dir():
@@ -169,12 +174,12 @@ def _scan_unchunked_parquets(
         meas_dir = dataset_dir / "measurements"
         if not meas_dir.is_dir():
             continue
-        for pq_file in sorted(meas_dir.glob("*.parquet")):
-            if pq_file.name.startswith("_"):
+        for meas_file in sorted(meas_dir.glob("*.parquet")):
+            if meas_file.name.startswith("_"):
                 continue
-            rel_key = f"{dataset_dir.name}/{pq_file.name}"
+            rel_key = f"{dataset_dir.name}/{meas_file.name}"
             if rel_key not in chunked_files:
-                new_files.append(pq_file)
+                new_files.append(meas_file)
                 chunked_files.add(rel_key)
 
     return new_files
@@ -182,10 +187,6 @@ def _scan_unchunked_parquets(
 
 def _read_and_concat(parquet_files: list[Path]) -> pl.DataFrame | None:
     """Read per-image Parquet files, ensure ``Metadata_Dataset``, and concat.
-
-    Uses :func:`scan_parquets` for lazy scans locally and ``tar``
-    streaming on HPC shared filesystems to reduce per-file metadata
-    overhead.
 
     Args:
         parquet_files: Paths to per-image Parquet files.
@@ -196,7 +197,6 @@ def _read_and_concat(parquet_files: list[Path]) -> pl.DataFrame | None:
     lazy_frames = scan_parquets(parquet_files)
     if not lazy_frames:
         return None
-
     frames: list[pl.DataFrame] = []
     for pq_path, lf in lazy_frames.items():
         try:
@@ -210,7 +210,6 @@ def _read_and_concat(parquet_files: list[Path]) -> pl.DataFrame | None:
             frames.append(df)
         except Exception as exc:
             logger.warning("Failed to read %s: %s", pq_path, exc)
-
     if not frames:
         return None
     return pl.concat(frames, how="diagonal_relaxed")
@@ -219,7 +218,7 @@ def _read_and_concat(parquet_files: list[Path]) -> pl.DataFrame | None:
 def _incremental_combined(
     new_chunk: pl.DataFrame, existing_path: Path
 ) -> pl.DataFrame:
-    """Append *new_chunk* to the existing combined Parquet, or return *new_chunk* if none exists.
+    """Append *new_chunk* to the existing combined file, or return *new_chunk* if none exists.
 
     Falls back to `_rebuild_combined()` if the existing file is corrupt.
 
@@ -236,7 +235,7 @@ def _incremental_combined(
         prev = pl.read_parquet(existing_path)
         return pl.concat([prev, new_chunk], how="diagonal_relaxed")
     except Exception as exc:
-        logger.warning("Failed to read existing combined Parquet, rebuilding: %s", exc)
+        logger.warning("Failed to read existing combined file, rebuilding: %s", exc)
         return _rebuild_combined(existing_path.parent / "chunks") or new_chunk
 
 
@@ -249,8 +248,9 @@ def _rebuild_combined(chunks_dir: Path) -> pl.DataFrame | None:
     Returns:
         Concatenated DataFrame, or ``None`` if no chunks could be read.
     """
+    chunk_files = sorted(chunks_dir.glob("chunk_*.parquet"))
     frames: list[pl.DataFrame] = []
-    for chunk_file in sorted(chunks_dir.glob("chunk_*.parquet")):
+    for chunk_file in chunk_files:
         try:
             frames.append(pl.read_parquet(chunk_file))
         except Exception as exc:
@@ -307,7 +307,7 @@ def _run_analysis_plugins(
 def _update_dataset_parquet(
     output_dir: Path, dataset_name: str, new_df: pl.DataFrame
 ) -> None:
-    """Append new measurements to the dataset-level aggregated parquet.
+    """Append new measurements to the dataset-level aggregated Parquet file.
 
     Args:
         output_dir: Root output directory.
@@ -370,6 +370,30 @@ def _write_json(data: dict[str, Any], path: Path) -> None:
         f.write("\n")
         f.flush()
         os.fsync(f.fileno())
+
+
+def _ensure_overlay_manifest(output_dir: Path, progress_dir: Path) -> None:
+    """Write overlay_manifest.json if it does not already exist.
+
+    Called on the early-return path when no new measurement files were found,
+    to ensure the overlay manifest is present even if previous plugin
+    runs were skipped or failed.
+    """
+    manifest_path = progress_dir / "overlay_manifest.json"
+    if manifest_path.exists():
+        return
+    try:
+        from ._dashboard._analysis._prepare_context import AnalysisPrepareContext
+        from ._dashboard._analysis._image_viewer import ImageViewerPlugin
+
+        ctx = AnalysisPrepareContext(
+            output_dir=output_dir,
+            progress_dir=progress_dir,
+            merged_df=None,
+        )
+        ImageViewerPlugin().prepare_data(ctx)
+    except Exception:
+        logger.warning("Failed to ensure overlay manifest", exc_info=True)
 
 
 if __name__ == "__main__":

@@ -398,14 +398,16 @@ def detect_silent_failures(
 def _get_analysis_data_version(progress_dir: Path) -> int:
     """Return the maximum modification time across analysis data sources.
 
-    Checks ``analysis_scatter.json``, ``analysis_full.parquet``, and
-    the ``progress/chunks/`` directory, returning the most recent mtime
-    so the dashboard detects when new Parquet data is available.
+    Checks ``analysis_scatter.json``, ``analysis_full.parquet``,
+    the ``progress/chunks/`` directory, and ``master_measurements.parquet``,
+    returning the most recent mtime so the dashboard detects when new
+    data is available.
     """
     candidates = [
         progress_dir / "analysis_scatter.json",
         progress_dir / "analysis_full.parquet",
         progress_dir / "chunks",
+        progress_dir.parent / "master_measurements.parquet",
     ]
     max_mtime = 0
     for path in candidates:

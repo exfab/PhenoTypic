@@ -1,6 +1,6 @@
 """Sidecar data preparation for the Analysis tab.
 
-Scans per-image measurement Parquet files, optionally left-joins metadata,
+Scans per-image measurement Parquet files, optionally inner-joins metadata,
 and dispatches to registered analysis plugins to write their sidecar files.
 """
 
@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 import polars as pl
 
-from .._cli_utils import scan_parquets
-from ._analysis_helpers import DATASET_COL
+from .._cli_output_manager import join_metadata
+from .._cli_duckdb_agg import duckdb_aggregate
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ def write_analysis_sidecar(
         output_dir: Root output directory (contains ``results/`` and
             ``progress/``).
         metadata_csv: Optional path to an external metadata CSV for
-            left-joining onto measurements.
+            inner-joining onto measurements.
     """
     from phenotypic.tools_.register import AnalysisPluginRegistry
 
@@ -83,11 +83,12 @@ def _load_and_merge(
     output_dir: Path,
     metadata_csv: Optional[Path],
 ) -> Optional[pl.DataFrame]:
-    """Scan measurement Parquet files, concatenate, and optionally join metadata.
+    """Scan Parquet measurement files, aggregate via DuckDB, and optionally join metadata.
 
-    Walks ``results/*/measurements/*.parquet``, adds ``Metadata_Dataset``
-    and ``Metadata_ImageFile`` columns, and performs a left-join with
-    *metadata_csv* when provided.
+    Walks ``results/*/measurements/`` for ``.parquet`` files.  Uses
+    :func:`duckdb_aggregate` for efficient in-memory concatenation,
+    adds ``Metadata_Dataset`` and ``Metadata_ImageFile`` columns, and
+    performs an inner-join with *metadata_csv* when provided.
 
     Args:
         output_dir: Root output directory (contains ``results/``).
@@ -107,97 +108,48 @@ def _load_and_merge(
     if not dataset_names:
         return None
 
-    all_measurements: List[pl.DataFrame] = []
-    n_skipped = 0
-
-    # Collect all Parquet paths, then stream-read in one batch.
+    # -- File discovery ------------------------------------------------
+    # Prefer _dataset_aggregated.parquet when available (mirrors
+    # aggregate_measurements logic), skip _-prefixed internal files.
     path_to_dataset: Dict[Path, str] = {}
     for dataset_name in dataset_names:
         dataset_meas_dir = results_dir / dataset_name / "measurements"
         if not dataset_meas_dir.is_dir():
             continue
-        for parquet_file in sorted(dataset_meas_dir.glob("*.parquet")):
-            path_to_dataset[parquet_file] = dataset_name
+        agg = dataset_meas_dir / "_dataset_aggregated.parquet"
+        if agg.exists():
+            path_to_dataset[agg] = dataset_name
+        else:
+            for pq in sorted(dataset_meas_dir.glob("*.parquet")):
+                if not pq.name.startswith("_"):
+                    path_to_dataset[pq] = dataset_name
 
-    lazy_frames = scan_parquets(list(path_to_dataset.keys()))
-
-    for pq_path, lf in lazy_frames.items():
-        dataset_name = path_to_dataset[pq_path]
-        try:
-            df = lf.collect()
-            if DATASET_COL not in df.columns:
-                df = df.insert_column(
-                    0, pl.lit(dataset_name).alias(DATASET_COL)
-                )
-            if "Metadata_ImageFile" not in df.columns:
-                df = df.insert_column(
-                    min(1, df.width),
-                    pl.lit(pq_path.stem).alias("Metadata_ImageFile"),
-                )
-            all_measurements.append(df)
-        except Exception as e:
-            logger.warning(
-                "Failed to read %s: %s: %s",
-                pq_path,
-                type(e).__name__,
-                e,
-            )
-            n_skipped += 1
-
-    if n_skipped:
-        logger.warning("Skipped %d Parquet file(s) due to read errors", n_skipped)
-
-    if not all_measurements:
+    if not path_to_dataset:
         return None
 
-    try:
-        master_df = pl.concat(all_measurements, how="diagonal_relaxed")
-    except Exception as e:
-        logger.error("Failed to concatenate measurements: %s", e)
+    # -- DuckDB aggregation --------------------------------------------
+    master_df = duckdb_aggregate(
+        file_paths=list(path_to_dataset.keys()),
+        path_to_dataset=path_to_dataset,
+        include_dataset_column=True,
+        keep_filename=True,
+    )
+
+    if master_df is None:
         return None
 
-    # Join external metadata if provided.
+    # Derive Metadata_ImageFile from the DuckDB filename column, then drop it.
+    if "Metadata_ImageFile" not in master_df.columns and "filename" in master_df.columns:
+        master_df = master_df.with_columns(
+            pl.col("filename").str.extract(r"([^/\\]+)\.[^.]+$", 1).alias("Metadata_ImageFile")
+        )
+    if "filename" in master_df.columns:
+        master_df = master_df.drop("filename")
+
+    # -- Join external metadata if provided ----------------------------
     if metadata_csv is not None:
         try:
-            metadata_df = pl.read_csv(metadata_csv)
-            common = [
-                c for c in master_df.columns if c in metadata_df.columns
-            ]
-            if not common:
-                logger.warning(
-                    "Metadata CSV has no columns in common with measurements "
-                    "-- skipping join"
-                )
-            else:
-                logger.info("Joining metadata on columns: %s", common)
-                # Cast join keys to string for consistent matching.
-                master_df = master_df.with_columns(
-                    pl.col(c).cast(pl.String) for c in common
-                )
-                metadata_df = metadata_df.with_columns(
-                    pl.col(c).cast(pl.String) for c in common
-                )
-                n_rows_before = master_df.height
-                master_df = master_df.join(
-                    metadata_df, on=common, how="inner"
-                )
-                if master_df.height > n_rows_before:
-                    logger.warning(
-                        "Metadata join increased row count from %d to %d -- "
-                        "metadata CSV likely has duplicate keys on columns %s",
-                        n_rows_before,
-                        master_df.height,
-                        common,
-                    )
-                n_dropped = n_rows_before - master_df.height
-                if n_dropped > 0:
-                    logger.warning(
-                        "Metadata inner join dropped %d/%d measurement rows "
-                        "with no matching metadata on columns %s",
-                        n_dropped,
-                        n_rows_before,
-                        common,
-                    )
+            master_df = join_metadata(master_df, metadata_csv)
         except Exception as e:
             logger.warning(
                 "Failed to read/join metadata CSV %s: %s: %s",

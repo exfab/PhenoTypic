@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from ._cli_types import Dataset
-from ._cli_utils import _scan_direct, scan_parquets
+from ._cli_duckdb_agg import duckdb_aggregate
 
 logger = logging.getLogger(__name__)
 
@@ -65,16 +65,17 @@ def join_metadata(df: "pl.DataFrame", metadata_csv: Path) -> "pl.DataFrame":
     """Join external metadata CSV onto a measurements DataFrame.
 
     Identifies columns common to both the measurements and metadata,
-    casts them to ``String`` for a safe join, performs a left join
-    (preserving all measurement rows), and warns if the row count
-    changes (which indicates duplicate keys in the metadata).
+    casts them to ``String`` for a safe join, and performs an inner join
+    with the metadata on the left.  Only rows present in both DataFrames
+    survive.  Warns if the row count increases (duplicate metadata keys)
+    or decreases (measurement rows with no matching metadata).
 
     Args:
         df: Measurements DataFrame (must have columns to join on).
         metadata_csv: Path to the metadata CSV file.
 
     Returns:
-        DataFrame with metadata columns appended.
+        DataFrame with metadata columns first, then measurement columns.
     """
     metadata_df = pl.read_csv(metadata_csv)
     common = list(set(df.columns) & set(metadata_df.columns))
@@ -91,7 +92,7 @@ def join_metadata(df: "pl.DataFrame", metadata_csv: Path) -> "pl.DataFrame":
     )
     n_rows_before = df.height
     n_cols_before = len(df.columns)
-    df = df.join(metadata_df, on=common, how="left")
+    df = metadata_df.join(df, on=common, how="inner")
     n_new_cols = len(df.columns) - n_cols_before
     if df.height > n_rows_before:
         logger.warning(
@@ -100,6 +101,15 @@ def join_metadata(df: "pl.DataFrame", metadata_csv: Path) -> "pl.DataFrame":
             "Verify your metadata CSV has unique values on join columns.",
             n_rows_before,
             df.height,
+            common,
+        )
+    n_dropped = n_rows_before - df.height
+    if n_dropped > 0:
+        logger.warning(
+            "Metadata inner join dropped %d/%d measurement rows "
+            "with no matching metadata on columns %s",
+            n_dropped,
+            n_rows_before,
             common,
         )
     logger.info(
@@ -193,16 +203,19 @@ def aggregate_measurements(
     include_dataset_column: bool = True,
     metadata_csv: Optional[Path] = None,
 ) -> Optional[Path]:
-    """Aggregate per-image measurement Parquet files into a single master CSV.
+    """Aggregate per-image Parquet files into a master CSV via DuckDB.
 
-    Scans ``results/{name}/measurements/*.parquet`` for each dataset, optionally
-    adds a ``Metadata_Dataset`` column, and writes a concatenated
-    ``master_measurements.csv`` to *output_dir* using an atomic write.
+    Scans ``results/{name}/measurements/`` for each dataset, looking for
+    Parquet (``.parquet``) files.  Prefers pre-aggregated
+    ``_dataset_aggregated.parquet`` files when available, falling back to
+    individual per-image files.
 
-    Prefers pre-aggregated ``_dataset_aggregated.parquet`` files when available,
-    falling back to individual per-image Parquet files. When ``$SCRATCH`` is
-    available (node-local SSD), files are staged there to avoid GPFS
-    metadata overhead.
+    Uses :func:`duckdb_aggregate` for efficient in-memory concatenation
+    and writes both ``master_measurements.csv`` and
+    ``master_measurements.parquet`` to *output_dir* using atomic writes.
+
+    When ``$SCRATCH`` is available (node-local SSD), files are staged
+    there first to avoid GPFS metadata overhead.
 
     Works without an :class:`OutputManager` instance so it can be called
     from the SLURM sentinel job.
@@ -211,106 +224,97 @@ def aggregate_measurements(
         output_dir: Base output directory (contains ``results/``).
         dataset_names: Names of datasets to scan.
         include_dataset_column: Whether to insert ``Metadata_Dataset``
-            into each Parquet file that lacks it.
+            into each file that lacks it.
         metadata_csv: Optional path to an external CSV file. When
-            provided, shared columns are used as join keys for a left
-            join, adding any extra columns from the metadata CSV to
-            the master DataFrame.
+            provided, shared columns are used as join keys for an inner
+            join with metadata on the left.  Only measurement rows that
+            match the metadata are kept.
 
     Returns:
         Path to ``master_measurements.csv``, or ``None`` if no
         measurements were found.
     """
     results_dir = output_dir / "results"
-    all_measurements: List[pl.DataFrame] = []
-    n_skipped = 0
 
+    # -- File discovery ------------------------------------------------
     path_to_dataset: Dict[Path, str] = {}
     for dataset_name in dataset_names:
         meas_dir = results_dir / dataset_name / "measurements"
         if not meas_dir.is_dir():
             continue
-        agg = meas_dir / "_dataset_aggregated.parquet"
-        if agg.exists():
-            path_to_dataset[agg] = dataset_name
+        # Prefer pre-aggregated file
+        agg_parquet = meas_dir / "_dataset_aggregated.parquet"
+        if agg_parquet.exists():
+            path_to_dataset[agg_parquet] = dataset_name
         else:
             for pq in sorted(meas_dir.glob("*.parquet")):
-                if pq.name != "_dataset_aggregated.parquet":
+                if not pq.name.startswith("_"):
                     path_to_dataset[pq] = dataset_name
 
+    # -- Stage to $SCRATCH ---------------------------------------------
     scratch_dir = _stage_to_scratch(list(path_to_dataset.keys()))
     if scratch_dir is not None:
         active_mapping = _remap_to_scratch(path_to_dataset, scratch_dir)
-        lazy_frames = _scan_direct(list(active_mapping.keys()))
     else:
         active_mapping = path_to_dataset
-        lazy_frames = scan_parquets(list(active_mapping.keys()))
 
-    for pq_path, lf in lazy_frames.items():
-        dataset_name = active_mapping[pq_path]
-        try:
-            df = lf.collect()
-            if include_dataset_column and "Metadata_Dataset" not in df.columns:
-                df = df.insert_column(
-                    0, pl.lit(dataset_name).alias("Metadata_Dataset")
-                )
-            all_measurements.append(df)
-        except Exception as e:
-            logger.warning(
-                "Failed to read %s: %s: %s",
-                pq_path,
-                type(e).__name__,
-                e,
-            )
-            n_skipped += 1
+    # -- DuckDB aggregation --------------------------------------------
+    master_df = duckdb_aggregate(
+        file_paths=list(active_mapping.keys()),
+        path_to_dataset=active_mapping,
+        include_dataset_column=include_dataset_column,
+        keep_filename=True,
+    )
 
     if scratch_dir is not None:
         _cleanup_scratch(scratch_dir)
 
-    if n_skipped:
-        logger.warning(
-            "Skipped %d Parquet file(s) due to read errors", n_skipped
-        )
-
-    if not all_measurements:
+    if master_df is None:
         logger.warning("No valid measurements found for aggregation")
         return None
 
-    try:
-        master_df = pl.concat(all_measurements, how="diagonal_relaxed")
-    except Exception as e:
-        logger.error("Failed to concatenate measurements: %s", e)
-        return None
+    # Derive Metadata_ImageFile for the dashboard image viewer, then drop filename.
+    if "Metadata_ImageFile" not in master_df.columns and "filename" in master_df.columns:
+        master_df = master_df.with_columns(
+            pl.col("filename").str.extract(r"([^/\\]+)\.[^.]+$", 1).alias("Metadata_ImageFile")
+        )
+    if "filename" in master_df.columns:
+        master_df = master_df.drop("filename")
 
-    logger.info(
-        "Aggregated %d rows x %d cols, %.0f MB estimated",
-        master_df.height,
-        master_df.width,
-        master_df.estimated_size("mb"),
-    )
-
+    # -- Join metadata -------------------------------------------------
     if metadata_csv is not None:
         try:
             master_df = join_metadata(master_df, metadata_csv)
         except Exception as e:
             logger.warning("Failed to join metadata CSV: %s: %s", type(e).__name__, e)
 
-    master_path = output_dir / "master_measurements.csv"
+    # -- Write master CSV and Parquet ----------------------------------
+    master_csv_path = output_dir / "master_measurements.csv"
+    master_pq_path = output_dir / "master_measurements.parquet"
 
     try:
-        _atomic_write(master_path, master_df.write_csv)
+        _atomic_write(master_csv_path, master_df.write_csv)
     except Exception:
         logger.error("Failed to save master CSV")
         return None
 
-    n_files = len(all_measurements)
+    try:
+        _atomic_write(
+            master_pq_path,
+            lambda p: master_df.write_parquet(
+                p, compression="zstd", compression_level=3
+            ),
+        )
+    except Exception:
+        logger.warning("Failed to save master Parquet (CSV was saved)")
+
     logger.info(
-        "Aggregated %d Parquet files into %s (%d total rows)",
-        n_files,
-        master_path.name,
+        "Aggregated %d rows x %d cols into %s",
         master_df.height,
+        master_df.width,
+        master_csv_path.name,
     )
-    return master_path
+    return master_csv_path
 
 
 class OutputManager:
@@ -585,7 +589,7 @@ class OutputManager:
 
         Args:
             datasets: List of all datasets processed.
-            metadata_csv: Optional path to external CSV for left-join
+            metadata_csv: Optional path to external CSV for inner-join
                 on shared columns.
 
         Returns:

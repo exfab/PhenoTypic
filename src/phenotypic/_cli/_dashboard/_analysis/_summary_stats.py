@@ -32,7 +32,7 @@ class SummaryStatsPlugin(BaseAnalysisPlugin):
     sort_order = 20
 
     def prepare_data(self, ctx: AnalysisPrepareContext) -> None:
-        """Write ``analysis_stats.json`` and ``analysis_full.parquet``."""
+        """Write ``analysis_stats.json`` (JSON fallback for stats)."""
         if ctx.merged_df is None:
             return
 
@@ -40,7 +40,6 @@ class SummaryStatsPlugin(BaseAnalysisPlugin):
             partition_by_dataset,
             sanitize_for_json,
             write_json_atomic,
-            write_parquet_sidecar,
         )
 
         df = ctx.merged_df
@@ -94,7 +93,6 @@ class SummaryStatsPlugin(BaseAnalysisPlugin):
         }
 
         write_json_atomic(summary_stats, ctx.progress_dir / "analysis_stats.json")
-        write_parquet_sidecar(df, ctx.progress_dir / "analysis_full.parquet")
 
     def css(self) -> str:
         """Return CSS scoped with the plugin's call_name prefix."""
@@ -214,10 +212,6 @@ class SummaryStatsPlugin(BaseAnalysisPlugin):
         """Return JS including an ``initAnalysis_stats()`` function."""
         return """\
 var statsState = {
-  allData: {},
-  allColumns: [],
-  numericCols: [],
-  nRows: 0,
   selectedDatasets: null,
   filters: []
 };
@@ -225,10 +219,6 @@ var statsState = {
 var STAT_KEYS = ['count', 'mean', 'std', 'min', 'median', 'max', 'cv'];
 
 /* ---- Shared helpers ---- */
-
-function isNum(v) {
-  return v !== null && v !== undefined && !isNaN(v);
-}
 
 function columnGroup(name) {
   var idx = name.indexOf('_');
@@ -268,91 +258,15 @@ function buildStatsTableRow(col, stats) {
 /* ---- Init ---- */
 
 function initAnalysis_stats() {
-  if (window.hyparquet) {
-    loadChunkedStats();
-  } else {
-    renderFallbackStats();
-  }
-}
-
-/* ---- Parquet loading ---- */
-
-function loadChunkedStats() {
-  var container = document.getElementById('analysis-stats-container');
-  container.innerHTML = '<div class="stats-loading">Loading Parquet data\\u2026</div>';
-
-  var manifestUrl = 'progress/chunk_manifest.json?' + Date.now();
-  fetch(manifestUrl).then(function(manifestResp) {
-    if (!manifestResp.ok) throw new Error('no manifest');
-    return manifestResp.json();
-  }).then(function(manifest) {
-    if (!manifest.chunks || manifest.chunks.length === 0) throw new Error('empty manifest');
-    var promises = [];
-    manifest.chunks.forEach(function(chunk) {
-      if (parquetChunks.indexOf(chunk.name) >= 0) return;
-      promises.push(
-        loadParquetFile('progress/chunks/' + chunk.name).then(function() {
-          parquetChunks.push(chunk.name);
-        })
-      );
-    });
-    return Promise.all(promises);
-  }).then(function() {
+  if (sharedParquetState.loaded && sharedParquetState.nRows > 0) {
     buildStatsFilterUI();
     updateLiveStats();
-  }).catch(function() {
-    loadParquetFile('progress/analysis_full.parquet').then(function() {
-      buildStatsFilterUI();
-      updateLiveStats();
-    }).catch(function(e) {
-      console.warn('Parquet loading failed, falling back to JSON stats:', e);
-      renderFallbackStats();
-    });
-  });
-}
-
-function loadParquetFile(url) {
-  return fetch(url + '?' + Date.now()).then(function(resp) {
-    if (!resp.ok) throw new Error('Failed to fetch ' + url);
-    return resp.arrayBuffer();
-  }).then(function(buf) {
-    return new Promise(function(resolve, reject) {
-      try {
-        hyparquet.parquetRead({
-          file: {
-            byteLength: buf.byteLength,
-            slice: function(start, end) { return buf.slice(start, end); }
-          },
-          onComplete: function(rows) {
-            if (rows.length === 0) { resolve(); return; }
-            var cols = Object.keys(rows[0]);
-            for (var ci = 0; ci < cols.length; ci++) {
-              var col = cols[ci];
-              if (statsState.allColumns.indexOf(col) < 0) {
-                statsState.allColumns.push(col);
-              }
-              var existing = statsState.allData[col] || [];
-              var newVals = [];
-              for (var ri = 0; ri < rows.length; ri++) {
-                newVals.push(rows[ri][col]);
-              }
-              statsState.allData[col] = existing.concat(newVals);
-            }
-            statsState.nRows += rows.length;
-            statsState.numericCols = statsState.allColumns.filter(function(c) {
-              var sample = statsState.allData[c];
-              if (!sample || sample.length === 0) return false;
-              for (var si = 0; si < Math.min(sample.length, 10); si++) {
-                if (isNum(sample[si]) && typeof sample[si] === 'number') return true;
-              }
-              return false;
-            });
-            resolve();
-          }
-        });
-      } catch(ex) { reject(ex); }
-    });
-  });
+  } else if (analysisData.stats) {
+    renderFallbackStats();
+  } else {
+    var container = document.getElementById('analysis-stats-container');
+    container.innerHTML = '<div class="analysis-empty">No data available yet.</div>';
+  }
 }
 
 /* ---- Filter UI ---- */
@@ -362,7 +276,7 @@ function buildStatsFilterUI() {
   var html = '';
 
   var datasets = [];
-  var dsCol = statsState.allData['Metadata_Dataset'];
+  var dsCol = sharedParquetState.allData['Metadata_Dataset'];
   if (dsCol) {
     var seen = {};
     for (var di = 0; di < dsCol.length; di++) {
@@ -381,8 +295,8 @@ function buildStatsFilterUI() {
   }
 
   var groups = {};
-  for (var gi = 0; gi < statsState.numericCols.length; gi++) {
-    var nc = statsState.numericCols[gi];
+  for (var gi = 0; gi < sharedParquetState.numericCols.length; gi++) {
+    var nc = sharedParquetState.numericCols[gi];
     var g = columnGroup(nc);
     if (!groups[g]) groups[g] = [];
     groups[g].push(nc);
@@ -409,7 +323,7 @@ function buildStatsFilterUI() {
 }
 
 function addStatsFilter() {
-  statsState.filters.push({col: statsState.numericCols[0] || '', op: '>', val: ''});
+  statsState.filters.push({col: sharedParquetState.numericCols[0] || '', op: '>', val: ''});
   renderStatsFilters();
 }
 
@@ -428,8 +342,8 @@ function renderStatsFilters() {
     var f = statsState.filters[fi];
     html += '<div class="stats-filter-row">';
     html += '<select onchange="statsState.filters[' + fi + '].col=this.value;updateLiveStats()">';
-    for (var ci = 0; ci < statsState.numericCols.length; ci++) {
-      var c = statsState.numericCols[ci];
+    for (var ci = 0; ci < sharedParquetState.numericCols.length; ci++) {
+      var c = sharedParquetState.numericCols[ci];
       html += '<option value="' + esc(c) + '"' + (c === f.col ? ' selected' : '') + '>' + esc(c) + '</option>';
     }
     html += '</select>';
@@ -459,9 +373,9 @@ function onStatsDatasetChange() {
 /* ---- Row filtering ---- */
 
 function getFilteredIndices() {
-  var n = statsState.nRows;
+  var n = sharedParquetState.nRows;
   var indices = [];
-  var dsCol = statsState.allData['Metadata_Dataset'];
+  var dsCol = sharedParquetState.allData['Metadata_Dataset'];
 
   for (var i = 0; i < n; i++) {
     if (statsState.selectedDatasets && dsCol) {
@@ -471,7 +385,7 @@ function getFilteredIndices() {
     for (var fi = 0; fi < statsState.filters.length; fi++) {
       var f = statsState.filters[fi];
       if (!f.col || f.val === '' || isNaN(f.val)) continue;
-      var v = statsState.allData[f.col] ? statsState.allData[f.col][i] : null;
+      var v = sharedParquetState.allData[f.col] ? sharedParquetState.allData[f.col][i] : null;
       if (v === null || v === undefined) { pass = false; break; }
       var fv = parseFloat(f.val);
       switch(f.op) {
@@ -490,59 +404,6 @@ function getFilteredIndices() {
 }
 
 /* ---- Descriptive statistics ---- */
-
-function statCount(arr) {
-  var c = 0;
-  for (var i = 0; i < arr.length; i++) {
-    if (isNum(arr[i])) c++;
-  }
-  return c;
-}
-
-function statMean(arr) {
-  var s = 0, c = 0;
-  for (var i = 0; i < arr.length; i++) {
-    if (isNum(arr[i])) { s += arr[i]; c++; }
-  }
-  return c > 0 ? s / c : null;
-}
-
-function statStd(arr, mean) {
-  if (mean === null) return null;
-  var s = 0, c = 0;
-  for (var i = 0; i < arr.length; i++) {
-    if (isNum(arr[i])) { s += (arr[i] - mean) * (arr[i] - mean); c++; }
-  }
-  return c > 1 ? Math.sqrt(s / (c - 1)) : null;
-}
-
-function statMedian(arr) {
-  var clean = [];
-  for (var i = 0; i < arr.length; i++) {
-    if (isNum(arr[i])) clean.push(arr[i]);
-  }
-  if (clean.length === 0) return null;
-  clean.sort(function(a, b) { return a - b; });
-  var mid = Math.floor(clean.length / 2);
-  if (clean.length % 2 !== 0) return clean[mid];
-  return (clean[mid - 1] + clean[mid]) / 2;
-}
-
-function statMin(arr) {
-  var m = Infinity;
-  for (var i = 0; i < arr.length; i++) {
-    if (isNum(arr[i]) && arr[i] < m) m = arr[i];
-  }
-  return m === Infinity ? null : m;
-}
-
-function statMax(arr) {
-  var m = -Infinity;
-  for (var i = 0; i < arr.length; i++) {
-    if (isNum(arr[i]) && arr[i] > m) m = arr[i];
-  }
-  return m === -Infinity ? null : m;
-}
 
 function computeColumnStats(values) {
   var count = statCount(values);
@@ -565,12 +426,12 @@ function computeColumnStats(values) {
 function updateLiveStats() {
   var indices = getFilteredIndices();
   var countEl = document.getElementById('stats-row-count');
-  if (countEl) countEl.textContent = 'Showing ' + indices.length + ' of ' + statsState.nRows + ' rows';
+  if (countEl) countEl.textContent = 'Showing ' + indices.length + ' of ' + sharedParquetState.nRows + ' rows';
 
   var groupSel = document.getElementById('stats-group');
   var groupFilter = groupSel ? groupSel.value : '';
 
-  var cols = statsState.numericCols;
+  var cols = sharedParquetState.numericCols;
   if (groupFilter) {
     cols = cols.filter(function(c) { return columnGroup(c) === groupFilter; });
   }
@@ -578,7 +439,7 @@ function updateLiveStats() {
   var html = buildStatsTableHeader();
   for (var cIdx = 0; cIdx < cols.length; cIdx++) {
     var col = cols[cIdx];
-    var fullArr = statsState.allData[col] || [];
+    var fullArr = sharedParquetState.allData[col] || [];
     var filtered = [];
     for (var ii = 0; ii < indices.length; ii++) {
       filtered.push(fullArr[indices[ii]]);

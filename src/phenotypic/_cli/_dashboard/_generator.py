@@ -971,13 +971,12 @@ def _build_body(execution_mode: str, logo_data_uri: str = "",
       <div class="download-container">
         <h2>Download Results</h2>
         <div class="download-note">
-          Direct browser downloads are not available due to Apache directory
-          permissions and HPCC security policies. Use the command-line tools
-          below to download results to your local machine.
+          Direct browser downloads are not available due to HPCC security
+          policies. Use the <code>wget</code> commands below from your
+          local terminal.
         </div>
 
         <p class="download-section-title">Server URL</p>
-        <p>Auto-detected from your browser. Edit if needed:</p>
         <input type="text" id="dl-url" class="download-input"
                placeholder="https://your-hpcc.edu/path/to/output/"
                oninput="updateCommands()">
@@ -992,22 +991,20 @@ def _build_body(execution_mode: str, logo_data_uri: str = "",
 
         <input type="hidden" id="dl-cutdirs" value="N">
 
-        <p class="download-section-title">Full recursive download</p>
-        <p>Downloads the entire output directory:</p>
-        <div class="download-cmd" id="cmd-full"></div>
-
-        <p class="download-section-title">Download measurements only</p>
+        <p class="download-section-title">1. Master measurements (CSV)</p>
+        <p style="font-size:var(--text-sm);color:var(--color-muted)">
+          Single file with all colony measurements across datasets:</p>
         <div class="download-cmd" id="cmd-csv"></div>
 
-        <p class="download-section-title">Download overlays only</p>
+        <p class="download-section-title">2. Overlay images only</p>
+        <p style="font-size:var(--text-sm);color:var(--color-muted)">
+          Annotated plate images from every dataset:</p>
         <div class="download-cmd" id="cmd-png"></div>
 
-        <p class="download-section-title">Using rsync (if SSH access available)</p>
-        <div class="download-cmd">rsync -avz user@hpcc:/path/to/output/ ./local_output/</div>
-
-        <p style="color:var(--color-muted);font-size:var(--text-sm);margin-top:var(--sp-6)">
-          Adjust <code>--cut-dirs</code> to control local directory nesting.
-        </p>
+        <p class="download-section-title">3. Full output directory</p>
+        <p style="font-size:var(--text-sm);color:var(--color-muted)">
+          Everything (measurements, overlays, logs, checkpoints):</p>
+        <div class="download-cmd" id="cmd-full"></div>
       </div>
     </div>
 
@@ -1099,12 +1096,12 @@ def _build_js(execution_mode: str, plugins: list | None = None) -> str:
       let auth = '';
       if (user) auth = ' --user=' + user + (pass ? " --password='" + pass + "'" : '');
 
-      document.getElementById('cmd-full').textContent =
-        'wget -r -np -nH -e robots=off --cut-dirs=' + cutDirs + auth + ' ' + base;
       document.getElementById('cmd-csv').textContent =
-        'wget -r -np -nH -e robots=off --cut-dirs=' + cutDirs + ' -A "*.csv"' + auth + ' ' + base;
+        'wget' + auth + ' ' + base + 'master_measurements.csv';
       document.getElementById('cmd-png').textContent =
         'wget -r -np -nH -e robots=off --cut-dirs=' + cutDirs + ' -A "*.png"' + auth + ' ' + base + 'results/';
+      document.getElementById('cmd-full').textContent =
+        'wget -r -np -nH -e robots=off --cut-dirs=' + cutDirs + auth + ' ' + base;
     }}
 
     // ── Render: Summary Cards ──────────────────────────────────
@@ -1465,7 +1462,15 @@ def _build_analysis_js(plugins: list) -> str:
     let analysisData = {};
     let analysisDataVersion = null;
     let analysisInitialized = {};
-    let parquetChunks = [];
+    let sharedParquetState = {
+      allData: {},
+      allColumns: [],
+      numericCols: [],
+      catCols: [],
+      nRows: 0,
+      loaded: false,
+      loading: null
+    };
     const _scriptCache = {};
 
     function loadScript(src, globalName) {
@@ -1483,6 +1488,88 @@ def _build_analysis_js(plugins: list) -> str:
     function loadPlotly() { return loadScript('progress/plotly.min.js', 'Plotly'); }
     function loadHyparquet() { return loadScript('progress/hyparquet.min.js', 'hyparquet'); }
 
+    function _appendParquetRows(rows) {
+      if (rows.length === 0) return;
+      var cols = Object.keys(rows[0]);
+      for (var ci = 0; ci < cols.length; ci++) {
+        var col = cols[ci];
+        if (sharedParquetState.allColumns.indexOf(col) < 0) {
+          sharedParquetState.allColumns.push(col);
+        }
+        var existing = sharedParquetState.allData[col] || [];
+        var newVals = [];
+        for (var ri = 0; ri < rows.length; ri++) {
+          newVals.push(rows[ri][col]);
+        }
+        sharedParquetState.allData[col] = existing.concat(newVals);
+      }
+      sharedParquetState.nRows += rows.length;
+      sharedParquetState.numericCols = [];
+      sharedParquetState.catCols = [];
+      for (var ni = 0; ni < sharedParquetState.allColumns.length; ni++) {
+        var c = sharedParquetState.allColumns[ni];
+        var sample = sharedParquetState.allData[c];
+        if (!sample || sample.length === 0) continue;
+        var isNumeric = false;
+        for (var si = 0; si < Math.min(sample.length, 10); si++) {
+          if (sample[si] !== null && sample[si] !== undefined && !isNaN(sample[si]) && typeof sample[si] === 'number') {
+            isNumeric = true;
+            break;
+          }
+        }
+        if (isNumeric) {
+          sharedParquetState.numericCols.push(c);
+        } else {
+          sharedParquetState.catCols.push(c);
+        }
+      }
+    }
+
+    function _loadParquetFile(url) {
+      return fetch(url + '?' + Date.now()).then(function(resp) {
+        if (!resp.ok) throw new Error('Failed to fetch ' + url);
+        return resp.arrayBuffer();
+      }).then(function(buf) {
+        return new Promise(function(resolve, reject) {
+          try {
+            hyparquet.parquetRead({
+              file: {
+                byteLength: buf.byteLength,
+                slice: function(start, end) { return buf.slice(start, end); }
+              },
+              onComplete: function(rows) {
+                _appendParquetRows(rows);
+                resolve();
+              }
+            });
+          } catch(ex) { reject(ex); }
+        });
+      });
+    }
+
+    function loadSharedParquet() {
+      if (sharedParquetState.loaded) return Promise.resolve();
+      if (sharedParquetState.loading) return sharedParquetState.loading;
+      sharedParquetState.loading = _loadParquetFile('master_measurements.parquet')
+        .then(function() {
+          sharedParquetState.loaded = true;
+          sharedParquetState.loading = null;
+        })
+        .catch(function() {
+          return _loadParquetFile('progress/analysis_full.parquet')
+            .then(function() {
+              sharedParquetState.loaded = true;
+              sharedParquetState.loading = null;
+            });
+        })
+        .catch(function(e) {
+          console.warn('Parquet loading failed:', e);
+          sharedParquetState.loading = null;
+          throw e;
+        });
+      return sharedParquetState.loading;
+    }
+
     function switchSubTab(tabId) {
       document.querySelectorAll('.sub-tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.sub-tab-content').forEach(c => c.classList.remove('active'));
@@ -1496,17 +1583,16 @@ def _build_analysis_js(plugins: list) -> str:
     }
 
     async function initSubTab(tabId) {
-      if (!analysisData.scatter && !analysisData.table && !analysisData.stats && !analysisData.overlay) {
-        await fetchAnalysisData();
-      }
+      await fetchAnalysisData();
       await Promise.allSettled([loadPlotly(), loadHyparquet()]);
+      await loadSharedParquet();
       analysisInitialized[tabId] = true;
       renderSubTab(tabId);
     }
 
     async function fetchAnalysisData() {
-      const files = ['analysis_scatter.json', 'analysis_table.json', 'analysis_stats.json', 'overlay_manifest.json'];
-      const keys = ['scatter', 'table', 'stats', 'overlay'];
+      const files = ['analysis_stats.json', 'overlay_manifest.json'];
+      const keys = ['stats', 'overlay'];
       for (let i = 0; i < files.length; i++) {
         try {
           const resp = await fetch('progress/' + files[i] + '?' + Date.now());
@@ -1516,9 +1602,9 @@ def _build_analysis_js(plugins: list) -> str:
     }
 
     async function refreshAnalysisData() {
+      sharedParquetState = {allData:{}, allColumns:[], numericCols:[], catCols:[], nRows:0, loaded:false, loading:null};
       await fetchAnalysisData();
       analysisInitialized = {};
-      parquetChunks = [];
       const active = document.querySelector('.sub-tab-content.active');
       if (active) {
         const tabId = active.id.replace('subtab-', '');
@@ -1562,6 +1648,66 @@ def _build_analysis_js(plugins: list) -> str:
 """
     # Shared transform helpers available to all analysis plugins
     transform_js = """\
+
+    // ── Stat Helpers ────────────────────────────────────────────
+    // Basic statistical functions used by transform helpers and plugins.
+
+    function isNum(v) {
+      return v !== null && v !== undefined && !isNaN(v);
+    }
+
+    function statCount(arr) {
+      var c = 0;
+      for (var i = 0; i < arr.length; i++) {
+        if (isNum(arr[i])) c++;
+      }
+      return c;
+    }
+
+    function statMean(arr) {
+      var s = 0, c = 0;
+      for (var i = 0; i < arr.length; i++) {
+        if (isNum(arr[i])) { s += arr[i]; c++; }
+      }
+      return c > 0 ? s / c : null;
+    }
+
+    function statStd(arr, mean) {
+      if (mean === null) return null;
+      var s = 0, c = 0;
+      for (var i = 0; i < arr.length; i++) {
+        if (isNum(arr[i])) { s += (arr[i] - mean) * (arr[i] - mean); c++; }
+      }
+      return c > 1 ? Math.sqrt(s / (c - 1)) : null;
+    }
+
+    function statMedian(arr) {
+      var clean = [];
+      for (var i = 0; i < arr.length; i++) {
+        if (isNum(arr[i])) clean.push(arr[i]);
+      }
+      if (clean.length === 0) return null;
+      clean.sort(function(a, b) { return a - b; });
+      var mid = Math.floor(clean.length / 2);
+      if (clean.length % 2 !== 0) return clean[mid];
+      return (clean[mid - 1] + clean[mid]) / 2;
+    }
+
+    function statMin(arr) {
+      var m = Infinity;
+      for (var i = 0; i < arr.length; i++) {
+        if (isNum(arr[i]) && arr[i] < m) m = arr[i];
+      }
+      return m === Infinity ? null : m;
+    }
+
+    function statMax(arr) {
+      var m = -Infinity;
+      for (var i = 0; i < arr.length; i++) {
+        if (isNum(arr[i]) && arr[i] > m) m = arr[i];
+      }
+      return m === -Infinity ? null : m;
+    }
 
     // ── Transform Helpers ────────────────────────────────────────
     // Shared data transform functions for analysis plugins.

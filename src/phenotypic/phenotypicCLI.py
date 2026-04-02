@@ -554,7 +554,7 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
     "metadata_csv",
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     default=None,
-    help="CSV file to left-join onto master_measurements.csv on shared columns",
+    help="CSV file to inner-join onto master_measurements.csv on shared columns",
 )
 @click.option(
     "--checkpoint-interval",
@@ -1171,7 +1171,10 @@ def _handle_recompile(
         meas_dir = results_dir / name / "measurements"
         if meas_dir.is_dir():
             datasets_totals[name] = len(
-                [p for p in meas_dir.glob("*.parquet") if not p.name.startswith("_")]
+                [
+                    p for p in meas_dir.glob("*.parquet")
+                    if not p.name.startswith("_")
+                ]
             )
         else:
             datasets_totals[name] = 0
