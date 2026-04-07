@@ -5,8 +5,9 @@ This module contains constant values and enumerations used throughout the PhenoT
 Constants are organized by module and functionality.
 
 Note: Class names are defined in ALL_CAPS to avoid namespace conflicts with actual classes
-    in the codebase (e.g., GRID_DEP vs an actual Grid class). When importing, use the format:
-        from PhenoTypic.tools_.constants import IMAGE_MODE, OBJECT
+    in the codebase (e.g., GRID_DEP vs an actual Grid class). When importing, use the format::
+
+        from phenotypic.tools_.constants_ import IMAGE_MODE, OBJECT
 """
 
 import phenotypic

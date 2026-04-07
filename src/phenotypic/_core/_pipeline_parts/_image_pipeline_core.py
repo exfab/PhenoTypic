@@ -108,7 +108,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             reset: bool = False,
     ):
         """
-        This class represents a processing and measurement abc_ for Image operations
+        This class represents a processing and measurement interface for Image operations
         and feature extraction. It initializes operational and measurement queues based
         on the provided dictionaries.
 
@@ -455,7 +455,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             self, image: Image, inplace: bool = False, reset: Optional[bool] = None
     ) -> Union[GridImage, Image]:
         """
-        The class provides an abc_ to process and apply a series of operations on
+        The class provides an interface to process and apply a series of operations on
         an Image. The operations are maintained in a queue and executed sequentially
         when applied to the given Image.
 

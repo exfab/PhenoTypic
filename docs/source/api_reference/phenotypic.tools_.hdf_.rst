@@ -1,4 +1,4 @@
-phenotypic.tools_.hdf\_
+phenotypic.tools\_.hdf\_
 ======================
 
 .. automodule:: phenotypic.tools_.hdf_

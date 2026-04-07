@@ -1,4 +1,4 @@
-phenotypic.tools_.constants\_
+phenotypic.tools\_.constants\_
 ============================
 
 .. automodule:: phenotypic.tools_.constants_

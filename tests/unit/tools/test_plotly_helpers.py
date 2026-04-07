@@ -161,6 +161,7 @@ class TestAddPlotlyObjLabels:
         labels = []
         for i in range(n_objects):
             prop = MagicMock()
+            prop.label = i + 1
             prop.centroid = (50.0 + i * 10, 100.0 + i * 20)
             props.append(prop)
             labels.append(i + 1)

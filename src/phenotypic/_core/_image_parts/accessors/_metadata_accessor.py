@@ -282,7 +282,7 @@ class MetadataAccessor:
         """Insert metadata as columns into a DataFrame.
 
         Adds public and protected metadata as new columns at the beginning of the DataFrame.
-        Column names are prefixed with 'Metadata_' if not already present. Image name is
+        Column names are prefixed with ``Metadata_`` if not already present. Image name is
         retrieved from the parent image instance rather than metadata storage.
 
         Args:
@@ -301,7 +301,7 @@ class MetadataAccessor:
             - Only public and protected metadata are included (private metadata is excluded)
             - IMAGE_NAME metadata is populated from parent_image.name instead of the metadata dict
             - Columns are inserted from right to left at position 0, so iteration order determines final order
-            - Metadata columns without 'Metadata_' prefix are automatically prefixed
+            - Metadata columns without ``Metadata_`` prefix are automatically prefixed
 
         Examples:
             Insert metadata as DataFrame columns:

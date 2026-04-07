@@ -26,7 +26,7 @@ class InterfaceError(NotImplementedError, PhenoTypicError):
 
     def __init__(self):
         super().__init__(
-                "An abc_ method was called when it was not supposed to be. Make sure any inherited classes properly overload this method.",
+                "An abstract method was called when it was not supposed to be. Make sure any inherited classes properly overload this method.",
         )
 
 

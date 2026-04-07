@@ -15,7 +15,7 @@ Features:
     - Local parallel execution (joblib)
     - Autonomous SLURM execution with bash scripts
     - HTML failure reports with tracebacks
-    - Progress monitoring tools_
+    - Progress monitoring tools
 
 Usage:
     python -m phenotypic PIPELINE_JSON INPUT_PATH [OPTIONS]

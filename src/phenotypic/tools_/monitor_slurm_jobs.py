@@ -4,7 +4,8 @@ SLURM job progress monitor.
 This script monitors SLURM job progress with live updates by reading
 the event log and displaying real-time statistics.
 
-Usage:
+Usage::
+
     python -m phenotypic.tools_.monitor_slurm_jobs OUTPUT_DIR
 """
 

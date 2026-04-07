@@ -5,7 +5,8 @@ This script generates HTML processing reports from a PhenoTypic output directory
 Useful for generating reports on-demand after processing completes or during
 long-running SLURM jobs.
 
-Usage:
+Usage::
+
     python -m phenotypic.tools_.generate_report OUTPUT_DIR
 """
 

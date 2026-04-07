@@ -34,7 +34,7 @@ See [src/phenotypic/_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) and [src/phen
 
 **Philosophy:** Accuracy over speed — prefer correct results even at higher compute cost. However, be mindful of memory usage; images are large and operations copy data, so avoid unnecessary intermediate allocations.
 
-### Four Layers
+### Five Layers
 
 1. **Image Data Layer** — `Image`/`GridImage` with accessor pattern, lazy evaluation,
    caching (`image.rgb[:]`, `image.detect_mat[:]`, `image.color.Lab[:]`).
@@ -47,6 +47,11 @@ See [src/phenotypic/_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) and [src/phen
    serialization, automatic benchmarking.
 
 4. **Enhancement Layer** — preprocessing ops on `detect_mat`; RGB/gray unchanged.
+
+5. **Post-Measurement Layer** — `post/` transforms DataFrames in the final
+   stage of `ImagePipeline.measure()`. `analysis/` provides standalone
+   statistical tools (edge correction, growth curves, outlier removal) for
+   exported measurement data.
 
 ### Module Organization
 
@@ -100,6 +105,8 @@ Only `__init__.py` exports are public API.
 - [src/phenotypic/enhance/CLAUDE.md](src/phenotypic/enhance/CLAUDE.md) — enhancer conventions
 - [src/phenotypic/sweep/CLAUDE.md](src/phenotypic/sweep/CLAUDE.md) — parameter sweeps
 - [docs/style_guide/dashboards/CLAUDE.md](docs/style_guide/dashboards/CLAUDE.md) — dashboard & plot style guide
+- `src/phenotypic/post/` — post-measurement DataFrame transforms (no sub-CLAUDE.md)
+- `src/phenotypic/analysis/` — edge correction, growth models, outlier removal (no sub-CLAUDE.md)
 
 ## Key Files
 
@@ -112,3 +119,7 @@ Only `__init__.py` exports are public API.
 
 - Some packages excluded on Windows: `rawpy`, `pympler`, `jupyter` — use try/except
 - External tools: ExifTool (raw metadata), Pandoc (doc builds)
+- **Operations use `.apply()`, not `__call__`:** `op.apply(image)` is correct; `op(image)` will raise `TypeError`
+- **Measurement columns are category-prefixed:** `Size_Area`, `Shape_Circularity`, `Intensity_MeanIntensity`, etc. `MeasurementInfo.get_labels()` returns unprefixed names; `get_headers()` returns the prefixed column names used in DataFrames
+- **Analysis classes use `.analyze()`:** `EdgeCorrector.analyze(df)` and `LogGrowthModel.analyze(df)` — not `.fit()` or `.correct()`
+- **`num_objects` is on `Image`**, not on the `objmap` accessor: use `image.num_objects`, not `image.objmap.num_objects`

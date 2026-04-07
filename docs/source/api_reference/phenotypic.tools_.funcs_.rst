@@ -1,4 +1,4 @@
-phenotypic.tools_.funcs\_
+phenotypic.tools\_.funcs\_
 ========================
 
 .. automodule:: phenotypic.tools_.funcs_

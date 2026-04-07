@@ -130,12 +130,19 @@ suppress_warnings = [
 ]
 
 # Exclude patterns - don't process these files/directories
-exclude_patterns = ["_build", "**.ipynb_checkpoints", "**/auto_examples", "_legacy"]
+exclude_patterns = [
+    "_build",
+    "**.ipynb_checkpoints",
+    "**/auto_examples",
+    "_legacy",
+    "how_to/notebooks/growth_curves.ipynb",
+]
 
 # nbsphinx configuration
 nbsphinx_execute = "auto"
 nbsphinx_allow_errors = False
 nbsphinx_kernel_name = "python3"
+nbsphinx_timeout = 300
 
 # Fix for deprecated ipython2 lexer in Jupyter notebooks
 # Map ipython2 to python3 for syntax highlighting

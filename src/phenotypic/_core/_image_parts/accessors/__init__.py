@@ -34,7 +34,7 @@ These classes manage object-level abstractions and their corresponding data mapp
     - Region-based calculations
 
 2. :class:`ObjectMask`
-    An abc_ specialized for working with binary masks of objects. Useful for morphological operations such as erosion, dilation, and closing.
+    An accessor specialized for working with binary masks of objects. Useful for morphological operations such as erosion, dilation, and closing.
 
     Note:
         Changes to the object mask will cause relabeling of the object map

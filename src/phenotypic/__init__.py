@@ -1,7 +1,7 @@
 """
 A library for processing and analyzing images of microbe colonies on solid media agar.
 
-This module provides tools_ and classes for the manipulation, analysis, and
+This module provides tools and classes for the manipulation, analysis, and
 enhancement of images, specifically tailored for biological applications,
 including detecting features of colonies, quantifying growth, and refining image
 qualities. Classes such as `Image` and `GridImage` enable flexibility in managing

@@ -76,7 +76,7 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
 
     - [GaussianBlur](src/phenotypic/enhance/_gaussian_blur.py): Noise reduction via Gaussian filtering.
     - [CLAHE](src/phenotypic/enhance/_clahe.py): Contrast-limited adaptive histogram equalization for local contrast.
-    - [GrayOpening](src/phenotypic/enhance/_gray_opening.py): Morphological opening using [FootprintMixin](src/phenotypic/tools_/_footprint_mixin.py).
+    - ``GrayOpening``: Morphological opening using ``FootprintMixin``.
     - [BilateralDenoise](src/phenotypic/enhance/_bilateral_denoise.py): Edge-preserving denoising.
 
     **Integrity Validation: Protection of Core Data**

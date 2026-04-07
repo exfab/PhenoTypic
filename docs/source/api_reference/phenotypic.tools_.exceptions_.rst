@@ -1,4 +1,4 @@
-phenotypic.tools_.exceptions\_
+phenotypic.tools\_.exceptions\_
 =============================
 
 .. automodule:: phenotypic.tools_.exceptions_

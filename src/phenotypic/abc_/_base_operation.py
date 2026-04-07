@@ -74,7 +74,7 @@ class BaseOperation(ABC):
     for your operation type. All the memory tracking and logging happens
     automatically in the parent class.
 
-    Example: Creating a custom operation (without image details):
+    Example: Creating a custom operation (without image details)::
 
         from phenotypic.abc_ import BaseOperation
         import logging

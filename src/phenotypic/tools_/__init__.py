@@ -1,4 +1,4 @@
-"""Developer tools_ shared across fungal colony plate workflows.
+"""Developer tools shared across fungal colony plate workflows.
 
 Lightweight helpers for timing, mask validation, constants, color conversions, error
 handling, and HDF storage used by the processing pipeline. Includes a timed execution

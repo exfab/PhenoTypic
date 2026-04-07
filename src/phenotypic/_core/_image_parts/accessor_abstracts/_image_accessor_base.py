@@ -222,7 +222,7 @@ class ImageAccessorBase(ABC):
         with a specific shape of (r, c, ...), which can be used for various operations that require a structured
         multi-dimensional array.
 
-        This property is abc_ and must be implemented in any derived concrete class. The implementation
+        This property is abstract and must be implemented in any derived concrete class. The implementation
         should conform to the type signature and shape expectations as defined.
 
         Note: Read-only property. Changes should reference the specific array
@@ -231,7 +231,7 @@ class ImageAccessorBase(ABC):
             np.ndarray: A NumPy ndarray object with shape (r, c, ...).
         """
         raise NotImplementedError(
-            "This property is abc_ and must be implemented in a derived class."
+            "This property is abstract and must be implemented in a derived class."
         )
 
     def __array__(self, dtype=None, copy=None):
@@ -1284,7 +1284,7 @@ class ImageAccessorBase(ABC):
         suitable for pixel-level quality validation of detection results.
 
         For GridImage objects, gridlines and section boxes are automatically drawn
-        when their respective show_ flags are True. The line widths scale dynamically
+        when their respective ``show_*`` flags are True. The line widths scale dynamically
         with image size.
 
         Args:

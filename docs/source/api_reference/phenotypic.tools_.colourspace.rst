@@ -1,4 +1,4 @@
-phenotypic.tools_.colourspaces\_
+phenotypic.tools\_.colourspaces\_
 ===============================
 
 .. automodule:: phenotypic.tools_.colourspace

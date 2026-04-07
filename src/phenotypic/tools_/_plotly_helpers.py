@@ -259,17 +259,19 @@ def add_plotly_obj_labels(
         bgcolor: Label background color.
     """
     _require_plotly()
-    props = root_image.objects.props
-    for i, label in enumerate(root_image.objects.labels):
-        if object_label is not None and object_label != label:
+    annotations = []
+    for prop in root_image.objects.props:
+        if object_label is not None and object_label != prop.label:
             continue
-        rr, cc = props[i].centroid
-        fig.add_annotation(
+        rr, cc = prop.centroid
+        annotations.append(dict(
             x=cc,
             y=rr,
-            text=str(label),
+            text=str(prop.label),
             showarrow=False,
             font=dict(color=color, size=size),
             bgcolor=bgcolor,
             opacity=0.6,
-        )
+        ))
+    existing = list(fig.layout.annotations or [])
+    fig.update_layout(annotations=existing + annotations)

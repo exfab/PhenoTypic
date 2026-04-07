@@ -637,7 +637,7 @@ class ObjectsAccessor:
         This method creates a pandas DataFrame containing key positional information for all
         detected colonies, including their labels, centroid coordinates, and bounding box
         coordinates. This is particularly useful for organizing colony data for downstream
-        analysis, quality control, or exporting to other tools_.
+        analysis, quality control, or exporting to other tools.
 
         The table includes one row per colony with columns for the colony label, centroid
         position (row and column), and bounding box coordinates (min/max row and column).

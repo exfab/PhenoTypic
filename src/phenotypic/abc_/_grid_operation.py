@@ -84,15 +84,15 @@ class GridOperation(ImageOperation, ABC):
     Most concrete grid operations inherit from BOTH a specific operation ABC (like ObjectDetector)
     AND GridOperation to create specialized grid-aware variants:
 
-    - [GridObjectDetector](src/phenotypic/abc_/_grid_object_detector.py): Detects objects using
+    - ``GridObjectDetector``: Detects objects using
       grid structure. Subclasses implement well-level colony detection on gridded plates.
-    - [GridCorrector](src/phenotypic/abc_/_grid_corrector.py): Corrects grid alignment, rotation,
+    - ``GridCorrector``: Corrects grid alignment, rotation,
       and per-well color correction. Improves grid positioning and well-level alignment.
-    - [GridObjectRefiner](src/phenotypic/abc_/_grid_object_refiner.py): Refines detection masks at
+    - ``GridObjectRefiner``: Refines detection masks at
       the well level. Filters and adjusts masks based on well location and size constraints.
-    - [GridMeasureFeatures](src/phenotypic/abc_/_grid_measure.py): Extracts per-well measurements.
+    - ``GridMeasureFeatures``: Extracts per-well measurements.
       Computes features organized by grid coordinates rather than globally.
-    - [GridFinder](src/phenotypic/abc_/_grid_finder.py): Detects grid structure from object
+    - ``GridFinder``: Detects grid structure from object
       positions. Assigns detected objects to grid cells and determines well locations.
 
     **Multiple Inheritance Pattern**

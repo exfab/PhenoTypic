@@ -8,7 +8,6 @@ Task-oriented recipes that solve a specific problem. Each guide is standalone
    :maxdepth: 1
    :caption: Correction & Preprocessing
 
-   notebooks/correct_color_cast
    notebooks/correct_grid_rotation
    notebooks/enhance_low_contrast
    notebooks/crop_and_pad
@@ -29,7 +28,6 @@ Task-oriented recipes that solve a specific problem. Each guide is standalone
    :caption: Measurement & Analysis
 
    notebooks/measure_colony_size_intensity
-   notebooks/growth_curves
    notebooks/correct_edge_effects
    notebooks/fit_logistic_growth
    notebooks/assess_image_quality

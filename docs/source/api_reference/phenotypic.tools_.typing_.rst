@@ -1,4 +1,4 @@
-phenotypic.tools_.typing\_ module
+phenotypic.tools\_.typing\_ module
 ================================
 
 .. automodule:: phenotypic.tools_.typing_
