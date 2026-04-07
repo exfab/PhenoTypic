@@ -19,7 +19,7 @@ phenotypic.egg-info/
 
 # Jupyter Notebook
 .ipynb_checkpoints/
-docs/source/user_guide/auto_examples/
+docs/deprecated/user_guide/auto_examples/
 
 # IDEs and editors
 .vscode/

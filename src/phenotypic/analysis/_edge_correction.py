@@ -346,9 +346,9 @@ class EdgeCorrector(SetAnalyzer):
 
         Returns:
             pd.DataFrame: Measurements with two new correction columns added:
-                - EdgeCorrection_Size-{on}: Capped measurement values (clipped
+                - ``EdgeCorrection_Size-{on}``: Capped measurement values (clipped
                   to threshold where edge effect detected)
-                - EdgeCorrection_-{self.on}: Threshold value used for correction
+                - ``EdgeCorrection_-{self.on}``: Threshold value used for correction
                 Original measurement column (self.on) remains unchanged. All other columns
                 preserved from input. One row per well per group.
 
