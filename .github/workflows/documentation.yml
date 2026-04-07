@@ -13,6 +13,7 @@ permissions:
 jobs:
   deploy-documentation:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     environment: deploy-documentation-to-github-pages
     steps:
       - uses: actions/checkout@v4
