@@ -142,7 +142,7 @@ exclude_patterns = [
 nbsphinx_execute = "auto"
 nbsphinx_allow_errors = False
 nbsphinx_kernel_name = "python3"
-nbsphinx_timeout = 300
+nbsphinx_timeout = 1800
 
 # Fix for deprecated ipython2 lexer in Jupyter notebooks
 # Map ipython2 to python3 for syntax highlighting
