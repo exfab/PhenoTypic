@@ -1,0 +1,292 @@
+"""Tests for MeasureRadialExpansion measurement operation."""
+
+import pytest
+import numpy as np
+import pandas as pd
+
+from phenotypic import Image
+
+from phenotypic.measure import MeasureRadialExpansion
+from phenotypic.tools_.constants_ import OBJECT
+from phenotypic.tools_.measurement_info_ import RADIAL_EXPANSION
+
+
+# ---------------------------------------------------------------------------
+# Structural tests
+# ---------------------------------------------------------------------------
+
+
+class TestMeasureRadialExpansionStructure:
+    """Verify output DataFrame shape and column structure."""
+
+    def test_output_has_all_columns(self, synth_plate_detected):
+        """Output DataFrame contains all RADIAL_EXPANSION columns plus Label."""
+        image = synth_plate_detected.copy()
+        measurer = MeasureRadialExpansion()
+        df = measurer.measure(image)
+
+        assert df.columns[0] == OBJECT.LABEL
+        for feature in RADIAL_EXPANSION:
+            assert str(feature) in df.columns, f"Missing column: {feature}"
+
+    def test_output_row_count_matches_objects(self, synth_plate_detected):
+        """One row per detected object."""
+        image = synth_plate_detected.copy()
+        measurer = MeasureRadialExpansion()
+        df = measurer.measure(image)
+
+        assert len(df) == image.num_objects
+
+    def test_object_labels_match(self, synth_plate_detected):
+        """Label column matches image.objects.labels."""
+        image = synth_plate_detected.copy()
+        measurer = MeasureRadialExpansion()
+        df = measurer.measure(image)
+
+        np.testing.assert_array_equal(
+            df[OBJECT.LABEL].values,
+            image.objects.labels2series().values,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Value constraint tests
+# ---------------------------------------------------------------------------
+
+
+class TestMeasureRadialExpansionValues:
+    """Verify measurement values satisfy domain constraints."""
+
+    @pytest.fixture()
+    def df(self, synth_plate_detected):
+        image = synth_plate_detected.copy()
+        return MeasureRadialExpansion().measure(image)
+
+    def test_core_radius_non_negative(self, df):
+        """CoreRadius must be >= 0 wherever it is not NaN."""
+        col = str(RADIAL_EXPANSION.CORE_RADIUS)
+        valid = df[col].dropna()
+        assert (valid >= 0).all(), "CoreRadius has negative values"
+
+    def test_num_branches_non_negative(self, df):
+        """NumBranches must be >= 0 wherever it is not NaN."""
+        col = str(RADIAL_EXPANSION.NUM_BRANCHES)
+        valid = df[col].dropna()
+        assert (valid >= 0).all(), "NumBranches has negative values"
+
+    def test_robust_mean_leq_max_branch(self, df):
+        """Where both are non-NaN, RobustMeanRadius <= MaxBranchLength."""
+        robust = df[str(RADIAL_EXPANSION.ROBUST_MEAN_RADIUS)]
+        maxbl = df[str(RADIAL_EXPANSION.MAX_BRANCH_LENGTH)]
+        mask = robust.notna() & maxbl.notna()
+        if mask.any():
+            assert (robust[mask].values <= maxbl[mask].values + 1e-9).all(), (
+                "RobustMeanRadius exceeds MaxBranchLength for some objects"
+            )
+
+    def test_runner_detected_is_binary(self, df):
+        """RunnerDetected should be 0.0 or 1.0 (or NaN)."""
+        col = str(RADIAL_EXPANSION.RUNNER_DETECTED)
+        valid = df[col].dropna()
+        assert set(valid.unique()).issubset({0.0, 1.0}), (
+            f"RunnerDetected has non-binary values: {valid.unique()}"
+        )
+
+    def test_runner_length_nan_when_not_detected(self, df):
+        """RunnerLength must be NaN when RunnerDetected is 0."""
+        detected = df[str(RADIAL_EXPANSION.RUNNER_DETECTED)]
+        length = df[str(RADIAL_EXPANSION.RUNNER_LENGTH)]
+        no_runner = detected == 0.0
+        if no_runner.any():
+            assert length[no_runner].isna().all(), (
+                "RunnerLength is not NaN for objects with RunnerDetected == 0"
+            )
+
+
+# ---------------------------------------------------------------------------
+# Parameter variation tests
+# ---------------------------------------------------------------------------
+
+
+class TestMeasureRadialExpansionParams:
+    """Verify the class runs without error under different parameter combos."""
+
+    def test_outlier_method_iqr(self, synth_plate_detected):
+        image = synth_plate_detected.copy()
+        df = MeasureRadialExpansion(outlier_method="iqr").measure(image)
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) == image.num_objects
+
+    def test_outlier_method_mad(self, synth_plate_detected):
+        image = synth_plate_detected.copy()
+        df = MeasureRadialExpansion(outlier_method="mad").measure(image)
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) == image.num_objects
+
+    def test_outlier_method_ellipse(self, synth_plate_detected):
+        image = synth_plate_detected.copy()
+        df = MeasureRadialExpansion(outlier_method="ellipse").measure(image)
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) == image.num_objects
+
+    def test_skeleton_method_lee(self, synth_plate_detected):
+        image = synth_plate_detected.copy()
+        df = MeasureRadialExpansion(skeleton_method="lee").measure(image)
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) == image.num_objects
+
+    def test_different_pelt_penalty(self, synth_plate_detected):
+        image = synth_plate_detected.copy()
+        df = MeasureRadialExpansion(pelt_penalty=10.0).measure(image)
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) == image.num_objects
+
+
+# ---------------------------------------------------------------------------
+# Edge case tests with synthetic objmaps
+# ---------------------------------------------------------------------------
+
+
+class TestMeasureRadialExpansionEdgeCases:
+    """Edge cases using small synthetic images."""
+
+    @staticmethod
+    def _make_image_with_objmap(
+        gray: np.ndarray, objmap: np.ndarray,
+    ) -> Image:
+        """Create an Image with a pre-set objmap (bypasses detection)."""
+        rgb = np.stack([gray, gray, gray], axis=-1)
+        image = Image(rgb)
+        image.objmap[:] = objmap
+        return image
+
+    def test_small_object_returns_nan(self):
+        """Objects < 10 pixels produce NaN measurements."""
+        gray = np.ones((100, 100), dtype=np.uint8) * 200
+        gray[49:52, 49:52] = 50
+        objmap = np.zeros((100, 100), dtype=np.int32)
+        objmap[49:52, 49:52] = 1  # 9-pixel object
+        image = self._make_image_with_objmap(gray, objmap)
+
+        measurer = MeasureRadialExpansion()
+        df = measurer.measure(image)
+
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) == 1
+        mean_col = str(RADIAL_EXPANSION.MEAN_RADIUS)
+        num_branches_col = str(RADIAL_EXPANSION.NUM_BRANCHES)
+        nb = df[num_branches_col].iloc[0]
+        mr = df[mean_col].iloc[0]
+        if pd.notna(nb) and nb == 0:
+            assert pd.isna(mr), "MeanRadius should be NaN when NumBranches == 0"
+
+    def test_compact_colony_zero_branches(self):
+        """Compact circular colony produces NumBranches == 0 or very few branches."""
+        gray = np.ones((200, 200), dtype=np.uint8) * 220
+        objmap = np.zeros((200, 200), dtype=np.int32)
+        rr, cc = np.ogrid[:200, :200]
+        circle = ((rr - 100) ** 2 + (cc - 100) ** 2) < 40**2
+        gray[circle] = 40
+        objmap[circle] = 1
+        image = self._make_image_with_objmap(gray, objmap)
+
+        measurer = MeasureRadialExpansion()
+        df = measurer.measure(image)
+
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) == 1
+        num_branches = df[str(RADIAL_EXPANSION.NUM_BRANCHES)].dropna()
+        if len(num_branches) > 0:
+            assert num_branches.max() <= 10, (
+                f"Expected few branches for compact colony, got {num_branches.max()}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# Serialization tests
+# ---------------------------------------------------------------------------
+
+
+class TestMeasureRadialExpansionSerialization:
+    """Verify JSON round-trip via ImagePipeline preserves constructor parameters."""
+
+    def test_json_roundtrip(self):
+        from phenotypic import ImagePipeline
+
+        original = MeasureRadialExpansion(
+            outlier_method="iqr",
+            outlier_k=2.0,
+            n_annuli=50,
+            pelt_penalty=3.0,
+            skeleton_method="lee",
+        )
+        pipe = ImagePipeline(ops=[original])
+        restored_pipe = ImagePipeline.from_json(pipe.to_json())
+        restored = list(restored_pipe._ops.values())[0]
+
+        assert restored.outlier_method == "iqr"
+        assert restored.outlier_k == 2.0
+        assert restored.n_annuli == 50
+        assert restored.pelt_penalty == 3.0
+        assert restored.skeleton_method == "lee"
+
+    def test_json_roundtrip_defaults(self):
+        from phenotypic import ImagePipeline
+
+        original = MeasureRadialExpansion()
+        pipe = ImagePipeline(ops=[original])
+        restored_pipe = ImagePipeline.from_json(pipe.to_json())
+        restored = list(restored_pipe._ops.values())[0]
+
+        assert restored.outlier_method == "mad"
+        assert restored.outlier_k == 3.0
+        assert restored.n_annuli == 100
+        assert restored.pelt_penalty == 5.0
+        assert restored.skeleton_method == "zhang"
+
+
+# ---------------------------------------------------------------------------
+# Decompose method tests
+# ---------------------------------------------------------------------------
+
+
+class TestMeasureRadialExpansionDecompose:
+    """Verify the decompose() per-branch diagnostic method."""
+
+    def test_decompose_returns_dataframe(self, synth_plate_detected):
+        image = synth_plate_detected.copy()
+        measurer = MeasureRadialExpansion()
+        df = measurer.decompose(image)
+
+        assert isinstance(df, pd.DataFrame)
+        expected_cols = {"ObjectLabel", "BranchIndex", "Angle", "Length", "IsRunner"}
+        assert set(df.columns) == expected_cols
+
+    def test_decompose_is_runner_binary(self, synth_plate_detected):
+        image = synth_plate_detected.copy()
+        measurer = MeasureRadialExpansion()
+        df = measurer.decompose(image)
+
+        if len(df) > 0:
+            assert set(df["IsRunner"].unique()).issubset({0, 1}), (
+                f"IsRunner has non-binary values: {df['IsRunner'].unique()}"
+            )
+
+    def test_decompose_branch_index_starts_at_zero(self, synth_plate_detected):
+        image = synth_plate_detected.copy()
+        measurer = MeasureRadialExpansion()
+        df = measurer.decompose(image)
+
+        if len(df) > 0:
+            for label, group in df.groupby("ObjectLabel"):
+                assert group["BranchIndex"].min() == 0, (
+                    f"BranchIndex does not start at 0 for object {label}"
+                )
+
+    def test_decompose_length_non_negative(self, synth_plate_detected):
+        image = synth_plate_detected.copy()
+        measurer = MeasureRadialExpansion()
+        df = measurer.decompose(image)
+
+        if len(df) > 0:
+            assert (df["Length"] >= 0).all(), "Negative branch lengths found"

@@ -15,6 +15,7 @@ from ._measure_texture import MeasureTexture
 from ._measure_grid_spread import MeasureGridSpread
 from ._measure_grid_linreg_stats import MeasureGridLinRegStats
 from ._measure_grid_spatial import MeasureGridSpatial
+from ._measure_radial_expansion import MeasureRadialExpansion
 
 # TODO: Complete these classes
 # from ._measure_color_composition import MeasureColorComposition
@@ -24,6 +25,7 @@ __all__ = [
     "MeasureColor",
     # "MeasureColorComposition",
     "MeasureIntensity",
+    "MeasureRadialExpansion",
     "MeasureShape",
     "MeasureSize",
     "MeasureTexture",
