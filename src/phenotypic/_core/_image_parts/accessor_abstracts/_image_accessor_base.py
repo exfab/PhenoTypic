@@ -475,10 +475,6 @@ class ImageAccessorBase(ABC):
             tuple[plt.Figure, plt.Axes]: A tuple containing the created or passed Matplotlib `Figure` and `Axes` objects.
 
         """
-        if figsize is None:
-            from phenotypic.tools_._plotly_helpers import _auto_figsize
-            figsize = _auto_figsize(arr)
-
         fig, ax = (ax.get_figure(), ax) if ax else plt.subplots(figsize=figsize)
 
         mpl_settings = mpl_settings if mpl_settings else {}
