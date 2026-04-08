@@ -59,7 +59,7 @@ GridFinder algorithm.
     grid_img_384 = GridImage('plate_384well.jpg', nrows=16, ncols=24)
     
     # Show with gridlines overlay
-    grid_img.plot.overlay(show_gridlines=True)
+    grid_img.plot.overlay(show_grid=True)
 
 .. automethod:: GridImage.copy
 
@@ -207,17 +207,14 @@ capabilities.
     detector = OtsuDetector()
     detected = detector.apply(grid_img)
     
-    # Show with gridlines and labels
+    # Show with grid overlay and labels
     detected.plot.overlay(
-        show_gridlines=True,
+        show_grid=True,
         show_labels=True,
     )
 
-    # Show with gridlines and section boxes
-    detected.plot.overlay(
-        show_gridlines=True,
-        show_section_boxes=True
-    )
+    # Show with grid overlay (gridlines and section boxes)
+    detected.plot.overlay(show_grid=True)
 
 **Grid-Specific Visualization Methods:**
 
@@ -232,11 +229,8 @@ The GridImage class provides additional grid-aware visualization methods:
 
 .. code-block:: python
 
-    # Highlight control wells - show gridlines and section boxes
-    detected.plot.overlay(
-        show_gridlines=True,
-        show_section_boxes=True
-    )
+    # Highlight control wells - show grid overlay
+    detected.plot.overlay(show_grid=True)
 
 **Example - Well-Level Heatmap:**
 
@@ -299,7 +293,7 @@ GridImage inherits image manipulation methods from :class:`Image`:
     rotated = grid_img.rotate(angle=2.5)
     
     # Grid detection will be re-run on first access
-    rotated.plot.overlay(show_gridlines=True)
+    rotated.plot.overlay(show_grid=True)
 
 Metadata Management (Inherited)
 --------------------------------

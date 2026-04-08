@@ -49,7 +49,7 @@ class GridAccessor:
         >>> section_idx = 2 * grid_image.grid.ncols + 3  # Flattened index
         >>> colony_image = grid_image.grid[section_idx]
         >>> # Visualize grid columns with color-coded labels
-        >>> fig, ax = grid_image.grid.show_column_overlay(show_gridlines=True)
+        >>> fig, ax = grid_image.grid.show_column_overlay(show_grid=True)
 
         Get colony counts by grid section:
 
@@ -713,7 +713,7 @@ class GridAccessor:
     def show_column_overlay(
             self,
             use_enhanced: bool = False,
-            show_gridlines: bool = True,
+            show_grid: bool = True,
             ax: plt.Axes | None = None,
             figsize: tuple[int, int] = (9, 10),
     ) -> tuple[plt.Figure, plt.Axes]:
@@ -727,9 +727,8 @@ class GridAccessor:
             use_enhanced (bool, optional): If True, use the detection matrix version
                 of the parent image (detect_mat) for better contrast and visibility.
                 If False, use the standard grayscale image (gray). Defaults to False.
-            show_gridlines (bool, optional): If True, overlay cyan dashed vertical lines
-                marking the column boundaries and horizontal lines for row boundaries.
-                Defaults to True.
+            show_grid (bool, optional): If True, overlay cyan dashed gridlines
+                marking the column and row boundaries. Defaults to True.
             ax (plt.Axes | None, optional): Existing Matplotlib Axes object to plot into.
                 If None, a new figure and axes are created with the specified figsize.
                 Defaults to None.
@@ -746,13 +745,13 @@ class GridAccessor:
             Display column overlay visualization with options:
 
             >>> # Display column overlay with gridlines
-            >>> fig, ax = grid_image.grid.show_column_overlay(show_gridlines=True)
+            >>> fig, ax = grid_image.grid.show_column_overlay(show_grid=True)
             >>> plt.title("Colony Array - Column Overlay")
             >>> plt.show()
             >>> # Use enhanced image for better contrast
             >>> fig, ax = grid_image.grid.show_column_overlay(
             ...     use_enhanced=True,
-            ...     show_gridlines=True,
+            ...     show_grid=True,
             ...     figsize=(12, 14)
             ... )
             >>> # Plot on existing axes
@@ -777,7 +776,7 @@ class GridAccessor:
                     label2rgb(label=self.get_col_map(), image=self._root_image.gray[:])
             )
 
-        if show_gridlines:
+        if show_grid:
             col_edges = self.get_col_edges()
             row_edges = self.get_row_edges()
             func_ax.vlines(
@@ -875,7 +874,7 @@ class GridAccessor:
     def show_row_overlay(
             self,
             use_enhanced: bool = False,
-            show_gridlines: bool = True,
+            show_grid: bool = True,
             ax: plt.Axes | None = None,
             figsize: tuple[int, int] = (9, 10),
     ) -> tuple[plt.Figure, plt.Axes]:
@@ -889,9 +888,8 @@ class GridAccessor:
             use_enhanced (bool, optional): If True, use the detection matrix version
                 of the parent image (detect_mat) for better contrast and visibility.
                 If False, use the standard grayscale image (gray). Defaults to False.
-            show_gridlines (bool, optional): If True, overlay cyan dashed horizontal
-                lines marking the row boundaries and vertical lines for column boundaries.
-                Defaults to True.
+            show_grid (bool, optional): If True, overlay cyan dashed gridlines
+                marking the row and column boundaries. Defaults to True.
             ax (plt.Axes | None, optional): Existing Matplotlib Axes object to plot into.
                 If None, a new figure and axes are created with the specified figsize.
                 Defaults to None.
@@ -907,13 +905,13 @@ class GridAccessor:
             Display row overlay visualization with options:
 
             >>> # Display row overlay with gridlines
-            >>> fig, ax = grid_image.grid.show_row_overlay(show_gridlines=True)
+            >>> fig, ax = grid_image.grid.show_row_overlay(show_grid=True)
             >>> plt.title("Colony Array - Row Overlay")
             >>> plt.show()
             >>> # Use enhanced image for better contrast
             >>> fig, ax = grid_image.grid.show_row_overlay(
             ...     use_enhanced=True,
-            ...     show_gridlines=True,
+            ...     show_grid=True,
             ...     figsize=(12, 14)
             ... )
             >>> # Create side-by-side comparison
@@ -941,7 +939,7 @@ class GridAccessor:
                               image=self._root_image.gray[:])
             )
 
-        if show_gridlines:
+        if show_grid:
             col_edges = self.get_col_edges()
             row_edges = self.get_row_edges()
             func_ax.hlines(
@@ -1295,8 +1293,7 @@ class GridAccessor:
         reset: bool = False,
         *,
         viewer: napari.Viewer | None = None,
-        show_gridlines: bool = True,
-        show_section_boxes: bool = True,
+        show_grid: bool = True,
         gridline_color: str = "cyan",
         gridline_edge_width: float = 2.0,
         section_box_edge_width: float = 2.0,
@@ -1305,8 +1302,7 @@ class GridAccessor:
         """Add grid overlay layers to a persistent global napari viewer.
 
         Creates or reuses a single napari viewer instance and adds Shapes
-        layers for gridlines and/or section boxes. Each layer can be toggled
-        independently inside the napari GUI.
+        layers for gridlines and section boxes.
 
         Args:
             name: Optional custom name used in layer naming. If None, uses the
@@ -1316,10 +1312,8 @@ class GridAccessor:
             viewer: Optional external napari viewer instance to use instead of
                 the global viewer. When provided, global viewer management is
                 bypassed. Defaults to None.
-            show_gridlines: If True, add a Shapes layer with lines at every
-                grid boundary. Defaults to True.
-            show_section_boxes: If True, add a Shapes layer with colored
-                rectangles for each grid section. Defaults to True.
+            show_grid: If True, add Shapes layers with gridlines and
+                colored section box rectangles. Defaults to True.
             gridline_color: Edge color for gridlines (any napari color spec).
                 Defaults to ``"cyan"``.
             gridline_edge_width: Stroke width in pixels for gridlines.
@@ -1343,10 +1337,6 @@ class GridAccessor:
             >>> gi = load_synth_yeast_plate()
             >>> viewer = gi.gray.napari()
             >>> viewer = gi.grid.napari()
-
-            Show only gridlines without section boxes:
-
-            >>> viewer = gi.grid.napari(show_section_boxes=False)
         """
         if not 0.0 <= opacity <= 1.0:
             raise ValueError(f"opacity must be in range [0.0, 1.0], got {opacity}")
@@ -1389,8 +1379,8 @@ class GridAccessor:
         else:
             image_name = getattr(self._root_image, "name", "image")
 
-        # --- Gridlines layer ---
-        if show_gridlines:
+        if show_grid:
+            # --- Gridlines layer ---
             gridline_layer_name = f"grid_{image_name}_gridlines"
             gridline_shapes = self._build_gridline_shapes()
             try:
@@ -1409,8 +1399,7 @@ class GridAccessor:
                     opacity=opacity,
                 )
 
-        # --- Section boxes layer ---
-        if show_section_boxes:
+            # --- Section boxes layer ---
             section_layer_name = f"grid_{image_name}_sections"
             section_rectangles, section_colors = self._build_section_box_shapes()
             try:

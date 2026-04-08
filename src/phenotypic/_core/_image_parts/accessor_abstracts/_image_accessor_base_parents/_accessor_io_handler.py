@@ -588,9 +588,8 @@ class AccessorIOHandler(AccessorDataInterface):
         overlay_alpha: float = 0.3,
         bg_label: int = 0,
         colors: list | None = None,
-        show_gridlines: bool = True,
+        show_grid: bool = True,
         gridline_color: tuple[int, int, int] = (0, 255, 255),
-        show_section_boxes: bool = True,
         section_box_colors: list[tuple[int, int, int]] | None = None,
         **label2rgb_kwargs,
     ) -> None:
@@ -602,8 +601,8 @@ class AccessorIOHandler(AccessorDataInterface):
         suitable for pixel-level quality validation of detection results.
 
         For GridImage objects, gridlines and section boxes are automatically drawn
-        when their respective ``show_*`` flags are True. The line widths scale dynamically
-        with image size.
+        when ``show_grid`` is True. The line widths scale dynamically with image
+        size.
 
         Args:
             filepath: Destination file path. Should have .png or .jpeg extension.
@@ -612,13 +611,11 @@ class AccessorIOHandler(AccessorDataInterface):
             bg_label: Label value to treat as background. Defaults to 0.
             colors: List of RGB colors to use for labels. If None, uses default
                 colormap.
-            show_gridlines: Whether to draw gridlines on overlay for GridImage
-                objects. Ignored for regular Image objects. Defaults to True.
+            show_grid: Whether to draw gridlines and section boxes on overlay
+                for GridImage objects. Ignored for regular Image objects.
+                Defaults to True.
             gridline_color: RGB color tuple for gridlines. Defaults to cyan
                 (0, 255, 255).
-            show_section_boxes: Whether to draw colored bounding boxes around
-                each grid section's detected objects. Only applies to GridImage.
-                Defaults to True.
             section_box_colors: List of RGB tuples for cycling through section
                 box colors. Defaults to tab20 colormap colors.
             **label2rgb_kwargs: Additional keyword arguments for label2rgb.
@@ -643,19 +640,16 @@ class AccessorIOHandler(AccessorDataInterface):
             **label2rgb_kwargs,
         )
 
-        # For GridImage, draw gridlines if requested (duck typing check)
-        if show_gridlines and hasattr(self._root_image, "_draw_gridlines_on_overlay"):
-            overlay_arr = self._root_image._draw_gridlines_on_overlay(
-                overlay_arr, gridline_color
-            )
-
-        # For GridImage, draw section boxes if requested (duck typing check)
-        if show_section_boxes and hasattr(
-            self._root_image, "_draw_section_boxes_on_overlay"
-        ):
-            overlay_arr = self._root_image._draw_section_boxes_on_overlay(
-                overlay_arr, section_box_colors
-            )
+        # For GridImage, draw gridlines and section boxes (duck typing check)
+        if show_grid:
+            if hasattr(self._root_image, "_draw_gridlines_on_overlay"):
+                overlay_arr = self._root_image._draw_gridlines_on_overlay(
+                    overlay_arr, gridline_color
+                )
+            if hasattr(self._root_image, "_draw_section_boxes_on_overlay"):
+                overlay_arr = self._root_image._draw_section_boxes_on_overlay(
+                    overlay_arr, section_box_colors
+                )
 
         # Save using existing _save_image infrastructure (no metadata for overlays)
         self._save_image(

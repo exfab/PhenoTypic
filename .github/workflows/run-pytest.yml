@@ -1,10 +1,17 @@
 name: run-pytest
+# Testmon caching strategy:
+# pytest-testmon records which source files each test depends on (stored in .testmondata, a SQLite file).
+# On PR runs, we restore the .testmondata cache built from main so testmon only runs tests whose
+# dependencies changed in the PR. On pushes to main (after merge), we run with --testmon to update
+# the baseline cache for future PRs. On cache miss (first run, or dependency change), testmon runs
+# everything -- this is expected, not an error. Limitation: testmon tracks Python source only, not
+# config files, data fixtures, or environment variables.
 
 on:
+  push:
+    branches: [main]
   pull_request:
-    branches:
-      - main
-      - dev
+    branches: [main, dev]
   workflow_dispatch:
 
 # Prevent duplicate runs on the same PR/commit
@@ -85,7 +92,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -104,13 +111,22 @@ jobs:
           uv lock
           uv sync --group dev --all-extras
 
-      - name: Activate venv and run tests (Linux)
+      - name: Cache testmon data
+        uses: actions/cache@v4
+        with:
+          path: .testmondata
+          key: testmon-${{ runner.os }}-py${{ matrix.python-version }}-${{ github.ref_name }}-${{ hashFiles('uv.lock') }}-${{ github.sha }}
+          restore-keys: |
+            testmon-${{ runner.os }}-py${{ matrix.python-version }}-main-${{ hashFiles('uv.lock') }}-
+            testmon-${{ runner.os }}-py${{ matrix.python-version }}-main-
+
+      - name: Run tests
         run: |
           source .venv/bin/activate
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            pytest --testmon
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            pytest -n auto  # Full parallel run
           else
-            pytest -n auto
+            pytest --testmon  # Selective: PR (skip unchanged) or push-to-main (update baseline)
           fi
 
   tests-windows:
@@ -130,7 +146,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -144,13 +160,22 @@ jobs:
           uv lock
           uv sync --group dev --all-extras
 
-      - name: Activate venv and run tests (Windows)
+      - name: Cache testmon data
+        uses: actions/cache@v4
+        with:
+          path: .testmondata
+          key: testmon-${{ runner.os }}-py${{ matrix.python-version }}-${{ github.ref_name }}-${{ hashFiles('uv.lock') }}-${{ github.sha }}
+          restore-keys: |
+            testmon-${{ runner.os }}-py${{ matrix.python-version }}-main-${{ hashFiles('uv.lock') }}-
+            testmon-${{ runner.os }}-py${{ matrix.python-version }}-main-
+
+      - name: Run tests
         run: |
           .venv\Scripts\activate
-          if ($env:GITHUB_EVENT_NAME -eq "pull_request") {
-            pytest --testmon
+          if ($env:GITHUB_EVENT_NAME -eq "workflow_dispatch") {
+            pytest -n auto  # Full parallel run
           } else {
-            pytest -n auto
+            pytest --testmon  # Selective: PR (skip unchanged) or push-to-main (update baseline)
           }
         shell: pwsh
 
@@ -171,7 +196,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -185,26 +210,23 @@ jobs:
           uv lock
           uv sync --group dev --all-extras
 
-      - name: Activate venv and run tests (Linux/macOS)
-        if: runner.os != 'Windows'
+      - name: Cache testmon data
+        uses: actions/cache@v4
+        with:
+          path: .testmondata
+          key: testmon-${{ runner.os }}-py${{ matrix.python-version }}-${{ github.ref_name }}-${{ hashFiles('uv.lock') }}-${{ github.sha }}
+          restore-keys: |
+            testmon-${{ runner.os }}-py${{ matrix.python-version }}-main-${{ hashFiles('uv.lock') }}-
+            testmon-${{ runner.os }}-py${{ matrix.python-version }}-main-
+
+      - name: Run tests
         run: |
           source .venv/bin/activate
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            pytest --testmon
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            pytest -n auto  # Full parallel run
           else
-            pytest -n auto
+            pytest --testmon  # Selective: PR (skip unchanged) or push-to-main (update baseline)
           fi
-
-      - name: Activate venv and run tests (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          .venv\Scripts\activate
-          if ($env:GITHUB_EVENT_NAME -eq "pull_request") {
-            pytest --testmon
-          } else {
-            pytest -n auto
-          }
-        shell: pwsh
 
   docs-build:
     needs: check-manual-run
