@@ -23,6 +23,7 @@ apidoc:
 	sphinx-apidoc -o source/api_reference ../src/phenotypic --module-first --separate --no-toc
 
 html: apidoc
+	rm -f source/api_reference/phenotypic.rst
 	make clean
 	sphinx-build -n -b html source build/html
 
