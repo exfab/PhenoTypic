@@ -84,7 +84,7 @@ class TestShowOverlayAlwaysMpl:
 # ---------------------------------------------------------------------------
 
 
-@patch("phenotypic.tools_._plotly_helpers.PLOTLY_AVAILABLE", False)
+@patch("phenotypic._core._image_parts.accessor_abstracts._image_accessor_base_parents._accessor_dash_handler.PLOTLY_AVAILABLE", False)
 class TestDashRequiresPlotly:
     """Verify dash() raises ImportError when plotly unavailable."""
 

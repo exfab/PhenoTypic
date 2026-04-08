@@ -165,7 +165,7 @@ class TestShowWithOverlay:
     def test_show_overlay_gridimage(self, grid_image):
         assert isinstance(grid_image, GridImage)
         fig, ax = grid_image.rgb.show(
-            overlay=True, show_gridlines=True, show_section_boxes=True,
+            overlay=True, show_grid=True,
         )
         assert isinstance(fig, plt.Figure)
         plt.close(fig)
@@ -195,7 +195,7 @@ class TestDashWithOverlay:
     def test_dash_overlay_gridimage_has_shapes(self, grid_image):
         assert isinstance(grid_image, GridImage)
         fig = grid_image.rgb.dash(
-            overlay=True, show_gridlines=True, show_section_boxes=True,
+            overlay=True, show_grid=True,
         )
         assert isinstance(fig, go.Figure)
         assert len(fig.layout.shapes) > 0
@@ -230,7 +230,7 @@ class TestImageShow:
         """Verify grid features flow through Image.show(overlay=True)."""
         assert isinstance(grid_image, GridImage)
         fig, ax = grid_image.show(
-            overlay=True, show_gridlines=True, show_section_boxes=True,
+            overlay=True, show_grid=True,
         )
         assert isinstance(fig, plt.Figure)
         plt.close(fig)
@@ -256,7 +256,7 @@ class TestImageDash:
         """Verify grid features flow through Image.dash(overlay=True)."""
         assert isinstance(grid_image, GridImage)
         fig = grid_image.dash(
-            overlay=True, show_gridlines=True, show_section_boxes=True,
+            overlay=True, show_grid=True,
         )
         assert isinstance(fig, go.Figure)
         assert len(fig.layout.shapes) > 0
