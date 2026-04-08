@@ -14,16 +14,22 @@ to study microbial growth patterns.
 
 """
 
-__version__ = "0.12.0"
+__version__ = "0.14.0"
 __author__ = "Alexander Nguyen"
 __email__ = "anguy344@ucr.edu"
 
-from .core._grid_image import GridImage
-from .core._image import Image
-from .core._image_pipeline import ImagePipeline
+# Import abc_ first: its __init__ loads _measurement_info (stdlib-only, cached
+# instantly) then triggers tools_ init.  When tools_.constants_ later does
+# ``from phenotypic.abc_._measurement_info import MeasurementInfo`` the module
+# is already in sys.modules, breaking the circular import chain.
+from . import abc_  # noqa: F401
+
+from ._core._grid_image import GridImage
+from ._core._image import Image
+from ._core._image_pipeline import ImagePipeline
 
 # commented out until complete
-# from .core._image_set import ImageSet
+# from ._core._image_set import ImageSet
 
 from . import (
     abc_,
@@ -35,15 +41,16 @@ from . import (
     grid,
     measure,
     refine,
-    tools,
+    settings_,
+    sweep,
+    tools_,
     prefab,
 )
 
 __all__ = [
-    "Image",  # Class imported from core
-    "GridImage",  # Class imported from core
+    "Image",  # Class imported from _core
+    "GridImage",  # Class imported from _core
     "ImagePipeline",
-    # "ImageSet",
     "abc_",
     "analysis",
     "data",
@@ -54,5 +61,7 @@ __all__ = [
     "prefab",
     "correction",
     "enhance",
-    "tools",
+    "tools_",
+    "settings_",
+    "sweep",
 ]

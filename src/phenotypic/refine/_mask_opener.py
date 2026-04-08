@@ -3,86 +3,99 @@ from __future__ import annotations
 from typing import Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 from phenotypic.abc_ import ObjectRefiner
+from phenotypic.tools_.mixin import FootprintMixin
 
 import numpy as np
-from skimage.morphology import binary_opening
+from skimage.morphology import opening
+from phenotypic.tools_.typing_ import FootprintShape
 
 
-class MaskOpener(ObjectRefiner):
-    """Morphologically open binary masks to remove thin connections and specks.
+class MaskOpener(ObjectRefiner, FootprintMixin):
+    """Smooth mask boundaries and break thin bridges between touching colonies.
 
-    Intuition:
-        Binary opening (erosion followed by dilation) removes small isolated
-        pixels and breaks narrow bridges between objects. On agar plates, this
-        helps separate touching colonies and suppresses tiny artifacts from
-        dust or condensation without overly shrinking well-formed colonies.
+    Applies binary opening (erosion then dilation) to remove small isolated
+    pixels and narrow connections. Colonies linked by faint film or agar
+    artifacts become separated without significantly shrinking well-formed
+    colony masks.
 
-    Why this is useful for agar plates:
-        Colonies may develop halos or be linked by faint film on the agar. A
-        gentle opening step can restore separated masks, improving count and
-        phenotype accuracy.
+    Best For:
+        - Splitting colonies connected by 1--2 pixel bridges after thresholding.
+        - Removing tiny noise specks from the detection mask.
+        - Smoothing jagged mask edges before measurement.
 
-    Use cases:
-        - After thresholding, to split colonies connected by 1–2-pixel bridges.
-        - To remove tiny noise specks before measuring morphology.
+    Consider Also:
+        - :class:`MaskCloser` for the opposite effect — filling small gaps
+          and bridging fragments.
+        - :class:`SmallObjectRemover` for removing small objects by area
+          rather than morphology.
+        - :class:`SeparateObjects` for splitting merged colonies using
+          watershed-based separation.
 
-    Caveats:
-        - Too large a footprint erodes small colonies or weakly-stained edges,
-          lowering recall and edge sharpness.
-        - Opening can remove thin filaments that are biologically meaningful in
-          spreading/filamentous phenotypes.
+    Args:
+        shape: Structuring element. ``'auto'`` selects based on detected
+            objects. ``'diamond'``, ``'square'``, ``'disk'``, or a custom
+            ndarray. Default: ``None``.
+        width: Size of the structuring element in pixels. Larger values
+            smooth more aggressively. Typical range: 3--9. Default: 5.
+        n_iter: Number of opening iterations. Default: 1.
 
-    Attributes:
-        footprint (Literal["auto"] | np.ndarray | int | None): Structuring
-            element used for opening. A larger or denser footprint removes more
-            thin connections and specks but risks eroding colony boundaries.
+    Returns:
+        Image: Input image with ``objmask`` and ``objmap`` morphologically
+        opened.
 
-    Examples:
-        .. dropdown:: Morphologically open masks to separate touching colonies
-
-            >>> from phenotypic.refine import MaskOpener
-            >>> op = MaskOpener(footprint='auto')
-            >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
-
-    Raises:
-        AttributeError: If an invalid ``footprint`` type is provided (checked
-            during operation).
+    See Also:
+        :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough
+        of refinement operations.
+        :doc:`/explanation/refinement_strategies` for the recommended
+        refinement sequence.
     """
 
-    def __init__(self, footprint: Literal["auto"] | np.ndarray | int | None = None):
+    def __init__(
+            self,
+            shape: Literal["auto"] | FootprintShape | np.ndarray | None = None,
+            width: int = 5,
+            n_iter: int = 1,
+    ):
         """Initialize the opener.
 
         Args:
-            footprint (Literal["auto"] | np.ndarray | int | None): Structuring
+            shape (Literal["auto"] | np.ndarray | int | None): Structuring
                 element for opening. Use:
-                - "auto" to select a diamond footprint scaled to image size
-                  (larger plates → slightly larger radius),
-                - a NumPy array to pass a custom footprint,
-                - an ``int`` radius to build a diamond footprint of that size,
+                - "auto" to select a diamond shape scaled to image size
+                  (larger plates → slightly larger width),
+                - a NumPy array to pass a custom shape,
+                - an ``int`` width to build a diamond shape of that size,
                 - or ``None`` to use the library default.
 
-                Larger radii disconnect wider bridges and suppress more
+                Larger widths disconnect wider bridges and suppress more
                 speckles, but erode edges and can remove small colonies.
+            n_iter (int): Number of times to apply opening. Repeated opening
+                with a small element produces smoother results than a single
+                pass with a larger element. Default: 1.
         """
         super().__init__()
-        self.footprint: Literal["auto"] | np.ndarray | int | None = footprint
+        self.shape: Literal["auto"] | FootprintShape | np.ndarray | None = shape
+        self.width = width
+        self.n_iter = n_iter
 
     def _operate(self, image: Image) -> Image:
-        if self.footprint == "auto":
-            footprint = self._make_footprint(
-                "diamond", radius=max(3, round(np.min(image.shape) * 0.005))
+        if self.shape == "auto":
+            footprint = FootprintMixin._make_footprint(
+                    "diamond", width=max(3, round(np.min(image.shape) * 0.005))
             )
-        elif isinstance(self.footprint, np.ndarray):
-            footprint = self.footprint
-        elif isinstance(self.footprint, (int, float)):
-            footprint = self._make_footprint("diamond", radius=int(self.footprint))
-        elif not self.footprint:
-            footprint = self.footprint
+        elif isinstance(self.shape, np.ndarray):
+            footprint = self.shape
+        elif self.shape in self._footprint_shapes:
+            footprint = FootprintMixin._make_footprint(self.shape,
+                                                       width=int(self.width))
+        elif not self.shape:
+            footprint = self.shape
         else:
-            raise AttributeError("Invalid footprint type")
+            raise AttributeError("Invalid shape type")
 
-        image.objmask[:] = binary_opening(image.objmask[:], footprint=footprint)
+        for _ in range(self.n_iter):
+            image.objmask[:] = opening(image.objmask[:], footprint=footprint)
         return image

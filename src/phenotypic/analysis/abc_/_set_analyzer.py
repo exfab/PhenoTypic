@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import abc
-from typing import TYPE_CHECKING, Callable, List
+from typing import Callable, List
 
 import pandas as pd
 import numpy as np
@@ -31,6 +31,20 @@ class SetAnalyzer(abc.ABC):
     @abc.abstractmethod
     def show(self):
         pass
+
+    def dash(self, **kwargs):
+        """Interactive Plotly visualization of analysis results.
+
+        Subclasses may override this method to provide an interactive Plotly
+        figure equivalent to ``show()``.
+
+        Raises:
+            NotImplementedError: Unless overridden by a subclass.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement an interactive "
+            f"Plotly visualization. Use .show() for matplotlib output."
+        )
 
     @abc.abstractmethod
     def results(self):

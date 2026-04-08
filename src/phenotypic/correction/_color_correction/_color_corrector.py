@@ -1,0 +1,159 @@
+"""Color corrector applying a fitted ColorCheckerProfile to images.
+
+Implements the root-polynomial colour correction (Finlayson 2015) as an
+:class:`~phenotypic.abc_.ImageCorrector` operation, transforming RGB, gray,
+and detect_mat in a single pass.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+import colour
+import numpy as np
+from skimage.color import rgb2gray
+
+from ...abc_ import ImageCorrector
+from ._color_checker_profile import ColorCheckerProfile
+
+if TYPE_CHECKING:
+    from phenotypic._core._image import Image
+
+
+class ColorCorrector(ImageCorrector):
+    """Apply root-polynomial color correction to an entire image.
+
+    Takes a fitted :class:`ColorCheckerProfile` and applies its correction
+    matrix to every pixel.  The pipeline is:
+
+    1. Normalise RGB to ``[0, 1]`` float.
+    2. Decode sRGB gamma to linear light.
+    3. Expand to root-polynomial features (Finlayson 2015).
+    4. Multiply by the correction matrix.
+    5. Re-encode to sRGB gamma.
+    6. Clip and scale back to the original integer dtype.
+    7. Recompute grayscale and detect_mat from corrected RGB.
+
+    Use cases (agar plates):
+
+    - Standardise plate images captured under different lighting to a common
+      colour space for consistent colony colour measurement.
+    - Remove colour casts from scanner or camera illumination so that
+      phenotypic colour differences between strains are comparable across
+      batches.
+    - Produce publication-ready images with accurate colour reproduction of
+      dyed or pigmented colonies.
+
+    Attributes:
+        correction_matrix: The root-polynomial correction matrix stored as
+            a nested list (serialisable).
+        degree: Polynomial expansion degree matching the profile.
+        output_illuminant: Target illuminant label (informational).
+
+    Examples:
+        Correct an image using a pre-fitted profile:
+
+        >>> from phenotypic.correction import ColorCheckerProfile, ColorCorrector
+        >>> import numpy as np
+        >>> profile = ColorCheckerProfile(rois=[...], degree=2)  # doctest: +SKIP
+        >>> profile.fit(image)  # doctest: +SKIP
+        >>> corrector = ColorCorrector(profile)  # doctest: +SKIP
+        >>> corrected = corrector.apply(image)  # doctest: +SKIP
+    """
+
+    def __init__(
+        self,
+        profile: ColorCheckerProfile,
+        output_illuminant: str = "D65",
+    ) -> None:
+        """Initialise the corrector from a fitted profile.
+
+        Args:
+            profile: A fitted :class:`ColorCheckerProfile`.
+            output_illuminant: Target illuminant label (metadata only).
+
+        Raises:
+            ValueError: If *profile* has not been fitted.
+        """
+        super().__init__()
+        if not profile.is_fitted:
+            raise ValueError("ColorCheckerProfile must be fitted before use.")
+        self._profile = profile
+        self.correction_matrix = profile.correction_matrix.tolist()
+        self._ccm = np.asarray(self.correction_matrix, dtype=np.float64)
+        self.degree = profile.degree
+        self.output_illuminant = output_illuminant
+
+    def _operate(self, image: Image) -> Image:
+        """Apply root-polynomial colour correction to the image.
+
+        Args:
+            image: Input image to correct.
+
+        Returns:
+            Image with corrected RGB, gray, and detect_mat.
+        """
+        ccm = self._ccm
+        rgb_raw = image.rgb[:]
+        original_dtype = rgb_raw.dtype
+
+        # 1. Normalise to [0, 1] float.
+        if np.issubdtype(original_dtype, np.integer):
+            max_val = float(np.iinfo(original_dtype).max)
+        else:
+            max_val = 1.0
+        rgb_normed = rgb_raw.astype(np.float64) / max_val
+
+        # 2. Decode sRGB gamma to linear light.
+        H, W, C = rgb_normed.shape
+        rgb_linear = colour.cctf_decoding(
+            rgb_normed.reshape(-1, 3), function="sRGB"
+        )
+
+        # 3-4. Build root-polynomial features and apply correction matrix.
+        corrected_linear = (
+            colour.characterisation.apply_matrix_colour_correction_Finlayson2015(
+                rgb_linear,
+                ccm,
+                degree=self.degree,  # type: ignore[arg-type]
+                root_polynomial_expansion=True,
+            )
+        )
+        corrected_linear = np.clip(corrected_linear, 0.0, None)
+
+        # 5. Re-encode to sRGB gamma.
+        corrected_srgb = colour.cctf_encoding(corrected_linear, function="sRGB")
+        corrected_srgb = np.clip(  # type: ignore[assignment]
+            corrected_srgb, 0.0, 1.0
+        ).reshape(H, W, C)
+
+        # 6. Scale back to original dtype.
+        if np.issubdtype(original_dtype, np.integer):
+            corrected_int = (corrected_srgb * max_val + 0.5).astype(original_dtype)
+        else:
+            corrected_int = corrected_srgb.astype(original_dtype)
+
+        # 7. Update image data.
+        image._data.rgb = corrected_int
+
+        # 8. Recompute grayscale from corrected sRGB.
+        corrected_gray = rgb2gray(corrected_srgb).astype(np.float64)
+        image._data.gray = corrected_gray
+
+        # 9. Update detect_mat to match corrected grayscale.
+        image._data.detect_mat = corrected_gray.copy()
+
+        return image
+
+    def dashboard(self, show: bool = True) -> Any:
+        """Display an interactive diagnostic dashboard.
+
+        Delegates to the underlying profile's dashboard method.
+
+        Args:
+            show: Auto-display the dashboard.
+
+        Returns:
+            The Panel layout object.
+        """
+        return self._profile.dashboard(show=show)

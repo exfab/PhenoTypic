@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 import pandas as pd
 import numpy as np
@@ -26,13 +26,15 @@ class ManualGridFinder(GridFinder):
         col_edges (np.ndarray): Array of column edge coordinates defining grid columns.
 
     Example:
-        .. dropdown:: Create a 3x4 grid with specific coordinates
+        Create a 3x4 grid with specific coordinates:
 
-            >>> # Create a 3x4 grid with specific coordinates
-            >>> row_edges = np.array([0, 100, 200, 300])  # 3 rows
-            >>> col_edges = np.array([0, 80, 160, 240, 320])  # 4 columns
-            >>> finder = ManualGridFinder(row_edges=row_edges, col_edges=col_edges)
-            >>> grid_info = finder.measure(image)
+        >>> import numpy as np
+        >>> from phenotypic.grid import ManualGridFinder
+        >>> # Create a 3x4 grid with specific coordinates
+        >>> row_edges = np.array([0, 100, 200, 300])  # 3 rows
+        >>> col_edges = np.array([0, 80, 160, 240, 320])  # 4 columns
+        >>> finder = ManualGridFinder(row_edges=row_edges, col_edges=col_edges)
+        >>> grid_info = finder.measure(image)  # doctest: +SKIP
     """
 
     def __init__(self, row_edges: np.ndarray, col_edges: np.ndarray):

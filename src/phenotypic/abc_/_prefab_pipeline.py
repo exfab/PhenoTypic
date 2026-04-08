@@ -1,4 +1,9 @@
-from ..core._image_pipeline import ImagePipeline
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Union
+
+from .._core._image_pipeline import ImagePipeline
 
 
 class PrefabPipeline(ImagePipeline):
@@ -22,30 +27,32 @@ class PrefabPipeline(ImagePipeline):
     - **Provides templates:** Each PrefabPipeline subclass is a complete processing workflow (enhancement,
       detection, refinement, measurement) ready to use out-of-the-box.
 
+    **Quick Decision Guide: PrefabPipeline vs Custom ImagePipeline**
+
+    - Use PrefabPipeline for standard colony phenotyping on agar plates with validated workflows
+    - Use custom ImagePipeline for novel imaging scenarios, optimization experiments, or specialized workflows
+    - Start with PrefabPipeline to understand the pipeline structure, then customize via parameter tuning
+    - Clone and modify a PrefabPipeline subclass when you need significant algorithm changes
+    - Combine multiple PrefabPipelines sequentially for complex multi-stage workflows
+
     **Available PrefabPipeline Subclasses**
 
     The PhenoTypic team maintains several pre-built pipelines optimized for different imaging scenarios:
 
-    1. **HeavyOtsuPipeline:** Multi-layer Otsu detection with aggressive refinement and measurement.
-       - Use case: Robust colony detection on challenging images (uneven lighting, varied sizes).
-       - Cost: Computationally expensive; best for offline batch processing.
-       - Includes: Gaussian blur, CLAHE, Sobel filter, Otsu detection, morphological refinement,
-         grid alignment, multiple measurements.
+    1. **[HeavyOtsuPipeline](src/phenotypic/prefab/_heavy_otsu_pipeline.py):** Multi-layer Otsu detection with aggressive refinement.
+       Robust detection on challenging images (uneven lighting, varied sizes). Computationally expensive.
 
-    2. **HeavyWatershedPipeline:** Watershed segmentation with extensive cleanup.
-       - Use case: Closely-spaced, touching, or merged colonies.
-       - Cost: Very expensive; suitable for small batches or deep analysis.
-       - Includes: Enhancement, watershed detection, refinement, grid alignment, measurements.
+    2. **[HeavyWatershedPipeline](src/phenotypic/prefab/_heavy_watershed_pipeline.py):** Watershed segmentation for separated colonies.
+       Handles closely-spaced or merged colonies. Very expensive; for small batches or deep analysis.
 
-    3. **RoundPeaksPipeline:** Peak detection for well-separated, circular colonies.
-       - Use case: Early-time-point growth, sparse or isolated colonies.
-       - Cost: Fast; good for high-throughput screening.
-       - Includes: Gaussian blur, round peak detection, size filtering, measurements.
+    3. **[RoundPeaksPipeline](src/phenotypic/prefab/_round_peaks_pipeline.py):** Peak detection for circular, well-separated colonies.
+       Fast and suitable for high-throughput screening of early-time-point growth.
 
-    4. **GridSectionPipeline:** Per-well section extraction and analysis.
-       - Use case: Fine-grained per-well quality control and segmentation.
-       - Cost: Moderate; depends on grid resolution.
-       - Includes: Grid-aware section extraction, per-well measurements.
+    4. **[GridSectionPipeline](src/phenotypic/prefab/_grid_section_pipeline.py):** Per-well section extraction and fine-grained analysis.
+       Moderate cost; enables per-well quality control and segmentation.
+
+    5. **[FilamentousFungiPipeline](src/phenotypic/prefab/_filamentous_fungi_pipeline.py):** Two-stage filamentous fungi detection
+       with optional Dijkstra branch reconnection. For irregular spreading colonies.
 
     **When to use PrefabPipeline vs Custom ImagePipeline**
 
@@ -71,7 +78,7 @@ class PrefabPipeline(ImagePipeline):
         from phenotypic.prefab import HeavyOtsuPipeline
 
         # Load image(s)
-        image = GridImage.from_image_path('plate.jpg', nrows=8, ncols=12)
+        image = GridImage.imread('plate.jpg', nrows=8, ncols=12)
 
         # Instantiate and apply pipeline
         pipeline = HeavyOtsuPipeline()
@@ -139,6 +146,43 @@ class PrefabPipeline(ImagePipeline):
     3. **Share successful custom pipelines:** If you develop a successful custom pipeline for a new
        imaging scenario, consider contributing it as a PrefabPipeline subclass to the project.
 
+    **Pipeline Composition Pattern**
+
+    Combine multiple PrefabPipelinesor mix PrefabPipeline with custom operations:
+
+    .. code-block:: python
+
+        from phenotypic import ImagePipeline
+        from phenotypic.prefab import HeavyOtsuPipeline, RoundPeaksPipeline
+        from phenotypic.refine import SmallObjectRemover
+        from phenotypic.measure import MeasureIntensity
+
+        # Combine different detection strategies with shared refinement
+        pipeline = ImagePipeline()
+        pipeline.add(HeavyOtsuPipeline())  # First detection attempt
+        pipeline.add(SmallObjectRemover(min_size=100))  # Noise removal
+        pipeline.add(MeasureIntensity())  # Measurement
+
+        # Apply to image
+        result = pipeline.apply(image)
+
+    **Pipeline Serialization Pattern**
+
+    Save and load pipelines for reproducible batch processing:
+
+    .. code-block:: python
+
+        from phenotypic.prefab import HeavyOtsuPipeline
+
+        # Create, configure, and save
+        pipeline = HeavyOtsuPipeline(gaussian_sigma=2.0, small_object_min_size=150)
+        pipeline.to_json('my_colony_pipeline.json')  # Save configuration
+        # pipeline.to_yaml('my_colony_pipeline.yaml')  # Alternative format
+
+        # Load for batch processing (reproducible results)
+        loaded = HeavyOtsuPipeline.from_json('my_colony_pipeline.json')
+        results = loaded.operate([image1, image2, image3])
+
     **Extending PrefabPipeline**
 
     To create a new official PrefabPipeline subclass:
@@ -157,14 +201,14 @@ class PrefabPipeline(ImagePipeline):
             def __init__(self, param1: int = 100, param2: float = 1.5,
                          benchmark: bool = False, verbose: bool = False):
                 '''Initialize with tunable parameters.'''
-                ops = [
+                pipe_cfgs = [
                     GaussianBlur(sigma=param2),
                     CLAHE(),
                     OtsuDetector(),
                     SmallObjectRemover(min_size=param1),
                 ]
                 meas = [MeasureShape()]
-                super().__init__(ops=ops, meas=meas, benchmark=benchmark,
+                super().__init__(pipe_cfgs=pipe_cfgs, meas=meas, benchmark=benchmark,
                                verbose=verbose)
 
     Notes:
@@ -177,7 +221,7 @@ class PrefabPipeline(ImagePipeline):
 
         - **Parameter tuning via __init__():** Most PrefabPipeline subclasses expose key algorithm
           parameters in ``__init__()`` (e.g., detection threshold, smoothing sigma, refinement
-          footprint). Adjust these for your specific images before scaling to large batches.
+          shape). Adjust these for your specific images before scaling to large batches.
 
         - **Benchmarking for profiling:** Set ``benchmark=True`` when instantiating to track
           execution time and memory usage per operation. Useful for identifying bottlenecks in
@@ -191,92 +235,97 @@ class PrefabPipeline(ImagePipeline):
           operations (detection, enhancement, measurement), use operation ABCs directly.
 
     Examples:
-        .. dropdown:: Quick start: Detect colonies with HeavyOtsuPipeline
+        Quick start: Detect colonies with HeavyOtsuPipeline:
 
-            .. code-block:: python
+        >>> from phenotypic import GridImage
+        >>> from phenotypic.prefab import HeavyOtsuPipeline
+        >>> # Load a 96-well plate image
+        >>> image = GridImage.imread('agar_plate.jpg', nrows=8, ncols=12)
+        >>> # Use the pre-built, validated pipeline
+        >>> pipeline = HeavyOtsuPipeline()
+        >>> result = pipeline.apply(image)
+        >>> # Access results
+        >>> print(f"Detected {len(result.objects)} colonies")
+        >>> print(f"Measurements: {result.measurements.columns.tolist()}")
 
-                from phenotypic import GridImage
-                from phenotypic.prefab import HeavyOtsuPipeline
+        Batch processing multiple plates with a PrefabPipeline:
 
-                # Load a 96-well plate image
-                image = GridImage.from_image_path('agar_plate.jpg', nrows=8, ncols=12)
+        >>> from phenotypic import GridImage
+        >>> from phenotypic.prefab import HeavyOtsuPipeline
+        >>> import glob
+        >>> # Load multiple plate images
+        >>> image_paths = glob.glob('batch_*.jpg')
+        >>> images = [GridImage.imread(p, nrows=8, ncols=12)
+        ...           for p in image_paths]
+        >>> # Create pipeline (reusable for all images)
+        >>> pipeline = HeavyOtsuPipeline(benchmark=True)
+        >>> # Batch process
+        >>> results = pipeline.operate(images)
+        >>> # Collect results
+        >>> for i, result in enumerate(results):
+        ...     print(f"Image {i}: {len(result.objects)} colonies")
+        ...     print(f"Measurements shape: {result.measurements.shape}")
 
-                # Use the pre-built, validated pipeline
-                pipeline = HeavyOtsuPipeline()
-                result = pipeline.apply(image)
+        Customizing pipeline parameters for difficult images:
 
-                # Access results
-                print(f"Detected {len(result.objects)} colonies")
-                print(f"Measurements: {result.measurements.columns.tolist()}")
+        >>> from phenotypic import GridImage
+        >>> from phenotypic.prefab import HeavyOtsuPipeline
+        >>> image = GridImage.imread('noisy_plate.jpg', nrows=8, ncols=12)
+        >>> # Increase smoothing and noise removal for difficult images
+        >>> pipeline = HeavyOtsuPipeline(
+        ...     gaussian_sigma=8,                      # Stronger blur
+        ...     small_object_min_size=200,             # Aggressive noise removal
+        ...     border_remover_size=2                  # More border filtering
+        ... )
+        >>> result = pipeline.apply(image)
+        >>> print(f"Robust detection: {len(result.objects)} colonies")
 
-        .. dropdown:: Batch processing multiple plates with a PrefabPipeline
+        Comparing PrefabPipeline vs custom pipeline:
 
-            .. code-block:: python
-
-                from phenotypic import GridImage
-                from phenotypic.prefab import HeavyOtsuPipeline
-                import glob
-
-                # Load multiple plate images
-                image_paths = glob.glob('batch_*.jpg')
-                images = [GridImage.from_image_path(p, nrows=8, ncols=12)
-                          for p in image_paths]
-
-                # Create pipeline (reusable for all images)
-                pipeline = HeavyOtsuPipeline(benchmark=True)
-
-                # Batch process
-                results = pipeline.operate(images)
-
-                # Collect results
-                for i, result in enumerate(results):
-                    print(f"Image {i}: {len(result.objects)} colonies")
-                    print(f"Measurements shape: {result.measurements.shape}")
-
-        .. dropdown:: Customizing pipeline parameters for difficult images
-
-            .. code-block:: python
-
-                from phenotypic import GridImage
-                from phenotypic.prefab import HeavyOtsuPipeline
-
-                image = GridImage.from_image_path('noisy_plate.jpg', nrows=8, ncols=12)
-
-                # Increase smoothing and noise removal for difficult images
-                pipeline = HeavyOtsuPipeline(
-                    gaussian_sigma=8,                      # Stronger blur
-                    small_object_min_size=200,             # Aggressive noise removal
-                    border_remover_size=2                  # More border filtering
-                )
-
-                result = pipeline.apply(image)
-                print(f"Robust detection: {len(result.objects)} colonies")
-
-        .. dropdown:: Comparing PrefabPipeline vs custom pipeline
-
-            .. code-block:: python
-
-                from phenotypic import GridImage, ImagePipeline
-                from phenotypic.prefab import HeavyOtsuPipeline
-                from phenotypic.detect import CannyDetector
-                from phenotypic.refine import SmallObjectRemover
-
-                image = GridImage.from_image_path('plate.jpg', nrows=8, ncols=12)
-
-                # Option 1: Use pre-built validated pipeline
-                prefab = HeavyOtsuPipeline()
-                result1 = prefab.apply(image)
-
-                # Option 2: Create custom pipeline for comparison
-                custom = ImagePipeline()
-                from phenotypic.enhance import GaussianBlur
-                custom.add(GaussianBlur(sigma=2))
-                custom.add(CannyDetector(sigma=1.5, low_threshold=0.1, high_threshold=0.4))
-                custom.add(SmallObjectRemover(min_size=100))
-                result2 = custom.apply(image)
-
-                # Compare results
-                print(f"Prefab: {len(result1.objects)}, Custom: {len(result2.objects)}")
+        >>> from phenotypic import GridImage, ImagePipeline
+        >>> from phenotypic.prefab import HeavyOtsuPipeline
+        >>> from phenotypic.detect import CannyDetector
+        >>> from phenotypic.refine import SmallObjectRemover
+        >>> image = GridImage.imread('plate.jpg', nrows=8, ncols=12)
+        >>> # Option 1: Use pre-built validated pipeline
+        >>> prefab = HeavyOtsuPipeline()
+        >>> result1 = prefab.apply(image)
+        >>> # Option 2: Create custom pipeline for comparison
+        >>> custom = ImagePipeline()
+        >>> from phenotypic.enhance import GaussianBlur
+        >>> custom.add(GaussianBlur(sigma=2))
+        >>> custom.add(CannyDetector(sigma=1.5, low_threshold=0.1, high_threshold=0.4))
+        >>> custom.add(SmallObjectRemover(min_size=100))
+        >>> result2 = custom.apply(image)
+        >>> # Compare results
+        >>> print(f"Prefab: {len(result1.objects)}, Custom: {len(result2.objects)}")
     """
 
-    pass
+    @classmethod
+    def from_json(
+            cls,
+            json_data: Union[str, Path, dict],
+            benchmark: bool = False,
+            verbose: bool = False,
+    ) -> PrefabPipeline:
+        """Deserialize a PrefabPipeline from JSON.
+
+        PrefabPipeline subclasses build their ops/meas inside ``__init__``,
+        so the base ``from_json`` (which passes ``ops=`` directly) would
+        conflict.  This override deserializes via ``ImagePipeline`` and
+        re-tags the instance as the correct PrefabPipeline subclass.
+
+        Args:
+            json_data: A JSON string, path to a JSON file, or a pre-parsed dict.
+            benchmark: Whether to enable benchmarking for the pipeline.
+            verbose: Whether to enable verbose output.
+
+        Returns:
+            A PrefabPipeline (or subclass) instance with the loaded
+            configuration.
+        """
+        instance = ImagePipeline.from_json(
+                json_data, benchmark=benchmark, verbose=verbose,
+        )
+        instance.__class__ = cls
+        return instance  # type: ignore[return-value]

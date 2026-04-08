@@ -9,17 +9,18 @@
 .. autoproperty:: {{ objname }}
 
 {% set accessor_class = objname.split('.')[-1] %}
-{% set accessor_module = "phenotypic.core._image_parts.accessors" %}
+{% set accessor_module = "phenotypic._core._image_parts.accessors" %}
 {% set class_map = {
     "rgb": "ImageRGB",
     "gray": "Grayscale",
-    "enh_gray": "EnhancedGrayscale",
+    "detect_mat": "DetectMatAccessor",
     "objmap": "ObjectMap",
     "objmask": "ObjectMask",
     "objects": "ObjectsAccessor",
     "grid": "GridAccessor",
     "metadata": "MetadataAccessor",
-    "color": "ColorAccessor"
+    "color": "ColorAccessor",
+    "plot": "PlotAccessor"
 } %}
 
 {% if accessor_class in class_map %}

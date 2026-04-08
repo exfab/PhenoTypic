@@ -1,24 +1,34 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 if TYPE_CHECKING:
-    from phenotypic import Image
-
-from typing import Union, Dict
+    from phenotypic._core._image import Image
+    from phenotypic._core._grid_image import GridImage
 
 from ._image_operation import ImageOperation
-from phenotypic.tools.exceptions_ import InterfaceError, OperationFailedError
-from abc import ABC
+from abc import ABC, abstractmethod
 
 
 class ImageCorrector(ImageOperation, ABC):
     """Abstract base class for whole-image transformation operations affecting all components.
 
     ImageCorrector is a specialized subclass of ImageOperation for global image transformations
-    that modify **every image component together** (rgb, gray, enh_gray, objmask, objmap).
-    Unlike ImageEnhancer (modifies only enh_gray) or ObjectDetector/ObjectRefiner (modify only
+    that modify **every image component together** (rgb, gray, detect_mat, objmask, objmap).
+    Unlike ImageEnhancer (modifies only detect_mat) or ObjectDetector/ObjectRefiner (modify only
     detection results), an ImageCorrector transforms the entire image geometry or structure,
     ensuring all components remain synchronized.
+
+    **Quick Decision Guide: Which Operation Type?**
+
+    - **ImageEnhancer:** Modify only ``image.detect_mat`` for preprocessing.
+      Use for: noise reduction, contrast enhancement, background subtraction.
+    - **ObjectDetector:** Analyze image, produce only ``objmask`` and ``objmap``.
+      Use for: colony/object detection and labeling.
+    - **ObjectRefiner:** Edit mask and map (filtering, merging, removing objects).
+      Use for: post-detection cleanup and refinement.
+    - **ImageCorrector (this class):** Transform entire image (rotation, resampling, perspective).
+      Use for: geometric corrections, coordinate system changes, alignment.
+      Example: [GridAligner](src/phenotypic/correction/_grid_aligner.py).
 
     **What is ImageCorrector?**
 
@@ -35,57 +45,55 @@ class ImageCorrector(ImageOperation, ABC):
     there is nothing to "protect" or "validate". The entire image is intentionally modified as a
     unit. The absence of integrity checks reflects this design, not a security weakness.
 
-    **When to use ImageCorrector vs other operation types**
-
-    Use the operation type that matches your modification scope:
-
-    - **ImageEnhancer:** You only modify ``image.enh_gray`` (preprocessing for better detection).
-      Use when: blur, contrast, edge detection, background subtraction.
-      Example: GaussianBlur, CLAHE, RankMedianEnhancer.
-
-    - **ObjectDetector:** You analyze image data and produce ``image.objmask`` and ``image.objmap``.
-      Use when: discovering and labeling colonies, particles, or features.
-      Example: OtsuDetector, CannyDetector, RoundPeaksDetector.
-
-    - **ObjectRefiner:** You edit the mask and map (filter by size, merge, remove objects).
-      Use when: post-processing detection results to clean up false positives.
-      Example: SizeFilter, ComponentMerger, MorphologyRefiner.
-
-    - **ImageCorrector (this class):** You transform the entire image structure (geometry,
-      orientation, coordinate system). All components change together.
-      Use when: rotation, alignment, perspective correction, image resampling.
-      Example: GridAligner (rotates image to align detected colonies with grid rows/columns).
-
     **Typical Use Cases**
 
     ImageCorrector is designed for operations that physically transform the image:
 
-    - **Rotation:** Align a plate image with detected grid structure. Rotate to make
-      colony rows parallel to image axes, improving grid-based analysis.
-    - **Perspective transformation:** Correct camera angle or lens distortion.
-    - **Image resampling:** Change resolution or interpolation method.
+    - **Rotation:** Align plate image with detected grid structure to make colony rows parallel to axes.
+    - **Perspective transformation:** Correct camera angle or lens distortion effects.
+    - **Image resampling:** Change resolution or interpolation method for downstream processing.
     - **Global color correction:** Apply white balance or color space mapping to entire image.
-    - **Alignment:** Register image to a reference coordinate system.
+    - **Alignment:** Register image to reference coordinate system for grid-based analysis.
+
+    **When NOT to use ImageCorrector**
+
+    Do NOT use ImageCorrector for operations that affect only specific image aspects:
+
+    - **Don't use for:** Enhancing only ``detect_mat`` (preprocessing). Use ``ImageEnhancer`` instead.
+    - **Don't use for:** Detecting colonies or objects. Use ``ObjectDetector`` instead.
+    - **Don't use for:** Filtering or editing detection results. Use ``ObjectRefiner`` instead.
+    - **Don't use for:** Local edits (e.g., removing a specific region). These typically require custom masking or ``ObjectRefiner``.
+
+    The key question: Are you transforming **the entire image geometry**, or only a specific aspect?
+    If only an aspect, use the specialized operation type (Enhancer, Detector, Refiner).
 
     **Why ImageCorrector is Rare in Practice**
 
-    Most image processing operations are **targeted to specific aspects** of the image:
+    Most image processing operations are targeted to specific aspects of the image:
 
     - Colony detection focuses on finding objects in image data.
     - Post-detection cleanup focuses on refining the mask/map.
     - Preprocessing focuses on making detection more robust.
 
-    Operations that transform the **entire image structure** are comparatively rare because:
+    Operations transforming the entire image structure are comparatively rare because:
 
-    1. Plate images are typically already well-oriented from the scanner/camera.
-    2. Most analysis works directly with image data as acquired (no rotation needed).
-    3. Grid-based alignment is a specialized step, not routine preprocessing.
+    - Plate images are typically already well-oriented from the scanner/camera.
+    - Most analysis works directly with image data as acquired (no rotation needed).
+    - Grid-based alignment is a specialized step, not routine preprocessing.
 
     However, when needed, ImageCorrector provides the correct abstraction.
 
+    **Subclass References**
+
+    ImageCorrector implementations are rare. The canonical example is:
+
+    - [GridAligner](src/phenotypic/correction/_grid_aligner.py): Rotates entire GridImage to align
+      detected colonies with expected grid structure. Demonstrates synchronizing all components during transformation.
+
     **How to Implement a Custom ImageCorrector**
 
-    Inherit from ImageCorrector and implement the ``_operate()`` static method:
+    Inherit from ImageCorrector and implement the ``_operate()`` instance method. Access
+    parameters via ``self`` attributes within the method body.
 
     .. code-block:: python
 
@@ -107,158 +115,212 @@ class ImageCorrector(ImageOperation, ABC):
         rotator = MyRotator(angle=5.0)
         rotated_image = rotator.apply(image)
 
+    **Key Implementation Rules**
+
+    1. ``_operate()`` must be an **instance method** (access parameters via ``self``).
+    2. All parameters must be stored as instance attributes.
+    3. The method must transform **all components equally** (rgb, gray, detect_mat, objmask, objmap).
+    4. Never modify only one component—this breaks the "whole-image transformation" contract.
+    5. Use the Image class's helper methods (``image.rotate()``) whenever possible for consistency.
+    6. Always return the modified Image object after transformation.
+
+    **Parameter Matching Example**
+
+    When instance attributes don't match ``_operate()`` parameters, serialization and parallelization fail:
+
+    .. code-block:: python
+
+        # CORRECT: attribute names match parameter names
+        class GoodRotator(ImageCorrector):
+            def __init__(self, angle: float):
+                super().__init__()
+                self.angle = angle  # Matches _operate() parameter
+
+            @staticmethod
+            def _operate(image: Image, angle: float) -> Image:
+                image.rotate(angle_of_rotation=angle, mode='edge')
+                return image
+
+        # WRONG: attribute name doesn't match parameter name
+        class BadRotator(ImageCorrector):
+            def __init__(self, angle: float):
+                super().__init__()
+                self.rotation_angle = angle  # Mismatch!
+
+            @staticmethod
+            def _operate(image: Image, angle: float) -> Image:  # Parameter is 'angle'
+                # This will fail—no 'angle' attribute on self
+                image.rotate(angle_of_rotation=angle, mode='edge')
+                return image
+
     **Critical Implementation Detail: Updating All Components**
 
-    Your ``_operate()`` method must ensure **all image components are updated together**:
+    Your ``_operate()`` method must ensure **all image components are updated together**. When
+    any geometric transformation is applied, it must affect every component identically:
 
     .. code-block:: python
 
         @staticmethod
-        def _operate(image: Image, **kwargs) -> Image:
+        def _operate(image: Image, angle: float) -> Image:
             # Rotate rgb and gray (color representation)
             image.rotate(angle_of_rotation=angle, mode='edge')
 
-            # Rotate enh_gray (enhanced version for detection)
-            # This is automatically handled by image.rotate()
-
-            # Rotate objmask and objmap (detection results)
-            # This is also automatically handled by image.rotate()
+            # The following are automatically handled by image.rotate():
+            # - Rotate detect_mat (enhanced version for detection)
+            # - Rotate objmask and objmap (detection results)
+            # - Synchronize all caches and metadata
 
             return image
 
+    **What happens if components get out of sync?**
+
+    If you accidentally rotate only ``image.rgb`` without rotating ``image.objmap``, downstream
+    analysis breaks because pixel coordinates no longer match object labels. The Image class's
+    helper methods protect against this by guaranteeing synchronized updates.
+
     **Access image data through accessors** (never direct attributes):
 
-    - Reading: ``image.rgb[:]``, ``image.gray[:]``, ``image.enh_gray[:]``, ``image.objmask[:]``
-    - Modifying: ``image.rgb[:] = new_data``, ``image.objmap[:] = new_map``
+    When implementing custom transformations, always use the accessor interface:
+
+    - **Reading:** ``image.rgb[:]``, ``image.gray[:]``, ``image.detect_mat[:]``, ``image.objmask[:]``, ``image.objmap[:]``
+    - **Modifying:** ``image.rgb[:] = new_data``, ``image.objmap[:] = new_map``
+
+    The accessor interface ensures that:
+
+    - Caches are invalidated appropriately after modifications.
+    - Color space conversions remain synchronized with RGB data.
+    - Object detection results stay consistent with image geometry.
 
     The Image class provides helper methods for common transformations:
 
-    - ``image.rotate(angle_of_rotation, mode='constant')`` - Rotates all components identically
+    - ``image.rotate(angle_of_rotation, mode='edge')`` - Rotates all components identically
     - For custom transformations, apply the same operation to all components
+    - Always verify that helper methods exist before implementing custom transform code
+
+    **Pipeline Integration and Serialization**
+
+    ImageCorrector operations are fully serializable and can be included in ImagePipeline for
+    batch processing. The static method design enables distributed execution:
+
+    - **Automatic parameter passing:** Instance attributes are extracted when ``apply()`` is called.
+    - **Serialization:** Operations can be saved to JSON/YAML and reconstructed on worker processes.
+    - **Batch processing:** Use ``ImagePipeline.apply_and_measure()`` for automatic benchmarking.
+    - **Reproducibility:** Serialized pipelines document the exact transformations applied.
 
     **Performance and Interpolation Considerations**
 
-    When rotating or resampling:
+    When rotating or resampling, use appropriate interpolation for each component:
 
-    - **Color data (rgb, gray):** Use smooth interpolation (order=1 or higher) to preserve
-      color gradients and colony boundaries.
-    - **Detection data (objmask, objmap):** Use nearest-neighbor interpolation (order=0) to
-      preserve discrete object identities. Object labels must remain integer-valued.
-    - **Enhanced grayscale (enh_gray):** Use the same interpolation as color data for consistency.
+    - **Color data (rgb, gray):** Use smooth interpolation (order=1 bilinear or higher) to preserve color gradients and colony boundaries.
+    - **Detection data (objmask, objmap):** Use nearest-neighbor interpolation (order=0) to preserve discrete object identities and integer labels.
+    - **Detection matrix (detect_mat):** Use same interpolation as color data for consistency.
 
     Example with explicit interpolation control:
 
-    .. code-block:: python
-
-        from scipy.ndimage import rotate as ndimage_rotate
-        from skimage.transform import rotate as skimage_rotate
-
-        # For rgb/gray: use higher-order interpolation
-        rotated_rgb = skimage_rotate(image.rgb[:], angle=5.0, order=1, preserve_range=True)
-
-        # For objmap: use nearest-neighbor (order=0)
-        rotated_objmap = ndimage_rotate(image.objmap[:], angle=5.0, order=0, reshape=False)
+    >>> from scipy.ndimage import rotate as ndimage_rotate
+    >>> from skimage.transform import rotate as skimage_rotate
+    >>> # For rgb/gray: use bilinear interpolation
+    >>> rotated_rgb = skimage_rotate(image.rgb[:], angle=5.0, order=1, preserve_range=True)
+    >>> # For objmap: use nearest-neighbor to preserve integer labels
+    >>> rotated_objmap = ndimage_rotate(image.objmap[:], angle=5.0, order=0, reshape=False)
 
     **Edge Handling During Transformation**
 
-    Transformations may introduce edge artifacts:
+    Transformations introduce edge artifacts; choose mode based on downstream analysis:
 
-    - **Rotation with 'edge' mode:** Replicas image border pixels (minimal artificiality).
-    - **Rotation with 'constant' mode:** Fills with a constant value (usually 0 for dark edge).
-    - **Rotation with 'reflect' mode:** Reflects image at boundary (avoids abrupt discontinuities).
+    - **'edge' mode:** Replicas image border pixels (minimal artifacts, safest for colony detection).
+    - **'constant' mode:** Fills with constant value (usually 0 for dark edge, may create false boundaries).
+    - **'reflect' mode:** Reflects image at boundary (avoids abrupt discontinuities but changes image content).
 
-    Choose the mode based on downstream analysis. For colony detection, 'edge' is often safest.
+    **Common Pitfalls and Best Practices**
+
+    - **Pitfall:** Modifying only one component (e.g., rotating RGB but not objmap). Result: pixel coordinates become misaligned.
+    - **Best practice:** Use Image class helper methods (``image.rotate()``) which synchronize all components automatically.
+    - **Pitfall:** Using smooth interpolation for object maps. Result: object labels become non-integer, breaking downstream analysis.
+    - **Best practice:** Use order=0 (nearest-neighbor) for masks and maps to preserve discrete identities.
+    - **Pitfall:** Forgetting to handle edge artifacts. Result: false objects detected at image boundaries.
+    - **Best practice:** Choose 'edge' mode for colony detection (minimal artifacts) or use image padding before transformation.
 
     **Attributes**
 
-    ImageCorrector itself has no public attributes. Subclasses define operation-specific
-    parameters as instance attributes. All subclass attributes must be matched to the
-    ``_operate()`` method signature for parallelization support.
+    - ImageCorrector has no public attributes; subclasses define operation-specific parameters as instance attributes.
+    - All subclass attributes must match ``_operate()`` method signature for parallelization support.
 
     **Methods**
-
-    Inherits all methods from ImageOperation. Key methods:
 
     - ``apply(image, inplace=False)`` - Execute the correction (default: returns new image).
     - ``_operate(image, **kwargs)`` - Abstract method you implement with transformation logic.
 
     **Notes**
 
-    - **Static method requirement:** ``_operate()`` must be static to enable parallel execution
-      in ImagePipeline. This allows the operation to be serialized and sent to worker processes.
-
-    - **Parameter matching:** All ``_operate()`` parameters (except ``image``) must exist as
-      instance attributes with matching names. When ``apply()`` is called, these are
-      automatically extracted and passed to ``_operate()``.
-
+    - **Instance method:** ``_operate()`` is an instance method; access parameters via ``self``.
+    - **Parameter matching:** All ``_operate()`` parameters (except ``image``) must exist as instance attributes.
     - **No copy by default:** Operations return modified copies by default (inplace=False).
-      Original image is unchanged unless ``inplace=True`` is explicitly passed.
-
-    - **Coordinate system changes:** After an ImageCorrector, downstream operations may need
-      to re-detect objects or re-measure features, since the spatial coordinate system has changed.
-
-    - **Grid alignment workflow:** GridAligner is the canonical example—it rotates the entire
-      GridImage to align detected colonies with the expected grid structure, then downstream
-      operations proceed with the aligned image.
+    - **Coordinate system changes:** Downstream operations may need re-detection after transformation.
+    - **Grid alignment workflow:** [GridAligner](src/phenotypic/correction/_grid_aligner.py) is the canonical example.
 
     **Examples**
 
-    .. dropdown:: GridAligner: rotating a GridImage to align colonies with rows/columns
+    Basic rotation operation:
 
-        .. code-block:: python
+    >>> from phenotypic.abc_ import ImageCorrector
+    >>> from phenotypic.data import load_synth_yeast_plate
+    >>>
+    >>> class SimpleRotator(ImageCorrector):
+    ...     def __init__(self, angle=5.0):
+    ...         super().__init__()
+    ...         self.angle = angle
+    ...     @staticmethod
+    ...     def _operate(image, angle):
+    ...         image.rotate(angle_of_rotation=angle, mode='edge')
+    ...         return image
+    >>>
+    >>> image = load_synth_yeast_plate()
+    >>> rotator = SimpleRotator(angle=5.0)
+    >>> rotated = rotator.apply(image)
+    >>> # All components rotated together: rgb, gray, detect_mat, objmask, objmap
+    >>> rotated.shape == image.shape
+    False
 
-            from phenotypic import GridImage, Image
-            from phenotypic.detect import RoundPeaksDetector
-            from phenotypic.correction import GridAligner
+    Custom perspective correction (preserving component synchronization):
 
-            # Load plate image
-            image = Image.from_image_path('colony_plate.jpg')
-
-            # Detect colonies in original orientation
-            detected = RoundPeaksDetector().apply(image)
-
-            # Create GridImage for grid-aware operations
-            grid_image = GridImage(detected)
-            grid_image.detect_grid()  # Estimate grid structure
-
-            # Rotate entire image to align colonies with grid axes
-            aligner = GridAligner(axis=0)  # Align rows horizontally
-            aligned = aligner.apply(grid_image)
-
-            # Now all components (rgb, gray, enh_gray, masks, map) are rotated together
-            # Downstream grid-based operations work with aligned coordinates
-            print(f"Original shape: {grid_image.shape}")
-            print(f"Aligned shape: {aligned.shape}")
-
-    .. dropdown:: Custom perspective correction (conceptual example)
-
-        .. code-block:: python
-
-            from phenotypic.abc_ import ImageCorrector
-            from phenotypic import Image
-            from skimage.transform import warp, ProjectiveTransform
-            import numpy as np
-
-            class PerspectiveCorrector(ImageCorrector):
-                \"\"\"Correct camera angle by applying perspective transform.\"\"\"
-
-                def __init__(self, tilt_angle: float, direction: str = 'x'):
-                    super().__init__()
-                    self.tilt_angle = tilt_angle
-                    self.direction = direction
-
-                @staticmethod
-                def _operate(image: Image, tilt_angle: float, direction: str) -> Image:
-                    # Define perspective transform
-                    h, w = image.shape
-                    # (Implementation details omitted for brevity)
-                    # Apply warp to all components with appropriate interpolation
-                    return image
-
-            # Usage
-            corrector = PerspectiveCorrector(tilt_angle=10.0, direction='x')
-            corrected = corrector.apply(image)
-            # All image components are perspective-corrected together
+    >>> from phenotypic.abc_ import ImageCorrector
+    >>> from phenotypic.data import load_synth_yeast_plate
+    >>> import numpy as np
+    >>>
+    >>> class PerspectiveCorrector(ImageCorrector):
+    ...     def __init__(self, tilt_angle=10.0):
+    ...         super().__init__()
+    ...         self.tilt_angle = tilt_angle
+    ...     @staticmethod
+    ...     def _operate(image, tilt_angle):
+    ...         # Apply perspective transform to all components
+    ...         image.rotate(angle_of_rotation=tilt_angle, mode='edge')
+    ...         return image
+    >>>
+    >>> image = load_synth_yeast_plate()
+    >>> corrector = PerspectiveCorrector(tilt_angle=10.0)
+    >>> corrected = corrector.apply(image)
+    >>> # All components are transformed together, maintaining synchronization
     """
 
-    pass
+    @overload
+    def apply(self, image: Image, inplace: bool = False) -> Image: ...
+
+    @overload
+    def apply(self, image: GridImage, inplace: bool = False) -> GridImage: ...
+
+    def apply(self, image: Image, inplace: bool = False) -> Image:
+        return super().apply(image=image, inplace=inplace)
+
+    @overload
+    @abstractmethod
+    def _operate(self, image: Image) -> Image: ...
+
+    @overload
+    @abstractmethod
+    def _operate(self, image: GridImage) -> GridImage: ...
+
+    @abstractmethod
+    def _operate(self, image: Image) -> Image:
+        return image

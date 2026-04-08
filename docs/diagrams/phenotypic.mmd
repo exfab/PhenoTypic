@@ -45,7 +45,7 @@ classDiagram
         +- show_overlay(object_label, figsize, title, annotate, annotation_params, ax, overlay_params, imshow_params)
     }
 
-    class EnhancedGrayscale {
+    class DetectMatAccessor {
         note "An enhanced gray accessor for images"
         +- __getitem__(key)
         +- __setitem__(key, value)
@@ -116,9 +116,9 @@ classDiagram
         +- histogram(figsize, linewidth)
         +- show(figsize, title, shrink)
         +- show_objects(figsize, title, shrink)
-        +- get_foreground_hue(bg_color, normalized)
-        +- get_foreground_saturation(bg_color, normalized)
-        +- get_foreground_brightness(bg_color, normalized)
+        +- get_foreground_hue(bg_color, normed)
+        +- get_foreground_saturation(bg_color, normed)
+        +- get_foreground_brightness(bg_color, normed)
         +- extract_obj(bg_color)
     }
 
@@ -187,6 +187,6 @@ classDiagram
     ImageAccessorBase <|-- ObjectsAccessor
     MultiChannelAccessor <|-- ImageRGB
     MultiChannelAccessor <|-- Grayscale
-    MultiChannelAccessor <|-- EnhancedGrayscale
+    MultiChannelAccessor <|-- DetectMatAccessor
     MultiChannelAccessor <|-- ObjectMap
     MultiChannelAccessor <|-- ObjectMask

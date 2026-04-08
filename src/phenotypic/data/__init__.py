@@ -7,12 +7,14 @@ return arrays or ready-to-use `Image`/`GridImage` objects for rapid pipeline tri
 """
 
 from ._sample_image_data import *
+from ._synthetic_data import *
 
 __all__ = [
     "load_synthetic_colony",
-    "load_synthetic_detection_image",
+    "load_synth_yeast_plate",
     "make_synthetic_colony",
     "make_synthetic_plate",
+    "make_synthetic_filamentous_plate",
     "load_plate_12hr",
     "load_plate_72hr",
     "load_plate_series",
@@ -21,4 +23,8 @@ __all__ = [
     "load_colony",
     "load_smear_plate_12hr",
     "load_smear_plate_24hr",
+    "load_yeast_plate",
+    "load_fungi_plate",
+    "load_yeast_plate_full",
+    "load_fungi_plate_full",
 ]

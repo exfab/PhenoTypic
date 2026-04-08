@@ -7,16 +7,14 @@ from phenotypic.enhance import (
     CLAHE,
     GaussianBlur,
     MedianFilter,
-    ContrastStretching,
     SobelFilter,
 )
-from phenotypic.detect import OtsuDetector, WatershedDetector
+from phenotypic.detect import OtsuDetector
 from phenotypic.correction import GridAligner
-from phenotypic.refine import MinResidualErrorReducer, GridOversizedObjectRemover
+from phenotypic.refine import ReduceMultipleGridObjects, GridOversizedObjectRemover
 from phenotypic.refine import (
     BorderObjectRemover,
     SmallObjectRemover,
-    LowCircularityRemover,
 )
 from phenotypic.refine import MaskFill, MaskOpener
 from phenotypic.measure import (
@@ -28,45 +26,61 @@ from phenotypic.measure import (
 
 
 class HeavyOtsuPipeline(PrefabPipeline):
-    """
-    The HeavyWatershedPipeline class is a composite image processing pipeline that combines multiple layers of preprocessing, detection, and filtering steps
-    that can will select the right colonies in most cases. This comes at the cost of being a more computationally expensive pipeline.
+    """Detect and measure colonies using multi-stage Otsu thresholding with refinement.
 
-    Pipeline Steps:
-        1. Gaussian Smoothing
-        2. CLAHE
-        3. Median Enhancement
-        4. Watershed Segmentation
-        5. Border Object Removal
-        6. Grid Oversized Object Removal
-        7. Minimum Residual Error Reduction
-        8. Grid Alignment
-        9. Repeat Watershed Segmentation
-        10. Repeat Border Object Removal
-        11. Repeat Minimum Residual Error Reduction
-        12. Mask Fill
+    A robust general-purpose pipeline that chains preprocessing, Otsu detection,
+    morphological cleanup, grid alignment, and re-detection for reliable colony
+    segmentation on standard grid plates.
 
-    Measurements:
-        - Shape
-        - Color
-        - Texture
-        - Intensity
+    Steps:
+        1. GaussianBlur — smooth noise
+        2. CLAHE — boost local contrast
+        3. MedianFilter — remove residual speckle
+        4. SobelFilter — enhance colony edges
+        5. OtsuDetector — threshold-based detection
+        6. MaskOpener — smooth mask boundaries
+        7. BorderObjectRemover — remove partial edge colonies
+        8. SmallObjectRemover — remove noise fragments
+        9. MaskFill — fill interior holes
+        10. GridOversizedObjectRemover — remove merged multi-well objects
+        11. ReduceMultipleGridObjects — keep one colony per well
+        12. GridAligner — straighten the grid
+
+    Measurements: MeasureShape, MeasureColor, MeasureTexture, MeasureIntensity.
+
+    Best For:
+        - Standard 96-well or 384-well yeast plates with clean backgrounds.
+        - General-purpose colony detection when you are unsure which detector
+          to use.
+        - Plates with uniform illumination and bimodal intensity histograms.
+
+    Consider Also:
+        - :class:`HeavyWatershedPipeline` when colonies touch or overlap.
+        - :class:`RoundPeaksPipeline` for a faster, lighter approach on
+          well-separated round colonies.
+        - :class:`FilamentousFungiPipeline` for filamentous organisms.
+
+    See Also:
+        :doc:`/tutorials/notebooks/08_using_prefab_pipelines` for a visual
+        comparison of prefab pipelines.
+        :doc:`/explanation/prefab_pipelines_guide` for guidance on choosing
+        a prefab pipeline.
     """
 
     def __init__(
-        self,
-        gaussian_sigma: int = 5,
-        gaussian_mode: str = "reflect",
-        gaussian_truncate: float = 4.0,
-        otsu_ignore_zeros: bool = True,
-        otsu_ignore_borders: bool = True,
-        mask_opener_footprint: Literal["auto"] | int | np.ndarray | None = "auto",
-        border_remover_size: int = 1,
-        small_object_min_size: int = 50,
-        texture_scale: int = 5,
-        texture_warn: bool = False,
-        benchmark: bool = False,
-        verbose: bool = False,
+            self,
+            gaussian_sigma: int = 5,
+            gaussian_mode: str = "reflect",
+            gaussian_truncate: float = 4.0,
+            otsu_ignore_zeros: bool = True,
+            otsu_ignore_borders: bool = True,
+            mask_opener_footprint: Literal["auto"] | int | np.ndarray | None = "auto",
+            border_remover_size: int = 1,
+            small_object_min_size: int = 50,
+            texture_scale: int = 5,
+            texture_warn: bool = False,
+            benchmark: bool = False,
+            verbose: bool = False,
     ):
         """
         Initializes the object with a sequence of operations and measurements for image
@@ -86,24 +100,24 @@ class HeavyOtsuPipeline(PrefabPipeline):
             small_object_min_size (int): Minimum size of objects to retain.
             texture_scale (int): Scale parameter for Haralick texture features.
             texture_warn (bool): Whether to warn on texture computation errors.
-            footprint: Deprecated, use mask_opener_footprint.
+            shape: Deprecated, use mask_opener_footprint.
             min_size: Deprecated, use small_object_min_size.
             border_size: Deprecated, use border_remover_size.
         """
         border_remover = BorderObjectRemover(border_size=border_remover_size)
-        min_residual_reducer = MinResidualErrorReducer()
+        min_residual_reducer = ReduceMultipleGridObjects()
 
         ops = [
             GaussianBlur(
-                sigma=gaussian_sigma, mode=gaussian_mode, truncate=gaussian_truncate
+                    sigma=gaussian_sigma, mode=gaussian_mode, truncate=gaussian_truncate
             ),
             CLAHE(),
             MedianFilter(),
             SobelFilter(),
             OtsuDetector(
-                ignore_zeros=otsu_ignore_zeros, ignore_borders=otsu_ignore_borders
+                    ignore_zeros=otsu_ignore_zeros, ignore_borders=otsu_ignore_borders
             ),
-            MaskOpener(footprint=mask_opener_footprint),
+            MaskOpener(shape=mask_opener_footprint),
             border_remover,
             SmallObjectRemover(min_size=small_object_min_size),
             MaskFill(),
@@ -111,9 +125,9 @@ class HeavyOtsuPipeline(PrefabPipeline):
             min_residual_reducer,
             GridAligner(),
             OtsuDetector(
-                ignore_zeros=otsu_ignore_zeros, ignore_borders=otsu_ignore_borders
+                    ignore_zeros=otsu_ignore_zeros, ignore_borders=otsu_ignore_borders
             ),
-            MaskOpener(footprint=None),
+            MaskOpener(shape=None),
             border_remover,
             SmallObjectRemover(min_size=small_object_min_size),
             GridOversizedObjectRemover(),

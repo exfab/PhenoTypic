@@ -18,7 +18,6 @@ Key Implementation Notes:
 
 import numpy as np
 from typing import Tuple, Dict, Optional, Literal
-import warnings
 
 # =============================================================================
 # STEP 1: Problem Definition (Page 1, Equation 1)
@@ -856,8 +855,8 @@ def accurate_median(
         matrix_free = d > matrix_free_threshold
 
     if verbose:
-        print(f"Cohen et al. (2016) - Geometric Median Algorithm")
-        print(f"=" * 70)
+        print("Cohen et al. (2016) - Geometric Median Algorithm")
+        print("=" * 70)
         print(f"Dataset: n={n}, d={d}")
         print(f"Target accuracy: ε={epsilon:.2e}")
         print(f"Matrix-free mode: {matrix_free}")
@@ -868,7 +867,7 @@ def accurate_median(
     f_initial = compute_geometric_median_objective(x, points)
 
     if verbose:
-        print(f"Step 1 - Initial approximation:")
+        print("Step 1 - Initial approximation:")
         print(f"  f(x⁰) = {f_initial:.6f}")
         print()
 
@@ -890,9 +889,9 @@ def accurate_median(
     # SANITY CHECK: Initial centering should improve or maintain objective
     if f_after_center > f_initial * 1.01:  # Allow 1% tolerance for numerical issues
         if verbose:
-            print(f"  ⚠ Warning: Centering increased objective!")
+            print("  ⚠ Warning: Centering increased objective!")
             print(f"  f(x¹) = {f_after_center:.6f} (was {f_initial:.6f})")
-            print(f"  → Using original x⁰ instead")
+            print("  → Using original x⁰ instead")
         # Revert to crude approximation
         x, _ = compute_crude_approximation(points)
         f_after_center = f_initial
@@ -915,7 +914,7 @@ def accurate_median(
     max_iterations = min(iterations_needed, 10000)  # Practical cap
 
     if verbose:
-        print(f"Step 3 - Path following:")
+        print("Step 3 - Path following:")
         print(f"  Starting t: {t:.4e}")
         print(f"  Target t: {t_target:.4e}")
         print(f"  Iterations needed: ~{iterations_needed}")
@@ -973,7 +972,7 @@ def accurate_median(
             stall_count += 1
             if stall_count > 50:
                 if verbose:
-                    print(f"\n⚠ Stopping: Algorithm stalled (objective not improving)")
+                    print("\n⚠ Stopping: Algorithm stalled (objective not improving)")
                 break
         else:
             x = x_next
@@ -1018,7 +1017,7 @@ def accurate_median(
         # Check 1: Reached target t
         if t >= t_target:
             if verbose:
-                print(f"\n✓ Converged: Reached target t")
+                print("\n✓ Converged: Reached target t")
             break
 
         # Check 2: Achieved good approximation
@@ -1040,7 +1039,7 @@ def accurate_median(
 
             if grad_norm_normalized < epsilon * f_star_est / (n * 100):
                 if verbose:
-                    print(f"\n✓ Converged: Gradient sufficiently small")
+                    print("\n✓ Converged: Gradient sufficiently small")
                 break
 
     # Use best solution
@@ -1120,8 +1119,8 @@ def weiszfeld_median(
     n, d = points.shape
 
     if verbose:
-        print(f"Weiszfeld Algorithm (1937)")
-        print(f"=" * 70)
+        print("Weiszfeld Algorithm (1937)")
+        print("=" * 70)
         print(f"Dataset: n={n}, d={d}")
         print(f"Tolerance: ε={eps:.2e}")
         print()
@@ -1165,7 +1164,7 @@ def weiszfeld_median(
 
     objective = compute_geometric_median_objective(x, points)
     if verbose:
-        print(f"⚠ Maximum iterations reached")
+        print("⚠ Maximum iterations reached")
         print(f"  Final: f(x) = {objective:.6f}")
 
     return x, {
@@ -1249,7 +1248,7 @@ def geometric_median(
         raise ValueError("Need at least one point")
 
     if method == "cohen":
-        raise ValueError(f"Method 'cohen' is not implemented yet.")
+        raise ValueError("Method 'cohen' is not implemented yet.")
 
         return accurate_median(
             points,

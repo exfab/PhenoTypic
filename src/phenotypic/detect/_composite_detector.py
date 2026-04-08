@@ -1,0 +1,242 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING, List, Literal, Union
+import numpy as np
+from scipy.ndimage import label
+
+if TYPE_CHECKING:
+    from phenotypic._core._image import Image
+    from phenotypic._core._image_pipeline import ImagePipeline
+
+from phenotypic.abc_ import ObjectDetector
+from phenotypic.detect import OtsuDetector, RoundPeaksDetector
+
+
+class CompositeDetector(ObjectDetector):
+    """Detect colonies by combining multiple detectors via union, intersection, or overlap filtering.
+
+    Apply two or more detection algorithms (or preprocessing pipelines ending
+    in a detector) to the same plate image and merge their binary masks.
+    Ensemble combination improves sensitivity (union), specificity
+    (intersection), or both (overlap filtering). This is especially useful
+    for challenging plates where no single algorithm captures all colonies
+    reliably. For a full comparison see
+    :doc:`/explanation/detection_strategies_compared`.
+
+    Best For:
+        * Plates where different colony sub-populations respond to different
+          detection algorithms (e.g., bright colonies via Otsu, faint
+          colonies via triangle thresholding).
+        * Consensus-based quality control that accepts only colonies
+          confirmed by all methods.
+        * Ensemble strategies that maximise recall by unioning masks from
+          complementary algorithms.
+        * Benchmarking workflows that compare detector agreement.
+
+    Consider Also:
+        * :class:`OtsuDetector` or :class:`HysteresisDetector` when a
+          single detector already captures all colonies reliably.
+        * :class:`WatershedDetector` when the primary challenge is
+          separating touching colonies rather than combining detection
+          strategies.
+
+    Args:
+        detectors: List of :class:`~phenotypic.abc_.ObjectDetector` or
+            :class:`~phenotypic.ImagePipeline` instances to combine.
+            Pipelines allow preprocessing steps before detection. Defaults
+            to ``[OtsuDetector(), RoundPeaksDetector()]`` when not
+            specified.
+
+        mode: Combination strategy. ``'union'`` marks a pixel as colony if
+            any detector flags it (logical OR, maximises sensitivity).
+            ``'intersection'`` requires all detectors to agree (logical AND,
+            maximises specificity). ``'overlap'`` retains whole objects that
+            have mutual spatial overlap across masks (balances sensitivity
+            and specificity). Default ``'overlap'``.
+
+        min_overlap_ratio: For ``'overlap'`` mode, minimum fraction of
+            object pixels that must overlap with all other masks. Range:
+            0.0--1.0. Default 0.0. Higher values produce more conservative
+            filtering. Typical range: 0.0--0.5.
+
+    Returns:
+        Image: Input image with ``objmask`` set to the combined binary
+        colony mask and ``objmap`` derived from the merged mask.
+
+    Raises:
+        ValueError: If *detectors* list is empty or *mode* is not one of
+            ``'union'``, ``'intersection'``, or ``'overlap'``.
+
+    See Also:
+        :doc:`/tutorials/notebooks/02_detecting_colonies`
+            Step-by-step tutorial for basic colony detection.
+        :doc:`/how_to/notebooks/choose_detection_algorithm`
+            Guide for selecting the right detector for your plate images.
+        :doc:`/explanation/detection_strategies_compared`
+            In-depth comparison of all detection strategies.
+    """
+
+    def __init__(
+            self,
+            detectors: List[Union[ObjectDetector, 'ImagePipeline']] = None,
+            mode: Literal['union', 'intersection', 'overlap'] = 'overlap',
+            min_overlap_ratio: float = 0.0
+    ):
+        super().__init__()
+        self.detectors = detectors if detectors is not None else [
+            OtsuDetector(),
+            RoundPeaksDetector()
+        ]
+        self.mode = mode
+        self.min_overlap_ratio = min_overlap_ratio
+
+    def _operate(self, image: Image) -> Image:
+        """Apply all detectors/pipelines and combine their objmask outputs."""
+
+        if not self.detectors:
+            raise ValueError(
+                    "At least one detector must be provided to CompositeDetector")
+
+        if self.mode not in ['union', 'intersection', 'overlap']:
+            raise ValueError(
+                    f"Invalid mode '{self.mode}'. "
+                    f"Must be 'union', 'intersection', or 'overlap'"
+            )
+
+        # Import here to avoid circular dependency
+        from phenotypic import ImagePipeline
+
+        # Apply all detectors/pipelines and collect masks
+        objmaps = []
+
+        for detector in self.detectors:
+            if isinstance(detector, ImagePipeline):
+                # Apply pipeline (preprocessing + detection)
+                detected_image = detector.apply(image,
+                                                inplace=False,
+                                                reset=False)
+                objmaps.append(detected_image.objmap[:].astype(bool))
+            else:
+                # Apply detector directly (ObjectDetector)
+                detected_image = detector.apply(image, inplace=False)
+                objmaps.append(detected_image.objmap[:].astype(bool))
+
+        # Combine masks based on mode
+        if self.mode == 'union':
+            # Pixel is True if True in ANY mask (logical OR)
+            combined_mask = np.logical_or.reduce(objmaps)
+
+        elif self.mode == 'intersection':
+            # Pixel is True if True in ALL masks (logical AND)
+            combined_mask = np.logical_and.reduce(objmaps)
+
+        elif self.mode == 'overlap':
+            # Keep entire objects from any mask that have mutual overlap
+            if len(objmaps) == 1:
+                # Only one detector, just use its mask
+                combined_mask = objmaps[0]
+            else:
+                # Start with first two masks
+                combined_mask = CompositeDetector._filter_mask_by_overlap_bidirectional(
+                        objmaps[0], objmaps[1]
+                )
+                # For additional masks, progressively filter to keep mutual overlaps
+                for mask in objmaps[2:]:
+                    combined_mask = CompositeDetector._filter_mask_by_overlap_bidirectional(
+                            combined_mask, mask
+                    )
+        else:
+            raise ValueError(
+                    f"Invalid mode '{self.mode}'. "
+                    f"Must be 'union', 'intersection', or 'overlap'"
+            )
+
+        # Set objmask
+        image.objmask[:] = combined_mask > 0
+
+        return image
+
+    @staticmethod
+    def _filter_mask_by_overlap_bidirectional(mask_a, mask_b):
+        """
+        Retain objects in both masks that have mutual overlap.
+
+        Objects are kept if they overlap with objects in the other mask. Returns
+        a single merged mask containing all pixels from mutually-overlapping objects.
+
+        Args:
+            mask_a (np.ndarray): First binary mask (2D boolean or uint8)
+            mask_b (np.ndarray): Second binary mask (2D boolean or uint8)
+
+        Returns:
+            np.ndarray: Merged binary mask with same dtype as mask_a, containing
+                        pixels from objects with mutual overlap
+
+        Raises:
+            ValueError: If masks have incompatible shapes
+        """
+        # Label connected components in both masks
+        labeled_a, _ = label(mask_a)
+        labeled_b, _ = label(mask_b)
+
+        # Handle potential size mismatch by finding overlapping region
+        min_h = min(mask_a.shape[0], mask_b.shape[0])
+        min_w = min(mask_a.shape[1], mask_b.shape[1])
+
+        crop_a = labeled_a[:min_h, :min_w]
+        crop_b = labeled_b[:min_h, :min_w]
+
+        # Find pixels where both masks have objects
+        overlap_region = (crop_a > 0) & (crop_b > 0)
+
+        # Get labels from each mask that appear in overlap region
+        overlapping_labels_a = np.unique(crop_a[overlap_region])
+        overlapping_labels_b = np.unique(crop_b[overlap_region])
+
+        # Remove background label if present
+        overlapping_labels_a = overlapping_labels_a[overlapping_labels_a > 0]
+        overlapping_labels_b = overlapping_labels_b[overlapping_labels_b > 0]
+
+        # Create filtered masks retaining only mutually overlapping objects
+        filtered_a = np.isin(labeled_a, overlapping_labels_a)
+        filtered_b = np.isin(labeled_b, overlapping_labels_b)
+
+        # Merge into single mask
+        merged_mask = filtered_a | filtered_b
+
+        return merged_mask.astype(mask_a.dtype)
+
+    @staticmethod
+    def _filter_mask_by_overlap(mask_to_clean, reference_mask):
+        """
+        Retain only objects in mask that overlap with reference_mask.
+
+        Args:
+            mask_to_clean (np.ndarray): Binary mask to filter (2D boolean or uint8)
+            reference_mask (np.ndarray): Binary mask defining valid regions (2D boolean or uint8)
+
+        Returns:
+            np.ndarray: Filtered binary mask with same shape as mask
+
+        Raises:
+            ValueError: If masks don't have compatible spatial overlap
+        """
+        from skimage.measure import label
+
+        # Label connected components in mask to clean
+        labeled: np.ndarray = label(mask_to_clean)
+        reference_mask = reference_mask > 0
+
+        # Handle potential size mismatch by finding overlapping region
+        min_h = min(mask_to_clean.shape[0], reference_mask.shape[0])
+        min_w = min(mask_to_clean.shape[1], reference_mask.shape[1])
+
+        # Compute intersection in overlapping region
+        intersection = labeled[:min_h, :min_w] * reference_mask[:min_h, :min_w]
+
+        # Find which labels have overlap
+        overlapping_labels = np.unique(intersection[intersection > 0])
+
+        # Create output mask retaining only overlapping objects
+        filtered_mask = np.isin(labeled, overlapping_labels)
+
+        return filtered_mask.astype(mask_to_clean.dtype)

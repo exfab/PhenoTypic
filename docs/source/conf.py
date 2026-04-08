@@ -43,7 +43,6 @@ from pygments.lexers import get_lexer_by_name
 
 try:
     # Try to register ipython2 as ipython3
-    from pygments.lexers import PythonLexer
     from sphinx.highlighting import lexers
 
     lexers["ipython2"] = get_lexer_by_name("ipython3")
@@ -87,6 +86,7 @@ extensions = [
     "sphinx_design",
     "class_members",
     "sphinx_togglebutton",
+    "myst_parser",
 ]
 
 autosummary_generate = True
@@ -130,12 +130,19 @@ suppress_warnings = [
 ]
 
 # Exclude patterns - don't process these files/directories
-exclude_patterns = ["_build", "**.ipynb_checkpoints", "**/auto_examples"]
+exclude_patterns = [
+    "_build",
+    "**.ipynb_checkpoints",
+    "**/auto_examples",
+    "_legacy",
+    "how_to/notebooks/growth_curves.ipynb",
+]
 
 # nbsphinx configuration
 nbsphinx_execute = "auto"
-nbsphinx_allow_errors = True
+nbsphinx_allow_errors = False
 nbsphinx_kernel_name = "python3"
+nbsphinx_timeout = 1800
 
 # Fix for deprecated ipython2 lexer in Jupyter notebooks
 # Map ipython2 to python3 for syntax highlighting
@@ -474,7 +481,7 @@ def generate_downloadables_rst(app):
 
         # Add card
         content.append(f"    .. grid-item-card:: {title}")
-        content.append(f"        :shadow: md")
+        content.append("        :shadow: md")
         content.append("")
         content.append(f"        {description}")
         content.append("")
@@ -485,12 +492,9 @@ def generate_downloadables_rst(app):
     # Collect Jupyter notebooks from examples and tutorials so they can also be
     # offered as downloads on this page.
     notebook_dirs = [
-        # Current locations under user_guide
-        os.path.join(source_dir, "user_guide", "examples", "notebooks"),
-        os.path.join(source_dir, "user_guide", "tutorial", "notebooks"),
-        # Fallback legacy-style locations if they exist
-        os.path.join(source_dir, "examples", "notebooks"),
-        os.path.join(source_dir, "tutorial", "notebooks"),
+        os.path.join(source_dir, "tutorials", "notebooks"),
+        os.path.join(source_dir, "how_to", "notebooks"),
+        os.path.join(source_dir, "extending", "notebooks"),
     ]
 
     # Insert a separate grid for notebooks if we find any

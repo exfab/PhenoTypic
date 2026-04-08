@@ -5,44 +5,42 @@ This section provides detailed API documentation for all Phenotypic modules and 
 
 Image
 -----
+
 .. currentmodule:: phenotypic
 
-.. autosummary::
-    :toctree: api/
-    :caption: Image
-    :template: image_class.rst
+.. toctree::
+   :maxdepth: 2
 
-    Image
-
-.. autosummary::
-    :toctree: api/
-    :template: image_accessor_alt.rst
-
-    Image.rgb
-    Image.gray
-    Image.enh_gray
-    Image.objmask
-    Image.objmap
-    Image.objects
-    Image.color
-
-
+   core/image_methods
+   core/color_space_operations
+   core/visualization_plotting
 
 GridImage
 ---------
-.. currentmodule:: phenotypic
-.. autosummary::
-    :toctree: api/
-    :caption: GridImage
-    :template: image_class.rst
 
-    GridImage
+.. toctree::
+   :maxdepth: 2
 
-.. autosummary::
-    :toctree: api/
-    :template: image_accessor_alt.rst
+   core/grid_image_methods
 
-    GridImage.grid
+
+ImagePipeline
+-------------
+
+.. toctree::
+   :maxdepth: 2
+
+   core/image_pipeline_methods
+
+Reference Pages
+---------------
+
+.. toctree::
+   :maxdepth: 1
+
+   cli_reference
+   config_reference
+   glossary
 
 Modules
 -------
@@ -64,5 +62,5 @@ Modules
    phenotypic.measure
    phenotypic.prefab
    phenotypic.refine
-   phenotypic.tools
+   phenotypic.tools_
    phenotypic.util

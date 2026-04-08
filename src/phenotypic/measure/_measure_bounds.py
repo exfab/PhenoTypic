@@ -2,99 +2,77 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 import pandas as pd
 from skimage.measure import regionprops_table
 
 from phenotypic.abc_ import MeasureFeatures
 
-from ..tools.constants_ import OBJECT, BBOX
+from ..tools_.constants_ import OBJECT
+from ..tools_.measurement_info_ import BBOX
 
 
 class MeasureBounds(MeasureFeatures):
-    """Extract spatial boundaries and centroids of detected microbial colonies.
+    """Extract bounding box coordinates and centroids of detected colonies.
 
-    This class computes the bounding box coordinates and centroid position of each detected colony
-    in the image. These measurements form the foundation for shape analysis, grid alignment assessment,
-    and spatial statistics in colony phenotyping workflows.
+    Compute the axis-aligned bounding box and centroid (geometric and
+    intensity-weighted) for each detected colony. These spatial
+    measurements form the foundation for region-of-interest extraction,
+    grid alignment assessment, and neighbor-distance calculations.
 
-    **Intuition:** Every detected colony occupies a region in the image; understanding its bounds and
-    center is essential for downstream analyses. The bounding box defines the minimal rectangular region
-    containing the colony, while centroids enable distance-based metrics (e.g., grid alignment, spread
-    measurements) and are used to relate colonies to expected well positions in arrayed assays.
+    Best For:
+        - Computing centroids for aligning colonies to expected grid
+          positions in arrayed assays.
+        - Extracting region-of-interest crops for downstream intensity,
+          color, or texture analysis.
+        - Assessing colony positioning relative to plate edges or well
+          boundaries.
 
-    **Use cases (agar plates):**
-    - Establish the spatial footprint of each detected colony for morphological analysis.
-    - Compute centroids for aligning colonies to grid positions in high-throughput assays.
-    - Enable region-of-interest (ROI) extraction for downstream intensity, color, or texture measurements.
-    - Assess colony positioning relative to plate edges to detect spreading beyond well boundaries.
-    - Support grid refinement operations by providing predicted centroid positions for outlier filtering.
-
-    **Caveats:**
-    - Bounding box depends entirely on accurate object segmentation/masking; poor or over-segmented masks
-      yield misleading bounds.
-    - Bounding box is axis-aligned; it may include empty space for rotated or crescent-shaped colonies.
-    - Centroid assumes the colony is a connected component; fragmented or multi-component objects will
-      have unreliable centroid positions.
-    - Boundaries are computed in image pixel coordinates; they must be scaled or transformed if results
-      are used with data in different coordinate systems (e.g., physical microns).
+    Consider Also:
+        - :class:`MeasureShape` for full morphological metrics built on
+          top of bounding box data.
+        - :class:`MeasureGridLinRegStats` for regression-based grid
+          alignment quality using centroid positions.
+        - :class:`MeasureGridSpatial` for neighbor distance calculations
+          using bounding boxes.
 
     Returns:
         pd.DataFrame: Object-level spatial data with columns:
-            - Label: Unique object identifier.
-            - CenterRR, CenterCC: Centroid row and column coordinates.
-            - MinRR, MinCC: Minimum (top-left) row and column of bounding box.
-            - MaxRR, MaxCC: Maximum (bottom-right) row and column of bounding box.
 
-    Examples:
-        .. dropdown:: Extract colony boundaries for a plate image
+            - Label: unique object identifier.
+            - CenterRR, CenterCC: geometric centroid coordinates.
+            - WeightedCenterRR, WeightedCenterCC: intensity-weighted
+              centroid coordinates.
+            - MinRR, MinCC: top-left corner of bounding box.
+            - MaxRR, MaxCC: bottom-right corner of bounding box.
 
-            .. code-block:: python
-
-                from phenotypic import Image
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.measure import MeasureBounds
-
-                # Load image and detect colonies
-                image = Image.from_image_path("colony_plate.jpg")
-                detector = OtsuDetector()
-                image = detector.operate(image)
-
-                # Extract boundaries
-                boundsizer = MeasureBounds()
-                bounds = boundsizer.operate(image)
-                print(bounds.head())
-                # Output: Label, CenterRR, CenterCC, MinRR, MinCC, MaxRR, MaxCC
-
-        .. dropdown:: Use boundaries to extract colony ROIs
-
-            .. code-block:: python
-
-                # Extract a region for each colony for detailed analysis
-                bounds = boundsizer.operate(image)
-                for idx, row in bounds.iterrows():
-                    min_rr, max_rr = int(row['BBOX_MinRR']), int(row['BBOX_MaxRR'])
-                    min_cc, max_cc = int(row['BBOX_MinCC']), int(row['BBOX_MaxCC'])
-                    colony_roi = image.rgb[min_rr:max_rr, min_cc:max_cc]
-                    # Process ROI independently (e.g., color analysis, morphology)
+    See Also:
+        :doc:`/tutorials/notebooks/07_measuring_and_exporting` for a
+        walkthrough of measuring and exporting colony data.
     """
+
+    _measurement_info_class = BBOX
 
     def _operate(self, image: Image) -> pd.DataFrame:
         results = pd.DataFrame(
-            data=regionprops_table(
-                label_image=image.objmap[:], properties=["label", "centroid", "bbox"]
-            )
+                data=regionprops_table(
+                        label_image=image.objmap[:],
+                        intensity_image=image.gray[:],
+                        properties=["label", "centroid", "bbox", "centroid_weighted"]
+                )
         ).rename(
-            columns={
-                "label": OBJECT.LABEL,
-                "centroid-0": str(BBOX.CENTER_RR),
-                "centroid-1": str(BBOX.CENTER_CC),
-                "bbox-0": str(BBOX.MIN_RR),
-                "bbox-1": str(BBOX.MIN_CC),
-                "bbox-2": str(BBOX.MAX_RR),
-                "bbox-3": str(BBOX.MAX_CC),
-            }
+                columns={
+                    "label"              : OBJECT.LABEL,
+                    "centroid-0"         : str(BBOX.CENTER_RR),
+                    "centroid-1"         : str(BBOX.CENTER_CC),
+                    "centroid_weighted-0": BBOX.WEIGHTED_CENTER_RR,
+                    "centroid_weighted-1": BBOX.WEIGHTED_CENTER_CC,
+                    "bbox-0"             : str(BBOX.MIN_RR),
+                    "bbox-1"             : str(BBOX.MIN_CC),
+                    "bbox-2"             : str(BBOX.MAX_RR),
+                    "bbox-3"             : str(BBOX.MAX_CC),
+                }
         )
 
         return results

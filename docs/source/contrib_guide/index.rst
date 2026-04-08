@@ -1,10 +1,7 @@
 Developer Guide
 ===============
 
-This section provides comprehensive documentation for developers who want to contribute to Phenotypic or extend its functionality.
-
-.. note::
-   The Developer Guide is currently under development. The following sections will be available soon.
+This section provides documentation for developers who want to contribute to PhenoTypic or extend its functionality.
 
 .. toctree::
    :maxdepth: 2
@@ -15,21 +12,19 @@ This section provides comprehensive documentation for developers who want to con
    extending
    testing
    documentation
+   docstring_style
 
 Placeholder Pages
 -----------------
 
 **Architecture Overview** (Coming Soon)
-   An overview of Phenotypic's architecture, design patterns, and core components.
+   An overview of PhenoTypic's architecture, design patterns, and core components.
 
 **Contributing Guidelines** (Coming Soon)
-   Learn how to contribute to Phenotypic, including coding standards, pull request workflow, and issue reporting.
+   Learn how to contribute to PhenoTypic, including coding standards, pull request workflow, and issue reporting.
 
-**Extending Phenotypic** (Coming Soon)
-   Detailed guides on how to create custom modules, pipelines, and integrations with Phenotypic.
+**Extending PhenoTypic** (Coming Soon)
+   Detailed guides on how to create custom modules, pipelines, and integrations with PhenoTypic.
 
 **Testing Framework** (Coming Soon)
-   Information about Phenotypic's testing infrastructure and how to write effective tests.
-
-**Documentation Guide** (Coming Soon)
-   Guidelines for writing and maintaining Phenotypic's documentation.
+   Information about PhenoTypic's testing infrastructure and how to write effective tests.

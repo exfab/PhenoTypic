@@ -2,137 +2,67 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import numpy as np
-
-from phenotypic.tools.constants_ import OBJECT
+from phenotypic.tools_.constants_ import OBJECT
 
 if TYPE_CHECKING:
-    from phenotypic import Image
-from enum import Enum
-from functools import partial
+    from phenotypic._core._image import Image
 
 import pandas as pd
 
-from phenotypic.abc_ import MeasureFeatures, MeasurementInfo
-
-
-class INTENSITY(MeasurementInfo):
-    @classmethod
-    def category(cls):
-        return "Intensity"
-
-    INTEGRATED_INTENSITY = ("IntegratedIntensity", "The sum of the object's pixels")
-    MINIMUM_INTENSITY = ("MinimumIntensity", "The minimum intensity of the object")
-    MAXIMUM_INTENSITY = ("MaximumIntensity", "The maximum intensity of the object")
-    MEAN_INTENSITY = ("MeanIntensity", "The mean intensity of the object")
-    MEDIAN_INTENSITY = ("MedianIntensity", "The median intensity of the object")
-    STANDARD_DEVIATION_INTENSITY = (
-        "StandardDeviationIntensity",
-        "The standard deviation of the object",
-    )
-    COEFFICIENT_VARIANCE_INTENSITY = (
-        "CoefficientVarianceIntensity",
-        "The coefficient of variation of the object",
-    )
-    Q1_INTENSITY = (
-        "LowerQuartileIntensity",
-        "The lower quartile intensity of the object",
-    )
-    Q3_INTENSITY = (
-        "UpperQuartileIntensity",
-        "The upper quartile intensity of the object",
-    )
-    IQR_INTENSITY = (
-        "InterquartileRangeIntensity",
-        "The interquartile range of the object",
-    )
+from phenotypic.abc_ import MeasureFeatures
+from ..tools_.measurement_info_ import INTENSITY
 
 
 class MeasureIntensity(MeasureFeatures):
-    """Measure grayscale intensity statistics of detected microbial colonies.
+    """Measure grayscale intensity statistics of detected colonies.
 
-    This class computes quantitative intensity metrics from the grayscale representation of each detected
-    colony, including integrated intensity (total brightness), percentiles (min, Q1, median, Q3, max),
-    and variability measures (standard deviation, coefficient of variation). These statistics reflect
-    colony optical density, biomass, and internal heterogeneity on agar plates.
+    Compute per-colony intensity metrics from the grayscale channel:
+    integrated intensity, percentiles (min, Q1, median, Q3, max),
+    standard deviation, coefficient of variation, and area-normalized
+    density. These statistics reflect colony optical density, biomass
+    accumulation, and internal heterogeneity.
 
-    **Intuition:** Colony brightness in grayscale images correlates with biomass accumulation, cell
-    density, and optical density. A low average intensity indicates sparse or translucent growth, while
-    high intensity suggests dense mycelial mat or concentrated cells. Intensity variance within a colony
-    reveals sectoring, differential growth rates, or uneven mycelial coverage. Integrated intensity
-    (sum of all pixels) scales with both biomass and area, making it useful for growth kinetics tracking.
+    Best For:
+        - Tracking colony growth over time via integrated intensity as
+          an optical-density proxy.
+        - Detecting metabolically stressed or slow-growing colonies
+          through low mean intensity.
+        - Identifying sectored or chimeric colonies by high
+          within-colony intensity variance.
+        - Automated colony picking based on biomass thresholds.
 
-    **Use cases (agar plates):**
-    - Track colony growth over time via integrated intensity measurements (approximates optical density
-      without requiring liquid suspension).
-    - Detect metabolically stressed or slow-growing colonies via low mean intensity.
-    - Identify sectored, mutant, or chimeric colonies by high intensity variance within a single object.
-    - Assess pigmentation or mycelial density differences between wild-type and mutant strains.
-    - Enable automated colony picking strategies based on intensity thresholds (e.g., select only colonies
-      above a biomass threshold).
-
-    **Caveats:**
-    - Intensity depends critically on imaging conditions (lighting, exposure, camera gain); standardize
-      these settings across plates and experiments for reliable comparisons.
-    - Grayscale conversion to luminance (Y channel) may not capture all visual information from colored
-      agar or pigmented colonies; use enhanced grayscale (enh_gray) for better contrast, or measure color
-      separately.
-    - Integrated intensity mixes area and brightness; normalize by area or use intensity density (mean)
-      for size-independent comparisons.
-    - Shadows or uneven lighting on the plate cause local intensity artifacts; preprocessing with background
-      subtraction or illumination correction may improve quality.
-    - Outliers (very bright or very dark pixels from debris, bubble, or focus issues) can inflate standard
-      deviation; use robust statistics (IQR) for noise-resistant variability assessment.
+    Consider Also:
+        - :class:`MeasureSize` for lightweight area and integrated
+          intensity without full statistics.
+        - :class:`MeasureColor` for multi-channel color statistics when
+          pigmentation is relevant.
+        - :class:`MeasureTexture` for surface-roughness features that
+          complement intensity metrics.
 
     Returns:
         pd.DataFrame: Object-level intensity statistics with columns:
-            - Label: Unique object identifier.
-            - IntegratedIntensity: Sum of all grayscale pixel values in the colony.
-            - MinimumIntensity, MaximumIntensity: Range of intensity values.
-            - MeanIntensity, MedianIntensity: Central tendency (mean more sensitive to outliers).
-            - LowerQuartileIntensity, UpperQuartileIntensity: 25th and 75th percentiles (robust measures).
-            - InterquartileRangeIntensity: Q3 - Q1 (robust measure of spread).
-            - StandardDeviationIntensity: Sample standard deviation.
-            - CoefficientVarianceIntensity: Normalized variability (std dev / mean, unitless).
 
-    Examples:
-        .. dropdown:: Measure colony biomass via intensity
+            - Label, IntegratedIntensity, MinimumIntensity,
+              MaximumIntensity, MeanIntensity, MedianIntensity.
+            - LowerQuartileIntensity, UpperQuartileIntensity,
+              InterquartileRangeIntensity.
+            - StandardDeviationIntensity, CoefficientVarianceIntensity.
+            - Density (integrated intensity / area), ConvexDensity
+              (integrated intensity / convex area).
 
-            .. code-block:: python
-
-                from phenotypic import Image
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.measure import MeasureIntensity
-
-                # Load and process plate image
-                image = Image.from_image_path("colony_plate_t24h.jpg")
-                detector = OtsuDetector()
-                image = detector.operate(image)
-
-                # Measure intensity to estimate biomass
-                measurer = MeasureIntensity()
-                intensity = measurer.operate(image)
-
-                # Track colonies by integrated intensity (proxy for biomass)
-                high_biomass = intensity[intensity['Intensity_IntegratedIntensity'] > 100000]
-                print(f"Colonies with high biomass (>100k): {len(high_biomass)}")
-
-        .. dropdown:: Identify heterogeneous or sectored colonies
-
-            .. code-block:: python
-
-                # Measure intensity variance to detect sectoring
-                intensity = measurer.operate(image)
-
-                # Colonies with high variance may be sectored or chimeric
-                sectored = intensity[
-                    intensity['Intensity_CoefficientVarianceIntensity'] >
-                    intensity['Intensity_CoefficientVarianceIntensity'].quantile(0.75)
-                ]
-                print(f"Potentially sectored colonies: {list(sectored.index)}")
+    See Also:
+        :doc:`/tutorials/notebooks/07_measuring_and_exporting` for a
+        walkthrough of measuring and exporting colony data.
+        :doc:`/explanation/measurement_metrics_biological_meaning` for
+        interpreting intensity metrics in a biological context.
     """
 
+    _measurement_info_class = INTENSITY
+
     def _operate(self, image: Image) -> pd.DataFrame:
+        from phenotypic.measure._measure_shape import MeasureShape
+        from ..tools_.measurement_info_ import SHAPE
+
         intensity_matrix, objmap = image.gray[:].copy(), image.objmap[:].copy()
         measurements = {
             str(INTENSITY.INTEGRATED_INTENSITY)        : self._calculate_sum(
@@ -173,6 +103,17 @@ class MeasureIntensity(MeasureFeatures):
         measurements = pd.DataFrame(measurements)
         measurements.insert(
                 loc=0, column=OBJECT.LABEL, value=image.objects.labels2series()
+        )
+        shape_measurements = MeasureShape().measure(image)
+
+        measurements[INTENSITY.DENSITY] = (
+                measurements[INTENSITY.INTEGRATED_INTENSITY]
+                / shape_measurements[SHAPE.AREA]
+        )
+
+        measurements[INTENSITY.CONVEX_DENSITY] = (
+                measurements[INTENSITY.INTEGRATED_INTENSITY]
+                / shape_measurements[SHAPE.CONVEX_AREA]
         )
         return measurements
 

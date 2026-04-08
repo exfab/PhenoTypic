@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 import numpy as np
 from skimage.exposure import rescale_intensity
@@ -12,40 +12,38 @@ from ..abc_ import ImageEnhancer
 
 
 class ContrastStretching(ImageEnhancer):
-    """
-    Contrast stretching for plate images.
+    """Stretch the intensity range of detect_mat to fill the full dynamic range.
 
-    Rescales intensities based on chosen lower/upper percentiles so the bulk of
-    pixel values expands to the full display range. For agar plate colony images,
-    this often improves separability between colonies and agar by compressing
-    extreme outliers (e.g., specular highlights, deep shadows) while expanding the
-    dynamic range where colonies reside.
+    Rescales pixel values based on lower and upper percentiles, compressing
+    outliers (specular highlights, deep shadows) while expanding the range
+    where colony intensities reside. Simpler and faster than CLAHE, with no
+    local tile artifacts.
 
-    Use cases (agar plates):
-    - Normalize exposure across scans or camera shots before thresholding.
-    - Recover contrast on low-contrast plates without amplifying noise as much as
-      aggressive histogram equalization might.
-    - Prepare images for global methods (e.g., Otsu) or for visualization.
+    Best For:
+        - Plates with narrow histograms (under-exposed or low-contrast).
+        - Normalizing exposure across different imaging sessions.
+        - Quick preprocessing before global thresholding (Otsu, Triangle).
 
-    Tuning and effects:
-    - lower_percentile: Increasing this value clips more of the darkest pixels
-      (e.g., shadows/edge artifacts), which brightens the image and can reveal
-      translucent colonies. Too high can erase true dark background structure.
-    - upper_percentile: Decreasing this value clips more highlights (e.g., glare,
-      dust reflections), preventing them from dominating contrast. Too low flattens
-      bright colonies or pigmented regions.
+    Consider Also:
+        - :class:`CLAHE` when illumination varies spatially across the plate.
+        - :class:`HomomorphicFilter` when the primary issue is a brightness
+          gradient rather than narrow dynamic range.
 
-    Caveats:
-    - If outliers are biological signals (very bright colonies), heavy clipping can
-      reduce their apparent intensity and bias measurements.
-    - Contrast stretching is global; it will not fix spatially varying illumination
-      on its own (consider `GaussianSubtract` or `RollingBallRemoveBG`).
+    Args:
+        lower_percentile: Dark clipping point. Pixels below this percentile
+            are mapped to the minimum. Typical range: 1--5. Default: 2.
+        upper_percentile: Bright clipping point. Pixels above this percentile
+            are mapped to the maximum. Typical range: 95--99. Default: 98.
 
-    Parameters:
-        lower_percentile (int): Lower percentile used to define the input range
-            for rescaling. Pixels below this are mapped to the minimum.
-        upper_percentile (int): Upper percentile used to define the input range
-            for rescaling. Pixels above this are mapped to the maximum.
+    Returns:
+        Image: Input image with ``detect_mat`` rescaled to the full dynamic
+        range. ``rgb`` and ``gray`` are unchanged.
+
+    See Also:
+        :doc:`/how_to/notebooks/enhance_low_contrast` for a comparison of
+        contrast enhancement methods.
+        :doc:`/explanation/what_enhancement_does` for how enhancement fits
+        into the pipeline model.
     """
 
     def __init__(self, lower_percentile: int = 2, upper_percentile: int = 98):
@@ -63,9 +61,11 @@ class ContrastStretching(ImageEnhancer):
 
     def _operate(self, image: Image) -> Image:
         p_lower, p_upper = np.percentile(
-            image.enh_gray[:], (self.lower_percentile, self.upper_percentile)
+                image.detect_mat[:], (self.lower_percentile, self.upper_percentile)
         )
-        image.enh_gray[:] = rescale_intensity(
-            image=image.enh_gray[:], in_range=(p_lower, p_upper)
+        image.detect_mat[:] = rescale_intensity(
+                image=image.detect_mat[:],
+                in_range=(p_lower, p_upper),
+                out_range=(0, 1),
         )
         return image

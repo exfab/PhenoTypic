@@ -1,3 +1,6 @@
+# Worktrees
+.worktrees/
+
 # Python
 __pycache__/
 *.pyc
@@ -6,15 +9,17 @@ __pycache__/
 .Python
 .pytest_cache/
 *.egg-info/
+.mypy_cache/
 phenotypic.egg-info/
 
 # Virtual environments
 .venv/
 .junie/
+.ai/
 
 # Jupyter Notebook
 .ipynb_checkpoints/
-docs/source/user_guide/auto_examples/
+docs/deprecated/user_guide/auto_examples/
 
 # IDEs and editors
 .vscode/
@@ -44,6 +49,7 @@ debug/*.log
 *.h5
 .run/
 *.zip
+tmp/
 
 # Backup files
 **/*.$*.bkp
@@ -53,5 +59,6 @@ debug/*.log
 # Development tools
 .ropeproject/
 .git.backup/
-AGENTS.md
-CLAUDE.md
+
+# pytest-testmon database (local only, not for version control)
+.testmondata*

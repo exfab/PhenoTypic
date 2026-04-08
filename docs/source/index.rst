@@ -10,8 +10,9 @@ PhenoTypic
    A modular framework for bioimage analysis and visualization
 
 
-Welcome to Phenotypic's documentation. Here you'll find comprehensive guides and examples to help you get the most out of Phenotypic.
-
+Welcome to PhenoTypic's documentation. Whether you're detecting colonies for the
+first time or building custom analysis pipelines, these guides will help you get
+started.
 
 
 .. grid:: 1 2 3 3
@@ -19,67 +20,85 @@ Welcome to Phenotypic's documentation. Here you'll find comprehensive guides and
    :padding: 2 2 0 0
    :class-container: sd-text-center
 
-   .. grid-item-card::  User guide
+   .. grid-item-card::  Tutorials
       :img-top: ./_static/assets/200x150/user_guide_book.svg
       :class-card: intro-card
       :shadow: md
 
-      The user guide explains how to get started as well as an in-depth overview of the
-      key concepts of Phenotypic with useful background information and explanation.
+      Step-by-step lessons that take you from loading your first plate image
+      to building complete analysis pipelines. Start here if you're new.
 
       +++
 
-      .. button-ref:: user_guide/index
+      .. button-ref:: tutorials/index
          :ref-type: doc
          :click-parent:
          :color: secondary
          :expand:
 
-         To the user guide
+         Start learning
 
-
-   .. grid-item-card:: Examples
+   .. grid-item-card:: How-To Guides
       :img-top: ./_static/assets/200x150/examples.svg
       :class-card: intro-card
       :shadow: md
 
-      The Examples provide a hands-on introduction to *Phenotypic*.
+      Task-oriented recipes for specific problems: correcting images, choosing
+      detectors, measuring colonies, running batch jobs, and more.
 
       +++
 
-      .. button-ref:: user_guide/examples/index
+      .. button-ref:: how_to/index
          :ref-type: doc
          :click-parent:
          :color: secondary
          :expand:
 
-         To the examples
+         Find a recipe
 
-   .. grid-item-card::  Downloads
+   .. grid-item-card::  Explanation
+      :img-top: ./_static/assets/200x150/dev_guide.svg
+      :class-card: intro-card
+      :shadow: md
+
+      Conceptual guides that explain how and why things work: color spaces,
+      detection strategies, measurement metrics, and the pipeline model.
+
+      +++
+
+      .. button-ref:: explanation/index
+         :ref-type: doc
+         :click-parent:
+         :color: secondary
+         :expand:
+
+         Understand the concepts
+
+   .. grid-item-card::  Extending
       :img-top: ./_static/assets/200x150/downloads.svg
       :class-card: intro-card
       :shadow: md
 
-      Downloadable helper scripts for deploying PhenoTypic at scale.
+      Build your own operations, detectors, and dashboards on top of
+      PhenoTypic's modular architecture.
 
       +++
 
-      .. button-ref:: downloads
+      .. button-ref:: extending/index
          :ref-type: doc
          :click-parent:
          :color: secondary
          :expand:
 
-         To downloads!
+         Start extending
 
-   .. grid-item-card::  API reference
+   .. grid-item-card::  API Reference
       :img-top: ./_static/assets/200x150/api_ref_sign.svg
       :class-card: intro-card
       :shadow: md
 
-      The reference guide contains the detailed description of
-      the Phenotypic API. The reference describes in detail how the methods work and which parameters can
-      be used. It assumes that you have an understanding of the key concepts.
+      Detailed reference for every public class, function, and parameter.
+      Includes CLI reference, configuration, and glossary.
 
       +++
 
@@ -91,35 +110,24 @@ Welcome to Phenotypic's documentation. Here you'll find comprehensive guides and
 
          To the API reference
 
-   .. grid-item-card::  Contributor guide
-      :img-top: ./_static/assets/200x150/dev_guide.svg
-      :class-card: intro-card
-      :shadow: md
-
-      Phenotypic's strength is in its ability to integrate new modules and workflows. 
-      Learn how to make your own module and contribute to the codebase here!
-
-      +++
-
-      .. button-ref:: contrib_guide/index
-         :ref-type: doc
-         :click-parent:
-         :color: secondary
-         :expand:
-
-         To the contributor guide\
-
-
-   .. grid-item-card::  Report a problem
+   .. grid-item-card::  Report a Problem
       :img-top: ./_static/assets/200x150/contact_us.svg
       :class-card: intro-card
       :shadow: md
       :link: https://github.com/exfab/PhenoTypic/issues
       :link-type: url
 
-      Notice a problem or need help? Open an issue on GitHub and add a label so we can help you faster.
+      Notice a problem or need help? Open an issue on GitHub and add a label
+      so we can help you faster.
 
       +++
+
+      .. button-link:: https://github.com/exfab/PhenoTypic/issues
+         :click-parent:
+         :color: secondary
+         :expand:
+
+         Report an issue
 
 
 .. toctree::
@@ -128,7 +136,11 @@ Welcome to Phenotypic's documentation. Here you'll find comprehensive guides and
    :hidden:
    :titlesonly:
 
-   user_guide/index
+   Installation <installation>
+   tutorials/index
+   how_to/index
+   explanation/index
+   extending/index
    api_reference/index
    contrib_guide/index
    downloads

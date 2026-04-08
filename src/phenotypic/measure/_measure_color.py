@@ -3,453 +3,70 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 import numpy as np
 import pandas as pd
-import colour
 import logging
 
-from phenotypic.abc_ import MeasureFeatures, MeasurementInfo
-from phenotypic.tools.constants_ import OBJECT
+from phenotypic.abc_ import MeasureFeatures
+from phenotypic.tools_.constants_ import OBJECT
+from ..tools_.measurement_info_ import ColorXYZ, Colorxy, ColorLab, ColorHSV
 
 logger = logging.getLogger(__name__)
 
 
-class ColorXYZ(MeasurementInfo):
-    @classmethod
-    def category(cls):
-        return "ColorXYZ"
-
-    X_MINIMUM = ("CieXMin", "The minimum X value of the object in CIE XYZ color space")
-    X_Q1 = (
-        "CieXQ1",
-        "The lower quartile (Q1) X value of the object in CIE XYZ color space",
-    )
-    X_MEAN = ("CieXMean", "The mean X value of the object in CIE XYZ color space")
-    X_MEDIAN = ("CieXMedian", "The median X value of the object in CIE XYZ color space")
-    X_Q3 = (
-        "CieXQ3",
-        "The upper quartile (Q3) X value of the object in CIE XYZ color space",
-    )
-    X_MAXIMUM = ("CieXMax", "The maximum X value of the object in CIE XYZ color space")
-    X_STDDEV = (
-        "CieXStdDev",
-        "The standard deviation of the X value of the object in CIE XYZ color space",
-    )
-    X_COEFF_VARIANCE = (
-        "CieXCoeffVar",
-        "The coefficient of variation of the X value of the object in CIE XYZ color space",
-    )
-
-    @classmethod
-    def cieX_headers(cls):
-        return [
-            str(cls.X_MINIMUM),
-            str(cls.X_Q1),
-            str(cls.X_MEAN),
-            str(cls.X_MEDIAN),
-            str(cls.X_Q3),
-            str(cls.X_MAXIMUM),
-            str(cls.X_STDDEV),
-            str(cls.X_COEFF_VARIANCE),
-        ]
-
-    Y_MINIMUM = ("CieYMin", "The minimum Y value of the object in CIE XYZ color space")
-    Y_Q1 = (
-        "CieYQ1",
-        "The lower quartile (Q1) Y value of the object in CIE XYZ color space",
-    )
-    Y_MEAN = ("CieYMean", "The mean Y value of the object in CIE XYZ color space")
-    Y_MEDIAN = ("CieYMedian", "The median Y value of the object in CIE XYZ color space")
-    Y_Q3 = (
-        "CieYQ3",
-        "The upper quartile (Q3) Y value of the object in CIE XYZ color space",
-    )
-    Y_MAXIMUM = ("CieYMax", "The maximum Y value of the object in CIE XYZ color space")
-    Y_STDDEV = (
-        "CieYStdDev",
-        "The standard deviation of the Y value of the object in CIE XYZ color space",
-    )
-    Y_COEFF_VARIANCE = (
-        "CieYCoeffVar",
-        "The coefficient of variation of the Y value of the object in CIE XYZ color space",
-    )
-
-    @classmethod
-    def cieY_headers(cls):
-        return [
-            str(cls.Y_MINIMUM),
-            str(cls.Y_Q1),
-            str(cls.Y_MEAN),
-            str(cls.Y_MEDIAN),
-            str(cls.Y_Q3),
-            str(cls.Y_MAXIMUM),
-            str(cls.Y_STDDEV),
-            str(cls.Y_COEFF_VARIANCE),
-        ]
-
-    Z_MINIMUM = ("CieZMin", "The minimum Z value of the object in CIE XYZ color space")
-    Z_Q1 = (
-        "CieZQ1",
-        "The lower quartile (Q1) Z value of the object in CIE XYZ color space",
-    )
-    Z_MEAN = ("CieZMean", "The mean Z value of the object in CIE XYZ color space")
-    Z_MEDIAN = ("CieZMedian", "The median Z value of the object in CIE XYZ color space")
-    Z_Q3 = (
-        "CieZQ3",
-        "The upper quartile (Q3) Z value of the object in CIE XYZ color space",
-    )
-    Z_MAXIMUM = ("CieZMax", "The maximum Z value of the object in CIE XYZ color space")
-    Z_STDDEV = (
-        "CieZStdDev",
-        "The standard deviation of the Z value of the object in CIE XYZ color space",
-    )
-    Z_COEFF_VARIANCE = (
-        "CieZCoeffVar",
-        "The coefficient of variation of the Z value of the object in CIE XYZ color space",
-    )
-
-    @classmethod
-    def cieZ_headers(cls):
-        return [
-            str(cls.Z_MINIMUM),
-            str(cls.Z_Q1),
-            str(cls.Z_MEAN),
-            str(cls.Z_MEDIAN),
-            str(cls.Z_Q3),
-            str(cls.Z_MAXIMUM),
-            str(cls.Z_STDDEV),
-            str(cls.Z_COEFF_VARIANCE),
-        ]
-
-
-class Colorxy(MeasurementInfo):
-    @classmethod
-    def category(cls):
-        return "Colorxy"
-
-    x_MINIMUM = ("xMin", "The minimum chromaticity x coordinate of the object")
-    x_Q1 = ("xQ1", "The lower quartile (Q1) chromaticity x coordinate of the object")
-    x_MEAN = ("xMean", "The mean chromaticity x coordinate of the object")
-    x_MEDIAN = ("xMedian", "The median chromaticity x coordinate of the object")
-    x_Q3 = ("xQ3", "The upper quartile (Q3) chromaticity x coordinate of the object")
-    x_MAXIMUM = ("xMax", "The maximum chromaticity x coordinate of the object")
-    x_STDDEV = (
-        "xStdDev",
-        "The standard deviation of the chromaticity x coordinate of the object",
-    )
-    x_COEFF_VARIANCE = (
-        "xCoeffVar",
-        "The coefficient of variation of the chromaticity x coordinate of the object",
-    )
-
-    @classmethod
-    def x_headers(cls):
-        return [
-            str(cls.x_MINIMUM),
-            str(cls.x_Q1),
-            str(cls.x_MEAN),
-            str(cls.x_MEDIAN),
-            str(cls.x_Q3),
-            str(cls.x_MAXIMUM),
-            str(cls.x_STDDEV),
-            str(cls.x_COEFF_VARIANCE),
-        ]
-
-    y_MINIMUM = ("yMin", "The minimum chromaticity y coordinate of the object")
-    y_Q1 = ("yQ1", "The lower quartile (Q1) chromaticity y coordinate of the object")
-    y_MEAN = ("yMean", "The mean chromaticity y coordinate of the object")
-    y_MEDIAN = ("yMedian", "The median chromaticity y coordinate of the object")
-    y_Q3 = ("yQ3", "The upper quartile (Q3) chromaticity y coordinate of the object")
-    y_MAXIMUM = ("yMax", "The maximum chromaticity y coordinate of the object")
-    y_STDDEV = (
-        "yStdDev",
-        "The standard deviation of the chromaticity y coordinate of the object",
-    )
-    y_COEFF_VARIANCE = (
-        "yCoeffVar",
-        "The coefficient of variation of the chromaticity y coordinate of the object",
-    )
-
-    @classmethod
-    def y_headers(cls):
-        return [
-            str(cls.y_MINIMUM),
-            str(cls.y_Q1),
-            str(cls.y_MEAN),
-            str(cls.y_MEDIAN),
-            str(cls.y_Q3),
-            str(cls.y_MAXIMUM),
-            str(cls.y_STDDEV),
-            str(cls.y_COEFF_VARIANCE),
-        ]
-
-
-class ColorLab(MeasurementInfo):
-    @classmethod
-    def category(cls):
-        return "ColorLab"
-
-    L_STAR_MINIMUM = ("L*Min", "The minimum L* value of the object")
-    L_STAR_Q1 = ("L*Q1", "The lower quartile (Q1) L* value of the object")
-    L_STAR_MEAN = ("L*Mean", "The mean L* value of the object")
-    L_STAR_MEDIAN = ("L*Median", "The median L* value of the object")
-    L_STAR_Q3 = ("L*Q3", "The upper quartile (Q3) L* value of the object")
-    L_STAR_MAXIMUM = ("L*Max", "The maximum L* value of the object")
-    L_STAR_STDDEV = ("L*StdDev", "The standard deviation of the L* value of the object")
-    L_STAR_COEFF_VARIANCE = (
-        "L*CoeffVar",
-        "The coefficient of variation of the L* value of the object",
-    )
-
-    @classmethod
-    def l_star_headers(cls):
-        return [
-            str(cls.L_STAR_MINIMUM),
-            str(cls.L_STAR_Q1),
-            str(cls.L_STAR_MEAN),
-            str(cls.L_STAR_MEDIAN),
-            str(cls.L_STAR_Q3),
-            str(cls.L_STAR_MAXIMUM),
-            str(cls.L_STAR_STDDEV),
-            str(cls.L_STAR_COEFF_VARIANCE),
-        ]
-
-    A_STAR_MINIMUM = ("a*Min", "The minimum a* value of the object")
-    A_STAR_Q1 = ("a*Q1", "The lower quartile (Q1) a* value of the object")
-    A_STAR_MEAN = ("a*Mean", "The mean a* value of the object")
-    A_STAR_MEDIAN = ("a*Median", "The median a* value of the object")
-    A_STAR_Q3 = ("a*Q3", "The upper quartile (Q3) a* value of the object")
-    A_STAR_MAXIMUM = ("a*Max", "The maximum a* value of the object")
-    A_STAR_STDDEV = ("a*StdDev", "The standard deviation of the a* value of the object")
-    A_STAR_COEFF_VARIANCE = (
-        "a*CoeffVar",
-        "The coefficient of variation of the a* value of the object",
-    )
-
-    @classmethod
-    def a_star_headers(cls):
-        return [
-            str(cls.A_STAR_MINIMUM),
-            str(cls.A_STAR_Q1),
-            str(cls.A_STAR_MEAN),
-            str(cls.A_STAR_MEDIAN),
-            str(cls.A_STAR_Q3),
-            str(cls.A_STAR_MAXIMUM),
-            str(cls.A_STAR_STDDEV),
-            str(cls.A_STAR_COEFF_VARIANCE),
-        ]
-
-    B_STAR_MINIMUM = ("b*Min", "The minimum b* value of the object")
-    B_STAR_Q1 = ("b*Q1", "The lower quartile (Q1) b* value of the object")
-    B_STAR_MEAN = ("b*Mean", "The mean b* value of the object")
-    B_STAR_MEDIAN = ("b*Median", "The median b* value of the object")
-    B_STAR_Q3 = ("b*Q3", "The upper quartile (Q3) b* value of the object")
-    B_STAR_MAXIMUM = ("b*Max", "The maximum b* value of the object")
-    B_STAR_STDDEV = ("b*StdDev", "The standard deviation of the b* value of the object")
-    B_STAR_COEFF_VARIANCE = (
-        "b*CoeffVar",
-        "The coefficient of variation of the b* value of the object",
-    )
-
-    @classmethod
-    def b_star_headers(cls):
-        return [
-            str(cls.B_STAR_MINIMUM),
-            str(cls.B_STAR_Q1),
-            str(cls.B_STAR_MEAN),
-            str(cls.B_STAR_MEDIAN),
-            str(cls.B_STAR_Q3),
-            str(cls.B_STAR_MAXIMUM),
-            str(cls.B_STAR_STDDEV),
-            str(cls.B_STAR_COEFF_VARIANCE),
-        ]
-
-    CHROMA_EST_MEAN = (
-        "ChromaEstimatedMean",
-        r"The mean chroma estimation of the object calculated using :math:`\(sqrt{a^{*}_{mean}^2 + b^{*}_{mean})^2}`",
-    )
-    CHROMA_EST_MEDIAN = (
-        "ChromaEstimatedMedian",
-        r"The median chroma estimation of the object using :math:`\sqrt({a*_{median}^2 + b*_{median})^2}`",
-    )
-
-
-class ColorHSV(MeasurementInfo):
-    @classmethod
-    def category(cls):
-        return "ColorHSV"
-
-    HUE_MINIMUM = ("HueMin", "The minimum hue of the object")
-    HUE_Q1 = ("HueQ1", "The lower quartile (Q1) hue of the object")
-    HUE_MEAN = ("HueMean", "The mean hue of the object")
-    HUE_MEDIAN = ("HueMedian", "The median hue of the object")
-    HUE_Q3 = ("HueQ3", "The upper quartile (Q3) hue of the object")
-    HUE_MAXIMUM = ("HueMax", "The maximum hue of the object")
-    HUE_STDDEV = ("HueStdDev", "The standard deviation of the hue of the object")
-    HUE_COEFF_VARIANCE = (
-        "HueCoeffVar",
-        "The coefficient of variation of the hue of the object",
-    )
-
-    @classmethod
-    def hue_headers(cls):
-        return [
-            str(cls.HUE_MINIMUM),
-            str(cls.HUE_Q1),
-            str(cls.HUE_MEAN),
-            str(cls.HUE_MEDIAN),
-            str(cls.HUE_Q3),
-            str(cls.HUE_MAXIMUM),
-            str(cls.HUE_STDDEV),
-            str(cls.HUE_COEFF_VARIANCE),
-        ]
-
-    SATURATION_MINIMUM = ("SaturationMin", "The minimum saturation of the object")
-    SATURATION_Q1 = ("SaturationQ1", "The lower quartile (Q1) saturation of the object")
-    SATURATION_MEAN = ("SaturationMean", "The mean saturation of the object")
-    SATURATION_MEDIAN = ("SaturationMedian", "The median saturation of the object")
-    SATURATION_Q3 = ("SaturationQ3", "The upper quartile (Q3) saturation of the object")
-    SATURATION_MAXIMUM = ("SaturationMax", "The maximum saturation of the object")
-    SATURATION_STDDEV = (
-        "SaturationStdDev",
-        "The standard deviation of the saturation of the object",
-    )
-    SATURATION_COEFF_VARIANCE = (
-        "SaturationCoeffVar",
-        "The coefficient of variation of the saturation of the object",
-    )
-
-    @classmethod
-    def saturation_headers(cls):
-        return [
-            str(cls.SATURATION_MINIMUM),
-            str(cls.SATURATION_Q1),
-            str(cls.SATURATION_MEAN),
-            str(cls.SATURATION_MEDIAN),
-            str(cls.SATURATION_Q3),
-            str(cls.SATURATION_MAXIMUM),
-            str(cls.SATURATION_STDDEV),
-            str(cls.SATURATION_COEFF_VARIANCE),
-        ]
-
-    BRIGHTNESS_MINIMUM = ("BrightnessMin", "The minimum brightness of the object")
-    BRIGHTNESS_Q1 = ("BrightnessQ1", "The lower quartile (Q1) brightness of the object")
-    BRIGHTNESS_MEAN = ("BrightnessMean", "The mean brightness of the object")
-    BRIGHTNESS_MEDIAN = ("BrightnessMedian", "The median brightness of the object")
-    BRIGHTNESS_Q3 = ("BrightnessQ3", "The upper quartile (Q3) brightness of the object")
-    BRIGHTNESS_MAXIMUM = ("BrightnessMax", "The maximum brightness of the object")
-    BRIGHTNESS_STDDEV = (
-        "BrightnessStdDev",
-        "The standard deviation of the brightness of the object",
-    )
-    BRIGHTNESS_COEFF_VARIANCE = (
-        "BrightnessCoeffVar",
-        "The coefficient of variation of the brightness of the object",
-    )
-
-    @classmethod
-    def brightness_headers(cls):
-        return [
-            str(cls.BRIGHTNESS_MINIMUM),
-            str(cls.BRIGHTNESS_Q1),
-            str(cls.BRIGHTNESS_MEAN),
-            str(cls.BRIGHTNESS_MEDIAN),
-            str(cls.BRIGHTNESS_Q3),
-            str(cls.BRIGHTNESS_MAXIMUM),
-            str(cls.BRIGHTNESS_STDDEV),
-            str(cls.BRIGHTNESS_COEFF_VARIANCE),
-        ]
-
-
 class MeasureColor(MeasureFeatures):
-    """Measure color characteristics of colonies across multiple perceptual color spaces.
+    """Measure colony color statistics across multiple perceptual color spaces.
 
-    This class extracts quantitative color statistics from segmented colonies using CIE XYZ,
-    chromaticity (xy), CIE Lab (perceptually uniform), and HSV (hue-saturation-value) color spaces.
-    For each color space, it computes intensity-independent statistical features (min, Q1, mean, median,
-    Q3, max, standard deviation, coefficient of variation) per colony, plus chroma estimates in Lab space.
+    Extract per-colony color features from CIE XYZ, chromaticity (xy),
+    CIE Lab (perceptually uniform), and HSV color spaces. For each
+    channel the standard statistical suite is computed (min, Q1, mean,
+    median, Q3, max, std dev, coefficient of variation), plus Lab chroma
+    estimates.
 
-    **Intuition:** Colony color provides phenotypic information about pigmentation, sporulation,
-    metabolic products, and stress responses. Measuring color in multiple spaces captures different
-    aspects: XYZ and xy are standardized for illuminant-independent comparisons, Lab is perceptually
-    uniform (equal Euclidean distances reflect equal perceived color differences), and HSV separates
-    hue (pigment type) from saturation and brightness. Colony-level color variation (e.g., std dev)
-    indicates uneven growth, zonation, or heterogeneous populations.
+    Best For:
+        - Distinguishing pigmented colonies (carotenoid, melanin) from
+          colorless ones to stratify phenotypes by pigmentation profile.
+        - Detecting sectoring and growth heterogeneity via high
+          within-colony color variance.
+        - Cross-plate comparison of colony pigmentation using
+          perceptually uniform Lab distances.
 
-    **Use cases (agar plates):**
-    - Distinguish pigmented colonies (e.g., red/yellow carotenoid-producing bacteria, dark melanin)
-      from colorless ones; stratify phenotypes by pigmentation profile.
-    - Detect sectoring and growth heterogeneity via high color variance within single colonies.
-    - Use chromaticity (xy) or hue to identify mixed cultures or secondary growth on a plate.
-    - Enable image-based selection of colonies with specific pigmentation traits (e.g., high-chroma red vs pale).
-    - Assess whether color measurements cluster by genotype or growth condition for cross-plate comparisons.
-
-    **Caveats:**
-    - Color measurements are highly sensitive to illumination, camera white balance, and exposure settings;
-      normalize and calibrate your imaging setup before comparing colors across plates or experiments.
-    - Lab and HSV assume RGB input is correctly gamma-corrected and linearized; use image.gray or
-      image.enh_gray if raw RGB is uncalibrated.
-    - High saturation and brightness variance within a colony can indicate shadow regions, uneven
-      lighting, or non-uniform mycelial depth; interpret texture variance alongside color variance.
-    - Chroma estimates use simplified arithmetic; for critical applications, use reference color charts
-      or spectrophotometry to validate color classifications.
-    - XYZ inclusion is optional and slow; enable only if standardized color space analysis is essential.
+    Consider Also:
+        - :class:`MeasureIntensity` for grayscale-only brightness and
+          variability statistics.
+        - :class:`MeasureColorComposition` for proportion-based color
+          classification of colony pixels.
+        - :class:`MeasureTexture` for surface-roughness features that
+          complement color metrics.
 
     Args:
-        white_chroma_max (float, optional): Chroma threshold below which a colony is classified as
-            "white" (achromatic). Used to filter Lab chroma calculations. Defaults to 4.0.
-        chroma_min (float, optional): Minimum chroma value to retain in analysis; colonies below this
-            are sometimes treated as colorless. Defaults to 8.0.
-        include_XYZ (bool, optional): Whether to compute CIE XYZ measurements (slower, less common).
-            Defaults to False.
+        white_chroma_max: Lab chroma threshold below which a colony is
+            classified as achromatic (white). Default: ``4.0``.
+        chroma_min: Minimum chroma value retained in analysis; colonies
+            below this are treated as colorless. Default: ``8.0``.
+        include_XYZ: Compute CIE XYZ tristimulus statistics (slower).
+            Default: ``False``.
 
     Returns:
-        pd.DataFrame: Object-level color statistics with columns organized by color space:
-            - ColorXYZ: X, Y, Z tristimulus values (if include_XYZ=True).
-            - Colorxy: Chromaticity coordinates x, y (perceptual color without brightness).
-            - ColorLab: L* (lightness), a* (green-red), b* (blue-yellow), and chroma estimates.
-            - ColorHSV: Hue (angle, color identity), Saturation (intensity of color), Brightness (luminosity).
-            For each channel: Min, Q1, Mean, Median, Q3, Max, StdDev, CoeffVar.
+        pd.DataFrame: Object-level color statistics with column groups:
 
-    Examples:
-        .. dropdown:: Measure colony color to detect pigmented mutants
+            - ColorXYZ (X, Y, Z) -- only when ``include_XYZ=True``.
+            - Colorxy (x, y chromaticity).
+            - ColorLab (L*, a*, b*, ChromaEstimated).
+            - ColorHSV (Hue, Saturation, Brightness).
+            - Each channel has Min, Q1, Mean, Median, Q3, Max, StdDev,
+              CoeffVar sub-columns.
 
-            .. code-block:: python
-
-                from phenotypic import Image
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.measure import MeasureColor
-
-                # Load image of colonies (may include pigmented and non-pigmented strains)
-                image = Image.from_image_path("mixed_pigment_plate.jpg")
-                detector = OtsuDetector()
-                image = detector.operate(image)
-
-                # Measure color
-                measurer = MeasureColor(include_XYZ=False)
-                colors = measurer.operate(image)
-
-                # Identify pigmented colonies by hue and saturation
-                pigmented = colors[colors['ColorHSV_SaturationMean'] > 15]
-                print(f"Found {len(pigmented)} pigmented colonies")
-
-        .. dropdown:: Use Lab color space for perceptually uniform analysis
-
-            .. code-block:: python
-
-                # Measure using Lab space (perceptually uniform)
-                measurer = MeasureColor()
-                colors = measurer.operate(image)
-
-                # Chroma estimates reflect perceived "colorfulness"
-                bright_red = colors[
-                    (colors['ColorLab_L*Mean'] > 50) &
-                    (colors['ColorLab_ChromaEstimatedMean'] > 20)
-                ]
-                print(f"Bright red colonies: {len(bright_red)}")
+    See Also:
+        :doc:`/tutorials/notebooks/07_measuring_and_exporting` for a
+        walkthrough of measuring and exporting colony data.
+        :doc:`/explanation/measurement_metrics_biological_meaning` for
+        interpreting color metrics in a biological context.
     """
+
+    _measurement_info_classes = [ColorXYZ, Colorxy, ColorLab, ColorHSV]
 
     def __init__(
             self,

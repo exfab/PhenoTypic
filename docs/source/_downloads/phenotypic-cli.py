@@ -21,7 +21,7 @@ warnings.warn(
     stacklevel=2,
 )
 
-from phenotypic.phenotypic_cli import main
+from phenotypic.phenotypicCLI import phenotypic_cli
 
 if __name__ == "__main__":
-    main()
+    phenotypic_cli()

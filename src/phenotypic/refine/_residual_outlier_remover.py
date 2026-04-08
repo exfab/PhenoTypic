@@ -2,68 +2,67 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import GridImage
+    from phenotypic._core._grid_image import GridImage
 
 import numpy as np
 from typing import Optional
 
 from phenotypic.abc_ import GridObjectRefiner
 from phenotypic.measure import MeasureGridLinRegStats
-from phenotypic.measure._measure_grid_linreg_stats import GRID_LINREG_STATS
-from phenotypic.tools.constants_ import GRID
+from phenotypic.tools_.measurement_info_ import GRID_LINREG_STATS, GRID
 
 
 class ResidualOutlierRemover(GridObjectRefiner):
-    """Remove objects with large regression residuals in noisy grid rows/columns.
+    """Remove objects with large positional residuals in noisy grid rows or columns.
 
-    Intuition:
-        In grid assays, colony centroids should align along near-linear trends
-        within each row/column. Rows or columns with high variability suggest
-        mis-detections or artifacts. Within such noisy lines, this operation
-        removes objects whose positional residuals exceed a robust cutoff.
+    Fits linear-regression trends to colony centroids along each row and
+    column, identifies rows/columns with high variability (coefficient of
+    variance above threshold), and removes objects whose residual error
+    exceeds an IQR-based cutoff within those noisy lines.
 
-    Why this is useful for agar plates:
-        Condensation, glare, and debris can produce off-grid detections that
-        inflate row/column variance and break gridding assumptions. Pruning
-        residual outliers restores alignment and improves subsequent measures.
-
-    Use cases:
-        - Cleaning rows with multiple off-line blobs before measuring growth.
+    Best For:
+        - Cleaning rows or columns with off-grid detections from condensation,
+          glare, or debris before measuring growth.
         - Stabilizing grid registration when a subset of positions is noisy.
+        - Plates where most grid lines are well-aligned but a few contain
+          spurious artifacts.
 
-    Caveats:
-        - If true colonies deviate due to warping or growth spreading, strict
-          cutoffs may remove real data.
-        - Depends on reasonable initial grid fit; with severe misregistration
-          it may prune valid colonies.
+    Consider Also:
+        - :class:`ReduceMultipleGridObjects` for reducing multi-detections to
+          one per cell rather than pruning outliers within rows/columns.
+        - :class:`GridAlignmentRefiner` for full grid-aware filtering using
+          dominant-object-per-cell selection.
+        - :class:`GridOversizedObjectRemover` when the problem is oversized
+          detections rather than positional outliers.
 
-    Attributes:
-        axis (Optional[int]): Axis to analyze for outliers. ``None`` analyzes
-            both rows and columns; ``0`` analyzes rows; ``1`` analyzes columns.
-            Restricting the axis can speed up processing or focus on suspected
-            directions of error.
-        cutoff_multiplier (float): Multiplier applied to a robust dispersion
-            estimate (IQR-based in implementation) to set the outlier cutoff.
-            Higher values are more permissive (fewer removals) and preserve
-            edge cases; lower values prune more aggressively.
-        max_coeff_variance (int): Maximum coefficient of variance (std/mean)
-            allowed for a row/column before it is considered for outlier
-            pruning. Smaller values trigger cleaning sooner; larger values only
-            clean severely noisy lines.
+    Args:
+        axis: Axis to analyze. ``None`` analyzes both rows and columns,
+            ``0`` rows only, ``1`` columns only. Restricting the axis
+            speeds processing and targets known problem directions.
+            Default: None.
+        stddev_multiplier: IQR-based cutoff multiplier for outlier removal.
+            Lower values prune more aggressively; higher values are
+            conservative. Typical range: 1.0--3.0. Default: 1.5.
+        max_coeff_variance: Maximum coefficient of variance (std/mean)
+            allowed before a row/column is considered noisy and eligible
+            for outlier pruning. Typical range: 1--5. Default: 1.
 
-    Examples:
-        .. dropdown:: Remove objects with large regression residuals
+    Returns:
+        Image: Input image with ``objmap`` and ``objmask`` updated to exclude
+        positional outliers from noisy grid rows/columns.
 
-            >>> from phenotypic.refine import ResidualOutlierRemover
-            >>> op = ResidualOutlierRemover(axis=None, stddev_multiplier=1.5, max_coeff_variance=1)
-            >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+    See Also:
+        :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based
+        outlier removal workflows.
+        :doc:`/explanation/refinement_strategies` for a comparison of
+        grid refinement approaches.
     """
 
     def __init__(
-        self,
-        axis: Optional[int] = None,
-        stddev_multiplier=1.5,
-        max_coeff_variance: int = 1,
+            self,
+            axis: Optional[int] = None,
+            stddev_multiplier=1.5,
+            max_coeff_variance: int = 1,
     ):
         """Initialize the remover.
 
@@ -117,15 +116,15 @@ class ResidualOutlierRemover(GridObjectRefiner):
 
             #   Divide standard deviation by mean
             row_variance = (
-                row_variance
-                / grid_info.groupby(str(GRID.ROW_NUM))[
-                    str(GRID_LINREG_STATS.RESIDUAL_ERR)
-                ].mean()
+                    row_variance
+                    / grid_info.groupby(str(GRID.ROW_NUM))[
+                        str(GRID_LINREG_STATS.RESIDUAL_ERR)
+                    ].mean()
             )
 
             over_limit_row_variance = row_variance.loc[
                 row_variance > self.max_coeff_variance
-            ]
+                ]
 
             # Collect outlier objects in the nrows with a variance over the maximum
             for row_idx in over_limit_row_variance.index:
@@ -143,7 +142,7 @@ class ResidualOutlierRemover(GridObjectRefiner):
                 upper_row_cutoff = row_err_mean + row_iqr * self.cutoff_multiplier
                 outlier_obj_ids += row_err.loc[
                     row_err >= upper_row_cutoff
-                ].index.tolist()
+                    ].index.tolist()
 
         # Column-wise residual outlier discovery
         if self.axis is None or self.axis == 1:
@@ -155,15 +154,15 @@ class ResidualOutlierRemover(GridObjectRefiner):
 
             #   Divide standard deviation by mean
             col_variance = (
-                col_variance
-                / grid_info.groupby(str(GRID.COL_NUM))[
-                    str(GRID_LINREG_STATS.RESIDUAL_ERR)
-                ].mean()
+                    col_variance
+                    / grid_info.groupby(str(GRID.COL_NUM))[
+                        str(GRID_LINREG_STATS.RESIDUAL_ERR)
+                    ].mean()
             )
 
             over_limit_col_variance = col_variance.loc[
                 col_variance > self.max_coeff_variance
-            ]
+                ]
 
             # Collect outlier objects in the columns with a variance over the maximum
             for col_idx in over_limit_col_variance.index:
@@ -179,7 +178,7 @@ class ResidualOutlierRemover(GridObjectRefiner):
                 upper_col_cutoff = col_err_mean + col_iqr * self.cutoff_multiplier
                 outlier_obj_ids += col_err.loc[
                     col_err >= upper_col_cutoff
-                ].index.tolist()
+                    ].index.tolist()
 
         # Remove objects from obj map
         image.objmap[np.isin(image.objmap[:], outlier_obj_ids)] = 0

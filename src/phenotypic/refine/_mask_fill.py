@@ -3,55 +3,46 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 import numpy as np
 from scipy.ndimage import binary_fill_holes
 from typing import Optional
 
 from phenotypic.abc_ import ObjectRefiner
-from phenotypic.tools.funcs_ import is_binary_mask
+from phenotypic.tools_.funcs_ import is_binary_mask
 
 
 class MaskFill(ObjectRefiner):
-    """Fill holes inside binary object masks to produce solid colonies.
+    """Fill holes inside colony masks to produce solid, contiguous regions.
 
-    Intuition:
-        Thresholding on agar-plate images can leave small voids inside colony
-        masks due to illumination gradients, pigment heterogeneity, or glare.
-        Filling these holes produces contiguous masks that better match the
-        true colony footprint and improve area-based phenotypes.
+    Uses binary flood fill to close voids left by illumination gradients,
+    pigment heterogeneity, or glare within colonies. Produces masks that
+    better match the true colony footprint for area and shape measurements.
 
-    Why this is useful for agar plates:
-        Many colonies exhibit darker centers or radial texture. Hole filling
-        mitigates these within-colony gaps so that downstream measurements
-        (area, perimeter, intensity summaries) are less biased.
+    Best For:
+        - Donut-like masks from global thresholding on colonies with dark centers.
+        - Colonies with radial pigment texture that creates interior gaps.
+        - Pre-measurement cleanup to ensure simply connected shapes.
 
-    Use cases:
-        - After global or adaptive thresholding where donut-like masks appear.
-        - Prior to morphological measurements that assume simply connected
-          shapes.
+    Consider Also:
+        - :class:`MaskCloser` for bridging narrow gaps *between* fragments
+          rather than filling holes *within* objects.
+        - :class:`MaskOpener` for the opposite effect — removing thin
+          connections between objects.
 
-    Caveats:
-        - Over-aggressive filling with a large structuring element can bridge
-          adjacent colonies through narrow gaps, hurting separation.
-        - If masks contain genuine cavities that should remain (e.g., hollow
-          artifacts), filling may misrepresent structure.
+    Args:
+        structure: Binary structuring element defining the fill neighborhood.
+            ``None`` uses the default cross-shaped element. Default: ``None``.
+        origin: Center offset for the structuring element. Default: 0.
 
-    Attributes:
-        structure (Optional[np.ndarray]): Structuring element used to define the
-            neighborhood for filling. A larger or denser structure tends to
-            close larger holes but can also smooth away fine boundaries.
-        origin (int): Center offset for the structuring element. Adjusting the
-            origin subtly shifts how neighborhoods are evaluated, which can
-            influence edge behavior at colony boundaries.
+    Returns:
+        Image: Input image with ``objmask`` and ``objmap`` updated with
+        filled holes.
 
-    Examples:
-        .. dropdown:: Fill holes in colony masks to produce solid shapes
-
-            >>> from phenotypic.refine import MaskFill
-            >>> op = MaskFill()
-            >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+    See Also:
+        :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough
+        of refinement operations.
     """
 
     def __init__(self, structure: Optional[np.ndarray] = None, origin: int = 0):
@@ -77,6 +68,6 @@ class MaskFill(ObjectRefiner):
 
     def _operate(self, image: Image) -> Image:
         image.objmask[:] = binary_fill_holes(
-            input=image.objmask[:], structure=self.structure, origin=self.origin
+                input=image.objmask[:], structure=self.structure, origin=self.origin
         )
         return image

@@ -1,30 +1,24 @@
 from __future__ import annotations
 
-import inspect
-from typing import TYPE_CHECKING, Callable
-import functools, types
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    pass
 
+import importlib.util
 import logging
 import tracemalloc
-
-try:
-    from pympler import muppy, summary
-
-    PYMPLER_AVAILABLE = True
-except ImportError:
-    PYMPLER_AVAILABLE = False
-
-try:
-    import psutil
-
-    PSUTIL_AVAILABLE = True
-except ImportError:
-    PSUTIL_AVAILABLE = False
-
 from abc import ABC
+
+# Check for optional dependencies
+PYMPLER_AVAILABLE = importlib.util.find_spec("pympler") is not None
+PSUTIL_AVAILABLE = importlib.util.find_spec("psutil") is not None
+
+# Import if available
+if PYMPLER_AVAILABLE:
+    from pympler import muppy, summary
+if PSUTIL_AVAILABLE:
+    import psutil
 
 
 class BaseOperation(ABC):
@@ -57,9 +51,9 @@ class BaseOperation(ABC):
       class with the name format: `module.ClassName`. Subclasses can log messages
       and memory usage without additional setup.
 
-    - **Parallel Execution Support:** The `_get_matched_operation_args()` method
-      enables serialization of operation state for parallel execution by extracting
-      operation attributes that match the `_operate()` method's parameters.
+    - **Parallel Execution Support:** Operations are serialized with all instance
+      attributes (`op.__dict__`) for parallel execution. Worker processes unpickle
+      the complete operation object and execute it.
 
     Inheritance hierarchy:
 
@@ -80,7 +74,7 @@ class BaseOperation(ABC):
     for your operation type. All the memory tracking and logging happens
     automatically in the parent class.
 
-    Example: Creating a custom operation (without image details):
+    Example: Creating a custom operation (without image details)::
 
         from phenotypic.abc_ import BaseOperation
         import logging
@@ -118,83 +112,61 @@ class BaseOperation(ABC):
           set the logger level to WARNING or higher.
         - Tracemalloc is automatically stopped when the operation object is
           deleted (in `__del__`), even if an exception occurs.
-        - The `_get_matched_operation_args()` method is used internally by the
-          pipeline system for parallel execution. It extracts operation attributes
-          that match the `_operate()` method signature, enabling operations to be
-          serialized and executed in worker processes.
         - On Windows, pympler may not be available, so object memory tracking
           will fall back gracefully. psutil is available on all platforms.
 
     Examples:
-        .. dropdown:: Enabling memory tracking for an operation
+        Enabling memory tracking for an operation:
 
-            .. code-block:: python
+        >>> import logging
+        >>> from phenotypic.detect import OtsuDetector
+        >>> # Set up logging to see memory usage
+        >>> logging.basicConfig(level=logging.INFO)
+        >>> # Create detector instance
+        >>> detector = OtsuDetector()
+        >>> # Apply operation - memory usage is logged automatically
+        >>> result = detector.apply(image)
+        # Console output shows:
+        # INFO: Memory usage after <step>: XX.XX MB (objects), YY.YY MB (process)
 
-                import logging
-                from phenotypic.detect import OtsuDetector
+        Accessing memory information programmatically:
 
-                # Set up logging to see memory usage
-                logging.basicConfig(level=logging.INFO)
+        >>> import logging
+        >>> from phenotypic.enhance import GaussianBlur
+        >>> # Create custom logger to capture memory messages
+        >>> logger = logging.getLogger('phenotypic.enhance.GaussianBlur')
+        >>> logger.setLevel(logging.INFO)
+        >>> handler = logging.StreamHandler()
+        >>> handler.setLevel(logging.INFO)
+        >>> logger.addHandler(handler)
+        >>> # Use operation
+        >>> blur = GaussianBlur(sigma=2)
+        >>> enhanced = blur.apply(image)
+        # Memory tracking happens automatically during operation
 
-                # Create detector instance
-                detector = OtsuDetector()
+        Custom operation with parameter matching for parallel execution:
 
-                # Apply operation - memory usage is logged automatically
-                result = detector.apply(image)
-
-                # Console output shows:
-                # INFO: Memory usage after <step>: XX.XX MB (objects), YY.YY MB (process)
-
-        .. dropdown:: Accessing memory information programmatically
-
-            .. code-block:: python
-
-                import logging
-                from phenotypic.enhance import GaussianBlur
-
-                # Create custom logger to capture memory messages
-                logger = logging.getLogger('phenotypic.enhance.GaussianBlur')
-                logger.setLevel(logging.INFO)
-
-                handler = logging.StreamHandler()
-                handler.setLevel(logging.INFO)
-                logger.addHandler(handler)
-
-                # Use operation
-                blur = GaussianBlur(sigma=2)
-                enhanced = blur.apply(image)
-
-                # Memory tracking happens automatically during operation
-
-        .. dropdown:: Custom operation with parameter matching for parallel execution
-
-            .. code-block:: python
-
-                from phenotypic.abc_ import ImageOperation
-                from phenotypic import Image
-
-                class CustomThreshold(ImageOperation):
-                    def __init__(self, threshold_value: int):
-                        super().__init__()
-                        self.threshold_value = threshold_value
-
-                    @staticmethod
-                    def _operate(image: Image, threshold_value: int = 128) -> Image:
-                        # Apply threshold algorithm
-                        image.enh_gray[:] = image.enh_gray[:] > threshold_value
-                        return image
-
-                # When operation is applied via pipeline:
-                operation = CustomThreshold(threshold_value=100)
-
-                # _get_matched_operation_args() automatically extracts:
-                # {'threshold_value': 100}
-                # This enables parallel execution in pipelines
+        >>> from phenotypic.abc_ import ImageOperation
+        >>> from phenotypic import Image
+        >>> class CustomThreshold(ImageOperation):
+        ...     def __init__(self, threshold_value: int):
+        ...         super().__init__()
+        ...         self.threshold_value = threshold_value
+        ...
+        ...     @staticmethod
+        ...     def _operate(image: Image, threshold_value: int = 128) -> Image:
+        ...         # Apply threshold algorithm
+        ...         image.detect_mat[:] = image.detect_mat[:] > threshold_value
+        ...         return image
+        >>> # When operation is applied via pipeline:
+        >>> operation = CustomThreshold(threshold_value=100)
+        # The operation object is serialized with all attributes
+        # for parallel execution in worker processes
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs) -> None:
         self._logger = logging.getLogger(
-            f"{self.__class__.__module__}.{self.__class__.__name__}"
+                f"{self.__class__.__module__}.{self.__class__.__name__}"
         )
         self._tracemalloc_started = False
 
@@ -205,14 +177,14 @@ class BaseOperation(ABC):
             self._logger.debug("Tracemalloc started for memory logging")
 
     def _log_memory_usage(
-        self,
-        step: str,
-        include_process: bool = False,
-        include_tracemalloc: bool = False,
+            self,
+            step: str,
+            include_process: bool = False,
+            include_tracemalloc: bool = False,
     ) -> None:
         """Log memory usage if logger is in INFO mode."""
         if self._logger.isEnabledFor(logging.INFO):
-            log_msg_parts = [f"Memory usage after {step}:"]
+            log_msg_parts = [f"Memory usage: {step}:"]
 
             # Object memory using pympler
             if PYMPLER_AVAILABLE:
@@ -220,10 +192,10 @@ class BaseOperation(ABC):
                     all_objects = muppy.get_objects()
                     mem_summary = summary.summarize(all_objects)
                     object_memory = sum(
-                        mem[2] for mem in mem_summary
+                            mem[2] for mem in mem_summary
                     )  # mem[2] is total size
                     log_msg_parts.append(
-                        f"{object_memory / 1024 / 1024:.2f} MB (objects)"
+                            f"{object_memory / 1024 / 1024:.2f} MB (objects)"
                     )
                 except Exception as e:
                     self._logger.debug(f"Failed to get object memory: {e}")
@@ -236,7 +208,7 @@ class BaseOperation(ABC):
                     process = psutil.Process()
                     process_memory = process.memory_info().rss
                     log_msg_parts.append(
-                        f"{process_memory / 1024 / 1024:.2f} MB (process)"
+                            f"{process_memory / 1024 / 1024:.2f} MB (process)"
                     )
                 except Exception as e:
                     self._logger.debug(f"Failed to get process memory: {e}")
@@ -246,7 +218,7 @@ class BaseOperation(ABC):
                 try:
                     current, peak = tracemalloc.get_traced_memory()
                     log_msg_parts.append(
-                        f"{current / 1024 / 1024:.2f} MB current, {peak / 1024 / 1024:.2f} MB peak (tracemalloc)"
+                            f"{current / 1024 / 1024:.2f} MB current, {peak / 1024 / 1024:.2f} MB peak (tracemalloc)"
                     )
                 except Exception as e:
                     self._logger.debug(f"Failed to get tracemalloc memory: {e}")
@@ -265,44 +237,3 @@ class BaseOperation(ABC):
             except Exception:
                 # Ignore errors during cleanup
                 pass
-
-    def _get_matched_operation_args(self) -> dict:
-        """Returns a dictionary of matched attributes with the arguments for the _operate method. This aids in parallel execution
-
-        Returns:
-            dict: A dictionary of matched attributes with the arguments for the _operate method or blank dict if
-            _operate is a staticmethod. This is used for parallel execution of operations.
-        """
-        raw_operate_method = inspect.getattr_static(self.__class__, "_operate")
-        if isinstance(raw_operate_method, staticmethod):
-            return self._matched_args(raw_operate_method.__func__)
-        else:
-            return {}
-
-    def _matched_args(self, func):
-        """Return a dict of attributes that satisfy *func*'s signature."""
-        sig = inspect.signature(func)
-        matched = {}
-
-        for name, param in sig.parameters.items():
-            if (
-                name == "image"
-            ):  # The image provided by the user is always passed as the first argument.
-                continue
-            if hasattr(self, name):
-                value = getattr(self, name)
-                if isinstance(
-                    value, types.MethodType
-                ):  # transform a bounded method into a pickleable object
-                    value = functools.partial(value.__func__, self)
-                matched[name] = value
-            elif hasattr(self.__class__, name):
-                matched[name] = getattr(self.__class__, name)
-            elif param.default is not param.empty:
-                continue  # default will be used
-            else:
-                raise AttributeError(
-                    f"{self.__class__.__name__} lacks attribute '{name}' "
-                    f"required by {func.__qualname__}",
-                )
-        return matched

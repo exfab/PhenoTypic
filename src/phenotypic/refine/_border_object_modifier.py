@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic._core._image import Image
 
 import numpy as np
 from typing import Optional, Union
@@ -12,48 +12,40 @@ from phenotypic.abc_ import ObjectRefiner
 
 
 class BorderObjectRemover(ObjectRefiner):
-    """Remove objects that touch the image border within a configurable margin.
+    """Remove colonies that touch the image border within a configurable margin.
 
-    Intuition:
-        Colonies that intersect the plate boundary or image crop edge are often
-        partial, poorly segmented, and bias size/shape measurements. This
-        operation zeroes any labeled objects in ``image.objmap`` whose pixels
-        fall within a user-defined border band, ensuring only fully contained
-        colonies are analyzed.
+    Zeroes any labeled objects in ``objmap`` whose pixels fall within a
+    border band, ensuring only fully contained colonies are analyzed.
+    Partial edge colonies bias size and shape measurements.
 
-    Why this is useful for agar-plate imaging:
-        Plate crops or grid layouts frequently clip edge colonies. Removing
-        border-touching objects stabilizes downstream phenotyping (area,
-        circularity, intensity) and prevents partial colonies from contaminating
-        statistics or training data.
+    Best For:
+        - Plates where the plate rim or image crop truncates edge colonies.
+        - Grid assays where border wells are partially visible.
+        - Automated crops that shift between frames.
 
-    Use cases:
-        - Single-plate captures where the plate rim truncates colonies.
-        - Grid assays where wells or positions near the frame boundary are
-          partially visible.
-        - Automated crops that shift slightly between frames, cutting off
-          colonies at the margins.
+    Consider Also:
+        - :class:`SmallObjectRemover` for removing noise fragments that are
+          not necessarily at the border.
+        - :class:`GridOversizedObjectRemover` for removing abnormally large
+          objects that span multiple grid sections.
 
-    Caveats:
-        - A large border may remove valid edge colonies (lower recall). Too
-          small a border may retain partial objects.
-        - With very tight crops (little background), even modest margins can
-          eliminate many colonies.
+    Args:
+        border_size: Width of the exclusion border. ``None`` uses 1% of
+            the smaller dimension. Float in (0, 1) is a fraction of the
+            image size. Int or float >= 1 is absolute pixels. Default: 1.
 
-    Attributes:
-        border_size (int): Width of the exclusion border around the image.
-
-    Examples:
-        .. dropdown:: Remove objects that touch the image border within a margin
-
-            >>> from phenotypic.refine import BorderObjectRemover
-            >>> op = BorderObjectRemover(border_size=15)
-            >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
-            >>> # All colonies intersecting a 15-pixel frame margin are removed
+    Returns:
+        Image: Input image with ``objmask`` and ``objmap`` updated to
+        exclude border-touching objects.
 
     Raises:
-        TypeError: If an invalid ``border_size`` type is provided (raised during
-            operation when parameters are validated).
+        TypeError: If ``border_size`` type is invalid.
+
+    See Also:
+        :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough
+        of refinement operations.
+        :doc:`/explanation/refinement_strategies` for choosing the right
+        refinement sequence.
     """
 
     def __init__(self, border_size: Optional[Union[int, float]] = 1):
