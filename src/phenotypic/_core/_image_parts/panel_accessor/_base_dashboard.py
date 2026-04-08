@@ -14,12 +14,6 @@ from phenotypic._core._image_parts.accessor_abstracts._image_accessor_base impor
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
-_PANEL_IMPORT_ERROR = (
-    "Panel is required for interactive dashboards. "
-    "Install it with: pip install panel"
-)
-
-
 class BaseDashboard(ImageAccessorBase):
     """Base class for all Panel dashboard accessors.
 
