@@ -186,6 +186,42 @@ class TestComputeGridEdges:
         )
         assert np.all(np.diff(edges) >= 0)
 
+    def test_negative_offset_no_duplicate_zeros(self):
+        """Deeply negative offset must not produce duplicate 0 edges."""
+        edges = AutoGridFinder._compute_grid_edges(
+            pitch=437, offset=-229.5, n_bins=12, image_dim=4776,
+        )
+        assert len(edges) == len(set(edges)), f"Duplicate edges: {edges}"
+        assert np.all(np.diff(edges) > 0)
+
+    def test_pitch_too_large_shrinks_to_fit(self):
+        """When pitch * n_bins > image_dim, pitch is reduced to fit."""
+        edges = AutoGridFinder._compute_grid_edges(
+            pitch=500, offset=0, n_bins=12, image_dim=4776,
+        )
+        assert len(edges) == len(set(edges)), f"Duplicate edges: {edges}"
+        assert edges[0] == 0
+        assert edges[-1] == 4776
+        assert np.all(np.diff(edges) > 0)
+
+    def test_offset_clamped_left(self):
+        """Offset that would push first edge negative gets clamped."""
+        edges = AutoGridFinder._compute_grid_edges(
+            pitch=100, offset=-50, n_bins=4, image_dim=500,
+        )
+        assert edges[0] >= 0
+        assert len(edges) == len(set(edges))
+        assert np.all(np.diff(edges) > 0)
+
+    def test_offset_clamped_right(self):
+        """Offset that would push last edge past image_dim gets clamped."""
+        edges = AutoGridFinder._compute_grid_edges(
+            pitch=100, offset=400, n_bins=4, image_dim=450,
+        )
+        assert edges[-1] <= 450
+        assert len(edges) == len(set(edges))
+        assert np.all(np.diff(edges) > 0)
+
 
 # ===========================================================================
 # _fit_axis_edges  (instance method)

@@ -199,8 +199,26 @@ class AutoGridFinder(GridFinder):
 
         Edges are placed at ``offset + pitch * i - pitch / 2`` for
         ``i = 0 .. n_bins``.
+
+        The offset is clamped so that the first edge is >= 0 and the
+        last edge is <= image_dim, preventing duplicate edges after
+        clipping.  When the fitted pitch is too large for the image,
+        the pitch is shrunk to ``image_dim / n_bins`` so the grid
+        fills the available space.
         """
-        edges = offset + pitch * np.arange(n_bins + 1) - pitch / 2
+        half = pitch / 2.0
+        min_offset = half                              # first edge >= 0
+        max_offset = image_dim - pitch * n_bins + half  # last edge <= image_dim
+
+        if min_offset > max_offset:
+            # Pitch is too large for the image — shrink to fit
+            pitch = image_dim / n_bins
+            half = pitch / 2.0
+            offset = half
+        else:
+            offset = float(np.clip(offset, min_offset, max_offset))
+
+        edges = offset + pitch * np.arange(n_bins + 1) - half
         np.clip(edges, 0, image_dim, out=edges)
         np.round(edges, out=edges)
         return edges.astype(int)
