@@ -123,8 +123,7 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             *,
             object_label: int | None = None,
             show_labels: bool = False,
-            show_gridlines: bool = True,
-            show_section_boxes: bool = True,
+            show_grid: bool = True,
             label_settings: dict | None = None,
             overlay_settings: dict | None = None,
     ) -> tuple[plt.Figure, plt.Axes]:
@@ -144,14 +143,11 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
                 shows all detected objects. Only used when overlay is True.
             show_labels: If True, displays numeric labels at object centroids.
                 Only used when overlay is True.
-            show_gridlines: For GridImage only. If True, draws cyan dashed
-                gridlines at row/column boundaries. Only used when overlay
-                is True. Ignored for regular Image.
-            show_section_boxes: For GridImage only. If True, draws colored
-                bounding boxes around each grid section. Only used when
-                overlay is True. Ignored for regular Image.
+            show_grid: For GridImage only. If True, draws gridlines
+                and colored section boxes. Only used when overlay is
+                True. Ignored for regular Image.
             label_settings: Dict passed to text label rendering.
-            overlay_settings: Dict passed to skimage.color.label2rgb.
+            overlay_settings: Dict passed to overlay composition.
 
         Returns:
             A ``(plt.Figure, plt.Axes)`` tuple.
@@ -175,8 +171,7 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             )
             self._decorate_mpl_overlay(
                     ax, has_objects=has_objects, object_label=object_label,
-                    show_labels=show_labels, show_gridlines=show_gridlines,
-                    show_section_boxes=show_section_boxes,
+                    show_labels=show_labels, show_grid=show_grid,
                     label_settings=label_settings,
             )
             return fig, ax
@@ -200,8 +195,7 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             *,
             object_label: int | None = None,
             show_labels: bool = False,
-            show_gridlines: bool = True,
-            show_section_boxes: bool = True,
+            show_grid: bool = True,
             label_settings: dict | None = None,
             overlay_settings: dict | None = None,
             plotly_settings: dict | None = None,
@@ -222,14 +216,11 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
                 shows all detected objects. Only used when overlay is True.
             show_labels: If True, displays numeric labels at object centroids.
                 Only used when overlay is True.
-            show_gridlines: For GridImage only. If True, draws gridlines
-                at row/column boundaries. Only used when overlay is True.
-                Ignored for regular Image.
-            show_section_boxes: For GridImage only. If True, draws colored
-                bounding boxes around each grid section. Only used when
-                overlay is True. Ignored for regular Image.
+            show_grid: For GridImage only. If True, draws gridlines
+                and colored section boxes. Only used when overlay is
+                True. Ignored for regular Image.
             label_settings: Dict passed to text label rendering.
-            overlay_settings: Dict passed to skimage.color.label2rgb.
+            overlay_settings: Dict passed to overlay composition.
             plotly_settings: Additional Plotly layout settings.
 
         Returns:
@@ -238,7 +229,9 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
         Raises:
             ImportError: If plotly is not installed.
         """
-        from phenotypic.tools_._plotly_helpers import PLOTLY_AVAILABLE
+        from phenotypic._core._image_parts.accessor_abstracts._image_accessor_base_parents._accessor_dash_handler import (
+            PLOTLY_AVAILABLE,
+        )
 
         if not PLOTLY_AVAILABLE:
             raise ImportError(
@@ -266,18 +259,15 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             )
             self._decorate_plotly_overlay(
                     fig, has_objects=has_objects, object_label=object_label,
-                    show_labels=show_labels, show_gridlines=show_gridlines,
-                    show_section_boxes=show_section_boxes,
+                    show_labels=show_labels, show_grid=show_grid,
                     label_settings=label_settings,
             )
             return fig
 
-        from phenotypic.tools_._plotly_helpers import plotly_imshow
-
         if channel is None:
-            fig = plotly_imshow(arr=arr, figsize=figsize, title=title)
+            fig = self.plotly_imshow(arr=arr, figsize=figsize, title=title)
         else:
-            fig = plotly_imshow(
+            fig = self.plotly_imshow(
                     arr=arr[:, :, channel],
                     figsize=figsize,
                     title=title,
