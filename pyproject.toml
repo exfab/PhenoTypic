@@ -85,6 +85,13 @@ gui = [
     "jupyter>=1.1.1",
 ]
 
+torch = [
+    "torch>=2.5.1",
+    "torchvision>=0.20.1",
+    "sam2",
+    "micro_sam",
+]
+
 [project.scripts]
 phenotypic = "phenotypic.phenotypicCLI:phenotypic_cli"
 
