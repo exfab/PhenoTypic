@@ -343,30 +343,29 @@ class GridFinder(GridMeasureFeatures, ABC):
         if str(GRID.COL_NUM) not in table.columns:
             self._add_col_number_info(table=table, col_edges=col_edges, imshape=imshape)
 
-        # Create section number directly from row and column indices
-        idx_map = np.reshape(
-                np.arange(self.nrows * self.ncols), (self.nrows, self.ncols)
-        )
-
-        # Compute section number for each row using vectorized operations
         row_nums = table.loc[:, str(GRID.ROW_NUM)].values
         col_nums = table.loc[:, str(GRID.COL_NUM)].values
 
-        # Handle NaN values by masking
         valid_mask = pd.notna(row_nums) & pd.notna(col_nums)
-        section_nums = np.full(len(table), np.nan)
+        n = len(table)
 
         if valid_mask.any():
-            section_nums[valid_mask] = idx_map[
-                row_nums[valid_mask].astype(int), col_nums[valid_mask].astype(int)
-            ]
+            valid_rows = row_nums[valid_mask].astype(int)
+            valid_cols = col_nums[valid_mask].astype(int)
+        else:
+            valid_rows = valid_cols = np.array([], dtype=int)
 
-        # Create a new column with proper dtype handling
-        section_series = pd.Series(section_nums, index=table.index)
-        # Convert to nullable integer type first to handle NaN, then to categorical
-        table[str(GRID.ROW_MAJOR_IDX)] = (
-            section_series.astype("Int64").astype("UInt16").astype("category")
+        # Row-major index (row * ncols + col)
+        idx_map = np.reshape(
+            np.arange(self.nrows * self.ncols), (self.nrows, self.ncols)
         )
+        row_major_arr = pd.arrays.IntegerArray(
+            np.zeros(n, dtype=np.uint16),
+            mask=np.ones(n, dtype=bool),
+        )
+        if valid_mask.any():
+            row_major_arr[valid_mask] = idx_map[valid_rows, valid_cols]
+        table[str(GRID.ROW_MAJOR_IDX)] = pd.Categorical(row_major_arr)
 
         # Column-major index (col * nrows + row)
         col_major_map = np.reshape(
@@ -374,20 +373,22 @@ class GridFinder(GridMeasureFeatures, ABC):
             (self.nrows, self.ncols),
             order="F",
         )
-        col_major_nums = np.full(len(table), np.nan)
-        if valid_mask.any():
-            col_major_nums[valid_mask] = col_major_map[
-                row_nums[valid_mask].astype(int),
-                col_nums[valid_mask].astype(int),
-            ]
-        col_major_series = pd.Series(col_major_nums, index=table.index)
-        table[str(GRID.COL_MAJOR_IDX)] = (
-            col_major_series.astype("Int64").astype("UInt16").astype("category")
+        col_major_arr = pd.arrays.IntegerArray(
+            np.zeros(n, dtype=np.uint16),
+            mask=np.ones(n, dtype=bool),
         )
+        if valid_mask.any():
+            col_major_arr[valid_mask] = col_major_map[valid_rows, valid_cols]
+        table[str(GRID.COL_MAJOR_IDX)] = pd.Categorical(col_major_arr)
+
         return table
 
     def _get_grid_info(
-            self, image: Image, row_edges: np.ndarray, col_edges: np.ndarray
+            self,
+            image: Image,
+            row_edges: np.ndarray,
+            col_edges: np.ndarray,
+            info_table: pd.DataFrame | None = None,
     ) -> pd.DataFrame:
         """
         Assembles complete grid information from row and column edges.
@@ -416,7 +417,8 @@ class GridFinder(GridMeasureFeatures, ABC):
             ]
             return pd.DataFrame(columns=columns)
 
-        info_table = image.objects.info(include_metadata=False)
+        if info_table is None:
+            info_table = image.objects.info(include_metadata=False)
 
         # Add row information
         info_table = self._add_row_number_info(

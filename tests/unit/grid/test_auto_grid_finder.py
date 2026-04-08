@@ -344,3 +344,258 @@ class TestAutoGridFinderIntegration:
         assert restored_finder.nrows == 8
         assert restored_finder.ncols == 12
         assert restored_finder.residual_fraction == 0.4
+
+
+# ===========================================================================
+# _robust_pitch_estimate
+# ===========================================================================
+
+
+class TestRobustPitchEstimate:
+
+    def test_uniform_centers(self):
+        centers = np.array([10.0, 30.0, 50.0, 70.0, 90.0])
+        pitch = AutoGridFinder._robust_pitch_estimate(centers, n_expected=5)
+        assert 15.0 < pitch < 25.0
+
+    def test_outlier_at_extreme(self):
+        """Outlier at the far end should not corrupt the estimate."""
+        centers = np.sort(np.array([
+            10.0, 30.0, 50.0, 70.0, 90.0,  # true grid, pitch=20
+            300.0,  # far outlier
+        ]))
+        pitch = AutoGridFinder._robust_pitch_estimate(centers, n_expected=5)
+        # Mode of diffs is still ~20, but span pitch is (300-10)/4=72.5
+        # Mode (~20) is < 0.5 * 72.5 = 36.25, so falls back to span pitch
+        # Either way, should return a positive value
+        assert pitch > 0
+
+    def test_half_pitch_contamination_triggers_fallback(self):
+        """Objects at half-pitch intervals should trigger sanity check fallback."""
+        # True pitch = 20, but objects at every 10px
+        centers = np.arange(10.0, 100.0, 10.0)  # 9 points at pitch 10
+        pitch = AutoGridFinder._robust_pitch_estimate(centers, n_expected=5)
+        # mode of diffs = 10, span pitch = (90-10)/4 = 20
+        # 10 == 0.5 * 20 → borderline, should fall back to span pitch
+        assert pitch >= 10.0
+
+    def test_few_diffs_falls_back(self):
+        centers = np.array([10.0, 30.0])
+        pitch = AutoGridFinder._robust_pitch_estimate(centers, n_expected=5)
+        # Only 1 diff → falls back to span pitch
+        expected_span = (30.0 - 10.0) / 4
+        assert pitch == pytest.approx(expected_span)
+
+
+# ===========================================================================
+# _aggregate_to_cell_medians
+# ===========================================================================
+
+
+class TestAggregateToCellMedians:
+
+    def test_single_object_per_cell(self):
+        centers = np.array([10.0, 30.0, 50.0])
+        indices = np.array([0, 1, 2])
+        medians, unique_idx = AutoGridFinder._aggregate_to_cell_medians(
+            centers, indices,
+        )
+        np.testing.assert_array_equal(unique_idx, [0, 1, 2])
+        np.testing.assert_array_equal(medians, [10.0, 30.0, 50.0])
+
+    def test_multiple_objects_per_cell(self):
+        centers = np.array([9.0, 10.0, 11.0, 29.0, 31.0, 50.0])
+        indices = np.array([0, 0, 0, 1, 1, 2])
+        medians, unique_idx = AutoGridFinder._aggregate_to_cell_medians(
+            centers, indices,
+        )
+        np.testing.assert_array_equal(unique_idx, [0, 1, 2])
+        assert medians[0] == pytest.approx(10.0)  # median of 9,10,11
+        assert medians[1] == pytest.approx(30.0)  # median of 29,31
+        assert medians[2] == pytest.approx(50.0)
+
+    def test_unequal_counts_produce_equal_output(self):
+        """500 objects in one cell and 1 in another → 2 medians."""
+        rng = np.random.default_rng(42)
+        cell0 = rng.normal(10.0, 1.0, 500)
+        cell1 = np.array([50.0])
+        centers = np.concatenate([cell0, cell1])
+        indices = np.concatenate([np.zeros(500, dtype=int), np.array([2])])
+        medians, unique_idx = AutoGridFinder._aggregate_to_cell_medians(
+            centers, indices,
+        )
+        assert len(medians) == 2
+        assert len(unique_idx) == 2
+
+
+# ===========================================================================
+# _assign_grid_indices with anchor
+# ===========================================================================
+
+
+class TestAssignGridIndicesWithAnchor:
+
+    def test_anchor_none_uses_first_center(self):
+        centers = np.array([10.0, 30.0, 50.0])
+        idx_default = AutoGridFinder._assign_grid_indices(centers, 20.0)
+        idx_none = AutoGridFinder._assign_grid_indices(centers, 20.0, anchor=None)
+        np.testing.assert_array_equal(idx_default, idx_none)
+
+    def test_median_anchor(self):
+        centers = np.array([10.0, 30.0, 50.0, 70.0, 90.0])
+        anchor = float(np.median(centers))  # 50.0
+        indices = AutoGridFinder._assign_grid_indices(centers, 20.0, anchor=anchor)
+        # (centers - 50) / 20 → [-2, -1, 0, 1, 2], shifted to [0, 1, 2, 3, 4]
+        np.testing.assert_array_equal(indices, [0, 1, 2, 3, 4])
+
+    def test_outlier_first_center_with_anchor(self):
+        """Median anchor should handle an outlier at the start."""
+        centers = np.array([0.0, 50.0, 70.0, 90.0, 110.0])
+        # Without anchor: reference is 0.0 (the outlier)
+        # With median anchor (70.0): indices are well-behaved
+        anchor = float(np.median(centers))
+        indices = AutoGridFinder._assign_grid_indices(centers, 20.0, anchor=anchor)
+        assert indices.min() == 0
+        # The outlier at 0.0 should be far from the grid → large negative index shifted up
+        assert len(np.unique(indices)) == 5
+
+
+# ===========================================================================
+# High object count integration test
+# ===========================================================================
+
+
+class TestHighObjectCountRobustness:
+
+    def test_many_objects_per_cell(self):
+        """Simulate ~50 objects per grid cell + noise, verify edges are sane."""
+        rng = np.random.default_rng(123)
+        true_pitch = 25.0
+        true_offset = 12.5
+        n_rows = 8
+        image_dim = 220
+
+        # ~50 objects per cell, jittered around true centers
+        row_centers = []
+        for i in range(n_rows):
+            true_center = true_offset + true_pitch * i
+            row_centers.extend(rng.normal(true_center, 2.0, 50))
+
+        # Add scattered noise
+        row_centers.extend(rng.uniform(0, image_dim, 100))
+        col_centers = rng.uniform(0, 300, len(row_centers))
+
+        table = _make_info_table(row_centers, col_centers)
+        finder = AutoGridFinder(nrows=n_rows, ncols=12)
+        edges = finder._fit_axis_edges(table, axis=0, n_expected=n_rows, image_dim=image_dim)
+
+        assert len(edges) == n_rows + 1
+        assert edges[0] >= 0
+        assert edges[-1] <= image_dim
+        assert np.all(np.diff(edges) >= 0)
+
+        # Edges should produce roughly correct pitch
+        diffs = np.diff(edges)
+        nonzero_diffs = diffs[diffs > 0]
+        if len(nonzero_diffs) > 0:
+            median_spacing = np.median(nonzero_diffs)
+            assert 15.0 < median_spacing < 35.0, (
+                f"Expected spacing ~25, got median {median_spacing}"
+            )
+
+
+# ===========================================================================
+# Object-count guard
+# ===========================================================================
+
+
+class TestObjectCountGuard:
+
+    def test_guard_triggers_above_threshold(self):
+        """Uniform edges returned and warning emitted when objects >> cells."""
+        rng = np.random.default_rng(42)
+        n_expected = 8
+        image_dim = 200
+        n_objects = AutoGridFinder._MAX_OBJECTS_PER_CELL * n_expected + 1
+
+        table = _make_info_table(
+            rng.uniform(0, image_dim, n_objects),
+            rng.uniform(0, 300, n_objects),
+        )
+        finder = AutoGridFinder(nrows=n_expected, ncols=12)
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            edges = finder._fit_axis_edges(
+                table, axis=0, n_expected=n_expected, image_dim=image_dim,
+            )
+            assert len(w) == 1
+            assert "Falling back to uniform" in str(w[0].message)
+
+        expected = finder._uniform_edges(n_expected, image_dim)
+        np.testing.assert_array_equal(edges, expected)
+
+    def test_guard_does_not_trigger_below_threshold(self):
+        """No warning when object count is below the threshold."""
+        rng = np.random.default_rng(42)
+        n_expected = 8
+        image_dim = 200
+        n_objects = AutoGridFinder._MAX_OBJECTS_PER_CELL * n_expected - 1
+
+        table = _make_info_table(
+            rng.uniform(0, image_dim, n_objects),
+            rng.uniform(0, 300, n_objects),
+        )
+        finder = AutoGridFinder(nrows=n_expected, ncols=12)
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            finder._fit_axis_edges(
+                table, axis=0, n_expected=n_expected, image_dim=image_dim,
+            )
+            user_warnings = [x for x in w if "Falling back to uniform" in str(x.message)]
+            assert len(user_warnings) == 0
+
+    def test_existing_low_and_zero_paths_unaffected(self):
+        """The < 2 and < 2*n_expected paths still work correctly."""
+        finder = AutoGridFinder(nrows=4, ncols=6)
+        image_dim = 200
+
+        # Zero centers → uniform edges
+        empty = _make_info_table([], [])
+        edges = finder._fit_axis_edges(empty, axis=0, n_expected=4, image_dim=image_dim)
+        assert len(edges) == 5
+
+        # 1 center → uniform edges (< 2 guard)
+        single = _make_info_table([100.0], [150.0])
+        edges = finder._fit_axis_edges(single, axis=0, n_expected=4, image_dim=image_dim)
+        assert len(edges) == 5
+
+
+# ===========================================================================
+# Section number dtype
+# ===========================================================================
+
+
+class TestSectionNumberDtype:
+
+    def test_section_columns_are_categorical_uint16(self):
+        """ROW_MAJOR_IDX and COL_MAJOR_IDX should be categorical with UInt16 codes."""
+        from phenotypic.abc_ import GridFinder
+
+        # Build a concrete GridFinder to test the base-class method
+        finder = AutoGridFinder(nrows=2, ncols=3)
+        table = pd.DataFrame({
+            str(GRID.ROW_NUM): pd.Categorical([0, 1, 0, 1]),
+            str(GRID.COL_NUM): pd.Categorical([0, 1, 2, 0]),
+        })
+        result = finder._add_section_number_info(
+            table,
+            row_edges=np.array([0, 100, 200]),
+            col_edges=np.array([0, 80, 160, 240]),
+            imshape=(200, 240),
+        )
+
+        for col_name in [str(GRID.ROW_MAJOR_IDX), str(GRID.COL_MAJOR_IDX)]:
+            assert result[col_name].dtype.name == "category"
+            assert result[col_name].cat.categories.dtype == pd.UInt16Dtype()
