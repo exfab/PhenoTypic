@@ -91,7 +91,7 @@ class MadHysteresisDetector(ThresholdDetector):
         min_size: int = 20,
         connectivity: int = 2,
         ignore_zeros: bool = False,
-        ignore_borders: bool = False,
+        ignore_borders: bool = True,
     ):
         self.k_high = k_high
         self.k_low = k_low

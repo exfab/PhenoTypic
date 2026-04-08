@@ -62,7 +62,7 @@ class MinimumDetector(ThresholdDetector):
             In-depth comparison of all detection strategies.
     """
 
-    def __init__(self, ignore_zeros: bool = False, ignore_borders: bool = False):
+    def __init__(self, ignore_zeros: bool = False, ignore_borders: bool = True):
         self.ignore_zeros = ignore_zeros
         self.ignore_borders = ignore_borders
 
