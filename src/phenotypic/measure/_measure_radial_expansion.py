@@ -600,37 +600,32 @@ class MeasureRadialExpansion(MeasureFeatures):
             )
         return pd.DataFrame(rows)
 
-    @classmethod
     def inspect(
-        cls,
+        self,
         image: Image,
         object_label: int | None = None,
-        **kwargs,
     ):
         """Interactive diagnostic dashboard for radial expansion measurement.
 
-        Recomputes all intermediates from the image on demand. Pass constructor
-        params via kwargs (e.g., outlier_method="iqr", pelt_penalty=3.0).
+        Recomputes all intermediates from the image on demand.
 
         Args:
             image: Detected Image with objmap/objmask.
             object_label: Specific object to inspect. If None, uses largest.
-            **kwargs: Forwarded to MeasureRadialExpansion constructor.
 
         Returns:
             Panel Column layout with 6 diagnostic panels.
         """
         import panel as pn
 
-        instance = cls(**kwargs)
-        inter = instance._compute_intermediates(image, object_label)
+        inter = self._compute_intermediates(image, object_label)
 
-        p1 = cls._plot_radial_profile(inter)
-        p2 = cls._plot_zone_overlay(inter)
-        p3 = cls._plot_skeleton(inter)
-        p4 = cls._plot_branch_traces(inter)
-        p5 = cls._plot_branch_distribution(inter)
-        p6 = cls._build_summary_panel(inter, instance)
+        p1 = self._plot_radial_profile(inter)
+        p2 = self._plot_zone_overlay(inter)
+        p3 = self._plot_skeleton(inter)
+        p4 = self._plot_branch_traces(inter)
+        p5 = self._plot_branch_distribution(inter)
+        p6 = self._build_summary_panel(inter, self)
 
         header = pn.pane.Markdown(
             f"## Radial Expansion Diagnostics -- Object {inter.label}",
