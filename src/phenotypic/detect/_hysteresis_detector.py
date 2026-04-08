@@ -95,8 +95,8 @@ class HysteresisDetector(ThresholdDetector):
         self,
         low: Union[str, float] = "mean",
         high: Union[str, float] = "otsu",
-        ignore_zeros: bool = True,
-        ignore_borders: bool = True,
+        ignore_zeros: bool = False,
+        ignore_borders: bool = False,
     ):
         self.low = low
         self.high = high

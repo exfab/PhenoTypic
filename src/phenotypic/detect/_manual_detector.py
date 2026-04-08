@@ -75,8 +75,8 @@ class ManualDetector(ThresholdDetector):
     def __init__(
             self,
             threshold: float = 0.5,
-            ignore_zeros: bool = True,
-            ignore_borders: bool = True
+            ignore_zeros: bool = False,
+            ignore_borders: bool = False
     ):
         self.threshold = threshold
         self.ignore_zeros = ignore_zeros

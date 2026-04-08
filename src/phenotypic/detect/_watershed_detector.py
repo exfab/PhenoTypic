@@ -106,7 +106,7 @@ class WatershedDetector(ThresholdDetector):
             compactness: float = 0.001,
             connectivity: int = 1,
             relabel: bool = True,
-            ignore_zeros: bool = True,
+            ignore_zeros: bool = False,
     ):
         super().__init__()
 

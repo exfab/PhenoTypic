@@ -84,7 +84,7 @@ class GridImage(ImageGridHandler):
             >>> from phenotypic import GridImage
             >>> # Load plate image with 96-well grid (8 rows x 12 cols)
             >>> grid_img = GridImage('plate_scan.jpg', nrows=8, ncols=12)
-            >>> grid_img.show(overlay=True, show_gridlines=True)
+            >>> grid_img.show(overlay=True, show_grid=True)
 
             Create with custom grid finder:
 
