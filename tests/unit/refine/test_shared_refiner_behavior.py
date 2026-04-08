@@ -116,6 +116,10 @@ class TestRefinerEdgeCasesShared:
         detector = OtsuDetector()
         detected = detector.apply(image)
 
+        # OtsuDetector on a uniform image labels everything as one object.
+        # Manually clear the objmap to test the true "no objects" path.
+        detected.objmap[:] = np.zeros_like(detected.objmap[:])
+
         refiner = RefinerClass()
         refined = refiner.apply(detected)
 
