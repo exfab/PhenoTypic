@@ -127,7 +127,10 @@ class AccessorDashHandler(AccessorMplHandler):
             **size_kwargs,
             dragmode="zoom",
             xaxis=dict(showticklabels=False, showgrid=False),
-            yaxis=dict(showticklabels=False, showgrid=False, scaleanchor="x"),
+            yaxis=dict(
+            showticklabels=False, showgrid=False,
+            scaleanchor="x", constrain="domain", constraintoward="top",
+        ),
             title=title,
         )
 

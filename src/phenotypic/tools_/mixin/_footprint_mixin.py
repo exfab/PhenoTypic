@@ -100,6 +100,12 @@ class FootprintMixin:
         img_x0 = max(0, cx - fp_w // 2)
         img_x1 = min(w, cx - fp_w // 2 + fp_w)
 
+        # Skip when footprint is entirely outside the image — negative
+        # (img_x1 - img_x0) would be misinterpreted as a from-the-end
+        # Python slice index, producing a shape mismatch.
+        if img_y0 >= img_y1 or img_x0 >= img_x1:
+            return
+
         fp_y0 = img_y0 - (cy - fp_h // 2)
         fp_x0 = img_x0 - (cx - fp_w // 2)
         fp_slice = fp_mask[
