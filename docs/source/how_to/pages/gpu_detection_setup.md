@@ -16,7 +16,17 @@ uv pip install phenotypic[torch]
 uv sync --extra torch
 ```
 
-This installs PyTorch, torchvision, the `sam2` package, and `micro_sam`.
+This installs PyTorch, torchvision, and the `sam2` package.
+
+**micro-sam** has C++ dependencies not available on PyPI and must be installed
+separately via conda:
+
+```bash
+conda install -c conda-forge micro_sam
+```
+
+`MicroSamDetector` handles the missing import gracefully at runtime — you only
+need micro-sam installed if you plan to use it.
 
 ## Downloading Model Checkpoints
 
