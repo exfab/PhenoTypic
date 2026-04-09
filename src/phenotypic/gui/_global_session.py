@@ -10,36 +10,18 @@ from pathlib import Path
 from typing import Optional
 
 # Global state
-_panel_initialized = False
 _global_instance_manager: Optional["InstanceManager"] = None
 
 
 def _ensure_panel_initialized() -> None:
     """Ensure Panel extension is initialized (Jupyter only).
 
-    Automatically calls pn.extension() on first use in Jupyter notebooks.
+    Delegates to :func:`phenotypic.tools_.panel_.ensure_panel_extension`.
     Safe to call multiple times - only initializes once.
     """
-    global _panel_initialized
+    from phenotypic.tools_.panel_ import ensure_panel_extension
 
-    if _panel_initialized:
-        return
-
-    try:
-        # Check if we're in a Jupyter environment
-        get_ipython()  # type: ignore  # noqa: F821
-        in_jupyter = True
-    except NameError:
-        in_jupyter = False
-
-    if in_jupyter:
-        import importlib.util
-
-        if importlib.util.find_spec("panel") is not None:
-            import panel as pn
-
-            pn.extension()
-            _panel_initialized = True
+    ensure_panel_extension()
 
 
 def get_global_manager(workspace: Optional[Path] = None) -> "InstanceManager":

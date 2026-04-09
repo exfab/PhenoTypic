@@ -31,16 +31,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _in_jupyter_notebook() -> bool:
-    """Detect whether code is running inside a Jupyter notebook."""
-    try:
-        from IPython import get_ipython
-
-        shell = get_ipython()
-        return shell is not None and shell.__class__.__name__ == "ZMQInteractiveShell"
-    except ImportError:
-        return False
-
 # ---------------------------------------------------------------------------
 # Illuminant constants
 # ---------------------------------------------------------------------------
@@ -711,13 +701,10 @@ class ColorCheckerProfile:
             raise RuntimeError(
                 "Cannot create dashboard for an unfitted profile."
             )
-        from ._diagnostic_dashboard import PANEL_AVAILABLE
+        from phenotypic.tools_.panel_ import require_panel, display_or_return
 
-        if not PANEL_AVAILABLE:
-            raise ImportError(
-                "Panel is required for interactive diagnostics. "
-                "Install with: pip install 'phenotypic[gui]'"
-            )
+        require_panel()
+
         from ._diagnostic_dashboard import ColorCorrectionDashboard
 
         dashboard = ColorCorrectionDashboard(
@@ -725,18 +712,7 @@ class ColorCheckerProfile:
         )
         panel_layout = dashboard.panel()
 
-        if show:
-            if _in_jupyter_notebook():
-                import panel as pn
-
-                pn.extension(inline=True)
-                from IPython.display import display
-
-                display(panel_layout)
-            else:
-                panel_layout.show()
-
-        return panel_layout
+        return display_or_return(panel_layout, show=show)
 
     # -- serialisation ------------------------------------------------------
 

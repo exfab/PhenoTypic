@@ -13,13 +13,12 @@ import colour
 import matplotlib.pyplot as plt
 import numpy as np
 
-try:
+from phenotypic.tools_.panel_ import PANEL_AVAILABLE
+
+if PANEL_AVAILABLE:
     import param
     import panel as pn
-
-    PANEL_AVAILABLE = True
-except ImportError:
-    PANEL_AVAILABLE = False
+else:
     param = None  # type: ignore[assignment]
     pn = None  # type: ignore[assignment]
 

@@ -57,6 +57,10 @@ class DetectModeDashboard(BaseDashboard):
             >>> dashboard = image.panel.detect_modes()
             >>> # dashboard.show()  # opens in browser
         """
+        from phenotypic.tools_.panel_ import require_panel
+
+        require_panel()
+
         import panel as pn
 
         # ---- Gather data ------------------------------------------------

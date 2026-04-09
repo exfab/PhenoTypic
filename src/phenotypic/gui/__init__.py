@@ -47,9 +47,9 @@ def _check_gui_deps() -> bool:
     """
     import importlib.util
 
-    return all(
-        importlib.util.find_spec(pkg) is not None for pkg in ["panel", "param"]
-    )
+    from phenotypic.tools_.panel_ import PANEL_AVAILABLE
+
+    return PANEL_AVAILABLE and importlib.util.find_spec("param") is not None
 
 
 GUI_AVAILABLE = _check_gui_deps()

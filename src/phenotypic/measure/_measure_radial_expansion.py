@@ -616,6 +616,11 @@ class MeasureRadialExpansion(MeasureFeatures):
         Returns:
             Panel Column layout with 6 diagnostic panels.
         """
+        from phenotypic.tools_.panel_ import require_panel, ensure_panel_extension
+
+        require_panel()
+        ensure_panel_extension()
+
         import panel as pn
 
         inter = self._compute_intermediates(image, object_label)

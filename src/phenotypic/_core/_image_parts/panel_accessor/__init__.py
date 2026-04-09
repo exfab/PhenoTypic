@@ -8,7 +8,7 @@ to retrieve a dashboard class by name.
 # Import dashboards to trigger @register_dashboard decorators
 from ._base_dashboard import BaseDashboard
 from ._detect_mode_dashboard import DetectModeDashboard
-from ._diagnostics_dashboard import PANEL_AVAILABLE
+from phenotypic.tools_.panel_ import PANEL_AVAILABLE
 
 if PANEL_AVAILABLE:
     from ._diagnostics_dashboard import DiagnosticsDashboard
