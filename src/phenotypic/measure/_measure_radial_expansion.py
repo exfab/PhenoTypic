@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 import numpy as np
 import pandas as pd
-from scipy.ndimage import convolve
+from scipy.ndimage import convolve, distance_transform_edt
 from skimage.morphology import skeletonize
 from skimage.measure import regionprops
 
@@ -106,12 +106,14 @@ class MeasureRadialExpansion(MeasureFeatures):
         n_annuli: int = 100,
         pelt_penalty: float = 5.0,
         skeleton_method: Literal["zhang", "lee"] = "zhang",
+        method: Literal["distance", "intensity"] = "distance",
     ):
         self.outlier_method = outlier_method
         self.outlier_k = outlier_k
         self.n_annuli = n_annuli
         self.pelt_penalty = pelt_penalty
         self.skeleton_method = skeleton_method
+        self.method = method
 
     # ── shared pipeline for one object ───────────────────────────────
 
@@ -192,9 +194,14 @@ class MeasureRadialExpansion(MeasureFeatures):
         gray_crop = image.gray[:][slc]
         local_mask = objmap_crop == target_prop.label
 
-        # Intensity-weighted centroid in local coordinates
-        cw = target_prop.centroid_weighted
-        local_cr = (cw[0] - slc[0].start, cw[1] - slc[1].start)
+        # Estimate inoculum center in local coordinates
+        if self.method == "distance":
+            dt = distance_transform_edt(local_mask)
+            peak_idx = np.unravel_index(np.argmax(dt), dt.shape)
+            local_cr = (float(peak_idx[0]), float(peak_idx[1]))
+        else:
+            cw = target_prop.centroid_weighted
+            local_cr = (cw[0] - slc[0].start, cw[1] - slc[1].start)
 
         # Pre-compute distance map once
         dist_map = self._distance_from_point(local_mask.shape, local_cr)
@@ -607,36 +614,233 @@ class MeasureRadialExpansion(MeasureFeatures):
     ):
         """Interactive diagnostic dashboard for radial expansion measurement.
 
-        Recomputes all intermediates from the image on demand.
+        Shows a zoomable plotly plate overview with bounding boxes for all
+        objects, plus per-object diagnostic plots that update reactively
+        when a different object is selected from the dropdown.
 
         Args:
             image: Detected Image with objmap/objmask.
-            object_label: Specific object to inspect. If None, uses largest.
+            object_label: Pre-selected object label. If None, the largest
+                object by area is selected initially.
 
         Returns:
-            Panel Column layout with 6 diagnostic panels.
+            Panel Column layout with plate overview, object selector, and
+            6 diagnostic panels per object.
         """
         import panel as pn
+        from phenotypic.tools_._plotly_helpers import _require_plotly
 
-        inter = self._compute_intermediates(image, object_label)
+        _require_plotly()
 
-        p1 = self._plot_radial_profile(inter)
-        p2 = self._plot_zone_overlay(inter)
-        p3 = self._plot_skeleton(inter)
-        p4 = self._plot_branch_traces(inter)
-        p5 = self._plot_branch_distribution(inter)
-        p6 = self._build_summary_panel(inter, self)
+        # Compute intermediates for all objects
+        props = regionprops(image.objmap[:], intensity_image=image.gray[:])
+        intermediates_cache: dict[int, _ExpansionIntermediates] = {}
+        for prop in props:
+            try:
+                inter = self._compute_intermediates(image, prop.label, prop=prop)
+                intermediates_cache[prop.label] = inter
+            except Exception:
+                continue
+
+        if not intermediates_cache:
+            return pn.pane.Markdown("No objects found for radial expansion analysis.")
+
+        # Determine default selection
+        all_labels = sorted(intermediates_cache.keys())
+        if object_label is not None and object_label in intermediates_cache:
+            default_label = object_label
+        else:
+            default_label = max(
+                intermediates_cache,
+                key=lambda l: intermediates_cache[l].obj_mask.sum(),
+            )
+
+        # Build selector widget
+        selector = pn.widgets.Select(
+            name="Object",
+            options={f"Object {lbl}": lbl for lbl in all_labels},
+            value=default_label,
+        )
+
+        # Build reactive plate overview
+        overview_fig = self._build_plate_overview(
+            image, props, intermediates_cache, default_label,
+        )
+        h, w = image.gray[:].shape[:2]
+        overview_h = int(900 * h / w)
+        overview_pane = pn.pane.Plotly(
+            overview_fig,
+            config={"scrollZoom": True},
+            sizing_mode="stretch_width",
+            height=overview_h,
+        )
+
+        instance = self  # capture for closures
+
+        @pn.depends(selector.param.value)
+        def update_overview(label):
+            fig = instance._update_plate_overview(
+                overview_fig, props, intermediates_cache, label,
+            )
+            overview_pane.object = fig
+            return overview_pane
+
+        # Build reactive diagnostic panes
+        @pn.depends(selector.param.value)
+        def plot_radial_profile(label):
+            return instance._plot_radial_profile(intermediates_cache[label])
+
+        @pn.depends(selector.param.value)
+        def plot_zone_overlay(label):
+            return instance._plot_zone_overlay(intermediates_cache[label])
+
+        @pn.depends(selector.param.value)
+        def plot_skeleton(label):
+            return instance._plot_skeleton(intermediates_cache[label])
+
+        @pn.depends(selector.param.value)
+        def plot_branch_traces(label):
+            return instance._plot_branch_traces(intermediates_cache[label])
+
+        @pn.depends(selector.param.value)
+        def plot_branch_distribution(label):
+            return instance._plot_branch_distribution(intermediates_cache[label])
+
+        @pn.depends(selector.param.value)
+        def build_summary(label):
+            return instance._build_summary_panel(
+                intermediates_cache[label], instance,
+            )
+
+        @pn.depends(selector.param.value)
+        def object_header(label):
+            return pn.pane.Markdown(
+                f"### Object {label}",
+                styles={"font-family": "'DM Sans', sans-serif", "color": _OI_NAVY},
+            )
 
         header = pn.pane.Markdown(
-            f"## Radial Expansion Diagnostics -- Object {inter.label}",
+            f"## Radial Expansion Diagnostics -- {len(all_labels)} objects",
             styles={"font-family": "'DM Sans', sans-serif", "color": _OI_NAVY},
         )
 
         return pn.Column(
             header,
-            pn.Row(p1, p2, p3),
-            pn.Row(p4, p5, p6),
+            overview_pane,
+            selector,
+            object_header,
+            pn.Row(plot_radial_profile, plot_zone_overlay, plot_skeleton),
+            pn.Row(plot_branch_traces, plot_branch_distribution, build_summary),
         )
+
+    @staticmethod
+    def _build_plate_overview(
+        image: Image,
+        props: list,
+        intermediates_cache: dict[int, _ExpansionIntermediates],
+        selected_label: int | None = None,
+    ):
+        """Build a zoomable plotly plate overview with object bounding boxes.
+
+        Args:
+            image: Detected Image with objmap/objmask.
+            props: regionprops list for all objects.
+            intermediates_cache: Pre-computed intermediates keyed by label.
+            selected_label: Label of the currently selected object.
+
+        Returns:
+            plotly.graph_objects.Figure with bounding box overlays.
+        """
+        from phenotypic.tools_._plotly_helpers import (
+            plotly_imshow,
+            add_plotly_obj_labels,
+        )
+
+        h, w = image.gray[:].shape[:2]
+        # Scale to a reasonable display width, preserving aspect ratio
+        display_w = 900
+        display_h = int(display_w * h / w)
+        fig = plotly_imshow(
+            image.gray[:], title="Plate Overview",
+            figsize=(display_w // 100, display_h // 100),
+        )
+        add_plotly_obj_labels(fig, image)
+
+        MeasureRadialExpansion._add_bbox_shapes(
+            fig, props, intermediates_cache, selected_label,
+        )
+        return fig
+
+    @staticmethod
+    def _update_plate_overview(
+        fig,
+        props: list,
+        intermediates_cache: dict[int, _ExpansionIntermediates],
+        selected_label: int | None,
+    ):
+        """Update bounding box highlighting on the plate overview.
+
+        Args:
+            fig: Existing plotly figure to update.
+            props: regionprops list for all objects.
+            intermediates_cache: Pre-computed intermediates keyed by label.
+            selected_label: Label of the newly selected object.
+
+        Returns:
+            Updated plotly figure with new highlighting.
+        """
+        # Clear existing bbox shapes and re-add with new selection
+        fig.layout.shapes = []
+        MeasureRadialExpansion._add_bbox_shapes(
+            fig, props, intermediates_cache, selected_label,
+        )
+        return fig
+
+    @staticmethod
+    def _add_bbox_shapes(
+        fig,
+        props: list,
+        intermediates_cache: dict[int, _ExpansionIntermediates],
+        selected_label: int | None,
+    ) -> None:
+        """Add bounding box rectangles to a plotly figure.
+
+        Args:
+            fig: Plotly figure to add shapes to (modified in-place).
+            props: regionprops list for all objects.
+            intermediates_cache: Pre-computed intermediates keyed by label.
+            selected_label: Label to highlight with a thicker border.
+        """
+        shapes = []
+        for prop in props:
+            label = prop.label
+            if label not in intermediates_cache:
+                continue
+            inter = intermediates_cache[label]
+
+            is_selected = label == selected_label
+            has_runner = inter.runner_index is not None
+
+            if is_selected:
+                color = _OI_SKY
+                width: float = 3
+            elif has_runner:
+                color = _OI_VERMILION
+                width = 1.5
+            else:
+                color = _OI_GREEN
+                width = 1
+
+            # bbox is (min_row, min_col, max_row, max_col)
+            min_row, min_col, max_row, max_col = prop.bbox
+            shapes.append(dict(
+                type="rect",
+                x0=min_col, y0=min_row,
+                x1=max_col, y1=max_row,
+                line=dict(color=color, width=width),
+            ))
+
+        fig.update_layout(shapes=shapes)
 
     # ── diagnostic plot helpers ─────────────────────────────────────
 
@@ -1039,6 +1243,7 @@ class MeasureRadialExpansion(MeasureFeatures):
             f"{_row('pelt_penalty', str(instance.pelt_penalty))}"
             f"{_row('n_annuli', str(instance.n_annuli))}"
             f"{_row('skeleton_method', instance.skeleton_method)}"
+            f"{_row('method', instance.method)}"
             "</table></div>"
         )
 
