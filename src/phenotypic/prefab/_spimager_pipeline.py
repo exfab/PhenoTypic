@@ -1,0 +1,29 @@
+from phenotypic.abc_ import PrefabPipeline
+from phenotypic.correction import ImageCropper
+from phenotypic.correction import StableDenoise
+from phenotypic.enhance import SubtractGaussian
+from phenotypic.detect import OtsuDetector
+from phenotypic.measure import MeasureSize
+
+
+class SpImagerPipeline(PrefabPipeline):
+    """
+    A prefabricated pipeline for light image processing task for images from
+    the S&P Robotics Imager
+    """
+
+    def __init__(self):
+        super().__init__(
+                ops=[
+                    ImageCropper(
+                            left=650,
+                            right=650,
+                            top=600,
+                            bottom=600
+                    ),
+                    StableDenoise(),
+                    SubtractGaussian(sigma=500),
+                    OtsuDetector()
+                ],
+                meas=[MeasureSize()]
+        )
