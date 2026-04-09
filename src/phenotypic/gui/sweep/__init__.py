@@ -2,7 +2,7 @@
 
 Launch from the command line::
 
-    uv run python -m phenotypic.gui.sweep [path/to/sweep_output]
+    pixi run python -m phenotypic.gui.sweep [path/to/sweep_output]
 
 Or use programmatically::
 

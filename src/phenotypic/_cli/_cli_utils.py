@@ -293,20 +293,20 @@ def get_python_command(for_slurm: bool = False) -> Tuple[List[str], str]:
     """
     Detect available Python runner command for SLURM scripts.
 
-    Checks if uv is available and returns the appropriate command parts
-    for invoking Python in generated SLURM scripts. When uv is available,
-    uses 'uv run python' to ensure the correct virtual environment and
+    Checks if pixi is available and returns the appropriate command parts
+    for invoking Python in generated SLURM scripts. When pixi is available,
+    uses 'pixi run python' to ensure the correct virtual environment and
     project context are used on worker nodes.
 
     Args:
         for_slurm: When True, return the direct venv Python interpreter
-            path (``sys.executable``) instead of ``uv run python``.
-            This avoids ``uv`` resolution overhead on SLURM worker nodes
+            path (``sys.executable``) instead of ``pixi run python``.
+            This avoids ``pixi`` resolution overhead on SLURM worker nodes
             where the venv is already activated.
 
     Returns:
         Tuple of (command_parts, description) where:
-        - command_parts: List of command strings (e.g., ["uv", "run", "python"])
+        - command_parts: List of command strings (e.g., ["pixi", "run", "python"])
         - description: Human-readable description for logging/display
 
     Examples:
@@ -318,6 +318,6 @@ def get_python_command(for_slurm: bool = False) -> Tuple[List[str], str]:
         import sys
 
         return ([sys.executable], f"{sys.executable} (direct venv)")
-    if shutil.which("uv"):
-        return (["uv", "run", "python"], "uv run python (project environment)")
+    if shutil.which("pixi"):
+        return (["pixi", "run", "python"], "pixi run python (project environment)")
     return (["python"], "python (system)")

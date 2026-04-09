@@ -86,7 +86,7 @@ def generate_image_processing_script(
         error_log=error_log,
     )
 
-    # Get Python command (uses uv run python if available)
+    # Get Python command (uses pixi run python if available)
     python_cmd, _ = get_python_command()
 
     # Build command arguments

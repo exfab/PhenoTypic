@@ -31,7 +31,7 @@ class TestPanelAvailability:
 
     def test_require_panel_message_is_actionable(self):
         """The error message should mention how to install."""
-        assert "pip install" in PANEL_IMPORT_ERROR or "uv" in PANEL_IMPORT_ERROR
+        assert "pip install" in PANEL_IMPORT_ERROR or "pixi" in PANEL_IMPORT_ERROR
 
 
 class TestEnvironmentDetection:

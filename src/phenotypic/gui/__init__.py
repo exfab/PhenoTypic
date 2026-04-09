@@ -6,8 +6,8 @@ ImagePipelines in Jupyter notebooks.
 Requires optional dependencies:
     pip install phenotypic[gui]
 
-or with uv:
-    uv sync --extra gui
+or with pixi:
+    pixi install -e full
 
 Components:
 - PipelineBuilder: Main GUI for building pipelines interactively
