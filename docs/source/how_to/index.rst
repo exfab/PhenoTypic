@@ -22,6 +22,7 @@ Task-oriented recipes that solve a specific problem. Each guide is standalone
    notebooks/manual_grid_detection
    notebooks/combine_detectors
    notebooks/merge_fragmented_detections
+   pages/gpu_detection_setup
 
 .. toctree::
    :maxdepth: 1

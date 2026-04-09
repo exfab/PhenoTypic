@@ -145,8 +145,31 @@ class LocalParallelStrategy(ExecutionStrategy):
             f"[bold]{len(datasets)} datasets[/bold]\n"
         )
 
-        # Process in parallel with verbose output
-        results = Parallel(n_jobs=self.config.n_jobs, verbose=11)(
+        from ._cli_validation import pipeline_requires_gpu
+
+        has_gpu_ops = pipeline_requires_gpu(self.config.pipeline_json)
+
+        if has_gpu_ops:
+            try:
+                from phenotypic.nn._checkpoint_manager import resolve_device
+
+                device = resolve_device("auto")
+                console.print(f"[green]✓ GPU detected: {device}[/green]")
+            except ImportError:
+                raise RuntimeError(
+                    "Pipeline contains GPU-accelerated operations but PyTorch "
+                    "is not installed. Install with: pip install phenotypic[torch]"
+                )
+
+            effective_n_jobs = 1
+            console.print(
+                "[yellow]Pipeline contains GPU operations — "
+                "forcing sequential execution (n_jobs=1)[/yellow]"
+            )
+        else:
+            effective_n_jobs = self.config.n_jobs
+
+        results = Parallel(n_jobs=effective_n_jobs, verbose=11)(
             delayed(self._process_single_local)(
                 dataset, image_path, output_dir, event_log
             )
@@ -381,6 +404,42 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         console.print("[cyan]Querying SLURM array limits...[/cyan]")
         array_limit = get_slurm_array_limit()
         console.print(f"[green]✓[/green] SLURM array limit: [bold]{array_limit}[/bold]\n")
+
+        from ._cli_validation import pipeline_requires_gpu
+
+        if pipeline_requires_gpu(self.config.pipeline_json):
+            slurm_args = dict(self.config.slurm_args)
+
+            if "slurm_gpus_per_node" not in slurm_args:
+                slurm_args["slurm_gpus_per_node"] = 1
+                console.print(
+                    "[yellow]Pipeline contains GPU operations — "
+                    "auto-requesting --gpus-per-node=1[/yellow]"
+                )
+
+            partition = slurm_args.get("slurm_partition")
+            if partition:
+                try:
+                    result = subprocess.run(
+                        ["sinfo", "-p", partition, "--Format=gres", "--noheader"],
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
+                    )
+                    gres_info = result.stdout.strip()
+                    if "gpu" not in gres_info.lower():
+                        raise RuntimeError(
+                            f"Pipeline contains GPU operations but partition "
+                            f"'{partition}' has no GPUs (sinfo gres: "
+                            f"{gres_info!r}). Use "
+                            f"--slurm slurm_partition=<gpu-partition>."
+                        )
+                except FileNotFoundError:
+                    pass  # sinfo not available (not on a SLURM login node)
+                except subprocess.TimeoutExpired:
+                    pass  # sinfo hung, proceed anyway
+
+            self.config.slurm_args = slurm_args
 
         # Generate array job scripts for all datasets
         console.print("[bold cyan]Generating array job scripts...[/bold cyan]")

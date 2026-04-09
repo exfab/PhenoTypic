@@ -897,6 +897,17 @@ def phenotypic_cli(
                 sys.exit(1)
             console.print("[green]✓ Pipeline loaded successfully")
 
+            from phenotypic._cli._cli_validation import pipeline_requires_gpu
+
+            if pipeline_requires_gpu(config.pipeline_json):
+                console.print(
+                    "[yellow]⚡ Pipeline contains GPU-accelerated operations[/yellow]"
+                )
+                if config.is_slurm_mode():
+                    console.print("  GPU resources will be auto-requested on SLURM")
+                else:
+                    console.print("  Local execution will be sequential (n_jobs=1)")
+
             console.print()  # Add blank line after validation
         else:
             from rich.console import Console

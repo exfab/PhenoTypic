@@ -15,6 +15,7 @@ from ._image_corrector import ImageCorrector
 from ._object_detector import ObjectDetector
 from ._object_refiner import ObjectRefiner
 from ._threshold_detector import ThresholdDetector
+from ._gpu_detector import GpuDetector
 from ._grid_operation import GridOperation
 from ._grid_corrector import GridCorrector
 from ._grid_object_refiner import GridObjectRefiner
@@ -37,6 +38,7 @@ __all__ = [
     "ObjectDetector",
     "ObjectRefiner",
     "ThresholdDetector",
+    "GpuDetector",
     "GridOperation",
     "GridFinder",
     "GridCorrector",
