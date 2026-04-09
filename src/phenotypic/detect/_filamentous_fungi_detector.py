@@ -344,7 +344,7 @@ class FilamentousFungiDetector(GridObjectDetector):
                     low="triangle",
                     high="otsu",
                     ignore_zeros=False,
-                    ignore_borders=False
+                    ignore_borders=True
             ).apply(_fragmented_detect_img, inplace=True)
             overall_objmask = _fragmented_detect_img.objmask[:]
             del _fragmented_detect_img

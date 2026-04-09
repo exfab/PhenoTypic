@@ -42,7 +42,7 @@ docs/source/api_reference/api/
 
 # Project-specific
 deprecated/
-_JupyterPrototypes/
+scratch/
 debug/*.log
 
 # Data files
@@ -62,3 +62,6 @@ tmp/
 
 # pytest-testmon database (local only, not for version control)
 .testmondata*
+
+# Profiler benchmark logs
+.benchmark/
