@@ -14,6 +14,7 @@ phenotypic.egg-info/
 
 # Virtual environments
 .venv/
+.pixi/
 .junie/
 .ai/
 

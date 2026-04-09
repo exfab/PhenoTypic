@@ -81,52 +81,41 @@ jobs:
         include:
           # Ubuntu: test Python 3.10, 3.11, 3.12
           - os: ubuntu-latest
-            python-version: "3.10"
+            pixi-env: "test-py310"
           - os: ubuntu-latest
-            python-version: "3.11"
+            pixi-env: "test-py311"
           - os: ubuntu-latest
-            python-version: "3.12"
+            pixi-env: "test-py312"
 
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
 
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y exiftool
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
+      - name: Setup pixi
+        uses: prefix-dev/setup-pixi@v0.8.0
         with:
-          version: "latest"
-
-      - name: Install dependencies
-        run: |
-          uv lock
-          uv sync --group dev --all-extras
+          environments: ${{ matrix.pixi-env }}
 
       - name: Cache testmon data
         uses: actions/cache@v4
         with:
           path: .testmondata
-          key: testmon-${{ runner.os }}-py${{ matrix.python-version }}-${{ github.ref_name }}-${{ hashFiles('uv.lock') }}-${{ github.sha }}
+          key: testmon-${{ runner.os }}-${{ matrix.pixi-env }}-${{ github.ref_name }}-${{ hashFiles('pixi.lock') }}-${{ github.sha }}
           restore-keys: |
-            testmon-${{ runner.os }}-py${{ matrix.python-version }}-main-${{ hashFiles('uv.lock') }}-
-            testmon-${{ runner.os }}-py${{ matrix.python-version }}-main-
+            testmon-${{ runner.os }}-${{ matrix.pixi-env }}-main-${{ hashFiles('pixi.lock') }}-
+            testmon-${{ runner.os }}-${{ matrix.pixi-env }}-main-
 
       - name: Run tests
         run: |
-          source .venv/bin/activate
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            pytest -n auto  # Full parallel run
+            pixi run -e ${{ matrix.pixi-env }} test-parallel
           else
-            pytest --testmon  # Selective: PR (skip unchanged) or push-to-main (update baseline)
+            pixi run -e ${{ matrix.pixi-env }} test-testmon
           fi
 
   tests-windows:
@@ -139,45 +128,33 @@ jobs:
         include:
           # Windows: only Python 3.12
           - os: windows-latest
-            python-version: "3.12"
+            pixi-env: "test-py312"
 
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - name: Setup pixi
+        uses: prefix-dev/setup-pixi@v0.8.0
         with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          version: "latest"
-
-      - name: Install dependencies
-        run: |
-          uv lock
-          uv sync --group dev --all-extras
+          environments: ${{ matrix.pixi-env }}
 
       - name: Cache testmon data
         uses: actions/cache@v4
         with:
           path: .testmondata
-          key: testmon-${{ runner.os }}-py${{ matrix.python-version }}-${{ github.ref_name }}-${{ hashFiles('uv.lock') }}-${{ github.sha }}
+          key: testmon-${{ runner.os }}-${{ matrix.pixi-env }}-${{ github.ref_name }}-${{ hashFiles('pixi.lock') }}-${{ github.sha }}
           restore-keys: |
-            testmon-${{ runner.os }}-py${{ matrix.python-version }}-main-${{ hashFiles('uv.lock') }}-
-            testmon-${{ runner.os }}-py${{ matrix.python-version }}-main-
+            testmon-${{ runner.os }}-${{ matrix.pixi-env }}-main-${{ hashFiles('pixi.lock') }}-
+            testmon-${{ runner.os }}-${{ matrix.pixi-env }}-main-
 
       - name: Run tests
         run: |
-          .venv\Scripts\activate
-          if ($env:GITHUB_EVENT_NAME -eq "workflow_dispatch") {
-            pytest -n auto  # Full parallel run
-          } else {
-            pytest --testmon  # Selective: PR (skip unchanged) or push-to-main (update baseline)
-          }
-        shell: pwsh
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            pixi run -e ${{ matrix.pixi-env }} test-parallel
+          else
+            pixi run -e ${{ matrix.pixi-env }} test-testmon
+          fi
 
   tests-macos:
     needs: check-manual-run
@@ -189,43 +166,32 @@ jobs:
         include:
           # macOS: only Python 3.12
           - os: macos-14
-            python-version: "3.12"
+            pixi-env: "test-py312"
 
     runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - name: Setup pixi
+        uses: prefix-dev/setup-pixi@v0.8.0
         with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          version: "latest"
-
-      - name: Install dependencies
-        run: |
-          uv lock
-          uv sync --group dev --all-extras
+          environments: ${{ matrix.pixi-env }}
 
       - name: Cache testmon data
         uses: actions/cache@v4
         with:
           path: .testmondata
-          key: testmon-${{ runner.os }}-py${{ matrix.python-version }}-${{ github.ref_name }}-${{ hashFiles('uv.lock') }}-${{ github.sha }}
+          key: testmon-${{ runner.os }}-${{ matrix.pixi-env }}-${{ github.ref_name }}-${{ hashFiles('pixi.lock') }}-${{ github.sha }}
           restore-keys: |
-            testmon-${{ runner.os }}-py${{ matrix.python-version }}-main-${{ hashFiles('uv.lock') }}-
-            testmon-${{ runner.os }}-py${{ matrix.python-version }}-main-
+            testmon-${{ runner.os }}-${{ matrix.pixi-env }}-main-${{ hashFiles('pixi.lock') }}-
+            testmon-${{ runner.os }}-${{ matrix.pixi-env }}-main-
 
       - name: Run tests
         run: |
-          source .venv/bin/activate
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            pytest -n auto  # Full parallel run
+            pixi run -e ${{ matrix.pixi-env }} test-parallel
           else
-            pytest --testmon  # Selective: PR (skip unchanged) or push-to-main (update baseline)
+            pixi run -e ${{ matrix.pixi-env }} test-testmon
           fi
 
   docs-build:
@@ -239,19 +205,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Python for docs
-        uses: actions/setup-python@v5
+      - name: Setup pixi
+        uses: prefix-dev/setup-pixi@v0.8.0
         with:
-          python-version: '3.12'
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          version: 'latest'
-
-      - name: Install documentation dependencies
-        run: |
-          uv sync --group dev --group docs
+          environments: docs
 
       - name: Install Pandoc
         run: |
@@ -260,5 +217,4 @@ jobs:
 
       - name: Build documentation (test only)
         run: |
-          cd docs
-          uv run make html
+          pixi run -e docs docs-build

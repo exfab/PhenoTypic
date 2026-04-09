@@ -62,6 +62,7 @@ dependencies = [
     "duckdb>=1.2.0",
     "kaleido>=1.2.0",
     "ruptures>=1.1.9",
+    "typing_extensions>=4.0.0",
 ]
 
 [project.urls]
@@ -101,39 +102,6 @@ torch = [
 [project.scripts]
 phenotypic = "phenotypic.phenotypicCLI:phenotypic_cli"
 
-[dependency-groups]
-dev = [
-    "memory-profiler>=0.61.0",
-    "pytest>=8.4.0",
-    "pytest-cov",
-    "mypy",
-    "pytest-xdist>=3.8.0",
-    "pympler; sys_platform!='win32'",
-    "jupyter;sys_platform!='win32'",
-    "ipykernel;sys_platform!='win32'",
-    "notebook;sys_platform!='win32'",
-    "ipywidgets",
-    "ruff>=0.14.7",
-    "scipy-stubs>=1.15.3.0",
-    "pytest-testmon>=2.2.0",
-    "pytest-qt>=4.5.0",
-]
-docs = [
-    "sphinx",
-    "sphinxcontrib-napoleon",
-    "sphinx-autodoc-typehints",
-    "sphinx-autobuild",
-    "sphinxawesome-theme",
-    "pydata-sphinx-theme",
-    "sphinx-gallery",
-    "sphinx-autosummary-accessors",
-    "sphinx-design",
-    "nbsphinx",
-    "myst-nb",
-    "sphinx-togglebutton>=0.3.2",
-    "pandoc>=2.4",
-    "myst-parser>=4.0.1",
-]
 
 
 [tool.pytest.ini_options]
@@ -155,12 +123,74 @@ version = { attr = "phenotypic.__version__" }
     "_cli/_assets/*.png",
 ]
 
-[tool.uv]
-required-environments = [
-    "sys_platform == 'darwin' and platform_machine == 'arm64'",
-    "sys_platform == 'linux' and platform_machine == 'x86_64'",
-    "sys_platform == 'win32' and platform_machine == 'x86_64'",
-]
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "linux-64", "win-64"]
+
+[tool.pixi.dependencies]
+python = ">=3.10,<3.13"
+
+[tool.pixi.pypi-dependencies]
+phenotypic = { path = ".", editable = true }
+
+# Dev feature (replaces [dependency-groups] dev)
+[tool.pixi.feature.dev.pypi-dependencies]
+memory-profiler = ">=0.61.0"
+pytest = ">=8.4.0"
+pytest-cov = "*"
+mypy = "*"
+pytest-xdist = ">=3.8.0"
+pympler = { version = ">=1.0.1", env-markers = "sys_platform != 'win32'" }
+jupyter = { version = "*", env-markers = "sys_platform != 'win32'" }
+ipykernel = { version = "*", env-markers = "sys_platform != 'win32'" }
+notebook = { version = "*", env-markers = "sys_platform != 'win32'" }
+ipywidgets = "*"
+ruff = ">=0.14.7"
+scipy-stubs = ">=1.15.3.0"
+pytest-testmon = ">=2.2.0"
+pytest-qt = ">=4.5.0"
+
+# Docs feature (replaces [dependency-groups] docs)
+[tool.pixi.feature.docs.pypi-dependencies]
+sphinx = "*"
+sphinxcontrib-napoleon = "*"
+sphinx-autodoc-typehints = "*"
+sphinx-autobuild = "*"
+sphinxawesome-theme = "*"
+pydata-sphinx-theme = "*"
+sphinx-gallery = "*"
+sphinx-autosummary-accessors = "*"
+sphinx-design = "*"
+nbsphinx = "*"
+myst-nb = "*"
+sphinx-togglebutton = ">=0.3.2"
+pandoc = ">=2.4"
+myst-parser = ">=4.0.1"
+
+# Per-Python-version features for CI matrix
+[tool.pixi.feature.py310.dependencies]
+python = "~=3.10.0"
+[tool.pixi.feature.py311.dependencies]
+python = "~=3.11.0"
+[tool.pixi.feature.py312.dependencies]
+python = "~=3.12.0"
+
+[tool.pixi.environments]
+default = { solve-group = "default" }
+dev = { features = ["dev"], solve-group = "default" }
+docs = { features = ["dev", "docs"], solve-group = "default" }
+full = { features = ["dev", "docs", "gui", "torch"], solve-group = "default" }
+test-py310 = { features = ["dev", "py310"], solve-group = "py310" }
+test-py311 = { features = ["dev", "py311"], solve-group = "py311" }
+test-py312 = { features = ["dev", "py312"], solve-group = "py312" }
+
+[tool.pixi.tasks]
+test = "pytest"
+test-parallel = "pytest -n auto"
+test-testmon = "pytest --testmon"
+lint = "ruff check --fix"
+typecheck = "mypy src/phenotypic"
+docs-build = { cmd = "make html", cwd = "docs" }
 
 [tool.ruff]
 line-length = 79
