@@ -6,8 +6,8 @@ slowest documents and ``rich`` for formatted terminal output.
 
 Usage::
 
-    uv run python scripts/profile_docs.py
-    uv run python scripts/profile_docs.py --top-n 30 --json report.json
+    pixi run python scripts/profile_docs.py
+    pixi run python scripts/profile_docs.py --top-n 30 --json report.json
 """
 
 from __future__ import annotations

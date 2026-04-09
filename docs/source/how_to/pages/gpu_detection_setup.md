@@ -9,11 +9,8 @@ GPU detectors require PyTorch and model-specific packages. Install the optional
 `torch` extra:
 
 ```bash
-# Using uv (recommended)
-uv pip install phenotypic[torch]
-
-# Or sync from pyproject.toml
-uv sync --extra torch
+# Using pixi (recommended)
+pixi install -e full
 ```
 
 This installs PyTorch, torchvision, and the `sam2` package.
@@ -301,7 +298,7 @@ python -m phenotypic.nn clear --model-type microsam
 PyTorch and the model packages are not installed. Install the optional extra:
 
 ```bash
-uv pip install phenotypic[torch]
+pixi install -e full
 ```
 
 ### `RuntimeError: No accelerator available`

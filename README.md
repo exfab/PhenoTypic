@@ -27,21 +27,21 @@ to integrate new tools.
 
 # Installation
 
-## uv (recommended)
+## pixi (recommended)
 
 **See more** on
-<u>[installing uv](https://docs.astral.sh/uv/getting-started/installation/)</u>
+<u>[installing pixi](https://pixi.sh/latest/getting_started/)</u>
 
 **Regular Install** (recommended when deploying on a cluster)
 
 ```bash
-uv add phenotypic
+pixi add --pypi phenotypic
 ```
 
 **Interactive / GUI Install** (napari viewer, Panel dashboards, Jupyter)
 
 ```bash
-uv add "phenotypic[gui]"
+pixi add --pypi "phenotypic[gui]"
 ```
 
 ## Pip
@@ -66,7 +66,7 @@ needed
 ```  
 git clone https://github.com/exfab/PhenoTypic.git
 cd PhenoTypic
-uv pip install -e .
+pixi install
 ```  
 
 ## Dev Installation
@@ -76,7 +76,7 @@ For extending PhenoTypic.
 ```  
 git clone https://github.com/exfab/PhenoTypic.git
 cd PhenoTypic
-uv sync --group dev
+pixi install -e dev
 ```  
 
 ## Optional Installation

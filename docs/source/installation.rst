@@ -8,7 +8,7 @@ Before installing Phenotypic, ensure you have the following prerequisites:
 
 * Python 3.10 or higher
 * pip (Python package installer)
-* uv (optional, but recommended)
+* pixi (recommended)
 
 Installation Methods
 ------------------
@@ -16,11 +16,11 @@ Installation Methods
 From PyPi
 +++++++++
 
-Using uv (recommended)
-++++++++
+Using pixi (recommended)
++++++++++
 .. code-block:: bash
 
-   uv add phenotypic
+   pixi add --pypi phenotypic
 
 Using pip
 +++++++++
@@ -38,7 +38,7 @@ To install from source:
 .. code-block:: bash
 
   git clone https://github.com/exfab/PhenoTypic.git
-  uv pip install -e ./PhenoTypic # Replace with the path to the module
+  cd PhenoTypic && pixi install
 
 
 Optional Extras
@@ -53,10 +53,10 @@ PhenoTypic provides optional extras for different use cases:
 .. code-block:: bash
 
    # Jupyter notebooks only
-   uv add "phenotypic[jupyter]"
+   pixi add --pypi "phenotypic[jupyter]"
 
    # Full interactive / GUI environment (napari, Panel, Jupyter)
-   uv add "phenotypic[gui]"
+   pixi add --pypi "phenotypic[gui]"
 
 
 Development Installation
@@ -69,7 +69,7 @@ For development of new modules, install additional dependencies:
     git clone https://github.com/exfab/PhenoTypic.git
 
     # If on windows, docs may fail to install
-    cd PhenoTypic && uv sync --group dev --group docs --extras gui
+    cd PhenoTypic && pixi install -e full
 
 
 Verification

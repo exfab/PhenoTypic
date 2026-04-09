@@ -2,13 +2,13 @@
 
 ## Quick Start
 
-**`uv` is the sole package manager and runner.** Never use bare `python` or `pip`.
+**`pixi` is the sole package manager and runner.** Never use bare `python` or `pip`.
 
-- `uv run <cmd>` — run commands
-- `uv add <package>` (or `--group dev`) — add dependencies
-- `uv sync` — sync env (after checkout or in new worktrees)
-- `uv sync --group dev --group docs --extras gui` — full dev env
-- `source .venv/bin/activate` — manual venv activation
+- `pixi run <cmd>` — run commands
+- `pixi add --pypi <package>` — add dependencies
+- `pixi install` — sync env (after checkout or in new worktrees)
+- `pixi install -e full` — full dev env
+- `pixi shell` — activate environment shell
 
 ### Testing
 
@@ -16,13 +16,13 @@ See [tests/CLAUDE.md](tests/CLAUDE.md)
 
 ### Linting & Type Checking
 
-- `uv run mypy src/phenotypic` — type checking
-- `uv run ruff check --fix` — format and lint
+- `pixi run mypy src/phenotypic` — type checking
+- `pixi run ruff check --fix` — format and lint
 
 ### CLI
 
-- **`uv run python -m phenotypic`** — single pipeline on images/directories (parallel, SLURM, resume)
-- **`uv run python -m phenotypic.sweep`** — parameter sweeps across pipeline variants
+- **`pixi run python -m phenotypic`** — single pipeline on images/directories (parallel, SLURM, resume)
+- **`pixi run python -m phenotypic.sweep`** — parameter sweeps across pipeline variants
 
 See [src/phenotypic/_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) and [src/phenotypic/sweep/CLAUDE.md](src/phenotypic/sweep/CLAUDE.md) for full docs.
 
