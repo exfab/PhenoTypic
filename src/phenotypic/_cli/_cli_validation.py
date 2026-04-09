@@ -128,3 +128,18 @@ def full_validation(
         errors.append(pipeline_error)
 
     return len(errors) == 0, errors
+
+
+def pipeline_requires_gpu(pipeline_path: Path) -> bool:
+    """Check if a pipeline JSON contains any GpuDetector operations.
+
+    Args:
+        pipeline_path: Path to pipeline JSON file.
+
+    Returns:
+        True if the pipeline contains at least one GpuDetector operation.
+    """
+    from phenotypic.abc_ import GpuDetector
+
+    pipeline = ImagePipeline.from_json(pipeline_path)
+    return any(isinstance(op, GpuDetector) for op in pipeline.get_ops().values())

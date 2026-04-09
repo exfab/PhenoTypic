@@ -85,6 +85,19 @@ gui = [
     "jupyter>=1.1.1",
 ]
 
+torch = [
+    # SAM2 requires CUDA nvcc to compile from source — restrict to Linux/macOS
+    "torch>=2.5.1;sys_platform!='win32'",
+    "torchvision>=0.20.1;sys_platform!='win32'",
+    "sam2;sys_platform!='win32'",
+    # micro_sam is conda-only (C++ deps not on PyPI) — install separately:
+    #   conda install -c conda-forge micro_sam
+    # MicroSamDetector handles the ImportError gracefully at runtime.
+    #
+    # On Windows, install torch/sam2 manually via WSL or conda.
+    # All detectors handle ImportError gracefully at runtime.
+]
+
 [project.scripts]
 phenotypic = "phenotypic.phenotypicCLI:phenotypic_cli"
 

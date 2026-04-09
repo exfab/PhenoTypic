@@ -627,6 +627,11 @@ class MeasureRadialExpansion(MeasureFeatures):
             Panel Column layout with plate overview, object selector, and
             6 diagnostic panels per object.
         """
+        from phenotypic.tools_.panel_ import require_panel, ensure_panel_extension
+
+        require_panel()
+        ensure_panel_extension()
+
         import panel as pn
         from phenotypic.tools_._plotly_helpers import _require_plotly
 
