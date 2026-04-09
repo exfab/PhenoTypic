@@ -68,3 +68,47 @@ class FootprintMixin:
                 return disk(radius=width // 2)
             case _:
                 raise ValueError(f"Unknown shape: {shape}")
+
+    @staticmethod
+    def _stamp_footprint(
+        mask: np.ndarray,
+        labeled: np.ndarray,
+        fp_mask: np.ndarray,
+        cy: int,
+        cx: int,
+        label_id: int,
+    ) -> None:
+        """Stamp a boolean footprint at ``(cy, cx)`` into *mask* and *labeled*.
+
+        Handles boundary clipping so the footprint can extend beyond image
+        edges without raising an ``IndexError``.
+
+        Args:
+            mask: Boolean mask array to update in place (logical OR).
+            labeled: Integer label array to update in place.
+            fp_mask: Boolean footprint array.
+            cy: Row centre of the stamp.
+            cx: Column centre of the stamp.
+            label_id: Integer label written into *labeled* where the
+                footprint is ``True``.
+        """
+        h, w = mask.shape
+        fp_h, fp_w = fp_mask.shape
+
+        img_y0 = max(0, cy - fp_h // 2)
+        img_y1 = min(h, cy - fp_h // 2 + fp_h)
+        img_x0 = max(0, cx - fp_w // 2)
+        img_x1 = min(w, cx - fp_w // 2 + fp_w)
+
+        fp_y0 = img_y0 - (cy - fp_h // 2)
+        fp_x0 = img_x0 - (cx - fp_w // 2)
+        fp_slice = fp_mask[
+            fp_y0 : fp_y0 + (img_y1 - img_y0),
+            fp_x0 : fp_x0 + (img_x1 - img_x0),
+        ]
+
+        mask[img_y0:img_y1, img_x0:img_x1] |= fp_slice
+        region = labeled[img_y0:img_y1, img_x0:img_x1]
+        labeled[img_y0:img_y1, img_x0:img_x1] = np.where(
+            fp_slice, label_id, region
+        )

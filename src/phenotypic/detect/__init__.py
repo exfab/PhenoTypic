@@ -16,6 +16,7 @@ from ._isodata_detector import IsodataDetector
 from ._li_detector import LiDetector
 from ._manual_detector import ManualDetector
 from ._manual_grid_detector import ManualGridDetector
+from ._manual_point_detector import ManualPointDetector
 from ._mean_detector import MeanDetector
 from ._minimum_detector import MinimumDetector
 from ._otsu_detector import OtsuDetector
@@ -41,6 +42,7 @@ __all__ = [
     "LiDetector",
     "ManualDetector",
     "ManualGridDetector",
+    "ManualPointDetector",
     "MeanDetector",
     "MinimumDetector",
     "OtsuDetector",
