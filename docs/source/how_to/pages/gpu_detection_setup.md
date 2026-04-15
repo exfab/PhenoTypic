@@ -5,25 +5,35 @@ GPU acceleration.
 
 ## Installation
 
-GPU detectors require PyTorch and model-specific packages. Install the optional
-`torch` extra:
+### Recommended: pixi (handles conda + PyPI automatically)
 
 ```bash
-# Using pixi (recommended)
+# Full dev environment (includes GUI, docs, torch)
 pixi install -e full
+
+# Or just the torch environment (smaller)
+pixi install -e torch
 ```
 
-This installs PyTorch, torchvision, and the `sam2` package.
+This installs PyTorch, torchvision, `sam2` (from PyPI), and `micro_sam`
+(from conda-forge) in one step.
 
-**micro-sam** has C++ dependencies not available on PyPI and must be installed
-separately via conda:
+### Alternative: pip (sam2 only, manual micro-sam)
+
+If you prefer pip over pixi:
 
 ```bash
-conda install -c conda-forge micro_sam
+pip install phenotypic[torch]                   # torch + sam2
+conda install -c conda-forge micro_sam          # micro-sam (required separately)
 ```
 
-`MicroSamDetector` handles the missing import gracefully at runtime — you only
+`MicroSamDetector` handles missing imports gracefully at runtime — you only
 need micro-sam installed if you plan to use it.
+
+### Windows
+
+Native Windows lacks pre-built wheels for `sam2` (requires CUDA `nvcc`).
+Use WSL2 (Ubuntu) and follow the Linux instructions.
 
 ## Downloading Model Checkpoints
 

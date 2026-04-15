@@ -87,16 +87,15 @@ gui = [
 ]
 
 torch = [
-    # SAM2 requires CUDA nvcc to compile from source — restrict to Linux/macOS
+    # SAM2 requires CUDA nvcc to compile from source — restrict to Linux/macOS.
+    # For the full stack including micro_sam (conda-only), use pixi:
+    #   pixi install -e torch   (or -e full)
+    # Pip users need micro_sam installed separately via conda:
+    #   conda install -c conda-forge micro_sam
+    # MicroSamDetector handles missing micro_sam gracefully at runtime.
     "torch>=2.5.1;sys_platform!='win32'",
     "torchvision>=0.20.1;sys_platform!='win32'",
     "sam2;sys_platform!='win32'",
-    # micro_sam is conda-only (C++ deps not on PyPI) — install separately:
-    #   conda install -c conda-forge micro_sam
-    # MicroSamDetector handles the ImportError gracefully at runtime.
-    #
-    # On Windows, install torch/sam2 manually via WSL or conda.
-    # All detectors handle ImportError gracefully at runtime.
 ]
 
 [project.scripts]
@@ -167,6 +166,32 @@ sphinx-togglebutton = ">=0.3.2"
 pandoc = ">=2.4"
 myst-parser = ">=4.0.1"
 
+# GUI feature — mirrors [project.optional-dependencies] gui
+[tool.pixi.feature.gui.pypi-dependencies]
+napari = { version = ">=0.5.4", extras = ["all"] }
+pyqt5 = ">=5.15.2"
+panel = ">=1.3"
+param = ">=2.0"
+bokeh = ">=3.3"
+jinja2 = ">=3.1"
+jupyter-bokeh = ">=4.0.5"
+ipykernel = ">=6.31.0"
+ipywidgets = ">=8.1.7"
+jupyter = ">=1.1.1"
+
+# Torch feature — SAM2 + micro-sam GPU detectors
+#
+# micro_sam comes from conda-forge (C++ deps not available on PyPI).
+# sam2 and torch come from PyPI; sam2 builds from source via nvcc on
+# Linux/macOS, so the sam2 dep is env-marker-gated off Windows.
+[tool.pixi.feature.torch.dependencies]
+micro_sam = "*"
+
+[tool.pixi.feature.torch.pypi-dependencies]
+torch = { version = ">=2.5.1", env-markers = "sys_platform != 'win32'" }
+torchvision = { version = ">=0.20.1", env-markers = "sys_platform != 'win32'" }
+sam2 = { version = "*", env-markers = "sys_platform != 'win32'" }
+
 # Per-Python-version features for CI matrix
 [tool.pixi.feature.py310.dependencies]
 python = "~=3.10.0"
@@ -179,6 +204,8 @@ python = "~=3.12.0"
 default = { solve-group = "default" }
 dev = { features = ["dev"], solve-group = "default" }
 docs = { features = ["dev", "docs"], solve-group = "default" }
+gui = { features = ["gui"], solve-group = "default" }
+torch = { features = ["torch"], solve-group = "default" }
 full = { features = ["dev", "docs", "gui", "torch"], solve-group = "default" }
 test-py310 = { features = ["dev", "py310"], solve-group = "py310" }
 test-py311 = { features = ["dev", "py311"], solve-group = "py311" }
