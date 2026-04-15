@@ -179,18 +179,22 @@ ipykernel = ">=6.31.0"
 ipywidgets = ">=8.1.7"
 jupyter = ">=1.1.1"
 
-# Torch feature — SAM2 + micro-sam GPU detectors
+# Torch feature — SAM2 detector via PyPI torch (CUDA-capable on Linux).
 #
-# micro_sam comes from conda-forge (C++ deps not available on PyPI).
-# sam2 and torch come from PyPI; sam2 builds from source via nvcc on
-# Linux/macOS, so the sam2 dep is env-marker-gated off Windows.
-[tool.pixi.feature.torch.dependencies]
-micro_sam = "*"
-
+# Pure PyPI: keeps the door open to CUDA wheels from PyTorch's index.
+# sam2 builds from source via nvcc on Linux/macOS, env-marker-gated off Windows.
 [tool.pixi.feature.torch.pypi-dependencies]
 torch = { version = ">=2.5.1", env-markers = "sys_platform != 'win32'" }
 torchvision = { version = ">=0.20.1", env-markers = "sys_platform != 'win32'" }
 sam2 = { version = "*", env-markers = "sys_platform != 'win32'" }
+
+# microsam feature — micro-sam detector via conda-forge.
+#
+# Kept separate from `torch` because conda's micro_sam transitively pulls
+# in CPU-only conda pytorch, which would pre-empt the PyPI CUDA wheels in
+# the `torch` feature. Combine into `full` knowing that combo is CPU-only.
+[tool.pixi.feature.microsam.dependencies]
+micro_sam = "*"
 
 # Per-Python-version features for CI matrix
 [tool.pixi.feature.py310.dependencies]
@@ -206,7 +210,8 @@ dev = { features = ["dev"], solve-group = "default" }
 docs = { features = ["dev", "docs"], solve-group = "default" }
 gui = { features = ["gui"], solve-group = "default" }
 torch = { features = ["torch"], solve-group = "default" }
-full = { features = ["dev", "docs", "gui", "torch"], solve-group = "default" }
+microsam = { features = ["microsam"], solve-group = "default" }
+full = { features = ["dev", "docs", "gui", "torch", "microsam"], solve-group = "default" }
 test-py310 = { features = ["dev", "py310"], solve-group = "py310" }
 test-py311 = { features = ["dev", "py311"], solve-group = "py311" }
 test-py312 = { features = ["dev", "py312"], solve-group = "py312" }

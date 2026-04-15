@@ -5,26 +5,38 @@ GPU acceleration.
 
 ## Installation
 
-### Recommended: pixi (handles conda + PyPI automatically)
+The two GPU detectors live in **separate pixi environments** because they
+have incompatible install requirements:
+
+| Environment | Provides | PyTorch source | CUDA-capable? |
+|-------------|----------|----------------|---------------|
+| `torch`     | SAM2 (`Sam2Detector`) | PyPI (`pip install torch`) | Yes — Linux + CUDA |
+| `microsam`  | micro-sam (`MicroSamDetector`) | conda-forge (transitively, CPU) | No — CPU only by default |
+| `full`      | Both + dev + docs + gui | conda-forge (CPU wins) | No — CPU only |
+
+The split exists because conda's `micro_sam` pulls in CPU-only conda PyTorch,
+which would silently pre-empt the PyPI CUDA wheels in the same environment.
+
+### Recommended: pick the env that matches your detector
 
 ```bash
-# Full dev environment (includes GUI, docs, torch)
-pixi install -e full
-
-# Or just the torch environment (smaller)
+# SAM2 with CUDA acceleration on Linux/macOS:
 pixi install -e torch
+
+# micro-sam (CPU-only by default, fine for most colony images):
+pixi install -e microsam
+
+# Both detectors + dev tooling (CPU-only):
+pixi install -e full
 ```
 
-This installs PyTorch, torchvision, `sam2` (from PyPI), and `micro_sam`
-(from conda-forge) in one step.
-
-### Alternative: pip (sam2 only, manual micro-sam)
+### Alternative: pip + conda
 
 If you prefer pip over pixi:
 
 ```bash
-pip install phenotypic[torch]                   # torch + sam2
-conda install -c conda-forge micro_sam          # micro-sam (required separately)
+pip install phenotypic[torch]                   # torch + sam2 (CUDA-capable)
+conda install -c conda-forge micro_sam          # micro-sam (separate, CPU)
 ```
 
 `MicroSamDetector` handles missing imports gracefully at runtime — you only
@@ -32,8 +44,9 @@ need micro-sam installed if you plan to use it.
 
 ### Windows
 
-Native Windows lacks pre-built wheels for `sam2` (requires CUDA `nvcc`).
-Use WSL2 (Ubuntu) and follow the Linux instructions.
+`sam2` requires CUDA `nvcc` and has no pre-built Windows wheels — use WSL2
+(Ubuntu) for `Sam2Detector`. `MicroSamDetector` does install on Windows via
+`pixi install -e microsam`.
 
 ## Downloading Model Checkpoints
 
