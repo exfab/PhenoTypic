@@ -112,9 +112,6 @@ class MeasureBounds(MeasureFeatures):
 
             labels = np.unique(objmap[nonzero])
             positions = ndi.maximum_position(dt, labels=objmap, index=labels)
-            # Single-label calls return a tuple; multi-label calls return a list.
-            if len(labels) == 1:
-                positions = [positions]
             positions = np.asarray(positions, dtype=float)
 
             dist_df = pd.DataFrame({
