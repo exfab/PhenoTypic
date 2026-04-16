@@ -303,11 +303,11 @@ class TestGMMCoreExtractorPipeline:
         assert len(ops) == 2
         op = ops[1]
         assert isinstance(op, GMMCoreExtractor)
-        assert op._GMMCoreExtractor__n_components == 2
-        assert op._GMMCoreExtractor__separation_threshold == 0.7
-        assert op._GMMCoreExtractor__min_core_area == 20
-        assert op._GMMCoreExtractor__morph_open_radius == 0
-        assert op._GMMCoreExtractor__morph_close_radius == 3
+        assert op.n_components == 2
+        assert op.separation_threshold == 0.7
+        assert op.min_core_area == 20
+        assert op.morph_open_radius == 0
+        assert op.morph_close_radius == 3
 
     def test_is_object_refiner(self):
         """GMMCoreExtractor should be an ObjectRefiner subclass."""
