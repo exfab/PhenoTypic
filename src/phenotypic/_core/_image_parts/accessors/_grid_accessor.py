@@ -306,23 +306,15 @@ class GridAccessor:
 
         return (global_min_rr, global_min_cc), (global_max_rr, global_max_cc)
 
-    def _get_section_bounds_arrays(
+    def _get_section_object_bounds_arrays(
             self,
             grid_info: pd.DataFrame | None = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Compute per-section bounds using grid edges and object extents."""
+        """Compute per-section object-union bounding box (NaN for empty sections)."""
         if grid_info is None:
             grid_info = self.info()
 
-        nrows, ncols = self.nrows, self.ncols
-        section_count = nrows * ncols
-        row_edges = self.get_row_edges()
-        col_edges = self.get_col_edges()
-
-        grid_min_rr = np.repeat(row_edges[:-1], ncols)
-        grid_max_rr = np.repeat(row_edges[1:], ncols)
-        grid_min_cc = np.tile(col_edges[:-1], nrows)
-        grid_max_cc = np.tile(col_edges[1:], nrows)
+        section_count = self.nrows * self.ncols
 
         if grid_info.empty:
             obj_min_rr = np.full(section_count, np.nan)
@@ -349,6 +341,29 @@ class GridAccessor:
             obj_max_rr = bounds["max_rr"].to_numpy()
             obj_min_cc = bounds["min_cc"].to_numpy()
             obj_max_cc = bounds["max_cc"].to_numpy()
+
+        return obj_min_rr, obj_max_rr, obj_min_cc, obj_max_cc
+
+    def _get_section_bounds_arrays(
+            self,
+            grid_info: pd.DataFrame | None = None,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Compute per-section bounds using grid edges and object extents."""
+        if grid_info is None:
+            grid_info = self.info()
+
+        nrows, ncols = self.nrows, self.ncols
+        row_edges = self.get_row_edges()
+        col_edges = self.get_col_edges()
+
+        grid_min_rr = np.repeat(row_edges[:-1], ncols)
+        grid_max_rr = np.repeat(row_edges[1:], ncols)
+        grid_min_cc = np.tile(col_edges[:-1], nrows)
+        grid_max_cc = np.tile(col_edges[1:], nrows)
+
+        obj_min_rr, obj_max_rr, obj_min_cc, obj_max_cc = (
+            self._get_section_object_bounds_arrays(grid_info)
+        )
 
         min_rr = np.where(
                 np.isnan(obj_min_rr), grid_min_rr, np.minimum(grid_min_rr, obj_min_rr)

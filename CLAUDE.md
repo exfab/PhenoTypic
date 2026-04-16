@@ -5,12 +5,16 @@
 **`pixi` is the sole package manager and runner.** Never use bare `python` or `pip`.
 
 - `pixi run <cmd>` — run commands
-- `pixi add --pypi <package>` — add dependencies
+- `pixi add --pypi <package>` — add to default dependencies
+- `pixi add --pypi <package> --feature <feature>` — add to a specific feature (e.g. `dev`, `docs`, `gui`)
 - `pixi install` — sync env (after checkout or in new worktrees)
 - `pixi install -e full` — full dev env
 - `pixi shell` — activate environment shell
 
 ### Testing
+
+- `pixi run -e dev test-parallel` — run all tests in parallel (`pytest -n auto`)
+- `pixi run -e dev pytest tests/smoke -n auto` — smoke tests only, parallel
 
 See [tests/CLAUDE.md](tests/CLAUDE.md)
 
@@ -70,6 +74,7 @@ Only `__init__.py` exports are public API.
 - **Domain-specific:** Built for microbe phenotyping; use microbiology context in docs/examples
 - **Duck typing** for type checks; **explicit matplotlib** (no implicit pyplot)
 - **Reproducibility:** `to_json()`/`from_json()` serialization; fixed random seeds
+- **Serialization:** Only public attributes (no `_` prefix) are serialized. Constructor params must be public. Use private (`__`) attributes for cached computations consumed by `.inspect()` — these are excluded from JSON
 - **Cross-platform:** macOS, Windows, Linux; use try/except for platform-specific imports
 
 ---

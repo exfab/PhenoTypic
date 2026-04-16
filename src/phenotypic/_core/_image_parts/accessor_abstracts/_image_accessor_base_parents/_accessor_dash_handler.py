@@ -5,7 +5,6 @@ functions formerly in ``phenotypic.tools_._plotly_helpers``.
 """
 from __future__ import annotations
 
-from itertools import cycle
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -35,6 +34,11 @@ _MPL_TO_PLOTLY = {
     "RdBu": "RdBu",
     "coolwarm": "RdBu",
 }
+
+# Baseline container width (px) used to compute a figure height that matches
+# the image aspect ratio when figsize is None. Chosen to approximate a
+# typical Jupyter cell; actual width still autosizes to the container.
+_AUTOSIZE_TARGET_WIDTH_PX = 800
 
 
 class AccessorDashHandler(AccessorMplHandler):
@@ -103,7 +107,10 @@ class AccessorDashHandler(AccessorMplHandler):
                 Defaults to ``"gray"``.
             figsize: Figure size as ``(width_inches, height_inches)``.
                 Converted to pixels at 100 dpi. If None, the figure
-                autosizes to fill the container width (notebook cell).
+                autosizes its width to the container and sets its height
+                from the array's aspect ratio (using
+                ``_AUTOSIZE_TARGET_WIDTH_PX`` as the baseline) so the
+                image fills the width without left/right whitespace.
 
         Returns:
             A ``plotly.graph_objects.Figure`` with zoom-friendly defaults.
@@ -121,7 +128,9 @@ class AccessorDashHandler(AccessorMplHandler):
             height_px = figsize[1] * 100
             size_kwargs: dict = {"width": width_px, "height": height_px}
         else:
-            size_kwargs = {"autosize": True}
+            h, w = arr.shape[:2]
+            aspect_height = int(_AUTOSIZE_TARGET_WIDTH_PX * h / w)
+            size_kwargs = {"autosize": True, "height": aspect_height}
 
         fig.update_layout(
             **size_kwargs,
@@ -144,10 +153,12 @@ class AccessorDashHandler(AccessorMplHandler):
         ncols: int,
         nrows: int,
     ) -> None:
-        """Add cyan dashed gridlines and row/column labels to a Plotly figure.
+        """Add cyan dashed gridlines and row/column axis tick labels to a Plotly figure.
 
-        Batches all shapes and annotations into single ``update_layout``
-        calls to avoid repeated Plotly validation overhead.
+        Draws dashed cyan line shapes at each row/column edge and renders
+        the row/column indices as axis tick labels (columns on the top
+        axis, rows on the right axis). Batches updates into a single
+        ``update_layout`` call.
 
         Args:
             fig: Plotly figure to modify in-place.
@@ -179,66 +190,90 @@ class AccessorDashHandler(AccessorMplHandler):
                 y0=float(y), y1=float(y), line=line_style,
             ))
 
-        annotations = list(fig.layout.annotations or [])
-        font = dict(color="cyan", size=10)
+        tickfont = dict(color="cyan", size=10)
+        layout_kwargs: dict = {"shapes": shapes}
 
         if len(col_edges) > 1:
             col_centers = (col_edges[:-1] + col_edges[1:]) / 2
-            for i in range(min(ncols, len(col_centers))):
-                annotations.append(dict(
-                    x=float(col_centers[i]), y=y_min, text=str(i),
-                    showarrow=False, yshift=-15, font=font,
-                ))
+            n_col_labels = min(ncols, len(col_centers))
+            layout_kwargs["xaxis"] = dict(
+                tickmode="array",
+                tickvals=[float(v) for v in col_centers[:n_col_labels]],
+                ticktext=[str(i) for i in range(n_col_labels)],
+                showticklabels=True,
+                showgrid=False,
+                side="top",
+                automargin=True,
+                tickfont=tickfont,
+            )
 
         if len(row_edges) > 1:
             row_centers = (row_edges[:-1] + row_edges[1:]) / 2
-            for i in range(min(nrows, len(row_centers))):
-                annotations.append(dict(
-                    x=x_max, y=float(row_centers[i]), text=str(i),
-                    showarrow=False, xshift=15, font=font,
-                ))
+            n_row_labels = min(nrows, len(row_centers))
+            layout_kwargs["yaxis"] = dict(
+                tickmode="array",
+                tickvals=[float(v) for v in row_centers[:n_row_labels]],
+                ticktext=[str(i) for i in range(n_row_labels)],
+                showticklabels=True,
+                showgrid=False,
+                side="right",
+                automargin=True,
+                tickfont=tickfont,
+                scaleanchor="x",
+                constrain="domain",
+                constraintoward="top",
+            )
 
-        fig.update_layout(shapes=shapes, annotations=annotations)
+        fig.update_layout(**layout_kwargs)
 
     @staticmethod
     def add_plotly_section_boxes(
         fig: go.Figure,
-        col_edges: np.ndarray,
-        row_edges: np.ndarray,
+        min_rr: np.ndarray,
+        max_rr: np.ndarray,
+        min_cc: np.ndarray,
+        max_cc: np.ndarray,
     ) -> None:
-        """Add colored bounding-box rectangles around grid sections.
+        """Add colored bounding-box rectangles around objects in each grid section.
 
-        Batches all shapes into a single ``update_layout`` call and
-        accepts pre-computed edges to avoid redundant grid-edge calls.
+        Each rectangle hugs the union bounding box of all objects assigned
+        to that grid section. Sections with no objects (NaN entries) are
+        skipped. Colors cycle through tab20 indexed by section slot so the
+        color-to-section mapping is stable across redraws.
 
         Args:
             fig: Plotly figure to modify in-place.
-            col_edges: Column edge pixel positions.
-            row_edges: Row edge pixel positions.
+            min_rr: Per-section minimum row (pixel y) coordinate. Length
+                ``nrows*ncols``. NaN marks an empty section.
+            max_rr: Per-section maximum row coordinate. Same length/NaN
+                convention as ``min_rr``.
+            min_cc: Per-section minimum column (pixel x) coordinate.
+            max_cc: Per-section maximum column coordinate.
         """
         AccessorDashHandler._require_plotly()
 
-        if len(col_edges) < 2 or len(row_edges) < 2:
+        if min_rr.size == 0:
             return
 
         import matplotlib
         tab20 = matplotlib.colormaps["tab20"]
-        color_iter = cycle(tab20(i) for i in range(tab20.N))
+        palette = [tab20(i) for i in range(tab20.N)]
 
         shapes = list(fig.layout.shapes or [])
-        for r in range(len(row_edges) - 1):
-            for c in range(len(col_edges) - 1):
-                rgba = next(color_iter)
-                color_str = (
-                    f"rgba({int(rgba[0]*255)},{int(rgba[1]*255)},"
-                    f"{int(rgba[2]*255)},{rgba[3]:.2f})"
-                )
-                shapes.append(dict(
-                    type="rect",
-                    x0=float(col_edges[c]), x1=float(col_edges[c + 1]),
-                    y0=float(row_edges[r]), y1=float(row_edges[r + 1]),
-                    line=dict(color=color_str, width=2),
-                ))
+        for i in range(len(min_rr)):
+            if np.isnan(min_rr[i]):
+                continue
+            rgba = palette[i % len(palette)]
+            color_str = (
+                f"rgba({int(rgba[0]*255)},{int(rgba[1]*255)},"
+                f"{int(rgba[2]*255)},{rgba[3]:.2f})"
+            )
+            shapes.append(dict(
+                type="rect",
+                x0=float(min_cc[i]), x1=float(max_cc[i]),
+                y0=float(min_rr[i]), y1=float(max_rr[i]),
+                line=dict(color=color_str, width=2),
+            ))
 
         fig.update_layout(shapes=shapes)
 
@@ -363,6 +398,10 @@ class AccessorDashHandler(AccessorMplHandler):
                 ncols=self._root_image.ncols, nrows=self._root_image.nrows,
             )
             if has_objects:
+                min_rr, max_rr, min_cc, max_cc = (
+                    self._root_image.grid._get_section_object_bounds_arrays()
+                )
                 self.add_plotly_section_boxes(
-                    fig=fig, col_edges=col_edges, row_edges=row_edges,
+                    fig=fig, min_rr=min_rr, max_rr=max_rr,
+                    min_cc=min_cc, max_cc=max_cc,
                 )

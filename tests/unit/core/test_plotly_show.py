@@ -200,6 +200,18 @@ class TestDashWithOverlay:
         assert isinstance(fig, go.Figure)
         assert len(fig.layout.shapes) > 0
 
+    def test_dash_overlay_has_axis_ticks(self, grid_image):
+        assert isinstance(grid_image, GridImage)
+        fig = grid_image.rgb.dash(
+            overlay=True, show_grid=True,
+        )
+        assert fig.layout.xaxis.tickmode == "array"
+        assert fig.layout.yaxis.tickmode == "array"
+        assert len(fig.layout.xaxis.tickvals) > 0
+        assert len(fig.layout.yaxis.tickvals) > 0
+        assert fig.layout.xaxis.side == "top"
+        assert fig.layout.yaxis.side == "right"
+
 
 # ---------------------------------------------------------------------------
 # Image.show(overlay=True) / Image.dash(overlay=True) — auto-pick accessor

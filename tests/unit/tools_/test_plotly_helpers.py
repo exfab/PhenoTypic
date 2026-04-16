@@ -13,6 +13,7 @@ from phenotypic.tools_._plotly_helpers import (  # noqa: E402
     PLOTLY_CONFIG,
     add_plotly_gridlines,
     add_plotly_obj_labels,
+    add_plotly_section_boxes,
     mpl_cmap_to_plotly,
     plotly_imshow,
 )
@@ -119,7 +120,7 @@ class TestPlotlyImshow:
 
 
 class TestAddPlotlyGridlines:
-    def test_adds_shapes_and_annotations(self):
+    def test_adds_shapes_and_axis_ticks(self):
         fig = go.Figure()
         col_edges = np.array([0, 100, 200, 300])
         row_edges = np.array([0, 150, 300])
@@ -129,8 +130,27 @@ class TestAddPlotlyGridlines:
         line_shapes = [s for s in fig.layout.shapes if s.type == "line"]
         assert len(line_shapes) == 7
 
-        # 3 col labels + 2 row labels = 5 annotations
-        assert len(fig.layout.annotations) == 5
+        # Labels are now axis tick labels, not annotations
+        assert len(fig.layout.annotations) == 0
+
+        # Column labels on the top axis
+        assert fig.layout.xaxis.tickmode == "array"
+        assert list(fig.layout.xaxis.tickvals) == [50.0, 150.0, 250.0]
+        assert list(fig.layout.xaxis.ticktext) == ["0", "1", "2"]
+        assert fig.layout.xaxis.showticklabels is True
+        assert fig.layout.xaxis.side == "top"
+        assert fig.layout.xaxis.automargin is True
+
+        # Row labels on the right axis
+        assert fig.layout.yaxis.tickmode == "array"
+        assert list(fig.layout.yaxis.tickvals) == [75.0, 225.0]
+        assert list(fig.layout.yaxis.ticktext) == ["0", "1"]
+        assert fig.layout.yaxis.showticklabels is True
+        assert fig.layout.yaxis.side == "right"
+        assert fig.layout.yaxis.automargin is True
+
+        # Regression guard: image aspect lock preserved
+        assert fig.layout.yaxis.scaleanchor == "x"
 
     def test_empty_edges_no_shapes(self):
         fig = go.Figure()
@@ -147,6 +167,66 @@ class TestAddPlotlyGridlines:
         assert len(fig.layout.shapes) == 2
         # No labels (need at least 2 edges for centers)
         assert len(fig.layout.annotations) == 0
+        # Axis tick config is not touched on the single-edge fallback
+        assert fig.layout.xaxis.tickmode is None
+        assert fig.layout.yaxis.tickmode is None
+
+
+# ---------------------------------------------------------------------------
+# add_plotly_section_boxes
+# ---------------------------------------------------------------------------
+
+
+class TestAddPlotlySectionBoxes:
+    def test_draws_per_section_boxes(self):
+        fig = go.Figure()
+        # 2x2 grid, all sections populated
+        min_rr = np.array([10.0, 10.0, 110.0, 110.0])
+        max_rr = np.array([50.0, 50.0, 150.0, 150.0])
+        min_cc = np.array([10.0, 110.0, 10.0, 110.0])
+        max_cc = np.array([50.0, 150.0, 50.0, 150.0])
+        add_plotly_section_boxes(fig, min_rr, max_rr, min_cc, max_cc)
+
+        rect_shapes = [s for s in fig.layout.shapes if s.type == "rect"]
+        assert len(rect_shapes) == 4
+
+    def test_skips_nan_sections(self):
+        fig = go.Figure()
+        min_rr = np.array([10.0, np.nan, 110.0, 110.0])
+        max_rr = np.array([50.0, np.nan, 150.0, 150.0])
+        min_cc = np.array([10.0, np.nan, 10.0, 110.0])
+        max_cc = np.array([50.0, np.nan, 50.0, 150.0])
+        add_plotly_section_boxes(fig, min_rr, max_rr, min_cc, max_cc)
+
+        rect_shapes = [s for s in fig.layout.shapes if s.type == "rect"]
+        assert len(rect_shapes) == 3
+
+    def test_all_nan_no_shapes(self):
+        fig = go.Figure()
+        nan4 = np.full(4, np.nan)
+        add_plotly_section_boxes(fig, nan4, nan4.copy(), nan4.copy(), nan4.copy())
+        assert len(fig.layout.shapes) == 0
+
+    def test_empty_arrays(self):
+        fig = go.Figure()
+        empty = np.array([])
+        add_plotly_section_boxes(fig, empty, empty.copy(), empty.copy(), empty.copy())
+        assert len(fig.layout.shapes) == 0
+
+    def test_rect_coords_match(self):
+        fig = go.Figure()
+        min_rr = np.array([11.0, 22.0])
+        max_rr = np.array([33.0, 44.0])
+        min_cc = np.array([55.0, 66.0])
+        max_cc = np.array([77.0, 88.0])
+        add_plotly_section_boxes(fig, min_rr, max_rr, min_cc, max_cc)
+
+        rects = [s for s in fig.layout.shapes if s.type == "rect"]
+        assert len(rects) == 2
+        assert rects[0].x0 == 55.0 and rects[0].x1 == 77.0
+        assert rects[0].y0 == 11.0 and rects[0].y1 == 33.0
+        assert rects[1].x0 == 66.0 and rects[1].x1 == 88.0
+        assert rects[1].y0 == 22.0 and rects[1].y1 == 44.0
 
 
 # ---------------------------------------------------------------------------

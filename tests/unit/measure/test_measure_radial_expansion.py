@@ -290,3 +290,135 @@ class TestMeasureRadialExpansionDecompose:
 
         if len(df) > 0:
             assert (df["Length"] >= 0).all(), "Negative branch lengths found"
+
+
+# ---------------------------------------------------------------------------
+# Dijkstra pathfinding — white-box tests on _trace_branches_dijkstra
+# ---------------------------------------------------------------------------
+
+
+class TestTraceBranchesDijkstra:
+    """Targeted tests for the Dijkstra-based branch tracer.
+
+    These exercise ``_trace_branches_dijkstra`` directly on synthetic
+    local-bbox inputs so we can compare against known-optimal path
+    lengths and probe edge cases that are hard to trigger through a
+    full ``measure()`` call.
+    """
+
+    @staticmethod
+    def _dist_map(shape, center_rc):
+        rows, cols = np.indices(shape)
+        return np.sqrt(
+            (rows - center_rc[0]) ** 2 + (cols - center_rc[1]) ** 2
+        )
+
+    def test_dijkstra_path_is_not_longer_than_linear_skeleton(self):
+        """For a straight horizontal skeleton, Dijkstra length equals the
+        tip-to-core-edge pixel count (cost-optimality upper bound)."""
+        h, w = 11, 21
+        local_mask = np.zeros((h, w), dtype=bool)
+        local_mask[5, :] = True
+        skeleton = local_mask.copy()
+        endpoints = np.array([[5, 0]], dtype=np.int32)
+        center_rc = (5.0, 10.0)
+        core_radius = 3.0
+        dist_map = self._dist_map((h, w), center_rc)
+
+        branches = MeasureRadialExpansion._trace_branches_dijkstra(
+            local_mask, skeleton, endpoints, dist_map, center_rc, core_radius,
+        )
+
+        assert len(branches) == 1
+        coords, length = branches[0]
+        # Straight line from col 0 to the core-boundary pixel (col 7) is
+        # 7 pixels → 7.0 Euclidean length at most (pure horizontal steps).
+        assert length <= 7.0 + 1e-6, (
+            f"Dijkstra length {length} exceeds linear-optimal bound 7.0"
+        )
+        # First coord is the tip (backtrack order is tip → core).
+        assert tuple(coords[0]) == (5, 0)
+
+    def test_skeleton_disconnected_from_core_resolves_via_detour(self):
+        """Greedy DFS dead-ends when the skeleton has a one-pixel gap
+        from the core ring; Dijkstra completes the path via a single
+        object-interior detour."""
+        h, w = 11, 21
+        local_mask = np.zeros((h, w), dtype=bool)
+        local_mask[4:7, :] = True  # 3-pixel-tall object band
+        skeleton = np.zeros((h, w), dtype=bool)
+        skeleton[5, 0:9] = True   # skeleton ends at col 8
+        skeleton[5, 10:] = True    # resumes at col 10 — one-pixel gap at col 9
+        endpoints = np.array([[5, 0]], dtype=np.int32)
+        center_rc = (5.0, 15.0)
+        core_radius = 3.0
+        dist_map = self._dist_map((h, w), center_rc)
+
+        branches = MeasureRadialExpansion._trace_branches_dijkstra(
+            local_mask, skeleton, endpoints, dist_map, center_rc, core_radius,
+        )
+
+        assert len(branches) == 1, (
+            "Dijkstra should route through the object-interior detour"
+        )
+        coords, length = branches[0]
+        assert length > 0
+        assert len(coords) >= 2
+
+    def test_core_radius_zero_fallback_seeds_at_centroid(self):
+        """When PELT finds no changepoint (core_radius == 0) the core
+        mask is empty; the fallback seed at the centroid keeps Dijkstra
+        well-defined so paths are still produced."""
+        h, w = 11, 11
+        local_mask = np.ones((h, w), dtype=bool)
+        skeleton = np.zeros((h, w), dtype=bool)
+        skeleton[5, :] = True  # horizontal spine across the object
+        endpoints = np.array([[5, 0], [5, 10]], dtype=np.int32)
+        center_rc = (5.0, 5.0)
+        core_radius = 0.0
+        dist_map = self._dist_map((h, w), center_rc)
+
+        branches = MeasureRadialExpansion._trace_branches_dijkstra(
+            local_mask, skeleton, endpoints, dist_map, center_rc, core_radius,
+        )
+
+        assert len(branches) == 2
+        for coords, length in branches:
+            assert length > 0
+            # Path should terminate at or near the centroid fallback seed.
+            last_r, last_c = coords[-1]
+            assert abs(int(last_r) - 5) <= 1
+            assert abs(int(last_c) - 5) <= 1
+
+    def test_empty_endpoints_returns_empty(self):
+        """No tips → no paths."""
+        h, w = 5, 5
+        local_mask = np.ones((h, w), dtype=bool)
+        skeleton = np.zeros((h, w), dtype=bool)
+        skeleton[2, :] = True
+        endpoints = np.empty((0, 2), dtype=np.int32)
+        dist_map = self._dist_map((h, w), (2.0, 2.0))
+
+        branches = MeasureRadialExpansion._trace_branches_dijkstra(
+            local_mask, skeleton, endpoints, dist_map, (2.0, 2.0), 1.0,
+        )
+
+        assert branches == []
+
+    def test_build_branch_cost_surface_prefers_skeleton(self):
+        """Cost-surface helper: skeleton pixels strictly cheaper than
+        on-object off-skeleton pixels, which are strictly cheaper than
+        off-object pixels."""
+        h, w = 5, 5
+        local_mask = np.zeros((h, w), dtype=bool)
+        local_mask[1:4, 1:4] = True
+        skeleton = np.zeros((h, w), dtype=bool)
+        skeleton[2, 2] = True
+        dist_map = self._dist_map((h, w), (2.0, 2.0))
+
+        cost = MeasureRadialExpansion._build_branch_cost_surface(
+            local_mask, skeleton, dist_map, core_radius=0.0,
+        )
+
+        assert cost[2, 2] < cost[1, 1], "skeleton should be cheaper than on-object pixel"
+        assert cost[1, 1] < cost[0, 0], "on-object should be cheaper than off-object"
