@@ -802,6 +802,41 @@ class SYMMETRIC_RADIUS(MeasurementInfo):
         "measured from the core boundary outward. Captures the farthest "
         "extent of growth past the inoculum.",
     )
+    CORE_END_RADIUS = (
+        "CoreEndRadius",
+        "Mean radius of the inoculum core boundary derived from the per-angle "
+        "bright/background ratio walk. Each of 360 1° angular sectors finds the "
+        "outer edge of the contiguous core run (bright fraction >= tau_core); the "
+        "reported value is the mean across sectors. Compare with CoreRadius (the "
+        "global PELT changepoint) — close agreement indicates a well-formed core.",
+    )
+    DENSE_END_RADIUS = (
+        "DenseEndRadius",
+        "Mean outer radius of the dense branching zone, where mask-bright pixels "
+        "dominate (bright fraction >= tau_sparse). Per-angle radii are capped at "
+        "the SymmetricRadius and angularly median-smoothed before averaging.",
+    )
+    SPARSE_END_RADIUS = (
+        "SparseEndRadius",
+        "Mean outer radius of the sparse branching zone (= colony envelope inside "
+        "the symmetric growth front). Equals min(objmask outer envelope, "
+        "SymmetricRadius) per angle, averaged across 360 sectors.",
+    )
+    CORE_AREA = (
+        "CoreArea",
+        "Pixel^2 area of the inoculum core zone, integrated across the 360-sector "
+        "polar polygon defined by the per-angle core radii.",
+    )
+    DENSE_AREA = (
+        "DenseArea",
+        "Pixel^2 area of the dense branching zone, the annular region between the "
+        "per-angle core boundary and dense-branching boundary.",
+    )
+    SPARSE_AREA = (
+        "SparseArea",
+        "Pixel^2 area of the sparse branching zone, the annular region between the "
+        "per-angle dense boundary and the symmetric-envelope outer boundary.",
+    )
 
 
 class INTENSITY(MeasurementInfo):

@@ -176,6 +176,12 @@ class TestMeasureSymmetricRadius:
     SYMM_COL = "SymmetricRadius_SymmetricRadius"
     MEAN_COL = "SymmetricRadius_MeanExpansion"
     MAX_COL = "SymmetricRadius_MaxExpansion"
+    CORE_END_RADIUS_COL = "SymmetricRadius_CoreEndRadius"
+    DENSE_END_RADIUS_COL = "SymmetricRadius_DenseEndRadius"
+    SPARSE_END_RADIUS_COL = "SymmetricRadius_SparseEndRadius"
+    CORE_AREA_COL = "SymmetricRadius_CoreArea"
+    DENSE_AREA_COL = "SymmetricRadius_DenseArea"
+    SPARSE_AREA_COL = "SymmetricRadius_SparseArea"
 
     # ------------------------------------------------------------------
     # Test 1 — symmetric circular colony.
@@ -356,8 +362,15 @@ class TestMeasureSymmetricRadius:
     # Test 5 — tiny object (area < 10).
     # ------------------------------------------------------------------
 
-    def test_tiny_object_returns_all_nan(self):
-        """5-pixel mask → all four measurement columns NaN; no exception."""
+    def test_tiny_object_returns_all_nan_or_zero(self):
+        """5-pixel mask → original four columns NaN; new zone columns 0; no exception.
+
+        The four original measurement columns (CoreRadius, SymmetricRadius,
+        MeanExpansion, MaxExpansion) populate as NaN for tiny objects (area < 10)
+        because their algorithms cannot meaningfully resolve a centroid/profile.
+        The six new zone-segmentation columns instead populate as zero, per the
+        edge-case spec — zone areas/radii are zero when no zones can be resolved.
+        """
         shape = (100, 100)
         gray = np.full(shape, 220, dtype=np.uint8)
         objmap = np.zeros(shape, dtype=np.int32)
@@ -378,6 +391,19 @@ class TestMeasureSymmetricRadius:
         for col in (self.CORE_COL, self.SYMM_COL, self.MEAN_COL, self.MAX_COL):
             val = df[col].iloc[0]
             assert pd.isna(val), f"{col} expected NaN for tiny object, got {val}"
+
+        for col in (
+            self.CORE_END_RADIUS_COL,
+            self.DENSE_END_RADIUS_COL,
+            self.SPARSE_END_RADIUS_COL,
+            self.CORE_AREA_COL,
+            self.DENSE_AREA_COL,
+            self.SPARSE_AREA_COL,
+        ):
+            val = df[col].iloc[0]
+            assert np.isclose(val, 0.0), (
+                f"{col} expected 0.0 for tiny object, got {val}"
+            )
 
     # ------------------------------------------------------------------
     # Test 6 — NaN handling in angular profile (sparse branches).
@@ -434,4 +460,178 @@ class TestMeasureSymmetricRadius:
         assert np.isfinite(symm), (
             f"SymmetricRadius should be finite even when many annuli are "
             f"NaN, got {symm}"
+        )
+
+    # ------------------------------------------------------------------
+    # Test 7 — zone radii are nested for a circular colony.
+    # ------------------------------------------------------------------
+
+    def test_zone_radii_are_nested_for_circular_colony(self):
+        """Circular colony: 0 ≤ Core ≤ Dense ≤ Sparse ≤ SymmetricRadius."""
+        core_radius = 15.0
+        outer_radius = 60.0
+        gray, objmap = _make_circular_colony(
+            shape=(200, 200),
+            center=(100, 100),
+            core_radius=core_radius,
+            outer_radius=outer_radius,
+        )
+        image = _make_image_with_objmap(gray, objmap)
+
+        op = MeasureSymmetricRadius()
+        df = op.measure(image)
+
+        assert len(df) == 1
+        core_end = df[self.CORE_END_RADIUS_COL].iloc[0]
+        dense_end = df[self.DENSE_END_RADIUS_COL].iloc[0]
+        sparse_end = df[self.SPARSE_END_RADIUS_COL].iloc[0]
+        symm = df[self.SYMM_COL].iloc[0]
+
+        # All three end radii must be finite (not NaN, not inf).
+        assert np.isfinite(core_end), f"CoreEndRadius not finite: {core_end}"
+        assert np.isfinite(dense_end), f"DenseEndRadius not finite: {dense_end}"
+        assert np.isfinite(sparse_end), f"SparseEndRadius not finite: {sparse_end}"
+
+        # Nesting: 0 ≤ Core ≤ Dense ≤ Sparse.
+        assert 0.0 <= core_end, f"CoreEndRadius={core_end} < 0"
+        assert core_end <= dense_end, (
+            f"CoreEndRadius={core_end} > DenseEndRadius={dense_end} "
+            f"(nesting violated)"
+        )
+        assert dense_end <= sparse_end, (
+            f"DenseEndRadius={dense_end} > SparseEndRadius={sparse_end} "
+            f"(nesting violated)"
+        )
+
+        # All radii capped at SymmetricRadius (with a small float tolerance).
+        cap = symm + 1.0
+        assert core_end <= cap, f"CoreEndRadius={core_end} > SymmetricRadius+1={cap}"
+        assert dense_end <= cap, (
+            f"DenseEndRadius={dense_end} > SymmetricRadius+1={cap}"
+        )
+        assert sparse_end <= cap, (
+            f"SparseEndRadius={sparse_end} > SymmetricRadius+1={cap}"
+        )
+
+    # ------------------------------------------------------------------
+    # Test 8 — zone areas sum to approximately the polar disk area.
+    # ------------------------------------------------------------------
+
+    def test_zone_areas_sum_consistent_for_circular_colony(self):
+        """Circular colony: Core + Dense + Sparse areas ≈ π × SparseEndRadius²."""
+        core_radius = 15.0
+        outer_radius = 60.0
+        gray, objmap = _make_circular_colony(
+            shape=(200, 200),
+            center=(100, 100),
+            core_radius=core_radius,
+            outer_radius=outer_radius,
+        )
+        image = _make_image_with_objmap(gray, objmap)
+
+        op = MeasureSymmetricRadius()
+        df = op.measure(image)
+
+        assert len(df) == 1
+        core_area = df[self.CORE_AREA_COL].iloc[0]
+        dense_area = df[self.DENSE_AREA_COL].iloc[0]
+        sparse_area = df[self.SPARSE_AREA_COL].iloc[0]
+        sparse_end = df[self.SPARSE_END_RADIUS_COL].iloc[0]
+
+        total_area = core_area + dense_area + sparse_area
+        expected_area = np.pi * sparse_end ** 2
+
+        # Generous ±15% tolerance: per-angle radii are not perfectly circular
+        # due to discretization, so the polar-polygon area diverges from the
+        # ideal disk area by a few percent. The point is to catch gross errors
+        # (factor-of-2, sign flips), not to pin down precision.
+        assert expected_area > 0, (
+            f"Expected area must be positive; SparseEndRadius={sparse_end}"
+        )
+        rel_error = abs(total_area - expected_area) / expected_area
+        assert rel_error <= 0.15, (
+            f"Sum of zone areas {total_area:.2f} not within 15% of "
+            f"π × SparseEndRadius² = {expected_area:.2f} (rel_error={rel_error:.3f})"
+        )
+
+    # ------------------------------------------------------------------
+    # Test 9 — uniformly bright disk is mostly classified as core.
+    # ------------------------------------------------------------------
+
+    def test_uniform_bright_disk_is_mostly_core(self):
+        """Uniformly bright disk → CoreArea dominates the total zone area.
+
+        ``_make_circular_colony`` paints the outer halo (value 120) first and
+        then overwrites the core (value 40). Calling with
+        ``core_radius == outer_radius`` results in both masks being identical,
+        so the whole disk receives the core intensity (40) — i.e. uniformly
+        bright everywhere. The bright/background ratio thus stays ≥ tau_core
+        all the way to the envelope, and the colony should be classified as
+        almost entirely core.
+        """
+        radius = 50.0
+        gray, objmap = _make_circular_colony(
+            shape=(200, 200),
+            center=(100, 100),
+            core_radius=radius,
+            outer_radius=radius,
+        )
+        image = _make_image_with_objmap(gray, objmap)
+
+        op = MeasureSymmetricRadius()
+        df = op.measure(image)
+
+        assert len(df) == 1
+        core_area = df[self.CORE_AREA_COL].iloc[0]
+        dense_area = df[self.DENSE_AREA_COL].iloc[0]
+        sparse_area = df[self.SPARSE_AREA_COL].iloc[0]
+
+        total = core_area + dense_area + sparse_area + 1e-9
+        core_fraction = core_area / total
+        assert core_fraction > 0.85, (
+            f"Uniform bright disk should be >85% core area; got "
+            f"core_fraction={core_fraction:.3f} "
+            f"(core={core_area:.2f}, dense={dense_area:.2f}, "
+            f"sparse={sparse_area:.2f})"
+        )
+
+    # ------------------------------------------------------------------
+    # Test 10 — zones capped at SymmetricRadius for a half-moon mask.
+    # ------------------------------------------------------------------
+
+    def test_zones_capped_at_symmetric_radius_for_half_moon(self):
+        """Half-moon mask: end radii ≤ SymmetricRadius (always-on cap)."""
+        radius = 60.0
+        gray, objmap = _make_half_mask_colony(
+            shape=(200, 200),
+            center=(100, 100),
+            radius=radius,
+            angular_range=(0.0, np.pi),
+        )
+        image = _make_image_with_objmap(gray, objmap)
+
+        op = MeasureSymmetricRadius()
+        df = op.measure(image)
+
+        assert len(df) == 1
+        core_end = df[self.CORE_END_RADIUS_COL].iloc[0]
+        dense_end = df[self.DENSE_END_RADIUS_COL].iloc[0]
+        sparse_end = df[self.SPARSE_END_RADIUS_COL].iloc[0]
+        symm = df[self.SYMM_COL].iloc[0]
+
+        # Always-on symmetric_fallback caps every per-angle radius at
+        # SymmetricRadius; their angular mean must not exceed it (small
+        # tolerance for floating-point noise from median smoothing).
+        cap = symm + 2.0
+        assert core_end <= cap, (
+            f"CoreEndRadius={core_end} > SymmetricRadius+2={cap} "
+            f"(symmetric cap violated)"
+        )
+        assert dense_end <= cap, (
+            f"DenseEndRadius={dense_end} > SymmetricRadius+2={cap} "
+            f"(symmetric cap violated)"
+        )
+        assert sparse_end <= cap, (
+            f"SparseEndRadius={sparse_end} > SymmetricRadius+2={cap} "
+            f"(symmetric cap violated)"
         )

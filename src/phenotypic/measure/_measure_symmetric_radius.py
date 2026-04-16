@@ -26,6 +26,12 @@ from ..tools_.measurement_info_ import SYMMETRIC_RADIUS
 
 _NEIGHBOR_KERNEL = np.array([[1, 1, 1], [1, 0, 1], [1, 1, 1]], dtype=np.int32)
 
+# Zone-segmentation constants
+_N_ANGULAR_SECTORS = 360
+_SECTOR_HALFWIDTH_DEG = 1
+_ZONE_RADIAL_SMOOTHING = 3
+_ZONE_ANGULAR_SMOOTHING_DEG = 5
+
 # Okabe-Ito palette constants for diagnostic plots
 _OI_NAVY = "#003660"
 _OI_ORANGE = "#E69F00"
@@ -58,6 +64,18 @@ class _SymmetryIntermediates:
         default_factory=lambda: np.zeros((1, 1), dtype=np.float64))
     gray_crop: np.ndarray = field(
         default_factory=lambda: np.zeros((1, 1), dtype=np.float64))
+    r_core_per_angle: np.ndarray = field(
+        default_factory=lambda: np.zeros(_N_ANGULAR_SECTORS, dtype=np.float64))
+    r_dense_end_per_angle: np.ndarray = field(
+        default_factory=lambda: np.zeros(_N_ANGULAR_SECTORS, dtype=np.float64))
+    r_outer_per_angle: np.ndarray = field(
+        default_factory=lambda: np.zeros(_N_ANGULAR_SECTORS, dtype=np.float64))
+    core_area: float = 0.0
+    dense_area: float = 0.0
+    sparse_area: float = 0.0
+    bright_fraction_tensor: np.ndarray = field(
+        default_factory=lambda: np.zeros((_N_ANGULAR_SECTORS, 1), dtype=np.float64))
+    zones_computed: bool = False
 
 
 class MeasureSymmetricRadius(MeasureFeatures):
@@ -110,6 +128,18 @@ class MeasureSymmetricRadius(MeasureFeatures):
         method: Inoculum centre estimator --- ``"distance"`` uses the peak
             of the Euclidean distance transform, ``"intensity"`` uses the
             intensity-weighted centroid. Defaults to ``"distance"``.
+        tau_core: Minimum bright-pixel fraction required for an annulus
+            to be classified as inoculum core in the per-angle outward
+            walk. Defaults to 0.9.
+        tau_sparse: Minimum bright-pixel fraction required for an annulus
+            to be classified as dense branching (the outer edge of the
+            dense zone). Defaults to 0.5.
+        bright_intensity_fraction: Fraction of the core's median intensity
+            used as the bright/background threshold for zone segmentation.
+            Defaults to 0.5.
+        intensity_source: Image array used for the brightness comparison
+            -- ``"gray"`` uses the grayscale, ``"detect_mat"`` uses the
+            detection matrix. Defaults to ``"gray"``.
 
     Returns:
         pd.DataFrame: Object-level radial symmetry measurements with
@@ -123,6 +153,21 @@ class MeasureSymmetricRadius(MeasureFeatures):
               beyond the core (pixels, clamped at 0).
             - SymmetricRadius_MaxExpansion: maximum mask-pixel distance
               beyond the core (pixels, clamped at 0).
+            - SymmetricRadius_CoreEndRadius: mean per-angle core boundary
+              radius from the bright-fraction outward walk (pixels).
+            - SymmetricRadius_DenseEndRadius: mean per-angle outer radius
+              of the dense branching zone (pixels).
+            - SymmetricRadius_SparseEndRadius: mean per-angle outer radius
+              of the sparse branching zone, capped at the symmetric
+              envelope (pixels).
+            - SymmetricRadius_CoreArea: pixel^2 area of the inoculum core
+              zone integrated across the 360-sector polar polygon.
+            - SymmetricRadius_DenseArea: pixel^2 area of the dense
+              branching zone (annular region between core and dense
+              boundaries).
+            - SymmetricRadius_SparseArea: pixel^2 area of the sparse
+              branching zone (annular region between dense and outer
+              boundaries).
 
     See Also:
         :doc:`/tutorials/notebooks/07_measuring_and_exporting` for a
@@ -139,6 +184,10 @@ class MeasureSymmetricRadius(MeasureFeatures):
             n_angular_bins: int = 6,
             smoothing_window: int = 3,
             method: Literal["distance", "intensity"] = "distance",
+            tau_core: float = 0.9,
+            tau_sparse: float = 0.5,
+            bright_intensity_fraction: float = 0.5,
+            intensity_source: Literal["gray", "detect_mat"] = "gray",
     ):
         self.n_annuli = n_annuli
         self.pelt_penalty = pelt_penalty
@@ -146,6 +195,10 @@ class MeasureSymmetricRadius(MeasureFeatures):
         self.n_angular_bins = n_angular_bins
         self.smoothing_window = smoothing_window
         self.method = method
+        self.tau_core = tau_core
+        self.tau_sparse = tau_sparse
+        self.bright_intensity_fraction = bright_intensity_fraction
+        self.intensity_source = intensity_source
 
         self.__cache_image: Image | None = None
         self.__cache_props: list | None = None
@@ -226,6 +279,16 @@ class MeasureSymmetricRadius(MeasureFeatures):
                     obj_mask=tiny_mask,
                     dist_map=np.zeros((1, 1), dtype=np.float64),
                     gray_crop=np.zeros((1, 1), dtype=np.float64),
+                    r_core_per_angle=np.zeros(_N_ANGULAR_SECTORS, dtype=np.float64),
+                    r_dense_end_per_angle=np.zeros(
+                            _N_ANGULAR_SECTORS, dtype=np.float64),
+                    r_outer_per_angle=np.zeros(_N_ANGULAR_SECTORS, dtype=np.float64),
+                    core_area=0.0,
+                    dense_area=0.0,
+                    sparse_area=0.0,
+                    bright_fraction_tensor=np.zeros(
+                            (_N_ANGULAR_SECTORS, 1), dtype=np.float64),
+                    zones_computed=False,
             )
 
         # 3. Crop to bbox; compute local_mask, centroid, dist_map
@@ -282,6 +345,90 @@ class MeasureSymmetricRadius(MeasureFeatures):
                 local_mask, dist_map, core_radius,
         )
 
+        # 9–16. Per-angle zone segmentation (skip when no symmetric envelope).
+        if symmetric_radius <= 0:
+            return _SymmetryIntermediates(
+                    label=target_prop.label,
+                    bbox_slice=slc,
+                    centroid_rc=local_cr,
+                    density_profile=density_profile,
+                    annulus_radii=annulus_radii,
+                    core_radius=core_radius,
+                    sholl_counts=sholl_counts,
+                    angular_R_profile=angular_R_profile,
+                    angular_coverage=angular_coverage,
+                    symmetric_radius=symmetric_radius,
+                    mean_expansion=mean_expansion,
+                    max_expansion=max_expansion,
+                    obj_mask=local_mask,
+                    dist_map=dist_map,
+                    gray_crop=gray_crop,
+                    r_core_per_angle=np.zeros(_N_ANGULAR_SECTORS, dtype=np.float64),
+                    r_dense_end_per_angle=np.zeros(
+                            _N_ANGULAR_SECTORS, dtype=np.float64),
+                    r_outer_per_angle=np.zeros(_N_ANGULAR_SECTORS, dtype=np.float64),
+                    core_area=0.0,
+                    dense_area=0.0,
+                    sparse_area=0.0,
+                    bright_fraction_tensor=np.zeros(
+                            (_N_ANGULAR_SECTORS, 1), dtype=np.float64),
+                    zones_computed=False,
+            )
+
+        # 9. Brightness reference from PELT-detected core
+        if self.intensity_source == "detect_mat":
+            intensity_crop = image.detect_mat[:][slc]
+        else:
+            intensity_crop = image.gray[:][slc]
+        _, bright_threshold = self._compute_brightness_reference(
+                intensity_crop, local_mask, dist_map, core_radius,
+                self.bright_intensity_fraction,
+        )
+
+        # 10. Per-pixel bright mask
+        is_bright = (intensity_crop >= bright_threshold) & local_mask
+
+        # 11. Build the (360, n_annuli) bright-fraction tensor
+        n_annuli = int(annulus_radii.size)
+        max_radius = float(np.max(dist_map[local_mask]))
+        annulus_boundaries = max_radius * np.sqrt(
+                np.arange(n_annuli + 1) / n_annuli
+        )
+        theta, r_bin, valid = self._build_theta_r_maps(
+                local_mask, local_cr, dist_map, annulus_boundaries, n_annuli,
+        )
+        bright_fraction, mask_per_cell = self._accumulate_bright_fraction_tensor(
+                theta, r_bin, valid, is_bright, n_annuli,
+        )
+
+        # 12. Radial smoothing
+        from scipy.ndimage import uniform_filter1d
+        bright_fraction = uniform_filter1d(
+                bright_fraction, size=_ZONE_RADIAL_SMOOTHING,
+                axis=1, mode="nearest",
+        )
+
+        # 13. Per-angle outward walk + zone radii (capped at symmetric_radius)
+        r_core, r_dense_end, r_outer = self._extract_zone_boundaries(
+                bright_fraction, mask_per_cell, annulus_radii,
+                self.tau_core, self.tau_sparse, symmetric_radius,
+        )
+
+        # 14. Circular angular median filter (re-enforce nesting after smoothing)
+        from scipy.ndimage import median_filter
+        r_core = median_filter(r_core, size=_ZONE_ANGULAR_SMOOTHING_DEG, mode="wrap")
+        r_dense_end = median_filter(
+                r_dense_end, size=_ZONE_ANGULAR_SMOOTHING_DEG, mode="wrap")
+        r_outer = median_filter(
+                r_outer, size=_ZONE_ANGULAR_SMOOTHING_DEG, mode="wrap")
+        r_core = np.minimum(r_core, r_dense_end)
+        r_dense_end = np.minimum(r_dense_end, r_outer)
+
+        # 15. Polar polygon area integration
+        core_area, dense_area, sparse_area = self._compute_zone_areas(
+                r_core, r_dense_end, r_outer,
+        )
+
         return _SymmetryIntermediates(
                 label=target_prop.label,
                 bbox_slice=slc,
@@ -298,6 +445,14 @@ class MeasureSymmetricRadius(MeasureFeatures):
                 obj_mask=local_mask,
                 dist_map=dist_map,
                 gray_crop=gray_crop,
+                r_core_per_angle=r_core,
+                r_dense_end_per_angle=r_dense_end,
+                r_outer_per_angle=r_outer,
+                core_area=core_area,
+                dense_area=dense_area,
+                sparse_area=sparse_area,
+                bright_fraction_tensor=bright_fraction,
+                zones_computed=True,
         )
 
     # ── MeasureFeatures interface ────────────────────────────────────
@@ -350,6 +505,15 @@ class MeasureSymmetricRadius(MeasureFeatures):
             measurements[str(SYMMETRIC_RADIUS.MEAN_EXPANSION)][
                 idx] = inter.mean_expansion
             measurements[str(SYMMETRIC_RADIUS.MAX_EXPANSION)][idx] = inter.max_expansion
+            measurements[str(SYMMETRIC_RADIUS.CORE_AREA)][idx] = inter.core_area
+            measurements[str(SYMMETRIC_RADIUS.DENSE_AREA)][idx] = inter.dense_area
+            measurements[str(SYMMETRIC_RADIUS.SPARSE_AREA)][idx] = inter.sparse_area
+            measurements[str(SYMMETRIC_RADIUS.CORE_END_RADIUS)][idx] = float(
+                    inter.r_core_per_angle.mean())
+            measurements[str(SYMMETRIC_RADIUS.DENSE_END_RADIUS)][idx] = float(
+                    inter.r_dense_end_per_angle.mean())
+            measurements[str(SYMMETRIC_RADIUS.SPARSE_END_RADIUS)][idx] = float(
+                    inter.r_outer_per_angle.mean())
 
         df = pd.DataFrame(measurements)
         df.insert(0, OBJECT.LABEL, image.objects.labels2series())
@@ -696,6 +860,199 @@ class MeasureSymmetricRadius(MeasureFeatures):
         max_expansion = max(0.0, max_extent - float(core_radius))
         return mean_expansion, max_expansion
 
+    # ── zone segmentation helpers ────────────────────────────────────
+
+    @staticmethod
+    def _compute_brightness_reference(
+            intensity: np.ndarray,
+            local_mask: np.ndarray,
+            dist_map: np.ndarray,
+            core_radius: float,
+            fraction: float,
+    ) -> tuple[float, float]:
+        """Median intensity of the PELT-detected core and the bright threshold.
+
+        Args:
+            intensity: Local-bbox intensity crop (gray or detect_mat).
+            local_mask: Boolean mask of the object in local coordinates.
+            dist_map: Distance-from-centroid map.
+            core_radius: PELT-detected core radius (pixels). When 0, the
+                full object interior is used as fallback.
+            fraction: Multiplier on the reference intensity that defines
+                the bright/background threshold.
+
+        Returns:
+            Tuple ``(reference_intensity, bright_threshold)``.
+        """
+        if core_radius > 0:
+            core_pixels = intensity[(dist_map < core_radius) & local_mask]
+            if core_pixels.size == 0:
+                core_pixels = intensity[local_mask]
+        else:
+            core_pixels = intensity[local_mask]
+        reference = float(np.median(core_pixels))
+        return reference, float(fraction) * reference
+
+    @staticmethod
+    def _build_theta_r_maps(
+            local_mask: np.ndarray,
+            centroid_rc: tuple[float, float],
+            dist_map: np.ndarray,
+            annulus_boundaries: np.ndarray,
+            n_annuli: int,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Per-pixel angular sector and annulus index plus a validity mask.
+
+        Args:
+            local_mask: Boolean mask of the object in local coordinates.
+            centroid_rc: (row, col) centroid in local coordinates.
+            dist_map: Distance-from-centroid map (same shape as mask).
+            annulus_boundaries: Equal-area annulus boundary radii of
+                length ``n_annuli + 1``.
+            n_annuli: Number of annular bins.
+
+        Returns:
+            Tuple ``(theta, r_bin, valid)`` arrays sharing the mask shape.
+            ``theta`` is integer degrees in [0, 360), ``r_bin`` is the
+            annulus index in [0, n_annuli), and ``valid`` selects pixels
+            inside the mask with a finite, in-range annulus assignment.
+        """
+        h, w = local_mask.shape
+        rows, cols = np.indices((h, w))
+        dr = rows - centroid_rc[0]
+        dc = cols - centroid_rc[1]
+        theta = np.mod(np.degrees(np.arctan2(dr, dc)), 360.0).astype(np.int16)
+        r_bin = np.digitize(dist_map, annulus_boundaries) - 1
+        valid = (
+                local_mask
+                & (r_bin >= 0)
+                & (r_bin < n_annuli)
+                & (dist_map > 0)
+        )
+        return theta, r_bin, valid
+
+    @staticmethod
+    def _accumulate_bright_fraction_tensor(
+            theta: np.ndarray,
+            r_bin: np.ndarray,
+            valid: np.ndarray,
+            is_bright: np.ndarray,
+            n_annuli: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """(360, n_annuli) bright-fraction and mask-occupancy tensors.
+
+        Args:
+            theta: Per-pixel angular sector (int degrees in [0, 360)).
+            r_bin: Per-pixel annulus index.
+            valid: Boolean per-pixel selector for in-mask, in-range pixels.
+            is_bright: Per-pixel bright/background classification.
+            n_annuli: Number of annular bins.
+
+        Returns:
+            Tuple ``(bright_fraction, mask_per_cell)``. ``bright_fraction``
+            is the per-(angle, annulus) ratio of bright to total pixels
+            (NaN where total == 0); ``mask_per_cell`` is the integer count
+            of mask pixels per cell, used to derive the outer envelope.
+        """
+        th = theta[valid].astype(np.int32)
+        rb = r_bin[valid].astype(np.int32)
+        br = is_bright[valid].astype(np.int32)
+
+        offsets = np.array([-1, 0, 1], dtype=np.int32)
+        th3 = np.mod(th[:, None] + offsets[None, :], _N_ANGULAR_SECTORS).ravel()
+        rb3 = np.broadcast_to(rb[:, None], (rb.size, 3)).ravel()
+        br3 = np.broadcast_to(br[:, None], (br.size, 3)).ravel()
+
+        flat_idx = th3 * n_annuli + rb3
+        total = np.bincount(
+                flat_idx, minlength=_N_ANGULAR_SECTORS * n_annuli,
+        ).reshape(_N_ANGULAR_SECTORS, n_annuli)
+        bright = np.bincount(
+                flat_idx, weights=br3.astype(np.float64),
+                minlength=_N_ANGULAR_SECTORS * n_annuli,
+        ).reshape(_N_ANGULAR_SECTORS, n_annuli)
+
+        with np.errstate(invalid="ignore", divide="ignore"):
+            bright_fraction = np.where(total > 0, bright / total, np.nan)
+        return bright_fraction, total
+
+    @staticmethod
+    def _extract_zone_boundaries(
+            bright_fraction: np.ndarray,
+            mask_per_cell: np.ndarray,
+            annulus_radii: np.ndarray,
+            tau_core: float,
+            tau_sparse: float,
+            symmetric_radius: float,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Per-angle core / dense / outer radii from the bright-fraction tensor.
+
+        Args:
+            bright_fraction: (360, n_annuli) bright-pixel ratio tensor.
+            mask_per_cell: (360, n_annuli) mask-occupancy tensor.
+            annulus_radii: Centre radii of the equal-area annuli.
+            tau_core: Bright-fraction threshold for inoculum core.
+            tau_sparse: Bright-fraction threshold for dense branching.
+            symmetric_radius: Cap applied to all per-angle radii.
+
+        Returns:
+            Tuple of three (360,) float arrays
+            ``(r_core, r_dense_end, r_outer)``.
+        """
+        n_annuli = annulus_radii.size
+
+        def _prefix_pass_count(cond: np.ndarray) -> np.ndarray:
+            return np.logical_and.accumulate(cond, axis=1).sum(axis=1)
+
+        def _radii_from_prefix(prefix: np.ndarray) -> np.ndarray:
+            out = np.zeros(_N_ANGULAR_SECTORS, dtype=np.float64)
+            nonzero = prefix > 0
+            out[nonzero] = annulus_radii[
+                np.clip(prefix[nonzero] - 1, 0, n_annuli - 1)
+            ]
+            return out
+
+        cond_core = bright_fraction >= tau_core
+        cond_dense = bright_fraction >= tau_sparse
+        prefix_core = _prefix_pass_count(cond_core)
+        prefix_dense = _prefix_pass_count(cond_dense)
+        prefix_outer = _prefix_pass_count(mask_per_cell > 0)
+
+        r_core = np.minimum(_radii_from_prefix(prefix_core), symmetric_radius)
+        r_dense_end = np.minimum(_radii_from_prefix(prefix_dense), symmetric_radius)
+        r_outer = np.minimum(_radii_from_prefix(prefix_outer), symmetric_radius)
+        return r_core, r_dense_end, r_outer
+
+    @staticmethod
+    def _compute_zone_areas(
+            r_core: np.ndarray,
+            r_dense_end: np.ndarray,
+            r_outer: np.ndarray,
+    ) -> tuple[float, float, float]:
+        """Polar polygon areas (pixel^2) for the three nested zones.
+
+        Args:
+            r_core: Per-angle core boundary radius (360,).
+            r_dense_end: Per-angle dense boundary radius (360,).
+            r_outer: Per-angle outer envelope radius (360,).
+
+        Returns:
+            Tuple ``(core_area, dense_area, sparse_area)`` in pixel^2.
+        """
+        delta_theta = 2.0 * np.pi / _N_ANGULAR_SECTORS
+        core_area = float(0.5 * delta_theta * np.sum(r_core ** 2))
+        dense_area = float(
+                0.5 * delta_theta * np.sum(
+                        np.maximum(r_dense_end ** 2 - r_core ** 2, 0.0)
+                )
+        )
+        sparse_area = float(
+                0.5 * delta_theta * np.sum(
+                        np.maximum(r_outer ** 2 - r_dense_end ** 2, 0.0)
+                )
+        )
+        return core_area, dense_area, sparse_area
+
     # ── diagnostics ──────────────────────────────────────────────────
 
     def inspect(
@@ -827,6 +1184,7 @@ class MeasureSymmetricRadius(MeasureFeatures):
 
         Layers (all legend-toggleable):
         - **Objmap** — semi-transparent colored mask of detected objects.
+        - **Zones** — painted core / dense / sparse zones per object.
         - **Centroids** — inoculum centre markers for every object.
         - **Core radius** — dashed vermilion circles.
         - **Symmetric radius** — purple dashed circles (all objects).
@@ -866,6 +1224,47 @@ class MeasureSymmetricRadius(MeasureFeatures):
         fig.add_trace(go.Image(
                 z=overlay,
                 name="Objmap",
+                visible="legendonly",
+                hoverinfo="skip",
+        ))
+
+        # ── Zones overlay (core / dense / sparse) ───────────────────
+        zone_palette = np.array([
+            [0, 0, 0, 0],          # 0 outside
+            [213, 94, 0, _ALPHA],  # 1 core vermilion
+            [0, 54, 96, _ALPHA],   # 2 dense navy
+            [86, 180, 233, _ALPHA],  # 3 sparse sky
+        ], dtype=np.uint8)
+
+        zone_canvas = np.zeros((h, w, 4), dtype=np.uint8)
+        for inter in intermediates_cache.values():
+            if not inter.zones_computed:
+                continue
+            slc = inter.bbox_slice
+            mask = inter.obj_mask
+            mh, mw = mask.shape
+            rows, cols = np.indices((mh, mw))
+            dr = rows - inter.centroid_rc[0]
+            dc = cols - inter.centroid_rc[1]
+            theta_local = np.mod(
+                    np.degrees(np.arctan2(dr, dc)), 360.0,
+            ).astype(np.int16)
+            r_pixel = np.sqrt(dr ** 2 + dc ** 2)
+
+            rc = inter.r_core_per_angle[theta_local]
+            rd = inter.r_dense_end_per_angle[theta_local]
+            ro = inter.r_outer_per_angle[theta_local]
+
+            zone = np.zeros((mh, mw), dtype=np.uint8)
+            zone[mask & (r_pixel <= rc)] = 1
+            zone[mask & (r_pixel > rc) & (r_pixel <= rd)] = 2
+            zone[mask & (r_pixel > rd) & (r_pixel <= ro)] = 3
+
+            zone_canvas[slc] = zone_palette[zone]
+
+        fig.add_trace(go.Image(
+                z=zone_canvas,
+                name="Zones",
                 visible="legendonly",
                 hoverinfo="skip",
         ))
