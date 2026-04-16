@@ -17,13 +17,14 @@ from phenotypic.tools_.measurement_info_ import BBOX, GRID
 def _make_info_table(row_centers, col_centers):
     """Build a minimal info table for ``_fit_axis_edges`` unit tests.
 
-    Only includes WEIGHTED_CENTER columns used by AutoGridFinder's fitting
-    logic. Integration tests that call ``measure()`` use real images which
-    provide the full schema (including CENTER_RR/CC for grid assignment).
+    Only includes DIST_WEIGHTED_CENTER columns used by AutoGridFinder's
+    fitting logic. Integration tests that call ``measure()`` use real
+    images which provide the full schema (including CENTER_RR/CC for grid
+    assignment).
     """
     return pd.DataFrame({
-        str(BBOX.WEIGHTED_CENTER_RR): row_centers,
-        str(BBOX.WEIGHTED_CENTER_CC): col_centers,
+        str(BBOX.DIST_WEIGHTED_CENTER_RR): row_centers,
+        str(BBOX.DIST_WEIGHTED_CENTER_CC): col_centers,
     })
 
 
@@ -617,7 +618,6 @@ class TestSectionNumberDtype:
 
     def test_section_columns_are_categorical_uint16(self):
         """ROW_MAJOR_IDX and COL_MAJOR_IDX should be categorical with UInt16 codes."""
-        from phenotypic.abc_ import GridFinder
 
         # Build a concrete GridFinder to test the base-class method
         finder = AutoGridFinder(nrows=2, ncols=3)

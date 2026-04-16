@@ -121,7 +121,9 @@ class AccessorDashHandler(AccessorMplHandler):
             fig = px.imshow(arr, binary_string=True)
         else:
             colorscale = AccessorDashHandler.mpl_cmap_to_plotly(cmap)
-            fig = px.imshow(arr, color_continuous_scale=colorscale)
+            fig = px.imshow(
+                arr, color_continuous_scale=colorscale, binary_string=True,
+            )
 
         if figsize is not None:
             width_px = figsize[0] * 100

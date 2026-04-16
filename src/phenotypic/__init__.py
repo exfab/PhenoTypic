@@ -29,7 +29,6 @@ from ._core._image import Image
 from ._core._image_pipeline import ImagePipeline
 
 from . import (
-    abc_,
     analysis,
     correction,
     data,

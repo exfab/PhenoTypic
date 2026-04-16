@@ -8,8 +8,6 @@ of old full-snapshot intermediates.
 
 import h5py
 import numpy as np
-import pytest
-from pathlib import Path
 
 from phenotypic._core._pipeline_parts._image_pipeline_core import _layers_modified_by
 from phenotypic._core._image_pipeline import ImagePipeline
@@ -20,7 +18,6 @@ from phenotypic.measure import MeasureSize
 from phenotypic.refine import SmallObjectRemover
 from phenotypic.gui.sweep._sweep_data_model import (
     IntermediateStep,
-    ResolvedLayerSources,
     SweepOutputScanner,
     build_layer_resolution_index,
 )

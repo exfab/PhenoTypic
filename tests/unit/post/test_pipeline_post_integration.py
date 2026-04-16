@@ -1,7 +1,6 @@
 """Tests for post-measurement integration in ImagePipeline."""
 
 import pytest
-import pandas as pd
 
 from phenotypic import ImagePipeline
 from phenotypic.data import load_synth_yeast_plate

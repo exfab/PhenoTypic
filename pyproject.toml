@@ -107,6 +107,9 @@ phenotypic = "phenotypic.phenotypicCLI:phenotypic_cli"
 testpaths = ["tests/unit", "tests/smoke", "tests/integration"]
 addopts = "--verbose --capture=no"
 markers = ["smoke: basic operation test"]
+filterwarnings = [
+    "ignore::SyntaxWarning:mahotas",
+]
 # IMPORTANT: Do NOT combine --testmon and -n auto (SQLite concurrency issues)
 # CI Strategy: PR checks use --testmon (sequential, selective)
 #              Manual runs use -n auto (parallel, comprehensive)
@@ -148,6 +151,10 @@ ruff = ">=0.14.7"
 scipy-stubs = ">=1.15.3.0"
 pytest-testmon = ">=2.2.0"
 pytest-qt = ">=4.5.0"
+pytest-memray = { version = ">=1.7.0", env-markers = "sys_platform != 'win32'" }
+
+[tool.pixi.feature.dev.dependencies]
+pixi-pycharm = ">=0.0.11,<0.0.12"
 
 # Docs feature (replaces [dependency-groups] docs)
 [tool.pixi.feature.docs.pypi-dependencies]

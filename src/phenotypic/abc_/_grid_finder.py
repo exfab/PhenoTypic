@@ -411,7 +411,8 @@ class GridFinder(GridMeasureFeatures, ABC):
                 str(BBOX.CENTER_RR), str(BBOX.CENTER_CC),
                 str(BBOX.MIN_RR), str(BBOX.MIN_CC),
                 str(BBOX.MAX_RR), str(BBOX.MAX_CC),
-                str(BBOX.WEIGHTED_CENTER_RR), str(BBOX.WEIGHTED_CENTER_CC),
+                str(BBOX.INTENSITY_WEIGHTED_CENTER_RR), str(BBOX.INTENSITY_WEIGHTED_CENTER_CC),
+                str(BBOX.DIST_WEIGHTED_CENTER_RR), str(BBOX.DIST_WEIGHTED_CENTER_CC),
                 str(GRID.ROW_NUM), str(GRID.COL_NUM),
                 str(GRID.ROW_MAJOR_IDX), str(GRID.COL_MAJOR_IDX),
             ]

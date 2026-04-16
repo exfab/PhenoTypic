@@ -91,7 +91,6 @@ def scan_parquets(
         Ordered dict mapping each original *Path* to a lazy frame.
         Files that could not be scanned/read are omitted.
     """
-    import polars as pl
 
     if not parquet_files:
         return {}

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union, NamedTuple, Optional
+from typing import TYPE_CHECKING, Union, NamedTuple
 
 if TYPE_CHECKING:
     import napari

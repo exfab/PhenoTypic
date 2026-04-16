@@ -1,9 +1,20 @@
-"""Two-pass pytest timing profiler with fixture attribution.
+"""Two-pass pytest timing profiler with fixture attribution and optional memory profiling.
 
 Pass 1 maps tests to fixtures via ``--setup-plan`` (no execution).
 Pass 2 runs tests with ``--durations=0`` and collects timing data.
 Cross-references the two passes to produce sorted tables showing slowest
 tests, category breakdowns, and fixture attribution.
+
+Memory profiling is opt-in via two independent flags:
+
+- ``--memory``: uses memray (requires ``pytest-memray``; not available on Windows).
+  Binary results are written to ``.benchmark/memray/``. Generate a flamegraph with::
+
+      memray flamegraph .benchmark/memray/<result.bin>
+
+- ``--tracemalloc``: uses stdlib ``tracemalloc`` (built-in pytest flag, no extra deps).
+  Output is embedded in the normal pytest terminal output and captured in
+  ``.benchmark/tests_full.log``.
 
 Usage::
 
@@ -11,6 +22,8 @@ Usage::
     pixi run python scripts/profile_tests.py tests/unit/core -n 10
     pixi run python scripts/profile_tests.py --category detect --fixture synth_plate
     pixi run python scripts/profile_tests.py --json profile_results.json
+    pixi run python scripts/profile_tests.py --memory tests/smoke
+    pixi run python scripts/profile_tests.py --tracemalloc tests/smoke
 """
 
 from __future__ import annotations
@@ -20,7 +33,7 @@ import json
 import re
 import subprocess
 import sys
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from rich.console import Console
@@ -32,6 +45,7 @@ from rich.table import Table
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BENCHMARK_DIR = PROJECT_ROOT / ".benchmark"
+MEMRAY_DIR = BENCHMARK_DIR / "memray"
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -293,6 +307,7 @@ def run_timing(
     targets: list[str],
     extra_args: list[str],
     console: Console,
+    memory_args: list[str] | None = None,
 ) -> tuple[list[DurationRecord], dict[str, int], str]:
     """Run pytest with ``--durations=0`` and parse timing output.
 
@@ -300,6 +315,9 @@ def run_timing(
         targets: Test paths to profile.
         extra_args: Additional pytest arguments.
         console: Rich console for status output.
+        memory_args: Optional memory-profiling flags appended after ``extra_args``
+            (e.g. ``["--memray", "--memray-bin-path", "/path"]`` or
+            ``["--tracemalloc"]``).
 
     Returns:
         A tuple of ``(records, summary, raw_output)`` where *records* is
@@ -316,6 +334,7 @@ def run_timing(
         "-q",
         *_PYTEST_BASE_ARGS,
         *extra_args,
+        *(memory_args or []),
         *targets,
     ]
 
@@ -888,6 +907,24 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Stop on first test failure.",
     )
+    memory_group = parser.add_argument_group("memory profiling (opt-in)")
+    memory_group.add_argument(
+        "--memory",
+        action="store_true",
+        help=(
+            "Profile memory with memray (requires pytest-memray; not available on Windows). "
+            "Binary results → .benchmark/memray/. "
+            "Flamegraph: memray flamegraph .benchmark/memray/<file>.bin"
+        ),
+    )
+    memory_group.add_argument(
+        "--tracemalloc",
+        action="store_true",
+        help=(
+            "Profile memory with stdlib tracemalloc (built-in pytest flag, no extra deps). "
+            "Output embedded in pytest terminal → .benchmark/tests_full.log."
+        ),
+    )
     return parser
 
 
@@ -918,8 +955,29 @@ def main() -> None:
     else:
         console.print("[dim]Skipping Pass 1 (fixture map).[/dim]", highlight=False)
 
+    # --- Memory profiling args (Pass 2 only) ---
+    memory_args: list[str] = []
+    if args.memory:
+        MEMRAY_DIR.mkdir(parents=True, exist_ok=True)
+        memory_args.extend(["--memray", "--memray-bin-path", str(MEMRAY_DIR)])
+        console.print(
+            f"[bold cyan]Memory (memray):[/] binary results → {MEMRAY_DIR}/",
+            highlight=False,
+        )
+        console.print(
+            "  [dim]Flamegraph after run: "
+            f"memray flamegraph {MEMRAY_DIR}/<result.bin>[/dim]",
+            highlight=False,
+        )
+    if args.tracemalloc:
+        memory_args.append("--tracemalloc")
+        console.print(
+            "[bold cyan]Memory (tracemalloc):[/] output → .benchmark/tests_full.log",
+            highlight=False,
+        )
+
     # --- Pass 2: Timing ---
-    records, summary, raw_output = run_timing(targets, extra_args, console)
+    records, summary, raw_output = run_timing(targets, extra_args, console, memory_args)
 
     if not records:
         console.print("[bold red]No timing data collected. Exiting.[/bold red]", highlight=False)

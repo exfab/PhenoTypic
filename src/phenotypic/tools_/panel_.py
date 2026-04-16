@@ -12,6 +12,7 @@ import importlib.util
 __all__ = [
     "PANEL_AVAILABLE",
     "PANEL_IMPORT_ERROR",
+    "PLOTLY_AVAILABLE",
     "display_or_return",
     "ensure_panel_extension",
     "in_ipython",
@@ -25,6 +26,9 @@ __all__ = [
 
 PANEL_AVAILABLE: bool = importlib.util.find_spec("panel") is not None
 """``True`` when the ``panel`` package is importable."""
+
+PLOTLY_AVAILABLE: bool = importlib.util.find_spec("plotly") is not None
+"""``True`` when the ``plotly`` package is importable."""
 
 PANEL_IMPORT_ERROR: str = (
     "Panel is required for interactive dashboards. "
@@ -91,13 +95,17 @@ def in_jupyter() -> bool:
 _panel_initialized: bool = False
 
 
-def ensure_panel_extension(**kwargs) -> None:
+def ensure_panel_extension(*extensions: str, **kwargs) -> None:
     """Initialise ``pn.extension()`` once, only when inside IPython.
 
     Safe to call multiple times — the extension is loaded at most once
-    per process.  Outside IPython the call is a silent no-op.
+    per process.  Outside IPython the call is a silent no-op. When
+    :mod:`plotly` is importable it is automatically included as an
+    extension so Plotly figures render correctly in Panel layouts.
 
     Args:
+        *extensions: Extra Panel extensions to load (e.g. ``"tabulator"``).
+            ``"plotly"`` is added automatically when Plotly is installed.
         **kwargs: Forwarded to ``pn.extension()`` on the first call
             (e.g. ``inline=True``).
     """
@@ -114,7 +122,11 @@ def ensure_panel_extension(**kwargs) -> None:
 
     import panel as pn
 
-    pn.extension(**kwargs)
+    ext_set = list(dict.fromkeys(extensions))
+    if PLOTLY_AVAILABLE and "plotly" not in ext_set:
+        ext_set.append("plotly")
+
+    pn.extension(*ext_set, **kwargs)
     _panel_initialized = True
 
 
