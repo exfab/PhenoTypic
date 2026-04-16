@@ -156,7 +156,7 @@ class MadHysteresisDetector(ThresholdDetector):
         mask = mask.astype(bool)
 
         # Remove small objects
-        mask = remove_small_objects(mask, self.min_size, self.connectivity)
+        mask = remove_small_objects(mask, max_size=self.min_size, connectivity=self.connectivity)
 
         # Optionally clear borders
         if self.ignore_borders:
