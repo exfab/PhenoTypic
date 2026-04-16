@@ -521,26 +521,27 @@ class MeasureRadialExpansion(MeasureFeatures):
         Skeleton pixels are ~10x cheaper than on-object off-skeleton pixels
         and ~200x cheaper than off-object pixels, so paths hug the skeleton
         except across one-pixel gaps where a single object-interior detour
-        is cheaper than a dead-end. The core zone is further discounted so
-        the multi-source Dijkstra wavefront saturates it first.
+        is cheaper than a dead-end.
 
         Args:
             local_mask: Boolean object mask in local bbox coordinates.
             skeleton: Boolean skeleton image in local bbox coordinates.
             dist_map: Euclidean distance from the inoculum centroid
-                (local coordinates).
-            core_radius: PELT-determined core radius in pixels.
+                (local coordinates, unused — kept for signature symmetry
+                with callers that may introduce radial penalties later).
+            core_radius: PELT-determined core radius in pixels (unused,
+                see ``dist_map``).
 
         Returns:
             Float32 cost surface ready for
             :func:`phenotypic.tools_.branch_pathfinding.run_multisource_dijkstra`.
         """
+        del dist_map, core_radius  # reserved for future radial penalties
         affinity = (
             10.0 * skeleton.astype(np.float32)
             + 1.0 * local_mask.astype(np.float32)
         )
         cost = 1.0 / (affinity + 0.05)
-        cost[dist_map <= core_radius] *= 0.5
         return cost.astype(np.float32)
 
     @staticmethod
