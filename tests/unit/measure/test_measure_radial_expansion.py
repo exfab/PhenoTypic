@@ -313,16 +313,17 @@ class TestTraceBranchesDijkstra:
             (rows - center_rc[0]) ** 2 + (cols - center_rc[1]) ** 2
         )
 
-    def test_dijkstra_path_is_not_longer_than_linear_skeleton(self):
-        """For a straight horizontal skeleton, Dijkstra length equals the
-        tip-to-core-edge pixel count (cost-optimality upper bound)."""
+    def test_dijkstra_linear_skeleton_optimal_length(self):
+        """Straight skeleton with no obstacles: Dijkstra length equals
+        the exact tip-to-core-edge pixel count (optimality on a trivial
+        graph)."""
         h, w = 11, 21
         local_mask = np.zeros((h, w), dtype=bool)
         local_mask[5, :] = True
         skeleton = local_mask.copy()
         endpoints = np.array([[5, 0]], dtype=np.int32)
         center_rc = (5.0, 10.0)
-        core_radius = 3.0
+        core_radius = 3.0  # core spans cols 7..13
         dist_map = self._dist_map((h, w), center_rc)
 
         branches = MeasureRadialExpansion._trace_branches_dijkstra(
@@ -331,13 +332,42 @@ class TestTraceBranchesDijkstra:
 
         assert len(branches) == 1
         coords, length = branches[0]
-        # Straight line from col 0 to the core-boundary pixel (col 7) is
-        # 7 pixels → 7.0 Euclidean length at most (pure horizontal steps).
-        assert length <= 7.0 + 1e-6, (
-            f"Dijkstra length {length} exceeds linear-optimal bound 7.0"
+        # Tip at col 0, core boundary at col 7 → exactly 7 horizontal steps.
+        assert abs(length - 7.0) < 1e-6, (
+            f"Dijkstra length {length} should exactly equal 7.0 on a linear skeleton"
         )
         # First coord is the tip (backtrack order is tip → core).
         assert tuple(coords[0]) == (5, 0)
+        # Last coord is at the core boundary.
+        assert tuple(coords[-1]) == (5, 7)
+
+    def test_dijkstra_no_longer_than_skeleton_contour(self):
+        """On an L-shaped skeleton, Dijkstra length is bounded above by
+        the full skeleton contour length (strong optimality check —
+        Dijkstra must not wander beyond the skeleton itself)."""
+        h, w = 11, 11
+        local_mask = np.zeros((h, w), dtype=bool)
+        local_mask[3:8, 0:8] = True
+        skeleton = np.zeros((h, w), dtype=bool)
+        skeleton[5, 0:7] = True   # horizontal arm: 7 pixels
+        skeleton[3:6, 6] = True   # vertical arm: 3 pixels (shared pixel at 5,6)
+        endpoints = np.array([[3, 6]], dtype=np.int32)
+        center_rc = (5.0, 0.0)
+        core_radius = 1.0
+        dist_map = self._dist_map((h, w), center_rc)
+
+        branches = MeasureRadialExpansion._trace_branches_dijkstra(
+            local_mask, skeleton, endpoints, dist_map, center_rc, core_radius,
+        )
+
+        assert len(branches) == 1
+        _coords, length = branches[0]
+        # Skeleton contour from (3, 6) to core boundary: vertical 2 + horizontal 5 = 7.
+        # Dijkstra must be no longer than this (may be shorter via diagonal cuts).
+        assert length <= 7.0 + 1e-6, (
+            f"Dijkstra length {length} exceeds skeleton contour length 7.0"
+        )
+        assert length > 0
 
     def test_skeleton_disconnected_from_core_resolves_via_detour(self):
         """Greedy DFS dead-ends when the skeleton has a one-pixel gap
