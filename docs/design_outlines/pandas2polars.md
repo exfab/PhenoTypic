@@ -47,7 +47,7 @@ Ordered for root pandas dependencies first (break upstream contracts before touc
   - Files: `tests/test_image.py`, `tests/test_image_pipeline.py`, `tests/test_image_pipeline_batch.py`, `tests/test_pipeline_serialization.py`, `tests/test_phenotypic_cli.py`, `tests/test_measurement.py`, `tests/test_measure_color_composition.py`, `tests/test_merge_on_object_label.py`, `tests/test_hdf_pandas.py`, `tests/test_edge_correction.py`, `tests/test_tukey_outlier.py`, `tests/test_log_growth_model.py`.  
   - Tasks: Replace fixtures/assertions built on pandas; add Polars-specific checks.
 - [ ] 13) Clean dependencies  
-  - Files: `pyproject.toml`, `pixi.lock`.  
+  - Files: `pyproject.toml`, `uv.lock`.  
   - Tasks: Remove pandas; add Polars (and features needed); ensure extras cleaned up.
 
 ## Triage Notes

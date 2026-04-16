@@ -27,21 +27,21 @@ to integrate new tools.
 
 # Installation
 
-## pixi (recommended)
+## uv (recommended)
 
 **See more** on
-<u>[installing pixi](https://pixi.sh/latest/getting_started/)</u>
+<u>[installing uv](https://docs.astral.sh/uv/getting-started/installation/)</u>
 
 **Regular Install** (recommended when deploying on a cluster)
 
 ```bash
-pixi add --pypi phenotypic
+uv pip install phenotypic
 ```
 
 **Interactive / GUI Install** (napari viewer, Panel dashboards, Jupyter)
 
 ```bash
-pixi add --pypi "phenotypic[gui]"
+uv pip install "phenotypic[gui]"
 ```
 
 ## Pip
@@ -63,32 +63,45 @@ needed
 
 ## Manual Installation (For latest updates)
 
-```  
+```
 git clone https://github.com/exfab/PhenoTypic.git
 cd PhenoTypic
-pixi install
-```  
+uv sync
+```
 
 ## Dev Installation
 
 For extending PhenoTypic.
 
-```  
+```
 git clone https://github.com/exfab/PhenoTypic.git
 cd PhenoTypic
-pixi install -e dev
-```  
+uv sync --group dev
+```
 
 ## GPU-Accelerated Detection (SAM2, micro-sam)
 
 PhenoTypic ships optional deep-learning detectors backed by Meta's
 [Segment Anything Model 2](https://github.com/facebookresearch/sam2) and
 [micro-sam](https://github.com/computational-cell-analytics/micro-sam).
-These live in the `torch` and `microsam` pixi environments and require
-extra setup (model checkpoints, GPU drivers).
+
+* **SAM2** is available on PyPI and ships in the `torch` extra:
+
+  ```bash
+  uv pip install "phenotypic[torch]"   # Linux/macOS only
+  ```
+
+* **micro-sam** is only published on conda-forge (not PyPI), so it is
+  **not** bundled with any `phenotypic` extra. If you need
+  `MicroSamDetector`, see the "Enabling micro_sam" section of the
+  [GPU Detection Setup](https://exfab.github.io/PhenoTypic/how_to/pages/gpu_detection_setup.html)
+  guide for a user-side `pixi.toml` that installs `phenotypic` and
+  `micro_sam` together in a single environment. `MicroSamDetector`
+  remains importable without `micro_sam` installed; the `ImportError`
+  is deferred to the first `apply()` call.
 
 See [GPU Detection Setup](https://exfab.github.io/PhenoTypic/how_to/pages/gpu_detection_setup.html)
-for installation, model downloads, and SLURM deployment instructions.
+for model downloads and SLURM deployment instructions.
 
 ## Optional Installation
 

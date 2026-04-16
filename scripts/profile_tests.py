@@ -18,12 +18,12 @@ Memory profiling is opt-in via two independent flags:
 
 Usage::
 
-    pixi run python scripts/profile_tests.py
-    pixi run python scripts/profile_tests.py tests/unit/core -n 10
-    pixi run python scripts/profile_tests.py --category detect --fixture synth_plate
-    pixi run python scripts/profile_tests.py --json profile_results.json
-    pixi run python scripts/profile_tests.py --memory tests/smoke
-    pixi run python scripts/profile_tests.py --tracemalloc tests/smoke
+    uv run python scripts/profile_tests.py
+    uv run python scripts/profile_tests.py tests/unit/core -n 10
+    uv run python scripts/profile_tests.py --category detect --fixture synth_plate
+    uv run python scripts/profile_tests.py --json profile_results.json
+    uv run python scripts/profile_tests.py --memory tests/smoke
+    uv run python scripts/profile_tests.py --tracemalloc tests/smoke
 """
 
 from __future__ import annotations

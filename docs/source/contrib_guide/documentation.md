@@ -349,7 +349,7 @@ cd docs && make html
 cd docs && sphinx-build -n -b html source build/html
 
 # Verify notebook execution
-pixi run -e dev jupyter execute docs/source/tutorials/notebooks/<notebook>.ipynb
+uv run jupyter execute docs/source/tutorials/notebooks/<notebook>.ipynb
 ```
 
 The `nbsphinx_allow_errors` setting must remain `False` -- any notebook that

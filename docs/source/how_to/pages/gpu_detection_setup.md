@@ -5,48 +5,78 @@ GPU acceleration.
 
 ## Installation
 
-The two GPU detectors live in **separate pixi environments** because they
-have incompatible install requirements:
+The two GPU detectors have different packaging constraints:
 
-| Environment | Provides | PyTorch source | CUDA-capable? |
-|-------------|----------|----------------|---------------|
-| `torch`     | SAM2 (`Sam2Detector`) | PyPI (`pip install torch`) | Yes — Linux + CUDA |
-| `microsam`  | micro-sam (`MicroSamDetector`) | conda-forge (transitively, CPU) | No — CPU only by default |
-| `full`      | Both + dev + docs + gui | conda-forge (CPU wins) | No — CPU only |
+| Detector            | Package(s) needed          | Available via              | CUDA-capable?          |
+|---------------------|----------------------------|----------------------------|------------------------|
+| `Sam2Detector`      | `torch`, `torchvision`, `sam2` | **PyPI** (ships in `phenotypic[torch]`) | Yes — Linux + CUDA |
+| `MicroSamDetector`  | `micro_sam` (+ `torch`)    | **conda-forge only**, not on PyPI | CPU by default; user-managed CUDA possible |
 
-The split exists because conda's `micro_sam` pulls in CPU-only conda PyTorch,
-which would silently pre-empt the PyPI CUDA wheels in the same environment.
+PhenoTypic itself is distributed via PyPI and managed with `uv`. `micro_sam`
+is not published on PyPI, so it is **not** included in any `phenotypic`
+extra. Users who need `MicroSamDetector` must install `micro_sam`
+themselves; the recipe below uses `pixi` for that.
 
-### Recommended: pick the env that matches your detector
+### Installing `Sam2Detector` (PyPI-only)
+
+On Linux or macOS:
 
 ```bash
-# SAM2 with CUDA acceleration on Linux/macOS:
-pixi install -e torch
-
-# micro-sam (CPU-only by default, fine for most colony images):
-pixi install -e microsam
-
-# Both detectors + dev tooling (CPU-only):
-pixi install -e full
+uv pip install "phenotypic[torch]"          # torch + torchvision + sam2
+# or, inside a uv-managed project:
+uv sync --extra torch
 ```
+
+The `torch` extra is not available on Windows — `sam2` requires CUDA `nvcc`
+and has no pre-built Windows wheels. Use WSL2 (Ubuntu) instead.
+
+### Enabling `micro_sam` (optional, self-service)
+
+`micro_sam` is only published on conda-forge. Because PhenoTypic does not
+own your environment, we recommend managing the combined stack in your own
+project with [pixi](https://pixi.sh), which speaks both conda-forge and
+PyPI in a single lockfile. Create a `pixi.toml` in *your* project (not in
+PhenoTypic):
+
+```toml
+[project]
+name = "my-phenotyping-project"
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "linux-64", "win-64"]
+
+[pypi-dependencies]
+phenotypic = "*"
+# Or, while developing against a local checkout:
+# phenotypic = { path = "../PhenoTypic", editable = true }
+
+[dependencies]
+micro_sam = "*"
+```
+
+Then:
+
+```bash
+pixi install
+pixi run python -m phenotypic pipeline.json /plates/ /output/
+```
+
+Because conda's `micro_sam` pulls in CPU-only conda PyTorch, combining it
+with `Sam2Detector`'s CUDA wheels in the same environment requires extra
+care (the conda torch will typically win). Keep SAM2 and micro-sam work
+in separate environments if you need both with GPU acceleration.
+
+`MicroSamDetector` is importable from `phenotypic.nn` even when
+`micro_sam` is missing; the `ImportError` is deferred to the first
+`apply()` call and points back at these instructions.
 
 ### Alternative: pip + conda
 
-If you prefer pip over pixi:
+If you already manage your environment with conda:
 
 ```bash
-pip install phenotypic[torch]                   # torch + sam2 (CUDA-capable)
-conda install -c conda-forge micro_sam          # micro-sam (separate, CPU)
+pip install phenotypic                        # base (or phenotypic[torch] on non-Windows)
+conda install -c conda-forge micro_sam        # adds MicroSamDetector support
 ```
-
-`MicroSamDetector` handles missing imports gracefully at runtime — you only
-need micro-sam installed if you plan to use it.
-
-### Windows
-
-`sam2` requires CUDA `nvcc` and has no pre-built Windows wheels — use WSL2
-(Ubuntu) for `Sam2Detector`. `MicroSamDetector` does install on Windows via
-`pixi install -e microsam`.
 
 ## Downloading Model Checkpoints
 
@@ -318,11 +348,19 @@ python -m phenotypic.nn clear --model-type microsam
 
 ### `ImportError: Sam2Detector requires the sam2 package`
 
-PyTorch and the model packages are not installed. Install the optional extra:
+PyTorch and the model packages are not installed. Install the `torch` extra:
 
 ```bash
-pixi install -e full
+uv pip install "phenotypic[torch]"
 ```
+
+(Linux/macOS only — `sam2` is not packaged for Windows.)
+
+### `ImportError: MicroSamDetector requires the micro_sam package`
+
+`micro_sam` is conda-only and must be installed separately. See
+[Enabling `micro_sam` (optional, self-service)](#enabling-micro_sam-optional-self-service)
+above.
 
 ### `RuntimeError: No accelerator available`
 

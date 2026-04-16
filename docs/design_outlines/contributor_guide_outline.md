@@ -16,8 +16,8 @@
   - [x] Hardware: Guidance for CPU-first workflows; note memory considerations for high-res plate images; call out GPU not required.
 
 - [ ] Tooling Setup (drafted content)
-  - [x] Primary path: `pixi install -e dev` (or `pixi install -e docs` for docs); environment activation via `pixi shell`; `pixi run python ...`.
-  - [x] Alternatives: Editable install `pixi install`; `pip install phenotypic` for users; `pixi add --pypi "phenotypic[jupyter]"` for notebook work.
+  - [x] Primary path: `uv sync --group dev` (or `uv sync --group dev --group docs` for docs); activate via `source .venv/bin/activate` or prefix commands with `uv run`.
+  - [x] Alternatives: Editable install `uv pip install -e .`; `pip install phenotypic` for users; `uv pip install "phenotypic[gui]"` for notebook/GUI work.
   - [x] External tools: Install ExifTool for raw metadata; include a validation command example (e.g., `exiftool -ver`) and note impact if missing.
 
 - [ ] Repository Tour (drafted content)
@@ -27,8 +27,8 @@
 
 - [ ] Development Environment Workflow (drafted content)
   - [x] Clone/setup: `git clone ... && cd PhenoTypic`; add upstream remote if forking; branch naming convention (see below).
-  - [x] Dependencies: `pixi install -e dev`; rerun `pixi install` when lockfile changes; prefer `pixi run ...` for Python commands.
-  - [x] Smoke tests: `pixi run pytest -k <pattern>` for quick checks before full suite; emphasize using sample images in `tests/resources`.
+  - [x] Dependencies: `uv sync --group dev`; rerun `uv sync` when `uv.lock` changes; prefer `uv run ...` for Python commands.
+  - [x] Smoke tests: `uv run pytest -k <pattern>` for quick checks before full suite; emphasize using sample images in `tests/resources`.
 
 - [ ] Coding Standards (drafted content)
   - [x] Accessors: Never mutate raw image arrays directly; use handlers and return new Image instances (immutability philosophy).
@@ -50,14 +50,14 @@
   - [x] Cross-platform: Guard optional deps; document fallbacks/feature flags when a dependency is absent.
 
 - [ ] Testing & Quality Gates (drafted content)
-  - [x] Commands: `pixi run pytest`, `pixi run pytest -n auto`; single test via `pixi run pytest tests/test_image.py::test_image_load`.
-  - [x] Type checks: `pixi run mypy src/phenotypic`; guidance on minimal suppressions with justification.
+  - [x] Commands: `uv run pytest`, `uv run pytest -n auto`; single test via `uv run pytest tests/test_image.py::test_image_load`.
+  - [x] Type checks: `uv run mypy src/phenotypic`; guidance on minimal suppressions with justification.
   - [x] Style: Manual formatting, Google-style docstrings, follow `.cursor/rules/`; no autoformatter configured.
   - [x] Fixtures: How to add regression images to `tests/resources`; avoid oversized binaries; document seeds and parameters.
   - [x] CI parity: Mention GitHub Actions matrices (Linux/Windows/macOS; Python 3.10–3.12) and expectation to keep PRs green.
 
 - [ ] Documentation Contributions (drafted content)
-  - [x] Build: From repo root `cd docs && pixi run sphinx-build -b html source build`; for live reload `pixi run sphinx-autobuild source build`.
+  - [x] Build: From repo root `cd docs && uv run sphinx-build -b html source build`; for live reload `uv run sphinx-autobuild source build`.
   - [x] Examples: Prefer docstring examples with microbiology context over notebooks; when notebooks are needed, follow docs style and tooling.
   - [x] Artifacts: Update diagrams/design outlines under `docs/design_outlines` and `docs/diagrams`; keep scientific clarity and labeling.
   - [x] Releases/changelog: Decide whether to add release notes section; if so, outline format and location.
@@ -75,7 +75,7 @@
 
 - [ ] Release & Packaging Notes (drafted content)
   - [x] Versioning: State chosen scheme (recommend semver) and branch/tag naming for releases.
-  - [x] Packaging: How to build sdist/wheel (`pixi run python -m build`); dependency pinning philosophy from `pyproject.toml`.
+  - [x] Packaging: How to build sdist/wheel (`uv run python -m build`); dependency pinning philosophy from `pyproject.toml`.
   - [x] Compatibility: Verify pipeline serialization across versions; include backward-compatibility checklist before release.
 
 - [ ] Support Channels & Next Steps (drafted content)
