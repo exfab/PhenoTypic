@@ -2,31 +2,27 @@
 
 ## Quick Start
 
-**`pixi` is the sole package manager and runner.** Never use bare `python` or `pip`.
+**`uv` is the sole package manager and runner.** Never use bare `python` or `pip`.
 
-- `pixi run <cmd>` — run commands
-- `pixi add --pypi <package>` — add to default dependencies
-- `pixi add --pypi <package> --feature <feature>` — add to a specific feature (e.g. `dev`, `docs`, `gui`)
-- `pixi install` — sync env (after checkout or in new worktrees)
-- `pixi install -e full` — full dev env
-- `pixi shell` — activate environment shell
+- `uv run <cmd>` — run commands
+- `uv add <package>` (or `--group dev`) — add dependencies
+- `uv sync` — sync env (after checkout or in new worktrees)
+- `uv sync --group dev --group docs --extras gui` — full dev env
+- `source .venv/bin/activate` — manual venv activation
 
 ### Testing
-
-- `pixi run -e dev test-parallel` — run all tests in parallel (`pytest -n auto`)
-- `pixi run -e dev pytest tests/smoke -n auto` — smoke tests only, parallel
 
 See [tests/CLAUDE.md](tests/CLAUDE.md)
 
 ### Linting & Type Checking
 
-- `pixi run mypy src/phenotypic` — type checking
-- `pixi run ruff check --fix` — format and lint
+- `uv run mypy src/phenotypic` — type checking
+- `uv run ruff check --fix` — format and lint
 
 ### CLI
 
-- **`pixi run python -m phenotypic`** — single pipeline on images/directories (parallel, SLURM, resume)
-- **`pixi run python -m phenotypic.sweep`** — parameter sweeps across pipeline variants
+- **`uv run python -m phenotypic`** — single pipeline on images/directories (parallel, SLURM, resume)
+- **`uv run python -m phenotypic.sweep`** — parameter sweeps across pipeline variants
 
 See [src/phenotypic/_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) and [src/phenotypic/sweep/CLAUDE.md](src/phenotypic/sweep/CLAUDE.md) for full docs.
 
@@ -74,7 +70,6 @@ Only `__init__.py` exports are public API.
 - **Domain-specific:** Built for microbe phenotyping; use microbiology context in docs/examples
 - **Duck typing** for type checks; **explicit matplotlib** (no implicit pyplot)
 - **Reproducibility:** `to_json()`/`from_json()` serialization; fixed random seeds
-- **Serialization:** Only public attributes (no `_` prefix) are serialized. Constructor params must be public. Use private (`__`) attributes for cached computations consumed by `.inspect()` — these are excluded from JSON
 - **Cross-platform:** macOS, Windows, Linux; use try/except for platform-specific imports
 
 ---

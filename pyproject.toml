@@ -72,8 +72,7 @@ Repository = "https://github.com/Wheeldon-Lab/PhenoTypic"
 
 gui = [
     # Napari visualization
-    "napari[all]>=0.5.4",
-    "pyqt5>=5.15.2",
+    "napari[optional,pyqt5]>=0.5.4,<0.7.0",
     # Panel GUI components
     "panel>=1.3",
     "param>=2.0",
@@ -88,11 +87,9 @@ gui = [
 
 torch = [
     # SAM2 requires CUDA nvcc to compile from source — restrict to Linux/macOS.
-    # For the full stack including micro_sam (conda-only), use pixi:
-    #   pixi install -e torch   (or -e full)
-    # Pip users need micro_sam installed separately via conda:
-    #   conda install -c conda-forge micro_sam
-    # MicroSamDetector handles missing micro_sam gracefully at runtime.
+    # micro_sam is conda-only (not on PyPI); see the self-service recipe in
+    # docs/source/how_to/pages/gpu_detection_setup.md. MicroSamDetector
+    # handles missing micro_sam gracefully at runtime.
     "torch>=2.5.1;sys_platform!='win32'",
     "torchvision>=0.20.1;sys_platform!='win32'",
     "sam2;sys_platform!='win32'",
@@ -101,6 +98,40 @@ torch = [
 [project.scripts]
 phenotypic = "phenotypic.phenotypicCLI:phenotypic_cli"
 
+[dependency-groups]
+dev = [
+    "memory-profiler>=0.61.0",
+    "pytest>=8.4.0",
+    "pytest-cov",
+    "mypy",
+    "pytest-xdist>=3.8.0",
+    "pympler>=1.0.1;sys_platform!='win32'",
+    "jupyter;sys_platform!='win32'",
+    "ipykernel;sys_platform!='win32'",
+    "notebook;sys_platform!='win32'",
+    "ipywidgets",
+    "ruff>=0.14.7",
+    "scipy-stubs>=1.15.3.0",
+    "pytest-testmon>=2.2.0",
+    "pytest-qt>=4.5.0",
+    "pytest-memray>=1.7.0;sys_platform!='win32'",
+]
+docs = [
+    "sphinx",
+    "sphinxcontrib-napoleon",
+    "sphinx-autodoc-typehints",
+    "sphinx-autobuild",
+    "sphinxawesome-theme",
+    "pydata-sphinx-theme",
+    "sphinx-gallery",
+    "sphinx-autosummary-accessors",
+    "sphinx-design",
+    "nbsphinx",
+    "myst-nb",
+    "sphinx-togglebutton>=0.3.2",
+    "pandoc>=2.4",
+    "myst-parser>=4.0.1",
+]
 
 
 [tool.pytest.ini_options]
@@ -125,111 +156,12 @@ version = { attr = "phenotypic.__version__" }
     "_cli/_assets/*.png",
 ]
 
-[tool.pixi.workspace]
-channels = ["conda-forge"]
-platforms = ["osx-arm64", "linux-64", "win-64"]
-
-[tool.pixi.dependencies]
-python = ">=3.10,<3.13"
-
-[tool.pixi.pypi-dependencies]
-phenotypic = { path = ".", editable = true }
-
-# Dev feature (replaces [dependency-groups] dev)
-[tool.pixi.feature.dev.pypi-dependencies]
-memory-profiler = ">=0.61.0"
-pytest = ">=8.4.0"
-pytest-cov = "*"
-mypy = "*"
-pytest-xdist = ">=3.8.0, <4"
-pympler = { version = ">=1.0.1", env-markers = "sys_platform != 'win32'" }
-jupyter = { version = "*", env-markers = "sys_platform != 'win32'" }
-ipykernel = { version = "*", env-markers = "sys_platform != 'win32'" }
-notebook = { version = "*", env-markers = "sys_platform != 'win32'" }
-ipywidgets = "*"
-ruff = ">=0.14.7"
-scipy-stubs = ">=1.15.3.0"
-pytest-testmon = ">=2.2.0"
-pytest-qt = ">=4.5.0"
-pytest-memray = { version = ">=1.7.0", env-markers = "sys_platform != 'win32'" }
-
-[tool.pixi.feature.dev.dependencies]
-pixi-pycharm = ">=0.0.11,<0.0.12"
-
-# Docs feature (replaces [dependency-groups] docs)
-[tool.pixi.feature.docs.pypi-dependencies]
-sphinx = "*"
-sphinxcontrib-napoleon = "*"
-sphinx-autodoc-typehints = "*"
-sphinx-autobuild = "*"
-sphinxawesome-theme = "*"
-pydata-sphinx-theme = "*"
-sphinx-gallery = "*"
-sphinx-autosummary-accessors = "*"
-sphinx-design = "*"
-nbsphinx = "*"
-myst-nb = "*"
-sphinx-togglebutton = ">=0.3.2"
-pandoc = ">=2.4"
-myst-parser = ">=4.0.1"
-
-# GUI feature — mirrors [project.optional-dependencies] gui
-[tool.pixi.feature.gui.pypi-dependencies]
-napari = { version = ">=0.5.4", extras = ["all"] }
-pyqt5 = ">=5.15.2"
-panel = ">=1.3"
-param = ">=2.0"
-bokeh = ">=3.3"
-jinja2 = ">=3.1"
-jupyter-bokeh = ">=4.0.5"
-ipykernel = ">=6.31.0"
-ipywidgets = ">=8.1.7"
-jupyter = ">=1.1.1"
-
-# Torch feature — SAM2 detector via PyPI torch (CUDA-capable on Linux).
-#
-# Pure PyPI: keeps the door open to CUDA wheels from PyTorch's index.
-# sam2 builds from source via nvcc on Linux/macOS, env-marker-gated off Windows.
-[tool.pixi.feature.torch.pypi-dependencies]
-torch = { version = ">=2.5.1", env-markers = "sys_platform != 'win32'" }
-torchvision = { version = ">=0.20.1", env-markers = "sys_platform != 'win32'" }
-sam2 = { version = "*", env-markers = "sys_platform != 'win32'" }
-
-# microsam feature — micro-sam detector via conda-forge.
-#
-# Kept separate from `torch` because conda's micro_sam transitively pulls
-# in CPU-only conda pytorch, which would pre-empt the PyPI CUDA wheels in
-# the `torch` feature. Combine into `full` knowing that combo is CPU-only.
-[tool.pixi.feature.microsam.dependencies]
-micro_sam = "*"
-
-# Per-Python-version features for CI matrix
-[tool.pixi.feature.py310.dependencies]
-python = "~=3.10.0"
-[tool.pixi.feature.py311.dependencies]
-python = "~=3.11.0"
-[tool.pixi.feature.py312.dependencies]
-python = "~=3.12.0"
-
-[tool.pixi.environments]
-default = { solve-group = "default" }
-dev = { features = ["dev"], solve-group = "default" }
-docs = { features = ["dev", "docs"], solve-group = "default" }
-gui = { features = ["gui"], solve-group = "default" }
-torch = { features = ["torch"], solve-group = "default" }
-microsam = { features = ["microsam"], solve-group = "default" }
-full = { features = ["dev", "docs", "gui", "torch", "microsam"], solve-group = "default" }
-test-py310 = { features = ["dev", "py310"], solve-group = "py310" }
-test-py311 = { features = ["dev", "py311"], solve-group = "py311" }
-test-py312 = { features = ["dev", "py312"], solve-group = "py312" }
-
-[tool.pixi.tasks]
-test = "pytest"
-test-parallel = "pytest -n auto"
-test-testmon = "pytest --testmon"
-lint = "ruff check --fix"
-typecheck = "mypy src/phenotypic"
-docs-build = { cmd = "make html", cwd = "docs" }
+[tool.uv]
+required-environments = [
+    "sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'win32' and platform_machine == 'x86_64'",
+]
 
 [tool.ruff]
 line-length = 79

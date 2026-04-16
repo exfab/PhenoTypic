@@ -6,8 +6,8 @@ ImagePipelines in Jupyter notebooks.
 Requires optional dependencies:
     pip install phenotypic[gui]
 
-or with pixi:
-    pixi install -e full
+or with uv:
+    uv sync --extra gui
 
 Components:
 - PipelineBuilder: Main GUI for building pipelines interactively
@@ -47,9 +47,9 @@ def _check_gui_deps() -> bool:
     """
     import importlib.util
 
-    from phenotypic.tools_.panel_ import PANEL_AVAILABLE
-
-    return PANEL_AVAILABLE and importlib.util.find_spec("param") is not None
+    return all(
+        importlib.util.find_spec(pkg) is not None for pkg in ["panel", "param"]
+    )
 
 
 GUI_AVAILABLE = _check_gui_deps()

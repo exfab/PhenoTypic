@@ -20,10 +20,19 @@ jobs:
         with:
           fetch-depth: 0  # Fetch all history for proper versioning
 
-      - name: Setup pixi
-        uses: prefix-dev/setup-pixi@v0.8.0
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          environments: docs
+          python-version: '3.10'
+
+      - name: Install UV
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          uv sync --group dev --group docs
 
       - name: Install Pandoc
         run: |
@@ -32,9 +41,11 @@ jobs:
 
       - name: Sphinx build
         run: |
-          pixi run -e docs docs-build
+          cd docs
+          pwd
+          uv run make html
           # Ensure .nojekyll file exists
-          touch docs/build/html/.nojekyll
+          touch build/html/.nojekyll
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3

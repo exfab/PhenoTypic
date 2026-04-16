@@ -194,7 +194,7 @@ def generate_array_job_script(
     # Build command arguments for single-image processor
     event_log = output_dir / "processing_events.log"
 
-    # Get Python command (uses pixi run python if available)
+    # Get Python command (uses uv run python if available)
     python_cmd, _ = get_python_command(for_slurm=True)
 
     cmd_parts = [

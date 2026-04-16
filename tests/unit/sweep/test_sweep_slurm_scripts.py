@@ -500,5 +500,5 @@ class TestGetPythonCommandForSlurm:
         from phenotypic._cli._cli_utils import get_python_command
 
         cmd, _ = get_python_command()
-        # Default should be either pixi or plain python, not direct venv
-        assert cmd != [sys.executable] or "pixi" not in cmd[0]
+        # Default should be either uv or plain python, not direct venv
+        assert cmd != [sys.executable] or "uv" not in cmd[0]

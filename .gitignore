@@ -14,7 +14,6 @@ phenotypic.egg-info/
 
 # Virtual environments
 .venv/
-.pixi/
 .junie/
 .ai/
 
@@ -43,7 +42,7 @@ docs/source/api_reference/api/
 
 # Project-specific
 deprecated/
-scratch/
+_JupyterPrototypes/
 debug/*.log
 
 # Data files
@@ -63,6 +62,3 @@ tmp/
 
 # pytest-testmon database (local only, not for version control)
 .testmondata*
-
-# Profiler benchmark logs
-.benchmark/

@@ -22,37 +22,37 @@ Usage:
 
 Examples:
     # Basic usage with auto-generated output directory
-    pixi run python -m phenotypic pipeline.json ./images
+    uv run python -m phenotypic pipeline.json ./images
 
     # Specify output directory
-    pixi run python -m phenotypic pipeline.json ./images -o ./results
+    uv run python -m phenotypic pipeline.json ./images -o ./results
 
     # Dry-run to preview processing plan
-    pixi run python -m phenotypic pipeline.json ./images --dry-run
+    uv run python -m phenotypic pipeline.json ./images --dry-run
 
     # Sample 5 images per dataset for testing
-    pixi run python -m phenotypic pipeline.json ./images --sample 5
+    uv run python -m phenotypic pipeline.json ./images --sample 5
 
     # Resume interrupted processing
-    pixi run python -m phenotypic pipeline.json ./images -o ./results --resume
+    uv run python -m phenotypic pipeline.json ./images -o ./results --resume
 
     # Restart processing from beginning (clears previous state)
-    pixi run python -m phenotypic pipeline.json ./images -o ./results --restart
+    uv run python -m phenotypic pipeline.json ./images -o ./results --restart
 
     # SLURM execution (autonomous)
-    pixi run python -m phenotypic pipeline.json ./images \
+    uv run python -m phenotypic pipeline.json ./images \
         --slurm slurm_partition=compute \
         --slurm slurm_account=proj \
         --slurm mem_gb=16
 
     # SLURM with progress monitoring
-    pixi run python -m phenotypic pipeline.json ./images \
+    uv run python -m phenotypic pipeline.json ./images \
         --slurm slurm_partition=compute \
         --slurm slurm_account=proj \
         --wait
 
     # GridImage with custom dimensions
-    pixi run python -m phenotypic pipeline.json ./plates \
+    uv run python -m phenotypic pipeline.json ./plates \
         --image-type GridImage --nrows 16 --ncols 24
 
 SLURM Execution (Autonomous HPC Cluster Processing):
@@ -85,7 +85,7 @@ SLURM Execution (Autonomous HPC Cluster Processing):
         - Valid range: 1-10080 minutes (1 minute to 7 days)
 
     Example: Submit with account, partition, memory, and time limits
-        pixi run python -m phenotypic pipeline.json ./images \\
+        uv run python -m phenotypic pipeline.json ./images \\
             --slurm slurm_partition=compute \\
             --slurm slurm_account=lab_proj \\
             --slurm mem_gb=32 \\
@@ -95,7 +95,7 @@ SLURM Execution (Autonomous HPC Cluster Processing):
             --wait
 
     Example: Dry-run to preview SLURM submission plan
-        pixi run python -m phenotypic pipeline.json ./images \\
+        uv run python -m phenotypic pipeline.json ./images \\
             --slurm slurm_partition=compute \\
             --slurm slurm_account=lab_proj \\
             --dry-run
@@ -896,17 +896,6 @@ def phenotypic_cli(
                 console.print(f"  - {pipeline_error}", style="red")
                 sys.exit(1)
             console.print("[green]✓ Pipeline loaded successfully")
-
-            from phenotypic._cli._cli_validation import pipeline_requires_gpu
-
-            if pipeline_requires_gpu(config.pipeline_json):
-                console.print(
-                    "[yellow]⚡ Pipeline contains GPU-accelerated operations[/yellow]"
-                )
-                if config.is_slurm_mode():
-                    console.print("  GPU resources will be auto-requested on SLURM")
-                else:
-                    console.print("  Local execution will be sequential (n_jobs=1)")
 
             console.print()  # Add blank line after validation
         else:
