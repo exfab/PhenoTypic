@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 from phenotypic.tools_.branch_pathfinding import (
     connectivity_correct_labels,
     euclidean_voronoi_assign,

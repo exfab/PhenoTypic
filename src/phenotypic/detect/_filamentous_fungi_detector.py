@@ -4,7 +4,6 @@ import numpy as np
 import gc
 
 if TYPE_CHECKING:
-    import matplotlib.pyplot as plt
 
     from phenotypic._core._image import Image
     from phenotypic._core._grid_image import GridImage
@@ -30,7 +29,6 @@ from phenotypic.detect import (
 )
 from phenotypic.detect._inoculum_detector import InoculumDetector
 from phenotypic.refine import MaskOpener, MaskCloser, GridSectionLargest
-from skimage.filters import threshold_triangle
 
 from phenotypic.tools_.branch_pathfinding import (
     _apply_distance_gap_penalty_inplace,

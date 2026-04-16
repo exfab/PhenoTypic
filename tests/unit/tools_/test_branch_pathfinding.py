@@ -17,9 +17,6 @@ from phenotypic.tools_.branch_pathfinding import (
     compute_local_mad_map,
     assemble_composite_cost,
     apply_structure_mask,
-    apply_border_penalty,
-    apply_distance_gap_penalty,
-    # Fragment prescreening
     compute_min_cost_envelope,
     calibrate_screening_threshold,
     prescreen_fragments,

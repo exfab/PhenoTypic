@@ -7,9 +7,8 @@ the underscored private helpers (``_apply_*_inplace``,
 ``_compute_screening_envelope``) that were also imported directly by
 ``FilamentousFungiDetector``.
 
-TODO: drop after downstream callers migrate to
-``phenotypic.tools_.branch_pathfinding`` (track removal in a minor-version
-milestone).
+TODO: drop after 0.N (next minor release) — downstream callers should
+migrate to ``phenotypic.tools_.branch_pathfinding``.
 """
 
 from phenotypic.tools_.branch_pathfinding import *  # noqa: F401,F403
