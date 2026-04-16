@@ -44,6 +44,7 @@ docs/source/api_reference/api/
 deprecated/
 _JupyterPrototypes/
 debug/*.log
+scratch/
 
 # Data files
 *.h5
