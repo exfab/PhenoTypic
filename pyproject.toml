@@ -30,7 +30,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "pandas[excel,plot,performance,output-formatting,computation,hdf5,compression]",
+    "pandas",
     "numpy",
     "seaborn",
     "scikit-image",
@@ -138,7 +138,7 @@ memory-profiler = ">=0.61.0"
 pytest = ">=8.4.0"
 pytest-cov = "*"
 mypy = "*"
-pytest-xdist = ">=3.8.0"
+pytest-xdist = ">=3.8.0, <4"
 pympler = { version = ">=1.0.1", env-markers = "sys_platform != 'win32'" }
 jupyter = { version = "*", env-markers = "sys_platform != 'win32'" }
 ipykernel = { version = "*", env-markers = "sys_platform != 'win32'" }
