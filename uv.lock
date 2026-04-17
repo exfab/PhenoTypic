@@ -2384,18 +2384,6 @@ wheels = [
 ]
 
 [[package]]
-name = "memory-profiler"
-version = "0.61.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "psutil" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/b2/88/e1907e1ca3488f2d9507ca8b0ae1add7b1cd5d3ca2bc8e5b329382ea2c7b/memory_profiler-0.61.0.tar.gz", hash = "sha256:4e5b73d7864a1d1292fb76a03e82a3e78ef934d06828a698d9dada76da2067b0", size = 35935, upload-time = "2022-11-15T17:57:28.994Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/49/26/aaca612a0634ceede20682e692a6c55e35a94c21ba36b807cc40fe910ae1/memory_profiler-0.61.0-py3-none-any.whl", hash = "sha256:400348e61031e3942ad4d4109d18753b2fb08c2f6fb8290671c5513a34182d84", size = 31803, upload-time = "2022-11-15T17:57:27.031Z" },
-]
-
-[[package]]
 name = "memray"
 version = "1.19.3"
 source = { registry = "https://pypi.org/simple" }
@@ -2780,17 +2768,27 @@ wheels = [
 ]
 
 [package.optional-dependencies]
+all = [
+    { name = "aiohttp", marker = "sys_platform == 'darwin'" },
+    { name = "bermuda", marker = "sys_platform == 'darwin'" },
+    { name = "napari-plugin-manager", marker = "sys_platform == 'darwin'" },
+    { name = "numba", marker = "sys_platform == 'darwin'" },
+    { name = "pyqt5", version = "5.15.11", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'darwin'" },
+    { name = "triangle", version = "20250106", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'darwin'" },
+    { name = "zarr", version = "2.18.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' and sys_platform == 'darwin'" },
+    { name = "zarr", version = "3.1.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' and sys_platform == 'darwin'" },
+]
 optional = [
-    { name = "aiohttp", marker = "platform_machine != 'x86_64' or sys_platform != 'win32'" },
-    { name = "bermuda", marker = "platform_machine != 'x86_64' or sys_platform != 'win32'" },
-    { name = "napari-plugin-manager", marker = "platform_machine != 'x86_64' or sys_platform != 'win32'" },
-    { name = "numba", marker = "platform_machine != 'x86_64' or sys_platform != 'win32'" },
-    { name = "triangle", version = "20250106", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'x86_64' or sys_platform != 'win32'" },
-    { name = "zarr", version = "2.18.3", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and platform_machine != 'x86_64') or (python_full_version < '3.11' and sys_platform != 'win32')" },
-    { name = "zarr", version = "3.1.5", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.11' and platform_machine != 'x86_64') or (python_full_version >= '3.11' and sys_platform != 'win32')" },
+    { name = "aiohttp", marker = "(platform_machine != 'x86_64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'win32')" },
+    { name = "bermuda", marker = "(platform_machine != 'x86_64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'win32')" },
+    { name = "napari-plugin-manager", marker = "(platform_machine != 'x86_64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'win32')" },
+    { name = "numba", marker = "(platform_machine != 'x86_64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'win32')" },
+    { name = "triangle", version = "20250106", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine != 'x86_64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'win32')" },
+    { name = "zarr", version = "2.18.3", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and platform_machine != 'x86_64' and sys_platform == 'win32') or (python_full_version < '3.11' and sys_platform != 'darwin' and sys_platform != 'win32')" },
+    { name = "zarr", version = "3.1.5", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.11' and platform_machine != 'x86_64' and sys_platform == 'win32') or (python_full_version >= '3.11' and sys_platform != 'darwin' and sys_platform != 'win32')" },
 ]
 pyqt5 = [
-    { name = "pyqt5", version = "5.15.11", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'x86_64' or sys_platform != 'win32'" },
+    { name = "pyqt5", version = "5.15.11", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine != 'x86_64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'win32')" },
     { name = "pyqt5-qt5", version = "5.15.2", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'Windows'" },
 ]
 
@@ -3714,7 +3712,9 @@ gui = [
     { name = "jupyter" },
     { name = "jupyter-bokeh" },
     { name = "napari", version = "0.5.4", source = { registry = "https://pypi.org/simple" }, extra = ["optional", "pyqt5"], marker = "platform_machine == 'x86_64' and sys_platform == 'win32'" },
-    { name = "napari", version = "0.6.6", source = { registry = "https://pypi.org/simple" }, extra = ["optional", "pyqt5"], marker = "platform_machine != 'x86_64' or sys_platform != 'win32'" },
+    { name = "napari", version = "0.6.6", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'x86_64' or sys_platform != 'win32'" },
+    { name = "napari", version = "0.6.6", source = { registry = "https://pypi.org/simple" }, extra = ["all"], marker = "sys_platform == 'darwin'" },
+    { name = "napari", version = "0.6.6", source = { registry = "https://pypi.org/simple" }, extra = ["optional", "pyqt5"], marker = "(platform_machine != 'x86_64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'win32')" },
     { name = "panel" },
     { name = "param" },
 ]
@@ -3729,7 +3729,6 @@ dev = [
     { name = "ipykernel", marker = "sys_platform != 'win32'" },
     { name = "ipywidgets" },
     { name = "jupyter", marker = "sys_platform != 'win32'" },
-    { name = "memory-profiler" },
     { name = "mypy" },
     { name = "notebook", marker = "sys_platform != 'win32'" },
     { name = "pympler", version = "1.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'win32'" },
@@ -3782,7 +3781,8 @@ requires-dist = [
     { name = "kaleido", specifier = ">=1.2.0" },
     { name = "mahotas" },
     { name = "mmh3" },
-    { name = "napari", extras = ["optional", "pyqt5"], marker = "extra == 'gui'", specifier = ">=0.5.4,<0.7.0" },
+    { name = "napari", extras = ["all"], marker = "sys_platform == 'darwin' and extra == 'gui'", specifier = ">=0.5.4" },
+    { name = "napari", extras = ["optional", "pyqt5"], marker = "sys_platform != 'darwin' and extra == 'gui'", specifier = ">=0.5.4,<0.7.0" },
     { name = "numba", specifier = ">=0.62.1" },
     { name = "numpy" },
     { name = "opencv-python" },
@@ -3818,7 +3818,6 @@ dev = [
     { name = "ipykernel", marker = "sys_platform != 'win32'" },
     { name = "ipywidgets" },
     { name = "jupyter", marker = "sys_platform != 'win32'" },
-    { name = "memory-profiler", specifier = ">=0.61.0" },
     { name = "mypy" },
     { name = "notebook", marker = "sys_platform != 'win32'" },
     { name = "pympler", marker = "sys_platform != 'win32'", specifier = ">=1.0.1" },

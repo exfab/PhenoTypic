@@ -15,6 +15,7 @@ import traceback
 from pathlib import Path
 from typing import Optional, Literal, Dict, Any
 
+import h5py  # type: ignore[import-untyped]
 import matplotlib
 
 matplotlib.use("Agg")  # Non-interactive backend
@@ -78,14 +79,62 @@ def process_single_image_core(
     # Get image stem for output filenames
     image_stem = image_path.stem
 
-    # Save measurements
+    # Save measurements + HDF5 (always) and overlay (opt-in)
     output_manager.save_measurements(measurements, dataset_name, image_stem)
+    output_manager.save_image_hdf(image, dataset_name, image_stem)
+    if output_manager.save_overlays:
+        output_manager.save_overlay(image, dataset_name, image_stem)
 
-    # Save overlay
-    output_manager.save_overlay(image, dataset_name, image_stem)
+    return True
 
-    # Save optional image layers
-    output_manager.save_image_layers(image, dataset_name, image_stem)
+
+def process_single_hdf_measure_core(
+    pipeline_path: Path,
+    hdf_path: Path,
+    output_dir: Path,
+    dataset_name: str,
+    image_type: Literal["Image", "GridImage"],
+    output_manager: OutputManager,
+) -> bool:
+    """Rerun pipeline.measure() on an already-processed HDF file.
+
+    Loads ``hdf_path`` as :class:`Image` or :class:`GridImage` (per
+    ``image_type``), runs :meth:`ImagePipeline.measure` only (no apply / no
+    detection), and rewrites the measurements parquet.  Does NOT regenerate
+    overlays or touch the HDF file itself.
+
+    Args:
+        pipeline_path: Path to pipeline JSON file.
+        hdf_path: Path to an existing ``.h5`` file produced by a prior
+            forward run.
+        output_dir: Base output directory (unused here, but kept symmetric
+            with :func:`process_single_image_core`).
+        dataset_name: Dataset name for measurement output.
+        image_type: ``"Image"`` or ``"GridImage"`` — dictates which loader
+            to call.
+        output_manager: :class:`OutputManager` for writing the parquet.
+
+    Returns:
+        ``True`` on success. Exceptions propagate to the caller, which is
+        responsible for logging/handling them — mirroring
+        :func:`process_single_image_core`.
+
+    Raises:
+        Exception: Any exception from pipeline loading, HDF loading, or
+            measurement will propagate.
+    """
+    # Load pipeline
+    pipeline = ImagePipeline.from_json(pipeline_path)
+
+    # Determine image class and load from HDF5
+    image_cls = GridImage if image_type == "GridImage" else Image
+    image = image_cls.load_hdf5(hdf_path)
+
+    # Measurement only — no apply / detection
+    measurements = pipeline.measure(image)
+
+    # Save measurements parquet (overlay + HDF intentionally skipped)
+    output_manager.save_measurements(measurements, dataset_name, hdf_path.stem)
 
     return True
 
@@ -154,6 +203,19 @@ def process_single_image_core(
     default=None,
     help="Path to event log file (for status updates)",
 )
+@click.option(
+    "--measure",
+    "measure_only",
+    is_flag=True,
+    default=False,
+    help="Rerun pipeline.measure() on the input HDF; skip detection.",
+)
+@click.option(
+    "--save-overlays",
+    is_flag=True,
+    default=False,
+    help="Save a PNG overlay per image. Ignored in --measure mode.",
+)
 def main(
     pipeline: Path,
     image: Path,
@@ -168,6 +230,8 @@ def main(
     overlay_alpha: float,
     include_dataset_column: bool,
     event_log: Optional[Path],
+    measure_only: bool,
+    save_overlays: bool,
 ):
     """
     Process a single image with PhenoTypic pipeline.
@@ -176,31 +240,13 @@ def main(
     execution. It processes one image and logs completion to event log.
     """
     try:
-        # Prepare read kwargs
-        read_kwargs = {}
-        if image_type == "GridImage":
-            read_kwargs["nrows"] = nrows
-            read_kwargs["ncols"] = ncols
-        if bit_depth is not None:
-            read_kwargs["bit_depth"] = bit_depth
-        if detect_mode != "gray":
-            read_kwargs["detect_mode"] = detect_mode
-
-        # Validate extension
+        # Validate extension (used for overlay / legacy call sites)
         try:
             ext_normalized = normalize_extension(ext, ".tiff")
         except click.BadParameter as e:
             logger.error(f"Invalid extension parameter: {e}")
             click.echo(f"Error: {e}", err=True)
             sys.exit(1)
-
-        # Create output manager
-        output_manager = OutputManager.from_config(
-            base_dir=output_dir,
-            ext=ext_normalized,
-            include_dataset_column=include_dataset_column,
-            overlay_alpha=overlay_alpha,
-        )
 
         # Log "started" event (with SLURM env vars when available)
         if event_log is not None:
@@ -213,17 +259,89 @@ def main(
                 slurm_array_task_id=os.environ.get("SLURM_ARRAY_TASK_ID", ""),
             )
 
-        # Process image
-        click.echo(f"Processing {image.name}...")
-        success = process_single_image_core(
-            pipeline_path=pipeline,
-            image_path=image,
-            output_dir=output_dir,
-            dataset_name=dataset_name,
-            image_type=image_type,
-            read_kwargs=read_kwargs,
-            output_manager=output_manager,
-        )
+        if measure_only:
+            # Measure-only mode: --image points to an existing HDF5 file.
+            # Determine the image class from the saved file's root attr.
+            # Legacy v1 files lack the attr — fall back to the configured
+            # --image-type so behaviour matches the local executor.
+            resolved_image_type: Literal["Image", "GridImage"] = (
+                image_type  # type: ignore[assignment]
+            )
+            try:
+                with h5py.File(image, "r") as hf:
+                    saved_class = hf.attrs.get("phenotypic_class")
+                    if isinstance(saved_class, bytes):
+                        saved_class = saved_class.decode("utf-8", errors="replace")
+                    if saved_class == "GridImage":
+                        resolved_image_type = "GridImage"
+                    elif saved_class == "Image":
+                        resolved_image_type = "Image"
+                    elif saved_class is None:
+                        logger.warning(
+                            "phenotypic_class attr absent in %s; falling back to "
+                            "configured image_type=%s. If this file was saved as a "
+                            "different class (e.g. legacy v1 format), measurements "
+                            "may be incorrect.",
+                            image,
+                            resolved_image_type,
+                        )
+            except (OSError, KeyError) as hdf_err:
+                logger.warning(
+                    "Could not read phenotypic_class from %s (%s: %s); "
+                    "falling back to configured image_type=%s",
+                    image,
+                    type(hdf_err).__name__,
+                    hdf_err,
+                    resolved_image_type,
+                )
+
+            # Measure mode never writes overlays regardless of the flag.
+            output_manager = OutputManager.from_config(
+                base_dir=output_dir,
+                ext=ext_normalized,
+                include_dataset_column=include_dataset_column,
+                overlay_alpha=overlay_alpha,
+                save_overlays=False,
+            )
+
+            click.echo(f"Measuring {image.name} (HDF rerun)...")
+            process_single_hdf_measure_core(
+                pipeline_path=pipeline,
+                hdf_path=image,
+                output_dir=output_dir,
+                dataset_name=dataset_name,
+                image_type=resolved_image_type,
+                output_manager=output_manager,
+            )
+        else:
+            # Forward run: prepare read kwargs and dispatch to the detection path.
+            read_kwargs: Dict[str, Any] = {}
+            if image_type == "GridImage":
+                read_kwargs["nrows"] = nrows
+                read_kwargs["ncols"] = ncols
+            if bit_depth is not None:
+                read_kwargs["bit_depth"] = bit_depth
+            if detect_mode != "gray":
+                read_kwargs["detect_mode"] = detect_mode
+
+            output_manager = OutputManager.from_config(
+                base_dir=output_dir,
+                ext=ext_normalized,
+                include_dataset_column=include_dataset_column,
+                overlay_alpha=overlay_alpha,
+                save_overlays=save_overlays,
+            )
+
+            click.echo(f"Processing {image.name}...")
+            process_single_image_core(
+                pipeline_path=pipeline,
+                image_path=image,
+                output_dir=output_dir,
+                dataset_name=dataset_name,
+                image_type=image_type,  # type: ignore[arg-type]
+                read_kwargs=read_kwargs,
+                output_manager=output_manager,
+            )
 
         # Log completion if event log provided
         if event_log is not None:

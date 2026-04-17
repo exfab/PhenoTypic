@@ -96,7 +96,7 @@ class MeasureBounds(MeasureFeatures):
         # (~128 MB at 4000x4000, ~288 MB at 6000x6000). If this becomes a
         # bottleneck on large plates, switch to a per-object loop using
         # scipy.ndimage.find_objects + per-bbox distance_transform_edt; the
-        # pattern at _measure_symmetric_radius.py:237-239 is the precedent.
+        # pattern at _measure_symmetric_zones.py:237-239 is the precedent.
         nonzero = objmap > 0
         if nonzero.any():
             max_label_value = np.iinfo(objmap.dtype).max

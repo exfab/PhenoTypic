@@ -97,9 +97,9 @@ class ExecutionConfig:
     wait: bool  # Wait for SLURM jobs to complete
     
     # Output options
-    ext: str  # Extension for rgb/gray/detect_mat (e.g. ".tiff")
+    ext: str  # Extension for overlay PNG / legacy call sites (no longer the forward-run switch)
     overlay_alpha: float  # Alpha for overlay compositing
-    
+
     # Processing options
     include_dataset_column: bool
     dry_run: bool
@@ -116,6 +116,12 @@ class ExecutionConfig:
 
     # Detection mode (default: gray)
     detect_mode: str = "gray"
+
+    # Overlay PNG output is opt-in (default: off)
+    save_overlays: bool = False
+
+    # Measure-only mode: reload HDFs and rerun pipeline.measure() without detection
+    measure_only: bool = False
     
     def is_slurm_mode(self) -> bool:
         """Check if SLURM mode should be used."""

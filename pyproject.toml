@@ -72,7 +72,8 @@ Repository = "https://github.com/Wheeldon-Lab/PhenoTypic"
 
 gui = [
     # Napari visualization
-    "napari[optional,pyqt5]>=0.5.4,<0.7.0",
+    "napari[optional,pyqt5]>=0.5.4,<0.7.0;sys_platform!='darwin'",
+    "napari[all]>=0.5.4;sys_platform=='darwin'",
     # Panel GUI components
     "panel>=1.3",
     "param>=2.0",
@@ -100,7 +101,6 @@ phenotypic = "phenotypic.phenotypicCLI:phenotypic_cli"
 
 [dependency-groups]
 dev = [
-    "memory-profiler>=0.61.0",
     "pytest>=8.4.0",
     "pytest-cov",
     "mypy",

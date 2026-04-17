@@ -12,6 +12,7 @@ import logging
 import os
 import shutil
 import tempfile
+import warnings
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, TYPE_CHECKING
 
@@ -332,22 +333,30 @@ class OutputManager:
         extensions: Dict[str, str],
         include_dataset_column: bool = True,
         overlay_alpha: float = 0.3,
+        save_overlays: bool = False,
     ):
         """
         Initialize OutputManager.
 
         Args:
             base_dir: Base output directory for all results
-            save_layers: Which layers to save {"rgb": True, "gray": False, ...}
-            extensions: File extensions for each layer {"rgb": ".tiff", ...}
+            save_layers: Which layers to save. For forward runs produced by
+                :meth:`from_config`, the only active key is ``"hdf"``; any
+                legacy keys (``"rgb"``, ``"gray"``, ``"detect_mat"``,
+                ``"objmap"``) are accepted but ignored for directory creation.
+            extensions: File extensions for each layer {"hdf": ".h5", ...}
             include_dataset_column: Whether to add Metadata_Dataset column to measurements (default: True)
             overlay_alpha: Alpha transparency for label overlay (0.0-1.0, default: 0.3)
+            save_overlays: If True, ``create_structure`` provisions an
+                ``overlays/`` directory per dataset; workers should consult
+                this flag before calling :meth:`save_overlay`.
         """
         self.base_dir = Path(base_dir)
         self.save_layers = save_layers
         self.extensions = extensions
         self.include_dataset_column = include_dataset_column
         self.overlay_alpha = overlay_alpha
+        self.save_overlays = save_overlays
 
         # Results directory for dataset outputs (images, measurements, overlays)
         self.results_dir = self.base_dir / "results"
@@ -362,28 +371,41 @@ class OutputManager:
         ext: str,
         include_dataset_column: bool = True,
         overlay_alpha: float = 0.3,
+        save_overlays: bool = False,
     ) -> "OutputManager":
-        """Create an OutputManager with the standard fixed layer set.
+        """Create an OutputManager configured for HDF-centric forward runs.
+
+        Forward runs now write a single ``.h5`` per image under
+        ``results/<ds>/hdf/`` (in addition to the parquet measurements and
+        an opt-in overlay PNG). The ``ext`` argument is retained for
+        backward compatibility with callers that still construct overlay
+        filenames via :meth:`get_output_path`.
 
         Args:
             base_dir: Base output directory.
-            ext: Extension for rgb/gray/detect_mat (e.g. ".tiff").
+            ext: Extension retained for overlay PNG / legacy call sites;
+                no longer the forward-run image-layer switch.
             include_dataset_column: Add Metadata_Dataset to measurements.
             overlay_alpha: Alpha for overlay compositing.
+            save_overlays: If True, provision ``overlays/`` per dataset.
         """
         return cls(
             base_dir=base_dir,
-            save_layers={"rgb": True, "gray": True, "detect_mat": True, "objmap": True},
-            extensions={"rgb": ext, "gray": ext, "detect_mat": ext, "objmap": ".png"},
+            save_layers={"hdf": True},
+            extensions={"hdf": ".h5"},
             include_dataset_column=include_dataset_column,
             overlay_alpha=overlay_alpha,
+            save_overlays=save_overlays,
         )
 
     def create_structure(self, datasets: List[Dataset]) -> None:
         """
         Create complete output directory structure.
 
-        Always creates dataset-first structure with each dataset in its own folder.
+        Always creates dataset-first structure with each dataset in its own
+        folder.  Forward runs provision ``measurements/`` and ``hdf/`` for
+        every dataset; ``overlays/`` is provisioned only when
+        :attr:`save_overlays` is True.
 
         Args:
             datasets: List of datasets to create directories for
@@ -404,10 +426,9 @@ class OutputManager:
             dataset_dir.mkdir(exist_ok=True)
 
             (dataset_dir / "measurements").mkdir(exist_ok=True)
-            (dataset_dir / "overlays").mkdir(exist_ok=True)
-            for layer_name, enabled in self.save_layers.items():
-                if enabled:
-                    (dataset_dir / layer_name).mkdir(exist_ok=True)
+            (dataset_dir / "hdf").mkdir(exist_ok=True)
+            if self.save_overlays:
+                (dataset_dir / "overlays").mkdir(exist_ok=True)
 
     def get_output_path(
         self,
@@ -420,7 +441,8 @@ class OutputManager:
 
         Args:
             dataset_name: Dataset name (e.g., "single_image", directory name, or subdirectory name)
-            layer: Layer type ("measurements", "overlays", "rgb", etc.)
+            layer: Layer type ("measurements", "overlays", "hdf", or a
+                legacy per-layer key declared in ``save_layers``).
             image_stem: Image filename without extension
 
         Returns:
@@ -431,6 +453,8 @@ class OutputManager:
             ext = ".parquet"
         elif layer == "overlays":
             ext = ".png"
+        elif layer == "hdf":
+            ext = self.extensions.get("hdf", ".h5")
         else:
             if not self.save_layers.get(layer):
                 raise ValueError(f"Layer '{layer}' is not enabled")
@@ -541,6 +565,52 @@ class OutputManager:
             )
             return None
 
+    def save_image_hdf(
+        self,
+        image: "Image",
+        dataset_name: str,
+        image_stem: str,
+    ) -> Optional[Path]:
+        """Save processed image as HDF5 under ``results/<ds>/hdf/``.
+
+        Writes atomically: ``image.save2hdf5`` writes to a temp file in the
+        same directory, then :func:`os.replace` promotes it to the final
+        path.  This mirrors :func:`_atomic_write`'s spirit, but h5py needs
+        to own the file handle so we cannot feed it a buffer.
+
+        Args:
+            image: Image object with processing results.
+            dataset_name: Dataset name.
+            image_stem: Image filename without extension.
+
+        Returns:
+            Path where HDF5 was saved, or ``None`` if saving failed.
+        """
+        final_path = self.get_output_path(dataset_name, "hdf", image_stem)
+        final_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = final_path.with_name(f".{final_path.name}.{os.getpid()}.part")
+        try:
+            image.save2hdf5(tmp_path)
+            os.replace(tmp_path, final_path)
+            logger.info(
+                "Saved HDF5 for %s/%s", dataset_name, image_stem
+            )
+            return final_path
+        except Exception as e:
+            if tmp_path.exists():
+                try:
+                    tmp_path.unlink()
+                except OSError:
+                    pass
+            logger.warning(
+                "Failed to save HDF5 for %s/%s: %s: %s",
+                dataset_name,
+                image_stem,
+                type(e).__name__,
+                e,
+            )
+            return None
+
     def save_image_layers(
         self,
         image: Image,
@@ -548,6 +618,12 @@ class OutputManager:
         image_stem: str,
     ) -> Dict[str, Path]:
         """Save all requested image layers (rgb, gray, detect_mat, objmap).
+
+        .. deprecated::
+            Use :meth:`save_image_hdf` instead. Forward runs now persist a
+            single HDF5 per image under ``results/<ds>/hdf/``. This shim
+            remains for downstream scripts that still call the old per-layer
+            writer; it will be removed in a future release.
 
         Args:
             image: Image object with processing results.
@@ -557,6 +633,11 @@ class OutputManager:
         Returns:
             Dictionary mapping layer names to saved paths (only successful saves).
         """
+        warnings.warn(
+            "save_image_layers is deprecated; use save_image_hdf instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         saved_paths: Dict[str, Path] = {}
 
         layer_accessors = {

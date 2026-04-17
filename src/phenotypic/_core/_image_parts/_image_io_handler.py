@@ -4,9 +4,10 @@ import importlib.util
 import json
 import shutil
 import subprocess
+import warnings
 from datetime import datetime
 from fractions import Fraction
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
@@ -20,7 +21,7 @@ else:
 
 import h5py
 import numpy as np
-import pickle
+import pickle  # noqa: S403 - existing load_pickle/save2pickle support
 from os import PathLike
 from pathlib import Path
 from PIL import Image as PIL_Image
@@ -35,9 +36,43 @@ import skimage as ski
 
 import phenotypic
 from phenotypic.tools_.exceptions_ import UnsupportedFileTypeError
-from phenotypic.tools_.constants_ import IO, METADATA
+from phenotypic.tools_.constants_ import GAMMA_ENCODINGS, IO, METADATA
 from phenotypic.tools_.hdf_ import HDF
 from ._image_color_handler import ImageColorSpace
+
+
+# -----------------------------------------------------------------------------
+# HDF5 schema helpers
+# -----------------------------------------------------------------------------
+
+_SCHEMA_VERSION = 2
+
+
+def _encode_meta(val: Any) -> str:
+    """Encode a metadata value to a JSON string for HDF5 attribute storage.
+
+    Uses ``default=str`` as a fallback so non-JSON-native types (e.g.
+    ``np.datetime64``) are still serialisable.
+    """
+    return json.dumps(val, default=str)
+
+
+def _decode_meta(s: Any) -> Any:
+    """Decode a metadata value from its JSON-string representation.
+
+    Falls back to returning the raw value if it is not valid JSON (legacy
+    files stored values as bare strings). h5py may return attribute values
+    as ``bytes`` (fixed-length byte strings, older HDF5 files, cross-platform);
+    decode them to ``str`` before attempting JSON parsing.
+    """
+    if isinstance(s, bytes):
+        s = s.decode("utf-8", errors="replace")
+    if not isinstance(s, str):
+        return s
+    try:
+        return json.loads(s)
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return s
 
 
 class ImageIOHandler(ImageColorSpace):
@@ -536,11 +571,39 @@ class ImageIOHandler(ImageColorSpace):
             compression="gzip",
             compression_opts=4,
     ):
-        """Save image datasets and metadata into the given HDF5 group."""
+        """Save image datasets and metadata into the given HDF5 group.
+
+        Uses schema_version=2 layout:
+          - root attrs: version, schema_version, phenotypic_class,
+            bit_depth, illuminant, gamma
+          - /layers/: rgb (optional), gray, detect_mat, objmap
+          - /metadata/{protected,public,imported}/: JSON-encoded attrs
+        """
+        # ------------------------------------------------------------------
+        # Root attributes
+        # ------------------------------------------------------------------
+        grp.attrs["version"] = phenotypic.__version__
+        grp.attrs["schema_version"] = _SCHEMA_VERSION
+        grp.attrs["phenotypic_class"] = type(self).__name__
+
+        if self.bit_depth is not None:
+            grp.attrs["bit_depth"] = int(self.bit_depth)
+        if self.illuminant is not None:
+            grp.attrs["illuminant"] = str(self.illuminant)
+        if self.gamma is not None:
+            grp.attrs["gamma"] = (
+                self.gamma.name if hasattr(self.gamma, "name") else str(self.gamma)
+            )
+
+        # ------------------------------------------------------------------
+        # Layers subgroup
+        # ------------------------------------------------------------------
+        layers = grp.require_group("layers")
+
         if not self.rgb.isempty():
             array = self.rgb[:]
             HDF.save_array2hdf5(
-                    group=grp,
+                    group=layers,
                     array=array,
                     name="rgb",
                     dtype=array.dtype,
@@ -550,7 +613,7 @@ class ImageIOHandler(ImageColorSpace):
 
         matrix = self.gray[:]
         HDF.save_array2hdf5(
-                group=grp,
+                group=layers,
                 array=matrix,
                 name="gray",
                 dtype=matrix.dtype,
@@ -560,20 +623,18 @@ class ImageIOHandler(ImageColorSpace):
 
         detect_matrix = self.detect_mat[:]
         HDF.save_array2hdf5(
-                group=grp,
+                group=layers,
                 array=detect_matrix,
                 name="detect_mat",
                 dtype=detect_matrix.dtype,
                 compression=compression,
                 compression_opts=compression_opts,
         )
-        grp["detect_mat"].attrs["detect_mode"] = (
-            self._data.detect_mode
-        )
+        layers["detect_mat"].attrs["detect_mode"] = self._data.detect_mode
 
         objmap = self.objmap[:]
         HDF.save_array2hdf5(
-                group=grp,
+                group=layers,
                 array=objmap,
                 name="objmap",
                 dtype=objmap.dtype,
@@ -581,10 +642,28 @@ class ImageIOHandler(ImageColorSpace):
                 compression_opts=compression_opts,
         )
 
-        self._save_hdf5_metadata(grp)
+        # ------------------------------------------------------------------
+        # Metadata subgroups (protected / public / imported)
+        # ------------------------------------------------------------------
+        meta = grp.require_group("metadata")
+        sections = {
+            "protected": self._metadata.protected,
+            "public"   : self._metadata.public,
+            "imported" : self._metadata.imported,
+        }
+        for name, section in sections.items():
+            sub = meta.require_group(name)
+            for key, val in section.items():
+                sub.attrs[str(key)] = _encode_meta(val)
 
     def _save_hdf5_metadata(self, grp) -> None:
-        """Write version info and metadata subgroups into an HDF5 group."""
+        """Write version info and metadata subgroups into an HDF5 group.
+
+        Deprecated legacy-flat layout helper retained so
+        :meth:`save_intermediate_layers` (which still writes the v1 flat
+        layout) continues to round-trip. The v2 writer is inlined in
+        :meth:`_save_image2hdfgroup`.
+        """
         grp.attrs["version"] = phenotypic.__version__
 
         prot = grp.require_group("protected_metadata")
@@ -696,48 +775,170 @@ class ImageIOHandler(ImageColorSpace):
 
     @classmethod
     def _load_from_hdf5_group(cls, group, **kwargs) -> Image:
-        # Instantiate a blank handler and populate internals
-        # Read datasets back into numpy arrays with proper dtype handling
+        """Load an Image from an HDF5 group.
+
+        Dispatches to the v2 grouped loader when the root attributes mark the
+        group as schema_version >= 2 and a ``layers`` subgroup exists, and
+        falls back to the legacy flat-root loader otherwise.
+        """
+        schema_version = int(group.attrs.get("schema_version", 1))
+        if schema_version >= _SCHEMA_VERSION and "layers" in group:
+            return cls._load_v2_grouped(group, **kwargs)
+        return cls._load_legacy_flat_group(group, **kwargs)
+
+    @classmethod
+    def _load_v2_grouped(cls, group, **kwargs) -> Image:
+        """Load from the schema_version=2 grouped layout.
+
+        Reads ``/layers/`` for image arrays, ``/metadata/{protected,public,
+        imported}/`` for JSON-decoded metadata, and merges root attributes
+        (``bit_depth``, ``illuminant``, ``gamma``) into ``kwargs`` via
+        ``setdefault`` so explicit caller kwargs take priority.
+        """
+        # Merge root attrs into kwargs (caller-provided kwargs win).
+        if "bit_depth" in group.attrs:
+            try:
+                kwargs.setdefault("bit_depth", int(group.attrs["bit_depth"]))
+            except (TypeError, ValueError):
+                pass
+        if "illuminant" in group.attrs:
+            illum = group.attrs["illuminant"]
+            if isinstance(illum, bytes):
+                illum = illum.decode("utf-8", errors="replace")
+            kwargs.setdefault("illuminant", str(illum))
+        if "gamma" in group.attrs:
+            gamma_name = group.attrs["gamma"]
+            if isinstance(gamma_name, bytes):
+                gamma_name = gamma_name.decode("utf-8", errors="replace")
+            gamma_name = str(gamma_name)
+            # Map name back via GAMMA_ENCODINGS; on unknown names fall back to
+            # GAMMA_ENCODINGS.SRGB (the constructor-validated default) so we
+            # never hand ImageColorSpace.__init__ a string it will reject.
+            try:
+                gamma_val: GAMMA_ENCODINGS = GAMMA_ENCODINGS[gamma_name]
+            except KeyError:
+                warnings.warn(
+                    f"Unknown gamma encoding {gamma_name!r}; falling back to "
+                    f"GAMMA_ENCODINGS.SRGB",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                kwargs.setdefault("gamma", GAMMA_ENCODINGS.SRGB)
+            else:
+                kwargs.setdefault("gamma", gamma_val)
+
+        layers = group["layers"]
+
+        # Read image/gray arrays.
+        matrix_data = layers["gray"][()]
+        if "rgb" in layers:
+            array_data = layers["rgb"][()]
+            img = cls(arr=array_data, **kwargs)
+            img.gray[:] = matrix_data
+        else:
+            img = cls(arr=matrix_data, **kwargs)
+
+        # Detection matrix + mode.
+        detect_mat_ds = layers["detect_mat"]
+        detect_matrix_data = detect_mat_ds[()]
+        detect_mode = detect_mat_ds.attrs.get("detect_mode", "gray")
+        if isinstance(detect_mode, bytes):
+            detect_mode = detect_mode.decode("utf-8", errors="replace")
+        img.detect_mat[:] = detect_matrix_data
+        img._data.detect_mode = detect_mode
+
+        # Object map preserves integer-label dtype.
+        img.objmap[:] = layers["objmap"][()]
+
+        # Metadata: protected / public / imported — each section JSON decoded.
+        if "metadata" in group:
+            meta = group["metadata"]
+            targets = {
+                "protected": img._metadata.protected,
+                "public"   : img._metadata.public,
+                "imported" : img._metadata.imported,
+            }
+            for name, target in targets.items():
+                if name not in meta:
+                    continue
+                attrs = meta[name].attrs
+                # setdefault-style merge: caller kwargs (e.g. bit_depth) have
+                # already populated matching protected-metadata keys via the
+                # Image constructor, so we must not clobber them here.
+                # public/imported are effectively fresh dicts at construction,
+                # so the same logic is a no-op for them but keeps behaviour
+                # uniform across sections.
+                for key in attrs:
+                    if key in target:
+                        continue
+                    target[key] = _decode_meta(attrs[key])
+
+        return img
+
+    @classmethod
+    def _load_legacy_flat_group(cls, group, **kwargs) -> Image:
+        """Load from the legacy (schema_version=1 / unversioned) flat layout.
+
+        Preserves the current behaviour for files that store rgb / gray /
+        detect_mat / objmap at the group root, with ``protected_metadata`` /
+        ``public_metadata`` attribute subgroups and the legacy
+        ``int(v) if v.isdigit() else v`` coercion. The ``imported`` section is
+        left empty because legacy files never persisted it.
+        """
+        # Read datasets back into numpy arrays with proper dtype handling.
         matrix_data = group["gray"][()]
 
-        # Determine format from available datasets
+        # Determine format from available datasets.
         if "rgb" in group:
-            # For arrays, preserve the original dtype from HDF5
             array_data = group["rgb"][()]
             img = cls(arr=array_data, **kwargs)
             img.gray[:] = matrix_data
         else:
             img = cls(arr=matrix_data, **kwargs)
 
-        # Load detection matrix and object map with proper dtype casting
-        # Backward compat: try 'detect_mat' first, fall back to 'enh_gray'
+        # Load detection matrix and object map with proper dtype casting.
+        # Backward compat: try 'detect_mat' first, fall back to 'enh_gray'.
         if "detect_mat" in group:
             detect_mat_ds = group["detect_mat"]
             detect_matrix_data = detect_mat_ds[()]
-            detect_mode = detect_mat_ds.attrs.get(
-                    "detect_mode", "gray"
-            )
+            detect_mode = detect_mat_ds.attrs.get("detect_mode", "gray")
+            if isinstance(detect_mode, bytes):
+                detect_mode = detect_mode.decode("utf-8", errors="replace")
         else:
             detect_matrix_data = group["enh_gray"][()]
             detect_mode = "gray"
         img.detect_mat[:] = detect_matrix_data
         img._data.detect_mode = detect_mode
 
-        # Object map should preserve its original dtype (usually integer labels)
+        # Object map should preserve its original dtype (usually integer labels).
         img.objmap[:] = group["objmap"][()]
 
-        # 3) Restore metadata
-        prot = group["protected_metadata"].attrs
-        img._metadata.protected.clear()
-        img._metadata.protected.update(
-                {k: int(prot[k]) if prot[k].isdigit() else prot[k] for k in prot}
-        )
+        # Restore metadata — legacy coercion: digit-looking values become ints.
+        if "protected_metadata" in group:
+            prot = group["protected_metadata"].attrs
+            img._metadata.protected.clear()
+            img._metadata.protected.update(
+                    {
+                        k: int(prot[k])
+                        if isinstance(prot[k], str) and prot[k].isdigit()
+                        else prot[k]
+                        for k in prot
+                    }
+            )
 
-        pub = group["public_metadata"].attrs
-        img._metadata.public.clear()
-        img._metadata.public.update(
-                {k: int(pub[k]) if pub[k].isdigit() else pub[k] for k in pub}
-        )
+        if "public_metadata" in group:
+            pub = group["public_metadata"].attrs
+            img._metadata.public.clear()
+            img._metadata.public.update(
+                    {
+                        k: int(pub[k])
+                        if isinstance(pub[k], str) and pub[k].isdigit()
+                        else pub[k]
+                        for k in pub
+                    }
+            )
+
+        # Legacy files never stored imported metadata — leave dict empty.
         return img
 
     @classmethod
@@ -759,6 +960,22 @@ class ImageIOHandler(ImageColorSpace):
             through kwargs, as they affect the image's suitability for detailed microbe colony studies.
         """
         with h5py.File(filename, "r") as filehandler:
+            # Auto-dispatch warning: if a user calls Image.load_hdf5 on a file
+            # that was saved as a GridImage, warn but do NOT upcast — still
+            # return a plain Image so behaviour stays explicit.
+            saved_class = filehandler.attrs.get("phenotypic_class")
+            if isinstance(saved_class, bytes):
+                saved_class = saved_class.decode("utf-8", errors="replace")
+            if (
+                    saved_class == "GridImage"
+                    and cls.__name__ != "GridImage"
+            ):
+                warnings.warn(
+                        "File was saved as GridImage; "
+                        "use GridImage.load_hdf5 to preserve grid state",
+                        UserWarning,
+                        stacklevel=2,
+                )
             img = cls._load_from_hdf5_group(filehandler, **kwargs)
 
         return img

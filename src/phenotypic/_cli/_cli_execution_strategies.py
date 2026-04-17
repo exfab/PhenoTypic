@@ -15,9 +15,10 @@ import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, TYPE_CHECKING
+from typing import Any, Dict, List, Literal, TYPE_CHECKING
 
 import click
+import h5py  # type: ignore[import-untyped]
 from joblib import Parallel, delayed
 
 if TYPE_CHECKING:
@@ -119,6 +120,7 @@ class LocalParallelStrategy(ExecutionStrategy):
         """
         start_time = datetime.now()
         event_log = output_dir / "processing_events.log"
+        measure_only = bool(self.config.measure_only)
 
         # Flatten all images across datasets
         all_tasks = []
@@ -126,11 +128,21 @@ class LocalParallelStrategy(ExecutionStrategy):
             for image_path in dataset.images:
                 all_tasks.append((dataset, image_path))
 
+        if measure_only:
+            logger.info(
+                "Measure-only rerun: %d HDFs across %d datasets",
+                len(all_tasks),
+                len(datasets),
+            )
+
         # Show dataset breakdown with rich
         from rich.console import Console
 
         console = Console()
-        console.print("\n[bold cyan]Processing Images[/bold cyan]")
+        header = (
+            "Measuring HDFs (Rerun)" if measure_only else "Processing Images"
+        )
+        console.print(f"\n[bold cyan]{header}[/bold cyan]")
         console.rule(style="cyan")
 
         for dataset in datasets:
@@ -147,7 +159,13 @@ class LocalParallelStrategy(ExecutionStrategy):
 
         from ._cli_validation import pipeline_requires_gpu
 
-        has_gpu_ops = pipeline_requires_gpu(self.config.pipeline_json)
+        # Measure mode skips detection entirely; no pipeline ops are applied,
+        # so GPU allocation is never required.
+        has_gpu_ops = (
+            False
+            if measure_only
+            else pipeline_requires_gpu(self.config.pipeline_json)
+        )
 
         if has_gpu_ops:
             try:
@@ -169,10 +187,13 @@ class LocalParallelStrategy(ExecutionStrategy):
         else:
             effective_n_jobs = self.config.n_jobs
 
+        worker = (
+            self._process_single_local_measure
+            if measure_only
+            else self._process_single_local
+        )
         results = Parallel(n_jobs=effective_n_jobs, verbose=11)(
-            delayed(self._process_single_local)(
-                dataset, image_path, output_dir, event_log
-            )
+            delayed(worker)(dataset, image_path, output_dir, event_log)
             for dataset, image_path in all_tasks
         )
 
@@ -286,6 +307,120 @@ class LocalParallelStrategy(ExecutionStrategy):
 
             return (dataset.name, image_path.name, False, tb)
 
+    def _process_single_local_measure(
+        self,
+        dataset: Dataset,
+        image_path: Path,
+        output_dir: Path,
+        event_log: Path,
+    ) -> tuple[str, str, bool, str]:
+        """
+        Rerun ``pipeline.measure()`` on a single already-processed HDF file.
+
+        Mirrors :meth:`_process_single_local` — same event-log helpers and
+        same (name, success, error) return shape so the dashboard aggregator
+        treats measure-mode results identically to forward-run results —
+        but dispatches to
+        :func:`phenotypic._cli._cli_process_single.process_single_hdf_measure_core`
+        instead of the detection path.  No state file is touched; the
+        top-level CLI is responsible for state in forward mode only.
+
+        Args:
+            dataset: Dataset metadata (used for event logging).
+            image_path: Path to the ``.h5`` file to reload.
+            output_dir: Base output directory (passed through; measure path
+                does not use it directly).
+            event_log: Path to the processing event log.
+
+        Returns:
+            Tuple of ``(dataset_name, hdf_filename, success, error_or_tb)``
+            matching the forward-path contract.
+        """
+        # Lazy-import the measure worker to match the forward-run pattern and
+        # avoid any new top-level import cycle.
+        from ._cli_process_single import process_single_hdf_measure_core
+
+        append_event(event_log, dataset.name, image_path.name, "started")
+
+        try:
+            # Detect the saved image class from the HDF root attr so
+            # GridImage files rehydrate with their grid state intact.
+            resolved_image_type: Literal["Image", "GridImage"] = (
+                self.config.image_type  # type: ignore[assignment]
+            )
+            try:
+                with h5py.File(image_path, "r") as hf:
+                    saved_class = hf.attrs.get("phenotypic_class")
+                    if isinstance(saved_class, bytes):
+                        saved_class = saved_class.decode(
+                            "utf-8", errors="replace"
+                        )
+                    if saved_class == "GridImage":
+                        resolved_image_type = "GridImage"
+                    elif saved_class == "Image":
+                        resolved_image_type = "Image"
+            except (OSError, KeyError) as hdf_err:
+                logger.warning(
+                    "Could not read phenotypic_class from %s (%s: %s); "
+                    "falling back to configured image_type=%s",
+                    image_path,
+                    type(hdf_err).__name__,
+                    hdf_err,
+                    resolved_image_type,
+                )
+
+            process_single_hdf_measure_core(
+                pipeline_path=self.config.pipeline_json,
+                hdf_path=image_path,
+                output_dir=output_dir,
+                dataset_name=dataset.name,
+                image_type=resolved_image_type,
+                output_manager=self.output_manager,
+            )
+
+            append_completion_event(
+                event_log, dataset.name, image_path.name, "completed"
+            )
+            return (dataset.name, image_path.name, True, "")
+
+        except Exception as e:
+            import traceback
+
+            error_msg = str(e)
+            tb = traceback.format_exc()
+
+            logger.error(
+                "Measure rerun failed for %s/%s:\n%s",
+                dataset.name, image_path.name, tb,
+            )
+
+            truncated_msg = _truncate_error_message(error_msg)
+
+            append_completion_event(
+                event_log,
+                dataset.name,
+                image_path.name,
+                "failed",
+                truncated_msg,
+            )
+
+            try:
+                progress_dir = output_dir / "progress"
+                append_failure(
+                    progress_dir,
+                    dataset=dataset.name,
+                    image=image_path.name,
+                    error_type=type(e).__name__,
+                    error_message=error_msg,
+                    traceback=tb,
+                )
+            except Exception:
+                logger.warning(
+                    "Failed to write failure record", exc_info=True
+                )
+
+            return (dataset.name, image_path.name, False, tb)
+
     def _aggregate_results(
         self, datasets: List[Dataset], results: List[tuple]
     ) -> dict[str, DatasetResults]:
@@ -379,12 +514,26 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             Execution results (may be incomplete if jobs still running)
         """
         start_time = datetime.now()
+        measure_only = bool(self.config.measure_only)
+
+        total_images = sum(len(d.images) for d in datasets)
+        if measure_only:
+            logger.info(
+                "Measure-only rerun: %d HDFs across %d datasets",
+                total_images,
+                len(datasets),
+            )
 
         # Show dataset breakdown with rich
         from rich.console import Console
 
         console = Console()
-        console.print("\n[bold cyan]SLURM Job Submission[/bold cyan]")
+        header = (
+            "SLURM Measure Rerun Submission"
+            if measure_only
+            else "SLURM Job Submission"
+        )
+        console.print(f"\n[bold cyan]{header}[/bold cyan]")
         console.rule(style="cyan")
 
         for dataset in datasets:
@@ -394,7 +543,6 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             )
 
         console.rule(style="cyan")
-        total_images = sum(len(d.images) for d in datasets)
         console.print(
             f"  Total: [bold]{total_images} images[/bold] across "
             f"[bold]{len(datasets)} datasets[/bold]\n"
@@ -407,7 +555,8 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
 
         from ._cli_validation import pipeline_requires_gpu
 
-        if pipeline_requires_gpu(self.config.pipeline_json):
+        # Measure mode never runs detection, so GPU provisioning is skipped.
+        if not measure_only and pipeline_requires_gpu(self.config.pipeline_json):
             slurm_args = dict(self.config.slurm_args)
 
             if "slurm_gpus_per_node" not in slurm_args:
