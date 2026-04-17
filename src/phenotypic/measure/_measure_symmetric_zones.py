@@ -1,6 +1,6 @@
 """Mask-based radial expansion and symmetry measurement operator.
 
-Implements :class:`MeasureSymmetricRadius`, a branch-free alternative to
+Implements :class:`MeasureSymmetricZones`, a branch-free alternative to
 :class:`MeasureRadialExpansion` that answers two colony-level questions
 directly from the binary object mask: how far has growth progressed past
 the inoculum, and out to what radius does that growth remain angularly
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 import numpy as np
 import pandas as pd
 from scipy.ndimage import convolve, distance_transform_edt
-from skimage.measure import regionprops
+from skimage.measure import approximate_polygon, find_contours, regionprops
 
 from phenotypic.abc_ import MeasureFeatures
 from phenotypic.tools_.constants_ import OBJECT
@@ -31,6 +31,10 @@ _N_ANGULAR_SECTORS = 360
 _SECTOR_HALFWIDTH_DEG = 1
 _ZONE_RADIAL_SMOOTHING = 3
 _ZONE_ANGULAR_SMOOTHING_DEG = 5
+
+# Diagnostic-overlay constants
+_ZONE_POLYGON_STRIDE = 5  # 360 / 5 = 72 vertices per zone polygon
+_OBJMAP_POLYGON_TOLERANCE = 0.5  # Douglas-Peucker pixel tolerance
 
 # Okabe-Ito palette constants for diagnostic plots
 _OI_NAVY = "#003660"
@@ -78,7 +82,7 @@ class _SymmetryIntermediates:
     zones_computed: bool = False
 
 
-class MeasureSymmetricRadius(MeasureFeatures):
+class MeasureSymmetricZones(MeasureFeatures):
     """Measure colony radial expansion and angular symmetry from the object mask alone.
 
     Quantifies each colony by four scalars derived directly from its binary
@@ -481,10 +485,22 @@ class MeasureSymmetricRadius(MeasureFeatures):
         self.__cache_props = props
         self.__cache_intermediates = {}
 
+        # Zone columns get 0.0 for tiny objects (no zones to resolve);
+        # the original four columns stay NaN to disambiguate "not measurable"
+        # from legitimately-zero values.
+        _zero_for_tiny = (
+            SYMMETRIC_RADIUS.CORE_END_RADIUS,
+            SYMMETRIC_RADIUS.DENSE_END_RADIUS,
+            SYMMETRIC_RADIUS.SPARSE_END_RADIUS,
+            SYMMETRIC_RADIUS.CORE_AREA,
+            SYMMETRIC_RADIUS.DENSE_AREA,
+            SYMMETRIC_RADIUS.SPARSE_AREA,
+        )
+
         for idx, prop in enumerate(props):
-            # Tiny objects can't produce meaningful measurements — leave NaN
-            # to disambiguate "not measurable" from legitimately-zero values.
             if prop.area < 10:
+                for feat in _zero_for_tiny:
+                    measurements[str(feat)][idx] = 0.0
                 continue
 
             try:
@@ -525,7 +541,7 @@ class MeasureSymmetricRadius(MeasureFeatures):
         """Return the cached image or raise if :meth:`measure` has not run."""
         if self.__cache_image is None:
             raise RuntimeError(
-                    "MeasureSymmetricRadius: diagnostic cache is empty. "
+                    "MeasureSymmetricZones: diagnostic cache is empty. "
                     "Call .measure(image) before .inspect()."
             )
         return self.__cache_image
@@ -691,7 +707,7 @@ class MeasureSymmetricRadius(MeasureFeatures):
         # meaningful on dense colonies where mask-boundary pixels only live
         # at the outer envelope. Sholl counts still reflect boundary pixels,
         # exposed separately for diagnostics.
-        boundary = MeasureSymmetricRadius._extract_mask_boundary(obj_mask)
+        boundary = MeasureSymmetricZones._extract_mask_boundary(obj_mask)
 
         mask_coords = np.argwhere(obj_mask)  # (N, 2) row, col
         mask_radii = dist_map[obj_mask]
@@ -848,7 +864,7 @@ class MeasureSymmetricRadius(MeasureFeatures):
         if not obj_mask.any():
             return 0.0, 0.0
 
-        boundary = MeasureSymmetricRadius._extract_mask_boundary(obj_mask)
+        boundary = MeasureSymmetricZones._extract_mask_boundary(obj_mask)
         if boundary.any():
             mean_extent = float(np.mean(dist_map[boundary]))
         else:
@@ -987,6 +1003,14 @@ class MeasureSymmetricRadius(MeasureFeatures):
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Per-angle core / dense / outer radii from the bright-fraction tensor.
 
+        ``r_outer`` is the farthest annulus index whose cell contains any
+        mask pixel for each angle (the per-angle outer envelope). ``r_core``
+        and ``r_dense_end`` are the contiguous-from-inside extent at which
+        ``bright_fraction`` exceeds ``tau_core`` / ``tau_sparse``; empty
+        cells (no mask pixels at that angle/annulus) do not refute the
+        threshold and the resulting prefix is capped at the per-angle outer
+        envelope. All three radii are finally clipped at ``symmetric_radius``.
+
         Args:
             bright_fraction: (360, n_annuli) bright-pixel ratio tensor.
             mask_per_cell: (360, n_annuli) mask-occupancy tensor.
@@ -999,10 +1023,35 @@ class MeasureSymmetricRadius(MeasureFeatures):
             Tuple of three (360,) float arrays
             ``(r_core, r_dense_end, r_outer)``.
         """
-        n_annuli = annulus_radii.size
+        n_annuli = int(annulus_radii.size)
+        has_mask_cell = mask_per_cell > 0
 
-        def _prefix_pass_count(cond: np.ndarray) -> np.ndarray:
-            return np.logical_and.accumulate(cond, axis=1).sum(axis=1)
+        # Per-angle outer envelope = farthest annulus index containing mask
+        # pixels. -1 marks angles with no mask at all (radius will be 0).
+        indices = np.broadcast_to(
+                np.arange(n_annuli, dtype=np.int32),
+                (_N_ANGULAR_SECTORS, n_annuli),
+        )
+        last_idx = np.where(has_mask_cell, indices, -1).max(axis=1)
+        has_any_mask = last_idx >= 0
+
+        r_outer = np.zeros(_N_ANGULAR_SECTORS, dtype=np.float64)
+        r_outer[has_any_mask] = annulus_radii[last_idx[has_any_mask]]
+        r_outer = np.minimum(r_outer, symmetric_radius)
+
+        # Relaxed prefix-pass: cells with no data (no mask, or NaN after
+        # radial smoothing of a sparse tensor) are not counted as threshold
+        # failures. The resulting prefix is capped at the per-angle outer
+        # index so it cannot extend past where the mask actually reaches.
+        no_data = np.isnan(bright_fraction) | (~has_mask_cell)
+        cond_core = (bright_fraction >= tau_core) | no_data
+        cond_dense = (bright_fraction >= tau_sparse) | no_data
+        prefix_core = np.logical_and.accumulate(cond_core, axis=1).sum(axis=1)
+        prefix_dense = np.logical_and.accumulate(cond_dense, axis=1).sum(axis=1)
+
+        cap = np.maximum(last_idx + 1, 0)
+        prefix_core = np.minimum(prefix_core, cap)
+        prefix_dense = np.minimum(prefix_dense, cap)
 
         def _radii_from_prefix(prefix: np.ndarray) -> np.ndarray:
             out = np.zeros(_N_ANGULAR_SECTORS, dtype=np.float64)
@@ -1012,15 +1061,8 @@ class MeasureSymmetricRadius(MeasureFeatures):
             ]
             return out
 
-        cond_core = bright_fraction >= tau_core
-        cond_dense = bright_fraction >= tau_sparse
-        prefix_core = _prefix_pass_count(cond_core)
-        prefix_dense = _prefix_pass_count(cond_dense)
-        prefix_outer = _prefix_pass_count(mask_per_cell > 0)
-
         r_core = np.minimum(_radii_from_prefix(prefix_core), symmetric_radius)
         r_dense_end = np.minimum(_radii_from_prefix(prefix_dense), symmetric_radius)
-        r_outer = np.minimum(_radii_from_prefix(prefix_outer), symmetric_radius)
         return r_core, r_dense_end, r_outer
 
     @staticmethod
@@ -1052,6 +1094,79 @@ class MeasureSymmetricRadius(MeasureFeatures):
                 )
         )
         return core_area, dense_area, sparse_area
+
+    # ── overlay polygon helpers ──────────────────────────────────────
+
+    @staticmethod
+    def _object_polygon_xy(
+            local_mask: np.ndarray,
+            slc: tuple[slice, slice],
+            tolerance: float,
+    ) -> tuple[np.ndarray | None, np.ndarray | None]:
+        """Largest simplified mask contour as plate-coordinate (x, y) arrays.
+
+        Args:
+            local_mask: Boolean mask in local bbox coordinates.
+            slc: ``(row_slice, col_slice)`` mapping the local bbox to
+                plate coordinates.
+            tolerance: Douglas-Peucker tolerance in pixels.
+
+        Returns:
+            ``(xs, ys)`` float ndarrays for the simplified polygon in
+            plate coordinates, or ``(None, None)`` if no usable contour
+            exists (mask empty or contour collapses below 3 vertices).
+        """
+        if not local_mask.any():
+            return None, None
+
+        contours = find_contours(local_mask.astype(np.float64), 0.5)
+        if not contours:
+            return None, None
+
+        contour = max(contours, key=len)
+        if contour.shape[0] < 3:
+            return None, None
+
+        simplified = approximate_polygon(contour, tolerance=tolerance)
+        if simplified.shape[0] < 3:
+            return None, None
+
+        r0 = float(slc[0].start)
+        c0 = float(slc[1].start)
+        ys = simplified[:, 0] + r0
+        xs = simplified[:, 1] + c0
+        return xs, ys
+
+    @staticmethod
+    def _polar_polygon_xy(
+            centroid_xy: tuple[float, float],
+            r_per_angle: np.ndarray,
+            stride: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Closed polar polygon as plate-coordinate (x, y) arrays.
+
+        ``r_per_angle`` is the per-degree radius array (length 360);
+        ``stride`` downsamples it (``stride=5`` → 72 vertices). The
+        polygon is closed by repeating the first vertex.
+
+        Args:
+            centroid_xy: ``(cx, cy)`` centroid in plate coordinates.
+            r_per_angle: (360,) per-degree radii.
+            stride: Subsampling stride applied to the angle axis.
+
+        Returns:
+            Tuple ``(xs, ys)`` of float64 arrays, both length
+            ``ceil(360 / stride) + 1`` (closed).
+        """
+        cx, cy = centroid_xy
+        angles_deg = np.arange(0, _N_ANGULAR_SECTORS, stride, dtype=np.int32)
+        theta = np.deg2rad(angles_deg)
+        radii = r_per_angle[angles_deg].astype(np.float64)
+        xs = cx + radii * np.cos(theta)
+        ys = cy + radii * np.sin(theta)
+        xs = np.concatenate([xs, xs[:1]])
+        ys = np.concatenate([ys, ys[:1]])
+        return xs, ys
 
     # ── diagnostics ──────────────────────────────────────────────────
 
@@ -1169,7 +1284,7 @@ class MeasureSymmetricRadius(MeasureFeatures):
         fig.update_coloraxes(showscale=False)
         add_plotly_obj_labels(fig, image)
 
-        MeasureSymmetricRadius._add_overlay_traces(
+        MeasureSymmetricZones._add_overlay_traces(
                 fig, image, intermediates_cache,
         )
         return fig
@@ -1203,71 +1318,121 @@ class MeasureSymmetricRadius(MeasureFeatures):
         def _circle_xy(cx: float, cy: float, r: float):
             return cx + r * np.cos(_theta), cy + r * np.sin(_theta)
 
-        # ── Objmap overlay ──────────────────────────────────────────
-        _ALPHA = 77  # ~0.3
-        _PALETTE = [
-            (0, 114, 178, _ALPHA),  # blue
-            (230, 159, 0, _ALPHA),  # orange
-            (0, 158, 115, _ALPHA),  # green
-            (204, 121, 167, _ALPHA),  # purple
-            (86, 180, 233, _ALPHA),  # sky
-            (213, 94, 0, _ALPHA),  # vermilion
+        def _hex_to_rgba(hex_str: str, alpha: float) -> str:
+            h = hex_str.lstrip("#")
+            r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+            return f"rgba({r}, {g}, {b}, {alpha:.3f})"
+
+        # Make grouped legend entries toggle every trace in the group.
+        fig.update_layout(legend=dict(groupclick="togglegroup"))
+
+        _FILL_ALPHA = 0.30
+
+        # ── Objmap polygons (6-color cycle, NaN-separated buckets) ──
+        _PALETTE_RGB = [
+            (0, 114, 178),    # blue
+            (230, 159, 0),    # orange
+            (0, 158, 115),    # green
+            (204, 121, 167),  # purple
+            (86, 180, 233),   # sky
+            (213, 94, 0),     # vermilion
         ]
-        objmap = image.objmap[:]
-        h, w = objmap.shape[:2]
-        overlay = np.zeros((h, w, 4), dtype=np.uint8)
-        labels = np.unique(objmap)
-        labels = labels[labels > 0]
-        for i, lbl in enumerate(labels):
-            color = _PALETTE[i % len(_PALETTE)]
-            overlay[objmap == lbl] = color
-        fig.add_trace(go.Image(
-                z=overlay,
-                name="Objmap",
-                visible="legendonly",
-                hoverinfo="skip",
-        ))
+        bucket_xs: list[list[float]] = [[] for _ in _PALETTE_RGB]
+        bucket_ys: list[list[float]] = [[] for _ in _PALETTE_RGB]
+        sorted_inters = sorted(
+                intermediates_cache.values(), key=lambda x: x.label,
+        )
+        for i, inter in enumerate(sorted_inters):
+            xs, ys = MeasureSymmetricZones._object_polygon_xy(
+                    inter.obj_mask, inter.bbox_slice, _OBJMAP_POLYGON_TOLERANCE,
+            )
+            if xs is None or ys is None:
+                continue
+            bi = i % len(_PALETTE_RGB)
+            bucket_xs[bi].extend(xs.tolist())
+            bucket_xs[bi].append(float("nan"))
+            bucket_ys[bi].extend(ys.tolist())
+            bucket_ys[bi].append(float("nan"))
 
-        # ── Zones overlay (core / dense / sparse) ───────────────────
-        zone_palette = np.array([
-            [0, 0, 0, 0],          # 0 outside
-            [213, 94, 0, _ALPHA],  # 1 core vermilion
-            [0, 54, 96, _ALPHA],   # 2 dense navy
-            [86, 180, 233, _ALPHA],  # 3 sparse sky
-        ], dtype=np.uint8)
+        first_objmap_drawn = False
+        for bi, (bxs, bys) in enumerate(zip(bucket_xs, bucket_ys)):
+            if not bxs:
+                continue
+            r, g, b = _PALETTE_RGB[bi]
+            fillcolor = f"rgba({r}, {g}, {b}, {_FILL_ALPHA:.3f})"
+            fig.add_trace(go.Scatter(
+                    x=bxs, y=bys, mode="lines",
+                    line=dict(width=0),
+                    fill="toself",
+                    fillcolor=fillcolor,
+                    legendgroup="objmap",
+                    name="Objmap",
+                    showlegend=not first_objmap_drawn,
+                    visible="legendonly",
+                    hoverinfo="skip",
+            ))
+            first_objmap_drawn = True
 
-        zone_canvas = np.zeros((h, w, 4), dtype=np.uint8)
+        # ── Zone polygons (sparse → dense → core, layered) ──────────
+        sparse_xs: list[float] = []
+        sparse_ys: list[float] = []
+        dense_xs: list[float] = []
+        dense_ys: list[float] = []
+        zcore_xs: list[float] = []
+        zcore_ys: list[float] = []
+
         for inter in intermediates_cache.values():
             if not inter.zones_computed:
                 continue
             slc = inter.bbox_slice
-            mask = inter.obj_mask
-            mh, mw = mask.shape
-            rows, cols = np.indices((mh, mw))
-            dr = rows - inter.centroid_rc[0]
-            dc = cols - inter.centroid_rc[1]
-            theta_local = np.mod(
-                    np.degrees(np.arctan2(dr, dc)), 360.0,
-            ).astype(np.int16)
-            r_pixel = np.sqrt(dr ** 2 + dc ** 2)
+            r0, c0 = int(slc[0].start), int(slc[1].start)
+            cxy = (inter.centroid_rc[1] + c0, inter.centroid_rc[0] + r0)
 
-            rc = inter.r_core_per_angle[theta_local]
-            rd = inter.r_dense_end_per_angle[theta_local]
-            ro = inter.r_outer_per_angle[theta_local]
+            sxs, sys = MeasureSymmetricZones._polar_polygon_xy(
+                    cxy, inter.r_outer_per_angle, _ZONE_POLYGON_STRIDE,
+            )
+            sparse_xs.extend(sxs.tolist())
+            sparse_xs.append(float("nan"))
+            sparse_ys.extend(sys.tolist())
+            sparse_ys.append(float("nan"))
 
-            zone = np.zeros((mh, mw), dtype=np.uint8)
-            zone[mask & (r_pixel <= rc)] = 1
-            zone[mask & (r_pixel > rc) & (r_pixel <= rd)] = 2
-            zone[mask & (r_pixel > rd) & (r_pixel <= ro)] = 3
+            dxs, dys = MeasureSymmetricZones._polar_polygon_xy(
+                    cxy, inter.r_dense_end_per_angle, _ZONE_POLYGON_STRIDE,
+            )
+            dense_xs.extend(dxs.tolist())
+            dense_xs.append(float("nan"))
+            dense_ys.extend(dys.tolist())
+            dense_ys.append(float("nan"))
 
-            zone_canvas[slc] = zone_palette[zone]
+            cxs, cys = MeasureSymmetricZones._polar_polygon_xy(
+                    cxy, inter.r_core_per_angle, _ZONE_POLYGON_STRIDE,
+            )
+            zcore_xs.extend(cxs.tolist())
+            zcore_xs.append(float("nan"))
+            zcore_ys.extend(cys.tolist())
+            zcore_ys.append(float("nan"))
 
-        fig.add_trace(go.Image(
-                z=zone_canvas,
-                name="Zones",
-                visible="legendonly",
-                hoverinfo="skip",
-        ))
+        zone_layers = [
+            (sparse_xs, sparse_ys, _OI_SKY),
+            (dense_xs, dense_ys, _OI_NAVY),
+            (zcore_xs, zcore_ys, _OI_VERMILION),
+        ]
+        first_zone_drawn = False
+        for zxs, zys, zcolor in zone_layers:
+            if not zxs:
+                continue
+            fig.add_trace(go.Scatter(
+                    x=zxs, y=zys, mode="lines",
+                    line=dict(width=0),
+                    fill="toself",
+                    fillcolor=_hex_to_rgba(zcolor, _FILL_ALPHA),
+                    legendgroup="zones",
+                    name="Zones",
+                    showlegend=not first_zone_drawn,
+                    visible="legendonly",
+                    hoverinfo="skip",
+            ))
+            first_zone_drawn = True
 
         # ── Centroids ───────────────────────────────────────────────
         cent_x, cent_y = [], []
@@ -1359,6 +1524,6 @@ class MeasureSymmetricRadius(MeasureFeatures):
             ))
 
 
-MeasureSymmetricRadius.__doc__ = SYMMETRIC_RADIUS.append_rst_to_doc(
-        MeasureSymmetricRadius
+MeasureSymmetricZones.__doc__ = SYMMETRIC_RADIUS.append_rst_to_doc(
+        MeasureSymmetricZones
 )

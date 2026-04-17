@@ -1,4 +1,4 @@
-"""Tests for MeasureSymmetricRadius — mask-based radial symmetry operator."""
+"""Tests for MeasureSymmetricZones — mask-based radial symmetry operator."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from phenotypic import Image
-from phenotypic.measure import MeasureSymmetricRadius
+from phenotypic.measure import MeasureSymmetricZones
 
 
 # ---------------------------------------------------------------------------
@@ -168,8 +168,8 @@ def _make_lopsided_colony(
 # ---------------------------------------------------------------------------
 
 
-class TestMeasureSymmetricRadius:
-    """Synthetic-colony ground-truth tests for MeasureSymmetricRadius."""
+class TestMeasureSymmetricZones:
+    """Synthetic-colony ground-truth tests for MeasureSymmetricZones."""
 
     # -- column-name constants (match the plan's SYMMETRIC_RADIUS enum) --
     CORE_COL = "SymmetricRadius_CoreRadius"
@@ -199,7 +199,7 @@ class TestMeasureSymmetricRadius:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymmetricRadius()
+        op = MeasureSymmetricZones()
         df = op.measure(image)
 
         assert isinstance(df, pd.DataFrame)
@@ -249,7 +249,7 @@ class TestMeasureSymmetricRadius:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymmetricRadius()
+        op = MeasureSymmetricZones()
         df = op.measure(image)
 
         assert len(df) == 1
@@ -288,7 +288,7 @@ class TestMeasureSymmetricRadius:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymmetricRadius()
+        op = MeasureSymmetricZones()
         df = op.measure(image)
 
         assert len(df) == 1
@@ -338,7 +338,7 @@ class TestMeasureSymmetricRadius:
 
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymmetricRadius()
+        op = MeasureSymmetricZones()
         df = op.measure(image)
 
         assert len(df) == 1
@@ -383,7 +383,7 @@ class TestMeasureSymmetricRadius:
 
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymmetricRadius()
+        op = MeasureSymmetricZones()
         # Must not raise.
         df = op.measure(image)
 
@@ -452,7 +452,7 @@ class TestMeasureSymmetricRadius:
 
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymmetricRadius()
+        op = MeasureSymmetricZones()
         df = op.measure(image)
 
         assert len(df) == 1
@@ -478,7 +478,7 @@ class TestMeasureSymmetricRadius:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymmetricRadius()
+        op = MeasureSymmetricZones()
         df = op.measure(image)
 
         assert len(df) == 1
@@ -529,7 +529,7 @@ class TestMeasureSymmetricRadius:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymmetricRadius()
+        op = MeasureSymmetricZones()
         df = op.measure(image)
 
         assert len(df) == 1
@@ -578,7 +578,7 @@ class TestMeasureSymmetricRadius:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymmetricRadius()
+        op = MeasureSymmetricZones()
         df = op.measure(image)
 
         assert len(df) == 1
@@ -610,7 +610,7 @@ class TestMeasureSymmetricRadius:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymmetricRadius()
+        op = MeasureSymmetricZones()
         df = op.measure(image)
 
         assert len(df) == 1
