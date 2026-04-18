@@ -168,7 +168,7 @@ class CannyDetector(ThresholdDetector):
         )
 
         # Remove small objects
-        objmap = morphology.remove_small_objects(objmap, max_size=self.min_size)
+        objmap = morphology.remove_small_objects(objmap, min_size=self.min_size)
 
         # Ensure correct dtype
         if objmap.dtype != image._OBJMAP_DTYPE:

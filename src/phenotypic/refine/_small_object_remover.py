@@ -57,6 +57,6 @@ class SmallObjectRemover(ObjectRefiner):
 
     def _operate(self, image: Image) -> Image:
         image.objmap[:] = remove_small_objects(
-                image.objmap[:], max_size=self.min_size
+                image.objmap[:], min_size=self.min_size
         )
         return image

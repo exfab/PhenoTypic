@@ -172,7 +172,7 @@ class WatershedDetector(ThresholdDetector):
         self._log_memory_usage("threshold calculation and binary mask creation")
 
         binary = morphology.remove_small_objects(
-                binary, max_size=self.min_size
+                binary, min_size=self.min_size
         )  # clean to reduce runtime
 
         # Ensure binary is contiguous for memory-efficient operations (only if needed)
@@ -237,7 +237,7 @@ class WatershedDetector(ThresholdDetector):
         del max_peaks, gradient, binary
         gc.collect()  # Force garbage collection after watershed to free memory
 
-        objmap = morphology.remove_small_objects(objmap, max_size=self.min_size)
+        objmap = morphology.remove_small_objects(objmap, min_size=self.min_size)
         image.objmap[:] = objmap
         image.objmap.relabel(connectivity=self.connectivity)
 
