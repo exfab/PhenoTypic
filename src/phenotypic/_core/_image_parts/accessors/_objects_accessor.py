@@ -236,6 +236,7 @@ class ObjectsAccessor:
         Returns:
             list[skimage.measure.RegionProperties]: A list of RegionProperties objects, one per
                 detected colony, sorted by label. Each object provides lazy access to properties:
+
                 - area: Number of pixels in the colony
                 - centroid: (row, col) coordinates of the colony center
                 - bbox: Bounding box as (min_row, min_col, max_row, max_col)

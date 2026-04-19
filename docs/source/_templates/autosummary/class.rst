@@ -8,7 +8,7 @@
    :show-inheritance:
    :member-order: bysource
    :no-index:
-   
+
    {% block methods %}
    {% if methods %}
    .. rubric:: {{ _('Methods') }}

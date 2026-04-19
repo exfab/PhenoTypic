@@ -4,7 +4,6 @@ GridImage Class Methods
 .. toctree::
    :hidden:
    :maxdepth: 2
-   :local:
 
    self
 

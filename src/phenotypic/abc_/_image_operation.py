@@ -88,6 +88,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
 
     1. **Calls ``_apply_to_single_image()``** with the operation logic
     2. **Handles copy/inplace semantics:**
+
        - If ``inplace=False`` (default): Image is copied before modification,
          original unchanged
        - If ``inplace=True``: Image is modified in-place for memory efficiency

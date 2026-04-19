@@ -56,7 +56,15 @@ class SmallObjectRemover(ObjectRefiner):
         self.min_size = min_size
 
     def _operate(self, image: Image) -> Image:
-        image.objmap[:] = remove_small_objects(
-                image.objmap[:], min_size=self.min_size
-        )
+        objmap = image.objmap[:]
+        # remove_small_objects warns when given a label image with a single
+        # non-zero label (treats it as ambiguous binary vs labeled). Pass a
+        # boolean array in that case; re-label afterwards if needed.
+        if objmap.max() <= 1:
+            cleaned = remove_small_objects(
+                    objmap.astype(bool), min_size=self.min_size
+            )
+            image.objmap[:] = cleaned.astype(objmap.dtype)
+        else:
+            image.objmap[:] = remove_small_objects(objmap, min_size=self.min_size)
         return image

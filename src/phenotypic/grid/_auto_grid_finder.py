@@ -31,8 +31,10 @@ class AutoGridFinder(GridFinder):
         nrows: Number of rows in the grid (default 8 for 96-well plates).
         ncols: Number of columns in the grid (default 12 for 96-well plates).
         residual_fraction: Outlier threshold as a fraction of pitch. Centers
+
             whose fit residual exceeds ``pitch * residual_fraction`` are
             excluded from the refined fit (default 0.25).
+
         tol: Deprecated. Accepted for backward compatibility but ignored.
         max_iter: Deprecated. Accepted for backward compatibility but ignored.
     """

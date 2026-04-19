@@ -167,8 +167,14 @@ class CannyDetector(ThresholdDetector):
                 structure=ndimage.generate_binary_structure(2, self.connectivity)
         )
 
-        # Remove small objects
-        objmap = morphology.remove_small_objects(objmap, min_size=self.min_size)
+        # Remove small objects (pass a boolean array when only one label
+        # exists to avoid skimage's "single-label" ambiguity warning).
+        if objmap.max() <= 1:
+            objmap = morphology.remove_small_objects(
+                    objmap.astype(bool), min_size=self.min_size
+            ).astype(objmap.dtype)
+        else:
+            objmap = morphology.remove_small_objects(objmap, min_size=self.min_size)
 
         # Ensure correct dtype
         if objmap.dtype != image._OBJMAP_DTYPE:

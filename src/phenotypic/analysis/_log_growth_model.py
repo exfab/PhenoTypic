@@ -1,7 +1,7 @@
 import itertools
 from typing import Any, Callable, Dict, List, Literal, Tuple, TYPE_CHECKING, Union
 
-import matplotlib.cm as cm
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -110,6 +110,7 @@ class LogGrowthModel(ModelFitter):
                 'Metadata_Time'.
             agg_func (Callable | str | list | dict | None): Aggregation function(s) to
                 apply to grouped data. Parameter is fed to
+
                     `pandas.DataFrame.groupby.agg()`. Defaults to 'mean'.
             lam: The regularization factor applied to growth rates. Defaults to 1.2.
             beta: The penalty factor applied to the relative difference
@@ -308,7 +309,7 @@ class LogGrowthModel(ModelFitter):
         if cmap is not None:
             try:
                 # Try to get as a matplotlib colormap
-                cmap_obj = cm.get_cmap(cmap)
+                cmap_obj = matplotlib.colormaps[cmap] if isinstance(cmap, str) else cmap
                 color_iter = itertools.cycle(
                         cmap_obj(
                                 np.linspace(

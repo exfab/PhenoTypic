@@ -540,6 +540,7 @@ class HDF:
         uncompressed size in bytes as: dtype.itemsize * number_of_elements.
 
         Notes
+
         - This works regardless of whether datasets are stored compressed on disk; the
           reported size is the logical size when uncompressed in memory.
         - Variable-length strings (and datasets containing variable-length fields) are
@@ -553,6 +554,7 @@ class HDF:
 
         Returns:
             A tuple (sizes, total_bytes) where:
+
             - sizes: dict mapping absolute dataset paths (e.g., '/grp/ds') to uncompressed
               size in bytes.
             - total_bytes: sum of all values in sizes.
@@ -1553,7 +1555,7 @@ class HDF:
         """
         df = dataframe.copy()
         for col in df.columns:
-            if pd.api.types.is_categorical_dtype(df[col]):
+            if isinstance(df[col].dtype, pd.CategoricalDtype):
                 # Convert categorical to its underlying dtype
                 # This preserves the actual values but removes categorical encoding
                 df[col] = df[col].astype(df[col].cat.categories.dtype)

@@ -64,6 +64,7 @@ class MaskOpener(ObjectRefiner, FootprintMixin):
         Args:
             shape (Literal["auto"] | np.ndarray | int | None): Structuring
                 element for opening. Use:
+
                 - "auto" to select a diamond shape scaled to image size
                   (larger plates → slightly larger width),
                 - a NumPy array to pass a custom shape,

@@ -469,6 +469,7 @@ class AccessorIOHandler(AccessorDataInterface):
             filepath (str | Path | None): The destination file path where the image will be saved. The extension of the
                 file path determines the image format (e.g., .jpeg, .png, .tiff). Changing the file format influences how
                 the image data is handled during saving:
+
                     1. `.jpeg`: Compression or loss of data may occur. Maximal value limit (255) for uint8 pixel
                        depth affects the fidelity of rich intensity details in microbe colonies.
                     2. `.png`: Retains high-quality output but supports only 8-bit or 16-bit images. Conversions may
@@ -479,6 +480,7 @@ class AccessorIOHandler(AccessorDataInterface):
             bit_depth (Literal[8, 16] | None, optional): Specifies the bit depth of the saved image (either 8-bit or
                 16-bit). The provided bit depth must align with the file format's capabilities. Misalignment could
                 trigger conversion with possible data truncation or rounding. For example:
+
                     - 8-bit: Useful for efficiently representing intensity when detail is moderate, suitable for JPEG
                       or simple PNG outputs.
                     - 16-bit: Allows for higher intensity ranges, especially valuable for preserving subtle
@@ -489,6 +491,7 @@ class AccessorIOHandler(AccessorDataInterface):
 
         Warns:
             UserWarnings: Warnings are issued under the following conditions:
+
                 - Saving a 16-bit or floating-point array as JPEG, as these conversions may cause information loss due
                   to format restrictions.
                 - Saving a floating-point array as PNG when conversions to 8-bit or 16-bit integers might lead to truncated

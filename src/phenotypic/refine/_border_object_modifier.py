@@ -53,6 +53,7 @@ class BorderObjectRemover(ObjectRefiner):
 
         Args:
             border_size: Width of the exclusion border around the image.
+
                 - ``None``: Use a default margin equal to 1% of the smaller
                   image dimension.
                 - ``float`` in (0, 1): Interpret as a fraction of the minimum

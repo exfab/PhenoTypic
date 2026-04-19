@@ -60,6 +60,7 @@ class Skeletonize(ObjectRefiner):
 
         Args:
             method (Literal["zhang", "lee"] | None): Algorithm for skeletonization.
+
                 - "zhang": Optimized for 2D images; fast, produces thin skeletons.
                   Best for well-defined colony boundaries.
                 - "lee": Works on 2D/3D; more robust to noisy or irregular boundaries.

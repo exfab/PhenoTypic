@@ -432,6 +432,7 @@ class GridAccessor:
 
         Args:
             idx: Grid section identifier(s). Supported formats:
+
                 - int: Single flattened section index (0 to nrows*ncols-1).
                   Example: grid[54] for center section in 8x12 grid.
                 - tuple[int, int]: Single section as (row_index, col_index).
@@ -567,6 +568,7 @@ class GridAccessor:
 
         Args:
             axis (int): Axis along which to compute alignment:
+
                 - 0: Row-wise alignment. For each row, measures how colony centers
                   vary along the column (CC) axis as a function of their grid column
                   position. Slope indicates pixels of drift per grid column.
@@ -1086,6 +1088,7 @@ class GridAccessor:
 
         Args:
             section_number (int | tuple[int, int]): Grid section identifier:
+
                 - If int: flattened section index (0 to nrows*ncols-1)
                 - If tuple[int, int]: (row_index, col_index) pair specifying grid
                   position, with both indices 0-based

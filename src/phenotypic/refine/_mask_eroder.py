@@ -58,6 +58,7 @@ class MaskEroder(ObjectRefiner, FootprintMixin):
         Args:
             shape (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
                 Structuring element for erosion. Use:
+
                 - "auto" to select a disk shape scaled to image size
                   (larger plates → slightly larger width),
                 - a NumPy array to pass a custom shape,
