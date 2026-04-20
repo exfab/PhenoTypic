@@ -13,6 +13,8 @@ from skimage.io import imread
 from typing import Iterable, TYPE_CHECKING
 import numpy as np
 
+from ._remote_registry import fetch_snp
+
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
     from phenotypic._core._grid_image import GridImage
@@ -177,7 +179,7 @@ def load_yeast_plate(
         The plate image in the requested format.
     """
     return _image_loader(
-            __current_file_dir / "SnP_images" / "RhodotorulaYeastCropped.png", mode
+            fetch_snp("RhodotorulaYeastCropped.png"), mode
     )
 
 
@@ -197,7 +199,7 @@ def load_fungi_plate(
         The plate image in the requested format.
     """
     return _image_loader(
-            __current_file_dir / "SnP_images" / "NeurosporaFilamentousFungiCropped.png",
+            fetch_snp("NeurosporaFilamentousFungiCropped.png"),
             mode,
     )
 
@@ -219,7 +221,7 @@ def load_yeast_plate_full(
         The full plate image in the requested format.
     """
     return _image_loader(
-            __current_file_dir / "SnP_images" / "RhodotorulaYeastFullPlate.png", mode
+            fetch_snp("RhodotorulaYeastFullPlate.png"), mode
     )
 
 
@@ -238,7 +240,7 @@ def load_fungi_plate_full(
         The full plate image in the requested format.
     """
     return _image_loader(
-            __current_file_dir / "SnP_images" / "NeurosporaFilamentousFungiFullPlate.png",
+            fetch_snp("NeurosporaFilamentousFungiFullPlate.png"),
             mode,
             nrows=6, ncols=10
     )
