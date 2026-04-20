@@ -2,9 +2,9 @@ name: test-docs-build
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main, dev]
+    branches: [ main, dev ]
   workflow_dispatch:
 
 concurrency:
@@ -33,7 +33,7 @@ jobs:
 
       - name: Install documentation dependencies
         run: |
-          uv sync --group dev --group docs
+          uv sync --all-extras --group dev --group docs
 
       - name: Install Pandoc
         run: |
