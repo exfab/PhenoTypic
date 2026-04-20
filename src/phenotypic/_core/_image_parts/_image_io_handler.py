@@ -40,7 +40,6 @@ from phenotypic.tools_.constants_ import GAMMA_ENCODINGS, IO, METADATA
 from phenotypic.tools_.hdf_ import HDF
 from ._image_color_handler import ImageColorSpace
 
-
 # -----------------------------------------------------------------------------
 # HDF5 schema helpers
 # -----------------------------------------------------------------------------
@@ -418,7 +417,7 @@ class ImageIOHandler(ImageColorSpace):
                 absence of required libraries like rawpy.
         """
         # Convert to a Path object
-        filepath = Path(filepath)
+        filepath: Path = Path(filepath)
         rawpy_params = rawpy_params or {}
 
         suffix = filepath.suffix.lower()
@@ -818,10 +817,10 @@ class ImageIOHandler(ImageColorSpace):
                 gamma_val: GAMMA_ENCODINGS = GAMMA_ENCODINGS[gamma_name]
             except KeyError:
                 warnings.warn(
-                    f"Unknown gamma encoding {gamma_name!r}; falling back to "
-                    f"GAMMA_ENCODINGS.SRGB",
-                    UserWarning,
-                    stacklevel=2,
+                        f"Unknown gamma encoding {gamma_name!r}; falling back to "
+                        f"GAMMA_ENCODINGS.SRGB",
+                        UserWarning,
+                        stacklevel=2,
                 )
                 kwargs.setdefault("gamma", GAMMA_ENCODINGS.SRGB)
             else:

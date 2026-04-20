@@ -5,7 +5,7 @@ on:
     types:
       - published
   workflow_dispatch:
-    
+
 
 permissions:
   contents: write
@@ -38,7 +38,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv sync --group dev --group docs
+          uv sync --all-extras 
 
       - name: Install Pandoc
         run: |
