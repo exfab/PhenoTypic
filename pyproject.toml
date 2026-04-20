@@ -63,6 +63,7 @@ dependencies = [
     "kaleido>=1.2.0",
     "ruptures>=1.1.9",
     "typing_extensions>=4.0.0",
+    "pooch>=1.8",
 ]
 
 [project.urls]
@@ -152,7 +153,6 @@ version = { attr = "phenotypic.__version__" }
 "phenotypic" = [
     "data/*.jpg",
     "data/*.png",
-    "data/SnP_images/*.png",
     "_cli/_assets/*.png",
 ]
 
