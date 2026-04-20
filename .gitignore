@@ -43,7 +43,7 @@ docs/source/api_reference/api/
 # Project-specific
 deprecated/
 _JupyterPrototypes/
-debug/*.log
+debug/
 scratch/
 
 # Data files
