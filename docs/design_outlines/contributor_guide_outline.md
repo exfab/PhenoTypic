@@ -16,8 +16,8 @@
   - [x] Hardware: Guidance for CPU-first workflows; note memory considerations for high-res plate images; call out GPU not required.
 
 - [ ] Tooling Setup (drafted content)
-  - [x] Primary path: `uv sync --group dev` (or `--group docs --group dev` for docs); venv activation via `source .venv/bin/activate`; `uv run python ...`.
-  - [x] Alternatives: Editable install `uv pip install -e .`; `pip install phenotypic` for users; `uv add phenotypic --extras jupyter` for notebook work.
+  - [x] Primary path: `uv sync --group dev` (or `uv sync --group dev --group docs` for docs); activate via `source .venv/bin/activate` or prefix commands with `uv run`.
+  - [x] Alternatives: Editable install `uv pip install -e .`; `pip install phenotypic` for users; `uv pip install "phenotypic[gui]"` for notebook/GUI work.
   - [x] External tools: Install ExifTool for raw metadata; include a validation command example (e.g., `exiftool -ver`) and note impact if missing.
 
 - [ ] Repository Tour (drafted content)
@@ -27,7 +27,7 @@
 
 - [ ] Development Environment Workflow (drafted content)
   - [x] Clone/setup: `git clone ... && cd PhenoTypic`; add upstream remote if forking; branch naming convention (see below).
-  - [x] Dependencies: `uv sync --group dev`; rerun `uv sync --reinstall` when lockfile changes; prefer `uv run ...` for Python commands.
+  - [x] Dependencies: `uv sync --group dev`; rerun `uv sync` when `uv.lock` changes; prefer `uv run ...` for Python commands.
   - [x] Smoke tests: `uv run pytest -k <pattern>` for quick checks before full suite; emphasize using sample images in `tests/resources`.
 
 - [ ] Coding Standards (drafted content)
@@ -75,7 +75,7 @@
 
 - [ ] Release & Packaging Notes (drafted content)
   - [x] Versioning: State chosen scheme (recommend semver) and branch/tag naming for releases.
-  - [x] Packaging: How to build sdist/wheel (`uv build` or `python -m build`); dependency pinning philosophy from `pyproject.toml`.
+  - [x] Packaging: How to build sdist/wheel (`uv run python -m build`); dependency pinning philosophy from `pyproject.toml`.
   - [x] Compatibility: Verify pipeline serialization across versions; include backward-compatibility checklist before release.
 
 - [ ] Support Channels & Next Steps (drafted content)

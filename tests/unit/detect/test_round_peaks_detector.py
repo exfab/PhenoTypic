@@ -8,7 +8,6 @@ test_grid_inference_mixin.py.
 
 import pytest
 import numpy as np
-import phenotypic
 from phenotypic.detect import RoundPeaksDetector
 
 from ..resources.TestHelper import timeit

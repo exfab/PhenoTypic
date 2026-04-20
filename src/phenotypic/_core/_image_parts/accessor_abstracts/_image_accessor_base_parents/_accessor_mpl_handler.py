@@ -14,7 +14,7 @@ from phenotypic.tools_.funcs_ import normalize_rgb_bitdepth
 from ._accessor_io_handler import AccessorIOHandler
 
 if TYPE_CHECKING:
-    from phenotypic._core._image import Image
+    pass
 
 
 class AccessorMplHandler(AccessorIOHandler):

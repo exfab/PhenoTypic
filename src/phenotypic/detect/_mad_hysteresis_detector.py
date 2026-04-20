@@ -85,13 +85,13 @@ class MadHysteresisDetector(ThresholdDetector):
     """
 
     def __init__(
-        self,
-        k_high: float = 5.0,
-        k_low: float = 2.5,
-        min_size: int = 20,
-        connectivity: int = 2,
-        ignore_zeros: bool = False,
-        ignore_borders: bool = True,
+            self,
+            k_high: float = 5.0,
+            k_low: float = 2.5,
+            min_size: int = 20,
+            connectivity: int = 2,
+            ignore_zeros: bool = False,
+            ignore_borders: bool = True,
     ):
         self.k_high = k_high
         self.k_low = k_low
@@ -121,7 +121,7 @@ class MadHysteresisDetector(ThresholdDetector):
         """
         if self.k_low >= self.k_high:
             raise ValueError(
-                f"k_low ({self.k_low}) must be less than k_high ({self.k_high})"
+                    f"k_low ({self.k_low}) must be less than k_high ({self.k_high})"
             )
 
         response = np.clip(image.detect_mat[:].astype(np.float64), 0, None)
@@ -156,7 +156,8 @@ class MadHysteresisDetector(ThresholdDetector):
         mask = mask.astype(bool)
 
         # Remove small objects
-        mask = remove_small_objects(mask, self.min_size, self.connectivity)
+        mask = remove_small_objects(mask, min_size=self.min_size,
+                                    connectivity=self.connectivity)
 
         # Optionally clear borders
         if self.ignore_borders:

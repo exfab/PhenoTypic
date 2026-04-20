@@ -55,6 +55,23 @@ Examples:
     uv run python -m phenotypic pipeline.json ./plates \
         --image-type GridImage --nrows 16 --ncols 24
 
+    # Save PNG overlays alongside HDFs (opt-in; default: OFF)
+    uv run python -m phenotypic pipeline.json ./images --save-overlays
+
+    # Rerun measurements on a previous forward run without re-detecting
+    # (reads HDFs from <previous-output-dir>/results/*/hdf/, rewrites
+    # parquet measurements + master CSV, skips detection, does NOT
+    # regenerate overlays, does NOT touch processing state):
+    uv run python -m phenotypic pipeline.json --measure \
+        -o <previous-output-dir>
+
+Outputs:
+    Forward runs write a single HDF5 per input image under
+    `<output>/results/<dataset>/hdf/<stem>.h5` (layers + metadata + grid
+    state, reloadable via `Image.load_hdf5` / `GridImage.load_hdf5`).
+    Overlay PNGs under `<output>/results/<dataset>/overlays/<stem>.png`
+    are opt-in and only written when `--save-overlays` is set.
+
 SLURM Execution (Autonomous HPC Cluster Processing):
     Use --slurm to submit jobs to an HPC cluster via SLURM. The CLI will:
     1. Generate SBATCH scripts for each dataset
@@ -118,6 +135,7 @@ from phenotypic._cli._cli_directory_scanner import (
     generate_timestamped_output_dir,
     organize_by_dataset,
     scan_directory_structure,
+    scan_hdf_outputs,
 )
 from phenotypic._cli._cli_execution_strategies import create_execution_strategy
 from phenotypic._cli._cli_interactive import (
@@ -495,7 +513,25 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
     "--ext",
     default="tiff",
     show_default=True,
-    help="File extension for rgb, gray, detect_mat layers (objmap and overlays always png)",
+    help="(deprecated for HDF output; still used for overlay PNG) "
+    "File extension for legacy per-layer outputs. Forward runs now "
+    "write a single .h5 per image; only overlay PNG rendering still "
+    "consults this value.",
+)
+@click.option(
+    "--save-overlays",
+    is_flag=True,
+    default=False,
+    help="Save PNG overlay per image (default: off).",
+)
+@click.option(
+    "--measure",
+    "measure_only",
+    is_flag=True,
+    default=False,
+    help="Rerun pipeline.measure() on HDFs under "
+    "<output-dir>/results/*/hdf/. Skips detection. Does not regenerate "
+    "overlays.",
 )
 @click.option(
     "--overlay-alpha",
@@ -589,6 +625,8 @@ def phenotypic_cli(
     force_local: bool,
     wait: bool,
     ext: str,
+    save_overlays: bool,
+    measure_only: bool,
     overlay_alpha: float,
     include_dataset_column: bool,
     dry_run: bool,
@@ -615,7 +653,71 @@ def phenotypic_cli(
             _handle_recompile(recompile, metadata_csv, include_dataset_column)
             sys.exit(0)
 
-        if pipeline_json is None or input_path is None:
+        # ---- Early validation for --measure (measure_only) -------------
+        # --measure is a one-shot re-measurement run over HDFs already
+        # written by a previous forward run.  It is incompatible with any
+        # flag that implies a fresh detection pass or state mutation, and
+        # it uses <output-dir>/results/*/hdf/ as its image source, so the
+        # positional INPUT_PATH becomes optional.
+        if measure_only:
+            # Reject incompatible flags first so the user gets a pointed
+            # rejection ("--measure cannot be combined with --X") regardless
+            # of whether --output-dir / PIPELINE_JSON are also wrong.
+            if resume:
+                raise click.UsageError(
+                    "--measure cannot be combined with --resume; "
+                    "--measure is a one-shot re-measurement run that does "
+                    "not touch processing state."
+                )
+            if restart:
+                raise click.UsageError(
+                    "--measure cannot be combined with --restart; "
+                    "--measure reuses existing HDFs and does not clear state."
+                )
+            if retry_failures:
+                raise click.UsageError(
+                    "--measure cannot be combined with --retry-failures; "
+                    "--retry-failures only applies to resume runs, and "
+                    "--measure does not touch state."
+                )
+            if overwrite:
+                raise click.UsageError(
+                    "--measure cannot be combined with --overwrite; "
+                    "--measure reruns measurements on existing HDFs and "
+                    "must not delete output directory contents."
+                )
+            if sample is not None:
+                raise click.UsageError(
+                    "--measure cannot be combined with --sample; "
+                    "--measure operates on every HDF discovered under "
+                    "<output-dir>/results/*/hdf/."
+                )
+
+            if pipeline_json is None:
+                raise click.UsageError(
+                    "--measure requires PIPELINE_JSON to be specified."
+                )
+            if output_dir is None:
+                raise click.UsageError(
+                    "--measure requires --output-dir to be specified "
+                    "(it reads HDFs from <output-dir>/results/*/hdf/)."
+                )
+            if not Path(output_dir).exists():
+                raise click.UsageError(
+                    f"--measure output directory does not exist: {output_dir}. "
+                    "--measure is a rerun over an existing forward-run output; "
+                    "point it at a directory produced by a previous "
+                    "`python -m phenotypic ...` invocation."
+                )
+            if input_path is not None:
+                click.echo(
+                    f"Warning: INPUT_PATH ({input_path}) is ignored in "
+                    "--measure mode; images are discovered under "
+                    f"{output_dir}/results/*/hdf/.",
+                    err=True,
+                )
+
+        if not measure_only and (pipeline_json is None or input_path is None):
             raise click.UsageError(
                 "PIPELINE_JSON and INPUT_PATH are required unless --recompile is set."
             )
@@ -725,10 +827,18 @@ def phenotypic_cli(
             except Exception as e:
                 error_exit(f"Cannot read metadata CSV: {e}")
 
-        # Create ExecutionConfig
+        # Create ExecutionConfig.  By this point either measure_only's
+        # early validation or the non-measure check above has guaranteed
+        # pipeline_json is non-None; input_path may only be None in
+        # --measure mode, where we substitute output_dir to satisfy the
+        # dataclass's non-optional ``input_path`` (the measure path
+        # never consults it for image discovery).
+        assert pipeline_json is not None  # narrowed by earlier UsageError branches
+        effective_input_path = input_path if input_path is not None else output_dir
+        assert effective_input_path is not None  # narrowed by earlier --output-dir checks
         config = ExecutionConfig(
             pipeline_json=pipeline_json,
-            input_path=input_path,
+            input_path=effective_input_path,
             output_dir=output_dir,
             image_type=image_type,
             nrows=nrows,
@@ -749,6 +859,8 @@ def phenotypic_cli(
             skip_validation=skip_validation,
             metadata_csv=metadata_csv,
             checkpoint_interval=checkpoint_interval,
+            save_overlays=save_overlays,
+            measure_only=measure_only,
         )
 
         # Handle resume mode BEFORE creating output directory
@@ -830,8 +942,8 @@ def phenotypic_cli(
 
         config.output_dir = output_dir
 
-        # Check for existing output directory contents (skip for resume/restart)
-        if not config.resume and not restart:
+        # Check for existing output directory contents (skip for resume/restart/measure)
+        if not config.resume and not restart and not measure_only:
             if output_dir.exists() and any(output_dir.iterdir()):
                 if overwrite:
                     import shutil
@@ -852,14 +964,24 @@ def phenotypic_cli(
                     )
                     sys.exit(1)
 
-        # Scan directory structure
-        click.echo(f"Scanning {input_path}...")
-        try:
-            image_paths_by_dataset = scan_directory_structure(input_path)
-            datasets = organize_by_dataset(image_paths_by_dataset, output_dir)
-        except (FileNotFoundError, ValueError) as e:
-            click.echo(f"Error: {e}", err=True)
-            sys.exit(1)
+        # Scan directory structure (or discover HDFs if in --measure mode)
+        if measure_only:
+            click.echo(f"Discovering HDF outputs under {output_dir}/results/...")
+            try:
+                datasets = scan_hdf_outputs(output_dir)
+            except ValueError as e:
+                click.echo(f"Error: {e}", err=True)
+                sys.exit(1)
+        else:
+            # Not measure_only → input_path already validated as non-None.
+            assert input_path is not None
+            click.echo(f"Scanning {input_path}...")
+            try:
+                image_paths_by_dataset = scan_directory_structure(input_path)
+                datasets = organize_by_dataset(image_paths_by_dataset, output_dir)
+            except (FileNotFoundError, ValueError) as e:
+                click.echo(f"Error: {e}", err=True)
+                sys.exit(1)
 
         total_images = sum(len(d.images) for d in datasets)
         click.echo(f"Found {total_images} images in {len(datasets)} dataset(s)")
@@ -896,17 +1018,6 @@ def phenotypic_cli(
                 console.print(f"  - {pipeline_error}", style="red")
                 sys.exit(1)
             console.print("[green]✓ Pipeline loaded successfully")
-
-            from phenotypic._cli._cli_validation import pipeline_requires_gpu
-
-            if pipeline_requires_gpu(config.pipeline_json):
-                console.print(
-                    "[yellow]⚡ Pipeline contains GPU-accelerated operations[/yellow]"
-                )
-                if config.is_slurm_mode():
-                    console.print("  GPU resources will be auto-requested on SLURM")
-                else:
-                    console.print("  Local execution will be sequential (n_jobs=1)")
 
             console.print()  # Add blank line after validation
         else:
@@ -988,26 +1099,32 @@ def phenotypic_cli(
         # Ensure output directory exists for processing
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Create initial state (or update if resuming)
-        if config.resume:
-            state = update_state_from_events(resume_state, output_dir)
-            state.execution_mode = "slurm" if config.is_slurm_mode() else "local"
-            state.pipeline_path = config.pipeline_json
-            state.input_path = config.input_path
-            state.output_dir = output_dir
-            state.config = {
-                "image_type": config.image_type,
-                "nrows": config.nrows,
-                "ncols": config.ncols,
-                "bit_depth": config.bit_depth,
-                "detect_mode": config.detect_mode,
-                "n_jobs": config.n_jobs,
-                "slurm_args": config.slurm_args,
-                "ext": config.ext,
-            }
-        else:
-            state = create_initial_state(config, datasets, output_dir)
-        save_processing_state(state, output_dir)
+        # Create initial state (or update if resuming) — skipped in
+        # --measure mode, which never mutates processing state.
+        if not measure_only:
+            if config.resume:
+                state = update_state_from_events(resume_state, output_dir)
+                state.execution_mode = "slurm" if config.is_slurm_mode() else "local"
+                state.pipeline_path = config.pipeline_json
+                state.input_path = config.input_path
+                state.output_dir = output_dir
+                state.config = {
+                    "image_type": config.image_type,
+                    "nrows": config.nrows,
+                    "ncols": config.ncols,
+                    "bit_depth": config.bit_depth,
+                    "detect_mode": config.detect_mode,
+                    "n_jobs": config.n_jobs,
+                    "slurm_args": config.slurm_args,
+                    "ext": config.ext,
+                    "save_overlays": config.save_overlays,
+                }
+            else:
+                state = create_initial_state(config, datasets, output_dir)
+                # Forward runs: persist save_overlays alongside the other
+                # resume-compat keys so a later --resume can pick it up.
+                state.config["save_overlays"] = config.save_overlays
+            save_processing_state(state, output_dir)
 
         # Create output manager
         output_manager = OutputManager.from_config(
@@ -1015,17 +1132,20 @@ def phenotypic_cli(
             ext=config.ext,
             include_dataset_column=config.include_dataset_column,
             overlay_alpha=config.overlay_alpha,
+            save_overlays=config.save_overlays,
         )
         output_manager.create_structure(datasets)
 
         # Copy pipeline JSON to output directory for reproducibility
-        try:
-            copied = _copy_pipeline_to_output(config.pipeline_json, output_dir)
-            if copied:
-                click.echo(f"  Pipeline: {copied}")
-        except OSError as e:
-            logger.warning(f"Failed to copy pipeline JSON: {e}")
-            click.echo(f"⚠ Warning: Could not copy pipeline JSON ({e})", err=True)
+        # (skip in --measure mode — the forward run already copied it).
+        if not measure_only:
+            try:
+                copied = _copy_pipeline_to_output(config.pipeline_json, output_dir)
+                if copied:
+                    click.echo(f"  Pipeline: {copied}")
+            except OSError as e:
+                logger.warning(f"Failed to copy pipeline JSON: {e}")
+                click.echo(f"⚠ Warning: Could not copy pipeline JSON ({e})", err=True)
 
         # Create execution strategy
         strategy = create_execution_strategy(config, output_manager)
@@ -1093,6 +1213,11 @@ def phenotypic_cli(
     except KeyboardInterrupt:
         click.echo("\n\nInterrupted by user", err=True)
         sys.exit(130)
+    except click.UsageError:
+        # Let Click format UsageError (standard "Usage: ..." + "Error: ..."
+        # two-line output); do NOT swallow into the "Unexpected error"
+        # branch below.
+        raise
     except Exception as e:
         click.echo(f"\nUnexpected error: {e}", err=True)
         import traceback

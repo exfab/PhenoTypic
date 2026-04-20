@@ -4,7 +4,6 @@ import numpy as np
 import gc
 
 if TYPE_CHECKING:
-    import matplotlib.pyplot as plt
 
     from phenotypic._core._image import Image
     from phenotypic._core._grid_image import GridImage
@@ -30,9 +29,8 @@ from phenotypic.detect import (
 )
 from phenotypic.detect._inoculum_detector import InoculumDetector
 from phenotypic.refine import MaskOpener, MaskCloser, GridSectionLargest
-from skimage.filters import threshold_triangle
 
-from phenotypic.detect._filamentous_fungi import (
+from phenotypic.tools_.branch_pathfinding import (
     _apply_distance_gap_penalty_inplace,
     _apply_border_penalty_inplace,
     _apply_structure_mask_inplace,
@@ -344,7 +342,7 @@ class FilamentousFungiDetector(GridObjectDetector):
                     low="triangle",
                     high="otsu",
                     ignore_zeros=False,
-                    ignore_borders=False
+                    ignore_borders=True
             ).apply(_fragmented_detect_img, inplace=True)
             overall_objmask = _fragmented_detect_img.objmask[:]
             del _fragmented_detect_img

@@ -70,6 +70,7 @@ class MaskGradient(ObjectRefiner, FootprintMixin):
         Args:
             shape (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
                 Structuring element for gradient computation. Use:
+
                 - "auto" to select a disk shape scaled to image size,
                 - a NumPy array to pass a custom shape,
                 - one of the named shapes ("disk", "square", "diamond") with

@@ -87,9 +87,13 @@ class MicroSamDetector(GpuDetector):
         corresponds to a single detected colony.
 
     Raises:
-        ImportError: If ``micro_sam`` or ``torch`` is not installed.
-            Install the optional dependencies with
-            ``pip install phenotypic[torch]``.
+        ImportError: If ``micro_sam`` is not installed. ``micro_sam`` is
+            only available on conda-forge (not PyPI), so it is not
+            included in any ``phenotypic`` extra. See the "Enabling
+            micro_sam" section of
+            ``docs/source/how_to/pages/gpu_detection_setup.md`` for a
+            pixi-based recipe that installs ``phenotypic`` and
+            ``micro_sam`` together in a single environment.
         RuntimeError: If ``device="auto"`` and no GPU/accelerator is
             available.
 
@@ -176,8 +180,12 @@ class MicroSamDetector(GpuDetector):
             from micro_sam.util import get_sam_model
         except ImportError:
             raise ImportError(
-                "MicroSamDetector requires micro_sam and torch. "
-                "Install with: pip install phenotypic[torch]"
+                "MicroSamDetector requires the `micro_sam` package, "
+                "which is conda-only (not available on PyPI). See the "
+                "'Enabling micro_sam' section of "
+                "docs/source/how_to/pages/gpu_detection_setup.md for a "
+                "pixi-based recipe that installs phenotypic and "
+                "micro_sam together."
             ) from None
 
         from phenotypic.nn._checkpoint_manager import resolve_device

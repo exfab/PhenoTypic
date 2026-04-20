@@ -360,23 +360,10 @@ class TestOutputManager:
 
         manager = OutputManager(
             base_dir=temp_output_dir,
-            save_layers={
-                "rgb": True,
-                "gray": False,
-                "detect_mat": False,
-                "objmask": True,
-                "objmap": False,
-                "objmap_rgb": False,
-            },
-            extensions={
-                "rgb": ".tiff",
-                "gray": ".tiff",
-                "detect_mat": ".tiff",
-                "objmask": ".png",
-                "objmap": ".png",
-                "objmap_rgb": ".png",
-            },
+            save_layers={"hdf": True},
+            extensions={"hdf": ".h5"},
             include_dataset_column=False,
+            save_overlays=True,
         )
 
         manager.create_structure(datasets)
@@ -387,21 +374,43 @@ class TestOutputManager:
         # Check results/ directory exists
         assert (temp_output_dir / "results").exists()
 
-        # Check dataset-first structure under results/ (results/dataset1/layer/)
+        # Check dataset-first structure under results/ (results/dataset1/...)
         assert (temp_output_dir / "results" / "dataset1" / "measurements").exists()
+        # overlays dir created only because save_overlays=True
         assert (temp_output_dir / "results" / "dataset1" / "overlays").exists()
-
-        # Check optional layer directories within dataset
-        assert (temp_output_dir / "results" / "dataset1" / "rgb").exists()
-        assert (temp_output_dir / "results" / "dataset1" / "objmask").exists()
-        assert not (
-            temp_output_dir / "results" / "dataset1" / "gray"
-        ).exists()  # Not requested
+        # hdf dir always created when requested in save_layers
+        assert (temp_output_dir / "results" / "dataset1" / "hdf").exists()
 
         # Old structure should NOT exist (datasets at root level)
         assert not (temp_output_dir / "dataset1").exists()
         assert not (temp_output_dir / "measurements").exists()
         assert not (temp_output_dir / "overlays").exists()
+
+    def test_create_structure_overlays_gated(self, temp_output_dir):
+        """Without save_overlays=True, overlays/ must NOT be created."""
+        datasets = [
+            Dataset(
+                name="dataset1",
+                images=[Path("img1.png")],
+                input_dir=Path("."),
+                output_dir=temp_output_dir,
+            )
+        ]
+
+        manager = OutputManager(
+            base_dir=temp_output_dir,
+            save_layers={"hdf": True},
+            extensions={"hdf": ".h5"},
+            include_dataset_column=False,
+            save_overlays=False,
+        )
+
+        manager.create_structure(datasets)
+
+        assert (temp_output_dir / "results" / "dataset1" / "hdf").exists()
+        assert not (
+            temp_output_dir / "results" / "dataset1" / "overlays"
+        ).exists()
 
     def test_from_config_factory(self, temp_output_dir):
         """Test OutputManager.from_config() produces correct layers and extensions."""
@@ -411,10 +420,24 @@ class TestOutputManager:
             overlay_alpha=0.5,
         )
 
-        assert manager.save_layers == {"rgb": True, "gray": True, "detect_mat": True, "objmap": True}
-        assert manager.extensions == {"rgb": ".tiff", "gray": ".tiff", "detect_mat": ".tiff", "objmap": ".png"}
+        # Forward runs now write a single HDF per image (Phase 2 change).
+        assert manager.save_layers == {"hdf": True}
+        assert manager.extensions == {"hdf": ".h5"}
         assert manager.overlay_alpha == 0.5
         assert manager.include_dataset_column is True
+        # Overlays default to OFF (opt-in via --save-overlays).
+        assert manager.save_overlays is False
+
+    def test_from_config_factory_with_overlays(self, temp_output_dir):
+        """from_config(save_overlays=True) enables overlay output."""
+        manager = OutputManager.from_config(
+            base_dir=temp_output_dir,
+            ext=".tiff",
+            overlay_alpha=0.5,
+            save_overlays=True,
+        )
+
+        assert manager.save_overlays is True
 
     def test_pipeline_json_copied_to_output(self, temp_output_dir):
         """Test pipeline JSON is copied to output directory for reproducibility."""
@@ -1065,6 +1088,7 @@ class TestEdgeCases:
                 "--n-jobs",
                 "1",
                 "--skip-validation",
+                "--save-overlays",
             ],
         )
 
@@ -1078,8 +1102,11 @@ class TestEdgeCases:
             output_dir / "results" / "input" / "measurements" / "single.parquet"
         )
         overlay_file = output_dir / "results" / "input" / "overlays" / "single.png"
+        hdf_file = output_dir / "results" / "input" / "hdf" / "single.h5"
 
         assert measurements_file.exists(), f"Expected {measurements_file} to exist"
+        assert hdf_file.exists(), f"Expected {hdf_file} to exist"
+        # Overlay only produced because --save-overlays was passed
         assert overlay_file.exists(), f"Expected {overlay_file} to exist"
 
         # Verify results and dataset folder is created

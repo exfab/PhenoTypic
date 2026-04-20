@@ -67,10 +67,12 @@ class Image(ImageIOHandler):
 
         Args:
             arr (np.ndarray | Image | None): Optional image data. Can be:
+
                 - A NumPy array of shape (height, width) for grayscale or
                   (height, width, channels) for RGB/RGBA
                 - An existing Image instance to copy from
                 - None to create an empty image
+
                 Defaults to None.
             name (str | None): Optional human-readable name for the image. If not provided,
                 the image UUID will be used as the name. Defaults to None.

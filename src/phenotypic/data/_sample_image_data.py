@@ -19,7 +19,9 @@ if TYPE_CHECKING:
 
 
 def _image_loader(
-        filepath, mode: Literal["array", "Image", "GridImage", "filepath"]
+        filepath,
+        mode: Literal["array", "Image", "GridImage", "filepath"],
+        **kwargs
 ) -> Union[np.ndarray, Image, GridImage]:
     from phenotypic import Image, GridImage
 
@@ -27,9 +29,9 @@ def _image_loader(
         case "array":
             return imread(filepath)
         case "Image":
-            return Image.imread(filepath)
+            return Image.imread(filepath, **kwargs)
         case "GridImage":
-            return GridImage.imread(filepath)
+            return GridImage.imread(filepath, **kwargs)
         case "filepath":
             return filepath
         case _:
@@ -175,7 +177,7 @@ def load_yeast_plate(
         The plate image in the requested format.
     """
     return _image_loader(
-        __current_file_dir / "SnP_images" / "RhodotorulaYeastCropped.png", mode
+            __current_file_dir / "SnP_images" / "RhodotorulaYeastCropped.png", mode
     )
 
 
@@ -195,8 +197,8 @@ def load_fungi_plate(
         The plate image in the requested format.
     """
     return _image_loader(
-        __current_file_dir / "SnP_images" / "NeurosporaFilamentousFungiCropped.png",
-        mode,
+            __current_file_dir / "SnP_images" / "NeurosporaFilamentousFungiCropped.png",
+            mode,
     )
 
 
@@ -217,7 +219,7 @@ def load_yeast_plate_full(
         The full plate image in the requested format.
     """
     return _image_loader(
-        __current_file_dir / "SnP_images" / "RhodotorulaYeastFullPlate.png", mode
+            __current_file_dir / "SnP_images" / "RhodotorulaYeastFullPlate.png", mode
     )
 
 
@@ -236,6 +238,7 @@ def load_fungi_plate_full(
         The full plate image in the requested format.
     """
     return _image_loader(
-        __current_file_dir / "SnP_images" / "NeurosporaFilamentousFungiFullPlate.png",
-        mode,
+            __current_file_dir / "SnP_images" / "NeurosporaFilamentousFungiFullPlate.png",
+            mode,
+            nrows=6, ncols=10
     )

@@ -1,91 +1,23 @@
-"""Filamentous fungi detection and Dijkstra-based branch reconnection.
+"""Back-compat shim — the implementation now lives in
+``phenotypic.tools_.branch_pathfinding``.
 
-Internal subpackage for :class:`~phenotypic.detect.FilamentousFungiDetector`.
-Re-exports key functions so the main detector can import with a single line.
+This module re-exports the full legacy surface so in-tree callers do not
+break. The star-import captures public names; the explicit block captures
+the underscored private helpers (``_apply_*_inplace``,
+``_compute_screening_envelope``) that were also imported directly by
+``FilamentousFungiDetector``.
+
+TODO: drop after 0.N (next minor release) — downstream callers should
+migrate to ``phenotypic.tools_.branch_pathfinding``.
 """
 
-from ._cost_surface import (
+from phenotypic.tools_.branch_pathfinding import *  # noqa: F401,F403
+from phenotypic.tools_.branch_pathfinding import (  # noqa: F401
     _apply_border_penalty_inplace,
     _apply_distance_gap_penalty_inplace,
     _apply_structure_mask_inplace,
-    apply_border_penalty,
-    apply_distance_gap_penalty,
-    apply_structure_mask,
-    assemble_composite_cost,
-    compute_anisotropy,
-    compute_local_mad_map,
-    compute_orientation_coherence,
-)
-from ._dataclasses import (
-    CalibrationData,
-    DijkstraResult,
-    FilterResult,
-    FilterThresholds,
-    FragmentAssignment,
-    FragmentPath,
-    PathMetrics,
-    PrescreenResult,
-)
-from ._dijkstra_kernels import (
-    assemble_connected_mask,
-    assign_fragments_to_colonies,
-    backtrack_path,
-    extract_fragment_paths,
-    run_multisource_dijkstra,
-)
-from ._fragment_prescreening import (
     _compute_screening_envelope,
-    calibrate_screening_threshold,
-    compute_min_cost_envelope,
-    prescreen_fragments,
 )
-from ._path_quality import (
-    apply_filter_cascade,
-    calibrate_thresholds,
-    compute_path_metrics,
-    extract_calibration_branches,
-    filter_paths,
-)
-from ._voronoi_partition import (
-    connectivity_correct_labels,
-    euclidean_voronoi_assign,
-)
+from phenotypic.tools_.branch_pathfinding import __all__ as _new_all
 
-__all__ = [
-    # Dataclasses
-    "CalibrationData",
-    "DijkstraResult",
-    "FilterResult",
-    "FilterThresholds",
-    "FragmentAssignment",
-    "FragmentPath",
-    "PathMetrics",
-    "PrescreenResult",
-    # Cost surface
-    "apply_border_penalty",
-    "apply_distance_gap_penalty",
-    "apply_structure_mask",
-    "assemble_composite_cost",
-    "compute_anisotropy",
-    "compute_local_mad_map",
-    "compute_orientation_coherence",
-    # Dijkstra
-    "assemble_connected_mask",
-    "assign_fragments_to_colonies",
-    "backtrack_path",
-    "extract_fragment_paths",
-    "run_multisource_dijkstra",
-    # Prescreening
-    "calibrate_screening_threshold",
-    "compute_min_cost_envelope",
-    "prescreen_fragments",
-    # Path quality
-    "apply_filter_cascade",
-    "calibrate_thresholds",
-    "compute_path_metrics",
-    "extract_calibration_branches",
-    "filter_paths",
-    # Voronoi partition
-    "connectivity_correct_labels",
-    "euclidean_voronoi_assign",
-]
+__all__ = list(_new_all)

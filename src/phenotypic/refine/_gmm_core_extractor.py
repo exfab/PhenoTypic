@@ -93,11 +93,11 @@ class GMMCoreExtractor(ObjectRefiner):
             morph_close_radius (int): Radius for morphological closing
                 (0 disables).
         """
-        self.__n_components = n_components
-        self.__separation_threshold = separation_threshold
-        self.__min_core_area = min_core_area
-        self.__morph_open_radius = morph_open_radius
-        self.__morph_close_radius = morph_close_radius
+        self.n_components = n_components
+        self.separation_threshold = separation_threshold
+        self.min_core_area = min_core_area
+        self.morph_open_radius = morph_open_radius
+        self.morph_close_radius = morph_close_radius
 
     # ------------------------------------------------------------------
     # Static helpers
@@ -408,11 +408,11 @@ class GMMCoreExtractor(ObjectRefiner):
         refined = self._extract_cores(
             intensity_array=intensity,
             label_map=label_map,
-            n_components=self.__n_components,
-            separation_threshold=self.__separation_threshold,
-            min_core_area=self.__min_core_area,
-            morph_open_radius=self.__morph_open_radius,
-            morph_close_radius=self.__morph_close_radius,
+            n_components=self.n_components,
+            separation_threshold=self.separation_threshold,
+            min_core_area=self.min_core_area,
+            morph_open_radius=self.morph_open_radius,
+            morph_close_radius=self.morph_close_radius,
         )
 
         image.objmap[:] = refined

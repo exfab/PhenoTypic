@@ -14,7 +14,7 @@ to study microbial growth patterns.
 
 """
 
-__version__ = "0.14.0"
+__version__ = "0.14.0b1"
 __author__ = "Alexander Nguyen"
 __email__ = "anguy344@ucr.edu"
 
@@ -28,11 +28,7 @@ from ._core._grid_image import GridImage
 from ._core._image import Image
 from ._core._image_pipeline import ImagePipeline
 
-# commented out until complete
-# from ._core._image_set import ImageSet
-
 from . import (
-    abc_,
     analysis,
     correction,
     data,

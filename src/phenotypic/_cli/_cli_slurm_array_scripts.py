@@ -238,6 +238,12 @@ def generate_array_job_script(
     if not config.include_dataset_column:
         cmd_parts.append("--no-dataset-column")
 
+    # Measure-only mode supersedes overlay generation; they are mutually exclusive.
+    if config.measure_only:
+        cmd_parts.append("--measure")
+    elif config.save_overlays:
+        cmd_parts.append("--save-overlays")
+
     # Add event log
     cmd_parts.extend(["--event-log", shlex.quote(str(event_log.absolute()))])
 

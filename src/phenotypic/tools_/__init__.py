@@ -17,6 +17,7 @@ from .funcs_ import timed_execution, is_binary_mask
 from .hdf_ import HDF
 from .mixin import GridInferenceMixin, LazyWidgetMixin, FootprintMixin, ClipControlMixin
 from . import register
+from . import napari_
 
 __all__ = [
     "ClipControlMixin",
@@ -28,6 +29,7 @@ __all__ = [
     "constants_",
     "exceptions_",
     "is_binary_mask",
+    "napari_",
     "panel_",
     "register",
     "slurm",

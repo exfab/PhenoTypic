@@ -153,6 +153,69 @@ def organize_by_dataset(
     return datasets
 
 
+def scan_hdf_outputs(output_dir: Path) -> List[Dataset]:
+    """
+    Discover datasets already written as HDF by a previous forward run.
+
+    Walks ``<output_dir>/results/``; for each subdirectory containing a
+    non-empty ``hdf/`` directory, constructs a :class:`Dataset` whose
+    ``images`` are the sorted ``*.h5`` files in that ``hdf/``,
+    ``input_dir`` is the ``hdf/`` directory itself, ``output_dir`` is the
+    supplied root output directory, and ``name`` is the subdirectory name.
+
+    Intended for ``--measure`` mode, which skips detection and reloads
+    HDFs emitted by a prior forward run.
+
+    Args:
+        output_dir: Root output directory from a previous forward run.
+            Expected to contain ``<output_dir>/results/<dataset>/hdf/``.
+
+    Returns:
+        List of :class:`Dataset` objects, one per subdirectory with a
+        non-empty ``hdf/``.  Empty ``results/`` and missing ``results/``
+        both raise ``ValueError``; per-dataset empty ``hdf/`` folders are
+        skipped silently.
+
+    Raises:
+        ValueError: If no HDFs are found under ``<output_dir>/results``.
+    """
+    output_dir = Path(output_dir)
+    results_dir = output_dir / "results"
+
+    datasets: List[Dataset] = []
+
+    if results_dir.is_dir():
+        for subdir in sorted(results_dir.iterdir()):
+            if not subdir.is_dir():
+                continue
+
+            hdf_dir = subdir / "hdf"
+            if not hdf_dir.is_dir():
+                continue
+
+            hdf_files = sorted(hdf_dir.glob("*.h5"))
+            if not hdf_files:
+                continue
+
+            datasets.append(
+                Dataset(
+                    name=subdir.name,
+                    images=hdf_files,
+                    input_dir=hdf_dir,
+                    output_dir=output_dir,
+                )
+            )
+
+    if not datasets:
+        raise ValueError(
+            f"No HDF outputs found under {results_dir}. "
+            f"--measure expects a previous forward run to have written "
+            f"HDF files under <output-dir>/results/<dataset>/hdf/*.h5."
+        )
+
+    return datasets
+
+
 def collect_image_paths(input_path: Path) -> List[Path]:
     """
     Simple flat collection of all image paths (for backward compatibility).

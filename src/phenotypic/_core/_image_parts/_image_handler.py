@@ -294,6 +294,7 @@ class ImageHandler(ImageDataManager):
             Grayscale: An immutable container for the image gray that can be accessed like a numpy array, but has extra methods to streamline development.
 
         .. code-block:: python
+
             from phenotypic import Image
 
             image = Image(arr)
@@ -337,6 +338,7 @@ class ImageHandler(ImageDataManager):
             DetectMatAccessor: A mutable container that stores a copy of the source channel.
 
         .. code-block:: python
+
             from phenotypic import Image
             from phenotypic.data import load_colony
 
@@ -412,6 +414,7 @@ class ImageHandler(ImageDataManager):
             ObjectMaskErrors: A mutable binary representation of the objects in an image to be analyzed.
 
         .. code-block:: python
+
             from phenotypic import Image
             from phenotypic.data import load_colony
 
@@ -453,6 +456,7 @@ class ImageHandler(ImageDataManager):
             ObjectMap: A mutable integer gray that identifies the different objects in an image to be analyzed.
 
         .. code-block:: python
+
             from phenotypic import Image
             from phenotypic.data import load_colony
 

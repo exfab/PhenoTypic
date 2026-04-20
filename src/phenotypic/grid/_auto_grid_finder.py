@@ -19,16 +19,22 @@ class AutoGridFinder(GridFinder):
     centers using a deterministic robust-fit algorithm.
 
     Unlike histogram or optimizer-based approaches, this class fits a regular
-    grid model directly to the weighted centroids of detected objects. Outlier
-    rejection ensures that protruding colonies (e.g., filamentous fungi with
-    extended hyphae) do not pull grid boundaries away from the true positions.
+    grid model directly to the per-object distance-transform maximum centers
+    (deepest interior point of each object's mask). These centers are
+    anchored in the dense colony body and are unaffected by thin filamentous
+    extensions (e.g., fungal hyphae) that would otherwise pull
+    intensity-weighted centroids off-body and bias the grid fit. Outlier
+    rejection further protects against atypical objects pulling boundaries
+    away from the true positions.
 
     Args:
         nrows: Number of rows in the grid (default 8 for 96-well plates).
         ncols: Number of columns in the grid (default 12 for 96-well plates).
         residual_fraction: Outlier threshold as a fraction of pitch. Centers
+
             whose fit residual exceeds ``pitch * residual_fraction`` are
             excluded from the refined fit (default 0.25).
+
         tol: Deprecated. Accepted for backward compatibility but ignored.
         max_iter: Deprecated. Accepted for backward compatibility but ignored.
     """
@@ -70,9 +76,9 @@ class AutoGridFinder(GridFinder):
     def _extract_axis_centers(info_table: pd.DataFrame, axis: int) -> np.ndarray:
         """Return sorted weighted centers along *axis* (0=rows, 1=cols)."""
         if axis == 0:
-            col = str(BBOX.WEIGHTED_CENTER_RR)
+            col = str(BBOX.DIST_WEIGHTED_CENTER_RR)
         elif axis == 1:
-            col = str(BBOX.WEIGHTED_CENTER_CC)
+            col = str(BBOX.DIST_WEIGHTED_CENTER_CC)
         else:
             raise ValueError(f"axis must be 0 or 1, got {axis}")
         centers = info_table.loc[:, col].values.astype(float)
@@ -684,8 +690,8 @@ class AutoGridFinder(GridFinder):
                     fontsize=10, color="#8892a4", transform=ax.transAxes,
                 )
             else:
-                cc = info_table[str(BBOX.WEIGHTED_CENTER_CC)].values
-                rr = info_table[str(BBOX.WEIGHTED_CENTER_RR)].values
+                cc = info_table[str(BBOX.DIST_WEIGHTED_CENTER_CC)].values
+                rr = info_table[str(BBOX.DIST_WEIGHTED_CENTER_RR)].values
                 ax.scatter(
                     cc, rr, s=4, alpha=0.5, color=cls._OI_NAVY,
                     edgecolors="none",

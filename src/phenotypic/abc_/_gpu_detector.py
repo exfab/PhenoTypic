@@ -18,6 +18,7 @@ class GpuDetector(ObjectDetector, ABC):
     (e.g., deep-learning foundation models like SAM2 or micro-sam).
 
     When a pipeline contains a GpuDetector, the CLI enforces:
+
     - **Local execution:** Sequential processing (n_jobs=1) to avoid
       multiple workers competing for the same GPU.
     - **SLURM execution:** Automatically requests GPU resources

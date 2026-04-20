@@ -35,13 +35,13 @@ to integrate new tools.
 **Regular Install** (recommended when deploying on a cluster)
 
 ```bash
-uv add phenotypic
+uv pip install phenotypic
 ```
 
 **Interactive / GUI Install** (napari viewer, Panel dashboards, Jupyter)
 
 ```bash
-uv add "phenotypic[gui]"
+uv pip install "phenotypic[gui]"
 ```
 
 ## Pip
@@ -63,21 +63,45 @@ needed
 
 ## Manual Installation (For latest updates)
 
-```  
+```
 git clone https://github.com/exfab/PhenoTypic.git
 cd PhenoTypic
-uv pip install -e .
-```  
+uv sync
+```
 
 ## Dev Installation
 
 For extending PhenoTypic.
 
-```  
+```
 git clone https://github.com/exfab/PhenoTypic.git
 cd PhenoTypic
 uv sync --group dev
-```  
+```
+
+## GPU-Accelerated Detection (SAM2, micro-sam)
+
+PhenoTypic ships optional deep-learning detectors backed by Meta's
+[Segment Anything Model 2](https://github.com/facebookresearch/sam2) and
+[micro-sam](https://github.com/computational-cell-analytics/micro-sam).
+
+* **SAM2** is available on PyPI and ships in the `torch` extra:
+
+  ```bash
+  uv pip install "phenotypic[torch]"   # Linux/macOS only
+  ```
+
+* **micro-sam** is only published on conda-forge (not PyPI), so it is
+  **not** bundled with any `phenotypic` extra. If you need
+  `MicroSamDetector`, see the "Enabling micro_sam" section of the
+  [GPU Detection Setup](https://exfab.github.io/PhenoTypic/how_to/pages/gpu_detection_setup.html)
+  guide for a user-side `pixi.toml` that installs `phenotypic` and
+  `micro_sam` together in a single environment. `MicroSamDetector`
+  remains importable without `micro_sam` installed; the `ImportError`
+  is deferred to the first `apply()` call.
+
+See [GPU Detection Setup](https://exfab.github.io/PhenoTypic/how_to/pages/gpu_detection_setup.html)
+for model downloads and SLURM deployment instructions.
 
 ## Optional Installation
 
@@ -99,6 +123,7 @@ here: https://pypi.org/project/PyExifTool/#pyexiftool-dependencies
 | `phenotypic.enhance`    | Preprocessing tools that alter a copy of your image and can improve the results of the detection algorithms                |
 | `phenotypic.grid`       | Modules that rely on grid and object information to function                                                               |
 | `phenotypic.measure`    | The various measurements PhenoTypic is capable of extracting from objects                                                  |
+| `phenotypic.nn`         | GPU-accelerated detectors (SAM2, micro-sam) with checkpoint management — see [setup guide](https://exfab.github.io/PhenoTypic/how_to/pages/gpu_detection_setup.html) |
 | `phenotypic.refine`     | Different tools to edit the detected objects such as morphology, relabeling, joining, or removing                          |
 | `phenotypic.prefab`     | Various premade image processing pipelines that are in use at ExFAB                                                        |
 

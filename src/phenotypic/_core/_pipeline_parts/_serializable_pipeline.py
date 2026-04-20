@@ -217,13 +217,9 @@ class SerializablePipeline(NapariPipelineViewer):
             # Get instance parameters, excluding internal state and DataFrames
             params = {}
             for key, value in op.__dict__.items():
-                # Skip internal attributes (starting with _) except name-mangled private attributes
-                # Name-mangled attributes look like _ClassName__attribute
+                # Skip private/protected attributes (starting with _)
                 if key.startswith("_"):
-                    # Allow name-mangled private attributes (e.g., _ClassName__attr)
-                    class_name = op.__class__.__name__
-                    if not key.startswith(f"_{class_name}__"):
-                        continue
+                    continue
 
                 # Skip pandas DataFrames
                 if isinstance(value, pd.DataFrame):
@@ -343,11 +339,9 @@ class SerializablePipeline(NapariPipelineViewer):
         """
         params = {}
         for key, value in op.__dict__.items():
-            # Skip internal attributes (same logic as _serialize_operations)
+            # Skip private/internal attributes (starting with _)
             if key.startswith("_"):
-                class_name = op.__class__.__name__
-                if not key.startswith(f"_{class_name}__"):
-                    continue
+                continue
 
             # Skip pandas DataFrames
             if isinstance(value, pd.DataFrame):

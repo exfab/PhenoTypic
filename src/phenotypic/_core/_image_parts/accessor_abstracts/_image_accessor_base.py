@@ -11,7 +11,6 @@ from ._image_accessor_base_parents import AccessorDashHandler
 
 if TYPE_CHECKING:
     import napari
-    from phenotypic._core._image import Image
 
 _HAS_NAPARI = importlib.util.find_spec("napari") is not None
 

@@ -1,24 +1,22 @@
-"""Tests for the filamentous fungi Dijkstra-based branch reconnection pipeline.
+"""Tests for the branch pathfinding subpackage.
 
-Unit tests for the subfolder modules (_cost_surface, _fragment_prescreening,
-_path_quality, _dijkstra_kernels, _dataclasses) and integration tests for
-``FilamentousFungiDetector(enable_reconnection=True)``.
+Unit tests for the modules under ``phenotypic.tools_.branch_pathfinding``
+(cost surface composition, fragment prescreening, path quality filtering,
+Dijkstra kernels, dataclasses) and integration tests that exercise them
+via ``FilamentousFungiDetector(enable_reconnection=True)``.
 """
 
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 
-from phenotypic.detect._filamentous_fungi import (
+from phenotypic.tools_.branch_pathfinding import (
     # Cost surface
     compute_anisotropy,
     compute_orientation_coherence,
     compute_local_mad_map,
     assemble_composite_cost,
     apply_structure_mask,
-    apply_border_penalty,
-    apply_distance_gap_penalty,
-    # Fragment prescreening
     compute_min_cost_envelope,
     calibrate_screening_threshold,
     prescreen_fragments,

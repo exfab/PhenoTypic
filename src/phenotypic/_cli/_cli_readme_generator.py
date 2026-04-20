@@ -89,8 +89,9 @@ Image Type: {self.config.image_type}{grid_info}"""
 output_folder/
 +-- results/                      # All dataset results
 {dataset_list}
-|       +-- measurements/         # Per-image CSV measurement files
-|       +-- overlays/             # Detection overlay visualizations
+|       +-- hdf/                  # Processed images as single .h5 per input (layers + metadata + grid state)
+|       +-- measurements/         # Per-image Parquet measurement files
+|       +-- overlays/             # Detection overlay PNGs (only when --save-overlays is set; default: OFF)
 +-- dashboard.html                # Live processing dashboard
 +-- analysis.html                 # Analysis & visualization
 +-- master_measurements.csv       # Aggregated measurements (all datasets)
@@ -103,20 +104,15 @@ output_folder/
 
     def _generate_layers_section(self) -> str:
         """Generate documentation for saved layers."""
-        ext = self.config.ext.lstrip(".")
+        return """## Saved Layers
 
-        return f"""## Saved Layers
+Each dataset directory contains the following folders:
 
-Each dataset directory contains the following layers:
-
-| Layer | Format | Description |
-|-------|--------|-------------|
-| `measurements/` | CSV | Per-object measurements |
-| `overlays/` | PNG | Detection overlay visualizations |
-| `rgb/` | {ext.upper()} | Original RGB images (if available) |
-| `gray/` | {ext.upper()} | Grayscale images |
-| `detect_mat/` | {ext.upper()} | Detection matrix (after preprocessing) |
-| `objmap/` | PNG | Labeled object maps (integer labels per object) |"""
+| Folder | Format | Description |
+|--------|--------|-------------|
+| `hdf/` | HDF5 | Processed image (layers + metadata + grid state) saved as a single `.h5` per input image, reloadable via `Image.load_hdf5` / `GridImage.load_hdf5`. |
+| `measurements/` | Parquet | Per-object measurements. |
+| `overlays/` | PNG | Detection overlay visualizations. Created only when the run was invoked with `--save-overlays` (default: OFF). |"""
 
     def _generate_measurements_section(self) -> str:
         """Generate measurement documentation from pipeline's MeasureFeatures.

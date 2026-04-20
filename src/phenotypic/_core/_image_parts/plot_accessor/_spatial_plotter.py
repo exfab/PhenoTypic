@@ -200,7 +200,7 @@ class SpatialPlotter(BasePlotter):
             "std_size"      : np.std(sizes),
         }
 
-        plt.tight_layout()
+        fig.set_layout_engine("constrained")
 
         return fig, np.array([ax_map, ax_cbar]), metadata
 
@@ -417,7 +417,7 @@ class SpatialPlotter(BasePlotter):
         plt.suptitle(
                 "Size-Intensity Correlation Analysis", fontsize=14, fontweight="bold"
         )
-        plt.tight_layout()
+        fig.set_layout_engine("constrained")
 
         return fig, ax_main
 

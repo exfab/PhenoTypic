@@ -104,6 +104,34 @@ class ManualGridDetector(GridObjectDetector, FootprintMixin):
             value = tuple(value)  # type: ignore[arg-type]
         super().__setattr__(name, value)
 
+    def napari(self, image: GridImage) -> ManualGridDetector:
+        """Interactively pick 1--2 anchor coordinates using a napari viewer.
+
+        Opens a blocking napari viewer displaying the plate image layers
+        (RGB, grayscale, detection matrix). Click up to two points to
+        define the grid anchor positions, then click **Confirm** in the
+        dock widget. The picked coordinates update *coord1* and
+        *coord2* on this detector instance.
+
+        Args:
+            image: The GridImage to display for coordinate selection.
+
+        Returns:
+            ManualGridDetector: Self, for method chaining.
+        """
+        from phenotypic.tools_.napari_ import PointPickerWidget
+
+        points = PointPickerWidget(max_points=2).run(image)
+
+        if len(points) >= 1:
+            self.coord1 = (int(round(points[0][0])), int(round(points[0][1])))
+        if len(points) >= 2:
+            self.coord2 = (int(round(points[1][0])), int(round(points[1][1])))
+        elif len(points) == 1:
+            self.coord2 = None
+
+        return self
+
     def _operate(self, image: GridImage) -> GridImage:  # type: ignore[override]
         h, w = image.shape[:2]
         nrows, ncols = image.nrows, image.ncols
@@ -117,10 +145,7 @@ class ManualGridDetector(GridObjectDetector, FootprintMixin):
             row_spacing = (h - 2 * y1) / max(1, nrows - 1)
             col_spacing = (w - 2 * x1) / max(1, ncols - 1)
 
-        footprint = self._make_footprint(shape=self.shape, width=self.width)
-        fp_h, fp_w = footprint.shape
-        fp_mask = footprint.astype(bool)
-
+        fp_mask = self._make_footprint(shape=self.shape, width=self.width).astype(bool)
         mask = np.zeros((h, w), dtype=bool)
         labeled = np.zeros((h, w), dtype=np.int32)
 
@@ -128,27 +153,8 @@ class ManualGridDetector(GridObjectDetector, FootprintMixin):
             for j in range(ncols):
                 cy = int(round(y1 + i * row_spacing))
                 cx = int(round(x1 + j * col_spacing))
-
-                # Image region bounds (clipped to image)
-                img_y0 = max(0, cy - fp_h // 2)
-                img_y1 = min(h, cy - fp_h // 2 + fp_h)
-                img_x0 = max(0, cx - fp_w // 2)
-                img_x1 = min(w, cx - fp_w // 2 + fp_w)
-
-                # Corresponding footprint region
-                fp_y0 = img_y0 - (cy - fp_h // 2)
-                fp_x0 = img_x0 - (cx - fp_w // 2)
-                fp_slice = fp_mask[
-                    fp_y0 : fp_y0 + (img_y1 - img_y0),
-                    fp_x0 : fp_x0 + (img_x1 - img_x0),
-                ]
-
-                mask[img_y0:img_y1, img_x0:img_x1] |= fp_slice
-
-                label_id = i * ncols + j + 1
-                region = labeled[img_y0:img_y1, img_x0:img_x1]
-                labeled[img_y0:img_y1, img_x0:img_x1] = np.where(
-                    fp_slice, label_id, region
+                self._stamp_footprint(
+                    mask, labeled, fp_mask, cy, cx, i * ncols + j + 1,
                 )
 
         image.objmask[:] = mask

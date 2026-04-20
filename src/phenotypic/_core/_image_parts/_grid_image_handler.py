@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import json
+import warnings
 from typing import Union, Tuple, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     import napari
 
+import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -451,3 +454,96 @@ class ImageGridHandler(Image):
                     continue
 
         return arr
+
+    # ------------------------------------------------------------------
+    # HDF5 round-trip — schema_version=2 /grid/ subgroup
+    # ------------------------------------------------------------------
+    def _save_image2hdfgroup(
+            self,
+            grp,
+            compression="gzip",
+            compression_opts=4,
+    ):
+        """Save GridImage data + grid state into an HDF5 group.
+
+        Defers base layers/metadata/root-attr writing to
+        :meth:`Image._save_image2hdfgroup`, then persists grid-specific state
+        under ``/grid/``:
+          - attrs: ``nrows``, ``ncols``
+          - ``grid_finder_json`` dataset: JSON blob of the serialised
+            ``grid_finder`` (class + params).
+        """
+        super()._save_image2hdfgroup(
+                grp,
+                compression=compression,
+                compression_opts=compression_opts,
+        )
+
+        grid = grp.require_group("grid")
+        grid.attrs["nrows"] = int(self.nrows)
+        grid.attrs["ncols"] = int(self.ncols)
+
+        if self.grid_finder is not None:
+            # Lazy import to avoid import cycles.
+            from phenotypic._core._pipeline_parts._serializable_pipeline import (
+                SerializablePipeline,
+            )
+
+            payload = {
+                "class" : type(self.grid_finder).__name__,
+                "params": SerializablePipeline._serialize_single_operation(
+                        self.grid_finder
+                ),
+            }
+            # Overwrite any pre-existing payload for idempotent re-saves.
+            if "grid_finder_json" in grid:
+                del grid["grid_finder_json"]
+            grid.create_dataset(
+                    "grid_finder_json",
+                    data=json.dumps(payload),
+                    dtype=h5py.string_dtype(encoding="utf-8"),
+            )
+
+    @classmethod
+    def _load_from_hdf5_group(cls, group, **kwargs):
+        """Load a GridImage from an HDF5 group.
+
+        Reads ``/grid/`` (when present) into ``kwargs`` via ``setdefault``
+        so explicit caller kwargs take priority, then delegates to the base
+        Image loader.
+        """
+        if "grid" in group:
+            grid = group["grid"]
+            if "nrows" in grid.attrs:
+                try:
+                    kwargs.setdefault("nrows", int(grid.attrs["nrows"]))
+                except (TypeError, ValueError):
+                    pass
+            if "ncols" in grid.attrs:
+                try:
+                    kwargs.setdefault("ncols", int(grid.attrs["ncols"]))
+                except (TypeError, ValueError):
+                    pass
+            if "grid_finder_json" in grid:
+                from phenotypic._core._pipeline_parts._serializable_pipeline import (
+                    SerializablePipeline,
+                )
+
+                raw = grid["grid_finder_json"][()]
+                if isinstance(raw, bytes):
+                    raw = raw.decode("utf-8", errors="replace")
+                try:
+                    payload = json.loads(raw)
+                    grid_finder = SerializablePipeline._deserialize_operations(
+                            {"__gf__": payload}
+                    )["__gf__"]
+                    kwargs.setdefault("grid_finder", grid_finder)
+                except (json.JSONDecodeError, KeyError, AttributeError) as e:
+                    warnings.warn(
+                        f"GridFinder deserialization failed ({type(e).__name__}: {e}); "
+                        f"falling back to default AutoGridFinder. Grid configuration may be incorrect.",
+                        UserWarning,
+                        stacklevel=2,
+                    )
+
+        return super()._load_from_hdf5_group(group, **kwargs)

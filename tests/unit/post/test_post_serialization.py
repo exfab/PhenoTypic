@@ -2,7 +2,6 @@
 
 import json
 
-import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.post import ExpandMetadata, MergeMetadata

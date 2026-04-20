@@ -4,7 +4,6 @@ Image Class Methods
 .. toctree::
    :hidden:
    :maxdepth: 2
-   :local:
 
    self
 

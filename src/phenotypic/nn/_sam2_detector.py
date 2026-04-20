@@ -205,6 +205,13 @@ class Sam2Detector(GpuDetector):
             ckpt = str(mgr.get_checkpoint(self.model_size))
             cfg = mgr.get_config(self.model_size)
 
+        # sam2 1.1.0 registers `pkg://sam2` as the Hydra search root, but the
+        # config YAMLs live at `sam2/configs/sam2.1/…`. Prepend `configs/` at
+        # the call site so the serialized identifier (used in to_json/from_json)
+        # stays portable across upstream layout changes.
+        if not cfg.startswith("configs/") and not cfg.startswith("/"):
+            cfg = f"configs/{cfg}"
+
         model = build_sam2(cfg, ckpt, device=device, apply_postprocessing=False)
         self._generator = SAM2AutomaticMaskGenerator(
             model,

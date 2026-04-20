@@ -71,11 +71,14 @@ def validate_operation_integrity(*targets: str):
     Decorator to ensure that key NumPy arrays on the 'image' argument
     remain unchanged by an ImageOperation.apply() call.
     If no targets are specified, defaults to checking:
+
         image.rgb, image.gray, image.detect_mat, image.objmap
 
     Example Usage:
+
         @validate_member_integrity('image.rgb', 'image.objmap')
         def func(image: Image,...):
+
             ...
     """
 
@@ -262,8 +265,10 @@ def normalize_rgb_bitdepth(image: np.ndarray) -> np.ndarray:
     Normalize an RGB rgb to [0,1] using bit-depth inference.
 
     Rules:
+
     - If dtype is integer: use dtype max (e.g. 255 for uint8, 65535 for uint16).
     - If dtype is float:
+
         * If max <= 1 → assume already normalized, return as-is.
         * If 255 < max <= 65535 → assume 16-bit, divide by 65535.
         * Else → assume 8-bit, divide by 255.

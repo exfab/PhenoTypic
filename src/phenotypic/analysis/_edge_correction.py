@@ -337,6 +337,7 @@ class EdgeCorrector(SetAnalyzer):
 
         Args:
             data (pd.DataFrame): Input DataFrame containing grid measurements. Must include:
+
                 - GRID.SECTION_NUM (str): Column with well/section indices (0-indexed
                   flattened position: row * ncols + col)
                 - self.on (str): Measurement column to analyze and correct
@@ -349,6 +350,7 @@ class EdgeCorrector(SetAnalyzer):
                 - ``EdgeCorrection_Size-{on}``: Capped measurement values (clipped
                   to threshold where edge effect detected)
                 - ``EdgeCorrection_-{self.on}``: Threshold value used for correction
+
                 Original measurement column (self.on) remains unchanged. All other columns
                 preserved from input. One row per well per group.
 
@@ -508,6 +510,7 @@ class EdgeCorrector(SetAnalyzer):
                 column-value criteria (e.g., {'Plate': 'P1', 'Condition': ['WT', 'KO']}).
                 Filtering uses SetAnalyzer._filter_by with AND logic across criteria.
             **kwargs: Additional matplotlib parameters:
+
                 - dpi (int): Figure resolution, passed to plt.subplots()
                 - facecolor (str): Figure background color
                 - edgecolor (str): Figure edge color
@@ -516,6 +519,7 @@ class EdgeCorrector(SetAnalyzer):
 
         Returns:
             tuple[Figure, plt.Axes]: Tuple of (matplotlib Figure, Axes object(s)):
+
                 - If collapsed=True: (Figure, single Axes)
                 - If collapsed=False: (Figure, array of Axes)
 

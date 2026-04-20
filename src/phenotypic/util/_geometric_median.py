@@ -1211,6 +1211,7 @@ def geometric_median(
     Returns:
         median: Geometric median point, shape (d,)
         info: Dictionary with algorithm statistics:
+
             - 'iterations': Number of iterations performed
             - 'objective': Final objective value f(x)
             - 'converged': Whether algorithm converged

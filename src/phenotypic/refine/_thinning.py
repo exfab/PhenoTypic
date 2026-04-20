@@ -60,6 +60,7 @@ class Thinning(ObjectRefiner):
 
         Args:
             max_num_iter (int | None): Upper limit on iterations. Use:
+
                 - None (default) to iterate until convergence, yielding a full skeleton.
                 - A small int (e.g., 1-3) for gentle boundary cleanup while preserving
                   colony bulk.

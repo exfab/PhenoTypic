@@ -7,7 +7,7 @@ selection mode) is tested in test_shared_refiner_behavior.py.
 from __future__ import annotations
 
 import numpy as np
-from phenotypic.detect import OtsuDetector, RoundPeaksDetector
+from phenotypic.detect import RoundPeaksDetector
 from phenotypic.refine import SineAlignmentRefiner
 
 

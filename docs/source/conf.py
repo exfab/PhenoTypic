@@ -87,6 +87,7 @@ extensions = [
     "class_members",
     "sphinx_togglebutton",
     "myst_parser",
+    "typehint_formatter",
 ]
 
 autosummary_generate = True
