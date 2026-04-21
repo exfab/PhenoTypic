@@ -20,23 +20,6 @@ class NonLocalMeansDenoiser(ImageEnhancer):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Scanner noise and agar granularity where colony edges must stay
-          sharp.
-        - Low-contrast or faint colonies where Gaussian blur would cause
-          loss of detail.
-        - Preserving colony texture and morphology during speckle and dust
-          removal.
-        - Pre-filtering before edge detection to avoid amplifying noise.
-
-    Consider Also:
-        - :class:`BM3DDenoiser` for state-of-the-art structured noise
-          removal at higher computational cost.
-        - :class:`BilateralDenoise` for faster edge-preserving denoising
-          without patch comparison.
-        - :class:`BayesShrinkEnhancer` for adaptive wavelet denoising with
-          spatially varying thresholds.
-
     Args:
         patch_size: Size of patches used for comparison in pixels. Larger
             patches capture more structure but are slower. Typical range:
@@ -57,6 +40,23 @@ class NonLocalMeansDenoiser(ImageEnhancer):
     Returns:
         Image: Input image with ``detect_mat`` denoised via non-local
         means filtering. ``rgb`` and ``gray`` are unchanged.
+
+    Best For:
+        - Scanner noise and agar granularity where colony edges must stay
+          sharp.
+        - Low-contrast or faint colonies where Gaussian blur would cause
+          loss of detail.
+        - Preserving colony texture and morphology during speckle and dust
+          removal.
+        - Pre-filtering before edge detection to avoid amplifying noise.
+
+    Consider Also:
+        - :class:`BM3DDenoiser` for state-of-the-art structured noise
+          removal at higher computational cost.
+        - :class:`BilateralDenoise` for faster edge-preserving denoising
+          without patch comparison.
+        - :class:`BayesShrinkEnhancer` for adaptive wavelet denoising with
+          spatially varying thresholds.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a

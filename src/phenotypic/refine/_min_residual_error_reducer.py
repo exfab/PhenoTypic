@@ -19,6 +19,10 @@ class ReduceMultipleGridObjects(GridObjectRefiner):
     residuals until each grid cell contains at most one detection. Cells with
     the most objects are processed first to stabilize the regression fit.
 
+    Returns:
+        Image: Input image with ``objmap`` and ``objmask`` reduced to at most
+        one object per grid cell based on minimum residual error.
+
     Best For:
         - Grid cells with multiple detections from halos, debris, or
           over-segmentation.
@@ -34,10 +38,6 @@ class ReduceMultipleGridObjects(GridObjectRefiner):
           strategy.
         - :class:`ResidualOutlierRemover` for removing outliers within noisy
           rows or columns rather than reducing to one per cell.
-
-    Returns:
-        Image: Input image with ``objmap`` and ``objmask`` reduced to at most
-        one object per grid cell based on minimum residual error.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based

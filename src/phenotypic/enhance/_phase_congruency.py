@@ -54,20 +54,6 @@ class PhaseCongruencyEnhancer(ImageEnhancer):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Colony boundaries independent of colony color or opacity.
-        - Images with uneven illumination or scanner vignetting.
-        - Faint colony edges that gradient-based methods miss.
-        - Translucent or low-contrast colonies on agar.
-
-    Consider Also:
-        - :class:`LaplaceEnhancer` for simpler edge detection when
-          illumination is uniform.
-        - :class:`HessianFilter` for multi-scale ridge and edge detection
-          with blob sensitivity control.
-        - :class:`UnsharpMask` for edge sharpening that preserves the
-          original intensity profile.
-
     Args:
         n_scale: Number of wavelet scales. Typical range: 3--6. More
             scales capture a wider range of feature sizes. Default: 4.
@@ -94,6 +80,20 @@ class PhaseCongruencyEnhancer(ImageEnhancer):
         Image: Input image with ``detect_mat`` replaced by the phase
         congruency map (clipped to [0, 1]). ``rgb`` and ``gray`` are
         unchanged.
+
+    Best For:
+        - Colony boundaries independent of colony color or opacity.
+        - Images with uneven illumination or scanner vignetting.
+        - Faint colony edges that gradient-based methods miss.
+        - Translucent or low-contrast colonies on agar.
+
+    Consider Also:
+        - :class:`LaplaceEnhancer` for simpler edge detection when
+          illumination is uniform.
+        - :class:`HessianFilter` for multi-scale ridge and edge detection
+          with blob sensitivity control.
+        - :class:`UnsharpMask` for edge sharpening that preserves the
+          original intensity profile.
 
     References:
         [1] P. Kovesi, "Image features from phase congruency," *Videre:

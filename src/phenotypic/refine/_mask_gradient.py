@@ -20,21 +20,6 @@ class MaskGradient(ObjectRefiner, FootprintMixin):
     exterior pixels are removed, leaving only the colony perimeter for
     edge-focused analysis or visualization.
 
-    Best For:
-        - Extracting colony perimeters for boundary roughness or circularity
-          measurements.
-        - Creating boundary masks for edge-specific color or texture analysis.
-        - Visualizing colony contours as QC overlays on raw images.
-        - Detecting spreading or filamentous edges extending from colony cores.
-
-    Consider Also:
-        - :class:`Skeletonize` when you need medial-axis topology rather
-          than boundary outlines.
-        - :class:`MaskEroder` for uniform inward shrinking without
-          extracting boundaries.
-        - :class:`Thinning` for iterative boundary peeling that preserves
-          connectivity.
-
     Args:
         shape: Structuring element for gradient computation. ``"auto"``
             selects a disk scaled to image size, ``"disk"``, ``"square"``,
@@ -51,6 +36,21 @@ class MaskGradient(ObjectRefiner, FootprintMixin):
 
     Raises:
         AttributeError: If an invalid ``shape`` type is provided.
+
+    Best For:
+        - Extracting colony perimeters for boundary roughness or circularity
+          measurements.
+        - Creating boundary masks for edge-specific color or texture analysis.
+        - Visualizing colony contours as QC overlays on raw images.
+        - Detecting spreading or filamentous edges extending from colony cores.
+
+    Consider Also:
+        - :class:`Skeletonize` when you need medial-axis topology rather
+          than boundary outlines.
+        - :class:`MaskEroder` for uniform inward shrinking without
+          extracting boundaries.
+        - :class:`Thinning` for iterative boundary peeling that preserves
+          connectivity.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for boundary

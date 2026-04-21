@@ -21,20 +21,6 @@ class GrayOpening(ImageEnhancer, FootprintMixin):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Removing dust particles and small bright noise from plate scans.
-        - Suppressing tiny satellite colonies that interfere with detection
-          of larger colonies.
-        - Smoothing the detection surface before background subtraction.
-
-    Consider Also:
-        - :class:`WhiteTophatEnhance` when you want to isolate (not remove)
-          small bright structures.
-        - :class:`SubtractWhiteTophat` for subtracting small bright artifacts
-          while retaining the background.
-        - :class:`BilateralDenoise` for noise reduction that preserves edges
-          without morphological assumptions.
-
     Args:
         shape: Structuring element geometry. ``'square'`` (default) preserves
             edges; ``'diamond'`` is more rounded at diagonals; ``'disk'``
@@ -48,6 +34,20 @@ class GrayOpening(ImageEnhancer, FootprintMixin):
     Returns:
         Image: Input image with ``detect_mat`` morphologically opened.
         ``rgb`` and ``gray`` are unchanged.
+
+    Best For:
+        - Removing dust particles and small bright noise from plate scans.
+        - Suppressing tiny satellite colonies that interfere with detection
+          of larger colonies.
+        - Smoothing the detection surface before background subtraction.
+
+    Consider Also:
+        - :class:`WhiteTophatEnhance` when you want to isolate (not remove)
+          small bright structures.
+        - :class:`SubtractWhiteTophat` for subtracting small bright artifacts
+          while retaining the background.
+        - :class:`BilateralDenoise` for noise reduction that preserves edges
+          without morphological assumptions.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a

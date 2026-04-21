@@ -20,21 +20,6 @@ class IsodataDetector(ThresholdDetector):
     counts. For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
 
-    Best For:
-        * Plates where colony and background pixel counts are roughly balanced.
-        * Medium-contrast images where iterative refinement improves on a
-          single-pass threshold.
-        * Standardised imaging setups where the histogram is approximately
-          symmetric around the threshold.
-
-    Consider Also:
-        * :class:`OtsuDetector` for a faster single-pass threshold when the
-          histogram is clearly bimodal.
-        * :class:`LiDetector` when the histogram is skewed or noise dominates
-          one side of the distribution.
-        * :class:`HysteresisDetector` when colony brightness varies and a
-          single threshold under-segments faint regions.
-
     Args:
         ignore_zeros: Exclude zero-intensity pixels from threshold
             computation. Enable for plates with black borders or masked
@@ -52,6 +37,21 @@ class IsodataDetector(ThresholdDetector):
     Raises:
         ValueError: If threshold computation fails (e.g., degenerate
             histogram with insufficient intensity variation).
+
+    Best For:
+        * Plates where colony and background pixel counts are roughly balanced.
+        * Medium-contrast images where iterative refinement improves on a
+          single-pass threshold.
+        * Standardised imaging setups where the histogram is approximately
+          symmetric around the threshold.
+
+    Consider Also:
+        * :class:`OtsuDetector` for a faster single-pass threshold when the
+          histogram is clearly bimodal.
+        * :class:`LiDetector` when the histogram is skewed or noise dominates
+          one side of the distribution.
+        * :class:`HysteresisDetector` when colony brightness varies and a
+          single threshold under-segments faint regions.
 
     References:
         [1] T. W. Ridler and S. Calvard, "Picture thresholding using an

@@ -20,23 +20,6 @@ class OtsuDetector(ThresholdDetector):
     all available detection strategies see
     :doc:`/explanation/detection_strategies_compared`.
 
-    Best For:
-        * Plates imaged under standardised lighting where the intensity
-          histogram has two well-separated peaks.
-        * Quick baseline detection requiring no parameter tuning.
-        * High-throughput screens with uniform agar colour and colony density.
-        * Comparing automatic methods -- Otsu is the standard reference
-          threshold.
-        * Clean plates with minimal dust, scratches, or condensation.
-
-    Consider Also:
-        * :class:`TriangleDetector` when colonies occupy a small fraction of
-          the plate and the histogram is skewed.
-        * :class:`HysteresisDetector` when colony intensity varies (e.g.,
-          young versus mature growth) and a single threshold under-segments.
-        * :class:`WatershedDetector` when touching colonies must be split
-          into individually labelled objects.
-
     Args:
         ignore_zeros: If True (default), exclude zero-intensity pixels from
             threshold computation. Enable for plates with black borders or
@@ -55,6 +38,23 @@ class OtsuDetector(ThresholdDetector):
     Raises:
         ValueError: If threshold computation fails (e.g., all pixels share
             the same intensity value, producing a degenerate histogram).
+
+    Best For:
+        * Plates imaged under standardised lighting where the intensity
+          histogram has two well-separated peaks.
+        * Quick baseline detection requiring no parameter tuning.
+        * High-throughput screens with uniform agar colour and colony density.
+        * Comparing automatic methods -- Otsu is the standard reference
+          threshold.
+        * Clean plates with minimal dust, scratches, or condensation.
+
+    Consider Also:
+        * :class:`TriangleDetector` when colonies occupy a small fraction of
+          the plate and the histogram is skewed.
+        * :class:`HysteresisDetector` when colony intensity varies (e.g.,
+          young versus mature growth) and a single threshold under-segments.
+        * :class:`WatershedDetector` when touching colonies must be split
+          into individually labelled objects.
 
     References:
         [1] N. Otsu, "A threshold selection method from gray-level

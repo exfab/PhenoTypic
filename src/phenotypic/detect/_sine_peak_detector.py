@@ -31,22 +31,6 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
     growth. For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
 
-    Best For:
-        * Gridded plates (96-well, 384-well, pinned arrays) where colonies
-          are arranged in a regular periodic pattern.
-        * Plates with heterogeneous colony sizes or uneven growth where
-          rank-based correlation outperforms intensity-based peak finding.
-        * High-throughput batch processing of arrayed plates without
-          manual grid specification.
-
-    Consider Also:
-        * :class:`RoundPeaksDetector` for a simpler grid detector when
-          colony intensities are uniform and direct peak finding suffices.
-        * :class:`OtsuDetector` when colonies are not gridded and a global
-          threshold is appropriate.
-        * :class:`RankOtsuDetector` when spatial illumination variation is
-          the primary challenge rather than grid localisation.
-
     Args:
         thresh_method: Thresholding method for binary mask creation.
             Accepted values: ``'otsu'``, ``'mean'``, ``'local'``,
@@ -104,6 +88,22 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
     Raises:
         ValueError: If ``thresh_method`` is not one of the accepted
             values.
+
+    Best For:
+        * Gridded plates (96-well, 384-well, pinned arrays) where colonies
+          are arranged in a regular periodic pattern.
+        * Plates with heterogeneous colony sizes or uneven growth where
+          rank-based correlation outperforms intensity-based peak finding.
+        * High-throughput batch processing of arrayed plates without
+          manual grid specification.
+
+    Consider Also:
+        * :class:`RoundPeaksDetector` for a simpler grid detector when
+          colony intensities are uniform and direct peak finding suffices.
+        * :class:`OtsuDetector` when colonies are not gridded and a global
+          threshold is appropriate.
+        * :class:`RankOtsuDetector` when spatial illumination variation is
+          the primary challenge rather than grid localisation.
 
     References:
         [1] O. Wagih and L. Parts, "gitter: a robust and accurate method

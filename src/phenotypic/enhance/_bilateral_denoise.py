@@ -21,21 +21,6 @@ class BilateralDenoise(ImageEnhancer):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Noisy or grainy agar scans from high-ISO photography or old scanners.
-        - Plates with surface condensation, dust speckles, or uneven agar
-          texture.
-        - Preprocessing before thresholding when colony edges must remain
-          sharp.
-        - Low-quality captures where colony morphology must be preserved.
-
-    Consider Also:
-        - :class:`NonLocalMeansDenoiser` for stronger denoising of repetitive
-          textures at higher computational cost.
-        - :class:`BM3DDenoiser` for state-of-the-art structured noise removal.
-        - :class:`SubtractGaussian` when the primary problem is illumination
-          gradients rather than pixel-level noise.
-
     Args:
         sigma_color: Intensity similarity weighting. Small values
             (0.02--0.05) preserve subtle boundaries; medium values
@@ -58,6 +43,21 @@ class BilateralDenoise(ImageEnhancer):
     Returns:
         Image: Input image with ``detect_mat`` smoothed by bilateral
         filtering. ``rgb`` and ``gray`` are unchanged.
+
+    Best For:
+        - Noisy or grainy agar scans from high-ISO photography or old scanners.
+        - Plates with surface condensation, dust speckles, or uneven agar
+          texture.
+        - Preprocessing before thresholding when colony edges must remain
+          sharp.
+        - Low-quality captures where colony morphology must be preserved.
+
+    Consider Also:
+        - :class:`NonLocalMeansDenoiser` for stronger denoising of repetitive
+          textures at higher computational cost.
+        - :class:`BM3DDenoiser` for state-of-the-art structured noise removal.
+        - :class:`SubtractGaussian` when the primary problem is illumination
+          gradients rather than pixel-level noise.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a

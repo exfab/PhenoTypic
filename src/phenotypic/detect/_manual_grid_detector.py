@@ -29,24 +29,6 @@ class ManualGridDetector(GridObjectDetector, FootprintMixin):
     *coord2* define cells (0, 0) and (1, 1); row and column spacing are
     derived from their difference and extrapolated across all grid cells.
 
-    Best For:
-        * Plates where automatic grid finders fail due to low contrast,
-          missing wells, or non-standard plate formats.
-        * Template-based detection when colony positions are known a priori
-          from plate layout metadata or robotic spotting coordinates.
-        * Generating ground-truth masks for testing or validating other
-          detection pipelines.
-        * Quick prototyping when full detection is unnecessary and grid
-          geometry is well-characterised.
-
-    Consider Also:
-        * :class:`RoundPeaksDetector` when grid positions can be inferred
-          automatically from intensity profiles.
-        * :class:`WatershedDetector` when colonies are not on a regular
-          grid and must be separated by region growing.
-        * :class:`InoculumDetector` when inoculation sites must be detected
-          from image content rather than geometric templates.
-
     Args:
         coord1: ``(y, x)`` pixel position of the top-left grid cell centre
             (row 0, column 0). This is the anchor point from which all
@@ -76,6 +58,24 @@ class ManualGridDetector(GridObjectDetector, FootprintMixin):
     Raises:
         GridImageInputError: If a plain Image is passed instead of a
             GridImage.
+
+    Best For:
+        * Plates where automatic grid finders fail due to low contrast,
+          missing wells, or non-standard plate formats.
+        * Template-based detection when colony positions are known a priori
+          from plate layout metadata or robotic spotting coordinates.
+        * Generating ground-truth masks for testing or validating other
+          detection pipelines.
+        * Quick prototyping when full detection is unnecessary and grid
+          geometry is well-characterised.
+
+    Consider Also:
+        * :class:`RoundPeaksDetector` when grid positions can be inferred
+          automatically from intensity profiles.
+        * :class:`WatershedDetector` when colonies are not on a regular
+          grid and must be separated by region growing.
+        * :class:`InoculumDetector` when inoculation sites must be detected
+          from image content rather than geometric templates.
 
     See Also:
         :doc:`/tutorials/notebooks/02_detecting_colonies`

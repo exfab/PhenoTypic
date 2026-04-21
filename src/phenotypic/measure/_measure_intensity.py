@@ -22,6 +22,17 @@ class MeasureIntensity(MeasureFeatures):
     density. These statistics reflect colony optical density, biomass
     accumulation, and internal heterogeneity.
 
+    Returns:
+        pd.DataFrame: Object-level intensity statistics with columns:
+
+            - Label, IntegratedIntensity, MinimumIntensity,
+              MaximumIntensity, MeanIntensity, MedianIntensity.
+            - LowerQuartileIntensity, UpperQuartileIntensity,
+              InterquartileRangeIntensity.
+            - StandardDeviationIntensity, CoefficientVarianceIntensity.
+            - Density (integrated intensity / area), ConvexDensity
+              (integrated intensity / convex area).
+
     Best For:
         - Tracking colony growth over time via integrated intensity as
           an optical-density proxy.
@@ -38,17 +49,6 @@ class MeasureIntensity(MeasureFeatures):
           pigmentation is relevant.
         - :class:`MeasureTexture` for surface-roughness features that
           complement intensity metrics.
-
-    Returns:
-        pd.DataFrame: Object-level intensity statistics with columns:
-
-            - Label, IntegratedIntensity, MinimumIntensity,
-              MaximumIntensity, MeanIntensity, MedianIntensity.
-            - LowerQuartileIntensity, UpperQuartileIntensity,
-              InterquartileRangeIntensity.
-            - StandardDeviationIntensity, CoefficientVarianceIntensity.
-            - Density (integrated intensity / area), ConvexDensity
-              (integrated intensity / convex area).
 
     See Also:
         :doc:`/tutorials/notebooks/07_measuring_and_exporting` for a

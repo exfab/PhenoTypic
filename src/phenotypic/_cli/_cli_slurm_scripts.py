@@ -70,7 +70,7 @@ def generate_image_processing_script(
 
     # Generate job name
     image_stem = image_path.stem
-    job_name = f"pt_{dataset.name}_{image_stem}"
+    job_name = f"pht-{dataset.name}-{image_stem}"
 
     # Generate log paths
     log_dir = output_dir / "logs" / "slurm" / dataset.name

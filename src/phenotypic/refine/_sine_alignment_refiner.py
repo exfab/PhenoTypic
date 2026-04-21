@@ -34,22 +34,6 @@ class SineAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
     robustness to outlier colony intensities and monotonic intensity
     transformations compared to simple peak-finding.
 
-    Best For:
-        - Gridded plates (96-well, 384-well, pinned cultures) where colony
-          intensities are heterogeneous or unevenly grown.
-        - Post-detection cleanup when simple peak-finding grid estimation
-          is unreliable.
-        - Plates with variable colony sizes or uneven growth where rank-based
-          correlation outperforms direct intensity matching.
-
-    Consider Also:
-        - :class:`GridAlignmentRefiner` for faster grid estimation when
-          colony intensities are relatively uniform.
-        - :class:`GridSectionLargest` for a simpler largest-per-cell
-          strategy on GridImage inputs.
-        - :class:`ReduceMultipleGridObjects` for regression-based multi-
-          detection reduction within grid cells.
-
     Args:
         smoothing_sigma: Gaussian smoothing sigma for intensity profiles.
             Typical range: 0.5--5.0. Higher values smooth noise but may
@@ -74,6 +58,22 @@ class SineAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
 
     Raises:
         ValueError: If grid inference fails or image lacks detection results.
+
+    Best For:
+        - Gridded plates (96-well, 384-well, pinned cultures) where colony
+          intensities are heterogeneous or unevenly grown.
+        - Post-detection cleanup when simple peak-finding grid estimation
+          is unreliable.
+        - Plates with variable colony sizes or uneven growth where rank-based
+          correlation outperforms direct intensity matching.
+
+    Consider Also:
+        - :class:`GridAlignmentRefiner` for faster grid estimation when
+          colony intensities are relatively uniform.
+        - :class:`GridSectionLargest` for a simpler largest-per-cell
+          strategy on GridImage inputs.
+        - :class:`ReduceMultipleGridObjects` for regression-based multi-
+          detection reduction within grid cells.
 
     References:
         [1] O. Wagih and L. Parts, "gitter: a robust and accurate method

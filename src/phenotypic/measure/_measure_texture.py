@@ -29,21 +29,6 @@ class MeasureTexture(MeasureFeatures):
     quantify surface roughness, regularity, and directional patterns
     that distinguish colony morphotypes.
 
-    Best For:
-        - Distinguishing smooth wild-type colonies from rough, wrinkled,
-          or sporulated mutants.
-        - Assessing mycelial organization in filamentous fungi (radial
-          vs cottony growth).
-        - Multi-feature phenotypic clustering when combined with size,
-          shape, and color measurements.
-
-    Consider Also:
-        - :class:`MeasureShape` for geometric morphology metrics
-          (circularity, Feret diameters) that complement texture.
-        - :class:`MeasureIntensity` for brightness statistics without
-          spatial co-occurrence information.
-        - :class:`MeasureColor` for pigmentation-based phenotyping.
-
     Args:
         scale: Pixel offset(s) for the co-occurrence matrix. A single
             integer or list of integers. Small values (1--2) capture fine
@@ -74,6 +59,21 @@ class MeasureTexture(MeasureFeatures):
         [1] R. M. Haralick, K. Shanmugam, and I. Dinstein, "Textural
         features for image classification," *IEEE Trans. Syst., Man,
         Cybern.*, vol. SMC-3, no. 6, pp. 610--621, Nov. 1973.
+
+    Best For:
+        - Distinguishing smooth wild-type colonies from rough, wrinkled,
+          or sporulated mutants.
+        - Assessing mycelial organization in filamentous fungi (radial
+          vs cottony growth).
+        - Multi-feature phenotypic clustering when combined with size,
+          shape, and color measurements.
+
+    Consider Also:
+        - :class:`MeasureShape` for geometric morphology metrics
+          (circularity, Feret diameters) that complement texture.
+        - :class:`MeasureIntensity` for brightness statistics without
+          spatial co-occurrence information.
+        - :class:`MeasureColor` for pigmentation-based phenotyping.
 
     See Also:
         :doc:`/tutorials/notebooks/07_measuring_and_exporting` for a

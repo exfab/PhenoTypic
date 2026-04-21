@@ -18,6 +18,15 @@ class SetDetectMode(ImageOperation):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
+    Args:
+        mode: Channel to use for the detection matrix. Accepted values:
+            ``'gray'`` (default), ``'red'``, ``'green'``, ``'blue'``,
+            ``'min_rgb'``.
+
+    Returns:
+        Image: Input image with ``detect_mode`` and ``detect_mat``
+        updated to the chosen channel.
+
     Best For:
         - Switching to a specific color channel (e.g., red) that provides
           better colony-background contrast.
@@ -29,15 +38,6 @@ class SetDetectMode(ImageOperation):
     Consider Also:
         - :class:`ImageInverter` when the issue is inverted polarity
           rather than channel selection.
-
-    Args:
-        mode: Channel to use for the detection matrix. Accepted values:
-            ``'gray'`` (default), ``'red'``, ``'green'``, ``'blue'``,
-            ``'min_rgb'``.
-
-    Returns:
-        Image: Input image with ``detect_mode`` and ``detect_mat``
-        updated to the chosen channel.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a

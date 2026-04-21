@@ -20,21 +20,6 @@ class BayesShrinkEnhancer(ImageEnhancer):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Images with spatially varying noise from uneven illumination.
-        - Preserving colony texture and internal morphology during denoising.
-        - Scanner noise and camera artifacts on plates where fine detail
-          matters for downstream measurement.
-        - Pre-filtering before feature extraction or texture analysis.
-
-    Consider Also:
-        - :class:`VisuShrinkEnhancer` for faster denoising with a universal
-          threshold when spatial noise uniformity is acceptable.
-        - :class:`BM3DDenoiser` for state-of-the-art denoising of structured
-          noise patterns.
-        - :class:`BilateralDenoise` for edge-preserving smoothing without
-          wavelet decomposition.
-
     Args:
         sigma: Noise standard deviation in [0, 1] scale. ``None`` (default)
             auto-estimates via MAD. Typical range: 0.01--0.05 for moderate
@@ -52,6 +37,21 @@ class BayesShrinkEnhancer(ImageEnhancer):
     Returns:
         Image: Input image with ``detect_mat`` denoised via adaptive wavelet
         thresholding. ``rgb`` and ``gray`` are unchanged.
+
+    Best For:
+        - Images with spatially varying noise from uneven illumination.
+        - Preserving colony texture and internal morphology during denoising.
+        - Scanner noise and camera artifacts on plates where fine detail
+          matters for downstream measurement.
+        - Pre-filtering before feature extraction or texture analysis.
+
+    Consider Also:
+        - :class:`VisuShrinkEnhancer` for faster denoising with a universal
+          threshold when spatial noise uniformity is acceptable.
+        - :class:`BM3DDenoiser` for state-of-the-art denoising of structured
+          noise patterns.
+        - :class:`BilateralDenoise` for edge-preserving smoothing without
+          wavelet decomposition.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a

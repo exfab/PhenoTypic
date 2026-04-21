@@ -18,6 +18,19 @@ class Skeletonize(ObjectRefiner):
     Useful for distilling colony morphology to its core branching structure
     for filament or spreading phenotype analysis.
 
+    Args:
+        method: Thinning algorithm. ``"zhang"`` is fast and optimized for
+            clean 2D masks. ``"lee"`` is more robust to noise and works on
+            2D/3D. ``None`` auto-selects based on dimensionality. Default:
+            None.
+
+    Returns:
+        Image: Input image with ``objmask`` replaced by the single-pixel-wide
+        skeleton.
+
+    Raises:
+        ValueError: If an invalid ``method`` is provided.
+
     Best For:
         - Extracting colony centerlines for elongation or orientation
           analysis.
@@ -34,19 +47,6 @@ class Skeletonize(ObjectRefiner):
           than medial axes.
         - :class:`MaskEroder` for uniform inward shrinking that preserves
           filled regions.
-
-    Args:
-        method: Thinning algorithm. ``"zhang"`` is fast and optimized for
-            clean 2D masks. ``"lee"`` is more robust to noise and works on
-            2D/3D. ``None`` auto-selects based on dimensionality. Default:
-            None.
-
-    Returns:
-        Image: Input image with ``objmask`` replaced by the single-pixel-wide
-        skeleton.
-
-    Raises:
-        ValueError: If an invalid ``method`` is provided.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for skeleton-based

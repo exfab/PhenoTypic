@@ -35,24 +35,6 @@ class InoculumDetector(ObjectDetector):
     that ``image.detect_mat`` is never modified. For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
 
-    Best For:
-        * Pin-tool inoculation on high-density plates (96-well, 384-well)
-          where inocula are 30--80 pixels in diameter.
-        * Spot-dilution assays producing 10--150 pixel inocula across
-          serial dilution series.
-        * Pre-growth phenotyping baselines (T=0 imaging) for establishing
-          reference coordinates before growth measurements.
-        * Liquid spotting assays where GMM core extraction refines
-          boundaries for accurate area and circularity measurements.
-
-    Consider Also:
-        * :class:`RoundPeaksDetector` when colonies (not inocula) must be
-          detected on a regular grid without multi-scale blob enhancement.
-        * :class:`OtsuDetector` when inocula are high-contrast and a simple
-          global threshold is sufficient.
-        * :class:`FilamentousFungiDetector` when inoculation sites have
-          developed into filamentous fungal growth.
-
     Args:
         min_diameter: Smallest expected inoculum diameter in pixels. Used
             to derive LoG minimum radius and GMM morphological parameters.
@@ -97,6 +79,24 @@ class InoculumDetector(ObjectDetector):
         ValueError: If detected object count exceeds grid capacity (when
             *validate_obj_count* is True and input is a GridImage), or if
             *min_diameter* >= *max_diameter*.
+
+    Best For:
+        * Pin-tool inoculation on high-density plates (96-well, 384-well)
+          where inocula are 30--80 pixels in diameter.
+        * Spot-dilution assays producing 10--150 pixel inocula across
+          serial dilution series.
+        * Pre-growth phenotyping baselines (T=0 imaging) for establishing
+          reference coordinates before growth measurements.
+        * Liquid spotting assays where GMM core extraction refines
+          boundaries for accurate area and circularity measurements.
+
+    Consider Also:
+        * :class:`RoundPeaksDetector` when colonies (not inocula) must be
+          detected on a regular grid without multi-scale blob enhancement.
+        * :class:`OtsuDetector` when inocula are high-contrast and a simple
+          global threshold is sufficient.
+        * :class:`FilamentousFungiDetector` when inoculation sites have
+          developed into filamentous fungal growth.
 
     See Also:
         :doc:`/tutorials/notebooks/02_detecting_colonies`

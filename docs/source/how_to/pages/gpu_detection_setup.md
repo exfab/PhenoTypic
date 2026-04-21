@@ -22,7 +22,7 @@ themselves; the recipe below uses `pixi` for that.
 On Linux or macOS:
 
 ```bash
-uv pip install "phenotypic[torch]"          # torch + torchvision + sam2
+uv add "phenotypic[torch]"          # torch + torchvision + sam2
 # or, inside a uv-managed project:
 uv sync --extra torch
 ```
@@ -351,7 +351,7 @@ python -m phenotypic.nn clear --model-type microsam
 PyTorch and the model packages are not installed. Install the `torch` extra:
 
 ```bash
-uv pip install "phenotypic[torch]"
+uv add "phenotypic[torch]"
 ```
 
 (Linux/macOS only — `sam2` is not packaged for Windows.)

@@ -20,19 +20,6 @@ class GaussianBlur(ImageEnhancer):
     For a comparison of denoising approaches, see
     :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Plates with visible scanner noise or agar granularity.
-        - Pre-filtering before edge-based detectors (Sobel, Canny).
-        - Quick preprocessing when speed matters more than edge preservation.
-
-    Consider Also:
-        - :class:`MedianFilter` when salt-and-pepper noise dominates and edge
-          preservation is important.
-        - :class:`BilateralDenoise` for smoothing within regions while keeping
-          colony boundaries sharp.
-        - :class:`StableDenoise` for highest-quality BM3D denoising on critical
-          experiments.
-
     Args:
         sigma: Standard deviation of the Gaussian kernel in pixels. Controls
             blur strength. Typical range: 0.5--5.0. Keep below the smallest
@@ -49,6 +36,19 @@ class GaussianBlur(ImageEnhancer):
 
     Raises:
         ValueError: If ``mode`` is not one of the accepted values.
+
+    Best For:
+        - Plates with visible scanner noise or agar granularity.
+        - Pre-filtering before edge-based detectors (Sobel, Canny).
+        - Quick preprocessing when speed matters more than edge preservation.
+
+    Consider Also:
+        - :class:`MedianFilter` when salt-and-pepper noise dominates and edge
+          preservation is important.
+        - :class:`BilateralDenoise` for smoothing within regions while keeping
+          colony boundaries sharp.
+        - :class:`StableDenoise` for highest-quality BM3D denoising on critical
+          experiments.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a

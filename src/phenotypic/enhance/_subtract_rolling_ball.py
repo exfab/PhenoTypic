@@ -22,6 +22,19 @@ class SubtractRollingBall(ImageEnhancer):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
+    Args:
+        radius: Rolling-ball radius in pixels. Must be larger than the
+            typical colony diameter to avoid subtracting colony signal.
+            Typical range: 50--200. Default: 100.
+        kernel: Optional custom ball/shape array. When provided, overrides
+            ``radius``. Default: ``None``.
+        nansafe: If ``True``, treat NaNs as missing data to avoid artifacts
+            when using masked images. Default: ``False``.
+
+    Returns:
+        Image: Input image with ``detect_mat`` background-subtracted.
+        ``rgb`` and ``gray`` are unchanged.
+
     Best For:
         - Scanner vignetting, lid glare, or agar thickness variations.
         - Flattening backgrounds to improve segmentation of dark colonies
@@ -36,19 +49,6 @@ class SubtractRollingBall(ImageEnhancer):
           background removal in high-throughput pipelines.
         - :class:`WhiteTophatEnhance` when you want to isolate small
           bright structures rather than subtract background.
-
-    Args:
-        radius: Rolling-ball radius in pixels. Must be larger than the
-            typical colony diameter to avoid subtracting colony signal.
-            Typical range: 50--200. Default: 100.
-        kernel: Optional custom ball/shape array. When provided, overrides
-            ``radius``. Default: ``None``.
-        nansafe: If ``True``, treat NaNs as missing data to avoid artifacts
-            when using masked images. Default: ``False``.
-
-    Returns:
-        Image: Input image with ``detect_mat`` background-subtracted.
-        ``rgb`` and ``gray`` are unchanged.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a

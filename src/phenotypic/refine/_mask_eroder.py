@@ -19,6 +19,15 @@ class MaskEroder(ObjectRefiner, FootprintMixin):
     whiskers, isolated specks, and uncertain boundary pixels from soft
     edges. Leaves the core colony structure intact.
 
+    Args:
+        shape: Structuring element. ``'auto'``, ``'disk'``, ``'square'``,
+            ``'diamond'``, or custom ndarray. Default: ``None``.
+        width: Footprint width in pixels. Default: 3.
+        n_iter: Number of erosion iterations. Default: 1.
+
+    Returns:
+        Image: Input image with ``objmask`` and ``objmap`` eroded.
+
     Best For:
         - Removing thin protrusions or whiskers from colony edges.
         - Eliminating noise specks that survived previous cleanup.
@@ -31,15 +40,6 @@ class MaskEroder(ObjectRefiner, FootprintMixin):
           features without permanently shrinking colonies.
         - :class:`SmallObjectRemover` for removing small objects by area
           rather than shrinking all objects.
-
-    Args:
-        shape: Structuring element. ``'auto'``, ``'disk'``, ``'square'``,
-            ``'diamond'``, or custom ndarray. Default: ``None``.
-        width: Footprint width in pixels. Default: 3.
-        n_iter: Number of erosion iterations. Default: 1.
-
-    Returns:
-        Image: Input image with ``objmask`` and ``objmap`` eroded.
 
     See Also:
         :doc:`/explanation/refinement_strategies` for the recommended

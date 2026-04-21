@@ -23,19 +23,6 @@ class HomomorphicFilter(ImageEnhancer):
     For how enhancement fits into the pipeline, see
     :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Plates with visible vignetting or radial brightness falloff.
-        - Flatbed scanner images with horizontal brightness bands.
-        - Uneven agar thickness causing variable background brightness.
-        - Pre-conditioning before global thresholding on unevenly lit plates.
-
-    Consider Also:
-        - :class:`SubtractGaussian` for a simpler spatial-domain background
-          subtraction when the gradient is smooth.
-        - :class:`CLAHE` when the problem is local contrast rather than
-          large-scale illumination.
-        - :class:`SubtractRollingBall` for morphological background estimation.
-
     Args:
         sigma: Gaussian sigma for illumination/reflectance cutoff. Controls
             the spatial scale of the estimated illumination field. Must be
@@ -56,6 +43,19 @@ class HomomorphicFilter(ImageEnhancer):
 
     Raises:
         ValueError: If ``sigma`` is not positive.
+
+    Best For:
+        - Plates with visible vignetting or radial brightness falloff.
+        - Flatbed scanner images with horizontal brightness bands.
+        - Uneven agar thickness causing variable background brightness.
+        - Pre-conditioning before global thresholding on unevenly lit plates.
+
+    Consider Also:
+        - :class:`SubtractGaussian` for a simpler spatial-domain background
+          subtraction when the gradient is smooth.
+        - :class:`CLAHE` when the problem is local contrast rather than
+          large-scale illumination.
+        - :class:`SubtractRollingBall` for morphological background estimation.
 
     See Also:
         :doc:`/how_to/notebooks/enhance_low_contrast` for a comparison of

@@ -19,16 +19,6 @@ class ContrastStretching(ImageEnhancer):
     where colony intensities reside. Simpler and faster than CLAHE, with no
     local tile artifacts.
 
-    Best For:
-        - Plates with narrow histograms (under-exposed or low-contrast).
-        - Normalizing exposure across different imaging sessions.
-        - Quick preprocessing before global thresholding (Otsu, Triangle).
-
-    Consider Also:
-        - :class:`CLAHE` when illumination varies spatially across the plate.
-        - :class:`HomomorphicFilter` when the primary issue is a brightness
-          gradient rather than narrow dynamic range.
-
     Args:
         lower_percentile: Dark clipping point. Pixels below this percentile
             are mapped to the minimum. Typical range: 1--5. Default: 2.
@@ -38,6 +28,16 @@ class ContrastStretching(ImageEnhancer):
     Returns:
         Image: Input image with ``detect_mat`` rescaled to the full dynamic
         range. ``rgb`` and ``gray`` are unchanged.
+
+    Best For:
+        - Plates with narrow histograms (under-exposed or low-contrast).
+        - Normalizing exposure across different imaging sessions.
+        - Quick preprocessing before global thresholding (Otsu, Triangle).
+
+    Consider Also:
+        - :class:`CLAHE` when illumination varies spatially across the plate.
+        - :class:`HomomorphicFilter` when the primary issue is a brightness
+          gradient rather than narrow dynamic range.
 
     See Also:
         :doc:`/how_to/notebooks/enhance_low_contrast` for a comparison of

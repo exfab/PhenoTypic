@@ -16,16 +16,6 @@ class ImageCropper(ImageCorrector):
     together. When applied to a GridImage, the grid structure is preserved
     and grid positions are recalculated for the cropped dimensions.
 
-    Best For:
-        - Removing scanner margins or borders outside the agar plate.
-        - Eliminating edge artifacts (bent agar, labeling, moisture).
-        - Standardizing image dimensions across a batch of plates.
-
-    Consider Also:
-        - :class:`ImagePadder` for adding pixels instead of removing them.
-        - :class:`BorderObjectRemover` for removing edge-touching colonies
-          without changing image dimensions.
-
     Args:
         left: Pixels to remove from the left edge. ``None`` means no
             cropping. Default: ``None``.
@@ -36,6 +26,16 @@ class ImageCropper(ImageCorrector):
     Returns:
         Image: Input image with all components cropped to the specified
         margins.
+
+    Best For:
+        - Removing scanner margins or borders outside the agar plate.
+        - Eliminating edge artifacts (bent agar, labeling, moisture).
+        - Standardizing image dimensions across a batch of plates.
+
+    Consider Also:
+        - :class:`ImagePadder` for adding pixels instead of removing them.
+        - :class:`BorderObjectRemover` for removing edge-touching colonies
+          without changing image dimensions.
 
     See Also:
         :doc:`/how_to/notebooks/crop_and_pad` for a visual walkthrough of

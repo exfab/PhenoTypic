@@ -26,21 +26,6 @@ class StableDenoise(ImageCorrector):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Low-light or high-ISO plate images with photon-counting
-          (Poisson-Gaussian) noise.
-        - Improving intensity measurement accuracy before colony size
-          or opacity quantification.
-        - CCD/CMOS scanned plates where mixed noise models apply.
-
-    Consider Also:
-        - :class:`BayesShrinkCorrector` when all components (including
-          RGB) need denoising simultaneously.
-        - :class:`BM3DDenoiser` for enhancer-only BM3D on the detection
-          matrix without modifying grayscale.
-        - :class:`VisuShrinkCorrector` for a faster wavelet-based
-          alternative when Poisson noise modelling is not required.
-
     Args:
         block_size: BM3D patch side length in pixels. Larger values
             capture more context but increase computation. Default: ``8``.
@@ -64,6 +49,21 @@ class StableDenoise(ImageCorrector):
         ValueError: If ``gain`` is not positive, ``sigma`` is negative,
             ``scale_factor`` is not positive, or ``stage_arg`` is not a
             recognized value.
+
+    Best For:
+        - Low-light or high-ISO plate images with photon-counting
+          (Poisson-Gaussian) noise.
+        - Improving intensity measurement accuracy before colony size
+          or opacity quantification.
+        - CCD/CMOS scanned plates where mixed noise models apply.
+
+    Consider Also:
+        - :class:`BayesShrinkCorrector` when all components (including
+          RGB) need denoising simultaneously.
+        - :class:`BM3DDenoiser` for enhancer-only BM3D on the detection
+          matrix without modifying grayscale.
+        - :class:`VisuShrinkCorrector` for a faster wavelet-based
+          alternative when Poisson noise modelling is not required.
 
     References:
         [1] M. Makitalo and A. Foi, "Optimal inversion of the

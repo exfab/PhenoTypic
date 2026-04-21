@@ -22,24 +22,6 @@ class GMMCoreExtractor(ObjectRefiner):
 
     For algorithm details, see :doc:`/explanation/refinement_strategies`.
 
-    Best For:
-        - Rich media plates (YPD, LB) where colonies develop dense bright
-          centers with obvious halos.
-        - Pinned-array inoculation where sharp bright cores need to be
-          isolated from thin outgrowth.
-        - High-density plates (96-well, 384-well) where core extraction
-          reduces inter-well spillover.
-        - Pre-measurement cleanup to ensure features reflect the primary
-          growth mass rather than diffusion halos.
-
-    Consider Also:
-        - :class:`MaskEroder` for uniform inward shrinking when cores are
-          not intensity-distinct from halos.
-        - :class:`WhiteTophat` for removing small bright artifacts without
-          full core extraction.
-        - :class:`LowCircularityRemover` for shape-based filtering when
-          halos distort circularity measurements.
-
     Args:
         n_components: Number of Gaussian components per region. Keep at 2
             for canonical core-vs-surround splitting; higher values risk
@@ -62,6 +44,24 @@ class GMMCoreExtractor(ObjectRefiner):
     Raises:
         ValueError: If ``n_components`` is not a positive integer or if
             ``separation_threshold`` is negative.
+
+    Best For:
+        - Rich media plates (YPD, LB) where colonies develop dense bright
+          centers with obvious halos.
+        - Pinned-array inoculation where sharp bright cores need to be
+          isolated from thin outgrowth.
+        - High-density plates (96-well, 384-well) where core extraction
+          reduces inter-well spillover.
+        - Pre-measurement cleanup to ensure features reflect the primary
+          growth mass rather than diffusion halos.
+
+    Consider Also:
+        - :class:`MaskEroder` for uniform inward shrinking when cores are
+          not intensity-distinct from halos.
+        - :class:`WhiteTophat` for removing small bright artifacts without
+          full core extraction.
+        - :class:`LowCircularityRemover` for shape-based filtering when
+          halos distort circularity measurements.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for core

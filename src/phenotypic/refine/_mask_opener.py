@@ -21,6 +21,18 @@ class MaskOpener(ObjectRefiner, FootprintMixin):
     artifacts become separated without significantly shrinking well-formed
     colony masks.
 
+    Args:
+        shape: Structuring element. ``'auto'`` selects based on detected
+            objects. ``'diamond'``, ``'square'``, ``'disk'``, or a custom
+            ndarray. Default: ``None``.
+        width: Size of the structuring element in pixels. Larger values
+            smooth more aggressively. Typical range: 3--9. Default: 5.
+        n_iter: Number of opening iterations. Default: 1.
+
+    Returns:
+        Image: Input image with ``objmask`` and ``objmap`` morphologically
+        opened.
+
     Best For:
         - Splitting colonies connected by 1--2 pixel bridges after thresholding.
         - Removing tiny noise specks from the detection mask.
@@ -33,18 +45,6 @@ class MaskOpener(ObjectRefiner, FootprintMixin):
           rather than morphology.
         - :class:`SeparateObjects` for splitting merged colonies using
           watershed-based separation.
-
-    Args:
-        shape: Structuring element. ``'auto'`` selects based on detected
-            objects. ``'diamond'``, ``'square'``, ``'disk'``, or a custom
-            ndarray. Default: ``None``.
-        width: Size of the structuring element in pixels. Larger values
-            smooth more aggressively. Typical range: 3--9. Default: 5.
-        n_iter: Number of opening iterations. Default: 1.
-
-    Returns:
-        Image: Input image with ``objmask`` and ``objmap`` morphologically
-        opened.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough

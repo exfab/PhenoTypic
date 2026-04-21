@@ -20,6 +20,10 @@ class GridOversizedObjectRemover(GridObjectRefiner):
     colonies, agar rim intrusions, and segmentation spillover that span
     entire grid cells.
 
+    Returns:
+        Image: Input image with ``objmap`` and ``objmask`` updated to exclude
+        objects exceeding the grid cell size.
+
     Best For:
         - Dropping merged blobs that span adjacent grid positions.
         - Removing strong edge artifacts near the plate rim that intrude
@@ -34,10 +38,6 @@ class GridOversizedObjectRemover(GridObjectRefiner):
           selection.
         - :class:`SmallObjectRemover` when the problem is undersized debris
           rather than oversized detections.
-
-    Returns:
-        Image: Input image with ``objmap`` and ``objmask`` updated to exclude
-        objects exceeding the grid cell size.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based

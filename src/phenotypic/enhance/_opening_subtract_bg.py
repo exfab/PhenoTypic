@@ -22,6 +22,21 @@ class OpeningSubtractBg(ImageEnhancer, FootprintMixin):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
+    Args:
+        shape: Structuring element geometry. ``'disk'`` (default) gives
+            isotropic removal suited to round colonies; ``'square'`` is
+            fastest; ``'diamond'`` is a compromise.
+        width: Diameter of the structuring element in pixels. Must be
+            larger than colony diameter to avoid subtracting colony
+            signal. Typical range: 31--101. Default: 51.
+        n_iter: Number of morphological iterations. Higher values
+            intensify background removal. Default: 1.
+
+    Returns:
+        Image: Input image with ``detect_mat`` containing only foreground
+        structures smaller than the structuring element. ``rgb`` and
+        ``gray`` are unchanged.
+
     Best For:
         - Fast background subtraction for high-throughput plate screening.
         - Removing uneven illumination gradients and agar shading before
@@ -37,21 +52,6 @@ class OpeningSubtractBg(ImageEnhancer, FootprintMixin):
           subtraction with continuous control over the background scale.
         - :class:`WhiteTophatEnhance` when you want to keep only the
           extracted small bright structures.
-
-    Args:
-        shape: Structuring element geometry. ``'disk'`` (default) gives
-            isotropic removal suited to round colonies; ``'square'`` is
-            fastest; ``'diamond'`` is a compromise.
-        width: Diameter of the structuring element in pixels. Must be
-            larger than colony diameter to avoid subtracting colony
-            signal. Typical range: 31--101. Default: 51.
-        n_iter: Number of morphological iterations. Higher values
-            intensify background removal. Default: 1.
-
-    Returns:
-        Image: Input image with ``detect_mat`` containing only foreground
-        structures smaller than the structuring element. ``rgb`` and
-        ``gray`` are unchanged.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a

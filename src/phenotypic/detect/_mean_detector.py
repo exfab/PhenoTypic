@@ -20,23 +20,6 @@ class MeanDetector(ThresholdDetector):
     produce unexpected results. For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
 
-    Best For:
-        * Quick baseline detection requiring no parameter tuning.
-        * Sanity-checking preprocessing steps before applying a more
-          specialised detector.
-        * Plates where colony and background areas are roughly equal in
-          size.
-        * Debugging pipelines where a simple, predictable threshold is
-          needed.
-
-    Consider Also:
-        * :class:`OtsuDetector` for a statistically optimal threshold that
-          adapts to the histogram shape.
-        * :class:`TriangleDetector` when colonies are sparse and the
-          histogram is strongly skewed toward background.
-        * :class:`IsodataDetector` for an iterative refinement that
-          converges beyond the simple mean.
-
     Args:
         ignore_zeros: Exclude zero-intensity pixels from threshold
             computation. Enable for plates with black borders or masked
@@ -54,6 +37,23 @@ class MeanDetector(ThresholdDetector):
     Raises:
         ValueError: If threshold computation fails (e.g., all pixels share
             the same intensity value).
+
+    Best For:
+        * Quick baseline detection requiring no parameter tuning.
+        * Sanity-checking preprocessing steps before applying a more
+          specialised detector.
+        * Plates where colony and background areas are roughly equal in
+          size.
+        * Debugging pipelines where a simple, predictable threshold is
+          needed.
+
+    Consider Also:
+        * :class:`OtsuDetector` for a statistically optimal threshold that
+          adapts to the histogram shape.
+        * :class:`TriangleDetector` when colonies are sparse and the
+          histogram is strongly skewed toward background.
+        * :class:`IsodataDetector` for an iterative refinement that
+          converges beyond the simple mean.
 
     See Also:
         :doc:`/tutorials/notebooks/02_detecting_colonies`

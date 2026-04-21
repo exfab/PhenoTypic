@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from itertools import cycle
 from typing import TYPE_CHECKING, Tuple
 
 import matplotlib.pyplot as plt
@@ -509,31 +508,36 @@ class AccessorMplHandler(AccessorIOHandler):
         )
 
     def _add_section_boxes(self, ax: plt.Axes) -> None:
-        """Add colored bounding boxes around grid sections.
+        """Add colored bounding boxes hugging objects in each grid section.
 
-        Draws colored rectangle patches around each grid section using
-        the tab20 colormap. Computes bounds directly from grid edges.
+        Draws colored rectangle patches around the union bounding box of
+        the objects assigned to each grid section, using the tab20
+        colormap. Empty sections (no detected objects) are skipped.
+        Color-to-section mapping is stable across redraws because colors
+        are indexed by the flattened section slot.
 
         Args:
             ax: Matplotlib axes to draw section boxes on.
         """
-        col_edges = self._root_image.grid.get_col_edges()  # type: ignore[attr-defined]
-        row_edges = self._root_image.grid.get_row_edges()  # type: ignore[attr-defined]
+        min_rr, max_rr, min_cc, max_cc = (
+            self._root_image.grid._get_section_object_bounds_arrays()  # type: ignore[attr-defined]
+        )
 
-        if len(col_edges) < 2 or len(row_edges) < 2:
+        if min_rr.size == 0:
             return
 
         cmap = plt.get_cmap("tab20")
-        cmap_cycle = cycle(cmap(i) for i in range(cmap.N))
+        palette = [cmap(i) for i in range(cmap.N)]
 
-        for r in range(len(row_edges) - 1):
-            for c in range(len(col_edges) - 1):
-                ax.add_patch(
-                    Rectangle(
-                        (float(col_edges[c]), float(row_edges[r])),
-                        width=float(col_edges[c + 1] - col_edges[c]),
-                        height=float(row_edges[r + 1] - row_edges[r]),
-                        edgecolor=next(cmap_cycle),
-                        facecolor="none",
-                    ),
-                )
+        for i in range(len(min_rr)):
+            if np.isnan(min_rr[i]):
+                continue
+            ax.add_patch(
+                Rectangle(
+                    (float(min_cc[i]), float(min_rr[i])),
+                    width=float(max_cc[i] - min_cc[i]),
+                    height=float(max_rr[i] - min_rr[i]),
+                    edgecolor=palette[i % len(palette)],
+                    facecolor="none",
+                ),
+            )

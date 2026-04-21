@@ -35,13 +35,13 @@ to integrate new tools.
 **Regular Install** (recommended when deploying on a cluster)
 
 ```bash
-uv pip install phenotypic
+uv add phenotypic
 ```
 
 **Interactive / GUI Install** (napari viewer, Panel dashboards, Jupyter)
 
 ```bash
-uv pip install "phenotypic[gui]"
+uv add "phenotypic[gui]"
 ```
 
 ## Pip
@@ -88,7 +88,7 @@ PhenoTypic ships optional deep-learning detectors backed by Meta's
 * **SAM2** is available on PyPI and ships in the `torch` extra:
 
   ```bash
-  uv pip install "phenotypic[torch]"   # Linux/macOS only
+  uv add "phenotypic[torch]"   # Linux/macOS only
   ```
 
 * **micro-sam** is only published on conda-forge (not PyPI), so it is

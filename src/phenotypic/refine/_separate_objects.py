@@ -27,6 +27,20 @@ class SeparateObjects(ObjectRefiner):
     minimum distance spacing. Effectively individualizes colonies that
     were merged by thresholding.
 
+    Args:
+        min_distance: Minimum pixel distance between peaks for regular
+            Images. Ignored for GridImages (one peak per cell). Typical
+            range: 5--50. Higher values reduce over-segmentation; lower
+            values detect more peaks. Default: 10.
+
+    Returns:
+        Image: Input image with ``objmap`` refined so that touching colonies
+        are separated into distinct labeled regions.
+
+    Raises:
+        ValueError: If no peaks are detected or the image lacks detection
+            results.
+
     Best For:
         - GridImage plates (96-well, 384-well, pinned cultures) where
           touching colonies need individualization.
@@ -44,20 +58,6 @@ class SeparateObjects(ObjectRefiner):
           separate touching edges.
         - :class:`GridAlignmentRefiner` when off-grid artifacts are the
           main concern rather than merged colonies.
-
-    Args:
-        min_distance: Minimum pixel distance between peaks for regular
-            Images. Ignored for GridImages (one peak per cell). Typical
-            range: 5--50. Higher values reduce over-segmentation; lower
-            values detect more peaks. Default: 10.
-
-    Returns:
-        Image: Input image with ``objmap`` refined so that touching colonies
-        are separated into distinct labeled regions.
-
-    Raises:
-        ValueError: If no peaks are detected or the image lacks detection
-            results.
 
     See Also:
         :doc:`/how_to/notebooks/merge_fragmented_detections` for separation

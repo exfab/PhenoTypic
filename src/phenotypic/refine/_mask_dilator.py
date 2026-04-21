@@ -20,6 +20,14 @@ class MaskDilator(ObjectRefiner, FootprintMixin):
     thresholding. Dilation inflates area; follow with erosion (closing)
     if area accuracy is critical.
 
+    Args:
+        shape: Structuring element. ``'auto'``, ``'disk'``, ``'square'``,
+            ``'diamond'``, or custom ndarray. Default: ``None``.
+        width: Footprint width in pixels. Default: 3.
+
+    Returns:
+        Image: Input image with ``objmask`` and ``objmap`` dilated.
+
     Best For:
         - Bridging thin gaps between fragments of the same colony.
         - Recovering faint colony halos near detection boundaries.
@@ -30,14 +38,6 @@ class MaskDilator(ObjectRefiner, FootprintMixin):
           without inflating colony size.
         - :class:`MaskEroder` for the opposite effect — shrinking masks
           to remove thin protrusions.
-
-    Args:
-        shape: Structuring element. ``'auto'``, ``'disk'``, ``'square'``,
-            ``'diamond'``, or custom ndarray. Default: ``None``.
-        width: Footprint width in pixels. Default: 3.
-
-    Returns:
-        Image: Input image with ``objmask`` and ``objmap`` dilated.
 
     See Also:
         :doc:`/explanation/refinement_strategies` for the recommended

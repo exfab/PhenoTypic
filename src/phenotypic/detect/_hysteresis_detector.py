@@ -31,24 +31,6 @@ class HysteresisDetector(ThresholdDetector):
     stages and under uneven illumination. For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
 
-    Best For:
-        * Plates where colony brightness varies (e.g., young versus mature
-          growth, or centre-to-edge intensity gradients within a colony).
-        * Noisy agar backgrounds where isolated noise pixels sit above a
-          single threshold but lack connectivity to true colony regions.
-        * Moderate vignetting or lighting gradients that cause a single
-          global threshold to over- or under-segment parts of the plate.
-        * Mixed-species plates where different organisms produce colonies of
-          different intensities on the same agar.
-
-    Consider Also:
-        * :class:`OtsuDetector` when colony and background peaks are balanced
-          and a single threshold suffices.
-        * :class:`WatershedDetector` when touching colonies must be split
-          into individually labelled regions.
-        * :class:`CannyDetector` when colonies are best delineated by edge
-          contrast rather than intensity.
-
     Args:
         low: Lower threshold controlling expansion sensitivity. Accepts a
             method name (``'otsu'``, ``'triangle'``, ``'li'``, ``'yen'``,
@@ -81,6 +63,24 @@ class HysteresisDetector(ThresholdDetector):
         ValueError: If the computed high threshold is less than the computed
             low threshold, or if an unrecognised threshold method name is
             provided.
+
+    Best For:
+        * Plates where colony brightness varies (e.g., young versus mature
+          growth, or centre-to-edge intensity gradients within a colony).
+        * Noisy agar backgrounds where isolated noise pixels sit above a
+          single threshold but lack connectivity to true colony regions.
+        * Moderate vignetting or lighting gradients that cause a single
+          global threshold to over- or under-segment parts of the plate.
+        * Mixed-species plates where different organisms produce colonies of
+          different intensities on the same agar.
+
+    Consider Also:
+        * :class:`OtsuDetector` when colony and background peaks are balanced
+          and a single threshold suffices.
+        * :class:`WatershedDetector` when touching colonies must be split
+          into individually labelled regions.
+        * :class:`CannyDetector` when colonies are best delineated by edge
+          contrast rather than intensity.
 
     See Also:
         :doc:`/tutorials/notebooks/02_detecting_colonies`

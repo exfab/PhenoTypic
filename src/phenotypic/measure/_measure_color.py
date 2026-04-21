@@ -25,22 +25,6 @@ class MeasureColor(MeasureFeatures):
     median, Q3, max, std dev, coefficient of variation), plus Lab chroma
     estimates.
 
-    Best For:
-        - Distinguishing pigmented colonies (carotenoid, melanin) from
-          colorless ones to stratify phenotypes by pigmentation profile.
-        - Detecting sectoring and growth heterogeneity via high
-          within-colony color variance.
-        - Cross-plate comparison of colony pigmentation using
-          perceptually uniform Lab distances.
-
-    Consider Also:
-        - :class:`MeasureIntensity` for grayscale-only brightness and
-          variability statistics.
-        - :class:`MeasureColorComposition` for proportion-based color
-          classification of colony pixels.
-        - :class:`MeasureTexture` for surface-roughness features that
-          complement color metrics.
-
     Args:
         white_chroma_max: Lab chroma threshold below which a colony is
             classified as achromatic (white). Default: ``4.0``.
@@ -58,6 +42,22 @@ class MeasureColor(MeasureFeatures):
             - ColorHSV (Hue, Saturation, Brightness).
             - Each channel has Min, Q1, Mean, Median, Q3, Max, StdDev,
               CoeffVar sub-columns.
+
+    Best For:
+        - Distinguishing pigmented colonies (carotenoid, melanin) from
+          colorless ones to stratify phenotypes by pigmentation profile.
+        - Detecting sectoring and growth heterogeneity via high
+          within-colony color variance.
+        - Cross-plate comparison of colony pigmentation using
+          perceptually uniform Lab distances.
+
+    Consider Also:
+        - :class:`MeasureIntensity` for grayscale-only brightness and
+          variability statistics.
+        - :class:`MeasureColorComposition` for proportion-based color
+          classification of colony pixels.
+        - :class:`MeasureTexture` for surface-roughness features that
+          complement color metrics.
 
     See Also:
         :doc:`/tutorials/notebooks/07_measuring_and_exporting` for a

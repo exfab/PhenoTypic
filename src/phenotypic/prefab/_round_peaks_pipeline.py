@@ -26,25 +26,6 @@ class RoundPeaksPipeline(PrefabPipeline):
 
     Measurements: MeasureShape, MeasureIntensity, MeasureTexture, MeasureColor.
 
-    Best For:
-        - Well-separated round colonies on grid plates.
-        - High-throughput screening where speed matters.
-        - Plates with consistent colony sizes and regular spacing.
-        - Quick prototyping before switching to a heavier pipeline.
-
-    Consider Also:
-        - :class:`HeavyRoundPeaksPipeline` when additional refinement stages
-          are needed for cleaner results.
-        - :class:`HeavyOtsuPipeline` for general-purpose detection with more
-          robust preprocessing.
-        - :class:`FilamentousFungiPipeline` for filamentous organisms.
-
-    See Also:
-        :doc:`/tutorials/notebooks/08_using_prefab_pipelines` for a visual
-        comparison of prefab pipelines.
-        :doc:`/explanation/prefab_pipelines_guide` for guidance on choosing
-        a prefab pipeline.
-
     Args:
         blur_sigma: Gaussian blur sigma. Typical range: 1--5. Default: 5.
         blur_mode: Boundary handling (``'reflect'``, ``'constant'``,
@@ -77,6 +58,25 @@ class RoundPeaksPipeline(PrefabPipeline):
             Default: ``False``.
         benchmark: Enable per-step timing. Default: ``False``.
         verbose: Enable verbose logging. Default: ``False``.
+
+    Best For:
+        - Well-separated round colonies on grid plates.
+        - High-throughput screening where speed matters.
+        - Plates with consistent colony sizes and regular spacing.
+        - Quick prototyping before switching to a heavier pipeline.
+
+    Consider Also:
+        - :class:`HeavyRoundPeaksPipeline` when additional refinement stages
+          are needed for cleaner results.
+        - :class:`HeavyOtsuPipeline` for general-purpose detection with more
+          robust preprocessing.
+        - :class:`FilamentousFungiPipeline` for filamentous organisms.
+
+    See Also:
+        :doc:`/tutorials/notebooks/08_using_prefab_pipelines` for a visual
+        comparison of prefab pipelines.
+        :doc:`/explanation/prefab_pipelines_guide` for guidance on choosing
+        a prefab pipeline.
     """
 
     def __init__(

@@ -19,25 +19,6 @@ class ManualDetector(ThresholdDetector):
     specific imaging setup. For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
 
-    Best For:
-        * Standardised imaging setups where the optimal threshold has been
-          determined empirically and remains stable across plates.
-        * Overriding automatic methods (Otsu, triangle, etc.) that
-          consistently over- or under-segment on a particular plate type.
-        * High-contrast plates where colonies are uniformly bright or dark
-          relative to background and a single cutoff cleanly separates
-          foreground from background.
-        * Reproducibility-critical workflows where a fixed numeric threshold
-          eliminates variability introduced by automatic selection.
-
-    Consider Also:
-        * :class:`OtsuDetector` when an automatic, parameter-free threshold
-          is preferred and the histogram is bimodal.
-        * :class:`HysteresisDetector` when colony intensity varies across
-          the plate and a single threshold cannot capture all colonies.
-        * :class:`TriangleDetector` when colonies are sparse and the
-          histogram is skewed toward background.
-
     Args:
         threshold: Intensity cutoff for binary segmentation. Pixels with
             intensity >= *threshold* become colony (True), others become
@@ -62,6 +43,25 @@ class ManualDetector(ThresholdDetector):
 
     Raises:
         ValueError: If *threshold* is negative.
+
+    Best For:
+        * Standardised imaging setups where the optimal threshold has been
+          determined empirically and remains stable across plates.
+        * Overriding automatic methods (Otsu, triangle, etc.) that
+          consistently over- or under-segment on a particular plate type.
+        * High-contrast plates where colonies are uniformly bright or dark
+          relative to background and a single cutoff cleanly separates
+          foreground from background.
+        * Reproducibility-critical workflows where a fixed numeric threshold
+          eliminates variability introduced by automatic selection.
+
+    Consider Also:
+        * :class:`OtsuDetector` when an automatic, parameter-free threshold
+          is preferred and the histogram is bimodal.
+        * :class:`HysteresisDetector` when colony intensity varies across
+          the plate and a single threshold cannot capture all colonies.
+        * :class:`TriangleDetector` when colonies are sparse and the
+          histogram is skewed toward background.
 
     See Also:
         :doc:`/tutorials/notebooks/02_detecting_colonies`

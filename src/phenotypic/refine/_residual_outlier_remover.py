@@ -20,21 +20,6 @@ class ResidualOutlierRemover(GridObjectRefiner):
     variance above threshold), and removes objects whose residual error
     exceeds an IQR-based cutoff within those noisy lines.
 
-    Best For:
-        - Cleaning rows or columns with off-grid detections from condensation,
-          glare, or debris before measuring growth.
-        - Stabilizing grid registration when a subset of positions is noisy.
-        - Plates where most grid lines are well-aligned but a few contain
-          spurious artifacts.
-
-    Consider Also:
-        - :class:`ReduceMultipleGridObjects` for reducing multi-detections to
-          one per cell rather than pruning outliers within rows/columns.
-        - :class:`GridAlignmentRefiner` for full grid-aware filtering using
-          dominant-object-per-cell selection.
-        - :class:`GridOversizedObjectRemover` when the problem is oversized
-          detections rather than positional outliers.
-
     Args:
         axis: Axis to analyze. ``None`` analyzes both rows and columns,
             ``0`` rows only, ``1`` columns only. Restricting the axis
@@ -50,6 +35,21 @@ class ResidualOutlierRemover(GridObjectRefiner):
     Returns:
         Image: Input image with ``objmap`` and ``objmask`` updated to exclude
         positional outliers from noisy grid rows/columns.
+
+    Best For:
+        - Cleaning rows or columns with off-grid detections from condensation,
+          glare, or debris before measuring growth.
+        - Stabilizing grid registration when a subset of positions is noisy.
+        - Plates where most grid lines are well-aligned but a few contain
+          spurious artifacts.
+
+    Consider Also:
+        - :class:`ReduceMultipleGridObjects` for reducing multi-detections to
+          one per cell rather than pruning outliers within rows/columns.
+        - :class:`GridAlignmentRefiner` for full grid-aware filtering using
+          dominant-object-per-cell selection.
+        - :class:`GridOversizedObjectRemover` when the problem is oversized
+          detections rather than positional outliers.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based

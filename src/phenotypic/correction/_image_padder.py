@@ -21,20 +21,6 @@ class ImagePadder(ImageCorrector):
 
     For usage context, see :doc:`/how_to/notebooks/crop_and_pad`.
 
-    Best For:
-        - Adding safety margins before rotation so corner colonies are
-          not clipped.
-        - Standardizing image dimensions across a batch for pipelines
-          that require uniform size.
-        - Creating border space when colonies grow near plate edges,
-          improving grid detection accuracy.
-
-    Consider Also:
-        - :class:`ImageCropper` when the image needs to be reduced rather
-          than extended.
-        - :class:`GridAligner` for correcting plate rotation after
-          padding.
-
     Args:
         left: Pixels to add on the left edge. ``None`` means no padding.
             Typical range: 50--200. Default: ``None``.
@@ -60,6 +46,20 @@ class ImagePadder(ImageCorrector):
     Raises:
         ValueError: If any padding value is negative.
         ValueError: If ``mode`` is not a valid ``np.pad`` mode.
+
+    Best For:
+        - Adding safety margins before rotation so corner colonies are
+          not clipped.
+        - Standardizing image dimensions across a batch for pipelines
+          that require uniform size.
+        - Creating border space when colonies grow near plate edges,
+          improving grid detection accuracy.
+
+    Consider Also:
+        - :class:`ImageCropper` when the image needs to be reduced rather
+          than extended.
+        - :class:`GridAligner` for correcting plate rotation after
+          padding.
 
     See Also:
         :doc:`/how_to/notebooks/crop_and_pad` for a visual walkthrough

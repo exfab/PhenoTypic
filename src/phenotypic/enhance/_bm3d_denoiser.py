@@ -21,20 +21,6 @@ class BM3DDenoiser(ImageEnhancer):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Structured camera or scanner noise on plate images.
-        - Low-light imaging where high ISO introduces patterned noise.
-        - Preserving fine morphological features (wrinkles, satellite
-          colonies) during denoising.
-
-    Consider Also:
-        - :class:`BilateralDenoise` for faster edge-preserving denoising
-          when structured noise is not the primary concern.
-        - :class:`NonLocalMeansDenoiser` for patch-based denoising with
-          lower computational overhead.
-        - :class:`VisuShrinkEnhancer` for fast wavelet denoising when
-          speed matters more than quality.
-
     Args:
         sigma_psd: Noise standard deviation in [0, 1] normalized scale.
             Typical range: 0.01--0.05 for moderate noise, 0.05--0.15 for
@@ -51,6 +37,20 @@ class BM3DDenoiser(ImageEnhancer):
     Returns:
         Image: Input image with ``detect_mat`` denoised via BM3D
         collaborative filtering. ``rgb`` and ``gray`` are unchanged.
+
+    Best For:
+        - Structured camera or scanner noise on plate images.
+        - Low-light imaging where high ISO introduces patterned noise.
+        - Preserving fine morphological features (wrinkles, satellite
+          colonies) during denoising.
+
+    Consider Also:
+        - :class:`BilateralDenoise` for faster edge-preserving denoising
+          when structured noise is not the primary concern.
+        - :class:`NonLocalMeansDenoiser` for patch-based denoising with
+          lower computational overhead.
+        - :class:`VisuShrinkEnhancer` for fast wavelet denoising when
+          speed matters more than quality.
 
     References:
         [1] K. Dabov, A. Foi, V. Katkovnik, and K. Egiazarian, "Image

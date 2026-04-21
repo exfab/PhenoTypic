@@ -23,6 +23,20 @@ class MeasureBounds(MeasureFeatures):
     measurements form the foundation for region-of-interest extraction,
     grid alignment assessment, and neighbor-distance calculations.
 
+    Returns:
+        pd.DataFrame: Object-level spatial data with columns:
+
+            - Label: unique object identifier.
+            - CenterRR, CenterCC: geometric centroid coordinates.
+            - IntensityWeightedCenterRR, IntensityWeightedCenterCC:
+              intensity-weighted centroid coordinates (skimage
+              ``centroid_weighted``).
+            - DistWeightedCenterRR, DistWeightedCenterCC: row/column of
+              the per-object distance-transform maximum (deepest interior
+              point — robust to thin filamentous extensions).
+            - MinRR, MinCC: top-left corner of bounding box.
+            - MaxRR, MaxCC: bottom-right corner of bounding box.
+
     Best For:
         - Computing centroids for aligning colonies to expected grid
           positions in arrayed assays.
@@ -38,20 +52,6 @@ class MeasureBounds(MeasureFeatures):
           alignment quality using centroid positions.
         - :class:`MeasureGridSpatial` for neighbor distance calculations
           using bounding boxes.
-
-    Returns:
-        pd.DataFrame: Object-level spatial data with columns:
-
-            - Label: unique object identifier.
-            - CenterRR, CenterCC: geometric centroid coordinates.
-            - IntensityWeightedCenterRR, IntensityWeightedCenterCC:
-              intensity-weighted centroid coordinates (skimage
-              ``centroid_weighted``).
-            - DistWeightedCenterRR, DistWeightedCenterCC: row/column of
-              the per-object distance-transform maximum (deepest interior
-              point — robust to thin filamentous extensions).
-            - MinRR, MinCC: top-left corner of bounding box.
-            - MaxRR, MaxCC: bottom-right corner of bounding box.
 
     See Also:
         :doc:`/tutorials/notebooks/07_measuring_and_exporting` for a

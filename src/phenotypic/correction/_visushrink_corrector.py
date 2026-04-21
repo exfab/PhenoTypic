@@ -21,22 +21,6 @@ class VisuShrinkCorrector(ImageCorrector):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Quick, uniform denoising of raw plate scans for archival or
-          publication where a single threshold is acceptable.
-        - Removing scanner noise from all image components before
-          downstream multi-channel analysis.
-        - Plates with relatively uniform noise where adaptive subband
-          thresholding is not necessary.
-
-    Consider Also:
-        - :class:`BayesShrinkCorrector` for adaptive subband thresholds
-          that preserve finer colony detail.
-        - :class:`StableDenoise` for variance-stabilized BM3D denoising
-          when Poisson-Gaussian noise modelling is important.
-        - :class:`VisuShrinkEnhancer` when only the detection matrix
-          should be denoised (non-destructive to RGB and gray).
-
     Args:
         sigma: Noise standard deviation. ``None`` auto-estimates from
             the image. For RGB, internal channel scaling is handled
@@ -54,6 +38,22 @@ class VisuShrinkCorrector(ImageCorrector):
     Returns:
         Image: Input image with all components (RGB, gray, detect_mat)
         transformed by VisuShrink wavelet denoising.
+
+    Best For:
+        - Quick, uniform denoising of raw plate scans for archival or
+          publication where a single threshold is acceptable.
+        - Removing scanner noise from all image components before
+          downstream multi-channel analysis.
+        - Plates with relatively uniform noise where adaptive subband
+          thresholding is not necessary.
+
+    Consider Also:
+        - :class:`BayesShrinkCorrector` for adaptive subband thresholds
+          that preserve finer colony detail.
+        - :class:`StableDenoise` for variance-stabilized BM3D denoising
+          when Poisson-Gaussian noise modelling is important.
+        - :class:`VisuShrinkEnhancer` when only the detection matrix
+          should be denoised (non-destructive to RGB and gray).
 
     See Also:
         :doc:`/how_to/notebooks/correct_color_cast` for combining

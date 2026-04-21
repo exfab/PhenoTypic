@@ -22,22 +22,6 @@ class ChanVeseDetector(ObjectDetector):
     transitions into the agar background are captured cleanly. For algorithm
     details see :doc:`/explanation/detection_strategies_compared`.
 
-    Best For:
-        * Mucoid or fuzzy colonies whose edges lack sharp intensity gradients.
-        * Plates with uneven colony pigmentation or heterogeneous surface
-          texture that fragments threshold-based masks.
-        * Low-contrast imaging where colony and agar intensities are similar.
-        * Morphology studies where smooth, accurate colony outlines are
-          required.
-
-    Consider Also:
-        * :class:`OtsuDetector` when colonies and background form two clear
-          histogram peaks and a fast global threshold suffices.
-        * :class:`HysteresisDetector` when colony brightness varies but edges
-          are still reasonably sharp.
-        * :class:`CannyDetector` when colonies are best delineated by edge
-          contrast rather than region homogeneity.
-
     Args:
         mu: Edge-length penalty weight. Higher values produce smoother,
             rounder colony outlines; lower values preserve fine boundary
@@ -78,6 +62,22 @@ class ChanVeseDetector(ObjectDetector):
     Raises:
         ValueError: If ``init_level_set`` is not a recognised initialisation
             method.
+
+    Best For:
+        * Mucoid or fuzzy colonies whose edges lack sharp intensity gradients.
+        * Plates with uneven colony pigmentation or heterogeneous surface
+          texture that fragments threshold-based masks.
+        * Low-contrast imaging where colony and agar intensities are similar.
+        * Morphology studies where smooth, accurate colony outlines are
+          required.
+
+    Consider Also:
+        * :class:`OtsuDetector` when colonies and background form two clear
+          histogram peaks and a fast global threshold suffices.
+        * :class:`HysteresisDetector` when colony brightness varies but edges
+          are still reasonably sharp.
+        * :class:`CannyDetector` when colonies are best delineated by edge
+          contrast rather than region homogeneity.
 
     References:
         [1] T. F. Chan and L. A. Vese, "Active contours without edges,"

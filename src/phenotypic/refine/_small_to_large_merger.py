@@ -22,24 +22,6 @@ class SmallToLargeMerger(ObjectRefiner):
     and never merge with each other, preventing false consolidation of
     distinct colonies.
 
-    Best For:
-        - Fragmented detections from heterogeneous pigmentation or uneven
-          illumination where satellites cluster around a main colony.
-        - Post-watershed over-segmentation where one colony splits into a
-          large core plus small peripheral regions.
-        - Removing small debris near real colonies without merging distinct
-          large colonies.
-        - Plates with severe lighting gradients that produce satellite
-          fragments around main detections.
-
-    Consider Also:
-        - :class:`TransitiveDistanceMerger` when all nearby objects should
-          merge regardless of size, including large-to-large merging.
-        - :class:`NearestNeighborMerger` for simple nearest-neighbor
-          merging without size partitioning.
-        - :class:`SmallObjectRemover` when small fragments should be
-          discarded entirely rather than absorbed.
-
     Args:
         distance_threshold: Maximum centroid-to-centroid distance in pixels
             for merging a small fragment into a large colony. Typical
@@ -57,6 +39,24 @@ class SmallToLargeMerger(ObjectRefiner):
     Raises:
         ValueError: If ``distance_threshold`` or ``size_threshold`` is not
             positive.
+
+    Best For:
+        - Fragmented detections from heterogeneous pigmentation or uneven
+          illumination where satellites cluster around a main colony.
+        - Post-watershed over-segmentation where one colony splits into a
+          large core plus small peripheral regions.
+        - Removing small debris near real colonies without merging distinct
+          large colonies.
+        - Plates with severe lighting gradients that produce satellite
+          fragments around main detections.
+
+    Consider Also:
+        - :class:`TransitiveDistanceMerger` when all nearby objects should
+          merge regardless of size, including large-to-large merging.
+        - :class:`NearestNeighborMerger` for simple nearest-neighbor
+          merging without size partitioning.
+        - :class:`SmallObjectRemover` when small fragments should be
+          discarded entirely rather than absorbed.
 
     See Also:
         :doc:`/how_to/notebooks/merge_fragmented_detections` for fragment

@@ -21,6 +21,18 @@ class LaplaceEnhancer(ImageEnhancer):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
+    Args:
+        kernel_size: Size of the Laplacian kernel. Smaller values (3)
+            capture fine edges but amplify noise; larger values (5--7)
+            smooth noise and emphasize broader boundaries. Default: 3.
+        mask: Boolean or 0/1 mask to restrict processing to regions of
+            interest (e.g., the circular plate area). ``None`` (default)
+            processes the full image.
+
+    Returns:
+        Image: Input image with ``detect_mat`` replaced by the Laplacian
+        edge response. ``rgb`` and ``gray`` are unchanged.
+
     Best For:
         - Emphasizing colony edges before edge-based segmentation.
         - Detecting ring patterns around colonies for swarming phenotyping.
@@ -33,18 +45,6 @@ class LaplaceEnhancer(ImageEnhancer):
           original intensity profile.
         - :class:`PhaseCongruencyEnhancer` for contrast-invariant edge
           detection under uneven illumination.
-
-    Args:
-        kernel_size: Size of the Laplacian kernel. Smaller values (3)
-            capture fine edges but amplify noise; larger values (5--7)
-            smooth noise and emphasize broader boundaries. Default: 3.
-        mask: Boolean or 0/1 mask to restrict processing to regions of
-            interest (e.g., the circular plate area). ``None`` (default)
-            processes the full image.
-
-    Returns:
-        Image: Input image with ``detect_mat`` replaced by the Laplacian
-        edge response. ``rgb`` and ``gray`` are unchanged.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a

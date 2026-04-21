@@ -23,6 +23,16 @@ class MeasureGridSpatial(GridMeasureFeatures):
     bounding-box edge-to-edge distance. Edge and corner colonies report
     ``NaN`` for directions beyond the plate boundary.
 
+    Returns:
+        pd.DataFrame: Object-level neighbor measurements with columns:
+
+            - Label: unique object identifier.
+            - LeftNeighborObjLabel, LeftDistance.
+            - RightNeighborObjLabel, RightDistance.
+            - AboveNeighborObjLabel, AboveDistance.
+            - UnderNeighborObjLabel, UnderDistance.
+            - ``NaN`` where no neighbor exists in a given direction.
+
     Best For:
         - Quantifying colony spacing and crowding to assess nutrient
           competition risk on arrayed plates.
@@ -37,16 +47,6 @@ class MeasureGridSpatial(GridMeasureFeatures):
           rather than between-well distances.
         - :class:`MeasureBounds` for raw bounding boxes and centroids
           without neighbor lookups.
-
-    Returns:
-        pd.DataFrame: Object-level neighbor measurements with columns:
-
-            - Label: unique object identifier.
-            - LeftNeighborObjLabel, LeftDistance.
-            - RightNeighborObjLabel, RightDistance.
-            - AboveNeighborObjLabel, AboveDistance.
-            - UnderNeighborObjLabel, UnderDistance.
-            - ``NaN`` where no neighbor exists in a given direction.
 
     See Also:
         :doc:`/tutorials/notebooks/07_measuring_and_exporting` for a

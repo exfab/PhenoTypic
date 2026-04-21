@@ -21,6 +21,10 @@ class MergeGridObj(GridObjectRefiner):
     into one object per grid position. Useful when multiple fragments from a
     single colony need to be treated as one unit for downstream measurement.
 
+    Returns:
+        Image: Input image with ``objmap`` relabeled so each grid section
+        contains at most one object label.
+
     Best For:
         - Grid plates where a single colony fragments into multiple
           detections within the same cell.
@@ -36,10 +40,6 @@ class MergeGridObj(GridObjectRefiner):
           non-grid images.
         - :class:`SmallToLargeMerger` when small fragments should merge into
           the nearest large colony rather than all fragments merging equally.
-
-    Returns:
-        Image: Input image with ``objmap`` relabeled so each grid section
-        contains at most one object label.
 
     See Also:
         :doc:`/how_to/notebooks/merge_fragmented_detections` for merging

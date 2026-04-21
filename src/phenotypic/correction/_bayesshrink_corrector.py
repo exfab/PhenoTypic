@@ -21,22 +21,6 @@ class BayesShrinkCorrector(ImageCorrector):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Plates imaged with aging or high-ISO cameras that introduce
-          spatially varying sensor noise.
-        - RGB plate scans destined for publication where color fidelity
-          and fine detail must be preserved.
-        - Pre-processing before multi-channel feature extraction (color
-          composition and morphology).
-
-    Consider Also:
-        - :class:`VisuShrinkCorrector` when a faster, simpler universal
-          threshold is acceptable.
-        - :class:`StableDenoise` for variance-stabilized BM3D denoising
-          of grayscale channels with Poisson-Gaussian noise.
-        - :class:`BayesShrinkEnhancer` when only the detection matrix
-          should be denoised (non-destructive to RGB and gray).
-
     Args:
         sigma: Noise standard deviation. ``None`` auto-estimates from the
             finest wavelet subband. Typical range: 0.01--0.1 for normalized
@@ -56,6 +40,22 @@ class BayesShrinkCorrector(ImageCorrector):
     Returns:
         Image: Input image with all components (RGB, gray, detect_mat)
         transformed by adaptive wavelet denoising.
+
+    Best For:
+        - Plates imaged with aging or high-ISO cameras that introduce
+          spatially varying sensor noise.
+        - RGB plate scans destined for publication where color fidelity
+          and fine detail must be preserved.
+        - Pre-processing before multi-channel feature extraction (color
+          composition and morphology).
+
+    Consider Also:
+        - :class:`VisuShrinkCorrector` when a faster, simpler universal
+          threshold is acceptable.
+        - :class:`StableDenoise` for variance-stabilized BM3D denoising
+          of grayscale channels with Poisson-Gaussian noise.
+        - :class:`BayesShrinkEnhancer` when only the detection matrix
+          should be denoised (non-destructive to RGB and gray).
 
     References:
         [1] S. G. Chang, B. Yu, and M. Vetterli, "Adaptive wavelet

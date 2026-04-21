@@ -95,26 +95,6 @@ class MeasureSymmetricZones(MeasureFeatures):
     :class:`MeasureRadialExpansion`) anchors the measurement; ``MeanExpansion``
     and ``MaxExpansion`` summarise how far growth reached past that core.
 
-    Best For:
-        - Summarising colony-level radial growth with a single symmetry
-          figure of merit.
-        - Distinguishing uniformly-expanding colonies from those with
-          sectors, lopsided growth, or directional bias.
-        - Comparing wild-type versus mutant expansion phenotypes when the
-          biological question is about the colony envelope, not individual
-          hyphae.
-        - Time-course assays where runner counts are noisy but colony
-          extent is informative.
-
-    Consider Also:
-        - :class:`MeasureRadialExpansion` when you need per-branch
-          statistics (branch counts, outlier runner detection) rather
-          than a single symmetry scalar.
-        - :class:`MeasureShape` for general morphological descriptors
-          (circularity, eccentricity) that do not require radial analysis.
-        - :class:`MeasureBounds` for lightweight bounding-box data
-          without any radial pipeline.
-
     Args:
         n_annuli: Number of equal-area annuli used for the radial density
             profile and angular analysis. Defaults to 100.
@@ -172,6 +152,26 @@ class MeasureSymmetricZones(MeasureFeatures):
             - SymmetricRadius_SparseArea: pixel^2 area of the sparse
               branching zone (annular region between dense and outer
               boundaries).
+
+    Best For:
+        - Summarising colony-level radial growth with a single symmetry
+          figure of merit.
+        - Distinguishing uniformly-expanding colonies from those with
+          sectors, lopsided growth, or directional bias.
+        - Comparing wild-type versus mutant expansion phenotypes when the
+          biological question is about the colony envelope, not individual
+          hyphae.
+        - Time-course assays where runner counts are noisy but colony
+          extent is informative.
+
+    Consider Also:
+        - :class:`MeasureRadialExpansion` when you need per-branch
+          statistics (branch counts, outlier runner detection) rather
+          than a single symmetry scalar.
+        - :class:`MeasureShape` for general morphological descriptors
+          (circularity, eccentricity) that do not require radial analysis.
+        - :class:`MeasureBounds` for lightweight bounding-box data
+          without any radial pipeline.
 
     See Also:
         :doc:`/tutorials/notebooks/07_measuring_and_exporting` for a

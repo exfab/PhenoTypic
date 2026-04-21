@@ -21,6 +21,19 @@ class SubtractWhiteTophat(ImageEnhancer):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
+    Args:
+        shape: Footprint geometry. ``'diamond'`` (default) or ``'disk'``
+            provide isotropic behavior; ``'square'`` can align with sensor
+            grid artifacts.
+        width: Maximum bright-object size (pixels) targeted for removal.
+            Set slightly smaller than the smallest colonies to preserve
+            them. ``None`` (default) derives a small value from image
+            dimensions.
+
+    Returns:
+        Image: Input image with ``detect_mat`` smoothed by subtracting
+        the white top-hat. ``rgb`` and ``gray`` are unchanged.
+
     Best For:
         - Removing small bright artifacts that could be mistaken for tiny
           colonies.
@@ -35,19 +48,6 @@ class SubtractWhiteTophat(ImageEnhancer):
           small bright features without explicit subtraction.
         - :class:`RankMedianEnhancer` for impulsive noise removal via
           median filtering.
-
-    Args:
-        shape: Footprint geometry. ``'diamond'`` (default) or ``'disk'``
-            provide isotropic behavior; ``'square'`` can align with sensor
-            grid artifacts.
-        width: Maximum bright-object size (pixels) targeted for removal.
-            Set slightly smaller than the smallest colonies to preserve
-            them. ``None`` (default) derives a small value from image
-            dimensions.
-
-    Returns:
-        Image: Input image with ``detect_mat`` smoothed by subtracting
-        the white top-hat. ``rgb`` and ``gray`` are unchanged.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a

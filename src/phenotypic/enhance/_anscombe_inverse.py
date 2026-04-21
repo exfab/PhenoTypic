@@ -29,20 +29,6 @@ class AnscombeInverse(ImageEnhancer):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Completing an Anscombe-based denoising pipeline.
-        - Restoring biologically meaningful intensities after GAT-domain
-          denoising.
-        - Fluorescence or low-light plate workflows that require
-          variance-stabilized processing.
-
-    Consider Also:
-        - :class:`AnscombeForward` which must precede this operation.
-        - :class:`BM3DDenoiser` for direct denoising without domain
-          transforms.
-        - :class:`NonLocalMeansDenoiser` for patch-based denoising that
-          does not require a variance-stabilizing step.
-
     Args:
         gain: Camera gain in electrons per ADU. Must match the value
             used in :class:`AnscombeForward`. Default: 1.0.
@@ -60,6 +46,20 @@ class AnscombeInverse(ImageEnhancer):
 
     Raises:
         ValueError: If ``gain`` <= 0, ``sigma`` < 0, or ``scale_factor`` <= 0.
+
+    Best For:
+        - Completing an Anscombe-based denoising pipeline.
+        - Restoring biologically meaningful intensities after GAT-domain
+          denoising.
+        - Fluorescence or low-light plate workflows that require
+          variance-stabilized processing.
+
+    Consider Also:
+        - :class:`AnscombeForward` which must precede this operation.
+        - :class:`BM3DDenoiser` for direct denoising without domain
+          transforms.
+        - :class:`NonLocalMeansDenoiser` for patch-based denoising that
+          does not require a variance-stabilizing step.
 
     References:
         [1] F. J. Anscombe, "The transformation of Poisson, binomial and

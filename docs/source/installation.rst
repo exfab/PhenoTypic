@@ -20,7 +20,7 @@ Using uv (recommended)
 +++++++++
 .. code-block:: bash
 
-   uv pip install phenotypic
+   uv add phenotypic
 
 Using pip
 +++++++++
@@ -53,10 +53,10 @@ PhenoTypic provides optional extras for different use cases:
 .. code-block:: bash
 
    # Full interactive / GUI environment (napari, Panel, Jupyter)
-   uv pip install "phenotypic[gui]"
+   uv add "phenotypic[gui]"
 
    # SAM2 GPU detector (Linux/macOS)
-   uv pip install "phenotypic[torch]"
+   uv add "phenotypic[torch]"
 
 ``micro_sam`` (used by ``MicroSamDetector``) is only published on
 conda-forge and is **not** included in any PhenoTypic extra. See the

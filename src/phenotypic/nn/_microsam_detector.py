@@ -33,32 +33,6 @@ class MicroSamDetector(GpuDetector):
     ``objmap`` directly without the mask-assembly step required by
     :class:`Sam2Detector`.
 
-    Best For:
-        * Agar plate images captured under standard brightfield or
-          darkfield microscopy illumination.
-        * Plates with colonies of varying size and morphology, where
-          domain-specific finetuning outperforms general-purpose models.
-        * Research workflows that benefit from a pretrained microscopy
-          model with no additional training (zero-shot on new plate types).
-        * Light-microscopy screening assays (yeast, bacteria, fungi) where
-          colony contrast is moderate and classical thresholds struggle.
-        * Electron-microscopy organelle segmentation when using the
-          ``"vit_b_em_organelles"`` or ``"vit_l_em_organelles"`` models.
-
-    Consider Also:
-        * :class:`Sam2Detector` when processing general-purpose or
-          non-microscopy images, or when fine-grained control over mask
-          generation parameters (``points_per_side``, ``pred_iou_thresh``,
-          ``stability_score_thresh``) is needed.
-        * :class:`OtsuDetector` for a fast, parameter-free baseline when
-          the plate histogram is cleanly bimodal (well-separated colonies).
-        * :class:`WatershedDetector` when touching colonies must be split
-          using classical morphological methods and GPU hardware is
-          unavailable.
-        * :class:`HysteresisDetector` when colony intensity varies across
-          the plate and a dual-threshold approach captures both bright and
-          faint colonies without GPU overhead.
-
     Args:
         model_type: micro-sam model identifier. Available models:
 
@@ -96,6 +70,32 @@ class MicroSamDetector(GpuDetector):
             ``micro_sam`` together in a single environment.
         RuntimeError: If ``device="auto"`` and no GPU/accelerator is
             available.
+
+    Best For:
+        * Agar plate images captured under standard brightfield or
+          darkfield microscopy illumination.
+        * Plates with colonies of varying size and morphology, where
+          domain-specific finetuning outperforms general-purpose models.
+        * Research workflows that benefit from a pretrained microscopy
+          model with no additional training (zero-shot on new plate types).
+        * Light-microscopy screening assays (yeast, bacteria, fungi) where
+          colony contrast is moderate and classical thresholds struggle.
+        * Electron-microscopy organelle segmentation when using the
+          ``"vit_b_em_organelles"`` or ``"vit_l_em_organelles"`` models.
+
+    Consider Also:
+        * :class:`Sam2Detector` when processing general-purpose or
+          non-microscopy images, or when fine-grained control over mask
+          generation parameters (``points_per_side``, ``pred_iou_thresh``,
+          ``stability_score_thresh``) is needed.
+        * :class:`OtsuDetector` for a fast, parameter-free baseline when
+          the plate histogram is cleanly bimodal (well-separated colonies).
+        * :class:`WatershedDetector` when touching colonies must be split
+          using classical morphological methods and GPU hardware is
+          unavailable.
+        * :class:`HysteresisDetector` when colony intensity varies across
+          the plate and a dual-threshold approach captures both bright and
+          faint colonies without GPU overhead.
 
     Notes:
         **Lazy model loading.** The SAM model is not loaded until the

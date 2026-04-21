@@ -22,20 +22,6 @@ class GridAligner(GridCorrector):
 
     For algorithm details, see :doc:`/explanation/grid_vs_non_grid_detection`.
 
-    Best For:
-        - Arrayed plates scanned at a slight angle where grid rows or
-          columns are not axis-aligned.
-        - High-throughput imaging setups with inconsistent plate
-          orientation between scans.
-        - Pre-processing before grid-based measurement to ensure accurate
-          row and column assignment.
-
-    Consider Also:
-        - :class:`ImagePadder` to add safety margins before rotation so
-          corner colonies are not clipped.
-        - :class:`ImageCropper` to remove excess background after
-          alignment.
-
     Args:
         axis: Alignment axis. ``0`` aligns rows (row-wise regression on
             column centroid positions); ``1`` aligns columns. Default: ``0``.
@@ -49,6 +35,20 @@ class GridAligner(GridCorrector):
 
     Raises:
         ValueError: If ``axis`` is not ``0`` or ``1``.
+
+    Best For:
+        - Arrayed plates scanned at a slight angle where grid rows or
+          columns are not axis-aligned.
+        - High-throughput imaging setups with inconsistent plate
+          orientation between scans.
+        - Pre-processing before grid-based measurement to ensure accurate
+          row and column assignment.
+
+    Consider Also:
+        - :class:`ImagePadder` to add safety margins before rotation so
+          corner colonies are not clipped.
+        - :class:`ImageCropper` to remove excess background after
+          alignment.
 
     See Also:
         :doc:`/how_to/notebooks/correct_grid_rotation` for a visual

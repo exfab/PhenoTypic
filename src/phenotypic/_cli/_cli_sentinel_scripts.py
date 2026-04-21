@@ -69,7 +69,7 @@ def generate_sentinel_script(
 
     log_path = progress_dir / "sentinel_%j.log"
     directives = generate_slurm_directives(
-        job_name="pheno-sentinel",
+        job_name="pht-sentinel",
         slurm_args=sentinel_slurm_args,
         output_log=log_path,
         error_log=log_path,

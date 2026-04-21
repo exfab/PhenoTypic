@@ -23,24 +23,6 @@ class CannyDetector(ThresholdDetector):
     plates with uneven illumination or translucent colonies. For a full
     comparison see :doc:`/explanation/detection_strategies_compared`.
 
-    Best For:
-        * Well-separated colonies on solid media where colony edges are
-          sharper than intensity differences relative to background.
-        * Translucent or lightly pigmented colonies that lack sufficient
-          intensity contrast for threshold-based methods.
-        * Plates with heterogeneous colony texture or pigmentation that
-          fragments under watershed or simple thresholding.
-        * Images with moderate vignetting where edge contrast is preserved
-          even though absolute intensity varies spatially.
-
-    Consider Also:
-        * :class:`OtsuDetector` when colonies differ from background
-          primarily in brightness rather than edge contrast.
-        * :class:`WatershedDetector` when touching colonies must be split
-          by region-growing from interior seeds.
-        * :class:`HysteresisDetector` when dual-threshold intensity
-          segmentation is preferred over edge-based detection.
-
     Args:
         sigma: Gaussian smoothing standard deviation before edge detection
             (default 1.0). Higher values suppress noise and spurious edges
@@ -83,6 +65,24 @@ class CannyDetector(ThresholdDetector):
     Raises:
         ValueError: If *high_threshold* is less than *low_threshold* or if
             threshold values are outside the valid range.
+
+    Best For:
+        * Well-separated colonies on solid media where colony edges are
+          sharper than intensity differences relative to background.
+        * Translucent or lightly pigmented colonies that lack sufficient
+          intensity contrast for threshold-based methods.
+        * Plates with heterogeneous colony texture or pigmentation that
+          fragments under watershed or simple thresholding.
+        * Images with moderate vignetting where edge contrast is preserved
+          even though absolute intensity varies spatially.
+
+    Consider Also:
+        * :class:`OtsuDetector` when colonies differ from background
+          primarily in brightness rather than edge contrast.
+        * :class:`WatershedDetector` when touching colonies must be split
+          by region-growing from interior seeds.
+        * :class:`HysteresisDetector` when dual-threshold intensity
+          segmentation is preferred over edge-based detection.
 
     References:
         [1] J. Canny, "A computational approach to edge detection," *IEEE

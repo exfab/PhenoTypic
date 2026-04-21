@@ -18,17 +18,6 @@ class BorderObjectRemover(ObjectRefiner):
     border band, ensuring only fully contained colonies are analyzed.
     Partial edge colonies bias size and shape measurements.
 
-    Best For:
-        - Plates where the plate rim or image crop truncates edge colonies.
-        - Grid assays where border wells are partially visible.
-        - Automated crops that shift between frames.
-
-    Consider Also:
-        - :class:`SmallObjectRemover` for removing noise fragments that are
-          not necessarily at the border.
-        - :class:`GridOversizedObjectRemover` for removing abnormally large
-          objects that span multiple grid sections.
-
     Args:
         border_size: Width of the exclusion border. ``None`` uses 1% of
             the smaller dimension. Float in (0, 1) is a fraction of the
@@ -40,6 +29,17 @@ class BorderObjectRemover(ObjectRefiner):
 
     Raises:
         TypeError: If ``border_size`` type is invalid.
+
+    Best For:
+        - Plates where the plate rim or image crop truncates edge colonies.
+        - Grid assays where border wells are partially visible.
+        - Automated crops that shift between frames.
+
+    Consider Also:
+        - :class:`SmallObjectRemover` for removing noise fragments that are
+          not necessarily at the border.
+        - :class:`GridOversizedObjectRemover` for removing abnormally large
+          objects that span multiple grid sections.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough

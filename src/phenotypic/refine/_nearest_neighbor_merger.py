@@ -21,18 +21,6 @@ class NearestNeighborMerger(ObjectRefiner):
     is one-directional and conservative — it cleans up debris without
     cascading merges across the plate.
 
-    Best For:
-        - Absorbing dust or noise fragments near real colonies.
-        - Cleaning up small detection artifacts without risking cascading merges.
-        - Size-selective cleanup where only fragments below a threshold merge.
-
-    Consider Also:
-        - :class:`TransitiveDistanceMerger` for chained merging of all nearby
-          objects regardless of size.
-        - :class:`SmallToLargeMerger` for merging small objects into the
-          largest nearby colony.
-        - :class:`MaskCloser` for bridging narrow gaps morphologically.
-
     Args:
         distance_threshold: Maximum centroid distance (pixels) for merging.
             Objects beyond this distance remain independent. Typical range:
@@ -44,6 +32,18 @@ class NearestNeighborMerger(ObjectRefiner):
     Returns:
         Image: Input image with ``objmask`` and ``objmap`` updated after
         merging small objects into their nearest neighbors.
+
+    Best For:
+        - Absorbing dust or noise fragments near real colonies.
+        - Cleaning up small detection artifacts without risking cascading merges.
+        - Size-selective cleanup where only fragments below a threshold merge.
+
+    Consider Also:
+        - :class:`TransitiveDistanceMerger` for chained merging of all nearby
+          objects regardless of size.
+        - :class:`SmallToLargeMerger` for merging small objects into the
+          largest nearby colony.
+        - :class:`MaskCloser` for bridging narrow gaps morphologically.
 
     See Also:
         :doc:`/how_to/notebooks/merge_fragmented_detections` for fragment

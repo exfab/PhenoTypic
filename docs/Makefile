@@ -26,5 +26,3 @@ html: apidoc
 	rm -f source/api_reference/phenotypic.rst
 	make clean
 	sphinx-build -n -b html source build/html
-
-#    sphinx-build -n -W -b html source build/html

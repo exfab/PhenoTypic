@@ -20,6 +20,10 @@ class GridSectionLargest(ObjectRefiner):
     cell, and keeps only the largest per cell. Smaller fragments, debris,
     and secondary detections within each grid position are removed.
 
+    Returns:
+        Image: Input image with ``objmap`` reduced to the single largest
+        object per grid section.
+
     Best For:
         - Grid plates where the true colony is the largest detection in
           each cell and smaller objects are noise or debris.
@@ -33,10 +37,6 @@ class GridSectionLargest(ObjectRefiner):
           more reliable than the largest.
         - :class:`ReduceMultipleGridObjects` for regression-based selection
           using expected grid positions.
-
-    Returns:
-        Image: Input image with ``objmap`` reduced to the single largest
-        object per grid section.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based

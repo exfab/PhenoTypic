@@ -24,23 +24,6 @@ class MultiscaleLoGEnhancer(ImageEnhancer):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Mixed-size colonies on mature plates where small emerging and
-          large mature colonies must both be detected.
-        - Sparse inoculation spots that are faint and nearly invisible
-          against the agar background.
-        - Low-contrast or shadowed regions where LoG emphasizes blob
-          structure over absolute intensity.
-        - Preprocessing before thresholding to sharpen blob boundaries
-          and suppress uneven illumination.
-
-    Consider Also:
-        - :class:`SatoRidgeFilter` for elongated or filamentous structures
-          where LoG's isotropic assumption is a poor fit.
-        - :class:`LaplaceEnhancer` for simpler single-scale edge detection.
-        - :class:`SubtractGaussian` when the primary issue is illumination
-          gradients rather than blob enhancement.
-
     Args:
         min_radius: Smallest target blob radius in pixels. Blobs smaller
             than this produce weaker responses. Typical range: 1.0--5.0
@@ -61,6 +44,23 @@ class MultiscaleLoGEnhancer(ImageEnhancer):
     Raises:
         ValueError: If ``min_radius`` <= 0, ``min_radius`` >= ``max_radius``,
             or ``num_scales`` < 1.
+
+    Best For:
+        - Mixed-size colonies on mature plates where small emerging and
+          large mature colonies must both be detected.
+        - Sparse inoculation spots that are faint and nearly invisible
+          against the agar background.
+        - Low-contrast or shadowed regions where LoG emphasizes blob
+          structure over absolute intensity.
+        - Preprocessing before thresholding to sharpen blob boundaries
+          and suppress uneven illumination.
+
+    Consider Also:
+        - :class:`SatoRidgeFilter` for elongated or filamentous structures
+          where LoG's isotropic assumption is a poor fit.
+        - :class:`LaplaceEnhancer` for simpler single-scale edge detection.
+        - :class:`SubtractGaussian` when the primary issue is illumination
+          gradients rather than blob enhancement.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a

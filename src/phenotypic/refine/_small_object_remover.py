@@ -17,6 +17,15 @@ class SmallObjectRemover(ObjectRefiner):
     as tiny labeled objects after thresholding. Reduces false positives
     and stabilizes colony counts.
 
+    Args:
+        min_size: Minimum object area in pixels to keep. Objects below this
+            threshold are removed. Typical range: 20--200 depending on
+            image resolution. Default: 64.
+
+    Returns:
+        Image: Input image with ``objmask`` and ``objmap`` updated to
+        exclude small objects.
+
     Best For:
         - Cleaning up salt-and-pepper artifacts after detection.
         - Removing fragmented debris around large colonies.
@@ -27,15 +36,6 @@ class SmallObjectRemover(ObjectRefiner):
           image edges (size-independent).
         - :class:`LowCircularityRemover` for removing non-circular artifacts
           regardless of size.
-
-    Args:
-        min_size: Minimum object area in pixels to keep. Objects below this
-            threshold are removed. Typical range: 20--200 depending on
-            image resolution. Default: 64.
-
-    Returns:
-        Image: Input image with ``objmask`` and ``objmap`` updated to
-        exclude small objects.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough

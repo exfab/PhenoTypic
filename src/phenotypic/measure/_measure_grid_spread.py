@@ -20,6 +20,14 @@ class MeasureGridSpread(GridMeasureFeatures):
     dispersed objects within a single well -- a sign of over-segmentation,
     fragmented growth, or invasive spreading.
 
+    Returns:
+        pd.DataFrame: Section-level statistics sorted by spread
+        (descending) with columns:
+
+            - count: number of colonies detected in the section.
+            - ObjectSpread: sum of squared pairwise Euclidean distances
+              between colony centroids in the section.
+
     Best For:
         - Detecting over-segmented wells where multiple objects were
           found instead of a single cohesive colony.
@@ -34,14 +42,6 @@ class MeasureGridSpread(GridMeasureFeatures):
         - :class:`MeasureGridLinRegStats` for positional accuracy
           metrics based on linear regression.
         - :class:`MeasureBounds` for raw centroid positions per colony.
-
-    Returns:
-        pd.DataFrame: Section-level statistics sorted by spread
-        (descending) with columns:
-
-            - count: number of colonies detected in the section.
-            - ObjectSpread: sum of squared pairwise Euclidean distances
-              between colony centroids in the section.
 
     See Also:
         :doc:`/tutorials/notebooks/07_measuring_and_exporting` for a

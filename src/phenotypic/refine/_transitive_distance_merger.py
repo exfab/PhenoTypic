@@ -22,6 +22,19 @@ class TransitiveDistanceMerger(ObjectRefiner):
     one detection even if A and C are not directly within threshold. Labels
     are relabeled consecutively after merging.
 
+    Args:
+        distance_threshold: Maximum centroid-to-centroid distance in pixels
+            for merging. Typical range: 10--30. Lower values are
+            conservative; higher values merge more aggressively but risk
+            combining distinct colonies via transitive chains. Default: 20.0.
+
+    Returns:
+        Image: Input image with ``objmap`` updated so that transitively
+        connected fragments share a single label, relabeled consecutively.
+
+    Raises:
+        ValueError: If ``distance_threshold`` is not positive.
+
     Best For:
         - Repairing fragmented detections from watershed over-segmentation
           where a single colony splits into multiple touching regions.
@@ -39,19 +52,6 @@ class TransitiveDistanceMerger(ObjectRefiner):
           neighbor merging without transitive closure.
         - :class:`MaskCloser` for morphological closing that bridges small
           gaps without relabeling.
-
-    Args:
-        distance_threshold: Maximum centroid-to-centroid distance in pixels
-            for merging. Typical range: 10--30. Lower values are
-            conservative; higher values merge more aggressively but risk
-            combining distinct colonies via transitive chains. Default: 20.0.
-
-    Returns:
-        Image: Input image with ``objmap`` updated so that transitively
-        connected fragments share a single label, relabeled consecutively.
-
-    Raises:
-        ValueError: If ``distance_threshold`` is not positive.
 
     See Also:
         :doc:`/how_to/notebooks/merge_fragmented_detections` for fragment

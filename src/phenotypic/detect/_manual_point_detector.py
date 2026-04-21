@@ -22,22 +22,6 @@ class ManualPointDetector(ObjectDetector, FootprintMixin):
     geometry, sparse or irregular layouts, and manual annotation workflows
     where each object position is known individually.
 
-    Best For:
-        * Manual annotation and ground-truth mask generation for
-          benchmarking detection algorithms.
-        * Non-grid plates (e.g., streak plates, random inoculations,
-          environmental samples) where colony positions are irregular.
-        * Validating other detection algorithms by comparing their output
-          against user-curated centre coordinates.
-        * Quick prototyping on small numbers of colonies without needing
-          automatic detection.
-
-    Consider Also:
-        * :class:`ManualGridDetector` when colonies lie on a regular grid
-          and only one or two anchor coordinates are needed.
-        * :class:`RoundPeaksDetector` when colony centres can be inferred
-          automatically from intensity profiles.
-
     Args:
         centers: An N x 2 array-like of ``(y, x)`` pixel coordinates
             specifying each colony centre. Accepts any sequence that
@@ -59,6 +43,22 @@ class ManualPointDetector(ObjectDetector, FootprintMixin):
         Image: Input image with ``objmask`` set to the union of all
         stamped footprints and ``objmap`` set to uniquely labelled regions
         (1-indexed, in the order centres were supplied).
+
+    Best For:
+        * Manual annotation and ground-truth mask generation for
+          benchmarking detection algorithms.
+        * Non-grid plates (e.g., streak plates, random inoculations,
+          environmental samples) where colony positions are irregular.
+        * Validating other detection algorithms by comparing their output
+          against user-curated centre coordinates.
+        * Quick prototyping on small numbers of colonies without needing
+          automatic detection.
+
+    Consider Also:
+        * :class:`ManualGridDetector` when colonies lie on a regular grid
+          and only one or two anchor coordinates are needed.
+        * :class:`RoundPeaksDetector` when colony centres can be inferred
+          automatically from intensity profiles.
 
     See Also:
         :doc:`/tutorials/notebooks/02_detecting_colonies`

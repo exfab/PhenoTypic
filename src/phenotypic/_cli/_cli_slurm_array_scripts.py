@@ -163,11 +163,11 @@ def generate_array_job_script(
     # Generate job name
     if chunk_id == 0 and end_idx == len(dataset.images):
         # Single chunk, simpler name
-        job_name = f"pheno-{dataset.name}"
+        job_name = f"pht-{dataset.name}"
         script_name = "array_job.sh"
     else:
         # Multiple chunks, include chunk ID
-        job_name = f"pheno-{dataset.name}-chunk{chunk_id}"
+        job_name = f"pht-{dataset.name}-chunk{chunk_id}"
         script_name = f"array_job_chunk{chunk_id}.sh"
 
     # Generate log paths (using SLURM placeholders)

@@ -25,22 +25,6 @@ class MadHysteresisDetector(ThresholdDetector):
     unstable thresholds. For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
 
-    Best For:
-        * Filter response maps (CED, Hessian, LoG, Frangi) where the
-          noise floor is approximately Gaussian.
-        * Low-contrast colonies where signal is faint relative to
-          background texture and MAD provides a stable noise estimate.
-        * Standardised pipelines where multiplier-based thresholds
-          generalise across plates with varying colony density.
-
-    Consider Also:
-        * :class:`HysteresisDetector` when thresholds should be derived
-          from the intensity histogram rather than noise statistics.
-        * :class:`OtsuDetector` when the image is a raw intensity plate
-          with a bimodal histogram.
-        * :class:`ChanVeseDetector` when colonies have diffuse edges and
-          region-based segmentation is more appropriate.
-
     Args:
         k_high: High-threshold multiplier. The high threshold is
             ``k_high * sigma_noise``; pixels above this seed connected
@@ -74,6 +58,22 @@ class MadHysteresisDetector(ThresholdDetector):
 
     Raises:
         ValueError: If ``k_low`` >= ``k_high``.
+
+    Best For:
+        * Filter response maps (CED, Hessian, LoG, Frangi) where the
+          noise floor is approximately Gaussian.
+        * Low-contrast colonies where signal is faint relative to
+          background texture and MAD provides a stable noise estimate.
+        * Standardised pipelines where multiplier-based thresholds
+          generalise across plates with varying colony density.
+
+    Consider Also:
+        * :class:`HysteresisDetector` when thresholds should be derived
+          from the intensity histogram rather than noise statistics.
+        * :class:`OtsuDetector` when the image is a raw intensity plate
+          with a bimodal histogram.
+        * :class:`ChanVeseDetector` when colonies have diffuse edges and
+          region-based segmentation is more appropriate.
 
     See Also:
         :doc:`/tutorials/notebooks/02_detecting_colonies`

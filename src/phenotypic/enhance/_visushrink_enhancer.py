@@ -20,21 +20,6 @@ class VisuShrinkEnhancer(ImageEnhancer):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Scanner banding and flatbed scanner noise removal.
-        - High-ISO camera images where colony boundaries must remain sharp.
-        - Agar granularity and condensation speckle suppression before
-          detection.
-        - Pre-filtering before edge detection to avoid noise amplification.
-
-    Consider Also:
-        - :class:`BayesShrinkEnhancer` for adaptive thresholding that
-          preserves more detail in regions with varying noise levels.
-        - :class:`BM3DDenoiser` for state-of-the-art structured noise
-          removal at higher computational cost.
-        - :class:`BilateralDenoise` for edge-preserving smoothing without
-          wavelet decomposition.
-
     Args:
         sigma: Noise standard deviation in [0, 1] scale. ``None`` (default)
             auto-estimates via MAD. Typical range: 0.01--0.05 for moderate
@@ -51,6 +36,21 @@ class VisuShrinkEnhancer(ImageEnhancer):
     Returns:
         Image: Input image with ``detect_mat`` denoised via universal
         wavelet thresholding. ``rgb`` and ``gray`` are unchanged.
+
+    Best For:
+        - Scanner banding and flatbed scanner noise removal.
+        - High-ISO camera images where colony boundaries must remain sharp.
+        - Agar granularity and condensation speckle suppression before
+          detection.
+        - Pre-filtering before edge detection to avoid noise amplification.
+
+    Consider Also:
+        - :class:`BayesShrinkEnhancer` for adaptive thresholding that
+          preserves more detail in regions with varying noise levels.
+        - :class:`BM3DDenoiser` for state-of-the-art structured noise
+          removal at higher computational cost.
+        - :class:`BilateralDenoise` for edge-preserving smoothing without
+          wavelet decomposition.
 
     References:
         [1] D. L. Donoho and I. M. Johnstone, "Ideal spatial adaptation by

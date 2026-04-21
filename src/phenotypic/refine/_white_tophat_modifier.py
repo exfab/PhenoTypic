@@ -20,6 +20,20 @@ class WhiteTophat(ObjectRefiner, FootprintMixin):
     subtracts them. Produces cleaner, more compact masks that better match
     colony boundaries under uneven illumination.
 
+    Args:
+        shape: Structuring element shape. ``"disk"`` preserves round
+            features, ``"square"`` is more aggressive along axes,
+            ``"diamond"`` provides a compromise. A NumPy array provides
+            a custom element. Default: ``"disk"``.
+        width: Footprint width in pixels. Larger values remove broader
+            bright features but risk shrinking thin colony appendages.
+            ``None`` auto-scales to ~0.4% of the smallest image
+            dimension. Default: None.
+
+    Returns:
+        Image: Input image with ``objmask`` updated by subtracting the
+        white tophat result.
+
     Best For:
         - Reducing glare-induced bridges between neighboring colonies.
         - Removing bright speckles or dust embedded in masks after
@@ -34,20 +48,6 @@ class WhiteTophat(ObjectRefiner, FootprintMixin):
           disconnected objects rather than thin bridges.
         - :class:`GMMCoreExtractor` for intensity-based core extraction
           when halos are the primary artifact.
-
-    Args:
-        shape: Structuring element shape. ``"disk"`` preserves round
-            features, ``"square"`` is more aggressive along axes,
-            ``"diamond"`` provides a compromise. A NumPy array provides
-            a custom element. Default: ``"disk"``.
-        width: Footprint width in pixels. Larger values remove broader
-            bright features but risk shrinking thin colony appendages.
-            ``None`` auto-scales to ~0.4% of the smallest image
-            dimension. Default: None.
-
-    Returns:
-        Image: Input image with ``objmask`` updated by subtracting the
-        white tophat result.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for tophat-based

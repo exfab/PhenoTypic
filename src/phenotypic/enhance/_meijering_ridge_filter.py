@@ -19,21 +19,6 @@ class MeijeringRidgeFilter(ImageEnhancer):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Delicate filamentous structures too thin for standard detection
-          (actinomycetes, fungal hyphae, bacterial networks).
-        - Fine wrinkles, grooves, or network features in biofilms.
-        - Sparse mycelial networks or bacterial filaments that require
-          sensitive ridge detection.
-
-    Consider Also:
-        - :class:`SatoRidgeFilter` for thicker, continuous tubular
-          structures with less sensitivity to parameter tuning.
-        - :class:`HessianFilter` for combined edge and ridge detection
-          with blob sensitivity control.
-        - :class:`CoherenceEnhancingDiffusion` for enhancing directional
-          structures via anisotropic smoothing before ridge detection.
-
     Args:
         sigmas: Sequence of standard deviations for Gaussian derivatives.
             Smaller values detect finer structures; larger values detect
@@ -52,6 +37,21 @@ class MeijeringRidgeFilter(ImageEnhancer):
     Returns:
         Image: Input image with ``detect_mat`` replaced by the Meijering
         neuriteness response map. ``rgb`` and ``gray`` are unchanged.
+
+    Best For:
+        - Delicate filamentous structures too thin for standard detection
+          (actinomycetes, fungal hyphae, bacterial networks).
+        - Fine wrinkles, grooves, or network features in biofilms.
+        - Sparse mycelial networks or bacterial filaments that require
+          sensitive ridge detection.
+
+    Consider Also:
+        - :class:`SatoRidgeFilter` for thicker, continuous tubular
+          structures with less sensitivity to parameter tuning.
+        - :class:`HessianFilter` for combined edge and ridge detection
+          with blob sensitivity control.
+        - :class:`CoherenceEnhancingDiffusion` for enhancing directional
+          structures via anisotropic smoothing before ridge detection.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a

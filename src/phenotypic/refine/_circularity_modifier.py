@@ -22,6 +22,19 @@ class LowCircularityRemover(ObjectRefiner):
     circular colonies while filtering out elongated artifacts, merged blobs,
     and segmentation debris.
 
+    Args:
+        cutoff: Minimum Polsby-Popper circularity in ``[0, 1]`` required to
+            retain an object. Typical range: 0.5--0.9. Higher values keep
+            only near-circular shapes; lower values tolerate irregular
+            morphologies. Default: 0.785.
+
+    Returns:
+        Image: Input image with ``objmap`` and ``objmask`` updated to exclude
+        objects below the circularity cutoff.
+
+    Raises:
+        ValueError: If ``cutoff`` is outside ``[0, 1]``.
+
     Best For:
         - Post-threshold cleanup to exclude elongated scratches or merged
           colonies before phenotyping.
@@ -36,19 +49,6 @@ class LowCircularityRemover(ObjectRefiner):
           near plate edges.
         - :class:`MaskOpener` for smoothing jagged boundaries before
           circularity filtering.
-
-    Args:
-        cutoff: Minimum Polsby-Popper circularity in ``[0, 1]`` required to
-            retain an object. Typical range: 0.5--0.9. Higher values keep
-            only near-circular shapes; lower values tolerate irregular
-            morphologies. Default: 0.785.
-
-    Returns:
-        Image: Input image with ``objmap`` and ``objmask`` updated to exclude
-        objects below the circularity cutoff.
-
-    Raises:
-        ValueError: If ``cutoff`` is outside ``[0, 1]``.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for shape-based

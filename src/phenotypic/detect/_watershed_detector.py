@@ -27,26 +27,6 @@ class WatershedDetector(ThresholdDetector):
     object. For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
 
-    Best For:
-        * Dense plates where colonies touch or overlap and must be counted
-          individually.
-        * Plates with variable colony sizes (e.g., mutant libraries) where
-          the distance transform naturally adapts seed placement.
-        * Irregular colony morphologies that follow local intensity
-          gradients better than geometric assumptions.
-        * Post-incubation plates where colony crowding is the primary
-          segmentation challenge.
-
-    Consider Also:
-        * :class:`OtsuDetector` when colonies are well-separated and a
-          simple binary mask suffices.
-        * :class:`RoundPeaksDetector` when colonies sit on a regular
-          pinned grid and peak-based assignment is more efficient.
-        * :class:`FilamentousFungiDetector` when colonies exhibit spreading,
-          filamentous growth rather than compact morphology.
-        * :class:`CannyDetector` when edge contrast is stronger than
-          intensity contrast for delineating colony boundaries.
-
     Args:
         footprint: Structuring element for peak detection. ``'auto'``
             infers size from grid spacing (GridImage only); an int creates a
@@ -84,6 +64,26 @@ class WatershedDetector(ThresholdDetector):
     Raises:
         ValueError: If invalid parameters are provided or if the distance
             transform / watershed computation fails.
+
+    Best For:
+        * Dense plates where colonies touch or overlap and must be counted
+          individually.
+        * Plates with variable colony sizes (e.g., mutant libraries) where
+          the distance transform naturally adapts seed placement.
+        * Irregular colony morphologies that follow local intensity
+          gradients better than geometric assumptions.
+        * Post-incubation plates where colony crowding is the primary
+          segmentation challenge.
+
+    Consider Also:
+        * :class:`OtsuDetector` when colonies are well-separated and a
+          simple binary mask suffices.
+        * :class:`RoundPeaksDetector` when colonies sit on a regular
+          pinned grid and peak-based assignment is more efficient.
+        * :class:`FilamentousFungiDetector` when colonies exhibit spreading,
+          filamentous growth rather than compact morphology.
+        * :class:`CannyDetector` when edge contrast is stronger than
+          intensity contrast for delineating colony boundaries.
 
     References:
         [1] S. Beucher and C. Lantuejoul, "Use of watersheds in contour

@@ -30,18 +30,6 @@ class AnscombeForward(ImageEnhancer):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Low-light or fluorescence plate images with photon-counting noise.
-        - Images from CCD/CMOS sensors where noise is Poisson-dominated.
-        - Enabling Gaussian denoisers on data with signal-dependent noise.
-
-    Consider Also:
-        - :class:`BM3DDenoiser` for direct denoising without domain transforms.
-        - :class:`BilateralDenoise` when edge preservation matters more than
-          noise model accuracy.
-        - :class:`VisuShrinkEnhancer` for wavelet denoising without a
-          variance-stabilizing step.
-
     Args:
         gain: Camera gain in electrons per ADU. Typical range: 0.1--10.0.
             Default: 1.0.
@@ -59,6 +47,18 @@ class AnscombeForward(ImageEnhancer):
 
     Raises:
         ValueError: If ``gain`` <= 0, ``sigma`` < 0, or ``scale_factor`` <= 0.
+
+    Best For:
+        - Low-light or fluorescence plate images with photon-counting noise.
+        - Images from CCD/CMOS sensors where noise is Poisson-dominated.
+        - Enabling Gaussian denoisers on data with signal-dependent noise.
+
+    Consider Also:
+        - :class:`BM3DDenoiser` for direct denoising without domain transforms.
+        - :class:`BilateralDenoise` when edge preservation matters more than
+          noise model accuracy.
+        - :class:`VisuShrinkEnhancer` for wavelet denoising without a
+          variance-stabilizing step.
 
     References:
         [1] F. J. Anscombe, "The transformation of Poisson, binomial and

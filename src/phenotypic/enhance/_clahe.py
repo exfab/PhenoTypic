@@ -21,20 +21,6 @@ class CLAHE(ImageEnhancer):
     For a discussion of contrast enhancement strategies, see
     :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Plates with faint or translucent colonies that blend into agar.
-        - Uneven illumination (vignetting, shadows from plate lids).
-        - Pre-conditioning before global thresholding (Otsu, Triangle).
-        - Early time-point plates where colonies are barely visible.
-
-    Consider Also:
-        - :class:`ContrastStretching` for a simpler global contrast adjustment
-          when illumination is already uniform.
-        - :class:`HomomorphicFilter` when the primary problem is a large-scale
-          illumination gradient rather than local contrast.
-        - :class:`UnsharpMask` when edges need sharpening rather than contrast
-          boosting.
-
     Args:
         kernel_size: Tile size for local equalization. Smaller tiles reveal
             tiny colonies but amplify agar texture; larger tiles produce
@@ -50,6 +36,20 @@ class CLAHE(ImageEnhancer):
 
     Raises:
         ValueError: If the detect_mat value range is invalid.
+
+    Best For:
+        - Plates with faint or translucent colonies that blend into agar.
+        - Uneven illumination (vignetting, shadows from plate lids).
+        - Pre-conditioning before global thresholding (Otsu, Triangle).
+        - Early time-point plates where colonies are barely visible.
+
+    Consider Also:
+        - :class:`ContrastStretching` for a simpler global contrast adjustment
+          when illumination is already uniform.
+        - :class:`HomomorphicFilter` when the primary problem is a large-scale
+          illumination gradient rather than local contrast.
+        - :class:`UnsharpMask` when edges need sharpening rather than contrast
+          boosting.
 
     References:
         [1] S. M. Pizer et al., "Adaptive histogram equalization and its

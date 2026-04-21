@@ -21,20 +21,6 @@ class SubtractGaussian(ImageEnhancer):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Correcting uneven lighting across plates or scan beds.
-        - Flattening background to enhance dark colonies on bright agar.
-        - Normalizing batches captured with varying exposure or
-          illumination profiles.
-
-    Consider Also:
-        - :class:`SubtractRollingBall` for parabolic background estimation
-          that adapts to non-Gaussian intensity ramps.
-        - :class:`OpeningSubtractBg` for faster morphological background
-          subtraction in high-throughput pipelines.
-        - :class:`BilateralDenoise` when the primary issue is noise rather
-          than illumination gradients.
-
     Args:
         sigma: Gaussian standard deviation defining the background scale.
             Must be larger than the typical colony diameter. Typical range:
@@ -52,6 +38,20 @@ class SubtractGaussian(ImageEnhancer):
     Returns:
         Image: Input image with ``detect_mat`` background-subtracted and
         clipped to [0, 1]. ``rgb`` and ``gray`` are unchanged.
+
+    Best For:
+        - Correcting uneven lighting across plates or scan beds.
+        - Flattening background to enhance dark colonies on bright agar.
+        - Normalizing batches captured with varying exposure or
+          illumination profiles.
+
+    Consider Also:
+        - :class:`SubtractRollingBall` for parabolic background estimation
+          that adapts to non-Gaussian intensity ramps.
+        - :class:`OpeningSubtractBg` for faster morphological background
+          subtraction in high-throughput pipelines.
+        - :class:`BilateralDenoise` when the primary issue is noise rather
+          than illumination gradients.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a

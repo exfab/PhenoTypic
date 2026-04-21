@@ -17,19 +17,6 @@ class MedianFilter(ImageEnhancer):
     Preserves colony boundaries better than Gaussian smoothing because it does
     not average across edges.
 
-    Best For:
-        - Plates with salt-and-pepper noise or bright/dark speckle artifacts.
-        - Preserving sharp colony edges during denoising.
-        - Pre-filtering before edge-based detection (Canny, Sobel).
-
-    Consider Also:
-        - :class:`GaussianBlur` for faster, simpler smoothing when edge
-          preservation is less critical.
-        - :class:`BilateralDenoise` for edge-preserving smoothing with
-          continuous intensity gradients.
-        - :class:`RankMedianEnhancer` for configurable rank-based filtering
-          with explicit footprint control.
-
     Args:
         mode: Boundary handling. Accepted values: ``'nearest'``, ``'reflect'``,
             ``'constant'``, ``'mirror'``, ``'wrap'``. Default: ``'nearest'``.
@@ -43,6 +30,19 @@ class MedianFilter(ImageEnhancer):
     Returns:
         Image: Input image with ``detect_mat`` filtered. ``rgb`` and ``gray``
         are unchanged.
+
+    Best For:
+        - Plates with salt-and-pepper noise or bright/dark speckle artifacts.
+        - Preserving sharp colony edges during denoising.
+        - Pre-filtering before edge-based detection (Canny, Sobel).
+
+    Consider Also:
+        - :class:`GaussianBlur` for faster, simpler smoothing when edge
+          preservation is less critical.
+        - :class:`BilateralDenoise` for edge-preserving smoothing with
+          continuous intensity gradients.
+        - :class:`RankMedianEnhancer` for configurable rank-based filtering
+          with explicit footprint control.
 
     See Also:
         :doc:`/how_to/notebooks/denoise_low_light` for a comparison of

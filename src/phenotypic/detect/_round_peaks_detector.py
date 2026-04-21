@@ -26,26 +26,6 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
     regular arrays (96, 384, 1536 formats). For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
 
-    Best For:
-        * Pinned yeast or bacterial plates with colonies arranged in a
-          regular rectangular grid.
-        * Plates where colony shape is approximately circular and colonies
-          are well-separated or only mildly touching.
-        * High-throughput screens where automatic grid inference eliminates
-          the need for manual grid specification.
-        * Workflows that require one-colony-per-cell assignment for
-          downstream quantification.
-
-    Consider Also:
-        * :class:`WatershedDetector` when colonies are densely packed and
-          touching but not arranged on a regular grid.
-        * :class:`FilamentousFungiDetector` when colonies exhibit spreading,
-          filamentous growth that violates the round-colony assumption.
-        * :class:`OtsuDetector` when a simple binary mask is sufficient and
-          per-cell assignment is not needed.
-        * :class:`ManualGridDetector` when colony positions are known a
-          priori from robotic spotting coordinates.
-
     Args:
         thresh_method: Thresholding method for binary mask creation.
             Options: ``'otsu'`` (default), ``'mean'``, ``'local'``,
@@ -105,6 +85,26 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
 
     Raises:
         ValueError: If an invalid thresholding method is specified.
+
+    Best For:
+        * Pinned yeast or bacterial plates with colonies arranged in a
+          regular rectangular grid.
+        * Plates where colony shape is approximately circular and colonies
+          are well-separated or only mildly touching.
+        * High-throughput screens where automatic grid inference eliminates
+          the need for manual grid specification.
+        * Workflows that require one-colony-per-cell assignment for
+          downstream quantification.
+
+    Consider Also:
+        * :class:`WatershedDetector` when colonies are densely packed and
+          touching but not arranged on a regular grid.
+        * :class:`FilamentousFungiDetector` when colonies exhibit spreading,
+          filamentous growth that violates the round-colony assumption.
+        * :class:`OtsuDetector` when a simple binary mask is sufficient and
+          per-cell assignment is not needed.
+        * :class:`ManualGridDetector` when colony positions are known a
+          priori from robotic spotting coordinates.
 
     References:
         [1] O. Wagih and L. Parts, "gitter: A robust and accurate method

@@ -20,21 +20,6 @@ class UnsharpMask(ImageEnhancer):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Low-contrast colonies with soft, gradual edges (translucent
-          growth).
-        - Dense plates where colonies blend into background.
-        - Pre-threshold sharpening to improve segmentation accuracy.
-        - Slight scanner or lens blur that softens colony boundaries.
-
-    Consider Also:
-        - :class:`BilateralDenoise` for denoising before sharpening on
-          grainy images to avoid amplifying noise.
-        - :class:`LaplaceEnhancer` for second-derivative edge detection
-          that replaces rather than enhances the intensity profile.
-        - :class:`PhaseCongruencyEnhancer` for contrast-invariant edge
-          detection under uneven illumination.
-
     Args:
         radius: Standard deviation of the Gaussian blur in pixels.
             Controls the scale of features enhanced. Small values
@@ -53,6 +38,21 @@ class UnsharpMask(ImageEnhancer):
     Returns:
         Image: Input image with ``detect_mat`` sharpened via unsharp
         masking. ``rgb`` and ``gray`` are unchanged.
+
+    Best For:
+        - Low-contrast colonies with soft, gradual edges (translucent
+          growth).
+        - Dense plates where colonies blend into background.
+        - Pre-threshold sharpening to improve segmentation accuracy.
+        - Slight scanner or lens blur that softens colony boundaries.
+
+    Consider Also:
+        - :class:`BilateralDenoise` for denoising before sharpening on
+          grainy images to avoid amplifying noise.
+        - :class:`LaplaceEnhancer` for second-derivative edge detection
+          that replaces rather than enhances the intensity profile.
+        - :class:`PhaseCongruencyEnhancer` for contrast-invariant edge
+          detection under uneven illumination.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a

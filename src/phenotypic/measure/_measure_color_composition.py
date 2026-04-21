@@ -24,16 +24,6 @@ class MeasureColorComposition(MeasureFeatures):
     Gray, Pink, Brown, Red, Orange, Yellow, Green, Cyan, Blue, Purple.
     Returns per-colony percentage breakdowns as DataFrame columns.
 
-    Best For:
-        - Quantifying pigmentation differences between strains or conditions.
-        - Detecting color-based phenotypes (sectoring, pigment production).
-        - Screening for metabolic changes that alter colony color.
-
-    Consider Also:
-        - :class:`MeasureColor` for continuous color statistics (mean, std)
-          in CIELAB, HSV, and XYZ color spaces.
-        - :class:`MeasureIntensity` when only grayscale brightness matters.
-
     Args:
         hue_normalization: Multiplier to normalize hue to 0--360 range.
             Default: 360.0 (for skimage 0--1 hue input).
@@ -53,6 +43,16 @@ class MeasureColorComposition(MeasureFeatures):
         pd.DataFrame: One row per colony with percentage columns for each
         of the 11 color categories (e.g., ``ColorComp_Red``,
         ``ColorComp_White``).
+
+    Best For:
+        - Quantifying pigmentation differences between strains or conditions.
+        - Detecting color-based phenotypes (sectoring, pigment production).
+        - Screening for metabolic changes that alter colony color.
+
+    Consider Also:
+        - :class:`MeasureColor` for continuous color statistics (mean, std)
+          in CIELAB, HSV, and XYZ color spaces.
+        - :class:`MeasureIntensity` when only grayscale brightness matters.
 
     See Also:
         :doc:`/tutorials/notebooks/07_measuring_and_exporting` for a

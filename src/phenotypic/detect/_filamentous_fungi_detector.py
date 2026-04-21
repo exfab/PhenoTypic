@@ -4,7 +4,6 @@ import numpy as np
 import gc
 
 if TYPE_CHECKING:
-
     from phenotypic._core._image import Image
     from phenotypic._core._grid_image import GridImage
     from phenotypic._core._image_pipeline import ImagePipeline  # type: ignore
@@ -64,26 +63,6 @@ class FilamentousFungiDetector(GridObjectDetector):
     with connectivity-based correction ensuring uniform labelling within
     connected components. For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
-
-    Best For:
-        * Filamentous fungal colonies (e.g., *Aspergillus*, *Neurospora*,
-          *Trichoderma*) with irregular, spreading hyphal morphologies.
-        * Dense plates where neighbouring fungal colonies touch or overlap
-          and must be individually labelled.
-        * Time-course experiments tracking hyphal extension from compact
-          inoculation sites.
-        * Grid-based fungal culture plates (GridImage) where one colony per
-          well must be quantified.
-        * High-throughput fungal phenotyping screens requiring consistent
-          separation quality across hundreds of plates.
-
-    Consider Also:
-        * :class:`WatershedDetector` when colonies are compact and roughly
-          circular (yeast-like morphology).
-        * :class:`OtsuDetector` when fungi are well-separated and a simple
-          binary mask suffices without individual labelling.
-        * :class:`CompositeDetector` when combining multiple detection
-          strategies without the two-stage centre-plus-body approach.
 
     Args:
         inoculum_detector: ObjectDetector or ImagePipeline that identifies
@@ -159,6 +138,26 @@ class FilamentousFungiDetector(GridObjectDetector):
             detected, or no centres overlap with the overall structure
             after filtering.
 
+    Best For:
+        * Filamentous fungal colonies (e.g., *Aspergillus*, *Neurospora*,
+          *Trichoderma*) with irregular, spreading hyphal morphologies.
+        * Dense plates where neighbouring fungal colonies touch or overlap
+          and must be individually labelled.
+        * Time-course experiments tracking hyphal extension from compact
+          inoculation sites.
+        * Grid-based fungal culture plates (GridImage) where one colony per
+          well must be quantified.
+        * High-throughput fungal phenotyping screens requiring consistent
+          separation quality across hundreds of plates.
+
+    Consider Also:
+        * :class:`WatershedDetector` when colonies are compact and roughly
+          circular (yeast-like morphology).
+        * :class:`OtsuDetector` when fungi are well-separated and a simple
+          binary mask suffices without individual labelling.
+        * :class:`CompositeDetector` when combining multiple detection
+          strategies without the two-stage centre-plus-body approach.
+
     References:
         [1] P. Kovesi, "Image features from phase congruency," *Videre:
         J. Comput. Vis. Res.*, vol. 1, no. 3, pp. 1--26, 1999.
@@ -180,6 +179,7 @@ class FilamentousFungiDetector(GridObjectDetector):
             inoculum_detector: Union[ObjectDetector, 'ImagePipeline', None] = None,
             overall_detector: Union[ObjectDetector, 'ImagePipeline', None] = None,
             # Reconnection parameters
+            ignore_borders: bool = True,
             enable_reconnection: bool = True,
             pct_n_orient: int = 8,
             pct_min_wavelength: float = 5.0,
@@ -250,6 +250,7 @@ class FilamentousFungiDetector(GridObjectDetector):
         self.overall_detector = overall_detector
 
         # Reconnection parameters
+        self.ignore_borders = ignore_borders
         self.enable_reconnection = enable_reconnection
         self.pct_n_orient = pct_n_orient
         self.pct_min_wavelength = pct_min_wavelength
@@ -342,7 +343,7 @@ class FilamentousFungiDetector(GridObjectDetector):
                     low="triangle",
                     high="otsu",
                     ignore_zeros=False,
-                    ignore_borders=True
+                    ignore_borders=self.ignore_borders
             ).apply(_fragmented_detect_img, inplace=True)
             overall_objmask = _fragmented_detect_img.objmask[:]
             del _fragmented_detect_img

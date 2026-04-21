@@ -21,6 +21,10 @@ class ImageInverter(ImageEnhancer):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
+    Returns:
+        Image: Input image with ``detect_mat`` intensity-inverted.
+        ``rgb`` and ``gray`` are unchanged.
+
     Best For:
         - Correcting inverted scan output from imaging systems that
           produce dark-on-bright colony images.
@@ -34,10 +38,6 @@ class ImageInverter(ImageEnhancer):
           (e.g., to red or green) would resolve the contrast issue.
         - :class:`UnsharpMask` when the issue is low contrast rather
           than inverted polarity.
-
-    Returns:
-        Image: Input image with ``detect_mat`` intensity-inverted.
-        ``rgb`` and ``gray`` are unchanged.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a

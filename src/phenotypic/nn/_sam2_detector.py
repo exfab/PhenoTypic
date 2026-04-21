@@ -37,29 +37,6 @@ class Sam2Detector(GpuDetector):
     so a ``Sam2Detector`` can be serialised, round-tripped through JSON,
     and inspected without a GPU or PyTorch installed.
 
-    Best For:
-        * Plates where colony appearance varies widely (mixed species,
-          pigmented mutants, translucent microcolonies) and no single
-          intensity threshold captures all objects.
-        * Complex backgrounds (textured agar, condensation, scratches)
-          that confuse classical thresholding methods.
-        * Exploratory analysis on new plate types before investing time
-          in tuning classical detector parameters.
-        * Dense plates with heterogeneous colony morphologies where
-          watershed over-segments or under-segments.
-
-    Consider Also:
-        * :class:`~phenotypic.detect.OtsuDetector` for well-lit plates
-          with a clean bimodal histogram -- faster and requires no GPU.
-        * :class:`~phenotypic.detect.WatershedDetector` when touching
-          colonies of similar appearance must be split and a GPU is
-          unavailable.
-        * :class:`~phenotypic.nn.MicroSamDetector` for microscopy images
-          where a domain-finetuned SAM model may outperform the general-
-          purpose SAM2 checkpoint.
-        * :class:`~phenotypic.detect.HysteresisDetector` when colony
-          intensity varies but a dual-threshold approach suffices.
-
     Args:
         model_size: SAM2 model variant.  ``"tiny"`` (~39 MB) is fastest
             and sufficient for most colony plates; ``"large"`` (~900 MB)
@@ -111,6 +88,29 @@ class Sam2Detector(GpuDetector):
             with ``pip install phenotypic[torch]``.
         RuntimeError: If ``device="auto"`` and no GPU/accelerator is
             available.
+
+    Best For:
+        * Plates where colony appearance varies widely (mixed species,
+          pigmented mutants, translucent microcolonies) and no single
+          intensity threshold captures all objects.
+        * Complex backgrounds (textured agar, condensation, scratches)
+          that confuse classical thresholding methods.
+        * Exploratory analysis on new plate types before investing time
+          in tuning classical detector parameters.
+        * Dense plates with heterogeneous colony morphologies where
+          watershed over-segments or under-segments.
+
+    Consider Also:
+        * :class:`~phenotypic.detect.OtsuDetector` for well-lit plates
+          with a clean bimodal histogram -- faster and requires no GPU.
+        * :class:`~phenotypic.detect.WatershedDetector` when touching
+          colonies of similar appearance must be split and a GPU is
+          unavailable.
+        * :class:`~phenotypic.nn.MicroSamDetector` for microscopy images
+          where a domain-finetuned SAM model may outperform the general-
+          purpose SAM2 checkpoint.
+        * :class:`~phenotypic.detect.HysteresisDetector` when colony
+          intensity varies but a dual-threshold approach suffices.
 
     References:
         [1] N. Ravi et al., "SAM 2: Segment Anything in Images and

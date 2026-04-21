@@ -19,22 +19,6 @@ class MinimumDetector(ThresholdDetector):
     as the valley provides a natural separation boundary. For a full
     comparison see :doc:`/explanation/detection_strategies_compared`.
 
-    Best For:
-        * High-contrast plates where colony and background intensities form
-          two distinct, well-separated histogram peaks.
-        * Standardised imaging setups producing consistently bimodal
-          histograms across plates.
-        * Images where the intensity gap between colonies and agar is wide
-          and the valley is unambiguous.
-
-    Consider Also:
-        * :class:`OtsuDetector` when the histogram is bimodal but peaks
-          are broad or partially overlapping.
-        * :class:`LiDetector` when the histogram is unimodal or weakly
-          bimodal and a cross-entropy criterion is more appropriate.
-        * :class:`HysteresisDetector` when colony brightness varies and a
-          single valley-based threshold under-segments faint regions.
-
     Args:
         ignore_zeros: Exclude zero-intensity pixels from threshold
             computation. Enable for plates with black borders or masked
@@ -52,6 +36,22 @@ class MinimumDetector(ThresholdDetector):
     Raises:
         ValueError: If the histogram has no clear bimodal distribution and
             no valley can be found.
+
+    Best For:
+        * High-contrast plates where colony and background intensities form
+          two distinct, well-separated histogram peaks.
+        * Standardised imaging setups producing consistently bimodal
+          histograms across plates.
+        * Images where the intensity gap between colonies and agar is wide
+          and the valley is unambiguous.
+
+    Consider Also:
+        * :class:`OtsuDetector` when the histogram is bimodal but peaks
+          are broad or partially overlapping.
+        * :class:`LiDetector` when the histogram is unimodal or weakly
+          bimodal and a cross-entropy criterion is more appropriate.
+        * :class:`HysteresisDetector` when colony brightness varies and a
+          single valley-based threshold under-segments faint regions.
 
     See Also:
         :doc:`/tutorials/notebooks/02_detecting_colonies`

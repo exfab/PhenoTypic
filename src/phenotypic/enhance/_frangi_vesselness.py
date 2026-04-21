@@ -19,20 +19,6 @@ class FrangiVesselness(ImageEnhancer):
 
     For algorithm details, see :doc:`/explanation/filamentous_fungi_algorithm`.
 
-    Best For:
-        - Filamentous fungi (*Neurospora*, *Aspergillus*) with branching hyphae.
-        - Thin, elongated structures that global thresholding misses.
-        - Interconnected mycelial networks or biofilm structures.
-        - Pre-filtering before ``FilamentousFungiDetector``.
-
-    Consider Also:
-        - :class:`MeijeringRidgeFilter` for neurite-like structures with fewer
-          parameters to tune.
-        - :class:`SatoRidgeFilter` for ridge detection with different
-          sensitivity characteristics.
-        - :class:`PhaseCongruencyEnhancer` for illumination-invariant edge
-          enhancement of filaments.
-
     Args:
         sigmas: Scales (standard deviations) for Hessian computation. Smaller
             values detect finer structures; larger values detect thicker ones.
@@ -52,6 +38,20 @@ class FrangiVesselness(ImageEnhancer):
     Returns:
         Image: Input image with ``detect_mat`` set to the vesselness response
         map. ``rgb`` and ``gray`` are unchanged.
+
+    Best For:
+        - Filamentous fungi (*Neurospora*, *Aspergillus*) with branching hyphae.
+        - Thin, elongated structures that global thresholding misses.
+        - Interconnected mycelial networks or biofilm structures.
+        - Pre-filtering before ``FilamentousFungiDetector``.
+
+    Consider Also:
+        - :class:`MeijeringRidgeFilter` for neurite-like structures with fewer
+          parameters to tune.
+        - :class:`SatoRidgeFilter` for ridge detection with different
+          sensitivity characteristics.
+        - :class:`PhaseCongruencyEnhancer` for illumination-invariant edge
+          enhancement of filaments.
 
     References:
         [1] A. F. Frangi, W. J. Niessen, K. L. Vincken, and M. A. Viergever,

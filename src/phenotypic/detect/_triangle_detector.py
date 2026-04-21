@@ -18,6 +18,14 @@ class TriangleDetector(ThresholdDetector):
     faint colonies that Otsu may miss. For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
 
+    Returns:
+        Image: Input image with ``objmask`` set to the thresholded binary
+        mask and ``objmap`` set to labeled connected components.
+
+    Raises:
+        ValueError: If threshold computation fails (e.g., degenerate
+            histogram with insufficient intensity variation).
+
     Best For:
         * Plates where colonies are sparse and background dominates the
           intensity histogram.
@@ -35,14 +43,6 @@ class TriangleDetector(ThresholdDetector):
           the plate and a single threshold under-segments faint regions.
         * :class:`ManualDetector` when an empirically determined threshold is
           known to outperform automatic methods for your plate type.
-
-    Returns:
-        Image: Input image with ``objmask`` set to the thresholded binary
-        mask and ``objmap`` set to labeled connected components.
-
-    Raises:
-        ValueError: If threshold computation fails (e.g., degenerate
-            histogram with insufficient intensity variation).
 
     References:
         [1] G. W. Zack, W. E. Rogers, and S. A. Latt, "Automatic

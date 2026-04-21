@@ -23,6 +23,14 @@ class MeasureSize(MeasureFeatures):
     size assessment without the overhead of full shape or intensity
     statistical analysis.
 
+    Returns:
+        pd.DataFrame: Object-level size measurements with columns:
+
+            - Label: unique object identifier.
+            - Area: number of pixels occupied by the colony.
+            - IntegratedIntensity: sum of grayscale pixel values
+              (proxy for biomass / optical density).
+
     Best For:
         - Quick quality-control screening of colony size distributions.
         - Time-course growth tracking via area at successive time points.
@@ -36,14 +44,6 @@ class MeasureSize(MeasureFeatures):
           (percentiles, variance, coefficient of variation).
         - :class:`MeasureGridSpread` for detecting multi-object wells in
           arrayed assays.
-
-    Returns:
-        pd.DataFrame: Object-level size measurements with columns:
-
-            - Label: unique object identifier.
-            - Area: number of pixels occupied by the colony.
-            - IntegratedIntensity: sum of grayscale pixel values
-              (proxy for biomass / optical density).
 
     See Also:
         :doc:`/tutorials/notebooks/07_measuring_and_exporting` for a

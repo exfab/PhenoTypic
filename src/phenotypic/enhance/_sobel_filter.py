@@ -17,6 +17,10 @@ class SobelFilter(ImageEnhancer):
     image — useful as a preprocessing step before watershed seeds or
     contour-based detectors.
 
+    Returns:
+        Image: Input image with ``detect_mat`` set to gradient magnitude.
+        ``rgb`` and ``gray`` are unchanged.
+
     Best For:
         - Pre-filtering before watershed or contour-based detection.
         - Separating touching colonies when combined with marker-based
@@ -28,10 +32,6 @@ class SobelFilter(ImageEnhancer):
           converting to a pure edge map.
         - :class:`LaplaceEnhancer` for second-derivative edge detection
           that responds to ridges and valleys.
-
-    Returns:
-        Image: Input image with ``detect_mat`` set to gradient magnitude.
-        ``rgb`` and ``gray`` are unchanged.
 
     See Also:
         :doc:`/explanation/what_enhancement_does` for how edge enhancement

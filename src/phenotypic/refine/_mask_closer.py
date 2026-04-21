@@ -19,6 +19,18 @@ class MaskCloser(ObjectRefiner, FootprintMixin):
     fragments of the same colony separated by thin background channels.
     Preserves overall colony shape and size while reducing fragmentation.
 
+    Args:
+        shape: Structuring element. ``'auto'``, ``'disk'``, ``'square'``,
+            ``'diamond'``, or custom ndarray. Default: ``None``.
+        width: Footprint width in pixels. Larger values bridge wider gaps
+            but risk merging distinct colonies. Typical range: 3--9.
+            Default: 5.
+        n_iter: Number of closing iterations. Default: 1.
+
+    Returns:
+        Image: Input image with ``objmask`` and ``objmap`` morphologically
+        closed.
+
     Best For:
         - Colonies fragmented by uneven pigmentation or shadow effects.
         - Small internal holes from condensation or glare.
@@ -31,18 +43,6 @@ class MaskCloser(ObjectRefiner, FootprintMixin):
           connections between distinct colonies.
         - :class:`NearestNeighborMerger` for merging distant fragments
           based on proximity.
-
-    Args:
-        shape: Structuring element. ``'auto'``, ``'disk'``, ``'square'``,
-            ``'diamond'``, or custom ndarray. Default: ``None``.
-        width: Footprint width in pixels. Larger values bridge wider gaps
-            but risk merging distinct colonies. Typical range: 3--9.
-            Default: 5.
-        n_iter: Number of closing iterations. Default: 1.
-
-    Returns:
-        Image: Input image with ``objmask`` and ``objmap`` morphologically
-        closed.
 
     See Also:
         :doc:`/how_to/notebooks/merge_fragmented_detections` for fragment

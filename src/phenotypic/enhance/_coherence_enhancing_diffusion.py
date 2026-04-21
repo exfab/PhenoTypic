@@ -23,22 +23,6 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Filamentous fungal hyphae (Aspergillus, Penicillium, molds) where
-          branching structures need enhancement.
-        - Streak inoculation patterns where colonies grow along lines.
-        - Preprocessing before ridge detection (Frangi, Sato, Meijering) to
-          reduce noise without losing tubular structures.
-        - Faint elongated features in low-contrast or noisy scans.
-
-    Consider Also:
-        - :class:`BilateralDenoise` for isotropic edge-preserving denoising
-          of round colonies without directional features.
-        - :class:`SatoRidgeFilter` for direct ridge detection without a
-          diffusion preprocessing step.
-        - :class:`MeijeringRidgeFilter` for detecting very fine neurite-like
-          filaments.
-
     Args:
         num_iter: Number of diffusion iterations. Typical range: 5--100.
             Small values (5--10) give subtle enhancement; medium values
@@ -63,6 +47,22 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
     Returns:
         Image: Input image with ``detect_mat`` smoothed along coherent
         structures. ``rgb`` and ``gray`` are unchanged.
+
+    Best For:
+        - Filamentous fungal hyphae (Aspergillus, Penicillium, molds) where
+          branching structures need enhancement.
+        - Streak inoculation patterns where colonies grow along lines.
+        - Preprocessing before ridge detection (Frangi, Sato, Meijering) to
+          reduce noise without losing tubular structures.
+        - Faint elongated features in low-contrast or noisy scans.
+
+    Consider Also:
+        - :class:`BilateralDenoise` for isotropic edge-preserving denoising
+          of round colonies without directional features.
+        - :class:`SatoRidgeFilter` for direct ridge detection without a
+          diffusion preprocessing step.
+        - :class:`MeijeringRidgeFilter` for detecting very fine neurite-like
+          filaments.
 
     References:
         [1] J. Weickert, "Coherence-enhancing diffusion filtering," *Int.

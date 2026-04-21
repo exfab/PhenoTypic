@@ -20,6 +20,15 @@ class MaskFill(ObjectRefiner):
     pigment heterogeneity, or glare within colonies. Produces masks that
     better match the true colony footprint for area and shape measurements.
 
+    Args:
+        structure: Binary structuring element defining the fill neighborhood.
+            ``None`` uses the default cross-shaped element. Default: ``None``.
+        origin: Center offset for the structuring element. Default: 0.
+
+    Returns:
+        Image: Input image with ``objmask`` and ``objmap`` updated with
+        filled holes.
+
     Best For:
         - Donut-like masks from global thresholding on colonies with dark centers.
         - Colonies with radial pigment texture that creates interior gaps.
@@ -30,15 +39,6 @@ class MaskFill(ObjectRefiner):
           rather than filling holes *within* objects.
         - :class:`MaskOpener` for the opposite effect — removing thin
           connections between objects.
-
-    Args:
-        structure: Binary structuring element defining the fill neighborhood.
-            ``None`` uses the default cross-shaped element. Default: ``None``.
-        origin: Center offset for the structuring element. Default: 0.
-
-    Returns:
-        Image: Input image with ``objmask`` and ``objmap`` updated with
-        filled holes.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough

@@ -21,19 +21,6 @@ class RankMedianEnhancer(ImageEnhancer):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Salt-and-pepper or impulsive noise from sensor defects.
-        - Dust speckles and pixel-level artifacts on scanned plates.
-        - Grid-like imaging artifacts when using a ``'square'`` footprint.
-
-    Consider Also:
-        - :class:`BilateralDenoise` for edge-preserving Gaussian noise
-          removal without the intensity quantization of rank filters.
-        - :class:`NonLocalMeansDenoiser` for patch-based denoising that
-          preserves texture better on noisy plates.
-        - :class:`GrayOpening` for morphological artifact removal that
-          does not require uint8 conversion.
-
     Args:
         shape: Footprint geometry. ``'disk'`` for isotropic smoothing;
             ``'square'`` (default) to align with grid artifacts.
@@ -46,6 +33,19 @@ class RankMedianEnhancer(ImageEnhancer):
     Returns:
         Image: Input image with ``detect_mat`` median-filtered. ``rgb``
         and ``gray`` are unchanged.
+
+    Best For:
+        - Salt-and-pepper or impulsive noise from sensor defects.
+        - Dust speckles and pixel-level artifacts on scanned plates.
+        - Grid-like imaging artifacts when using a ``'square'`` footprint.
+
+    Consider Also:
+        - :class:`BilateralDenoise` for edge-preserving Gaussian noise
+          removal without the intensity quantization of rank filters.
+        - :class:`NonLocalMeansDenoiser` for patch-based denoising that
+          preserves texture better on noisy plates.
+        - :class:`GrayOpening` for morphological artifact removal that
+          does not require uint8 conversion.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a

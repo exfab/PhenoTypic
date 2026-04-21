@@ -20,22 +20,6 @@ class LiDetector(ThresholdDetector):
     assumption does not hold. For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
 
-    Best For:
-        * Low-contrast plates where colony and background intensities
-          overlap significantly.
-        * Noisy or textured agar backgrounds that create histogram
-          irregularities breaking bimodal assumptions.
-        * Images where the intensity distribution is unimodal or only
-          weakly bimodal.
-
-    Consider Also:
-        * :class:`OtsuDetector` when the histogram is clearly bimodal and
-          a fast single-pass threshold suffices.
-        * :class:`YenDetector` for a correlation-based alternative that
-          handles skewed histograms.
-        * :class:`HysteresisDetector` when colony brightness varies across
-          the plate and a single threshold under-segments faint regions.
-
     Args:
         ignore_zeros: Exclude zero-intensity pixels from threshold
             computation. Enable for plates with black borders or masked
@@ -53,6 +37,22 @@ class LiDetector(ThresholdDetector):
     Raises:
         ValueError: If threshold computation fails (e.g., degenerate
             histogram with insufficient intensity variation).
+
+    Best For:
+        * Low-contrast plates where colony and background intensities
+          overlap significantly.
+        * Noisy or textured agar backgrounds that create histogram
+          irregularities breaking bimodal assumptions.
+        * Images where the intensity distribution is unimodal or only
+          weakly bimodal.
+
+    Consider Also:
+        * :class:`OtsuDetector` when the histogram is clearly bimodal and
+          a fast single-pass threshold suffices.
+        * :class:`YenDetector` for a correlation-based alternative that
+          handles skewed histograms.
+        * :class:`HysteresisDetector` when colony brightness varies across
+          the plate and a single threshold under-segments faint regions.
 
     References:
         [1] C. H. Li and C. K. Lee, "Minimum cross entropy thresholding,"

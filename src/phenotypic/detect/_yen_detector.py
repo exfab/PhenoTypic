@@ -19,22 +19,6 @@ class YenDetector(ThresholdDetector):
     between variance-based (Otsu) and entropy-based (Li) criteria. For a
     full comparison see :doc:`/explanation/detection_strategies_compared`.
 
-    Best For:
-        * High-contrast plates with clear intensity separation between
-          colonies and agar.
-        * Images with skewed histograms where one class is larger than
-          the other.
-        * Exploratory analysis when unsure whether a variance-based or
-          entropy-based criterion fits the data better.
-
-    Consider Also:
-        * :class:`OtsuDetector` for a faster variance-based threshold when
-          the histogram is balanced and bimodal.
-        * :class:`LiDetector` when the histogram is low-contrast or
-          unimodal and entropy-based separation is more appropriate.
-        * :class:`TriangleDetector` when colonies are very sparse and the
-          histogram is strongly background-dominated.
-
     Args:
         ignore_zeros: Exclude zero-intensity pixels from threshold
             computation. Enable for plates with black borders or masked
@@ -52,6 +36,22 @@ class YenDetector(ThresholdDetector):
     Raises:
         ValueError: If threshold computation fails (e.g., degenerate
             histogram with insufficient intensity variation).
+
+    Best For:
+        * High-contrast plates with clear intensity separation between
+          colonies and agar.
+        * Images with skewed histograms where one class is larger than
+          the other.
+        * Exploratory analysis when unsure whether a variance-based or
+          entropy-based criterion fits the data better.
+
+    Consider Also:
+        * :class:`OtsuDetector` for a faster variance-based threshold when
+          the histogram is balanced and bimodal.
+        * :class:`LiDetector` when the histogram is low-contrast or
+          unimodal and entropy-based separation is more appropriate.
+        * :class:`TriangleDetector` when colonies are very sparse and the
+          histogram is strongly background-dominated.
 
     References:
         [1] J. C. Yen, F. J. Chang, and S. Chang, "A new criterion for

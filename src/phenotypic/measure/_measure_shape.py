@@ -26,6 +26,18 @@ class MeasureShape(MeasureFeatures):
     DataFrame provides a full morphological profile for phenotypic
     classification and growth-pattern analysis.
 
+    Returns:
+        pd.DataFrame: Object-level morphological measurements with
+        columns:
+
+            - Label, Area, Perimeter, Circularity, Compactness,
+              ConvexArea, Solidity, Extent, BboxArea.
+            - MeanRadius, MedianRadius, MaxRadius (distance-transform
+              based).
+            - MinFeretDiameter, MaxFeretDiameter (caliper diameters).
+            - MajorAxisLength, MinorAxisLength, Eccentricity,
+              Orientation.
+
     Best For:
         - Distinguishing colony morphotypes (smooth circular wild-type
           vs wrinkled, branching, or invasive mutants).
@@ -42,18 +54,6 @@ class MeasureShape(MeasureFeatures):
           features that complement shape metrics.
         - :class:`MeasureBounds` for bounding box and centroid data
           without shape statistics.
-
-    Returns:
-        pd.DataFrame: Object-level morphological measurements with
-        columns:
-
-            - Label, Area, Perimeter, Circularity, Compactness,
-              ConvexArea, Solidity, Extent, BboxArea.
-            - MeanRadius, MedianRadius, MaxRadius (distance-transform
-              based).
-            - MinFeretDiameter, MaxFeretDiameter (caliper diameters).
-            - MajorAxisLength, MinorAxisLength, Eccentricity,
-              Orientation.
 
     See Also:
         :doc:`/tutorials/notebooks/07_measuring_and_exporting` for a

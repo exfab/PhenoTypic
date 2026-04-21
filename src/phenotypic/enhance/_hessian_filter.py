@@ -19,20 +19,6 @@ class HessianFilter(ImageEnhancer):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Sharp boundaries between colonies and agar background.
-        - Thin or elongated structures (filaments, branching) with poor
-          contrast.
-        - Size-invariant colony edge enhancement before thresholding.
-        - Textured colonies or biofilms with complex internal structure.
-
-    Consider Also:
-        - :class:`SatoRidgeFilter` for continuous tube-like structures where
-          Hessian eigenvalue ratios provide cleaner ridge responses.
-        - :class:`MeijeringRidgeFilter` for very fine neurite-like filaments.
-        - :class:`LaplaceEnhancer` for simpler second-derivative edge
-          detection without multi-scale analysis.
-
     Args:
         sigmas: Sequence of standard deviations for Gaussian derivatives.
             Smaller values detect finer edges; larger values detect broader
@@ -55,6 +41,20 @@ class HessianFilter(ImageEnhancer):
     Returns:
         Image: Input image with ``detect_mat`` replaced by the Hessian
         ridge response map. ``rgb`` and ``gray`` are unchanged.
+
+    Best For:
+        - Sharp boundaries between colonies and agar background.
+        - Thin or elongated structures (filaments, branching) with poor
+          contrast.
+        - Size-invariant colony edge enhancement before thresholding.
+        - Textured colonies or biofilms with complex internal structure.
+
+    Consider Also:
+        - :class:`SatoRidgeFilter` for continuous tube-like structures where
+          Hessian eigenvalue ratios provide cleaner ridge responses.
+        - :class:`MeijeringRidgeFilter` for very fine neurite-like filaments.
+        - :class:`LaplaceEnhancer` for simpler second-derivative edge
+          detection without multi-scale analysis.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a

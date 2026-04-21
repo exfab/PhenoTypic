@@ -17,7 +17,7 @@
 
 - [ ] Tooling Setup (drafted content)
   - [x] Primary path: `uv sync --group dev` (or `uv sync --group dev --group docs` for docs); activate via `source .venv/bin/activate` or prefix commands with `uv run`.
-  - [x] Alternatives: Editable install `uv pip install -e .`; `pip install phenotypic` for users; `uv pip install "phenotypic[gui]"` for notebook/GUI work.
+  - [x] Alternatives: Editable install `uv add --editable .`; `pip install phenotypic` for users; `uv add "phenotypic[gui]"` for notebook/GUI work.
   - [x] External tools: Install ExifTool for raw metadata; include a validation command example (e.g., `exiftool -ver`) and note impact if missing.
 
 - [ ] Repository Tour (drafted content)

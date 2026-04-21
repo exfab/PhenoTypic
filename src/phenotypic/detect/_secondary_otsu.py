@@ -32,6 +32,10 @@ class SecondaryOtsuDetector(ThresholdDetector):
     preserving colony cores. For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
 
+    Returns:
+        Image: Input image with ``objmask`` set to binary mask and
+        ``objmap`` set to labeled connected components.
+
     Best For:
         * Refining boundaries after an initial global threshold that leaves
           soft or blurry colony edges.
@@ -48,10 +52,6 @@ class SecondaryOtsuDetector(ThresholdDetector):
           per-object refinement.
         * :class:`RankOtsuDetector` when spatially varying illumination is
           the primary cause of boundary inaccuracy.
-
-    Returns:
-        Image: Input image with ``objmask`` set to binary mask and
-        ``objmap`` set to labeled connected components.
 
     References:
         [1] N. Otsu, "A threshold selection method from gray-level

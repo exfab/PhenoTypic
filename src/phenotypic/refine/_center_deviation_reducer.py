@@ -19,6 +19,10 @@ class CenterDeviationReducer(ObjectRefiner):
     for per-cell crops where the intended colony sits near the center and
     peripheral detections are artifacts.
 
+    Returns:
+        Image: Input image with ``objmap`` reduced to the single most centered
+        object.
+
     Best For:
         - Single-colony crops from grid plates where debris appears near edges.
         - Automated pipelines that assume one colony per field-of-view.
@@ -31,10 +35,6 @@ class CenterDeviationReducer(ObjectRefiner):
           smaller than the true colony.
         - :class:`ReduceMultipleGridObjects` for grid-aware multi-detection
           reduction using positional regression.
-
-    Returns:
-        Image: Input image with ``objmap`` reduced to the single most centered
-        object.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for boundary cleanup

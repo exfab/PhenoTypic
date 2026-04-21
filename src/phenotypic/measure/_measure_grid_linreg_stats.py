@@ -22,6 +22,19 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
     residual errors flag off-grid growth, misdetections, or plate
     warping.
 
+    Args:
+        section_num: Grid section index to restrict measurements to.
+            ``None`` measures across the entire grid. Default: ``None``.
+
+    Returns:
+        pd.DataFrame: Per-object metrics indexed by object label:
+
+            - RowM, RowB: row regression slope and intercept.
+            - ColM, ColB: column regression slope and intercept.
+            - PredRR, PredCC: predicted centroid from regression.
+            - ResidualError: Euclidean distance between actual and
+              predicted centroid.
+
     Best For:
         - Identifying colonies that grew outside their designated grid
           position on arrayed plates.
@@ -37,19 +50,6 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
           and multi-object wells.
         - :class:`MeasureBounds` for raw centroid and bounding box
           coordinates without regression.
-
-    Args:
-        section_num: Grid section index to restrict measurements to.
-            ``None`` measures across the entire grid. Default: ``None``.
-
-    Returns:
-        pd.DataFrame: Per-object metrics indexed by object label:
-
-            - RowM, RowB: row regression slope and intercept.
-            - ColM, ColB: column regression slope and intercept.
-            - PredRR, PredCC: predicted centroid from regression.
-            - ResidualError: Euclidean distance between actual and
-              predicted centroid.
 
     See Also:
         :doc:`/tutorials/notebooks/07_measuring_and_exporting` for a

@@ -107,6 +107,7 @@ class FilamentousFungiPipeline(PrefabPipeline):
             inoculum_max_diameter: float = 100.0,
             inoculum_detector: Union[ObjectDetector, ImagePipeline, None] = None,
             overall_detector: Union[ObjectDetector, ImagePipeline, None] = None,
+            ignore_borders: bool = True,
             enable_reconnection: bool = True,
             pct_n_orient: int = 8,
             pct_min_wavelength: float = 5.0,
@@ -157,6 +158,7 @@ class FilamentousFungiPipeline(PrefabPipeline):
             FilamentousFungiDetector(
                     inoculum_detector=inoculum_detector,
                     overall_detector=overall_detector,
+                    ignore_borders=ignore_borders,
                     enable_reconnection=enable_reconnection,
                     pct_n_orient=pct_n_orient,
                     pct_min_wavelength=pct_min_wavelength,

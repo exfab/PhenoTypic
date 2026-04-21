@@ -165,6 +165,30 @@ def load_imager_plate(
 def load_yeast_plate(
         mode: Literal["array", "Image", "GridImage"] = "GridImage",
 ) -> Union[np.ndarray, Image, GridImage]:
+    """Load an image Neurospora filamentous fungi 96-well plate image cropped to the center.
+
+    Returns a pre-cropped plate image of Neurospora filamentous fungi arranged
+    in a 96-well grid. Irregular hyphal morphology with spreading growth --
+    suitable for filamentous fungi tutorials and how-to guides.
+
+    Args:
+        mode: Return format. Default: ``'GridImage'``.
+
+    Returns:
+        The plate image in the requested format.
+    """
+    return _image_loader(
+            __current_file_dir / "snp-imager-samples/"
+                                 "RhodotorulaYeastCenterCrop.png",
+            mode=mode,
+            nrows=2,
+            ncols=4
+    )
+
+
+def load_yeast_plate_large(
+        mode: Literal["array", "Image", "GridImage"] = "GridImage",
+) -> Union[np.ndarray, Image, GridImage]:
     """Load a cropped Rhodotorula yeast 96-well plate image.
 
     Returns a pre-cropped plate image of Rhodotorula yeast colonies arranged
@@ -186,6 +210,30 @@ def load_yeast_plate(
 def load_fungi_plate(
         mode: Literal["array", "Image", "GridImage"] = "GridImage",
 ) -> Union[np.ndarray, Image, GridImage]:
+    """Load an image Neurospora filamentous fungi 96-well plate image cropped to the center.
+
+    Returns a pre-cropped plate image of Neurospora filamentous fungi arranged
+    in a 96-well grid. Irregular hyphal morphology with spreading growth --
+    suitable for filamentous fungi tutorials and how-to guides.
+
+    Args:
+        mode: Return format. Default: ``'GridImage'``.
+
+    Returns:
+        The plate image in the requested format.
+    """
+    return _image_loader(
+            __current_file_dir / "snp-imager-samples/"
+                                 "NeurosporaFilamentousFungiCenterCrop.png",
+            mode=mode,
+            nrows=2,
+            ncols=4
+    )
+
+
+def load_fungi_plate_large(
+        mode: Literal["array", "Image", "GridImage"] = "GridImage",
+) -> Union[np.ndarray, Image, GridImage]:
     """Load a cropped Neurospora filamentous fungi 96-well plate image.
 
     Returns a pre-cropped plate image of Neurospora filamentous fungi arranged
@@ -201,6 +249,8 @@ def load_fungi_plate(
     return _image_loader(
             fetch_snp("NeurosporaFilamentousFungiCropped.png"),
             mode,
+            nrows=6,
+            ncols=10
     )
 
 

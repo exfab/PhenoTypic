@@ -22,20 +22,6 @@ class WhiteTophatEnhance(ImageEnhancer):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Isolating small bright colonies from larger background structures.
-        - Highlighting faint small colonies against uneven illumination.
-        - Extracting tiny bright specks for detection or quantification.
-        - Preprocessing before detecting small colony phenotypes.
-
-    Consider Also:
-        - :class:`SubtractWhiteTophat` when you want to suppress (not
-          isolate) small bright artifacts.
-        - :class:`OpeningSubtractBg` for OpenCV-accelerated white top-hat
-          background subtraction.
-        - :class:`MultiscaleLoGEnhancer` for scale-invariant blob detection
-          that responds to both small and large colonies.
-
     Args:
         shape: Footprint geometry. ``'disk'`` (default) preserves rounded
             colony shapes; ``'diamond'`` is computationally efficient;
@@ -52,6 +38,20 @@ class WhiteTophatEnhance(ImageEnhancer):
 
     Raises:
         ValueError: If an unsupported footprint shape is provided.
+
+    Best For:
+        - Isolating small bright colonies from larger background structures.
+        - Highlighting faint small colonies against uneven illumination.
+        - Extracting tiny bright specks for detection or quantification.
+        - Preprocessing before detecting small colony phenotypes.
+
+    Consider Also:
+        - :class:`SubtractWhiteTophat` when you want to suppress (not
+          isolate) small bright artifacts.
+        - :class:`OpeningSubtractBg` for OpenCV-accelerated white top-hat
+          background subtraction.
+        - :class:`MultiscaleLoGEnhancer` for scale-invariant blob detection
+          that responds to both small and large colonies.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a

@@ -27,21 +27,6 @@ class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
     artifacts, dust, and spurious detections are removed, enforcing regular
     grid structure on colony detection results.
 
-    Best For:
-        - High-throughput arrayed plates (96-well, 384-well, pinned cultures)
-          where colonies should align with known well positions.
-        - Post-detection cleanup when detections contain off-grid artifacts.
-        - Explicit grid enforcement when used with GridImage and known grid
-          coordinates.
-
-    Consider Also:
-        - :class:`SineAlignmentRefiner` when colony intensities are
-          heterogeneous and rank-based correlation improves grid estimation.
-        - :class:`GridSectionLargest` for a simpler largest-per-cell strategy
-          on GridImage inputs.
-        - :class:`ReduceMultipleGridObjects` for regression-based multi-
-          detection reduction within grid cells.
-
     Args:
         smoothing_sigma: Gaussian smoothing sigma for row/column intensity
             profiles during grid inference. Typical range: 0.5--5.0.
@@ -65,6 +50,21 @@ class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
 
     Raises:
         ValueError: If grid inference fails or image lacks detection results.
+
+    Best For:
+        - High-throughput arrayed plates (96-well, 384-well, pinned cultures)
+          where colonies should align with known well positions.
+        - Post-detection cleanup when detections contain off-grid artifacts.
+        - Explicit grid enforcement when used with GridImage and known grid
+          coordinates.
+
+    Consider Also:
+        - :class:`SineAlignmentRefiner` when colony intensities are
+          heterogeneous and rank-based correlation improves grid estimation.
+        - :class:`GridSectionLargest` for a simpler largest-per-cell strategy
+          on GridImage inputs.
+        - :class:`ReduceMultipleGridObjects` for regression-based multi-
+          detection reduction within grid cells.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for grid-based

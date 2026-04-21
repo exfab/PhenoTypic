@@ -21,21 +21,6 @@ class SatoRidgeFilter(ImageEnhancer):
 
     For algorithm details, see :doc:`/explanation/what_enhancement_does`.
 
-    Best For:
-        - Thin filamentous colonies or mycelial networks (fungi, Bacillus,
-          streptomycetes).
-        - Continuous ridge-like structures that global thresholding misses.
-        - Interconnected fungal networks or biofilm structures.
-        - Organisms with branching or root-like colony morphologies.
-
-    Consider Also:
-        - :class:`MeijeringRidgeFilter` for very fine neurite-like filaments
-          where higher selectivity is needed.
-        - :class:`HessianFilter` for combined edge and ridge detection with
-          blob sensitivity control.
-        - :class:`CoherenceEnhancingDiffusion` for anisotropic smoothing
-          that enhances directional structures before ridge detection.
-
     Args:
         sigmas: Sequence of standard deviations for Gaussian derivatives.
             Smaller values detect finer structures; larger values detect
@@ -51,6 +36,21 @@ class SatoRidgeFilter(ImageEnhancer):
     Returns:
         Image: Input image with ``detect_mat`` replaced by the Sato
         tubeness response map. ``rgb`` and ``gray`` are unchanged.
+
+    Best For:
+        - Thin filamentous colonies or mycelial networks (fungi, Bacillus,
+          streptomycetes).
+        - Continuous ridge-like structures that global thresholding misses.
+        - Interconnected fungal networks or biofilm structures.
+        - Organisms with branching or root-like colony morphologies.
+
+    Consider Also:
+        - :class:`MeijeringRidgeFilter` for very fine neurite-like filaments
+          where higher selectivity is needed.
+        - :class:`HessianFilter` for combined edge and ridge detection with
+          blob sensitivity control.
+        - :class:`CoherenceEnhancingDiffusion` for anisotropic smoothing
+          that enhances directional structures before ridge detection.
 
     See Also:
         :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a

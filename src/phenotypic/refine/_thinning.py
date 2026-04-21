@@ -18,6 +18,19 @@ class Thinning(ObjectRefiner):
     offers explicit iteration control, making it useful for gentle boundary
     cleanup (few iterations) or full skeleton extraction (convergence).
 
+    Args:
+        max_num_iter: Maximum thinning iterations. ``None`` iterates until
+            convergence (full skeleton). A small value (1--3) provides
+            gentle boundary cleanup; a large value (10--50) thins
+            aggressively. Default: None.
+
+    Returns:
+        Image: Input image with ``objmask`` thinned by the specified number
+        of iterations.
+
+    Raises:
+        ValueError: If ``max_num_iter`` is negative.
+
     Best For:
         - Gradually separating touching or overlapping colonies via controlled
           pixel removal.
@@ -34,19 +47,6 @@ class Thinning(ObjectRefiner):
           configurable structuring element.
         - :class:`SeparateObjects` for watershed-based separation of
           touching colonies.
-
-    Args:
-        max_num_iter: Maximum thinning iterations. ``None`` iterates until
-            convergence (full skeleton). A small value (1--3) provides
-            gentle boundary cleanup; a large value (10--50) thins
-            aggressively. Default: None.
-
-    Returns:
-        Image: Input image with ``objmask`` thinned by the specified number
-        of iterations.
-
-    Raises:
-        ValueError: If ``max_num_iter`` is negative.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for thinning-based
