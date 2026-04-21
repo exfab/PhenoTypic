@@ -218,7 +218,7 @@ class TestArrayJobScriptGeneration:
 
         # Check SBATCH directives
         assert "#!/bin/bash" in content
-        assert "#SBATCH --job-name=pheno-test_dataset" in content
+        assert "#SBATCH --job-name=pht-test_dataset" in content
         assert "#SBATCH --array=0-9" in content  # 10 images, 0-indexed
         assert "#SBATCH --partition=short" in content
         assert "#SBATCH --mem=16G" in content
@@ -256,7 +256,7 @@ class TestArrayJobScriptGeneration:
         content = script_path.read_text()
 
         # Should have chunk ID in job name
-        assert "#SBATCH --job-name=pheno-test_dataset-chunk0" in content
+        assert "#SBATCH --job-name=pht-test_dataset-chunk0" in content
         # Should only include first 5 images
         assert "#SBATCH --array=0-4" in content
 
@@ -274,7 +274,7 @@ class TestArrayJobScriptGeneration:
         content = script_path.read_text()
 
         # Should have chunk ID in job name and filename
-        assert "#SBATCH --job-name=pheno-test_dataset-chunk1" in content
+        assert "#SBATCH --job-name=pht-test_dataset-chunk1" in content
         assert "array_job_chunk1.sh" in str(script_path)
         # Should only include last 5 images
         assert "#SBATCH --array=0-4" in content  # Still 0-indexed for chunk
