@@ -950,6 +950,31 @@ class GRID(MeasurementInfo):
     )
 
 
+class MODEL_METRICS(MeasurementInfo):
+    """Generic fit-quality metrics and diagnostics shared by all ModelFitter subclasses.
+
+    These columns are produced by any model fitter that wraps
+    :func:`scipy.optimize.least_squares`, independent of the specific
+    mathematical model. Subclass-specific fitted parameters live in the
+    subclass's own MeasurementInfo class (e.g., ``LOG_GROWTH_MODEL``).
+    """
+
+    @classmethod
+    def category(cls) -> str:
+        return "ModelMetrics"
+
+    # fit-quality metrics
+    MAE = "MAE", "The mean absolute error"
+    MSE = "MSE", "The mean squared error"
+    RMSE = "RMSE", "The root mean squared error"
+    R2 = "R2", "The coefficient of determination"
+
+    # fit diagnostics
+    NUM_SAMPLES = "NumSamples", "The number of samples used for model fitting"
+    LOSS = "OptimizerLoss", "The loss of model fitting"
+    STATUS = "OptimizerStatus", "The output of the optimizer status"
+
+
 class LOG_GROWTH_MODEL(MeasurementInfo):
     @classmethod
     def category(cls) -> str:
@@ -972,12 +997,24 @@ class LOG_GROWTH_MODEL(MeasurementInfo):
     )
     GROWTH_RATE = "µmax", "The growth rate of the colony calculated as (K*r)/4"
     K_MAX = "Kmax", "The upper bound of the carrying capacity for model fitting"
-    NUM_SAMPLES = "NumSamples", "The number of samples used for model fitting"
-    LOSS = "OptimizerLoss", "The loss of model fitting"
-    STATUS = "OptimizerStatus", "The output of the optimizer status"
-    MAE = "MAE", "The mean absolute error"
-    MSE = "MSE", "The mean squared error"
-    RMSE = "RMSE", "The root mean squared error"
+
+
+class LINEAR_SOFTPLUS_MODEL(MeasurementInfo):
+    @classmethod
+    def category(cls) -> str:
+        return "LinearSoftplusModel"
+
+    v = ("v", "The post-lag phase growth rate.")
+    s0 = ("s0", "The initial size")
+    lam = ("lambda", "The duration of the lag phase")
+    alpha = ("alpha", "lag phase transition sharpness")
+    smax = ("smax", "The carrying capacity if fitted")
+    beta = (
+        "beta",
+        "user-provided saturation transition sharpness. Not fitted since "
+        "this is not always biologically meaningful and adds complexity "
+        "to the fitting.",
+    )
 
 
 class EDGE_CORRECTION(MeasurementInfo):
