@@ -3,7 +3,7 @@
 Unit tests for the modules under ``phenotypic.tools_.branch_pathfinding``
 (cost surface composition, fragment prescreening, path quality filtering,
 Dijkstra kernels, dataclasses) and integration tests that exercise them
-via ``FilamentousFungiDetector(enable_reconnection=True)``.
+via ``FilamentousFungiDetector``.
 """
 
 import numpy as np
@@ -371,7 +371,7 @@ class TestPathQuality:
         assert_allclose(metrics.median_raw_cost, 5.0)
 
     def test_short_path_window_cost_equals_median(self):
-        """Path shorter than window_cost uses whole-path median."""
+        """Path shorter than max_gap_length uses whole-path median."""
         cost_surface = np.full((100, 100), 3.0, dtype=np.float32)
         coords = np.column_stack([np.arange(10), np.zeros(10)]).astype(np.int32)
         path = _DuckPath(coords, np.ones(10), total_cost=10.0, path_length=10)
@@ -753,10 +753,10 @@ class TestExtractCalibrationBranches:
 
 
 class TestFilamentousFungiDetectorReconnection:
-    """Integration and backward-compatibility tests for reconnection."""
+    """Integration tests for the reconnection path."""
 
-    def test_enable_reconnection_true_runs_without_error(self, synth_plate):
-        """Reconnection mode runs without errors on synth plate.
+    def test_reconnection_runs_without_error(self, synth_plate):
+        """Reconnection runs without errors on synth plate.
 
         The synth plate has circular yeast colonies, so there will not be
         realistic filamentous reconnection, but the full code path must
@@ -765,13 +765,10 @@ class TestFilamentousFungiDetectorReconnection:
         from phenotypic.detect import (
             FilamentousFungiDetector,
             OtsuDetector,
-            TriangleDetector,
         )
 
         detector = FilamentousFungiDetector(
                 inoculum_detector=OtsuDetector(ignore_zeros=True),
-                overall_detector=TriangleDetector(),
-                enable_reconnection=True,
         )
         result = detector.apply(synth_plate.copy())
 
@@ -783,13 +780,10 @@ class TestFilamentousFungiDetectorReconnection:
         from phenotypic.detect import (
             FilamentousFungiDetector,
             OtsuDetector,
-            TriangleDetector,
         )
 
         detector = FilamentousFungiDetector(
                 inoculum_detector=OtsuDetector(ignore_zeros=True),
-                overall_detector=TriangleDetector(),
-                enable_reconnection=True,
         )
         result = detector.apply(synth_plate.copy())
 
@@ -799,20 +793,16 @@ class TestFilamentousFungiDetectorReconnection:
         assert_array_equal(objmap > 0, objmask)
 
     def test_reconnection_serialization_roundtrip(self):
-        """Detector with reconnection serializes and restores correctly."""
+        """Detector serializes and restores correctly."""
         from phenotypic import ImagePipeline
         from phenotypic.detect import (
             FilamentousFungiDetector,
             OtsuDetector,
-            TriangleDetector,
         )
 
         detector = FilamentousFungiDetector(
                 inoculum_detector=OtsuDetector(ignore_zeros=True),
-                overall_detector=TriangleDetector(),
-                enable_reconnection=True,
-                delta=2.0,
-                r_screen=15,
+                frag_reach_px=15,
         )
         pipeline = ImagePipeline([detector])
         json_str = pipeline.to_json()
@@ -820,6 +810,4 @@ class TestFilamentousFungiDetectorReconnection:
 
         restored_det = list(restored._ops.values())[0]
         assert isinstance(restored_det, FilamentousFungiDetector)
-        assert restored_det.enable_reconnection is True
-        assert restored_det.delta == 2.0
-        assert restored_det.r_screen == 15
+        assert restored_det.frag_reach_px == 15
