@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union, Optional
 import numpy as np
 import gc
 
@@ -22,12 +22,9 @@ from phenotypic.enhance import (
     PhaseCongruencyEnhancer,
 )
 
-from phenotypic.detect import (
-    TriangleDetector,
-    HysteresisDetector,
-)
+from phenotypic.detect import HysteresisDetector
 from phenotypic.detect._inoculum_detector import InoculumDetector
-from phenotypic.refine import MaskOpener, MaskCloser, GridSectionLargest
+from phenotypic.refine import GridSectionLargest
 
 from phenotypic.tools_.branch_pathfinding import (
     _apply_distance_gap_penalty_inplace,
@@ -56,11 +53,10 @@ class FilamentousFungiDetector(GridObjectDetector):
 
     Segment filamentous fungi in two stages: (1) detect compact inoculation
     centres with an ``inoculum_detector``, (2) capture the full hyphal
-    structure with an ``overall_detector`` or, when
-    ``enable_reconnection=True``, via phase-congruency-based branch detection
-    and Dijkstra reconnection. Filtered centre centroids seed a Euclidean
-    Voronoi partition that assigns every fungal pixel to its nearest colony,
-    with connectivity-based correction ensuring uniform labelling within
+    structure via phase-congruency-based branch detection and Dijkstra
+    reconnection. Filtered centre centroids seed a Euclidean Voronoi
+    partition that assigns every fungal pixel to its nearest colony, with
+    connectivity-based correction ensuring uniform labelling within
     connected components. For a full comparison see
     :doc:`/explanation/detection_strategies_compared`.
 
@@ -70,61 +66,58 @@ class FilamentousFungiDetector(GridObjectDetector):
             regions at inoculation points. Default uses an internal
             InoculumDetector + GridSectionLargest pipeline.
 
-        overall_detector: ObjectDetector or ImagePipeline that captures
-            complete fungal structures including spreading hyphae. Should
-            produce full-body masks with a lower threshold than the
-            inoculum detector. Ignored when *enable_reconnection* is True.
+        max_colony_radius_px: Largest colony radius (in pixels) the
+            detector should handle. Sizes scene-derived spatial
+            parameters (``gauss_sigma``, ``tile_size``, ``tile_overlap``)
+            for this worst case. Default 250.
+        min_branch_width_px: Narrowest hyphal branch width (in pixels) to
+            detect. Sizes signal-scale parameters
+            (``pct_min_wavelength``, ``mad_window``,
+            ``path_dilation_radius``, ``snr_margin``,
+            ``coherence_window_radius``). Default 3.
 
-        enable_reconnection: When True, replace the legacy
-            *overall_detector* path with dual-mask branch detection
-            (ContrastStretching + Gaussian subtraction + phase congruency)
-            followed by Dijkstra-based reconnection of fragmented hyphal
-            branches.
+        ignore_borders: If True, drops objects touching the image border
+            during hysteresis-threshold branch detection. Default True.
+        edge_noise_threshold: Noise threshold scaling factor for phase
+            congruency edge detection. Higher values are stricter
+            (reject more pixels as noise; preserve fewer thin hyphae).
+            Default 6.0.
+        reconnection_tolerance: IQR multiplier for path quality threshold
+            calibration. Higher values accept more reconnection paths
+            (may bridge genuinely-missing hyphae but risks over-merging).
+            Default 2.5.
+        max_gap_length: Maximum acceptable length (pixels) of a
+            suspicious cost stretch along a reconnection path. Paths
+            with longer bad stretches are rejected. Default 30.
+        border_margin_px: Border penalty buffer width in pixels.
+            Prevents reconnection paths from routing along image
+            borders. Default 50.
+        frag_reach_px: Maximum 2D distance (pixels) from a fragment's
+            boundary to the nearest routable (low-cost) pixel. Fragments
+            more isolated than this are dropped before Dijkstra routing,
+            since no plausible path could connect them. Default 10.
+        gap_crossing_penalty: Distance-gap penalty strength during
+            Dijkstra routing. Higher values make paths route around
+            low-PCT-energy gaps more aggressively. Default 4.0.
 
-        pct_n_orient: Number of orientations for phase congruency
-            computation. Typical range: 4--8. Default 6.
-        pct_min_wavelength: Minimum wavelength for log-Gabor filters.
-            Typical range: 2--6. Default 3.
-        pct_k: Noise threshold scaling factor for phase congruency.
-            Typical range: 1--5. Default 2.0.
-
-        gauss_sigma: Sigma for SubtractGaussian background subtraction.
-            Typical range: 10--100. Default 50.
-        gauss_n_iter: Number of SubtractGaussian iterations. Default 2.
-
-        morph_width: Disk radius for morphological open/close operations
-            on branch masks. Typical range: 1--5. Default 2.
-
-        beta: Exponent on anisotropy in the composite cost formula.
-            Default 2.0.
-        gamma: Weight of MAD penalty in the composite cost numerator.
-            Default 1.2.
-        r_coherence: Radius for orientation coherence computation.
-            Default 5.
-        mad_window: Window size for local MAD computation (must be odd).
-            Default 11.
-
-        r_screen: Screening radius for fragment pre-screening. Default 50.
-        delta: Dijkstra radial penalty factor for retreating steps.
-            Default 1.5.
-        quality_k: IQR multiplier for path quality threshold calibration.
-            Higher values are more permissive. Default 1.5.
-        window_cost: Sliding window size in pixels for the windowed cost
-            metric. Default 20.
-        edge_margin: Border penalty width in pixels. Prevents paths from
-            routing along image edges. Default 20.
-        gap_penalty_alpha: Distance-gap penalty strength. Higher values
-            impose stronger distance gating on PCT energy gaps.
-            Default 2.0.
-        snr_margin: Extra radius beyond *path_dilation_radius* for the
-            SNR background ring in the grayscale SNR filter. Default 3.
-        path_dilation_radius: Disk radius for dilating reconnection paths.
-            Default 3.
-
-        tile_size: Side length of square tiles for tiled Dijkstra
-            processing. Default 1200.
-        tile_overlap: Overlap in pixels between adjacent tiles.
-            Default 100.
+        gauss_sigma: Override for SubtractGaussian sigma. If None
+            (default), derived from ``max_colony_radius_px``.
+        tile_size: Override for tile side length. If None (default),
+            derived from ``max_colony_radius_px``.
+        tile_overlap: Override for tile overlap. If None (default),
+            derived from ``max_colony_radius_px``.
+        pct_min_wavelength: Override for log-Gabor minimum wavelength.
+            If None (default), derived from ``min_branch_width_px``.
+        mad_window: Override for local MAD window size (must be odd).
+            If None (default), derived from ``min_branch_width_px``.
+        path_dilation_radius: Override for dilating reconnection paths.
+            If None (default), derived from ``min_branch_width_px``.
+        snr_margin: Override for SNR background ring radius beyond
+            ``path_dilation_radius``. If None (default), derived from
+            ``min_branch_width_px``.
+        coherence_window_radius: Override for orientation coherence
+            computation radius. If None (default), derived from
+            ``min_branch_width_px``.
 
     Returns:
         Image: Input image with ``objmask`` set to a binary fungal mask
@@ -132,10 +125,10 @@ class FilamentousFungiDetector(GridObjectDetector):
         colony receives a unique integer label via Voronoi assignment.
 
     Raises:
-        TypeError: If *inoculum_detector* or *overall_detector* are not
-            ObjectDetector or ImagePipeline instances.
-        ValueError: If no centres are detected, no overall structure is
-            detected, or no centres overlap with the overall structure
+        TypeError: If *inoculum_detector* is not an ObjectDetector or
+            ImagePipeline instance.
+        ValueError: If no centres are detected, no branch structure is
+            detected, or no centres overlap with the branch structure
             after filtering.
 
     Best For:
@@ -174,114 +167,129 @@ class FilamentousFungiDetector(GridObjectDetector):
             ops=[InoculumDetector(), GridSectionLargest()]
     )
 
+    # Scene-derivation multipliers (private; override in subclass to tune).
+    # Raw param = multiplier * scene knob (rounded to int where required).
+    _GAUSS_SIGMA_PER_R: float = 1.2
+    _TILE_SIZE_PER_R: float = 4.8
+    _TILE_OVERLAP_PER_R: float = 2.4
+    _WAVELENGTH_PER_W: float = 2.0
+    _MAD_WINDOW_PER_W: float = 2.0
+    _PATH_DILATION_PER_W: float = 0.5
+    _SNR_MARGIN_PER_W: float = 0.5
+    _COHERENCE_RADIUS_PER_W: float = 5.0
+
+    # Algorithm internals (hidden from __init__; override in subclass to tune).
+    beta: float = 2.0          # anisotropy exponent in composite cost
+    gamma: float = 1.2         # MAD penalty weight in composite cost numerator
+    gauss_n_iter: int = 2      # SubtractGaussian iterations
+    delta: float = 1.0         # Dijkstra radial retreat penalty
+    pct_n_orient: int = 8      # phase congruency angular resolution
+
     def __init__(
             self,
             inoculum_detector: Union[ObjectDetector, 'ImagePipeline', None] = None,
-            overall_detector: Union[ObjectDetector, 'ImagePipeline', None] = None,
-            # Reconnection parameters
+            # ── Scene parameters ──
+            max_colony_radius_px: float = 250.0,
+            min_branch_width_px: int = 3,
+            # ── Explicit user knobs ──
             ignore_borders: bool = True,
-            enable_reconnection: bool = True,
-            pct_n_orient: int = 8,
-            pct_min_wavelength: float = 5.0,
-            pct_k: float = 6.0,
-            gauss_sigma: float = 300.0,
-            gauss_n_iter: int = 2,
-            morph_width: int = 5,
-            beta: float = 2.0,
-            gamma: float = 1.2,
-            r_coherence: int = 12,
-            mad_window: int = 7,
-            r_screen: int = 10,
-            delta: float = 1.0,
-            quality_k: float = 2.5,
-            window_cost: int = 30,
-            edge_margin: int = 50,
-            gap_penalty_alpha: float = 4.0,
-            snr_margin: int = 3,
-            path_dilation_radius: int = 2,
-            tile_size: int = 1200,
-            tile_overlap: int = 600,
+            edge_noise_threshold: float = 6.0,
+            reconnection_tolerance: float = 2.5,
+            max_gap_length: int = 30,
+            border_margin_px: int = 50,
+            frag_reach_px: int = 10,
+            gap_crossing_penalty: float = 4.0,
+            *,
+            # ── Scene-derivation overrides (None → auto-derived) ──
+            gauss_sigma: Optional[float] = None,
+            tile_size: Optional[int] = None,
+            tile_overlap: Optional[int] = None,
+            pct_min_wavelength: Optional[float] = None,
+            mad_window: Optional[int] = None,
+            path_dilation_radius: Optional[int] = None,
+            snr_margin: Optional[int] = None,
+            coherence_window_radius: Optional[int] = None,
     ):
         super().__init__()
 
         # Type validation (allow None for serialization/deserialization)
         from phenotypic import ImagePipeline
 
-        if inoculum_detector is not None and not isinstance(inoculum_detector,
-                                                            (ObjectDetector,
-                                                             ImagePipeline)):
+        if inoculum_detector is not None and not isinstance(
+                inoculum_detector, (ObjectDetector, ImagePipeline)
+        ):
             raise TypeError(
-                    "inoculum_detector must be an ObjectDetector or ImagePipeline instance, "
+                    "inoculum_detector must be an ObjectDetector or "
+                    "ImagePipeline instance, "
                     f"got {type(inoculum_detector).__name__}"
-            )
-        if overall_detector is not None and not isinstance(overall_detector,
-                                                           (ObjectDetector,
-                                                            ImagePipeline)):
-            raise TypeError(
-                    "overall_detector must be an ObjectDetector or ImagePipeline instance, "
-                    f"got {type(overall_detector).__name__}"
             )
 
         self.inoculum_detector = inoculum_detector if inoculum_detector \
             else self.__center_pipe
 
-        if overall_detector is None:
-            overall_detector = ImagePipeline(
-                    ops=[
-                        ContrastStretching(),
-                        SubtractGaussian(
-                                sigma=gauss_sigma, n_iter=gauss_n_iter,
-                        ),
-                        TriangleDetector(),
-                        MaskOpener(
-                                shape="disk", width=morph_width, n_iter=1,
-                        ),
-                        MaskCloser(
-                                shape="disk", width=morph_width, n_iter=2,
-                        ),
-                        MaskOpener(
-                                shape="disk", width=morph_width, n_iter=1,
-                        ),
-                        MaskCloser(
-                                shape="disk", width=morph_width, n_iter=2,
-                        ),
-                    ]
-            )
-        self.overall_detector = overall_detector
+        # ── Scene knobs ──
+        self.max_colony_radius_px = float(max_colony_radius_px)
+        self.min_branch_width_px = int(min_branch_width_px)
 
-        # Reconnection parameters
+        # ── Explicit user knobs ──
         self.ignore_borders = ignore_borders
-        self.enable_reconnection = enable_reconnection
-        self.pct_n_orient = pct_n_orient
-        self.pct_min_wavelength = pct_min_wavelength
-        self.pct_k = pct_k
-        self.gauss_sigma = gauss_sigma
-        self.gauss_n_iter = gauss_n_iter
-        self.morph_width = morph_width
-        self.beta = beta
-        self.gamma = gamma
-        self.r_coherence = r_coherence
-        self.mad_window = mad_window
-        self.r_screen = r_screen
-        self.delta = delta
-        self.quality_k = quality_k
-        self.window_cost = window_cost
-        self.edge_margin = edge_margin
-        self.gap_penalty_alpha = gap_penalty_alpha
-        self.snr_margin = snr_margin
-        self.path_dilation_radius = path_dilation_radius
-        self.tile_size = tile_size
-        self.tile_overlap = tile_overlap
+        self.edge_noise_threshold = edge_noise_threshold
+        self.reconnection_tolerance = reconnection_tolerance
+        self.max_gap_length = max_gap_length
+        self.border_margin_px = border_margin_px
+        self.frag_reach_px = frag_reach_px
+        self.gap_crossing_penalty = gap_crossing_penalty
+
+        # ── Scene-derived params (apply overrides if supplied) ──
+        R = self.max_colony_radius_px
+        w = self.min_branch_width_px
+
+        self.gauss_sigma = (
+            float(gauss_sigma) if gauss_sigma is not None
+            else self._GAUSS_SIGMA_PER_R * R
+        )
+        self.tile_size = (
+            int(tile_size) if tile_size is not None
+            else int(round(self._TILE_SIZE_PER_R * R))
+        )
+        self.tile_overlap = (
+            int(tile_overlap) if tile_overlap is not None
+            else int(round(self._TILE_OVERLAP_PER_R * R))
+        )
+
+        self.pct_min_wavelength = (
+            float(pct_min_wavelength) if pct_min_wavelength is not None
+            else self._WAVELENGTH_PER_W * w
+        )
+        # mad_window must be odd; +1 on an even 2w keeps it odd.
+        _mad_default = int(round(self._MAD_WINDOW_PER_W * w)) + 1
+        if _mad_default % 2 == 0:
+            _mad_default += 1
+        self.mad_window = (
+            int(mad_window) if mad_window is not None else _mad_default
+        )
+        self.path_dilation_radius = (
+            int(path_dilation_radius) if path_dilation_radius is not None
+            else max(1, int(round(self._PATH_DILATION_PER_W * w)))
+        )
+        self.snr_margin = (
+            int(snr_margin) if snr_margin is not None
+            else max(2, int(round(self._SNR_MARGIN_PER_W * w)))
+        )
+        self.coherence_window_radius = (
+            int(coherence_window_radius) if coherence_window_radius is not None
+            else int(round(self._COHERENCE_RADIUS_PER_W * w))
+        )
 
     def _operate(self, image: 'GridImage') -> 'GridImage':
         """Detect and separate filamentous fungi using grid-based Voronoi partition.
 
         Algorithm:
         1. Run inoculum_detector to find fungal centers (full labeled regions)
-        2. Detect branches via dual-mask pipeline (reconnection) or overall_detector (legacy)
+        2. Detect branches via dual-mask pipeline (Gaussian + phase congruency)
         3. Filter centers, create grid markers, Voronoi assign with grid seeds
         4. Identify pseudo-fragments (per-label CCs not overlapping inoculum)
-        5. Dijkstra reconnection of pseudo-fragments (reconnection mode only)
+        5. Dijkstra reconnection of pseudo-fragments
         6. Final Voronoi partition with grid markers
         7. Set objmap with assignment results
         """
@@ -313,67 +321,41 @@ class FilamentousFungiDetector(GridObjectDetector):
         self._log_memory_usage("after center detection")
 
         # ── PHASE 2: BRANCH DETECTION ───────────────────────────────
-        if self.enable_reconnection:
-            # ContrastStretching-enhanced copy for dual-mask detection
-            enhanced_work = image.copy()
-            ContrastStretching().apply(enhanced_work, inplace=True)
-            enhanced_arr = enhanced_work.detect_mat[:]
-            enhanced_gray = enhanced_work.gray[:]  # capture before destructive call
+        # ContrastStretching-enhanced copy for dual-mask detection
+        enhanced_work = image.copy()
+        ContrastStretching().apply(enhanced_work, inplace=True)
+        enhanced_arr = enhanced_work.detect_mat[:]
+        enhanced_gray = enhanced_work.gray[:]  # capture before destructive call
 
-            # Mask A: Gauss branches (destructive: modifies enhanced_work in place)
-            bg_removed_arr = self._subtract_background(enhanced_work)
-            del enhanced_work  # no longer valid after destructive call
+        # Mask A: Gauss branches (destructive: modifies enhanced_work in place)
+        bg_removed_arr = self._subtract_background(enhanced_work)
+        del enhanced_work  # no longer valid after destructive call
 
-            # Mask B: PCT branches
-            pct_result = PhaseCongruencyEnhancer(
-                    n_orient=self.pct_n_orient,
-                    min_wavelength=self.pct_min_wavelength,
-                    k=self.pct_k,
-            )._phasecong3(enhanced_arr)
+        # Mask B: PCT branches
+        pct_result = PhaseCongruencyEnhancer(
+                n_orient=self.pct_n_orient,
+                min_wavelength=self.pct_min_wavelength,
+                k=self.edge_noise_threshold,
+        )._phasecong3(enhanced_arr)
 
-            # Overlap filter: keep Gauss labels with any PCT overlap
-            fragmented_overall_detect_mat = self._combine_bg_removed_with_pct(
-                    bg_removed_arr=bg_removed_arr,
-                    pct_sum=pct_result.pc_sum,
-            )
+        # Overlap filter: keep Gauss labels with any PCT overlap
+        fragmented_overall_detect_mat = self._combine_bg_removed_with_pct(
+                bg_removed_arr=bg_removed_arr,
+                pct_sum=pct_result.pc_sum,
+        )
 
-            _fragmented_detect_img = image.copy()
-            _fragmented_detect_img.detect_mat[:] = fragmented_overall_detect_mat
-            HysteresisDetector(
-                    low="triangle",
-                    high="otsu",
-                    ignore_zeros=False,
-                    ignore_borders=self.ignore_borders
-            ).apply(_fragmented_detect_img, inplace=True)
-            overall_objmask = _fragmented_detect_img.objmask[:]
-            del _fragmented_detect_img
+        _fragmented_detect_img = image.copy()
+        _fragmented_detect_img.detect_mat[:] = fragmented_overall_detect_mat
+        HysteresisDetector(
+                low="triangle",
+                high="otsu",
+                ignore_zeros=False,
+                ignore_borders=self.ignore_borders
+        ).apply(_fragmented_detect_img, inplace=True)
+        overall_objmask = _fragmented_detect_img.objmask[:]
+        del _fragmented_detect_img
 
-            self._log_memory_usage("after dual-mask branch detection")
-        else:
-            # Legacy path
-            if self.overall_detector is None:
-                raise ValueError(
-                        "overall_detector is required but not set. "
-                        "Provide a detector when creating FilamentousFungiDetector."
-                )
-            if isinstance(self.overall_detector, ImagePipeline):
-                overall_result = self.overall_detector.apply(image, inplace=False,
-                                                             reset=False)
-            else:
-                overall_result = self.overall_detector.apply(image, inplace=False)
-
-            overall_objmask = overall_result.objmask[:]
-
-            if overall_result.num_objects == 0:
-                raise ValueError(
-                        "No overall structure detected by overall_detector. Cannot "
-                        "create assignment mask. Try adjusting overall_detector "
-                        "parameters."
-                )
-
-            branch_labels = None
-
-            self._log_memory_usage("after overall detection")
+        self._log_memory_usage("after dual-mask branch detection")
 
         # ── PHASE 3: CENTER FILTERING + GRID VORONOI ─────────────────
 
@@ -385,9 +367,9 @@ class FilamentousFungiDetector(GridObjectDetector):
 
         if overlap_objmap.max() == 0:
             raise ValueError(
-                    "No centers overlap with overall structure after filtering. "
-                    "Check that inoculum_detector and overall_detector are compatible "
-                    "(detecting the same objects)."
+                    "No centers overlap with detected branch structure after "
+                    "filtering. Check that inoculum_detector picks up the same "
+                    "objects captured by the dual-mask branch detection."
             )
 
         self._log_memory_usage("after overlap filtering")
@@ -412,33 +394,32 @@ class FilamentousFungiDetector(GridObjectDetector):
         # ── PHASE 4: DIJKSTRA RECONNECTION ──────────────────────────
         colony_labels = inoculum_structure_map
 
-        if self.enable_reconnection:
-            central_mask, fragment_labels = self._identify_pseudo_fragments(
-                    colony_labels=colony_labels,
-                    center_objmask=inoculum_objmask,
-            )
+        central_mask, fragment_labels = self._identify_pseudo_fragments(
+                colony_labels=colony_labels,
+                center_objmask=inoculum_objmask,
+        )
 
-            unmasked_cost, cost_surface = self._build_cost_surface(
-                    pct_result=pct_result,
-                    enhanced_arr=enhanced_arr,
-                    colony_labels=colony_labels,
-                    central_mask=central_mask,
-            )
+        unmasked_cost, cost_surface = self._build_cost_surface(
+                pct_result=pct_result,
+                enhanced_arr=enhanced_arr,
+                colony_labels=colony_labels,
+                central_mask=central_mask,
+        )
 
-            colony_labels = self._reconnect_fragments_tiled(
-                    colony_labels=colony_labels,
-                    fragment_labels=fragment_labels,
-                    cost_surface=cost_surface,
-                    unmasked_cost=unmasked_cost,
-                    pct_energy=pct_result.pc_sum.astype(np.float32),
-                    grayscale=enhanced_gray,
-            )
+        colony_labels = self._reconnect_fragments_tiled(
+                colony_labels=colony_labels,
+                fragment_labels=fragment_labels,
+                cost_surface=cost_surface,
+                unmasked_cost=unmasked_cost,
+                pct_energy=pct_result.pc_sum.astype(np.float32),
+                grayscale=enhanced_gray,
+        )
 
-            self._log_memory_usage(
-                    "after Dijkstra reconnection",
-                    include_process=True,
-                    include_tracemalloc=True,
-            )
+        self._log_memory_usage(
+                "after Dijkstra reconnection",
+                include_process=True,
+                include_tracemalloc=True,
+        )
 
         # ── PHASE 5: FINAL VORONOI ────────────────────────────────────
         final_mask = (colony_labels > 0) | inoculum_structure_mask
@@ -539,9 +520,9 @@ class FilamentousFungiDetector(GridObjectDetector):
             colony_labels: Labeled colony assignment from watershed.
         """
         _apply_distance_gap_penalty_inplace(
-                cost, pct_energy, colony_labels, self.gap_penalty_alpha,
+                cost, pct_energy, colony_labels, self.gap_crossing_penalty,
         )
-        _apply_border_penalty_inplace(cost, self.edge_margin)
+        _apply_border_penalty_inplace(cost, self.border_margin_px)
 
     def _build_cost_surface(
             self,
@@ -573,7 +554,7 @@ class FilamentousFungiDetector(GridObjectDetector):
 
         # Coherence is a measure of the length of the structures orientation
         coherence = compute_orientation_coherence(
-                pct_result.orientation, self.r_coherence
+                pct_result.orientation, self.coherence_window_radius
         )
 
         # For identifying noisy regions away from inoculum center
@@ -626,16 +607,16 @@ class FilamentousFungiDetector(GridObjectDetector):
         # Prescreen fragments: compute envelope once, share across calibration + screening
         colony_branch_mask = (colony_labels > 0).astype(np.int32)
         min_cost_envelope, _ = _compute_screening_envelope(
-                cost_surface, colony_branch_mask, self.r_screen
+                cost_surface, colony_branch_mask, self.frag_reach_px
         )
         tau_screen, _ = calibrate_screening_threshold(
-                cost_surface, colony_branch_mask, r_screen=self.r_screen,
+                cost_surface, colony_branch_mask, r_screen=self.frag_reach_px,
                 min_cost_envelope=min_cost_envelope,
         )
 
         screen_result = prescreen_fragments(
                 cost_surface, fragment_labels,
-                r_screen=self.r_screen,
+                r_screen=self.frag_reach_px,
                 tau_screen=tau_screen,
                 colony_branch_mask=colony_branch_mask,
                 min_cost_envelope=min_cost_envelope,
@@ -760,7 +741,7 @@ class FilamentousFungiDetector(GridObjectDetector):
         # Quality filter: calibrate from colony skeleton branches
         calibration = extract_calibration_branches(
                 tile_colony, tile_raw,
-                window_cost=self.window_cost,
+                window_cost=self.max_gap_length,
                 dilation_radius=self.path_dilation_radius,
                 pct_energy=tile_pct,
                 grayscale=tile_gray,
@@ -771,11 +752,11 @@ class FilamentousFungiDetector(GridObjectDetector):
         # Only apply quality filters if we have calibration data
         if calibration.median_cost_values.size > 0:
             thresholds = calibrate_thresholds(
-                    calibration, k=self.quality_k
+                    calibration, k=self.reconnection_tolerance
             )
             filter_result = apply_filter_cascade(
                     paths, tile_raw, thresholds,
-                    window_cost=self.window_cost,
+                    window_cost=self.max_gap_length,
                     dilation_radius=self.path_dilation_radius,
                     pct_energy=tile_pct,
                     grayscale=tile_gray,
@@ -907,39 +888,6 @@ class FilamentousFungiDetector(GridObjectDetector):
             r = min(int(round(com[0])), objmap.shape[0] - 1)
             c = min(int(round(com[1])), objmap.shape[1] - 1)
             markers[r, c] = marker_id
-
-        return markers
-
-    @staticmethod
-    def _create_markers_from_grid(image: 'GridImage') -> np.ndarray:
-        """Create Voronoi seed markers from grid section centers.
-
-        .. deprecated::
-            Use :meth:`_create_markers_from_centroids` instead, which
-            anchors seeds to detected inoculum positions rather than
-            geometric grid centers.
-
-        Args:
-            image: GridImage with detected objects (needed by the grid
-                accessor to compute row/column edges).
-
-        Returns:
-            2D int32 marker array with one seed per grid section.
-        """
-        h, w = image.gray[:].shape[:2]
-        row_edges = image.grid.get_row_edges()
-        col_edges = image.grid.get_col_edges()
-
-        markers = np.zeros((h, w), dtype=np.int32)
-
-        label_id = 1
-        for r_idx in range(image.nrows):
-            rr = min(int(round((row_edges[r_idx] + row_edges[r_idx + 1]) / 2)), h - 1)
-            for c_idx in range(image.ncols):
-                cc = min(int(round((col_edges[c_idx] + col_edges[c_idx + 1]) / 2)),
-                         w - 1)
-                markers[rr, cc] = label_id
-                label_id += 1
 
         return markers
 

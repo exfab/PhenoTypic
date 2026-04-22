@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 from phenotypic.analysis._log_growth_model import LogGrowthModel
-from phenotypic.tools_.measurement_info_ import LOG_GROWTH_MODEL
+from phenotypic.tools_.measurement_info_ import LOG_GROWTH_MODEL, MODEL_METRICS
 
 
 class TestLogGrowthModel:
@@ -130,12 +130,13 @@ class TestLogGrowthModel:
             LOG_GROWTH_MODEL.N0_FIT,
             LOG_GROWTH_MODEL.GROWTH_RATE,
             LOG_GROWTH_MODEL.K_MAX,
-            LOG_GROWTH_MODEL.NUM_SAMPLES,
-            LOG_GROWTH_MODEL.LOSS,
-            LOG_GROWTH_MODEL.STATUS,
-            LOG_GROWTH_MODEL.MAE,
-            LOG_GROWTH_MODEL.MSE,
-            LOG_GROWTH_MODEL.RMSE,
+            MODEL_METRICS.NUM_SAMPLES,
+            MODEL_METRICS.LOSS,
+            MODEL_METRICS.STATUS,
+            MODEL_METRICS.MAE,
+            MODEL_METRICS.MSE,
+            MODEL_METRICS.RMSE,
+            MODEL_METRICS.R2,
         ]
 
         for col in expected_columns:
@@ -145,6 +146,12 @@ class TestLogGrowthModel:
         assert not results[LOG_GROWTH_MODEL.R_FIT].isna().all()
         assert not results[LOG_GROWTH_MODEL.K_FIT].isna().all()
         assert not results[LOG_GROWTH_MODEL.N0_FIT].isna().all()
+
+        # R^2 should be finite and at most 1.0 on the synthetic fixture
+        r2_values = results[MODEL_METRICS.R2]
+        assert r2_values.notna().all()
+        assert np.isfinite(r2_values).all()
+        assert (r2_values <= 1.0).all()
 
         # Check that growth rate is calculated correctly (r * K / 4)
         r_values = results[LOG_GROWTH_MODEL.R_FIT]

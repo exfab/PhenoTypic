@@ -616,7 +616,7 @@ class TestSentinelScript:
         assert "#SBATCH --partition=gpu" in content
         assert "#SBATCH --account=mylab" in content
         assert "#SBATCH --time=01:00:00" in content  # default max_runtime=1800 → 60-min floor
-        assert "pheno-sentinel" in content
+        assert "pht-sentinel" in content
         assert "phenotypic._cli._cli_sentinel" in content
         # Uses the same Python path as array job scripts, not bare "python"
         assert "-m phenotypic._cli._cli_sentinel" in content

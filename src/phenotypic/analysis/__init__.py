@@ -7,11 +7,13 @@ modeling across time courses, and Tukey-style outlier removal for colony metrics
 """
 
 from ._edge_correction import EdgeCorrector
+from ._linear_softplus import LinearSoftplusModel
 from ._log_growth_model import LogGrowthModel
 from ._tukey_outlier import TukeyOutlierRemover
 
 __all__ = [
     "EdgeCorrector",
+    "LinearSoftplusModel",
     "LogGrowthModel",
     "TukeyOutlierRemover",
 ]

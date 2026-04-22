@@ -1247,12 +1247,12 @@ def _handle_recompile(
     """
     from rich.console import Console
 
+    from phenotypic._cli._cli_chunk_writer import _run_analysis_plugins
     from phenotypic._cli._cli_output_manager import aggregate_measurements
     from phenotypic._cli._cli_utils import load_job_metadata
     from phenotypic._cli._dashboard import (
         build_manifest,
         generate_dashboard,
-        write_analysis_sidecar,
     )
 
     console = Console()
@@ -1293,11 +1293,22 @@ def _handle_recompile(
 
     console.print("[cyan]Running analysis plugins...")
     try:
-        write_analysis_sidecar(output_dir, metadata_csv=metadata_csv)
-        console.print("[green]Analysis sidecar data written")
+        import polars as pl
+
+        merged_df: Optional[pl.DataFrame] = None
+        if master_path and Path(master_path).exists():
+            try:
+                merged_df = pl.read_csv(master_path)
+            except Exception:
+                logger.warning(
+                    "Failed to read master CSV for analysis plugins",
+                    exc_info=True,
+                )
+        _run_analysis_plugins(output_dir, progress_dir, merged_df)
+        console.print("[green]Analysis plugins complete")
     except Exception:
-        logger.warning("Analysis sidecar write failed", exc_info=True)
-        console.print("[yellow]Analysis sidecar write failed (see logs)")
+        logger.warning("Analysis plugin dispatch failed", exc_info=True)
+        console.print("[yellow]Analysis plugin dispatch failed (see logs)")
 
     console.print("[cyan]Rebuilding manifest...")
     progress_dir.mkdir(parents=True, exist_ok=True)

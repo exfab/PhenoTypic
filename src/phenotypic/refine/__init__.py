@@ -12,6 +12,7 @@ address fragmented colony detections from uneven illumination or heterogeneous p
 by merging nearby detections based on spatial proximity and size thresholds.
 """
 
+from ._asymmetric_spur_trimmer import AsymmetricSpurTrimmer
 from ._border_object_modifier import BorderObjectRemover
 from ._center_deviation_reducer import CenterDeviationReducer
 from ._circularity_modifier import LowCircularityRemover
@@ -38,6 +39,7 @@ from ._grid_section_largest import GridSectionLargest
 from ._separate_objects import SeparateObjects
 
 __all__ = [
+    "AsymmetricSpurTrimmer",
     "BorderObjectRemover",
     "CenterDeviationReducer",
     "GMMCoreExtractor",

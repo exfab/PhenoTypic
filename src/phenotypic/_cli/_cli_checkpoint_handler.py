@@ -68,10 +68,16 @@ def _run_manifest(output_dir: Path, progress_dir: Path) -> None:
 
     from ._dashboard._manifest_builder import build_manifest
 
+    datasets_raw = job_metadata.get("datasets", {}) or {}
+    datasets_totals: dict[str, int] = {
+        name: (info["total"] if isinstance(info, dict) else int(info))
+        for name, info in datasets_raw.items()
+    }
+
     build_manifest(
         output_dir=output_dir,
         progress_dir=progress_dir,
-        datasets=job_metadata.get("datasets", {}),
+        datasets=datasets_totals,
         execution_mode=job_metadata.get("execution_mode", "local"),
         start_time=job_metadata.get("start_time", ""),
         slurm_job_ids=job_metadata.get("chunk_job_ids"),
@@ -97,8 +103,12 @@ def _run_finalize(output_dir: Path, progress_dir: Path) -> None:
         logger.warning("No job_metadata.json -- cannot finalize")
         return
 
-    datasets = job_metadata.get("datasets", {})
-    total_expected = sum(datasets.values())
+    datasets_raw = job_metadata.get("datasets", {}) or {}
+    datasets_totals: dict[str, int] = {
+        name: (info["total"] if isinstance(info, dict) else int(info))
+        for name, info in datasets_raw.items()
+    }
+    total_expected = sum(datasets_totals.values())
 
     # Wait for all images to complete (or fail)
     _wait_for_completion(progress_dir, total_expected, timeout=600)
@@ -111,7 +121,7 @@ def _run_finalize(output_dir: Path, progress_dir: Path) -> None:
 
     aggregate_measurements(
         output_dir=output_dir,
-        dataset_names=list(datasets.keys()),
+        dataset_names=list(datasets_totals.keys()),
         include_dataset_column=job_metadata.get("include_dataset_column", True),
         metadata_csv=metadata_csv,
     )
@@ -122,7 +132,7 @@ def _run_finalize(output_dir: Path, progress_dir: Path) -> None:
     build_manifest(
         output_dir=output_dir,
         progress_dir=progress_dir,
-        datasets=datasets,
+        datasets=datasets_totals,
         execution_mode=job_metadata.get("execution_mode", "local"),
         start_time=job_metadata.get("start_time", ""),
         slurm_job_ids=job_metadata.get("chunk_job_ids"),
