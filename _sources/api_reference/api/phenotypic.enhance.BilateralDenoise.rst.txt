@@ -1,0 +1,28 @@
+phenotypic.enhance.BilateralDenoise
+===================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: BilateralDenoise
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~BilateralDenoise.__init__
+      ~BilateralDenoise.apply
+      ~BilateralDenoise.widget
+   
+   
+
+   
+   
+   

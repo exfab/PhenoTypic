@@ -1,0 +1,31 @@
+phenotypic.analysis.LogGrowthModel
+==================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autoclass:: LogGrowthModel
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~LogGrowthModel.__init__
+      ~LogGrowthModel.analyze
+      ~LogGrowthModel.dash
+      ~LogGrowthModel.model_func
+      ~LogGrowthModel.results
+      ~LogGrowthModel.show
+   
+   
+
+   
+   
+   

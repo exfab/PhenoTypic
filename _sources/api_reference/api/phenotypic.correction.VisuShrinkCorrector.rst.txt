@@ -1,0 +1,28 @@
+phenotypic.correction.VisuShrinkCorrector
+=========================================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: VisuShrinkCorrector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~VisuShrinkCorrector.__init__
+      ~VisuShrinkCorrector.apply
+      ~VisuShrinkCorrector.widget
+   
+   
+
+   
+   
+   

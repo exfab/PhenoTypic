@@ -1,0 +1,28 @@
+phenotypic.abc\_.ImageCorrector
+===============================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: ImageCorrector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ImageCorrector.__init__
+      ~ImageCorrector.apply
+      ~ImageCorrector.widget
+   
+   
+
+   
+   
+   

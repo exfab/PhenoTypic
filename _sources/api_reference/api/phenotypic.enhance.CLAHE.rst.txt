@@ -1,0 +1,28 @@
+phenotypic.enhance.CLAHE
+========================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: CLAHE
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~CLAHE.__init__
+      ~CLAHE.apply
+      ~CLAHE.widget
+   
+   
+
+   
+   
+   

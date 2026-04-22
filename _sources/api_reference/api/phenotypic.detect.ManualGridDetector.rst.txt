@@ -1,0 +1,29 @@
+phenotypic.detect.ManualGridDetector
+====================================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: ManualGridDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ManualGridDetector.__init__
+      ~ManualGridDetector.apply
+      ~ManualGridDetector.napari
+      ~ManualGridDetector.widget
+   
+   
+
+   
+   
+   

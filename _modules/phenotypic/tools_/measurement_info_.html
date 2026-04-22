@@ -1,0 +1,1735 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.tools_.measurement_info_ &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=320b28a0"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/tools_/measurement_info_';</script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.14.0b5" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorials/index.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../how_to/index.html">
+    How-To Guides
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../explanation/index.html">
+    Explanation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../extending/index.html">
+    Extending PhenoTypic
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../../../downloads.html">
+    Downloads
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorials/index.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../how_to/index.html">
+    How-To Guides
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../explanation/index.html">
+    Explanation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../extending/index.html">
+    Extending PhenoTypic
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloads.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.tools_.measurement_info_</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.tools_.measurement_info_</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Centralized measurement information enumerations for the PhenoTypic library.</span>
+
+<span class="sd">This module contains all MeasurementInfo subclasses used across the library,</span>
+<span class="sd">standardizing measurement naming conventions, metadata, and documentation.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+
+
+<div class="viewcode-block" id="TEXTURE">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.TEXTURE">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TEXTURE</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Second-order texture features derived from the gray-level co-occurrence matrix (GLCM).</span>
+
+<span class="sd">    All features assume normalized GLCMs computed at one or more pixel offsets and averaged</span>
+<span class="sd">    across directions unless otherwise noted. Values depend on quantization, window size,</span>
+<span class="sd">    and scale; interpret ranges comparatively within the same imaging setup.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TEXTURE.category">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.TEXTURE.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;Texture&quot;</span></div>
+
+
+    <span class="n">ANGULAR_SECOND_MOMENT</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;AngularSecondMoment&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Angular second moment (energy / uniformity). Measures the degree of local homogeneity</span>
+<span class="sd">        (Σ p(i,j)²). High values → uniform texture (e.g., smooth, yeast-like colonies with consistent</span>
+<span class="sd">        mycelial density). Low values → heterogeneous surfaces (e.g., sectored, wrinkled, or mixed</span>
+<span class="sd">        sporulation zones). Reflects colony surface regularity rather than brightness.&quot;&quot;&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">CONTRAST</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;Contrast&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Contrast (local intensity variation; Σ (i–j)² p(i,j)). High values indicate strong gray-level</span>
+<span class="sd">        differences (e.g., sharply defined rings, radial sectors, raised or folded regions). Low values</span>
+<span class="sd">        indicate gradual tonal changes or uniformly pigmented colonies. Quantifies visual roughness</span>
+<span class="sd">        and zonation amplitude.&quot;&quot;&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">CORRELATION</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;Correlation&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Linear gray-level correlation between neighboring pixels. Positive, high values suggest</span>
+<span class="sd">        structured spatial dependence (e.g., oriented radial hyphae or concentric patterns); near-zero</span>
+<span class="sd">        values indicate uncorrelated, disordered growth (e.g., diffuse cottony mycelium). Sensitive to</span>
+<span class="sd">        illumination gradients and directional GLCM computation.&quot;&quot;&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;HaralickVariance&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;GLCM variance (Σ (i–μ)² p(i,j)). Captures spread of co-occurring gray-level pairs, distinct</span>
+<span class="sd">        from raw intensity variance. High values → complex, multi-zone textures with variable</span>
+<span class="sd">        hyphal/spore densities. Low values → consistent gray-level relationships and simpler colony</span>
+<span class="sd">        surfaces.&quot;&quot;&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">INVERSE_DIFFERENCE_MOMENT</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;InverseDifferenceMoment&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Homogeneity (Σ p(i,j) / (1 + (i–j)²)). High values → smooth, locally uniform textures</span>
+<span class="sd">        (e.g., glabrous colonies, uniform aerial mycelium). Low values → abrupt gray-level changes</span>
+<span class="sd">        (e.g., granular sporulation, wrinkled surfaces). Typically inversely correlated with Contrast.&quot;&quot;&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">SUM_AVERAGE</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;SumAverage&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Mean of gray-level sums (Σ k·p_{x+y}(k)). Reflects the average intensity combination of</span>
+<span class="sd">        neighboring pixels. In fungal colonies, can loosely parallel mean colony brightness when</span>
+<span class="sd">        illumination and exposure are controlled, but remains a second-order rather than first-order</span>
+<span class="sd">        intensity metric.&quot;&quot;&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">SUM_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;SumVariance&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Variance of gray-level sum distribution. High values → heterogeneous brightness zones</span>
+<span class="sd">        (e.g., alternating dense/sparse or pigmented/non-pigmented regions). Low values → uniform</span>
+<span class="sd">        tone across the colony. Often correlated with Contrast; use comparatively within one setup.&quot;&quot;&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">SUM_ENTROPY</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;SumEntropy&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Entropy of the gray-level sum distribution. High values → diverse brightness combinations</span>
+<span class="sd">        and irregular zonation. Low values → repetitive or periodic brightness patterns (e.g., evenly</span>
+<span class="sd">        spaced rings). Indicates spatial unpredictability of summed intensities.&quot;&quot;&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">ENTROPY</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;Entropy&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Global GLCM entropy (–Σ p(i,j)·log p(i,j)). Measures total texture disorder and information</span>
+<span class="sd">        content. High values → complex, irregular colony surfaces (powdery, fuzzy, or sectored growth).</span>
+<span class="sd">        Low values → simple, smooth, predictable patterns (glabrous or uniform colonies). Sensitive to</span>
+<span class="sd">        gray-level quantization and image dynamic range.&quot;&quot;&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">DIFFERENCE_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;DiffVariance&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Variance of gray-level difference distribution. High values → mixture of smooth and textured</span>
+<span class="sd">        regions (e.g., smooth margins with wrinkled centers). Low values → consistent edge content.</span>
+<span class="sd">        Highlights heterogeneity in edge magnitude across the colony.&quot;&quot;&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">DIFFERENCE_ENTROPY</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;DiffEntropy&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Entropy of gray-level difference distribution. High values → irregular, unpredictable</span>
+<span class="sd">        intensity transitions (e.g., random sporulation or uneven mycelial networks). Low values →</span>
+<span class="sd">        regular periodic transitions (e.g., concentric zonation). Reflects randomness of local contrast</span>
+<span class="sd">        rather than its magnitude.&quot;&quot;&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">IMC1</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;InfoCorrelation1&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Information measure of correlation 1. Compares joint vs marginal entropies to quantify</span>
+<span class="sd">        mutual dependence between gray levels. Positive values → structured, predictable textures</span>
+<span class="sd">        (e.g., organized radial growth); near-zero → independence between adjacent regions.</span>
+<span class="sd">        Direction of sign varies with implementation.&quot;&quot;&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">IMC2</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;InfoCorrelation2&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Information measure of correlation 2 (√[1 – exp(–2 (H_xy2–H_xy))]). Always ≥ 0.</span>
+<span class="sd">        Values approaching 1 → strong spatial dependence and organized architecture (e.g., symmetric</span>
+<span class="sd">        rings, radial structure). Values near 0 → random, independent patterns. Captures nonlinear</span>
+<span class="sd">        organization missed by linear correlation.&quot;&quot;&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="TEXTURE.get_headers">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.TEXTURE.get_headers">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">matrix_name</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return full texture labels with angles in order 0, 45, 90, 135 for each feature and the</span>
+<span class="sd">        average across degrees of each feature at the end.&quot;&quot;&quot;</span>
+        <span class="n">angles</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">45</span><span class="p">,</span> <span class="mi">90</span><span class="p">,</span> <span class="mi">135</span><span class="p">]</span>
+        <span class="n">labels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">member</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">get_labels</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">angle</span> <span class="ow">in</span> <span class="n">angles</span><span class="p">:</span>
+                <span class="n">labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">category</span><span class="p">()</span><span class="si">}{</span><span class="n">matrix_name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">member</span><span class="si">}</span><span class="s2">-deg</span><span class="si">{</span><span class="n">angle</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">-scale</span><span class="si">{</span><span class="n">scale</span><span class="si">:</span><span class="s2">02d</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">member</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">get_labels</span><span class="p">():</span>
+            <span class="n">labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">category</span><span class="p">()</span><span class="si">}{</span><span class="n">matrix_name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">member</span><span class="si">}</span><span class="s2">-avg-scale</span><span class="si">{</span><span class="n">scale</span><span class="si">:</span><span class="s2">02d</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">labels</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="GRID_SPREAD">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.GRID_SPREAD">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GRID_SPREAD</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Grid section spatial spread measurements.</span>
+
+<span class="sd">    Provides measurements for evaluating spatial distribution of colonies within</span>
+<span class="sd">    grid sections of arrayed microbial assays.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GRID_SPREAD.category">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.GRID_SPREAD.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;GridSpread&quot;</span></div>
+
+
+    <span class="n">OBJECT_SPREAD</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;ObjectSpread&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Sum of squared pairwise Euclidean distances between all unique colony pairs within a grid section. Quantifies spatial dispersion of colonies in a grid cell. Higher values indicate greater spread from the section center, suggesting over-segmentation, multi-detections, or colonies growing beyond expected boundaries. Used to identify problematic grid sections requiring refinement or quality review.&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ColorComposition">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.ColorComposition">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ColorComposition</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Measurement info for perceptual color composition using 11-color model.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ColorComposition.category">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.ColorComposition.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;ColorComposition&quot;</span></div>
+
+
+    <span class="c1"># Define the 11 color categories with descriptions</span>
+    <span class="n">BLACK_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;BlackPct&quot;</span><span class="p">,</span> <span class="s2">&quot;Percentage of pixels classified as black (Value &lt; 20)&quot;</span><span class="p">)</span>
+    <span class="n">WHITE_PCT</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;WhitePct&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Percentage of pixels classified as white (Saturation &lt; 15, Value &gt; 85)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">GRAY_PCT</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;GrayPct&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Percentage of pixels classified as gray (Saturation &lt; 15, Value 20-85)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">PINK_PCT</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;PinkPct&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Percentage of pixels classified as pink (Red/Magenta hue, Saturation 20-60, Value &gt; 80)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">BROWN_PCT</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;BrownPct&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Percentage of pixels classified as brown (Red/Orange hue, Value 20-60)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">RED_PCT</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;RedPct&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Percentage of pixels classified as red (Hue 0-15° or 345-360°)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">ORANGE_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;OrangePct&quot;</span><span class="p">,</span> <span class="s2">&quot;Percentage of pixels classified as orange (Hue 15-45°)&quot;</span><span class="p">)</span>
+    <span class="n">YELLOW_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;YellowPct&quot;</span><span class="p">,</span> <span class="s2">&quot;Percentage of pixels classified as yellow (Hue 45-75°)&quot;</span><span class="p">)</span>
+    <span class="n">GREEN_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;GreenPct&quot;</span><span class="p">,</span> <span class="s2">&quot;Percentage of pixels classified as green (Hue 75-150°)&quot;</span><span class="p">)</span>
+    <span class="n">CYAN_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CyanPct&quot;</span><span class="p">,</span> <span class="s2">&quot;Percentage of pixels classified as cyan (Hue 150-180°)&quot;</span><span class="p">)</span>
+    <span class="n">BLUE_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;BluePct&quot;</span><span class="p">,</span> <span class="s2">&quot;Percentage of pixels classified as blue (Hue 180-250°)&quot;</span><span class="p">)</span>
+    <span class="n">PURPLE_PCT</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;PurplePct&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Percentage of pixels classified as purple/magenta (Hue 250-345°)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="ColorComposition.all_headers">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.ColorComposition.all_headers">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">all_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return all color composition measurement headers.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BLACK_PCT</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">WHITE_PCT</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">GRAY_PCT</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">PINK_PCT</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BROWN_PCT</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">RED_PCT</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">ORANGE_PCT</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">YELLOW_PCT</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">GREEN_PCT</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">CYAN_PCT</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BLUE_PCT</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">PURPLE_PCT</span><span class="p">),</span>
+        <span class="p">]</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="SIZE">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.SIZE">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SIZE</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The labels and descriptions of the size measurements.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SIZE.category">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.SIZE.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;Size&quot;</span></div>
+
+
+    <span class="n">AREA</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;Area&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Total number of pixels occupied by the microbial colony.&quot;</span>
+        <span class="s2">&quot;Larger areas typically indicate more robust growth or longer incubation times.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">INTEGRATED_INTENSITY</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;IntegratedIntensity&quot;</span><span class="p">,</span>
+        <span class="sa">r</span><span class="s2">&quot;The sum of the object\&#39;s grayscale pixels. Calculated as&quot;</span>
+        <span class="sa">r</span><span class="s2">&quot;$\sum{pixel values}*area$&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="GRID_LINREG_STATS">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.GRID_LINREG_STATS">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GRID_LINREG_STATS</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Grid linear regression statistics and residual errors.</span>
+
+<span class="sd">    Provides measurements for evaluating grid alignment quality and detecting off-grid</span>
+<span class="sd">    colonies in arrayed microbial assays.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GRID_LINREG_STATS.category">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.GRID_LINREG_STATS.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;GridLinReg&quot;</span></div>
+
+
+    <span class="n">ROW_LINREG_M</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;RowM&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Slope of row-wise linear regression fit across column positions. Measures systematic drift in row alignment. Values near 0 indicate horizontal rows; non-zero values suggest rotational misalignment or systematic row curvature across the plate.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">ROW_LINREG_B</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;RowB&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Intercept of row-wise linear regression fit. Represents the expected row coordinate when column position is 0. Combined with slope, defines the expected row trend line for quality assessment and position prediction.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">COL_LINREG_M</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;ColM&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Slope of column-wise linear regression fit across row positions. Measures systematic drift in column alignment. Values near 0 indicate vertical columns; non-zero values suggest rotational misalignment or systematic column curvature across the plate.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">COL_LINREG_B</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;ColB&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Intercept of column-wise linear regression fit. Represents the expected column coordinate when row position is 0. Combined with slope, defines the expected column trend line for quality assessment and position prediction.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">PRED_RR</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;PredRR&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Predicted row coordinate from column-wise linear regression. Uses the column position and column regression parameters (ColM, ColB) to estimate where the row coordinate should be if the grid were perfectly aligned. Used for calculating residual errors and detecting misaligned colonies.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">PRED_CC</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;PredCC&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Predicted column coordinate from row-wise linear regression. Uses the row position and row regression parameters (RowM, RowB) to estimate where the column coordinate should be if the grid were perfectly aligned. Used for calculating residual errors and detecting misaligned colonies.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">RESIDUAL_ERR</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;ResidualError&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Euclidean distance between the actual colony centroid and the predicted position from linear regression. Quantifies how far each colony deviates from the expected grid pattern. High values indicate misdetections, off-grid growth, or local plate warping. Used by refinement operations to filter outliers and select the most plausible colony per grid cell.&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ColorXYZ">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.ColorXYZ">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ColorXYZ</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<div class="viewcode-block" id="ColorXYZ.category">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.ColorXYZ.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;ColorXYZ&quot;</span></div>
+
+
+    <span class="n">X_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieXMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum X value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">X_Q1</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;CieXQ1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The lower quartile (Q1) X value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">X_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieXMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean X value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">X_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieXMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median X value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">X_Q3</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;CieXQ3&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The upper quartile (Q3) X value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">X_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieXMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum X value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">X_STDDEV</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;CieXStdDev&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The standard deviation of the X value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">X_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;CieXCoeffVar&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The coefficient of variation of the X value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="ColorXYZ.cieX_headers">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.ColorXYZ.cieX_headers">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cieX_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">X_MINIMUM</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">X_Q1</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">X_MEAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">X_MEDIAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">X_Q3</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">X_MAXIMUM</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">X_STDDEV</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">X_COEFF_VARIANCE</span><span class="p">),</span>
+        <span class="p">]</span></div>
+
+
+    <span class="n">Y_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieYMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum Y value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">Y_Q1</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;CieYQ1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The lower quartile (Q1) Y value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">Y_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieYMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean Y value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">Y_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieYMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median Y value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">Y_Q3</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;CieYQ3&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The upper quartile (Q3) Y value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">Y_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieYMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum Y value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">Y_STDDEV</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;CieYStdDev&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The standard deviation of the Y value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">Y_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;CieYCoeffVar&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The coefficient of variation of the Y value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="ColorXYZ.cieY_headers">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.ColorXYZ.cieY_headers">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cieY_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Y_MINIMUM</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Y_Q1</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Y_MEAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Y_MEDIAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Y_Q3</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Y_MAXIMUM</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Y_STDDEV</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Y_COEFF_VARIANCE</span><span class="p">),</span>
+        <span class="p">]</span></div>
+
+
+    <span class="n">Z_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieZMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum Z value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">Z_Q1</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;CieZQ1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The lower quartile (Q1) Z value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">Z_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieZMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean Z value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">Z_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieZMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median Z value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">Z_Q3</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;CieZQ3&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The upper quartile (Q3) Z value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">Z_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieZMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum Z value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">Z_STDDEV</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;CieZStdDev&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The standard deviation of the Z value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">Z_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;CieZCoeffVar&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The coefficient of variation of the Z value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="ColorXYZ.cieZ_headers">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.ColorXYZ.cieZ_headers">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cieZ_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Z_MINIMUM</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Z_Q1</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Z_MEAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Z_MEDIAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Z_Q3</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Z_MAXIMUM</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Z_STDDEV</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Z_COEFF_VARIANCE</span><span class="p">),</span>
+        <span class="p">]</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="Colorxy">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.Colorxy">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Colorxy</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<div class="viewcode-block" id="Colorxy.category">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.Colorxy.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;Colorxy&quot;</span></div>
+
+
+    <span class="n">x_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;xMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">x_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;xQ1&quot;</span><span class="p">,</span> <span class="s2">&quot;The lower quartile (Q1) chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">x_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;xMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">x_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;xMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">x_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;xQ3&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper quartile (Q3) chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">x_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;xMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">x_STDDEV</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;xStdDev&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The standard deviation of the chromaticity x coordinate of the object&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">x_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;xCoeffVar&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The coefficient of variation of the chromaticity x coordinate of the object&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="Colorxy.x_headers">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.Colorxy.x_headers">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">x_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">x_MINIMUM</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">x_Q1</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">x_MEAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">x_MEDIAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">x_Q3</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">x_MAXIMUM</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">x_STDDEV</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">x_COEFF_VARIANCE</span><span class="p">),</span>
+        <span class="p">]</span></div>
+
+
+    <span class="n">y_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;yMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">y_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;yQ1&quot;</span><span class="p">,</span> <span class="s2">&quot;The lower quartile (Q1) chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">y_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;yMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">y_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;yMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">y_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;yQ3&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper quartile (Q3) chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">y_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;yMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">y_STDDEV</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;yStdDev&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The standard deviation of the chromaticity y coordinate of the object&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">y_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;yCoeffVar&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The coefficient of variation of the chromaticity y coordinate of the object&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="Colorxy.y_headers">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.Colorxy.y_headers">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">y_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">y_MINIMUM</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">y_Q1</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">y_MEAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">y_MEDIAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">y_Q3</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">y_MAXIMUM</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">y_STDDEV</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">y_COEFF_VARIANCE</span><span class="p">),</span>
+        <span class="p">]</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ColorLab">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.ColorLab">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ColorLab</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<div class="viewcode-block" id="ColorLab.category">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.ColorLab.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;ColorLab&quot;</span></div>
+
+
+    <span class="n">L_STAR_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;L*Min&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum L* value of the object&quot;</span><span class="p">)</span>
+    <span class="n">L_STAR_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;L*Q1&quot;</span><span class="p">,</span> <span class="s2">&quot;The lower quartile (Q1) L* value of the object&quot;</span><span class="p">)</span>
+    <span class="n">L_STAR_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;L*Mean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean L* value of the object&quot;</span><span class="p">)</span>
+    <span class="n">L_STAR_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;L*Median&quot;</span><span class="p">,</span> <span class="s2">&quot;The median L* value of the object&quot;</span><span class="p">)</span>
+    <span class="n">L_STAR_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;L*Q3&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper quartile (Q3) L* value of the object&quot;</span><span class="p">)</span>
+    <span class="n">L_STAR_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;L*Max&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum L* value of the object&quot;</span><span class="p">)</span>
+    <span class="n">L_STAR_STDDEV</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;L*StdDev&quot;</span><span class="p">,</span> <span class="s2">&quot;The standard deviation of the L* value of the object&quot;</span><span class="p">)</span>
+    <span class="n">L_STAR_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;L*CoeffVar&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The coefficient of variation of the L* value of the object&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="ColorLab.l_star_headers">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.ColorLab.l_star_headers">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">l_star_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_MINIMUM</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_Q1</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_MEAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_MEDIAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_Q3</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_MAXIMUM</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_STDDEV</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_COEFF_VARIANCE</span><span class="p">),</span>
+        <span class="p">]</span></div>
+
+
+    <span class="n">A_STAR_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;a*Min&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum a* value of the object&quot;</span><span class="p">)</span>
+    <span class="n">A_STAR_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;a*Q1&quot;</span><span class="p">,</span> <span class="s2">&quot;The lower quartile (Q1) a* value of the object&quot;</span><span class="p">)</span>
+    <span class="n">A_STAR_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;a*Mean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean a* value of the object&quot;</span><span class="p">)</span>
+    <span class="n">A_STAR_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;a*Median&quot;</span><span class="p">,</span> <span class="s2">&quot;The median a* value of the object&quot;</span><span class="p">)</span>
+    <span class="n">A_STAR_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;a*Q3&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper quartile (Q3) a* value of the object&quot;</span><span class="p">)</span>
+    <span class="n">A_STAR_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;a*Max&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum a* value of the object&quot;</span><span class="p">)</span>
+    <span class="n">A_STAR_STDDEV</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;a*StdDev&quot;</span><span class="p">,</span> <span class="s2">&quot;The standard deviation of the a* value of the object&quot;</span><span class="p">)</span>
+    <span class="n">A_STAR_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;a*CoeffVar&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The coefficient of variation of the a* value of the object&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="ColorLab.a_star_headers">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.ColorLab.a_star_headers">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">a_star_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_MINIMUM</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_Q1</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_MEAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_MEDIAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_Q3</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_MAXIMUM</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_STDDEV</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_COEFF_VARIANCE</span><span class="p">),</span>
+        <span class="p">]</span></div>
+
+
+    <span class="n">B_STAR_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;b*Min&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum b* value of the object&quot;</span><span class="p">)</span>
+    <span class="n">B_STAR_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;b*Q1&quot;</span><span class="p">,</span> <span class="s2">&quot;The lower quartile (Q1) b* value of the object&quot;</span><span class="p">)</span>
+    <span class="n">B_STAR_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;b*Mean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean b* value of the object&quot;</span><span class="p">)</span>
+    <span class="n">B_STAR_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;b*Median&quot;</span><span class="p">,</span> <span class="s2">&quot;The median b* value of the object&quot;</span><span class="p">)</span>
+    <span class="n">B_STAR_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;b*Q3&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper quartile (Q3) b* value of the object&quot;</span><span class="p">)</span>
+    <span class="n">B_STAR_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;b*Max&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum b* value of the object&quot;</span><span class="p">)</span>
+    <span class="n">B_STAR_STDDEV</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;b*StdDev&quot;</span><span class="p">,</span> <span class="s2">&quot;The standard deviation of the b* value of the object&quot;</span><span class="p">)</span>
+    <span class="n">B_STAR_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;b*CoeffVar&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The coefficient of variation of the b* value of the object&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="ColorLab.b_star_headers">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.ColorLab.b_star_headers">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">b_star_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_MINIMUM</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_Q1</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_MEAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_MEDIAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_Q3</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_MAXIMUM</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_STDDEV</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_COEFF_VARIANCE</span><span class="p">),</span>
+        <span class="p">]</span></div>
+
+
+    <span class="n">CHROMA_EST_MEAN</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;ChromaEstimatedMean&quot;</span><span class="p">,</span>
+        <span class="sa">r</span><span class="s2">&quot;The mean chroma estimation of the object calculated using :math:`\(sqrt(a^{*}_</span><span class="si">{mean}</span><span class="s2">^2 + b^{*}_</span><span class="si">{mean}</span><span class="s2">)^2}`&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">CHROMA_EST_MEDIAN</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;ChromaEstimatedMedian&quot;</span><span class="p">,</span>
+        <span class="sa">r</span><span class="s2">&quot;The median chroma estimation of the object using :math:`\sqrt({a*_</span><span class="si">{median}</span><span class="s2">^2 + b*_</span><span class="si">{median}</span><span class="s2">)^2}`&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ColorHSV">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.ColorHSV">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ColorHSV</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<div class="viewcode-block" id="ColorHSV.category">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.ColorHSV.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;ColorHSV&quot;</span></div>
+
+
+    <span class="n">HUE_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;HueMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum hue of the object&quot;</span><span class="p">)</span>
+    <span class="n">HUE_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;HueQ1&quot;</span><span class="p">,</span> <span class="s2">&quot;The lower quartile (Q1) hue of the object&quot;</span><span class="p">)</span>
+    <span class="n">HUE_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;HueMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean hue of the object&quot;</span><span class="p">)</span>
+    <span class="n">HUE_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;HueMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median hue of the object&quot;</span><span class="p">)</span>
+    <span class="n">HUE_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;HueQ3&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper quartile (Q3) hue of the object&quot;</span><span class="p">)</span>
+    <span class="n">HUE_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;HueMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum hue of the object&quot;</span><span class="p">)</span>
+    <span class="n">HUE_STDDEV</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;HueStdDev&quot;</span><span class="p">,</span> <span class="s2">&quot;The standard deviation of the hue of the object&quot;</span><span class="p">)</span>
+    <span class="n">HUE_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;HueCoeffVar&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The coefficient of variation of the hue of the object&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="ColorHSV.hue_headers">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.ColorHSV.hue_headers">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">hue_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_MINIMUM</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_Q1</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_MEAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_MEDIAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_Q3</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_MAXIMUM</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_STDDEV</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_COEFF_VARIANCE</span><span class="p">),</span>
+        <span class="p">]</span></div>
+
+
+    <span class="n">SATURATION_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;SaturationMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum saturation of the object&quot;</span><span class="p">)</span>
+    <span class="n">SATURATION_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;SaturationQ1&quot;</span><span class="p">,</span> <span class="s2">&quot;The lower quartile (Q1) saturation of the object&quot;</span><span class="p">)</span>
+    <span class="n">SATURATION_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;SaturationMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean saturation of the object&quot;</span><span class="p">)</span>
+    <span class="n">SATURATION_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;SaturationMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median saturation of the object&quot;</span><span class="p">)</span>
+    <span class="n">SATURATION_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;SaturationQ3&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper quartile (Q3) saturation of the object&quot;</span><span class="p">)</span>
+    <span class="n">SATURATION_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;SaturationMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum saturation of the object&quot;</span><span class="p">)</span>
+    <span class="n">SATURATION_STDDEV</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;SaturationStdDev&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The standard deviation of the saturation of the object&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">SATURATION_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;SaturationCoeffVar&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The coefficient of variation of the saturation of the object&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="ColorHSV.saturation_headers">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.ColorHSV.saturation_headers">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">saturation_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_MINIMUM</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_Q1</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_MEAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_MEDIAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_Q3</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_MAXIMUM</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_STDDEV</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_COEFF_VARIANCE</span><span class="p">),</span>
+        <span class="p">]</span></div>
+
+
+    <span class="n">BRIGHTNESS_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;BrightnessMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum brightness of the object&quot;</span><span class="p">)</span>
+    <span class="n">BRIGHTNESS_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;BrightnessQ1&quot;</span><span class="p">,</span> <span class="s2">&quot;The lower quartile (Q1) brightness of the object&quot;</span><span class="p">)</span>
+    <span class="n">BRIGHTNESS_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;BrightnessMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean brightness of the object&quot;</span><span class="p">)</span>
+    <span class="n">BRIGHTNESS_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;BrightnessMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median brightness of the object&quot;</span><span class="p">)</span>
+    <span class="n">BRIGHTNESS_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;BrightnessQ3&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper quartile (Q3) brightness of the object&quot;</span><span class="p">)</span>
+    <span class="n">BRIGHTNESS_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;BrightnessMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum brightness of the object&quot;</span><span class="p">)</span>
+    <span class="n">BRIGHTNESS_STDDEV</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;BrightnessStdDev&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The standard deviation of the brightness of the object&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">BRIGHTNESS_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;BrightnessCoeffVar&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The coefficient of variation of the brightness of the object&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="ColorHSV.brightness_headers">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.ColorHSV.brightness_headers">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">brightness_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_MINIMUM</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_Q1</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_MEAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_MEDIAN</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_Q3</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_MAXIMUM</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_STDDEV</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_COEFF_VARIANCE</span><span class="p">),</span>
+        <span class="p">]</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="SHAPE">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.SHAPE">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SHAPE</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The labels and descriptions of the shape measurements.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SHAPE.category">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.SHAPE.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;Shape&quot;</span></div>
+
+
+    <span class="n">AREA</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;Area&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Total number of pixels occupied by the microbial colony. Represents colony biomass and growth extent on agar plates. Larger areas typically indicate more robust growth or longer incubation times.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">PERIMETER</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;Perimeter&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Total length of the colony&#39;s outer boundary in pixels. Measures colony edge complexity and surface irregularity. Smooth, circular colonies have shorter perimeters relative to their area compared to irregular or filamentous colonies.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">CIRCULARITY</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;Circularity&quot;</span><span class="p">,</span>
+        <span class="sa">r</span><span class="s2">&quot;Calculated as :math:`\frac{4\pi*\text</span><span class="si">{Area}</span><span class="s2">}{\text</span><span class="si">{Perimeter}</span><span class="s2">^2}`. Measures how closely a colony approximates a perfect circle (value = 1). Values &lt; 1 indicate irregular colony morphology, which may result from genetic mutations, environmental stress, or mixed microbial populations on agar plates.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">CONVEX_AREA</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;ConvexArea&quot;</span><span class="p">,</span>
+        <span class="s1">&#39;Area of the smallest convex polygon that completely contains the colony. Represents the colony</span><span class="se">\&#39;</span><span class="s1">s &quot;filled-in&quot; appearance if all indentations and holes were removed. Useful for detecting colony spreading patterns or invasive growth characteristics.&#39;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">MEDIAN_RADIUS</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;MedianRadius&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Median distance from colony center to edge across all directions. Provides a robust measure of typical colony size that is less sensitive to outliers than mean width. Particularly useful for colonies with uneven growth or sectoring.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">MEAN_RADIUS</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;MeanRadius&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Average distance from colony center to edge across all directions. Represents overall colony expansion rate. In arrayed growth assays, this correlates with microbial fitness and growth kinetics under controlled conditions.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">MAX_RADIUS</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;MaxRadius&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Maximum distance from colony center to edge across all directions. Represents the furthest extent of colony growth from its center. In arrayed microbial assays, this measurement helps identify asymmetric growth patterns or colonies extending toward neighboring positions.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">MIN_FERET_DIAMETER</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;MinFeretDiameter&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Minimum caliper diameter - the shortest distance between two parallel tangent lines touching opposite sides of the colony. Represents the narrowest dimension of the colony regardless of orientation. Useful for detecting elongated or irregular colony morphologies and measuring colony width.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">MAX_FERET_DIAMETER</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;MaxFeretDiameter&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Maximum caliper diameter - the longest distance between two parallel tangent lines touching opposite sides of the colony. Represents the maximum dimension of the colony regardless of orientation. Often exceeds major axis length for irregular shapes and helps quantify maximum colony extent.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">ECCENTRICITY</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;Eccentricity&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Measure of colony elongation, ranging from 0 (perfect circle) to 1 (highly elongated). Values near 0 indicate compact, radially symmetric growth typical of healthy bacterial colonies, while higher values may suggest directional growth, motility, or environmental gradients on the agar surface.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">SOLIDITY</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;Solidity&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Ratio of actual colony area to its convex hull area (Area/ConvexArea). Values near 1 indicate compact, solid colonies with minimal indentations. Lower values (&lt; 0.9) may indicate invasive growth, colony spreading, or the presence of clearing zones around colonies.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">EXTENT</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;Extent&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Ratio of colony area to its bounding box area (ObjectArea/BboxArea). Measures how efficiently the colony fills its allocated space. Compact colonies have higher extent values, while spread-out or irregular colonies have lower values.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">BBOX_AREA</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;BboxArea&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Area of the smallest rectangle that completely contains the colony. Represents the total spatial shape of the colony including any empty space. In high-throughput assays, this helps assess colony positioning and potential interference with neighboring colonies.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">MAJOR_AXIS_LENGTH</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;MajorAxisLength&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Length of the longest axis of the ellipse that best fits the colony shape. Represents the maximum colony dimension. In arrayed microbial growth, this measurement helps identify colonies that have grown beyond their intended grid positions.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">MINOR_AXIS_LENGTH</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;MinorAxisLength&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Length of the shortest axis of the ellipse that best fits the colony shape. Represents the minimum colony dimension. Together with major axis length, this helps characterize colony aspect ratio and growth anisotropy.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">COMPACTNESS</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;Compactness&quot;</span><span class="p">,</span>
+        <span class="sa">r</span><span class="s2">&quot;Calculated as :math:`\frac{\text</span><span class="si">{Perimeter}</span><span class="s2">^2}{4\pi*\text</span><span class="si">{Area}</span><span class="s2">}`. Inverse of circularity (ranges from 1 for perfect circles to higher values for irregular shapes). Measures colony shape complexity - compact, circular colonies have values near 1, while irregular or filamentous colonies have much higher values.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">ORIENTATION</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;Orientation&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Angle (in radians) between the colony&#39;s major axis and the horizontal axis. Measures colony alignment and growth directionality. Random orientations are typical for most bacterial colonies, while consistent orientations may indicate environmental gradients or mechanical stresses during plating.&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="RADIAL_EXPANSION">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.RADIAL_EXPANSION">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RADIAL_EXPANSION</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Radial expansion measurements for filamentous fungal colonies.</span>
+
+<span class="sd">    Quantifies branching morphology by decomposing colony structure into a</span>
+<span class="sd">    dense core and peripheral branches via PELT changepoint detection on</span>
+<span class="sd">    radial density profiles, followed by skeleton-based branch tracing.</span>
+<span class="sd">    Includes runner detection for identifying anomalously long branches.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="RADIAL_EXPANSION.category">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.RADIAL_EXPANSION.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;RadialExpansion&quot;</span></div>
+
+
+    <span class="n">ROBUST_MEAN_RADIUS</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;RobustMeanRadius&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Trimmed mean of branch path lengths, excluding detected runner. &quot;</span>
+        <span class="s2">&quot;Represents the typical radial expansion distance of hyphae from the &quot;</span>
+        <span class="s2">&quot;core boundary, robust to single-runner outliers.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">MEAN_RADIUS</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;MeanRadius&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Arithmetic mean of all branch path lengths from core boundary to &quot;</span>
+        <span class="s2">&quot;branch tips. Includes runner if present. Reflects overall average &quot;</span>
+        <span class="s2">&quot;colony reach.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">MEDIAN_RADIUS</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;MedianRadius&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Median branch path length. Robust to outliers and provides a &quot;</span>
+        <span class="s2">&quot;typical expansion distance.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">NUM_BRANCHES</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;NumBranches&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Number of skeleton branches extending from the core boundary to &quot;</span>
+        <span class="s2">&quot;peripheral tips. Higher counts indicate denser branching morphology.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">MAX_BRANCH_LENGTH</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;MaxBranchLength&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Length of the longest branch path in pixels. When a runner is &quot;</span>
+        <span class="s2">&quot;detected, this equals RunnerLength.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">RUNNER_LENGTH</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;RunnerLength&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Path length of the detected runner branch (the single longest &quot;</span>
+        <span class="s2">&quot;outlier). NaN if no runner detected.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">RUNNER_DETECTED</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;RunnerDetected&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Boolean flag (0 or 1) indicating whether an outlier runner branch &quot;</span>
+        <span class="s2">&quot;was detected for this colony.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">CORE_RADIUS</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;CoreRadius&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Radius of the dense colony core as determined by PELT changepoint &quot;</span>
+        <span class="s2">&quot;detection on the radial density profile. Pixels within this radius &quot;</span>
+        <span class="s2">&quot;of the intensity-weighted centroid are excluded from skeleton analysis.&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="SYMMETRIC_RADIUS">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.SYMMETRIC_RADIUS">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SYMMETRIC_RADIUS</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Mask-based radial expansion measurements for colonies on solid media.</span>
+
+<span class="sd">    Summarises each colony&#39;s radial growth through four scalars derived</span>
+<span class="sd">    directly from the binary object mask: the inoculum core radius (shared</span>
+<span class="sd">    with :class:`RADIAL_EXPANSION`), the radius at which growth stops being</span>
+<span class="sd">    angularly symmetric, and mean / maximum radial extent beyond the core.</span>
+
+<span class="sd">    Unlike :class:`RADIAL_EXPANSION`, no skeletonization, branch tracing, or</span>
+<span class="sd">    runner-outlier statistics are involved — all values are computed from</span>
+<span class="sd">    per-annulus mask geometry and a circular-statistics angular resultant</span>
+<span class="sd">    length. Intended for users who care about colony-level expansion and the</span>
+<span class="sd">    symmetry of that expansion, not individual hyphae.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SYMMETRIC_RADIUS.category">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.SYMMETRIC_RADIUS.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;SymmetricRadius&quot;</span></div>
+
+
+    <span class="n">CORE_RADIUS</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;CoreRadius&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Radius of the dense inoculum core, determined by PELT changepoint &quot;</span>
+        <span class="s2">&quot;detection on the radial mask-density profile centered on the &quot;</span>
+        <span class="s2">&quot;inoculum. Growth measurements are reported relative to this boundary.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">SYMMETRIC_RADIUS</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;SymmetricRadius&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Radial distance from the inoculum centroid at which colony growth &quot;</span>
+        <span class="s2">&quot;ceases to be angularly uniform. Computed as the first radius past &quot;</span>
+        <span class="s2">&quot;the core where the smoothed per-annulus circular mean resultant &quot;</span>
+        <span class="s2">&quot;length of mask-boundary pixels exceeds the symmetry threshold. &quot;</span>
+        <span class="s2">&quot;Equals the colony outer envelope when growth remains symmetric &quot;</span>
+        <span class="s2">&quot;throughout.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">MEAN_EXPANSION</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;MeanExpansion&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Mean distance of mask-boundary pixels from the inoculum centroid, &quot;</span>
+        <span class="s2">&quot;measured from the core boundary outward. Captures the typical &quot;</span>
+        <span class="s2">&quot;radial extent of growth past the inoculum, averaged over all &quot;</span>
+        <span class="s2">&quot;angular directions.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">MAX_EXPANSION</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;MaxExpansion&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Maximum distance of any mask pixel from the inoculum centroid, &quot;</span>
+        <span class="s2">&quot;measured from the core boundary outward. Captures the farthest &quot;</span>
+        <span class="s2">&quot;extent of growth past the inoculum.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">CORE_END_RADIUS</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;CoreEndRadius&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Mean radius of the inoculum core boundary derived from the per-angle &quot;</span>
+        <span class="s2">&quot;bright/background ratio walk. Each of 360 1° angular sectors finds the &quot;</span>
+        <span class="s2">&quot;outer edge of the contiguous core run (bright fraction &gt;= tau_core); the &quot;</span>
+        <span class="s2">&quot;reported value is the mean across sectors. Compare with CoreRadius (the &quot;</span>
+        <span class="s2">&quot;global PELT changepoint) — close agreement indicates a well-formed core.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">DENSE_END_RADIUS</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;DenseEndRadius&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Mean outer radius of the dense branching zone, where mask-bright pixels &quot;</span>
+        <span class="s2">&quot;dominate (bright fraction &gt;= tau_sparse). Per-angle radii are capped at &quot;</span>
+        <span class="s2">&quot;the SymmetricRadius and angularly median-smoothed before averaging.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">SPARSE_END_RADIUS</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;SparseEndRadius&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Mean outer radius of the sparse branching zone (= colony envelope inside &quot;</span>
+        <span class="s2">&quot;the symmetric growth front). Equals min(objmask outer envelope, &quot;</span>
+        <span class="s2">&quot;SymmetricRadius) per angle, averaged across 360 sectors.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">CORE_AREA</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;CoreArea&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Pixel^2 area of the inoculum core zone, integrated across the 360-sector &quot;</span>
+        <span class="s2">&quot;polar polygon defined by the per-angle core radii.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">DENSE_AREA</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;DenseArea&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Pixel^2 area of the dense branching zone, the annular region between the &quot;</span>
+        <span class="s2">&quot;per-angle core boundary and dense-branching boundary.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">SPARSE_AREA</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;SparseArea&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Pixel^2 area of the sparse branching zone, the annular region between the &quot;</span>
+        <span class="s2">&quot;per-angle dense boundary and the symmetric-envelope outer boundary.&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="INTENSITY">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.INTENSITY">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">INTENSITY</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<div class="viewcode-block" id="INTENSITY.category">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.INTENSITY.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;Intensity&quot;</span></div>
+
+
+    <span class="n">INTEGRATED_INTENSITY</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;IntegratedIntensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The sum of the object&#39;s pixels&quot;</span><span class="p">)</span>
+    <span class="n">DENSITY</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;Density&quot;</span><span class="p">,</span> <span class="s2">&quot;The ratio of the object&#39;s intensity to the max possible &quot;</span>
+                          <span class="s2">&quot;intensity of the object&quot;</span><span class="p">)</span>
+    <span class="n">CONVEX_DENSITY</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;ConvexDensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The ratio of the objects intensity to the max &quot;</span>
+                                       <span class="s2">&quot;possible intensity of the object&#39;s convex hull&quot;</span><span class="p">)</span>
+    <span class="n">MINIMUM_INTENSITY</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;MinimumIntensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum intensity of the object&quot;</span><span class="p">)</span>
+    <span class="n">MAXIMUM_INTENSITY</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;MaximumIntensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum intensity of the object&quot;</span><span class="p">)</span>
+    <span class="n">MEAN_INTENSITY</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;MeanIntensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean intensity of the object&quot;</span><span class="p">)</span>
+    <span class="n">MEDIAN_INTENSITY</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;MedianIntensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The median intensity of the object&quot;</span><span class="p">)</span>
+    <span class="n">STANDARD_DEVIATION_INTENSITY</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;StandardDeviationIntensity&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The standard deviation of the object&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">COEFFICIENT_VARIANCE_INTENSITY</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;CoefficientVarianceIntensity&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The coefficient of variation of the object&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">Q1_INTENSITY</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;LowerQuartileIntensity&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The lower quartile intensity of the object&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">Q3_INTENSITY</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;UpperQuartileIntensity&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The upper quartile intensity of the object&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">IQR_INTENSITY</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;InterquartileRangeIntensity&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The interquartile range of the object&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="BBOX">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.BBOX">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BBOX</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<div class="viewcode-block" id="BBOX.category">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.BBOX.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;Bbox&quot;</span></div>
+
+
+    <span class="n">CENTER_RR</span> <span class="o">=</span> <span class="s2">&quot;CenterRR&quot;</span><span class="p">,</span> <span class="s2">&quot;The row coordinate of the center of the bounding box.&quot;</span>
+    <span class="n">MIN_RR</span> <span class="o">=</span> <span class="s2">&quot;MinRR&quot;</span><span class="p">,</span> <span class="s2">&quot;The smallest row coordinate of the bounding box.&quot;</span>
+    <span class="n">MAX_RR</span> <span class="o">=</span> <span class="s2">&quot;MaxRR&quot;</span><span class="p">,</span> <span class="s2">&quot;The largest row coordinate of the bounding box.&quot;</span>
+    <span class="n">CENTER_CC</span> <span class="o">=</span> <span class="s2">&quot;CenterCC&quot;</span><span class="p">,</span> <span class="s2">&quot; The column coordinate of the center of the bounding box.&quot;</span>
+    <span class="n">MIN_CC</span> <span class="o">=</span> <span class="s2">&quot;MinCC&quot;</span><span class="p">,</span> <span class="s2">&quot; The smallest column coordinate of the bounding box.&quot;</span>
+    <span class="n">MAX_CC</span> <span class="o">=</span> <span class="s2">&quot;MaxCC&quot;</span><span class="p">,</span> <span class="s2">&quot; The largest column coordinate of the bounding box.&quot;</span>
+    <span class="n">INTENSITY_WEIGHTED_CENTER_RR</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;IntensityWeightedCenterRR&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The intensity-weighted center row coordinate of the object &quot;</span>
+        <span class="s2">&quot;(skimage ``centroid_weighted``).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">INTENSITY_WEIGHTED_CENTER_CC</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;IntensityWeightedCenterCC&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The intensity-weighted center column coordinate of the object &quot;</span>
+        <span class="s2">&quot;(skimage ``centroid_weighted``).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">DIST_WEIGHTED_CENTER_RR</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;DistWeightedCenterRR&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Row coordinate of the per-object Euclidean-distance-transform &quot;</span>
+        <span class="s2">&quot;maximum (deepest interior point of the object mask). Robust to thin &quot;</span>
+        <span class="s2">&quot;filamentous extensions that pull intensity-weighted centroids &quot;</span>
+        <span class="s2">&quot;off-body.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">DIST_WEIGHTED_CENTER_CC</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;DistWeightedCenterCC&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Column coordinate of the per-object Euclidean-distance-transform &quot;</span>
+        <span class="s2">&quot;maximum (deepest interior point of the object mask). Robust to thin &quot;</span>
+        <span class="s2">&quot;filamentous extensions that pull intensity-weighted centroids &quot;</span>
+        <span class="s2">&quot;off-body.&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="GRID">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.GRID">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GRID</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Constants for grid structure in the PhenoTypic module.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GRID.category">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.GRID.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;Grid&quot;</span></div>
+
+
+    <span class="n">ROW_NUM</span> <span class="o">=</span> <span class="s2">&quot;RowNum&quot;</span><span class="p">,</span> <span class="s2">&quot;The row idx of the object&quot;</span>
+    <span class="n">ROW_INTERVAL_START</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;RowIntervalStart&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The start of the row interval of the object&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">ROW_INTERVAL_END</span> <span class="o">=</span> <span class="s2">&quot;RowIntervalEnd&quot;</span><span class="p">,</span> <span class="s2">&quot;The end of the row interval of the object&quot;</span>
+
+    <span class="n">COL_NUM</span> <span class="o">=</span> <span class="s2">&quot;ColNum&quot;</span><span class="p">,</span> <span class="s2">&quot;The column idx of the object&quot;</span>
+    <span class="n">COL_INTERVAL_START</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;ColIntervalStart&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The start of the column interval of the object&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">COL_INTERVAL_END</span> <span class="o">=</span> <span class="s2">&quot;ColIntervalEnd&quot;</span><span class="p">,</span> <span class="s2">&quot;The end of the column interval of the object&quot;</span>
+
+    <span class="n">ROW_MAJOR_IDX</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;RowMajorIdx&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The row-major index of the object. Row major is the standard in most&quot;</span>
+        <span class="s2">&quot; programming and data science array libraries. Used for indexing into&quot;</span>
+        <span class="s2">&quot; 2D arrays.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">COL_MAJOR_IDX</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;ColMajorIdx&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The col-major index of the object in an array. Lab automation logic uses&quot;</span>
+        <span class="s2">&quot; column-major (column-wise) indexing for well plate operations because&quot;</span>
+        <span class="s2">&quot; 96-well plates are physically arranged with 8 rows&quot;</span>
+        <span class="s2">&quot; (labeled A-H) and 12 columns (numbered 1-12), and this layout maps directly&quot;</span>
+        <span class="s2">&quot; to how multichannel pipettes operate.&quot;</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="MODEL_METRICS">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.MODEL_METRICS">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MODEL_METRICS</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generic fit-quality metrics and diagnostics shared by all ModelFitter subclasses.</span>
+
+<span class="sd">    These columns are produced by any model fitter that wraps</span>
+<span class="sd">    :func:`scipy.optimize.least_squares`, independent of the specific</span>
+<span class="sd">    mathematical model. Subclass-specific fitted parameters live in the</span>
+<span class="sd">    subclass&#39;s own MeasurementInfo class (e.g., ``LOG_GROWTH_MODEL``).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="MODEL_METRICS.category">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.MODEL_METRICS.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;ModelMetrics&quot;</span></div>
+
+
+    <span class="c1"># fit-quality metrics</span>
+    <span class="n">MAE</span> <span class="o">=</span> <span class="s2">&quot;MAE&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean absolute error&quot;</span>
+    <span class="n">MSE</span> <span class="o">=</span> <span class="s2">&quot;MSE&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean squared error&quot;</span>
+    <span class="n">RMSE</span> <span class="o">=</span> <span class="s2">&quot;RMSE&quot;</span><span class="p">,</span> <span class="s2">&quot;The root mean squared error&quot;</span>
+    <span class="n">R2</span> <span class="o">=</span> <span class="s2">&quot;R2&quot;</span><span class="p">,</span> <span class="s2">&quot;The coefficient of determination&quot;</span>
+
+    <span class="c1"># fit diagnostics</span>
+    <span class="n">NUM_SAMPLES</span> <span class="o">=</span> <span class="s2">&quot;NumSamples&quot;</span><span class="p">,</span> <span class="s2">&quot;The number of samples used for model fitting&quot;</span>
+    <span class="n">LOSS</span> <span class="o">=</span> <span class="s2">&quot;OptimizerLoss&quot;</span><span class="p">,</span> <span class="s2">&quot;The loss of model fitting&quot;</span>
+    <span class="n">STATUS</span> <span class="o">=</span> <span class="s2">&quot;OptimizerStatus&quot;</span><span class="p">,</span> <span class="s2">&quot;The output of the optimizer status&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="LOG_GROWTH_MODEL">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.LOG_GROWTH_MODEL">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">LOG_GROWTH_MODEL</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<div class="viewcode-block" id="LOG_GROWTH_MODEL.category">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.LOG_GROWTH_MODEL.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;LogGrowthModel&quot;</span></div>
+
+
+    <span class="n">R_FIT</span> <span class="o">=</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="s2">&quot;The intrinsic growth rate&quot;</span>
+    <span class="n">K_FIT</span> <span class="o">=</span> <span class="s2">&quot;K&quot;</span><span class="p">,</span> <span class="s2">&quot;The carrying capacity&quot;</span>
+    <span class="n">N0_FIT</span> <span class="o">=</span> <span class="s2">&quot;N0&quot;</span><span class="p">,</span> <span class="s2">&quot;The initial number of the colony size metric being fitted&quot;</span>
+    <span class="n">LAM</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;lambda&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The regularization factor applied to the max specific growth rate &quot;</span>
+        <span class="s2">&quot;and initial population size&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">BETA</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;beta&quot;</span><span class="p">,</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;The penalty factor applied to relative difference of &quot;</span>
+            <span class="s2">&quot;the carrying capacity from the largest measurement&quot;</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">GROWTH_RATE</span> <span class="o">=</span> <span class="s2">&quot;µmax&quot;</span><span class="p">,</span> <span class="s2">&quot;The growth rate of the colony calculated as (K*r)/4&quot;</span>
+    <span class="n">K_MAX</span> <span class="o">=</span> <span class="s2">&quot;Kmax&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper bound of the carrying capacity for model fitting&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="LINEAR_SOFTPLUS_MODEL">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.LINEAR_SOFTPLUS_MODEL">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">LINEAR_SOFTPLUS_MODEL</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<div class="viewcode-block" id="LINEAR_SOFTPLUS_MODEL.category">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.LINEAR_SOFTPLUS_MODEL.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;LinearSoftplusModel&quot;</span></div>
+
+
+    <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;v&quot;</span><span class="p">,</span> <span class="s2">&quot;The post-lag phase growth rate.&quot;</span><span class="p">)</span>
+    <span class="n">s0</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;s0&quot;</span><span class="p">,</span> <span class="s2">&quot;The initial size&quot;</span><span class="p">)</span>
+    <span class="n">lam</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;lambda&quot;</span><span class="p">,</span> <span class="s2">&quot;The duration of the lag phase&quot;</span><span class="p">)</span>
+    <span class="n">alpha</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;alpha&quot;</span><span class="p">,</span> <span class="s2">&quot;lag phase transition sharpness&quot;</span><span class="p">)</span>
+    <span class="n">smax</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;smax&quot;</span><span class="p">,</span> <span class="s2">&quot;The carrying capacity if fitted&quot;</span><span class="p">)</span>
+    <span class="n">beta</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;beta&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;user-provided saturation transition sharpness. Not fitted since &quot;</span>
+        <span class="s2">&quot;this is not always biologically meaningful and adds complexity &quot;</span>
+        <span class="s2">&quot;to the fitting.&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="EDGE_CORRECTION">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.EDGE_CORRECTION">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">EDGE_CORRECTION</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Measurement info container for edge correction analysis results.</span>
+
+<span class="sd">    Provides metadata for measurement values produced by the EdgeCorrector,</span>
+<span class="sd">    organizing corrected colony measurements under the &quot;EdgeCorrection&quot; category.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="EDGE_CORRECTION.category">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.EDGE_CORRECTION.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;EdgeCorrection&quot;</span></div>
+
+
+    <span class="n">CORRECTED_CAP</span> <span class="o">=</span> <span class="s2">&quot;Cap&quot;</span><span class="p">,</span> <span class="s2">&quot;The carrying capacity for the target measurement&quot;</span>
+    <span class="n">NEW_VAL</span> <span class="o">=</span> <span class="s2">&quot;NewVal&quot;</span><span class="p">,</span> <span class="s2">&quot;The new value of the target measurement&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="GRID_SPATIAL">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.GRID_SPATIAL">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GRID_SPATIAL</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Measurement info for spatial information for grid pinned colonies&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GRID_SPATIAL.category">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.measurement_info_.html#phenotypic.tools_.measurement_info_.GRID_SPATIAL.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;GridSpatial&quot;</span></div>
+
+
+    <span class="n">LEFT_NEIGHBOR_OBJ_LABEL</span> <span class="o">=</span> <span class="s2">&quot;LeftNeighborObjLabel&quot;</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;The object label of the left&quot;</span>
+                                                       <span class="s2">&quot; neighbor colony&quot;</span><span class="p">)</span>
+    <span class="n">LEFT_DISTANCE</span> <span class="o">=</span> <span class="s2">&quot;LeftDistance&quot;</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;The distance of the left neighbor colony&quot;</span>
+                                     <span class="s2">&quot; calculated using euclidean distance between&quot;</span>
+                                     <span class="s2">&quot; bounding boxes&quot;</span><span class="p">)</span>
+
+    <span class="n">RIGHT_NEIGHBOR_OBJ_LABEL</span> <span class="o">=</span> <span class="s2">&quot;RightNeighborObjLabel&quot;</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;The object label of&quot;</span>
+                                                         <span class="s2">&quot; the right neighbor colony&quot;</span><span class="p">)</span>
+    <span class="n">RIGHT_DISTANCE</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;RightDistance&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The distance of the right neighbor colony calculated&quot;</span>
+        <span class="s2">&quot; using euclidean distance between bounding boxes&quot;</span>
+    <span class="p">)</span>
+    <span class="n">ABOVE_NEIGHBOR_OBJ_LABEL</span> <span class="o">=</span> <span class="s2">&quot;AboveNeighborObjLabel&quot;</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;The object label of&quot;</span>
+                                                         <span class="s2">&quot; the above neighbor colony&quot;</span><span class="p">)</span>
+    <span class="n">ABOVE_DISTANCE</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;AboveDistance&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The distance of the above neighbor colony calculated using euclidean&quot;</span>
+        <span class="s2">&quot; distance between bounding boxes&quot;</span>
+    <span class="p">)</span>
+    <span class="n">UNDER_NEIGHBOR_OBJ_LABEL</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;UnderNeighborObjLabel&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;The object label of the under neighbor colony&quot;</span><span class="p">)</span>
+    <span class="n">UNDER_DISTANCE</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;UnderDistance&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The distance of the under neighbor colony calculated using euclidean distance between bounding boxes&quot;</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

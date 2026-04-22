@@ -1,0 +1,27 @@
+phenotypic.abc\_.PostMeasurement
+================================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: PostMeasurement
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~PostMeasurement.__init__
+      ~PostMeasurement.apply
+   
+   
+
+   
+   
+   

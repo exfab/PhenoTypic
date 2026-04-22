@@ -1,0 +1,28 @@
+phenotypic.enhance.ImageInverter
+================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: ImageInverter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ImageInverter.__init__
+      ~ImageInverter.apply
+      ~ImageInverter.widget
+   
+   
+
+   
+   
+   

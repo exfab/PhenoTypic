@@ -1,0 +1,27 @@
+phenotypic.abc\_.MeasureFeatures
+================================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: MeasureFeatures
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MeasureFeatures.__init__
+      ~MeasureFeatures.measure
+   
+   
+
+   
+   
+   

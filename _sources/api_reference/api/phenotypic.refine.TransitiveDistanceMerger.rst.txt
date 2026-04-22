@@ -1,0 +1,28 @@
+phenotypic.refine.TransitiveDistanceMerger
+==========================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: TransitiveDistanceMerger
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~TransitiveDistanceMerger.__init__
+      ~TransitiveDistanceMerger.apply
+      ~TransitiveDistanceMerger.widget
+   
+   
+
+   
+   
+   

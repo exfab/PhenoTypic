@@ -1,0 +1,28 @@
+phenotypic.enhance.VisuShrinkEnhancer
+=====================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: VisuShrinkEnhancer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~VisuShrinkEnhancer.__init__
+      ~VisuShrinkEnhancer.apply
+      ~VisuShrinkEnhancer.widget
+   
+   
+
+   
+   
+   

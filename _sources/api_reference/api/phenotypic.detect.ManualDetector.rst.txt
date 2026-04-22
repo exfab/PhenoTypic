@@ -1,0 +1,28 @@
+phenotypic.detect.ManualDetector
+================================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: ManualDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ManualDetector.__init__
+      ~ManualDetector.apply
+      ~ManualDetector.widget
+   
+   
+
+   
+   
+   

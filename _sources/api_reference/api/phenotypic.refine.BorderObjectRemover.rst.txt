@@ -1,0 +1,28 @@
+phenotypic.refine.BorderObjectRemover
+=====================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: BorderObjectRemover
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~BorderObjectRemover.__init__
+      ~BorderObjectRemover.apply
+      ~BorderObjectRemover.widget
+   
+   
+
+   
+   
+   

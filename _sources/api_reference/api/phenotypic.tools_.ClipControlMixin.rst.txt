@@ -1,0 +1,26 @@
+phenotypic.tools\_.ClipControlMixin
+===================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autoclass:: ClipControlMixin
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ClipControlMixin.__init__
+   
+   
+
+   
+   
+   

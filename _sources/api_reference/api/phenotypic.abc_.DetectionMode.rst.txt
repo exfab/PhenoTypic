@@ -1,0 +1,34 @@
+phenotypic.abc\_.DetectionMode
+==============================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: DetectionMode
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~DetectionMode.__init__
+      ~DetectionMode.compute
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~DetectionMode.name
+      ~DetectionMode.requires_rgb
+   
+   

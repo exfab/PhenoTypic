@@ -1,0 +1,790 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Tutorial 3: Enhancing Before Detection &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=320b28a0"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'tutorials/notebooks/03_enhancing_before_detection';</script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Tutorial 4: Building a Pipeline" href="04_building_a_pipeline.html" />
+    <link rel="prev" title="Tutorial 2: Detecting Colonies" href="02_detecting_colonies.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.14.0b5" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/gradient_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../how_to/index.html">
+    How-To Guides
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../explanation/index.html">
+    Explanation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../extending/index.html">
+    Extending PhenoTypic
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../../downloads.html">
+    Downloads
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../how_to/index.html">
+    How-To Guides
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../explanation/index.html">
+    Explanation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../extending/index.html">
+    Extending PhenoTypic
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../downloads.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Learning Path</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="01_your_first_plate_image.html">Tutorial 1: Your First Plate Image</a></li>
+<li class="toctree-l1"><a class="reference internal" href="02_detecting_colonies.html">Tutorial 2: Detecting Colonies</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Tutorial 3: Enhancing Before Detection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="04_building_a_pipeline.html">Tutorial 4: Building a Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="05_working_with_grid_plates.html">Tutorial 5: Working with Grid Plates</a></li>
+<li class="toctree-l1"><a class="reference internal" href="06_batch_processing.html">Tutorial 6: Batch Processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="07_measuring_and_exporting.html">Tutorial 7: Measuring and Exporting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="08_using_prefab_pipelines.html">Tutorial 8: Using Prefab Pipelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="09_diagnosing_image_quality.html">Tutorial 9: Diagnosing Image Quality</a></li>
+<li class="toctree-l1"><a class="reference internal" href="10_detecting_filamentous_fungi.html">Tutorial 10: Detecting Filamentous Fungi</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">Tutorials</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Tutorial 3: Enhancing Before Detection</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="Tutorial-3:-Enhancing-Before-Detection">
+<h1>Tutorial 3: Enhancing Before Detection<a class="headerlink" href="#Tutorial-3:-Enhancing-Before-Detection" title="Link to this heading">#</a></h1>
+<p>Detection operates on <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> – a grayscale representation of your plate that the detector reads to separate colonies from background. If you improve <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> <em>before</em> running detection, you get cleaner, more complete results.</p>
+<p>In this tutorial you will:</p>
+<ol class="arabic simple">
+<li><p>See what <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> looks like out of the box</p></li>
+<li><p>Apply <strong>GaussianBlur</strong> to smooth noise</p></li>
+<li><p>Apply <strong>CLAHE</strong> to boost local contrast</p></li>
+<li><p>Compare detection results before and after enhancement</p></li>
+</ol>
+<p>By the end, you will understand the key insight behind PhenoTypic’s enhancement layer: enhancers modify <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code>, while leaving your original <code class="docutils literal notranslate"><span class="pre">rgb</span></code> and <code class="docutils literal notranslate"><span class="pre">gray</span></code> data untouched.</p>
+<section id="Imports">
+<h2>Imports<a class="headerlink" href="#Imports" title="Link to this heading">#</a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_yeast_plate</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianBlur</span><span class="p">,</span> <span class="n">CLAHE</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Load-the-plate">
+<h2>Load the plate<a class="headerlink" href="#Load-the-plate" title="Link to this heading">#</a></h2>
+<p>We will work with the bundled Rhodotorula yeast plate – a 96-well grid of round colonies that ships with every PhenoTypic install.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plate</span> <span class="o">=</span> <span class="n">load_yeast_plate</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Baseline-detection-(no-enhancement)">
+<h2>Baseline detection (no enhancement)<a class="headerlink" href="#Baseline-detection-(no-enhancement)" title="Link to this heading">#</a></h2>
+<p>Before enhancing anything, let’s run detection on the plate as-is. This gives us a baseline to compare against later.</p>
+<p>We will use <code class="docutils literal notranslate"><span class="pre">OtsuDetector</span></code>, which finds a global intensity threshold to separate colonies from background. We work on a <strong>copy</strong> of the plate so that the original stays pristine for enhancement.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">baseline</span> <span class="o">=</span> <span class="n">plate</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="n">detector</span> <span class="o">=</span> <span class="n">OtsuDetector</span><span class="p">()</span>
+<span class="n">baseline</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">baseline</span><span class="p">)</span>
+<span class="n">baseline</span><span class="o">.</span><span class="n">detect_mat</span><span class="o">.</span><span class="n">dash</span><span class="p">(</span><span class="n">overlay</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="admonition warning">
+<p>Data type cannot be displayed: application/vnd.plotly.v1+json</p>
+</div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Baseline detection: </span><span class="si">{</span><span class="n">baseline</span><span class="o">.</span><span class="n">num_objects</span><span class="si">}</span><span class="s2"> colonies found&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Baseline detection: 375 colonies found
+</pre></div></div>
+</div>
+<p>Take note of that number – we will see how enhancement changes it.</p>
+</section>
+<section id="Inspect-detect_mat-before-enhancement">
+<h2>Inspect <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> before enhancement<a class="headerlink" href="#Inspect-detect_mat-before-enhancement" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> is the grayscale matrix that every detector reads from. Right now it is a straight copy of the grayscale channel – no preprocessing applied yet.</p>
+<p>Let’s look at what the detector currently sees.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plate</span><span class="o">.</span><span class="n">detect_mat</span><span class="o">.</span><span class="n">dash</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="admonition warning">
+<p>Data type cannot be displayed: application/vnd.plotly.v1+json</p>
+</div>
+</div>
+</div>
+<p>You may notice noise, subtle texture on the agar, and faint colonies that barely stand out from the background. Let’s improve this.</p>
+</section>
+<section id="Step-1:-Smooth-noise-with-GaussianBlur">
+<h2>Step 1: Smooth noise with GaussianBlur<a class="headerlink" href="#Step-1:-Smooth-noise-with-GaussianBlur" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">GaussianBlur</span></code> applies Gaussian smoothing to <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code>. This suppresses high-frequency noise – scanner artifacts, agar granularity, condensation speckle – so that downstream thresholding is driven by colony signal rather than noise.</p>
+<p>The key parameter is <strong>sigma</strong> (blur strength). Typical values range from 0.5 to 5.0. Keep sigma below the width of your smallest colony to avoid merging neighbors.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">blur</span> <span class="o">=</span> <span class="n">GaussianBlur</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
+<span class="n">plate</span> <span class="o">=</span> <span class="n">blur</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">plate</span><span class="p">)</span>
+<span class="n">plate</span><span class="o">.</span><span class="n">detect_mat</span><span class="o">.</span><span class="n">dash</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="admonition warning">
+<p>Data type cannot be displayed: application/vnd.plotly.v1+json</p>
+</div>
+</div>
+</div>
+<p>The image looks subtly smoother. Fine-grained noise is gone, but colony shapes are preserved. Importantly, only <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> changed – your original RGB data is completely untouched.</p>
+</section>
+<section id="Step-2:-Boost-local-contrast-with-CLAHE">
+<h2>Step 2: Boost local contrast with CLAHE<a class="headerlink" href="#Step-2:-Boost-local-contrast-with-CLAHE" title="Link to this heading">#</a></h2>
+<p>CLAHE (Contrast Limited Adaptive Histogram Equalization) enhances contrast <em>locally</em>, tile by tile. This is especially helpful when illumination is uneven or when faint, translucent colonies blend into the agar background.</p>
+<p>The key parameter is <strong>clip_limit</strong>, which controls how much local contrast amplification is allowed. Lower values are gentler; higher values make faint colonies pop more but can also amplify artifacts.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">clahe</span> <span class="o">=</span> <span class="n">CLAHE</span><span class="p">(</span><span class="n">clip_limit</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+<span class="n">plate</span> <span class="o">=</span> <span class="n">clahe</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">plate</span><span class="p">)</span>
+<span class="n">plate</span><span class="o">.</span><span class="n">detect_mat</span><span class="o">.</span><span class="n">dash</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="admonition warning">
+<p>Data type cannot be displayed: application/vnd.plotly.v1+json</p>
+</div>
+</div>
+</div>
+<p>Notice how the colony-to-background separation is now much clearer. Faint colonies that were barely visible before now stand out. The detector will have a much easier time finding the right threshold.</p>
+<p>Again, <code class="docutils literal notranslate"><span class="pre">rgb</span></code> and <code class="docutils literal notranslate"><span class="pre">gray</span></code> remain unchanged – only <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> was modified.</p>
+</section>
+<section id="Detect-on-the-enhanced-plate">
+<h2>Detect on the enhanced plate<a class="headerlink" href="#Detect-on-the-enhanced-plate" title="Link to this heading">#</a></h2>
+<p>Now let’s run the same <code class="docutils literal notranslate"><span class="pre">OtsuDetector</span></code> on our enhanced plate and see how the results compare.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plate</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">plate</span><span class="p">)</span>
+<span class="n">plate</span><span class="o">.</span><span class="n">detect_mat</span><span class="o">.</span><span class="n">dash</span><span class="p">(</span><span class="n">overlay</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="admonition warning">
+<p>Data type cannot be displayed: application/vnd.plotly.v1+json</p>
+</div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Enhanced detection: </span><span class="si">{</span><span class="n">plate</span><span class="o">.</span><span class="n">num_objects</span><span class="si">}</span><span class="s2"> colonies found&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Baseline detection: </span><span class="si">{</span><span class="n">baseline</span><span class="o">.</span><span class="n">num_objects</span><span class="si">}</span><span class="s2"> colonies found&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Enhanced detection: 9 colonies found
+Baseline detection: 375 colonies found
+</pre></div></div>
+</div>
+<p>With enhancement, detection typically finds more colonies with cleaner boundaries. The GaussianBlur removed noise that could confuse the threshold, and CLAHE boosted the contrast of faint colonies that were previously missed.</p>
+</section>
+<section id="The-key-insight">
+<h2>The key insight<a class="headerlink" href="#The-key-insight" title="Link to this heading">#</a></h2>
+<p>Here is the mental model to keep in mind:</p>
+<ul class="simple">
+<li><p><strong>Enhancers</strong> read from and write to <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code>. They never touch <code class="docutils literal notranslate"><span class="pre">rgb</span></code> or <code class="docutils literal notranslate"><span class="pre">gray</span></code>.</p></li>
+<li><p><strong>Detectors</strong> read from <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> and write to <code class="docutils literal notranslate"><span class="pre">objmask</span></code> / <code class="docutils literal notranslate"><span class="pre">objmap</span></code>.</p></li>
+</ul>
+<p>This separation is what makes the enhancement-then-detection workflow so powerful. You can stack as many enhancers as you need to clean up <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code>, and the detector will always see the improved version – while your original image data stays safe for visualization and measurement.</p>
+</section>
+<section id="Summary">
+<h2>Summary<a class="headerlink" href="#Summary" title="Link to this heading">#</a></h2>
+<p>Well done! You have learned how to:</p>
+<ul class="simple">
+<li><p>Inspect <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> to see what the detector sees</p></li>
+<li><p>Apply <strong>GaussianBlur</strong> to smooth noise (controlled by <code class="docutils literal notranslate"><span class="pre">sigma</span></code>)</p></li>
+<li><p>Apply <strong>CLAHE</strong> to boost local contrast (controlled by <code class="docutils literal notranslate"><span class="pre">clip_limit</span></code>)</p></li>
+<li><p>Compare detection results before and after enhancement</p></li>
+<li><p>Understand that enhancers modify <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> while leaving <code class="docutils literal notranslate"><span class="pre">rgb</span></code> and <code class="docutils literal notranslate"><span class="pre">gray</span></code> intact</p></li>
+</ul>
+<p>Preprocessing with enhancers is one of the most effective ways to improve detection quality. GaussianBlur handles noise; CLAHE handles contrast. Together they give the detector a much cleaner signal to work with.</p>
+<p>In the next tutorial, you will learn how to chain enhancers and detectors into a reusable <strong>pipeline</strong> – so you can apply the same processing steps to hundreds of plates with a single command.</p>
+<p><a class="reference internal" href="04_building_a_pipeline.html"><span class="doc">Tutorial 4: Building a Pipeline</span></a></p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Imports">Imports</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Load-the-plate">Load the plate</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Baseline-detection-(no-enhancement)">Baseline detection (no enhancement)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Inspect-detect_mat-before-enhancement">Inspect <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> before enhancement</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Step-1:-Smooth-noise-with-GaussianBlur">Step 1: Smooth noise with GaussianBlur</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Step-2:-Boost-local-contrast-with-CLAHE">Step 2: Boost local contrast with CLAHE</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Detect-on-the-enhanced-plate">Detect on the enhanced plate</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#The-key-insight">The key insight</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Summary">Summary</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/tutorials/notebooks/03_enhancing_before_detection.ipynb.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

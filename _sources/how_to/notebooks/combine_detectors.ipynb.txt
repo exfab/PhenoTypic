@@ -1,0 +1,107 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# How To: Combine Detectors with CompositeDetector\n",
+    "\n",
+    "When no single detector captures all colonies reliably, combine multiple\n",
+    "detectors using `CompositeDetector`. It merges their results via union,\n",
+    "intersection, or overlap."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from phenotypic.data import load_yeast_plate\n",
+    "from phenotypic.enhance import GaussianBlur, CLAHE\n",
+    "from phenotypic.detect import OtsuDetector, HysteresisDetector, CompositeDetector"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "plate = load_yeast_plate()\n",
+    "plate = GaussianBlur(sigma=2.0).apply(plate)\n",
+    "plate = CLAHE(clip_limit=0.01).apply(plate)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Union Mode\n",
+    "\n",
+    "Keeps any pixel detected by *any* detector. Maximizes recall at the cost\n",
+    "of potential false positives."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "composite = CompositeDetector(\n",
+    "    detectors=[OtsuDetector(), HysteresisDetector(low=\"mean\", high=\"otsu\")],\n",
+    "    mode=\"union\",\n",
+    ")\n",
+    "result = composite.apply(plate.copy())\n",
+    "print(f\"Union: {result.num_objects} colonies\")\n",
+    "result.dash(overlay=True)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Intersection Mode\n",
+    "\n",
+    "Keeps only pixels detected by *all* detectors. Maximizes precision."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "composite_intersect = CompositeDetector(\n",
+    "    detectors=[OtsuDetector(), HysteresisDetector(low=\"mean\", high=\"otsu\")],\n",
+    "    mode=\"intersection\",\n",
+    ")\n",
+    "result2 = composite_intersect.apply(plate.copy())\n",
+    "print(f\"Intersection: {result2.num_objects} colonies\")\n",
+    "result2.dash(overlay=True)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Choose `union` to catch faint colonies, `intersection` for high-confidence\n",
+    "detection, or `overlap` with a minimum overlap ratio for a middle ground."
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "name": "python",
+   "version": "3.11.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}

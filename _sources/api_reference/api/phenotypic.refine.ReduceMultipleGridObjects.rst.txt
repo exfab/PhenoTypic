@@ -1,0 +1,28 @@
+phenotypic.refine.ReduceMultipleGridObjects
+===========================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: ReduceMultipleGridObjects
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ReduceMultipleGridObjects.__init__
+      ~ReduceMultipleGridObjects.apply
+      ~ReduceMultipleGridObjects.widget
+   
+   
+
+   
+   
+   

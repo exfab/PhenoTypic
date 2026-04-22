@@ -1,0 +1,28 @@
+phenotypic.enhance.SobelFilter
+==============================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: SobelFilter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SobelFilter.__init__
+      ~SobelFilter.apply
+      ~SobelFilter.widget
+   
+   
+
+   
+   
+   

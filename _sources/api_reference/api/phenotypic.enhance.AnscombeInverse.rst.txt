@@ -1,0 +1,28 @@
+phenotypic.enhance.AnscombeInverse
+==================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: AnscombeInverse
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~AnscombeInverse.__init__
+      ~AnscombeInverse.apply
+      ~AnscombeInverse.widget
+   
+   
+
+   
+   
+   

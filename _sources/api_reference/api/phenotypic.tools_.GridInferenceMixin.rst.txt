@@ -1,0 +1,26 @@
+phenotypic.tools\_.GridInferenceMixin
+=====================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autoclass:: GridInferenceMixin
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GridInferenceMixin.__init__
+   
+   
+
+   
+   
+   

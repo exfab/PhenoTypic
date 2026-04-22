@@ -1,0 +1,28 @@
+phenotypic.refine.MaskEroder
+============================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: MaskEroder
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MaskEroder.__init__
+      ~MaskEroder.apply
+      ~MaskEroder.widget
+   
+   
+
+   
+   
+   

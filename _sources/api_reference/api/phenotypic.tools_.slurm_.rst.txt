@@ -1,0 +1,24 @@
+phenotypic.tools\_.slurm\_
+==========================
+
+.. automodule:: phenotypic.tools_.slurm_
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

@@ -1,0 +1,28 @@
+phenotypic.abc\_.GridObjectDetector
+===================================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: GridObjectDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GridObjectDetector.__init__
+      ~GridObjectDetector.apply
+      ~GridObjectDetector.widget
+   
+   
+
+   
+   
+   

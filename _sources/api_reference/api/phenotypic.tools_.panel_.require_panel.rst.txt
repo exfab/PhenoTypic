@@ -1,0 +1,7 @@
+phenotypic.tools\_.panel\_.require\_panel
+=========================================
+
+.. currentmodule:: phenotypic.tools_.panel_
+
+.. autofunction:: require_panel
+   :no-index:

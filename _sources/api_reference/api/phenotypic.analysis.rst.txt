@@ -1,0 +1,36 @@
+﻿phenotypic.analysis
+===================
+
+.. automodule:: phenotypic.analysis
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      EdgeCorrector
+      LinearSoftplusModel
+      LogGrowthModel
+      TukeyOutlierRemover
+   
+   
+
+   
+   
+   
+
+
+

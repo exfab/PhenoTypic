@@ -1,0 +1,7 @@
+phenotypic.tools\_.slurm.get\_slurm\_max\_submit\_jobs
+======================================================
+
+.. currentmodule:: phenotypic.tools_.slurm
+
+.. autofunction:: get_slurm_max_submit_jobs
+   :no-index:

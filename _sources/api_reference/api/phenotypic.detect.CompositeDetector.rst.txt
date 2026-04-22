@@ -1,0 +1,28 @@
+phenotypic.detect.CompositeDetector
+===================================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: CompositeDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~CompositeDetector.__init__
+      ~CompositeDetector.apply
+      ~CompositeDetector.widget
+   
+   
+
+   
+   
+   

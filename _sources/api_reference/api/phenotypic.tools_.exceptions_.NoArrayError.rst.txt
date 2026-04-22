@@ -1,0 +1,7 @@
+phenotypic.tools\_.exceptions\_.NoArrayError
+============================================
+
+.. currentmodule:: phenotypic.tools_.exceptions_
+
+.. autoexception:: NoArrayError
+   :no-index:

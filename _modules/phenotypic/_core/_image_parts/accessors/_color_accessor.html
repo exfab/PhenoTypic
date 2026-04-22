@@ -1,0 +1,843 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic._core._image_parts.accessors._color_accessor &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../../_static/documentation_options.js?v=320b28a0"></script>
+    <script src="../../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/_core/_image_parts/accessors/_color_accessor';</script>
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.14.0b5" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../../_static/gradient_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../tutorials/index.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../how_to/index.html">
+    How-To Guides
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../explanation/index.html">
+    Explanation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../extending/index.html">
+    Extending PhenoTypic
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../../../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../../../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../../../../../downloads.html">
+    Downloads
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../tutorials/index.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../how_to/index.html">
+    How-To Guides
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../explanation/index.html">
+    Explanation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../extending/index.html">
+    Extending PhenoTypic
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../downloads.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic._core._image_parts.accessors._color_accessor</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic._core._image_parts.accessors._color_accessor</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..color_space_accessors._xyz_accessor</span><span class="w"> </span><span class="kn">import</span> <span class="n">XyzAccessor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..color_space_accessors._xyz_d65_accessor</span><span class="w"> </span><span class="kn">import</span> <span class="n">XyzD65Accessor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..color_space_accessors._cielab_accessor</span><span class="w"> </span><span class="kn">import</span> <span class="n">CieLabAccessor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..color_space_accessors._chromaticity_xy_accessor</span><span class="w"> </span><span class="kn">import</span> <span class="n">xyChromaticityAccessor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..color_space_accessors._hsv_accessor</span><span class="w"> </span><span class="kn">import</span> <span class="n">HsvAccessor</span>
+
+
+<div class="viewcode-block" id="ColorAccessor">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._color_accessor.ColorAccessor">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ColorAccessor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Provides unified access to all color space representations of an image.</span>
+
+<span class="sd">    This accessor class serves as a facade to multiple specialized color space accessors,</span>
+<span class="sd">    grouping together various color space transformations and representations. It provides</span>
+<span class="sd">    convenient access to both device-dependent color spaces (HSV) and CIE standard color</span>
+<span class="sd">    spaces (XYZ, XYZ-D65, L*a*b*, and xy chromaticity).</span>
+
+<span class="sd">    All color space conversions are computed on-demand and returned as read-only numpy</span>
+<span class="sd">    arrays. Individual accessor objects maintain caching to avoid redundant computations</span>
+<span class="sd">    when the same color space is accessed multiple times.</span>
+
+<span class="sd">    The parent Image object configuration (illuminant, _observer model, gamma encoding) is</span>
+<span class="sd">    used consistently across all color space transformations to ensure coherent color</span>
+<span class="sd">    space analysis.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        _root_image (Image): The parent Image object that this accessor is bound to.</span>
+<span class="sd">            Used to access raw RGB/grayscale data and color properties (illuminant, _observer).</span>
+<span class="sd">        _xyz (XyzAccessor): Accessor for CIE XYZ color space representation.</span>
+<span class="sd">        _xyz_d65 (XyzD65Accessor): Accessor for CIE XYZ under D65 illuminant.</span>
+<span class="sd">        _cielab (CieLabAccessor): Accessor for perceptually uniform L*a*b* color space.</span>
+<span class="sd">        _xy (xyChromaticityAccessor): Accessor for CIE xy chromaticity coordinates.</span>
+<span class="sd">        _hsv (HsvAccessor): Accessor for HSV color space representation.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Access different color spaces from an image:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">        &gt;&gt;&gt; img = Image.imread(&#39;sample.jpg&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; # Access CIE XYZ color space</span>
+<span class="sd">        &gt;&gt;&gt; xyz_data = img.color.XYZ[:]</span>
+<span class="sd">        &gt;&gt;&gt; print(xyz_data.shape)  # (height, width, 3)</span>
+<span class="sd">        &gt;&gt;&gt; # Access perceptually uniform Lab color space</span>
+<span class="sd">        &gt;&gt;&gt; lab_data = img.color.Lab[:]</span>
+<span class="sd">        &gt;&gt;&gt; # Access HSV components (hue is first channel)</span>
+<span class="sd">        &gt;&gt;&gt; hue_channel = img.color.hsv[..., 0]</span>
+<span class="sd">        &gt;&gt;&gt; saturation_channel = img.color.hsv[..., 1]</span>
+<span class="sd">        &gt;&gt;&gt; brightness_channel = img.color.hsv[..., 2]</span>
+<span class="sd">        &gt;&gt;&gt; # Access chromaticity coordinates</span>
+<span class="sd">        &gt;&gt;&gt; xy_coords = img.color.xy[:]</span>
+
+<span class="sd">        Use color spaces for analysis:</span>
+
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; # Calculate color differences using Lab space</span>
+<span class="sd">        &gt;&gt;&gt; lab_data = img.color.Lab[:]</span>
+<span class="sd">        &gt;&gt;&gt; differences = np.sqrt(</span>
+<span class="sd">        ...     (lab_data[..., 0] - 50)**2 +</span>
+<span class="sd">        ...     (lab_data[..., 1] - 25)**2 +</span>
+<span class="sd">        ...     (lab_data[..., 2] - 10)**2</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; # Extract hue for color classification</span>
+<span class="sd">        &gt;&gt;&gt; hue = img.color.hsv[..., 0] * 360  # Convert to degrees</span>
+<span class="sd">        &gt;&gt;&gt; red_mask = (hue &lt; 30) | (hue &gt; 330)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ColorAccessor.__init__">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._color_accessor.ColorAccessor.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">root_image</span><span class="p">:</span> <span class="n">Image</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the ColorAccessor with a reference to the parent image.</span>
+
+<span class="sd">        Creates all subordinate color space accessor objects, each providing specialized</span>
+<span class="sd">        access to a specific color space representation. All accessors share the same</span>
+<span class="sd">        parent Image reference to ensure consistent color properties (illuminant, _observer)</span>
+<span class="sd">        are used across all color space transformations.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            root_image (Image): The Image object that this accessor is bound to.</span>
+<span class="sd">                Used to access RGB/grayscale data and color configuration properties</span>
+<span class="sd">                (illuminant, _observer, gamma encoding).</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Access ColorAccessor through Image.color property:</span>
+
+<span class="sd">            &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">            &gt;&gt;&gt; img = Image.imread(&#39;photo.jpg&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; # Direct initialization is not typically needed - use img.color instead</span>
+<span class="sd">            &gt;&gt;&gt; accessor = img.color  # Returns ColorAccessor instance</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span> <span class="o">=</span> <span class="n">root_image</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_xyz</span> <span class="o">=</span> <span class="n">XyzAccessor</span><span class="p">(</span><span class="n">root_image</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_xyz_d65</span> <span class="o">=</span> <span class="n">XyzD65Accessor</span><span class="p">(</span><span class="n">root_image</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cielab</span> <span class="o">=</span> <span class="n">CieLabAccessor</span><span class="p">(</span><span class="n">root_image</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_xy</span> <span class="o">=</span> <span class="n">xyChromaticityAccessor</span><span class="p">(</span><span class="n">root_image</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_hsv</span> <span class="o">=</span> <span class="n">HsvAccessor</span><span class="p">(</span><span class="n">root_image</span><span class="p">)</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">XYZ</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">XyzAccessor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Access the CIE XYZ color space representation.</span>
+
+<span class="sd">        Provides access to the CIE XYZ color space representation of the image,</span>
+<span class="sd">        computed under the parent Image&#39;s configured illuminant. XYZ is a device-independent</span>
+<span class="sd">        color space that forms the basis for many other color space transformations.</span>
+
+<span class="sd">        The XYZ color space separates color information into lightness-related luminance (Y)</span>
+<span class="sd">        and chromaticity values (X, Z). It is particularly useful as an intermediate</span>
+<span class="sd">        representation for converting between different color spaces.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            XyzAccessor: Accessor providing numpy-like interface to XYZ data.</span>
+<span class="sd">                Supports array indexing and slicing. Shape is (height, width, 3) where</span>
+<span class="sd">                the three channels correspond to X, Y, and Z values.</span>
+
+<span class="sd">        See Also:</span>
+<span class="sd">            XYZ_D65: XYZ representation specifically under D65 illuminant conditions.</span>
+<span class="sd">            xy: Normalized chromaticity coordinates derived from XYZ.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Access and work with XYZ color space:</span>
+
+<span class="sd">            &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">            &gt;&gt;&gt; img = Image.imread(&#39;photo.jpg&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; # Get full XYZ array</span>
+<span class="sd">            &gt;&gt;&gt; xyz_array = img.color.XYZ[:]</span>
+<span class="sd">            &gt;&gt;&gt; print(xyz_array.shape)  # (height, width, 3)</span>
+<span class="sd">            &gt;&gt;&gt; # Extract individual channels</span>
+<span class="sd">            &gt;&gt;&gt; X = img.color.XYZ[..., 0]</span>
+<span class="sd">            &gt;&gt;&gt; Y = img.color.XYZ[..., 1]  # Luminance</span>
+<span class="sd">            &gt;&gt;&gt; Z = img.color.XYZ[..., 2]</span>
+<span class="sd">            &gt;&gt;&gt; # Slice specific region</span>
+<span class="sd">            &gt;&gt;&gt; roi_xyz = img.color.XYZ[100:200, 100:200, :]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_xyz</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">XYZ_D65</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">XyzD65Accessor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Access the CIE XYZ color space under D65 illuminant.</span>
+
+<span class="sd">        Provides XYZ representation specifically under D65 (standard daylight) illuminant</span>
+<span class="sd">        viewing conditions. If the parent Image uses a different illuminant (e.g., D50),</span>
+<span class="sd">        chromatic adaptation is automatically applied to transform the data to D65 conditions.</span>
+
+<span class="sd">        D65 is the CIE standard daylight illuminant with a color temperature of approximately</span>
+<span class="sd">        6504 K. It is the most commonly used illuminant in color science, photography, and</span>
+<span class="sd">        display technology. Using D65 as a reference standard enables comparison of color data</span>
+<span class="sd">        across different imaging systems.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            XyzD65Accessor: Accessor providing numpy-like interface to XYZ D65 data.</span>
+<span class="sd">                Supports array indexing and slicing. Shape is (height, width, 3) where</span>
+<span class="sd">                the three channels correspond to X, Y, and Z values under D65 conditions.</span>
+
+<span class="sd">        See Also:</span>
+<span class="sd">            XYZ: XYZ representation under the image&#39;s configured illuminant.</span>
+<span class="sd">            Lab: Perceptually uniform color space (typically uses D65).</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Access XYZ color space under D65 illuminant:</span>
+
+<span class="sd">            &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">            &gt;&gt;&gt; img = Image.imread(&#39;photo.jpg&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; # Get XYZ D65 representation</span>
+<span class="sd">            &gt;&gt;&gt; xyz_d65 = img.color.XYZ_D65[:]</span>
+<span class="sd">            &gt;&gt;&gt; # Use D65 for standardized color comparison</span>
+<span class="sd">            &gt;&gt;&gt; luminance_d65 = img.color.XYZ_D65[..., 1]</span>
+<span class="sd">            &gt;&gt;&gt; # If original illuminant differs from D65, chromatic adaptation is applied</span>
+<span class="sd">            &gt;&gt;&gt; # For images originally in D65, this is equivalent to XYZ</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_xyz_d65</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">xy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">xyChromaticityAccessor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Access the CIE xy chromaticity coordinates.</span>
+
+<span class="sd">        Provides 2D chromaticity representation derived from the CIE XYZ color space.</span>
+<span class="sd">        Chromaticity coordinates express color independently of luminance, isolating</span>
+<span class="sd">        the hue and saturation information. This is particularly useful for color analysis,</span>
+<span class="sd">        gamut visualization, and studying color without brightness variation.</span>
+
+<span class="sd">        The xy coordinates are derived from XYZ using the formulas:</span>
+<span class="sd">        x = X / (X + Y + Z), y = Y / (X + Y + Z)</span>
+
+<span class="sd">        This normalized representation is device-independent and widely used in color</span>
+<span class="sd">        science for visualizing color spaces on the CIE 1931 chromaticity diagram.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            xyChromaticityAccessor: Accessor providing numpy-like interface to xy data.</span>
+<span class="sd">                Supports array indexing and slicing. Shape is (height, width, 2) where</span>
+<span class="sd">                the two channels correspond to x and y chromaticity coordinates</span>
+<span class="sd">                (both in range [0, 1]).</span>
+
+<span class="sd">        See Also:</span>
+<span class="sd">            XYZ: Full 3D color space representation including luminance.</span>
+<span class="sd">            Lab: Perceptually uniform color space incorporating both chromaticity and lightness.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Access and visualize xy chromaticity coordinates:</span>
+
+<span class="sd">            &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">            &gt;&gt;&gt; import matplotlib.pyplot as plt</span>
+<span class="sd">            &gt;&gt;&gt; img = Image.imread(&#39;photo.jpg&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; # Get chromaticity coordinates</span>
+<span class="sd">            &gt;&gt;&gt; xy_coords = img.color.xy[:]</span>
+<span class="sd">            &gt;&gt;&gt; x = img.color.xy[..., 0]</span>
+<span class="sd">            &gt;&gt;&gt; y = img.color.xy[..., 1]</span>
+<span class="sd">            &gt;&gt;&gt; # Plot color on CIE 1931 chromaticity diagram</span>
+<span class="sd">            &gt;&gt;&gt; plt.scatter(x.flatten(), y.flatten(), c=img.rgb[:].reshape(-1, 3)/255)</span>
+<span class="sd">            &gt;&gt;&gt; plt.xlabel(&#39;x&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; plt.ylabel(&#39;y&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; plt.show()</span>
+<span class="sd">            &gt;&gt;&gt; # Analyze color composition without luminance effects</span>
+<span class="sd">            &gt;&gt;&gt; roi_xy = img.color.xy[100:200, 100:200, :]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_xy</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">Lab</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CieLabAccessor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Access the CIE L*a*b* color space representation.</span>
+
+<span class="sd">        Provides access to the perceptually uniform CIE L*a*b* color space, derived</span>
+<span class="sd">        from the image&#39;s XYZ representation. The Lab color space is designed to approximate</span>
+<span class="sd">        human visual perception, making it ideal for color analysis, color correction,</span>
+<span class="sd">        and calculating perceptually meaningful color differences.</span>
+
+<span class="sd">        The three channels represent:</span>
+<span class="sd">        - L* (lightness): Ranges from 0 (black) to 100 (white), representing perceptual brightness</span>
+<span class="sd">        - a* (green-red opponent): Negative values indicate green, positive indicate red</span>
+<span class="sd">        - b* (blue-yellow opponent): Negative values indicate blue, positive indicate yellow</span>
+
+<span class="sd">        Because Lab is perceptually uniform, Euclidean distances in Lab space correspond</span>
+<span class="sd">        to perceptual color differences as seen by human observers. This makes it superior</span>
+<span class="sd">        to RGB for color analysis and comparison tasks.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            CieLabAccessor: Accessor providing numpy-like interface to Lab data.</span>
+<span class="sd">                Supports array indexing and slicing. Shape is (height, width, 3) where</span>
+<span class="sd">                the three channels correspond to L*, a*, and b* values.</span>
+
+<span class="sd">        See Also:</span>
+<span class="sd">            XYZ: Device-independent color space basis for Lab calculation.</span>
+<span class="sd">            XYZ_D65: XYZ under standard D65 illuminant (Lab typically computed from this).</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Access Lab color space and calculate color differences:</span>
+
+<span class="sd">            &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">            &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">            &gt;&gt;&gt; img = Image.imread(&#39;photo.jpg&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; # Access Lab color space</span>
+<span class="sd">            &gt;&gt;&gt; lab = img.color.Lab[:]</span>
+<span class="sd">            &gt;&gt;&gt; L = img.color.Lab[..., 0]  # Lightness (0-100)</span>
+<span class="sd">            &gt;&gt;&gt; a = img.color.Lab[..., 1]  # Green (-) to Red (+)</span>
+<span class="sd">            &gt;&gt;&gt; b = img.color.Lab[..., 2]  # Blue (-) to Yellow (+)</span>
+<span class="sd">            &gt;&gt;&gt; # Calculate perceptually meaningful color difference</span>
+<span class="sd">            &gt;&gt;&gt; reference_lab = np.array([50, 0, 0])  # Mid-gray</span>
+<span class="sd">            &gt;&gt;&gt; color_difference = np.sqrt(</span>
+<span class="sd">            ...     (lab[..., 0] - reference_lab[0])**2 +</span>
+<span class="sd">            ...     (lab[..., 1] - reference_lab[1])**2 +</span>
+<span class="sd">            ...     (lab[..., 2] - reference_lab[2])**2</span>
+<span class="sd">            ... )</span>
+<span class="sd">            &gt;&gt;&gt; # Find pixels close to a reference color (within deltaE of 5)</span>
+<span class="sd">            &gt;&gt;&gt; similar_mask = color_difference &lt; 5</span>
+<span class="sd">            &gt;&gt;&gt; # Adjust lightness across entire image</span>
+<span class="sd">            &gt;&gt;&gt; brightened = lab.copy()</span>
+<span class="sd">            &gt;&gt;&gt; brightened[..., 0] += 10  # Increase L* by 10</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cielab</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">hsv</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HsvAccessor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Access the HSV (Hue, Saturation, Value) color space representation.</span>
+
+<span class="sd">        Provides access to the device-dependent HSV color space, which represents colors</span>
+<span class="sd">        in a way that is intuitive for human color selection and manipulation. HSV is</span>
+<span class="sd">        particularly useful for color-based filtering, hue-specific analysis, and applications</span>
+<span class="sd">        where color properties need to be adjusted independently.</span>
+
+<span class="sd">        The three channels represent (all normalized to range [0, 1]):</span>
+<span class="sd">        - H (hue): Color type, ranges from 0 to 1 (corresponds to 0 to 360 degrees)</span>
+<span class="sd">        - S (saturation): Color intensity/purity, 0 (grayscale) to 1 (pure color)</span>
+<span class="sd">        - V (value): Brightness/luminosity, 0 (black) to 1 (brightest)</span>
+
+<span class="sd">        HSV is computed from RGB and is device-dependent (unlike CIE color spaces).</span>
+<span class="sd">        However, it is more intuitive for color-based operations like selecting all red</span>
+<span class="sd">        pixels or adjusting hue.</span>
+
+<span class="sd">        The HsvAccessor includes additional analysis methods such as histograms and</span>
+<span class="sd">        visualization of HSV components. Note: HSV is only available for RGB images;</span>
+<span class="sd">        grayscale images do not have HSV representation.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            HsvAccessor: Accessor providing numpy-like interface to HSV data.</span>
+<span class="sd">                Supports array indexing and slicing. Shape is (height, width, 3) where</span>
+<span class="sd">                the three channels correspond to H, S, V values (each in range [0, 1]).</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            AttributeError: If called on a grayscale image without RGB data.</span>
+
+<span class="sd">        See Also:</span>
+<span class="sd">            XYZ: Device-independent color space alternative.</span>
+<span class="sd">            Lab: Perceptually uniform color space alternative.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Access HSV components and perform color-based filtering:</span>
+
+<span class="sd">            &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">            &gt;&gt;&gt; img = Image.imread(&#39;photo.jpg&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; # Access HSV components</span>
+<span class="sd">            &gt;&gt;&gt; hsv = img.color.hsv[:]</span>
+<span class="sd">            &gt;&gt;&gt; hue = img.color.hsv[..., 0]  # 0 to 1</span>
+<span class="sd">            &gt;&gt;&gt; saturation = img.color.hsv[..., 1]  # 0 to 1</span>
+<span class="sd">            &gt;&gt;&gt; brightness = img.color.hsv[..., 2]  # 0 to 1</span>
+<span class="sd">            &gt;&gt;&gt; # Convert hue to degrees (0-360)</span>
+<span class="sd">            &gt;&gt;&gt; hue_degrees = hue * 360</span>
+<span class="sd">            &gt;&gt;&gt; # Extract red pixels (hue near 0 or near 360)</span>
+<span class="sd">            &gt;&gt;&gt; red_hue = hue_degrees</span>
+<span class="sd">            &gt;&gt;&gt; red_mask = (red_hue &lt; 30) | (red_hue &gt; 330)</span>
+<span class="sd">            &gt;&gt;&gt; # Extract highly saturated colors</span>
+<span class="sd">            &gt;&gt;&gt; saturated_mask = saturation &gt; 0.5</span>
+<span class="sd">            &gt;&gt;&gt; # Find bright colors</span>
+<span class="sd">            &gt;&gt;&gt; bright_mask = brightness &gt; 0.7</span>
+<span class="sd">            &gt;&gt;&gt; # Visualize HSV components</span>
+<span class="sd">            &gt;&gt;&gt; fig, axes = img.color.hsv.show()</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hsv</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

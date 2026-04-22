@@ -1,0 +1,29 @@
+phenotypic.correction.ColorCorrector
+====================================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: ColorCorrector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ColorCorrector.__init__
+      ~ColorCorrector.apply
+      ~ColorCorrector.dashboard
+      ~ColorCorrector.widget
+   
+   
+
+   
+   
+   

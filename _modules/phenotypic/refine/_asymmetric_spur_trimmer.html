@@ -1,0 +1,858 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.refine._asymmetric_spur_trimmer &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=320b28a0"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/refine/_asymmetric_spur_trimmer';</script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.14.0b5" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorials/index.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../how_to/index.html">
+    How-To Guides
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../explanation/index.html">
+    Explanation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../extending/index.html">
+    Extending PhenoTypic
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../../../downloads.html">
+    Downloads
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorials/index.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../how_to/index.html">
+    How-To Guides
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../explanation/index.html">
+    Explanation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../extending/index.html">
+    Extending PhenoTypic
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloads.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.refine._asymmetric_spur_trimmer</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.refine._asymmetric_spur_trimmer</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Literal</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.measure._regionprops</span><span class="w"> </span><span class="kn">import</span> <span class="n">RegionProperties</span>
+
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">distance_transform_edt</span><span class="p">,</span> <span class="n">label</span> <span class="k">as</span> <span class="n">ndi_label</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">skimage.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">euler_number</span><span class="p">,</span> <span class="n">regionprops</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectRefiner</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..measure._measure_symmetric_zones</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureSymmetricZones</span>
+
+<span class="n">_log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="AsymmetricSpurTrimmer">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.AsymmetricSpurTrimmer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AsymmetricSpurTrimmer</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Trim spurs and web-like noise beyond each colony&#39;s symmetric envelope.</span>
+
+<span class="sd">    Reuses the symmetric-radius machinery from :class:`MeasureSymmetricZones`</span>
+<span class="sd">    to locate, per colony, the radius past which growth stops being angularly</span>
+<span class="sd">    symmetric (``R_sym``). Every mask pixel beyond ``R_sym`` is a candidate for</span>
+<span class="sd">    removal. Candidates are segmented into connected components and, when</span>
+<span class="sd">    ``beehive_threshold`` is provided, classified by their topology: CCs with</span>
+<span class="sd">    many enclosed holes per pixel (reticulated &quot;beehive&quot; noise) are removed,</span>
+<span class="sd">    while nearly linear branches (holes per pixel ≈ 0) are preserved.</span>
+
+<span class="sd">    Compared to the measurement-time version in :class:`MeasureSymmetricZones`,</span>
+<span class="sd">    this refiner is deliberately less harsh:</span>
+
+<span class="sd">    * The default ``symmetry_threshold`` is ``3/6`` rather than ``4/6`` so</span>
+<span class="sd">      ``R_sym`` lands further from the inoculum core.</span>
+<span class="sd">    * Per-CC segmentation localizes the decision — trimming one noisy spur</span>
+<span class="sd">      never touches a legitimate branch on the other side of the colony.</span>
+<span class="sd">    * A safety cap (``max_trim_fraction``) aborts trimming for any colony</span>
+<span class="sd">      where the proposal would remove more than the given fraction of its</span>
+<span class="sd">      pixels, protecting uniformly asymmetric morphologies.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        symmetry_threshold: Minimum angular coverage (fraction of</span>
+<span class="sd">            ``n_angular_bins`` populated) required for growth to count as</span>
+<span class="sd">            symmetric. Lower values push ``R_sym`` outward, shrinking the</span>
+<span class="sd">            candidate region. Defaults to ``3/6``.</span>
+<span class="sd">        n_angular_bins: Number of uniform angular bins used for the coverage</span>
+<span class="sd">            diagnostic that feeds ``R_sym``. Defaults to 6.</span>
+<span class="sd">        n_annuli: Target number of equal-area annuli for the radial density</span>
+<span class="sd">            profile. Auto-scaled down for small colonies. Defaults to 100.</span>
+<span class="sd">        pelt_penalty: Penalty controlling PELT changepoint sensitivity for</span>
+<span class="sd">            the inoculum core detection. Defaults to 5.0.</span>
+<span class="sd">        smoothing_window: Moving-average window (in annuli) applied to the</span>
+<span class="sd">            angular coverage profile before the ``R_sym`` threshold test.</span>
+<span class="sd">            Defaults to 3.</span>
+<span class="sd">        method: Inoculum-centre estimator. ``&quot;distance&quot;`` uses the peak of</span>
+<span class="sd">            the Euclidean distance transform; ``&quot;intensity&quot;`` uses the</span>
+<span class="sd">            intensity-weighted centroid. Defaults to ``&quot;distance&quot;``.</span>
+<span class="sd">        beehive_threshold: Minimum holes-per-pixel density required to trim</span>
+<span class="sd">            a candidate connected component. When ``None`` (default), every</span>
+<span class="sd">            CC past ``R_sym`` is trimmed — the &quot;pure R_sym&quot; mode. When a</span>
+<span class="sd">            float, CCs with ``(1 - euler_number) / area`` below the threshold</span>
+<span class="sd">            are kept as legitimate linear branches.</span>
+<span class="sd">        max_trim_fraction: Safety cap on the fraction of a colony&#39;s pixels</span>
+<span class="sd">            that may be removed in a single application. If the proposal</span>
+<span class="sd">            exceeds this fraction, trimming is aborted for that colony.</span>
+<span class="sd">            Defaults to 0.25.</span>
+<span class="sd">        min_cc_area: Minimum candidate-CC area (pixels) required to make a</span>
+<span class="sd">            topological decision. Smaller CCs are kept unchanged because</span>
+<span class="sd">            Euler statistics are unreliable on tiny regions. Defaults to 50.</span>
+<span class="sd">        min_object_area: Minimum colony area (pixels) below which the</span>
+<span class="sd">            refiner skips the colony entirely. Defaults to 100.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmap`` updated; ``objmask`` refreshes</span>
+<span class="sd">        automatically via the accessor.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        * Filamentous-fungi detections where Dijkstra-reconnected bridges</span>
+<span class="sd">          occasionally produce thin asymmetric spurs off a symmetric body.</span>
+<span class="sd">        * Plates where noise manifests as beehive / reticulated web</span>
+<span class="sd">          structures while legitimate hyphae remain linear.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        * :class:`SmallObjectRemover` for spurious noise distinguished by</span>
+<span class="sd">          size alone rather than spatial relationship to the colony body.</span>
+<span class="sd">        * :class:`LowCircularityRemover` when the whole colony should be</span>
+<span class="sd">          judged by shape, not just its outer extent.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Pure ``R_sym`` trimming (default — every CC past the symmetric</span>
+<span class="sd">        envelope is removed). On the synthetic yeast plate the colonies</span>
+<span class="sd">        are already compact/symmetric so the op is a no-op; this example</span>
+<span class="sd">        simply shows that wiring the refiner into a detection pipeline</span>
+<span class="sd">        does not break it:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.refine import AsymmetricSpurTrimmer</span>
+<span class="sd">        &gt;&gt;&gt; plate = load_synth_yeast_plate()</span>
+<span class="sd">        &gt;&gt;&gt; detected = OtsuDetector().apply(plate)</span>
+<span class="sd">        &gt;&gt;&gt; trimmer = AsymmetricSpurTrimmer()</span>
+<span class="sd">        &gt;&gt;&gt; refined = trimmer.apply(detected)</span>
+<span class="sd">        &gt;&gt;&gt; bool(refined.objmap[:].max() &gt;= 0)</span>
+<span class="sd">        True</span>
+
+<span class="sd">        Two-stage beehive-gated trim — legitimate linear branches past the</span>
+<span class="sd">        envelope are preserved; only topologically web-like regions are</span>
+<span class="sd">        removed:</span>
+
+<span class="sd">        &gt;&gt;&gt; trimmer = AsymmetricSpurTrimmer(beehive_threshold=0.002)</span>
+<span class="sd">        &gt;&gt;&gt; refined = trimmer.apply(detected)</span>
+<span class="sd">        &gt;&gt;&gt; bool(refined.objmap[:].max() &gt;= 0)</span>
+<span class="sd">        True</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">symmetry_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">3</span> <span class="o">/</span> <span class="mi">6</span><span class="p">,</span>
+            <span class="n">n_angular_bins</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
+            <span class="n">n_annuli</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+            <span class="n">pelt_penalty</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span><span class="p">,</span>
+            <span class="n">smoothing_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+            <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;distance&quot;</span><span class="p">,</span> <span class="s2">&quot;intensity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;distance&quot;</span><span class="p">,</span>
+            <span class="n">beehive_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">max_trim_fraction</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span>
+            <span class="n">min_cc_area</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+            <span class="n">min_object_area</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">symmetry_threshold</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;symmetry_threshold must be in [0, 1]; &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">symmetry_threshold</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">method</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;distance&quot;</span><span class="p">,</span> <span class="s2">&quot;intensity&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;method must be &#39;distance&#39; or &#39;intensity&#39;; got </span><span class="si">{</span><span class="n">method</span><span class="si">!r}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">beehive_threshold</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">beehive_threshold</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;beehive_threshold must be non-negative or None; &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">beehive_threshold</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="mf">0.0</span> <span class="o">&lt;</span> <span class="n">max_trim_fraction</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;max_trim_fraction must be in (0, 1]; &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">max_trim_fraction</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">symmetry_threshold</span> <span class="o">=</span> <span class="n">symmetry_threshold</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_angular_bins</span> <span class="o">=</span> <span class="n">n_angular_bins</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_annuli</span> <span class="o">=</span> <span class="n">n_annuli</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pelt_penalty</span> <span class="o">=</span> <span class="n">pelt_penalty</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">smoothing_window</span> <span class="o">=</span> <span class="n">smoothing_window</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="n">method</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">beehive_threshold</span> <span class="o">=</span> <span class="n">beehive_threshold</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_trim_fraction</span> <span class="o">=</span> <span class="n">max_trim_fraction</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_cc_area</span> <span class="o">=</span> <span class="n">min_cc_area</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_object_area</span> <span class="o">=</span> <span class="n">min_object_area</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Trim asymmetric spurs / beehive noise from each colony in the objmap.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: Detected image with a populated ``objmap``.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Image: Same image with ``objmap`` updated in place.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">objmap</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
+        <span class="k">if</span> <span class="n">objmap</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">image</span>
+
+        <span class="c1"># Work on a copy we can paint zeros into; write back once at the end.</span>
+        <span class="n">modified</span> <span class="o">=</span> <span class="n">objmap</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># Intensity-weighted centroid needs a gray source.</span>
+        <span class="n">gray_full</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">gray</span><span class="p">[:]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;intensity&quot;</span> <span class="k">else</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">prop</span> <span class="ow">in</span> <span class="n">regionprops</span><span class="p">(</span><span class="n">objmap</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">prop</span><span class="o">.</span><span class="n">area</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_object_area</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">slc</span> <span class="o">=</span> <span class="n">prop</span><span class="o">.</span><span class="n">slice</span>
+            <span class="n">objmap_crop</span> <span class="o">=</span> <span class="n">modified</span><span class="p">[</span><span class="n">slc</span><span class="p">]</span>
+            <span class="n">obj_mask</span> <span class="o">=</span> <span class="n">objmap_crop</span> <span class="o">==</span> <span class="n">prop</span><span class="o">.</span><span class="n">label</span>
+
+            <span class="n">to_remove</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trim_mask_for_object</span><span class="p">(</span>
+                    <span class="n">obj_mask</span><span class="o">=</span><span class="n">obj_mask</span><span class="p">,</span>
+                    <span class="n">prop</span><span class="o">=</span><span class="n">prop</span><span class="p">,</span>
+                    <span class="n">gray_full</span><span class="o">=</span><span class="n">gray_full</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">to_remove</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">to_remove</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                <span class="k">continue</span>
+
+            <span class="n">objmap_crop</span><span class="p">[</span><span class="n">to_remove</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">modified</span>
+        <span class="k">return</span> <span class="n">image</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_trim_mask_for_object</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">obj_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">prop</span><span class="p">:</span> <span class="s2">&quot;RegionProperties&quot;</span><span class="p">,</span>
+            <span class="n">gray_full</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the boolean &quot;pixels to remove&quot; mask for one colony crop.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            obj_mask: Boolean crop of the object in its bounding box.</span>
+<span class="sd">            prop: ``skimage.measure._regionprops.RegionProperties`` instance</span>
+<span class="sd">                from iterating ``regionprops(objmap)``; used for ``slice``,</span>
+<span class="sd">                ``label``, and ``centroid_weighted``.</span>
+<span class="sd">            gray_full: Full-image grayscale used for intensity-weighted</span>
+<span class="sd">                centroid (``method=&quot;intensity&quot;``). ``None`` in distance mode.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A boolean array the same shape as ``obj_mask`` with ``True``</span>
+<span class="sd">            at pixels to remove, or ``None`` when the colony is ineligible</span>
+<span class="sd">            (no asymmetric region, degenerate geometry, or proposal trips</span>
+<span class="sd">            the safety cap).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 1. Centroid (local bbox coords). Distance-transform peak is a safe</span>
+        <span class="c1"># fallback; intensity mode uses it when the intensity is all zero and</span>
+        <span class="c1"># regionprops produces a NaN weighted centroid.</span>
+        <span class="n">dt</span> <span class="o">=</span> <span class="n">distance_transform_edt</span><span class="p">(</span><span class="n">obj_mask</span><span class="p">)</span>
+        <span class="n">peak_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unravel_index</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">dt</span><span class="p">)),</span> <span class="n">obj_mask</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">distance_centroid</span> <span class="o">=</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">peak_idx</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">peak_idx</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;distance&quot;</span><span class="p">:</span>
+            <span class="n">centroid_rc</span> <span class="o">=</span> <span class="n">distance_centroid</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">gray_full</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="n">slc</span> <span class="o">=</span> <span class="n">prop</span><span class="o">.</span><span class="n">slice</span>
+            <span class="n">gray_crop</span> <span class="o">=</span> <span class="n">gray_full</span><span class="p">[</span><span class="n">slc</span><span class="p">]</span>
+            <span class="n">intensity_crop</span> <span class="o">=</span> <span class="n">gray_crop</span>
+            <span class="k">if</span> <span class="n">gray_crop</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="n">intensity_crop</span> <span class="o">=</span> <span class="n">gray_crop</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+            <span class="n">local_props</span> <span class="o">=</span> <span class="n">regionprops</span><span class="p">(</span>
+                    <span class="n">obj_mask</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">),</span>
+                    <span class="n">intensity_image</span><span class="o">=</span><span class="n">intensity_crop</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">local_props</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+            <span class="n">cw</span> <span class="o">=</span> <span class="n">local_props</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">centroid_weighted</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">cw</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">cw</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+                <span class="c1"># Intensity is flat/zero on this crop; fall back to distance peak.</span>
+                <span class="n">centroid_rc</span> <span class="o">=</span> <span class="n">distance_centroid</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">centroid_rc</span> <span class="o">=</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">cw</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">cw</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+
+        <span class="c1"># 2. Distance map from centroid.</span>
+        <span class="n">dist_map</span> <span class="o">=</span> <span class="n">MeasureSymmetricZones</span><span class="o">.</span><span class="n">_distance_from_point</span><span class="p">(</span>
+                <span class="n">obj_mask</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">centroid_rc</span>
+        <span class="p">)</span>
+
+        <span class="n">mask_distances</span> <span class="o">=</span> <span class="n">dist_map</span><span class="p">[</span><span class="n">obj_mask</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">mask_distances</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">max_pixel_radius</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">mask_distances</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">max_pixel_radius</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">effective_annuli</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_annuli</span><span class="p">,</span> <span class="n">max_pixel_radius</span><span class="p">))</span>
+
+        <span class="c1"># 3. R_sym pipeline.</span>
+        <span class="n">density_profile</span><span class="p">,</span> <span class="n">annulus_radii</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">MeasureSymmetricZones</span><span class="o">.</span><span class="n">_compute_radial_density_profile</span><span class="p">(</span>
+                    <span class="n">obj_mask</span><span class="p">,</span> <span class="n">dist_map</span><span class="p">,</span> <span class="n">effective_annuli</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">annulus_radii</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">core_radius</span> <span class="o">=</span> <span class="n">MeasureSymmetricZones</span><span class="o">.</span><span class="n">_find_core_radius</span><span class="p">(</span>
+                    <span class="n">density_profile</span><span class="p">,</span> <span class="n">annulus_radii</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pelt_penalty</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># pragma: no cover — ruptures failure is rare</span>
+            <span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                    <span class="s2">&quot;PELT changepoint detection failed for label </span><span class="si">%d</span><span class="s2">; &quot;</span>
+                    <span class="s2">&quot;treating core as zero.&quot;</span><span class="p">,</span>
+                    <span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">core_radius</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">angular_coverage</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">MeasureSymmetricZones</span><span class="o">.</span><span class="n">_compute_sholl_angular_profile</span><span class="p">(</span>
+                    <span class="n">obj_mask</span><span class="p">,</span> <span class="n">dist_map</span><span class="p">,</span> <span class="n">centroid_rc</span><span class="p">,</span> <span class="n">annulus_radii</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">n_angular_bins</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">r_sym</span> <span class="o">=</span> <span class="n">MeasureSymmetricZones</span><span class="o">.</span><span class="n">_find_symmetric_radius</span><span class="p">(</span>
+                <span class="n">annulus_radii</span><span class="p">,</span>
+                <span class="n">angular_coverage</span><span class="p">,</span>
+                <span class="n">core_radius</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">symmetry_threshold</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">smoothing_window</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 4. Asymmetric region.</span>
+        <span class="n">asymmetric_region</span> <span class="o">=</span> <span class="n">obj_mask</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dist_map</span> <span class="o">&gt;</span> <span class="n">r_sym</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">asymmetric_region</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># 5. Per-CC decision.</span>
+        <span class="n">cc_map</span><span class="p">,</span> <span class="n">n_cc</span> <span class="o">=</span> <span class="n">ndi_label</span><span class="p">(</span><span class="n">asymmetric_region</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">n_cc</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">to_remove</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">obj_mask</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">cc_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_cc</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">cc_mask</span> <span class="o">=</span> <span class="n">cc_map</span> <span class="o">==</span> <span class="n">cc_id</span>
+            <span class="n">cc_area</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">cc_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+            <span class="k">if</span> <span class="n">cc_area</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_cc_area</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">beehive_threshold</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">to_remove</span> <span class="o">|=</span> <span class="n">cc_mask</span>
+                <span class="k">continue</span>
+
+            <span class="n">holes</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="nb">int</span><span class="p">(</span><span class="n">euler_number</span><span class="p">(</span><span class="n">cc_mask</span><span class="p">,</span> <span class="n">connectivity</span><span class="o">=</span><span class="mi">2</span><span class="p">)))</span>
+            <span class="n">density</span> <span class="o">=</span> <span class="n">holes</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">cc_area</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">density</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">beehive_threshold</span><span class="p">:</span>
+                <span class="n">to_remove</span> <span class="o">|=</span> <span class="n">cc_mask</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">to_remove</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># 6. Safety cap.</span>
+        <span class="n">total_area</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">obj_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">total_area</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">trim_fraction</span> <span class="o">=</span> <span class="n">to_remove</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">total_area</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">trim_fraction</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_trim_fraction</span><span class="p">:</span>
+            <span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                    <span class="s2">&quot;AsymmetricSpurTrimmer aborted label </span><span class="si">%d</span><span class="s2">: trim fraction &quot;</span>
+                    <span class="s2">&quot;</span><span class="si">%.3f</span><span class="s2"> exceeds max_trim_fraction </span><span class="si">%.3f</span><span class="s2">.&quot;</span><span class="p">,</span>
+                    <span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="n">trim_fraction</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_trim_fraction</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">return</span> <span class="n">to_remove</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

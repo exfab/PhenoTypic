@@ -1,0 +1,52 @@
+phenotypic.tools\_.register
+===========================
+
+.. automodule:: phenotypic.tools_.register
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :nosignatures:
+   
+      available_analysis_plugins
+      available_dashboards
+      available_plotters
+      get_analysis_plugin
+      get_dashboard
+      get_plotter
+      register_analysis
+      register_dashboard
+      register_plotter
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      AnalysisPluginRegistry
+      BaseRegistry
+      DashboardRegistry
+      PlotterRegistry
+   
+   
+
+   
+   
+   
+
+
+

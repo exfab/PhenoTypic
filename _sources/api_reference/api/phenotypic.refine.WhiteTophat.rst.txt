@@ -1,0 +1,28 @@
+phenotypic.refine.WhiteTophat
+=============================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: WhiteTophat
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~WhiteTophat.__init__
+      ~WhiteTophat.apply
+      ~WhiteTophat.widget
+   
+   
+
+   
+   
+   

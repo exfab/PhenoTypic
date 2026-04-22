@@ -1,0 +1,7 @@
+phenotypic.tools\_.panel\_.PANEL\_IMPORT\_ERROR
+===============================================
+
+.. currentmodule:: phenotypic.tools_.panel_
+
+.. autodata:: PANEL_IMPORT_ERROR
+   :no-index:

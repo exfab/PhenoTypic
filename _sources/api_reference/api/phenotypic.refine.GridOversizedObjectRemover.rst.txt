@@ -1,0 +1,28 @@
+phenotypic.refine.GridOversizedObjectRemover
+============================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: GridOversizedObjectRemover
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GridOversizedObjectRemover.__init__
+      ~GridOversizedObjectRemover.apply
+      ~GridOversizedObjectRemover.widget
+   
+   
+
+   
+   
+   
