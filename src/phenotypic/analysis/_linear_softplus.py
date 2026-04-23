@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Iterable, List, Literal, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Tuple
 
 import numpy as np
 import pandas as pd
 
 from phenotypic.analysis.abc_ import ModelFitter
-from phenotypic.tools_.measurement_info_ import (
+from phenotypic.analysis.abc_._model_fitter import LossKind
+from phenotypic.tools_.measurement_info import (
     LINEAR_SOFTPLUS_MODEL,
     MODEL_METRICS,
 )
@@ -306,6 +307,28 @@ class LinearSoftplusModel(ModelFitter):
         stderr_label (str | None): Column providing per-timepoint standard
             errors used as weights in the fit. When ``None``, the fit
             auto-derives a replicate-SE column during aggregation.
+        stderr_floor_quantile (float | None): Lower bound on the
+            per-timepoint σ used in the weighted loss, expressed as a
+            quantile in ``(0, 1]`` of the group's finite, positive σ
+            values. Defaults to ``0.25`` — σ values below the 25th
+            percentile of the group are lifted up to it before the
+            residuals are divided through, capping the 1/σ² weight
+            ratio between the softest and stiffest points at 16×.
+            Pass ``None`` to disable the floor entirely and recover
+            raw inverse-variance weighting (useful when the supplied
+            ``stderr_label`` is already known to be trustworthy across
+            its full range). The floor guards against the main
+            pathology of replicate-SEM weighting: coincidentally-
+            agreeing replicates whose SEM collapses toward zero by
+            chance, pinning the fit to a handful of "lucky" points
+            with no real precision advantage. Groups with *no* finite
+            positive σ at all (e.g. singleton replicates where SEM is
+            NaN everywhere, or noise-free synthetic data where SEM is
+            zero everywhere) bypass the weighting pathway entirely
+            and fall back to an unweighted residual — the floor is
+            inapplicable in that case. Applies to both user-supplied
+            ``stderr_label`` columns and the auto-derived
+            replicate-SEM column.
         s0_prior (bool | float | str | None): Unified Gaussian-prior
             source for ``s0``. The prior is engaged when this is
             ``True``, a positive scalar, or a column name; disabled
@@ -350,7 +373,7 @@ class LinearSoftplusModel(ModelFitter):
         v_upper (float): Upper bound on ``v`` in the optimizer.
     """
 
-    _measurement_info_class = LINEAR_SOFTPLUS_MODEL
+    _measurement_infoclass = LINEAR_SOFTPLUS_MODEL
 
     def __init__(
             self,
@@ -362,6 +385,7 @@ class LinearSoftplusModel(ModelFitter):
             smax: float | None = None,
             beta: float | None = None,
             stderr_label: str | None = None,
+            stderr_floor_quantile: float | None = 0.25,
             s0_prior: bool | float | int | str | None = None,
             s0_prior_factor: float = 0.05,
             s0_prior_groupby: List[str] | None = None,
@@ -370,7 +394,8 @@ class LinearSoftplusModel(ModelFitter):
             saturation_buffer: int = 2,
             v_upper: float = 50.0,
             num_workers: int = 1,
-            loss: Literal["linear"] = "linear",
+            loss: LossKind = "huber",
+            f_scale: float = 1.0,
             verbose: bool = False,
     ):
         """Initialize the linear-softplus fitter.
@@ -401,6 +426,15 @@ class LinearSoftplusModel(ModelFitter):
             stderr_label: Column providing per-timepoint standard
                 errors used as weights. When ``None``, replicate SE is
                 computed automatically during aggregation.
+            stderr_floor_quantile: Quantile in ``(0, 1]`` used to
+                floor the per-timepoint σ before the weighted loss
+                divides through. Defaults to ``0.25``, which caps the
+                weight ratio between the softest and stiffest points
+                at 16× and neutralizes coincidentally-tiny SEM entries
+                (see class docstring for the all-NaN / all-zero σ
+                fallback behavior). Pass ``None`` to disable the floor
+                and recover raw inverse-variance weighting. Raises
+                :class:`ValueError` on values outside ``(0, 1]``.
             s0_prior: Unified prior-mean source, dispatched by type:
 
                 - ``None`` / ``False``: no prior (default).
@@ -435,8 +469,27 @@ class LinearSoftplusModel(ModelFitter):
             v_upper: Upper bound on ``v``.
             num_workers: Number of parallel workers for per-group fits.
             loss: Loss method passed through to
-                :func:`scipy.optimize.least_squares`. Defaults to
-                ``"linear"``.
+                :func:`scipy.optimize.least_squares`. One of
+                ``"linear"``, ``"soft_l1"``, ``"huber"``, ``"cauchy"``,
+                ``"arctan"``. Defaults to ``"huber"`` — behaves like
+                standard least-squares on inlier residuals (below
+                ``f_scale``) but downweights large residuals from
+                outlier timepoints (bubble artifacts, contamination
+                spikes, mis-segmented frames), so a handful of bad
+                points can't drag the fit. Pass ``"linear"`` for the
+                classical sum-of-squared-residuals loss, or
+                ``"soft_l1"`` / ``"cauchy"`` / ``"arctan"`` for
+                progressively more aggressive outlier suppression.
+            f_scale: Soft margin between inlier and outlier residuals.
+                Residuals well below ``f_scale`` behave like the
+                standard squared loss; residuals well above it are
+                downweighted according to the chosen robust ``loss``.
+                No effect when ``loss="linear"``. Must be positive;
+                defaults to ``1.0``. For weighted fits where residuals
+                are already pre-scaled by ``y_stderr``, ``f_scale`` is
+                a multiple of a "typical standard error" — e.g.
+                ``f_scale=3`` treats points more than ~3 σ off the
+                curve as outliers.
             verbose: If ``True``, enables optimizer verbose output.
         """
         super().__init__(
@@ -446,6 +499,7 @@ class LinearSoftplusModel(ModelFitter):
                 agg_func=agg_func,
                 num_workers=num_workers,
                 loss=loss,
+                f_scale=f_scale,
                 verbose=verbose,
         )
         if beta is not None:
@@ -454,9 +508,20 @@ class LinearSoftplusModel(ModelFitter):
                     f"beta must be None or a positive finite number, "
                     f"got {beta!r}."
                 )
+        if stderr_floor_quantile is not None:
+            if (
+                not np.isfinite(stderr_floor_quantile)
+                or stderr_floor_quantile <= 0
+                or stderr_floor_quantile > 1
+            ):
+                raise ValueError(
+                    f"stderr_floor_quantile must be None or in (0, 1], "
+                    f"got {stderr_floor_quantile!r}."
+                )
         self.smax = smax
         self.beta = beta
         self.stderr_label = stderr_label
+        self.stderr_floor_quantile = stderr_floor_quantile
         self.s0_prior = s0_prior
         self.s0_prior_factor = s0_prior_factor
         self.s0_prior_groupby = s0_prior_groupby
@@ -773,17 +838,33 @@ class LinearSoftplusModel(ModelFitter):
         else:
             return None
 
-        # Replace zero/NaN stderrs with a small epsilon so the weighted
-        # residuals stay finite. Scale epsilon to the median positive
-        # stderr so it stays commensurate with the data.
+        # When no positive σ exist (e.g. noise-free synthetic fixtures
+        # where all replicates agree and SEM is 0, or singleton-replicate
+        # groups where SEM is NaN), skip the weighting pathway entirely.
+        # Faking σ with an ε-fill would rescale residuals by ~1/ε and
+        # break the conditioning of robust losses (huber, soft_l1, etc.)
+        # whose ``f_scale`` threshold is interpreted in residual units.
         positive = raw[(raw > 0) & np.isfinite(raw)]
-        if positive.size > 0:
-            eps = 1e-8 * float(np.nanmedian(np.abs(positive)))
-            if eps <= 0 or not np.isfinite(eps):
-                eps = 1e-8
-        else:
+        if positive.size == 0:
+            return None
+
+        # Replace the remaining zero/NaN entries with a small epsilon
+        # scaled to the median positive stderr so the weighted residuals
+        # stay finite and commensurate with the data.
+        eps = 1e-8 * float(np.nanmedian(np.abs(positive)))
+        if eps <= 0 or not np.isfinite(eps):
             eps = 1e-8
-        return np.where((raw > 0) & np.isfinite(raw), raw, eps)
+        sigma = np.where((raw > 0) & np.isfinite(raw), raw, eps)
+
+        # Optional quantile floor: neutralizes coincidentally-tiny σ
+        # that would otherwise dominate the 1/σ² weighting. Floor is
+        # computed from finite, >0 entries so ε-filled positions do
+        # not skew it; they still get lifted to the floor via np.maximum.
+        if self.stderr_floor_quantile is not None:
+            floor = float(np.quantile(positive, self.stderr_floor_quantile))
+            if np.isfinite(floor) and floor > 0:
+                sigma = np.maximum(sigma, floor)
+        return sigma
 
     def _extra_agg_columns(self) -> Dict[str, Any]:
         """Carry per-timepoint stderr and per-group prior-mean columns.

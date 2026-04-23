@@ -13,7 +13,7 @@ import pandas as pd
 import pytest
 
 from phenotypic.analysis import LinearSoftplusModel
-from phenotypic.tools_.measurement_info_ import (
+from phenotypic.tools_.measurement_info import (
     LINEAR_SOFTPLUS_MODEL,
     MODEL_METRICS,
 )
@@ -105,6 +105,7 @@ class TestBasics:
         assert m.smax is None
         assert m.beta is None
         assert m.stderr_label is None
+        assert m.stderr_floor_quantile == 0.25
         assert m.s0_prior is None
         assert m.s0_prior_factor == 0.05
         assert m.s0_prior_groupby is None
@@ -112,7 +113,7 @@ class TestBasics:
         assert m.saturation_threshold == 0.05
         assert m.saturation_buffer == 2
         assert m.v_upper == 50.0
-        assert m.loss == "linear"
+        assert m.loss == "huber"
         assert not m.verbose
 
     def test_model_func_shapes(self):
@@ -266,6 +267,181 @@ class TestWeighting:
         # Smoke check: a fit completed with finite parameters.
         assert np.isfinite(res[LINEAR_SOFTPLUS_MODEL.v].iloc[0])
         assert np.isfinite(res[LINEAR_SOFTPLUS_MODEL.s0].iloc[0])
+
+
+# ---------------------------------------------------------------------- #
+# Stderr floor (quantile-relative)
+# ---------------------------------------------------------------------- #
+class TestStderrFloor:
+    @pytest.mark.parametrize("bad", [0.0, -0.1, 1.5, np.inf, np.nan])
+    def test_validation_rejects_invalid_quantile(self, bad):
+        with pytest.raises(ValueError, match="stderr_floor_quantile"):
+            LinearSoftplusModel(
+                on="Shape_Area",
+                groupby=["Metadata_Dataset", "Metadata_Strain"],
+                stderr_floor_quantile=bad,
+            )
+
+    @pytest.mark.parametrize("good", [0.01, 0.25, 0.5, 1.0])
+    def test_validation_accepts_valid_quantile(self, good):
+        m = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            stderr_floor_quantile=good,
+        )
+        assert m.stderr_floor_quantile == good
+
+    def test_floor_neutralizes_tiny_sigma_point(self):
+        """Tiny σ on a corrupted mid-curve point should not pin the fit.
+
+        Without a floor, a single point with σ two orders of magnitude
+        below the rest dominates the 1/σ² weighting and drags the
+        parameters. With ``stderr_floor_quantile=0.25``, its weight is
+        capped and the fit recovers parameters closer to truth.
+        """
+        t = np.linspace(0, 20, 25)
+        rng = np.random.default_rng(42)
+        df = _build_group(
+            t, v=5.0, s0=1.0, lam=4.0, alpha=10.0, smax=50.0,
+            noise_sigma=0.2, strain="Strain1", rng=rng, n_replicates=3,
+        )
+
+        # Corrupt one mid-curve timepoint (during the growth transition)
+        # with a large y bump *and* give it an artificially tiny σ.
+        times = np.sort(df["Metadata_Time"].unique())
+        corrupt_t = float(times[len(times) // 2])
+        mask = df["Metadata_Time"] == corrupt_t
+        df.loc[mask, "Shape_Area"] += 15.0
+
+        df["Area_SE"] = np.where(mask, 0.001, 0.5)
+
+        common = dict(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            stderr_label="Area_SE",
+            prune_saturated=False,
+        )
+        res_no_floor = LinearSoftplusModel(
+            **common, stderr_floor_quantile=None,
+        ).analyze(df)
+        res_floor = LinearSoftplusModel(**common).analyze(df)
+
+        v_no = float(res_no_floor[LINEAR_SOFTPLUS_MODEL.v].iloc[0])
+        v_fl = float(res_floor[LINEAR_SOFTPLUS_MODEL.v].iloc[0])
+        lam_no = float(res_no_floor[LINEAR_SOFTPLUS_MODEL.lam].iloc[0])
+        lam_fl = float(res_floor[LINEAR_SOFTPLUS_MODEL.lam].iloc[0])
+
+        # Floored fit should be closer to ground truth on at least one
+        # of the two most-affected parameters (v=5.0, lam=4.0).
+        better_v = abs(v_fl - 5.0) < abs(v_no - 5.0)
+        better_lam = abs(lam_fl - 4.0) < abs(lam_no - 4.0)
+        assert better_v or better_lam, (
+            f"Neither v nor lam improved with floor: "
+            f"v_no={v_no:.3f} v_fl={v_fl:.3f} "
+            f"lam_no={lam_no:.3f} lam_fl={lam_fl:.3f}"
+        )
+        # Fits must actually differ — the floor should have done
+        # something.
+        assert abs(v_no - v_fl) + abs(lam_no - lam_fl) > 1e-3
+
+    def test_none_explicitly_disables_floor(self):
+        """Explicit ``None`` skips the quantile floor entirely.
+
+        The default (``0.25``) and ``None`` must produce different
+        fits on a fixture where one timepoint has σ an order of
+        magnitude below the rest — otherwise the floor is a no-op and
+        the ``None`` escape hatch is meaningless.
+        """
+        t = np.linspace(0, 20, 25)
+        rng = np.random.default_rng(3)
+        df = _build_group(
+            t, v=5.0, s0=1.0, lam=4.0, alpha=10.0, smax=50.0,
+            noise_sigma=0.2, strain="Strain1", rng=rng, n_replicates=3,
+        )
+        times = np.sort(df["Metadata_Time"].unique())
+        corrupt_t = float(times[len(times) // 2])
+        mask = df["Metadata_Time"] == corrupt_t
+        df.loc[mask, "Shape_Area"] += 10.0
+        df["Area_SE"] = np.where(mask, 0.01, 0.5)
+
+        common = dict(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            stderr_label="Area_SE",
+            prune_saturated=False,
+        )
+        res_default = LinearSoftplusModel(**common).analyze(df)
+        res_none = LinearSoftplusModel(
+            **common, stderr_floor_quantile=None,
+        ).analyze(df)
+
+        v_default = float(res_default[LINEAR_SOFTPLUS_MODEL.v].iloc[0])
+        v_none = float(res_none[LINEAR_SOFTPLUS_MODEL.v].iloc[0])
+        lam_default = float(res_default[LINEAR_SOFTPLUS_MODEL.lam].iloc[0])
+        lam_none = float(res_none[LINEAR_SOFTPLUS_MODEL.lam].iloc[0])
+        # Default floor and explicit None must differ on this fixture.
+        assert abs(v_default - v_none) + abs(lam_default - lam_none) > 1e-3
+
+    def test_floor_noop_when_sigma_uniform(self, noisy_fixture):
+        """With uniform σ, default floor lifts nothing — a true no-op.
+
+        When every σ in the group is identical, the 25th-percentile
+        floor equals the σ itself, so ``np.maximum(sigma, floor)`` is
+        a no-op. The default and ``None`` must produce byte-identical
+        fits in this case.
+        """
+        df = noisy_fixture.copy()
+        df["Area_SE"] = 0.5
+
+        common = dict(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            stderr_label="Area_SE",
+            prune_saturated=False,
+        )
+        res_default = LinearSoftplusModel(**common).analyze(df)
+        res_none = LinearSoftplusModel(
+            **common, stderr_floor_quantile=None,
+        ).analyze(df)
+
+        pd.testing.assert_frame_equal(res_default, res_none)
+
+    def test_singleton_replicate_groups_fall_back_to_unweighted(self):
+        """Singleton-replicate groups should not blow up the fit.
+
+        ``groupby.transform("sem")`` returns NaN for singletons. In
+        that situation ``_resolve_y_stderr`` skips the weighting
+        pathway entirely (no positive σ means no σ information), so
+        the fit falls back to an unweighted residual. The quantile
+        floor is inapplicable here — there are no positive σ to
+        compute a quantile from — but the fit must still succeed and
+        recover ground-truth parameters within tolerance.
+        """
+        t = np.linspace(0, 20, 25)
+        rng = np.random.default_rng(7)
+        df = _build_group(
+            t, v=4.0, s0=1.0, lam=5.0, alpha=10.0, smax=40.0,
+            noise_sigma=0.3, strain="Strain1", rng=rng, n_replicates=1,
+        )
+
+        m = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            stderr_floor_quantile=0.25,
+            prune_saturated=False,
+        )
+        res = m.analyze(df)
+
+        # Parameters are finite and reasonably close to truth despite
+        # the all-NaN auto-SEM column.
+        v_fit = float(res[LINEAR_SOFTPLUS_MODEL.v].iloc[0])
+        s0_fit = float(res[LINEAR_SOFTPLUS_MODEL.s0].iloc[0])
+        lam_fit = float(res[LINEAR_SOFTPLUS_MODEL.lam].iloc[0])
+        assert np.isfinite(v_fit)
+        assert np.isfinite(s0_fit)
+        assert np.isfinite(lam_fit)
+        assert abs(v_fit - 4.0) < 1.0
+        assert abs(lam_fit - 5.0) < 2.0
 
 
 # ---------------------------------------------------------------------- #

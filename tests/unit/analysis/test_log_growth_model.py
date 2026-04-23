@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 from phenotypic.analysis._log_growth_model import LogGrowthModel
-from phenotypic.tools_.measurement_info_ import LOG_GROWTH_MODEL, MODEL_METRICS
+from phenotypic.tools_.measurement_info import LOG_GROWTH_MODEL, MODEL_METRICS
 
 
 class TestLogGrowthModel:
@@ -83,7 +83,7 @@ class TestLogGrowthModel:
         assert model.Kmax_label is None
         assert model.lam == 1.2
         assert model.beta == 2
-        assert model.loss == "linear"
+        assert model.loss == "huber"
         assert not model.verbose
         assert model.n_jobs == 1
 
