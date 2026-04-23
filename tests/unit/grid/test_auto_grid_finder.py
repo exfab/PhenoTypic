@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from phenotypic.grid import AutoGridFinder
-from phenotypic.tools_.measurement_info_ import BBOX, GRID
+from phenotypic.tools_.measurement_info import BBOX, GRID
 
 
 # ---------------------------------------------------------------------------

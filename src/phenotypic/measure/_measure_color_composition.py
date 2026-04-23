@@ -11,7 +11,7 @@ import logging
 
 from phenotypic.abc_ import MeasureFeatures
 from phenotypic.tools_.constants_ import OBJECT
-from ..tools_.measurement_info_ import ColorComposition
+from ..tools_.measurement_info import ColorComposition
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ class MeasureColorComposition(MeasureFeatures):
         interpreting color metrics biologically.
     """
 
-    _measurement_info_class = ColorComposition
+    _measurement_infoclass = ColorComposition
 
     # Standardized color name mapping (index -> name)
     # This order matches ColorComposition.all_headers() and is used throughout the module

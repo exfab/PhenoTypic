@@ -11,7 +11,7 @@ import logging
 
 from phenotypic.abc_ import MeasureFeatures
 from phenotypic.tools_.constants_ import OBJECT
-from ..tools_.measurement_info_ import ColorXYZ, Colorxy, ColorLab, ColorHSV
+from ..tools_.measurement_info import ColorXYZ, Colorxy, ColorLab, ColorHSV
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ class MeasureColor(MeasureFeatures):
         interpreting color metrics in a biological context.
     """
 
-    _measurement_info_classes = [ColorXYZ, Colorxy, ColorLab, ColorHSV]
+    _measurement_infoclasses = [ColorXYZ, Colorxy, ColorLab, ColorHSV]
 
     def __init__(
             self,

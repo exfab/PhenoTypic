@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 
 from phenotypic.abc_ import MeasureFeatures
-from ..tools_.measurement_info_ import SIZE
+from ..tools_.measurement_info import SIZE
 
 
 class MeasureSize(MeasureFeatures):
@@ -52,7 +52,7 @@ class MeasureSize(MeasureFeatures):
         interpreting size metrics in a biological context.
     """
 
-    _measurement_info_class = SIZE
+    _measurement_infoclass = SIZE
 
     def _operate(self, image: Image) -> pd.DataFrame:
         # Create empty numpy arrays to store measurements

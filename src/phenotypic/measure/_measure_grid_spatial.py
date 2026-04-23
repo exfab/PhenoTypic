@@ -12,7 +12,7 @@ import numpy as np
 
 from phenotypic.abc_ import GridMeasureFeatures
 from phenotypic.tools_.constants_ import OBJECT
-from phenotypic.tools_.measurement_info_ import GRID_SPATIAL, BBOX, GRID
+from phenotypic.tools_.measurement_info import GRID_SPATIAL, BBOX, GRID
 
 
 class MeasureGridSpatial(GridMeasureFeatures):
@@ -53,7 +53,7 @@ class MeasureGridSpatial(GridMeasureFeatures):
         walkthrough of grid-level measurements.
     """
 
-    _measurement_info_class = GRID_SPATIAL
+    _measurement_infoclass = GRID_SPATIAL
 
     def _operate(self, image: GridImage) -> pd.DataFrame:
         gs_table = image.grid.info(include_metadata=False)

@@ -14,7 +14,7 @@ from scipy.ndimage import distance_transform_edt
 import numpy as np
 
 from phenotypic.abc_ import MeasureFeatures
-from ..tools_.measurement_info_ import SHAPE
+from ..tools_.measurement_info import SHAPE
 
 
 class MeasureShape(MeasureFeatures):
@@ -62,7 +62,7 @@ class MeasureShape(MeasureFeatures):
         interpreting shape metrics in a biological context.
     """
 
-    _measurement_info_class = SHAPE
+    _measurement_infoclass = SHAPE
 
     @staticmethod
     def _calculate_feret_diameters(hull_points: np.ndarray) -> tuple[float, float]:

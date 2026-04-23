@@ -17,7 +17,7 @@ from skimage import exposure
 
 from phenotypic.abc_ import MeasureFeatures
 from phenotypic.tools_.constants_ import OBJECT
-from ..tools_.measurement_info_ import TEXTURE
+from ..tools_.measurement_info import TEXTURE
 
 
 class MeasureTexture(MeasureFeatures):
@@ -82,7 +82,7 @@ class MeasureTexture(MeasureFeatures):
         interpreting texture metrics in a biological context.
     """
 
-    _measurement_info_class = TEXTURE
+    _measurement_infoclass = TEXTURE
 
     def __init__(
             self,

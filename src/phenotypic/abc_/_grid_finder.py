@@ -11,7 +11,7 @@ import numpy as np
 
 from phenotypic.abc_ import GridMeasureFeatures
 from phenotypic.tools_.constants_ import OBJECT
-from phenotypic.tools_.measurement_info_ import BBOX, GRID
+from phenotypic.tools_.measurement_info import BBOX, GRID
 
 
 class GridFinder(GridMeasureFeatures, ABC):

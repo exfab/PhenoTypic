@@ -4,12 +4,12 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
 from phenotypic.abc_ import GridMeasureFeatures
-from ..tools_.measurement_info_ import GRID_SPREAD
+from ..tools_.measurement_info import GRID_SPREAD
 
 import pandas as pd
 import numpy as np
 from scipy.spatial import distance_matrix
-from phenotypic.tools_.measurement_info_ import BBOX, GRID
+from phenotypic.tools_.measurement_info import BBOX, GRID
 
 
 class MeasureGridSpread(GridMeasureFeatures):
@@ -48,7 +48,7 @@ class MeasureGridSpread(GridMeasureFeatures):
         walkthrough of grid-level measurements.
     """
 
-    _measurement_info_class = GRID_SPREAD
+    _measurement_infoclass = GRID_SPREAD
 
     def _operate(self, image: GridImage) -> pd.DataFrame:
         gs_table = image.grid.info()

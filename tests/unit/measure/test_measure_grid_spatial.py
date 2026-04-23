@@ -7,7 +7,7 @@ import numpy as np
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.measure import MeasureGridSpatial
 from phenotypic.tools_.constants_ import OBJECT
-from phenotypic.tools_.measurement_info_ import GRID_SPATIAL, GRID
+from phenotypic.tools_.measurement_info import GRID_SPATIAL, GRID
 
 
 class TestMeasureGridSpatial:

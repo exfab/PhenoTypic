@@ -134,7 +134,7 @@ No measurements configured in this pipeline."""
         ]
 
         from phenotypic.tools_.constants_ import OBJECT
-        from phenotypic.tools_.measurement_info_ import BBOX
+        from phenotypic.tools_.measurement_info import BBOX
 
         sections.append(
             "\n### Object\n\n"
@@ -148,7 +148,7 @@ No measurements configured in this pipeline."""
             sections.append(bbox_table)
 
         if self.config.image_type == "GridImage":
-            from phenotypic.tools_.measurement_info_ import GRID
+            from phenotypic.tools_.measurement_info import GRID
 
             grid_table = self._generate_measurement_table(GRID)
             if grid_table:
@@ -159,7 +159,7 @@ No measurements configured in this pipeline."""
                 continue
 
             # Get measurement info class if defined on the measurer
-            measurement_infos = self._get_measurement_info_classes(measurer)
+            measurement_infos = self._get_measurement_infoclasses(measurer)
 
             if not measurement_infos:
                 sections.append(f"\n### {meas_name}\n\n*No measurement documentation available.*")
@@ -172,13 +172,13 @@ No measurements configured in this pipeline."""
 
         return "\n".join(sections)
 
-    def _get_measurement_info_classes(self, measurer) -> list:
+    def _get_measurement_infoclasses(self, measurer) -> list:
         """Extract MeasurementInfo classes associated with a MeasureFeatures instance.
 
         Looks for class attributes that are MeasurementInfo subclasses or
         references to measurement info in the measurer's implementation.
         """
-        from phenotypic.tools_.measurement_info_ import (
+        from phenotypic.tools_.measurement_info import (
             SHAPE,
             INTENSITY,
             TEXTURE,
