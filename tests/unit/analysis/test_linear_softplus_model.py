@@ -103,9 +103,11 @@ class TestBasics:
         assert m.groupby == ["Metadata_Dataset", "Metadata_Strain"]
         assert m.time_label == "Metadata_Time"
         assert m.smax is None
-        assert m.beta == 10
+        assert m.beta is None
         assert m.stderr_label is None
-        assert m.inoc_size_label is None
+        assert m.s0_prior is None
+        assert m.s0_prior_factor == 0.05
+        assert m.s0_prior_groupby is None
         assert m.prune_saturated is True
         assert m.saturation_threshold == 0.05
         assert m.saturation_buffer == 2
@@ -144,6 +146,7 @@ class TestBasics:
             LINEAR_SOFTPLUS_MODEL.alpha,
             LINEAR_SOFTPLUS_MODEL.smax,
             LINEAR_SOFTPLUS_MODEL.beta,
+            LINEAR_SOFTPLUS_MODEL.mode,
             MODEL_METRICS.MAE,
             MODEL_METRICS.MSE,
             MODEL_METRICS.RMSE,
@@ -455,7 +458,7 @@ class TestInoculumPrior:
         m_prior = LinearSoftplusModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
-            inoc_size_label="Inoc_Size",
+            s0_prior="Inoc_Size",
             prune_saturated=False,
         )
 
@@ -489,14 +492,17 @@ class TestInoculumPrior:
 
         # Positive: prior kwargs appended → residual vector is length N+1.
         res_with_prior = m._loss_func(
-            params, t_arr, y, smax=5.0, sGMM_mean=0.5, sGMM_sigma=0.1
+            params, t_arr, y, smax=5.0, s0_prior_mean=0.5, s0_prior_sigma=0.1
         )
         assert res_with_prior.shape == (4,)
 
-    def test_inoc_label_with_nan_stats_omits_prior(self):
-        """A zero-variance inoculum column must cause ``_inoc_stats`` to
-        return ``None`` so the virtual residual is silently skipped —
-        not a silent division by zero that corrupts the fit."""
+    def test_zero_variance_column_engages_cv_floor(self):
+        """A zero-variance inoculum column must now engage the prior at
+        ``σ = cv × µ`` rather than silently dropping it. This is the
+        core behavior flip of the sigma-floor rework — the old code
+        returned ``None`` because the sample std was 0, quietly
+        disabling regularization in the most common user case
+        (``df["Inoc"] = 80`` scalar broadcast)."""
         t = np.linspace(0, 20, 15)
         rng = np.random.default_rng(32)
         df = _build_group(
@@ -504,31 +510,406 @@ class TestInoculumPrior:
             noise_sigma=0.0, strain="Strain1", rng=rng, n_replicates=1,
         )
         df["Inoc_Size"] = 0.5  # zero-variance column
+        # ``beta=10.0`` pins both fits to the 4-parameter fixed-beta
+        # variant. In fitted-beta mode (5 params) on noise-free data
+        # the extra degree of freedom lets the optimizer reach the
+        # data-implied ``s0`` at numerical precision, swamping the
+        # prior's pull and making the end-to-end assertion brittle.
         m = LinearSoftplusModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
-            inoc_size_label="Inoc_Size",
+            s0_prior="Inoc_Size",
+            s0_prior_factor=0.2,
+            beta=10.0,
             prune_saturated=False,
         )
 
-        # Direct check: construct the group the same way analyze() would
-        # (broadcasting per-group mean/std via transform) and assert the
-        # resolver returns None on the zero-variance input.
+        # Direct check: build the group the way analyze() would (via
+        # the prior's own prepare step) and assert the resolver now
+        # returns (µ, cv × µ) instead of None.
         probe = df.copy()
-        grouped = probe.groupby(
-            ["Metadata_Dataset", "Metadata_Strain"]
-        )["Inoc_Size"]
-        probe["Inoc_Size_group_mean"] = grouped.transform("mean")
-        probe["Inoc_Size_group_sigma"] = grouped.transform("std")
+        m._prior.prepare(probe, m.groupby, m.time_label)
         group = probe.groupby(
             ["Metadata_Dataset", "Metadata_Strain"]
         ).get_group(("Test", "Strain1"))
-        assert m._inoc_stats(group) is None
+        stats = m._inoc_stats(group)
+        assert stats is not None
+        mu, sigma = stats
+        assert mu == pytest.approx(0.5)
+        assert sigma == pytest.approx(0.2 * 0.5)
 
-        # Companion check: analyze() completes and doesn't silently
-        # corrupt the fit when the column is degenerate.
-        res = m.analyze(df)
-        assert np.isfinite(res[LINEAR_SOFTPLUS_MODEL.v].iloc[0])
+        # End-to-end: compare against a no-prior fit on the same data.
+        # With the prior engaged the fitted s0 must land *strictly*
+        # closer to µ=0.5 than an unregularized fit would.
+        m_no_prior = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            beta=10.0,
+            prune_saturated=False,
+        )
+        s0_no = float(
+            m_no_prior.analyze(df)[LINEAR_SOFTPLUS_MODEL.s0].iloc[0]
+        )
+        s0_yes = float(m.analyze(df)[LINEAR_SOFTPLUS_MODEL.s0].iloc[0])
+        assert np.isfinite(s0_yes)
+        assert abs(s0_yes - 0.5) < abs(s0_no - 0.5)
+
+    def test_direct_mean_scalar_prior(self):
+        """A positive scalar ``s0_prior`` must engage the prior
+        uniformly across groups without any column in the data."""
+        t = np.linspace(0, 20, 20)
+        rng = np.random.default_rng(40)
+        df = _build_group(
+            t, v=5.0, s0=3.0, lam=4.0, alpha=10.0, smax=50.0,
+            noise_sigma=0.2, strain="Strain1", rng=rng, n_replicates=2,
+        )
+
+        m = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            s0_prior=0.5,
+            s0_prior_factor=0.1,
+            prune_saturated=False,
+        )
+        # stats_for should return (0.5, 0.05) regardless of group content
+        group = df.groupby(
+            ["Metadata_Dataset", "Metadata_Strain"]
+        ).get_group(("Test", "Strain1"))
+        stats = m._inoc_stats(group)
+        assert stats == pytest.approx((0.5, 0.05))
+
+        # End-to-end: the prior pulls s0 toward 0.5, away from the
+        # data-implied s0=3.0.
+        m_no_prior = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            prune_saturated=False,
+        )
+        s0_no = float(
+            m_no_prior.analyze(df)[LINEAR_SOFTPLUS_MODEL.s0].iloc[0]
+        )
+        s0_yes = float(
+            m.analyze(df)[LINEAR_SOFTPLUS_MODEL.s0].iloc[0]
+        )
+        assert abs(s0_yes - 0.5) < abs(s0_no - 0.5)
+
+    def test_direct_sigma_override(self):
+        """``s0_prior_factor > 1`` selects the absolute-σ branch,
+        overriding the CV-derived σ."""
+        t = np.linspace(0, 20, 15)
+        rng = np.random.default_rng(41)
+        df = _build_group(
+            t, v=5.0, s0=1.0, lam=4.0, alpha=10.0, smax=50.0,
+            noise_sigma=0.0, strain="Strain1", rng=rng, n_replicates=1,
+        )
+        df["Inoc_Size"] = 10.0
+
+        m = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            s0_prior="Inoc_Size",
+            s0_prior_factor=2.5,       # > 1 → absolute σ
+            prune_saturated=False,
+        )
+        probe = df.copy()
+        m._prior.prepare(probe, m.groupby, m.time_label)
+        group = probe.groupby(
+            ["Metadata_Dataset", "Metadata_Strain"]
+        ).get_group(("Test", "Strain1"))
+        stats = m._inoc_stats(group)
+        assert stats is not None
+        mu, sigma = stats
+        assert mu == pytest.approx(10.0)
+        assert sigma == pytest.approx(2.5)
+
+    def test_s0_prior_groupby_pools_across_fit_groups(self):
+        """``s0_prior_groupby`` coarser than ``groupby`` pools µ across
+        strains within a media so every fit group sees the same µ."""
+        t = np.linspace(0, 20, 15)
+        rng = np.random.default_rng(42)
+        g1 = _build_group(
+            t, v=5.0, s0=1.0, lam=4.0, alpha=10.0, smax=50.0,
+            noise_sigma=0.1, strain="StrainA", rng=rng, n_replicates=2,
+        )
+        g2 = _build_group(
+            t, v=4.0, s0=1.0, lam=4.0, alpha=10.0, smax=50.0,
+            noise_sigma=0.1, strain="StrainB", rng=rng, n_replicates=2,
+        )
+        df = pd.concat([g1, g2], ignore_index=True)
+        # Strain-level inoc at t=0: StrainA ≈ 0.3, StrainB ≈ 0.9.
+        # Pooling across strains within the dataset should give
+        # median ≈ 0.6.
+        rng_inoc = np.random.default_rng(43)
+        df["Inoc_Size"] = np.where(
+            df["Metadata_Strain"] == "StrainA",
+            rng_inoc.normal(0.3, 0.01, size=len(df)),
+            rng_inoc.normal(0.9, 0.01, size=len(df)),
+        )
+
+        m = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            s0_prior="Inoc_Size",
+            s0_prior_groupby=["Metadata_Dataset"],
+            prune_saturated=False,
+        )
+        probe = df.copy()
+        m._prior.prepare(probe, m.groupby, m.time_label)
+
+        t_min = probe["Metadata_Time"].min()
+        expected_mu = float(
+            probe.loc[probe["Metadata_Time"] == t_min, "Inoc_Size"].median()
+        )
+
+        for strain in ("StrainA", "StrainB"):
+            group = probe.groupby(
+                ["Metadata_Dataset", "Metadata_Strain"]
+            ).get_group(("Test", strain))
+            stats = m._inoc_stats(group)
+            assert stats is not None
+            mu, _ = stats
+            assert mu == pytest.approx(expected_mu, rel=1e-6)
+
+        # Contrast with the un-pooled behavior: if we had used the fit
+        # groupby for the prior, StrainA and StrainB would get
+        # different µ's, both far from the pooled median. This
+        # assertion proves the pooling actually changed the answer.
+        strain_local_mus = {
+            strain: float(
+                df.loc[
+                    (df["Metadata_Strain"] == strain)
+                    & (df["Metadata_Time"] == t_min),
+                    "Inoc_Size",
+                ].median()
+            )
+            for strain in ("StrainA", "StrainB")
+        }
+        assert abs(strain_local_mus["StrainA"] - expected_mu) > 0.1
+        assert abs(strain_local_mus["StrainB"] - expected_mu) > 0.1
+
+    def test_s0_prior_groupby_must_be_subset_of_groupby(self):
+        """``s0_prior_groupby`` must be a subset of ``groupby`` —
+        otherwise the empirical-Bayes hierarchy is undefined."""
+        t = np.linspace(0, 20, 10)
+        rng = np.random.default_rng(44)
+        df = _build_group(
+            t, v=5.0, s0=1.0, lam=4.0, alpha=10.0, smax=50.0,
+            noise_sigma=0.0, strain="Strain1", rng=rng, n_replicates=1,
+        )
+        df["Inoc_Size"] = 0.5
+
+        m = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["Metadata_Strain"],
+            s0_prior="Inoc_Size",
+            s0_prior_groupby=["Metadata_Dataset"],  # not in groupby
+            prune_saturated=False,
+        )
+        with pytest.raises(ValueError, match="must be a subset"):
+            m.analyze(df)
+
+    def test_s0_prior_groupby_without_column_raises(self):
+        """``s0_prior_groupby`` requires a column-backed prior —
+        scalar or disabled priors have no column to aggregate over."""
+        with pytest.raises(ValueError, match="requires a column-backed"):
+            LinearSoftplusModel(
+                on="Shape_Area",
+                groupby=["Metadata_Dataset", "Metadata_Strain"],
+                s0_prior=0.5,
+                s0_prior_groupby=["Metadata_Dataset"],
+            )
+
+    def test_missing_s0_prior_column_raises(self):
+        """``analyze`` must fail loud when ``s0_prior`` names a column
+        absent from the data, rather than silently dropping the prior."""
+        t = np.linspace(0, 20, 10)
+        rng = np.random.default_rng(45)
+        df = _build_group(
+            t, v=5.0, s0=1.0, lam=4.0, alpha=10.0, smax=50.0,
+            noise_sigma=0.0, strain="Strain1", rng=rng, n_replicates=1,
+        )
+        # Note: df has no "Inoc_Size" column.
+        m = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            s0_prior="Inoc_Size",
+            prune_saturated=False,
+        )
+        with pytest.raises(ValueError, match="not present in data columns"):
+            m.analyze(df)
+
+    def test_non_positive_factor_raises(self):
+        """``s0_prior_factor`` must be strictly positive — zero or
+        negative values would silently disengage the prior via the
+        downstream ``σ ≤ 0`` gate and reintroduce the original bug."""
+        for bad_factor in (0.0, -1.0, -0.5):
+            with pytest.raises(
+                ValueError, match="s0_prior_factor must be a positive"
+            ):
+                LinearSoftplusModel(
+                    on="Shape_Area",
+                    groupby=["Metadata_Dataset", "Metadata_Strain"],
+                    s0_prior="Inoc_Size",
+                    s0_prior_factor=bad_factor,
+                )
+
+    def test_non_positive_scalar_prior_raises(self):
+        """A scalar ``s0_prior`` must be positive — inoculum sizes are
+        physically positive, and µ ≤ 0 would silently disengage the
+        prior."""
+        for bad_mean in (0.0, -1.0):
+            with pytest.raises(
+                ValueError, match="s0_prior scalar must be a positive"
+            ):
+                LinearSoftplusModel(
+                    on="Shape_Area",
+                    groupby=["Metadata_Dataset", "Metadata_Strain"],
+                    s0_prior=bad_mean,
+                )
+
+    def test_empty_s0_prior_groupby_raises(self):
+        """``s0_prior_groupby=[]`` is rejected — pass ``None`` to fall
+        back to the fit groupby."""
+        with pytest.raises(ValueError, match="must not be an empty list"):
+            LinearSoftplusModel(
+                on="Shape_Area",
+                groupby=["Metadata_Dataset", "Metadata_Strain"],
+                s0_prior="Inoc_Size",
+                s0_prior_groupby=[],
+            )
+
+    # ------------------------------------------------------------------ #
+    # New polymorphic-dispatch behavior
+    # ------------------------------------------------------------------ #
+    def test_s0_prior_true_grounds_on_on_column(self):
+        """``s0_prior=True`` grounds µ on ``self.on`` at ``t_min``.
+
+        Under the hood, the helper sets ``label = on_column``, so
+        the prior takes its µ from the median of the fit's own
+        target column at the earliest observed timepoint.
+        """
+        t = np.linspace(0, 20, 20)
+        rng = np.random.default_rng(50)
+        df = _build_group(
+            t, v=5.0, s0=1.0, lam=4.0, alpha=10.0, smax=50.0,
+            noise_sigma=0.1, strain="Strain1", rng=rng, n_replicates=2,
+        )
+
+        m = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            s0_prior=True,
+            prune_saturated=False,
+        )
+        assert m._prior.label == "Shape_Area"
+        assert m._prior.direct_mean is None
+
+        probe = df.copy()
+        m._prior.prepare(probe, m.groupby, m.time_label)
+        group = probe.groupby(
+            ["Metadata_Dataset", "Metadata_Strain"]
+        ).get_group(("Test", "Strain1"))
+        stats = m._inoc_stats(group)
+        assert stats is not None
+        mu, sigma = stats
+
+        t_min = float(df["Metadata_Time"].min())
+        expected_mu = float(
+            df.loc[df["Metadata_Time"] == t_min, "Shape_Area"].median()
+        )
+        assert mu == pytest.approx(expected_mu, rel=1e-6)
+        assert sigma == pytest.approx(0.05 * expected_mu)  # default CV
+
+    def test_s0_prior_true_not_interpreted_as_numeric(self):
+        """Guard against the ``isinstance(True, int) is True`` gotcha:
+        ``s0_prior=True`` must take the data-grounded branch, not the
+        scalar branch with µ=1.0."""
+        m = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            s0_prior=True,
+        )
+        assert m._prior.label == "Shape_Area"
+        assert m._prior.direct_mean is None  # NOT 1.0
+
+    def test_s0_prior_false_disables_prior(self):
+        """``s0_prior=False`` is an explicit-disable, semantically
+        identical to ``None``."""
+        m_false = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            s0_prior=False,
+        )
+        m_none = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            s0_prior=None,
+        )
+        assert m_false._prior.is_configured is False
+        assert m_none._prior.is_configured is False
+        assert m_false._prior.label is None
+        assert m_false._prior.direct_mean is None
+
+    def test_s0_prior_invalid_type_raises(self):
+        """Non-supported types on ``s0_prior`` must raise
+        :class:`TypeError` at construction."""
+        for bad in ([1, 2], {"x": 1}, (0.5,)):
+            with pytest.raises(TypeError, match="s0_prior must be"):
+                LinearSoftplusModel(
+                    on="Shape_Area",
+                    groupby=["Metadata_Dataset", "Metadata_Strain"],
+                    s0_prior=bad,  # type: ignore[arg-type]
+                )
+
+    def test_s0_prior_factor_boundary(self):
+        """``factor=1.0`` is the CV/σ boundary: inclusive of CV, so
+        ``σ = 1.0 × µ``. Any value above (e.g. 1.0001) flips to the
+        absolute-σ branch."""
+        m_cv = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["G"],
+            s0_prior=10.0,
+            s0_prior_factor=1.0,       # ≤ 1 → CV path
+        )
+        assert m_cv._prior.cv == 1.0
+        assert m_cv._prior.direct_sigma is None
+        stats_cv = m_cv._prior.stats_for(pd.DataFrame({"G": ["x"]}))
+        assert stats_cv == pytest.approx((10.0, 10.0))  # σ = 1.0 × 10
+
+        m_sigma = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["G"],
+            s0_prior=10.0,
+            s0_prior_factor=1.0001,    # > 1 → σ path
+        )
+        assert m_sigma._prior.cv is None
+        assert m_sigma._prior.direct_sigma == pytest.approx(1.0001)
+        stats_sigma = m_sigma._prior.stats_for(pd.DataFrame({"G": ["x"]}))
+        assert stats_sigma == pytest.approx((10.0, 1.0001))
+
+    def test_s0_prior_factor_below_1_is_cv(self):
+        """Redundancy check for the CV branch: ``factor=0.1``,
+        ``µ=5`` → ``σ = 0.5``."""
+        m = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["G"],
+            s0_prior=5.0,
+            s0_prior_factor=0.1,
+        )
+        stats = m._prior.stats_for(pd.DataFrame({"G": ["x"]}))
+        assert stats == pytest.approx((5.0, 0.5))
+
+    def test_s0_prior_factor_above_1_is_sigma(self):
+        """Redundancy check for the σ branch: ``factor=3.0``, ``µ=10``
+        → ``σ = 3.0`` (independent of µ)."""
+        m = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["G"],
+            s0_prior=10.0,
+            s0_prior_factor=3.0,
+        )
+        stats = m._prior.stats_for(pd.DataFrame({"G": ["x"]}))
+        assert stats == pytest.approx((10.0, 3.0))
 
 
 # ---------------------------------------------------------------------- #
@@ -592,6 +973,181 @@ class TestDegenerateInput:
         assert np.isnan(float(res[LINEAR_SOFTPLUS_MODEL.s0].iloc[0]))
         assert np.isnan(float(res[LINEAR_SOFTPLUS_MODEL.lam].iloc[0]))
         assert np.isnan(float(res[LINEAR_SOFTPLUS_MODEL.alpha].iloc[0]))
+        assert pd.isna(res[LINEAR_SOFTPLUS_MODEL.beta].iloc[0])
+        # mode is a string-valued column — NaN fallback on fit failure.
+        assert pd.isna(res[LINEAR_SOFTPLUS_MODEL.mode].iloc[0])
+
+
+# ---------------------------------------------------------------------- #
+# Per-group mode dispatch
+# ---------------------------------------------------------------------- #
+class TestModeDispatch:
+    """Mode selection across the three variants — unclamped, fixed_beta,
+    fitted_beta — and how ``self.beta`` / ``self.smax`` steer the choice.
+    """
+
+    def test_saturating_curve_uses_fitted_beta(self):
+        """A curve with a clear shoulder and default ``beta=None`` picks
+        ``fitted_beta`` and recovers beta within the configured bounds."""
+        t = np.linspace(0, 20, 30)
+        rng = np.random.default_rng(100)
+        df = _build_group(
+            t, v=5.0, s0=1.0, lam=4.0, alpha=10.0, smax=50.0, beta=12.0,
+            noise_sigma=0.1, strain="Saturated", rng=rng, n_replicates=2,
+        )
+        m = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+        )
+        res = m.analyze(df)
+        assert res[LINEAR_SOFTPLUS_MODEL.mode].iloc[0] == "fitted_beta"
+        beta_fit = float(res[LINEAR_SOFTPLUS_MODEL.beta].iloc[0])
+        assert 2.0 <= beta_fit <= 50.0
+        assert np.isfinite(float(res[LINEAR_SOFTPLUS_MODEL.smax].iloc[0]))
+
+    def test_non_saturating_no_smax_uses_unclamped(self):
+        """Truncated-before-saturation + ``smax=None`` + ``beta=None``
+        selects the unclamped variant and reports NaN for smax/beta."""
+        # t range cut off well before the curve would reach smax=50.
+        t = np.linspace(0, 6, 15)
+        rng = np.random.default_rng(101)
+        df = _build_group(
+            t, v=5.0, s0=1.0, lam=3.0, alpha=10.0, smax=50.0, beta=10.0,
+            noise_sigma=0.0, strain="Open", rng=rng, n_replicates=1,
+        )
+        m = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+        )
+        res = m.analyze(df)
+        assert res[LINEAR_SOFTPLUS_MODEL.mode].iloc[0] == "unclamped"
+        assert pd.isna(res[LINEAR_SOFTPLUS_MODEL.smax].iloc[0])
+        assert pd.isna(res[LINEAR_SOFTPLUS_MODEL.beta].iloc[0])
+
+    def test_non_saturating_with_smax_uses_fixed_beta(self):
+        """No shoulder but user-supplied ``smax`` → ``fixed_beta`` with
+        the module-default beta."""
+        t = np.linspace(0, 6, 15)
+        rng = np.random.default_rng(102)
+        df = _build_group(
+            t, v=5.0, s0=1.0, lam=3.0, alpha=10.0, smax=50.0, beta=10.0,
+            noise_sigma=0.0, strain="OpenWithSmax", rng=rng, n_replicates=1,
+        )
+        m = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            smax=50.0,
+        )
+        res = m.analyze(df)
+        assert res[LINEAR_SOFTPLUS_MODEL.mode].iloc[0] == "fixed_beta"
+        assert float(res[LINEAR_SOFTPLUS_MODEL.smax].iloc[0]) == 50.0
+        assert float(res[LINEAR_SOFTPLUS_MODEL.beta].iloc[0]) == 10.0
+
+    def test_explicit_beta_forces_fixed_mode_even_with_shoulder(self):
+        """User-explicit ``beta=<scalar>`` pins the mode to ``fixed_beta``
+        regardless of whether a shoulder is present."""
+        t = np.linspace(0, 20, 30)
+        rng = np.random.default_rng(103)
+        df = _build_group(
+            t, v=5.0, s0=1.0, lam=4.0, alpha=10.0, smax=50.0, beta=10.0,
+            noise_sigma=0.0, strain="SatButPinned", rng=rng, n_replicates=1,
+        )
+        m = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            beta=7.0,
+        )
+        res = m.analyze(df)
+        assert res[LINEAR_SOFTPLUS_MODEL.mode].iloc[0] == "fixed_beta"
+        assert float(res[LINEAR_SOFTPLUS_MODEL.beta].iloc[0]) == 7.0
+
+    def test_fitted_beta_recovers_distinct_ground_truth(self):
+        """Two saturating groups with very different true betas must
+        produce distinctly different fitted betas."""
+        t = np.linspace(0, 20, 40)
+        rng = np.random.default_rng(104)
+        g_sharp = _build_group(
+            t, v=5.0, s0=1.0, lam=4.0, alpha=10.0, smax=50.0, beta=25.0,
+            noise_sigma=0.05, strain="SharpKnee", rng=rng, n_replicates=2,
+        )
+        g_soft = _build_group(
+            t, v=5.0, s0=1.0, lam=4.0, alpha=10.0, smax=50.0, beta=4.0,
+            noise_sigma=0.05, strain="SoftKnee", rng=rng, n_replicates=2,
+        )
+        df = pd.concat([g_sharp, g_soft], ignore_index=True)
+        m = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            prune_saturated=False,
+        )
+        res = m.analyze(df).set_index("Metadata_Strain")
+        for strain in ("SharpKnee", "SoftKnee"):
+            assert res.loc[strain, LINEAR_SOFTPLUS_MODEL.mode] == "fitted_beta"
+        beta_sharp = float(res.loc["SharpKnee", LINEAR_SOFTPLUS_MODEL.beta])
+        beta_soft = float(res.loc["SoftKnee", LINEAR_SOFTPLUS_MODEL.beta])
+        # The two fitted betas should be well-separated — sharp knee
+        # tends to the upper bound, soft knee toward its ground truth.
+        assert beta_sharp > beta_soft + 3.0
+        # Soft knee should land within a loose tolerance of truth.
+        assert abs(beta_soft - 4.0) < 3.0
+
+    def test_non_positive_beta_raises(self):
+        """Scalar ``beta`` must be a positive finite number."""
+        for bad in (0.0, -1.0, float("nan"), float("inf")):
+            with pytest.raises(ValueError, match="beta must be None or"):
+                LinearSoftplusModel(
+                    on="Shape_Area",
+                    groupby=["Metadata_Dataset", "Metadata_Strain"],
+                    beta=bad,
+                )
+
+
+# ---------------------------------------------------------------------- #
+# Shoulder detection
+# ---------------------------------------------------------------------- #
+class TestShoulderDetection:
+    """Unit tests for ``_has_saturation_shoulder`` — the signal driving
+    the fitted/unclamped branches of mode dispatch.
+    """
+
+    @pytest.fixture
+    def _model(self):
+        return LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+        )
+
+    def _wrap(self, t, y) -> pd.DataFrame:
+        return pd.DataFrame({"Metadata_Time": t, "Shape_Area": y})
+
+    def test_saturating_curve_detected(self, _model):
+        t = np.linspace(0, 20, 30)
+        y = LinearSoftplusModel.model_func(
+            t=t, v=5.0, s0=1.0, lam=4.0, alpha=10.0, smax=50.0, beta=10.0,
+        )
+        assert _model._has_saturation_shoulder(self._wrap(t, y))
+
+    def test_linear_growth_throughout_not_detected(self, _model):
+        # Pure linear growth — tail slope ≈ peak slope → no shoulder.
+        t = np.linspace(0, 20, 30)
+        y = 3.0 * t + 1.0
+        assert not _model._has_saturation_shoulder(self._wrap(t, y))
+
+    def test_flat_noise_not_detected(self, _model):
+        rng = np.random.default_rng(200)
+        t = np.linspace(0, 20, 30)
+        y = 1.0 + rng.normal(0, 1e-4, size=t.size)
+        # Dynamic-range guard should kick in.
+        assert not _model._has_saturation_shoulder(self._wrap(t, y))
+
+    def test_too_few_points_not_detected(self, _model):
+        # Even a perfect saturation shape is rejected below the
+        # minimum-samples gate.
+        t = np.linspace(0, 20, 5)
+        y = LinearSoftplusModel.model_func(
+            t=t, v=5.0, s0=1.0, lam=4.0, alpha=10.0, smax=50.0, beta=10.0,
+        )
+        assert not _model._has_saturation_shoulder(self._wrap(t, y))
 
 
 # ---------------------------------------------------------------------- #

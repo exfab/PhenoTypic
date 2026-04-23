@@ -127,23 +127,27 @@ class ModelFitter(SetAnalyzer, ABC):
     @abc.abstractmethod
     def _unpack_params(
         self, x: np.ndarray, group: pd.DataFrame
-    ) -> Dict[Any, float]:
+    ) -> Dict[Any, Any]:
         """Map optimizer output to a dict keyed by MeasurementInfo members.
 
         Must include every fitted/derived parameter column produced by this
         model (e.g. ``r``, ``K``, ``N0``, ``µmax`` for log-growth). May also
         include per-group bounds that should be preserved in results
-        (e.g. ``K_max``).
+        (e.g. ``K_max``), or string-valued diagnostic fields (e.g. the
+        per-group fit mode emitted by :class:`LinearSoftplusModel`).
         """
         pass
 
     @abc.abstractmethod
-    def _predict_kwargs(self, row) -> Dict[str, float]:
+    def _predict_kwargs(self, row) -> Dict[str, Any]:
         """Build kwargs for ``model_func(t, **kwargs)`` from a results row.
 
         ``row`` is any mapping keyed by MeasurementInfo members — a dict
         produced by ``_unpack_params`` at fit time, or a ``pd.Series``
-        drawn from the results DataFrame at plot time.
+        drawn from the results DataFrame at plot time. Values may be
+        ``None`` for optional model kwargs (e.g. ``smax=None`` to
+        disable the saturation ceiling in
+        :class:`LinearSoftplusModel`).
         """
         pass
 
@@ -250,7 +254,7 @@ class ModelFitter(SetAnalyzer, ABC):
             )
             fitted = self._unpack_params(out.x, group)
             y_pred = self.model_func(t=t_data, **self._predict_kwargs(fitted))
-            row: Dict[Any, float] = {
+            row: Dict[Any, Any] = {
                 **fitted,
                 **self._compute_metrics(y_data, y_pred),
                 MODEL_METRICS.LOSS: out.cost,
@@ -336,12 +340,20 @@ class ModelFitter(SetAnalyzer, ABC):
     def _time_axis(
         self, timepoints: pd.Series, tmax: int | float | None
     ) -> Tuple[np.ndarray, float]:
-        """Derive a uniform time axis for plotting prediction curves."""
-        step = np.abs(np.mean(timepoints.sort_values().diff().dropna()))
-        if np.isnan(step) or step <= 0:
-            step = 1.0
-        upper = timepoints.max() if tmax is None else tmax
-        return np.arange(stop=upper + step, step=step), step
+        """Derive a dense, uniform time axis for plotting prediction curves.
+
+        Samples ``[0, upper]`` with ``2 * upper`` points (floor 2) so
+        that sharp model transitions (e.g. the softplus lag/saturation
+        in :class:`LinearSoftplusModel`) render smoothly rather than as
+        a polyline sampled at the observed timepoints.
+        """
+        upper = float(timepoints.max() if tmax is None else tmax)
+        if not np.isfinite(upper) or upper <= 0:
+            upper = 1.0
+        num = max(2, int(2 * upper))
+        t = np.linspace(0.0, upper, num=num)
+        step = upper / (num - 1)
+        return t, step
 
     def _format_hover(self, row) -> str:
         """Join `_hover_fields` into a Plotly ``<extra>`` payload."""
@@ -632,11 +644,10 @@ class ModelFitter(SetAnalyzer, ABC):
                 ),
             ))
 
-        width_px = figsize[0] * 100
         height_px = figsize[1] * 100
 
         fig.update_layout(
-            width=width_px,
+            autosize=True,
             height=height_px,
             title=dict(
                 text=kwargs.get("title", "mean±SE"),

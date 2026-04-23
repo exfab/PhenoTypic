@@ -755,7 +755,7 @@ class RADIAL_EXPANSION(MeasurementInfo):
     )
 
 
-class SYMMETRIC_RADIUS(MeasurementInfo):
+class SYMMETRIC_ZONES(MeasurementInfo):
     """Mask-based radial expansion measurements for colonies on solid media.
 
     Summarises each colony's radial growth through four scalars derived
@@ -772,7 +772,7 @@ class SYMMETRIC_RADIUS(MeasurementInfo):
 
     @classmethod
     def category(cls) -> str:
-        return "SymmetricRadius"
+        return "SymmetricZoneS"
 
     CORE_RADIUS = (
         "CoreRadius",
@@ -1008,12 +1008,25 @@ class LINEAR_SOFTPLUS_MODEL(MeasurementInfo):
     s0 = ("s0", "The initial size")
     lam = ("lambda", "The duration of the lag phase")
     alpha = ("alpha", "lag phase transition sharpness")
-    smax = ("smax", "The carrying capacity if fitted")
+    smax = (
+        "smax",
+        "Carrying capacity used by the model. Provided, per-group "
+        "observed max, or NaN when the group fit as unclamped.",
+    )
     beta = (
         "beta",
-        "user-provided saturation transition sharpness. Not fitted since "
-        "this is not always biologically meaningful and adds complexity "
-        "to the fitting.",
+        "Saturation transition sharpness. Fitted per-group when a "
+        "saturation shoulder is detected and ``beta`` is ``None`` at "
+        "construction; held at the user-provided scalar (or the "
+        "module default) when no shoulder is present. NaN in "
+        "unclamped mode.",
+    )
+    mode = (
+        "mode",
+        "Fit variant selected per-group: 'unclamped' (no saturation "
+        "term), 'fixed_beta' (clamped with user-provided or default "
+        "beta), or 'fitted_beta' (clamped with beta fitted as a 5th "
+        "free parameter).",
     )
 
 
