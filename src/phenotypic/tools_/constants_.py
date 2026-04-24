@@ -88,7 +88,10 @@ class IO:
     JPEG_FILE_EXTENSIONS = (".jpeg", ".JPEG", ".jpg")
     TIFF_EXTENSIONS = (".tif", ".tiff")
     ACCEPTED_FILE_EXTENSIONS = (
-            PNG_FILE_EXTENSIONS + JPEG_FILE_EXTENSIONS + TIFF_EXTENSIONS
+            PNG_FILE_EXTENSIONS
+            + JPEG_FILE_EXTENSIONS
+            + TIFF_EXTENSIONS
+            + RAW_FILE_EXTENSIONS
     )
 
     # Key used for PhenoTypic metadata container in image files
