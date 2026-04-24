@@ -29,6 +29,7 @@ theoretical background for PhenoTypic's algorithms.
    measurement_metrics_biological_meaning
    edge_effects_in_plate_assays
    image_quality_noise_contrast_structure
+   notebooks/linear_softplus_model
 
 .. toctree::
    :maxdepth: 1
