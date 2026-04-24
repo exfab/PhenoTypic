@@ -38,6 +38,10 @@ import sphinx_autosummary_accessors
 sys.path.insert(0, os.path.abspath("../../src"))
 sys.path.insert(0, os.path.abspath("./_extensions"))
 
+DOCS_VERSION = os.environ.get("DOCS_VERSION", "experimental")
+DOCS_BASE_URL = "https://exfab.github.io/PhenoTypic"
+VERSION_MATCH = "dev" if DOCS_VERSION == "experimental" else DOCS_VERSION
+
 # Register ipython2 as an alias for ipython3 to suppress warnings in old notebooks
 from pygments.lexers import get_lexer_by_name
 
@@ -180,9 +184,6 @@ html_css_files = [
 
 if html_theme == "pydata_sphinx_theme":
     html_title = "PhenoTypic"
-    html_theme_options = {
-        "subtitle": "A modular framework for bioimage analysis and visualization"
-    }
     html_logo = LIGHT_LOGO_PATH
     html_theme_options = {
         "logo": {
@@ -202,7 +203,15 @@ if html_theme == "pydata_sphinx_theme":
         "show_toc_level": 3,
         "navigation_with_keys": True,
         "show_prev_next": False,
+        "navbar_end": ["version-switcher", "theme-switcher", "navbar-icon-links"],
+        "switcher": {
+            "json_url": f"{DOCS_BASE_URL}/versions.json",
+            "version_match": VERSION_MATCH,
+        },
+        "check_switcher": False,
+        "show_version_warning_banner": True,
     }
+    html_baseurl = f"{DOCS_BASE_URL}/{DOCS_VERSION}/"
 
 # Napoleon Settings
 napoleon_google_docstring = True
