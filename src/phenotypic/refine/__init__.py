@@ -20,6 +20,7 @@ from ._gmm_core_extractor import GMMCoreExtractor
 from ._grid_alignment_refiner import GridAlignmentRefiner
 from ._sine_alignment_refiner import SineAlignmentRefiner
 from ._grid_oversized_object_remover import GridOversizedObjectRemover
+from ._manual_selector import ManualSelector
 from ._mask_closer import MaskCloser
 from ._mask_dilator import MaskDilator
 from ._mask_eroder import MaskEroder
@@ -46,6 +47,7 @@ __all__ = [
     "GridAlignmentRefiner",
     "GridOversizedObjectRemover",
     "LowCircularityRemover",
+    "ManualSelector",
     "MaskCloser",
     "MaskDilator",
     "MaskEroder",
