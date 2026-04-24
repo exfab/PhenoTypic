@@ -448,6 +448,140 @@ class TestStderrFloor:
         assert abs(v_fit - 4.0) < 1.0
         assert abs(lam_fit - 5.0) < 2.0
 
+    def test_mixed_singleton_and_multi_replicate_broadcasts_pool(self):
+        """Pool column broadcasts: finite for mixed, NaN for all-singleton.
+
+        For a fit group containing both n=1 and n≥2 timepoints, the
+        pooled point-level std (median of per-timepoint stds across
+        the n≥2 timepoints) is broadcast onto every row of the group.
+        For a fully-singleton fit group, the pool column is NaN — the
+        existing unweighted-fallback path still applies.
+        """
+        t = np.linspace(0, 20, 12)
+        rng = np.random.default_rng(77)
+
+        # StrainA: mixed — drop 2 of 3 replicates at alternating
+        # timepoints to make those timepoints n=1.
+        df_a = _build_group(
+            t, v=5.0, s0=1.0, lam=4.0, alpha=10.0, smax=50.0,
+            noise_sigma=0.3, strain="StrainA", rng=rng, n_replicates=3,
+        )
+        times = np.sort(df_a["Metadata_Time"].unique())
+        singleton_times = times[::2]
+        keep_mask = ~(
+            df_a["Metadata_Time"].isin(singleton_times)
+            & (df_a["Metadata_Replicate"] > 0)
+        )
+        df_a = df_a[keep_mask].reset_index(drop=True)
+
+        # StrainB: fully-singleton.
+        df_b = _build_group(
+            t, v=3.0, s0=2.0, lam=6.0, alpha=10.0, smax=40.0,
+            noise_sigma=0.3, strain="StrainB", rng=rng, n_replicates=1,
+        )
+
+        df = pd.concat([df_a, df_b], ignore_index=True)
+
+        m = LinearSoftplusModel(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            prune_saturated=False,
+        )
+        m.analyze(df)
+
+        # _latest_measurements exposes the post-broadcast raw data
+        # (set by ModelFitter.analyze) — the pool column lives here
+        # before the per-timepoint aggregation collapses it.
+        cached = m._latest_measurements
+        pool_col = "Shape_Area_std_pool"
+        assert pool_col in cached.columns
+
+        pool_a = cached.loc[cached["Metadata_Strain"] == "StrainA", pool_col]
+        pool_b = cached.loc[cached["Metadata_Strain"] == "StrainB", pool_col]
+        # StrainA has n=3 timepoints → finite positive pool broadcast
+        # to every row of the fit group.
+        assert pool_a.notna().all()
+        assert (pool_a > 0).all()
+        assert pool_a.nunique() == 1  # broadcast constant within group
+        # StrainB has only n=1 timepoints → pool cannot be estimated.
+        assert pool_b.isna().all()
+
+    def test_mixed_singleton_pool_beats_epsilon_baseline_on_s0(self):
+        """Pool fallback recovers ``s0`` better than the old ε-fill.
+
+        Build a mixed n=1/n=3 fit group and compare two fits, both
+        with ``stderr_floor_quantile=None`` to isolate the fill
+        behavior:
+
+        - **Baseline** — supply ``stderr_label`` with σ ≈ 1e-9 on n=1
+          rows and a SEM-sized σ on n=3 rows. This mimics the pre-fix
+          auto-path where n=1 σ collapsed to ε and the 1/σ² weight
+          made those rows dominate the fit (interpolating their
+          noise). Because ``s0`` is only identifiable from the lag-
+          phase timepoints, it's the parameter most sensitive to this
+          weighting pathology.
+        - **Pool** — use the auto-path (``stderr_label=None``), so
+          n=1 rows get σ ≈ pooled point-level std. All rows contribute
+          comparably to the fit.
+
+        Expectation: the pool-path ``s0`` lands at least as close to
+        truth as the baseline ``s0``. This is a genuine regression
+        guard — the old code, with its ε fill, cannot produce the
+        pool-path behavior.
+        """
+        t = np.linspace(0, 20, 20)
+        rng = np.random.default_rng(321)
+        df_full = _build_group(
+            t, v=4.0, s0=1.0, lam=4.0, alpha=10.0, smax=40.0,
+            noise_sigma=0.3, strain="Strain1", rng=rng, n_replicates=3,
+        )
+        times = np.sort(df_full["Metadata_Time"].unique())
+        singleton_times = times[::2]
+        keep_mask = ~(
+            df_full["Metadata_Time"].isin(singleton_times)
+            & (df_full["Metadata_Replicate"] > 0)
+        )
+        df = df_full[keep_mask].reset_index(drop=True)
+
+        # Per-row replicate count at each timepoint (1 for singletons,
+        # 3 for the preserved triplet timepoints).
+        n_at_t = df.groupby("Metadata_Time")["Shape_Area"].transform("count")
+        sem_like = 0.3 / np.sqrt(3)  # true SEM scale for n=3 rows
+        eps_sigma = 1e-9  # mimics the pre-fix ε fill on n=1 rows
+        df["sigma_baseline"] = np.where(n_at_t == 1, eps_sigma, sem_like)
+
+        common = dict(
+            on="Shape_Area",
+            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            stderr_floor_quantile=None,
+            prune_saturated=False,
+        )
+        baseline = LinearSoftplusModel(
+            **common, stderr_label="sigma_baseline",
+        ).analyze(df)
+        pool = LinearSoftplusModel(**common).analyze(df)
+
+        s0_baseline = float(baseline[LINEAR_SOFTPLUS_MODEL.s0].iloc[0])
+        s0_pool = float(pool[LINEAR_SOFTPLUS_MODEL.s0].iloc[0])
+        v_pool = float(pool[LINEAR_SOFTPLUS_MODEL.v].iloc[0])
+        lam_pool = float(pool[LINEAR_SOFTPLUS_MODEL.lam].iloc[0])
+
+        # Both fits produce finite parameters.
+        assert np.isfinite(s0_baseline)
+        assert np.isfinite(s0_pool)
+
+        # Pool-path s0 is at least as close to truth as the baseline.
+        # Small tolerance (1e-9) absorbs optimizer-level jitter when the
+        # two paths happen to converge to the same local minimum on a
+        # particularly benign fixture.
+        assert abs(s0_pool - 1.0) <= abs(s0_baseline - 1.0) + 1e-9
+
+        # Pool-path recovers v and lam within tightened bounds (< 15%
+        # and < 25% of truth respectively) — discriminating against a
+        # fit that drifted badly due to NaN-handling pathologies.
+        assert abs(v_pool - 4.0) < 0.6
+        assert abs(lam_pool - 4.0) < 1.0
+
 
 # ---------------------------------------------------------------------- #
 # smax fallback

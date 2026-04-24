@@ -306,7 +306,12 @@ class LinearSoftplusModel(ModelFitter):
             unconditionally.
         stderr_label (str | None): Column providing per-timepoint standard
             errors used as weights in the fit. When ``None``, the fit
-            auto-derives a replicate-SE column during aggregation.
+            auto-derives a replicate-SE column during aggregation *and*
+            a per-fit-group pooled point-level std (median across the
+            n≥2 timepoints' stds) that fills σ for any n=1 timepoints
+            in the group. This keeps single-replicate rows from
+            dominating the 1/σ² weighting — they get σ ≈ typical point
+            noise instead of ε (see :meth:`_resolve_y_stderr`).
         stderr_floor_quantile (float | None): Lower bound on the
             per-timepoint σ used in the weighted loss, expressed as a
             quantile in ``(0, 1]`` of the group's finite, positive σ
@@ -321,14 +326,14 @@ class LinearSoftplusModel(ModelFitter):
             pathology of replicate-SEM weighting: coincidentally-
             agreeing replicates whose SEM collapses toward zero by
             chance, pinning the fit to a handful of "lucky" points
-            with no real precision advantage. Groups with *no* finite
-            positive σ at all (e.g. singleton replicates where SEM is
-            NaN everywhere, or noise-free synthetic data where SEM is
-            zero everywhere) bypass the weighting pathway entirely
-            and fall back to an unweighted residual — the floor is
-            inapplicable in that case. Applies to both user-supplied
-            ``stderr_label`` columns and the auto-derived
-            replicate-SEM column.
+            with no real precision advantage. Fit groups with *no*
+            finite positive σ and no usable pool (e.g. every timepoint
+            has n=1 — SEM is NaN and the pool cannot be estimated; or
+            noise-free synthetic data where every σ is zero) bypass
+            the weighting pathway entirely and fall back to an
+            unweighted residual — the floor is inapplicable in that
+            case. Applies to both user-supplied ``stderr_label``
+            columns and the auto-derived replicate-SEM column.
         s0_prior (bool | float | str | None): Unified Gaussian-prior
             source for ``s0``. The prior is engaged when this is
             ``True``, a positive scalar, or a column name; disabled
@@ -826,41 +831,68 @@ class LinearSoftplusModel(ModelFitter):
         """Build a per-timepoint ``y_stderr`` vector aligned with group rows.
 
         Priority order:
-          1. User-supplied ``stderr_label`` column.
-          2. Auto-derived replicate-SE column ``f"{on}_stderr"`` emitted
-             by :meth:`_extra_agg_columns` when ``stderr_label is None``.
+          1. User-supplied ``stderr_label`` column (no pool fallback —
+             the user has opted into their own σ semantics).
+          2. Auto-derived replicate-SE column ``f"{on}_stderr"``. NaN /
+             zero σ entries (n=1 timepoints, or coincidentally-identical
+             replicates) are filled with the broadcast pooled point-level
+             std ``f"{on}_std_pool"``. When the pool is itself NaN
+             (fully-singleton fit group), the auto-σ path degrades to
+             the ε-fill behavior used by the user-supplied branch.
           3. No weights (return ``None``).
         """
+        pool_value: float | None = None
         if self.stderr_label is not None and self.stderr_label in group.columns:
             raw = group[self.stderr_label].to_numpy(dtype=float)
         elif f"{self.on}_stderr" in group.columns:
             raw = group[f"{self.on}_stderr"].to_numpy(dtype=float)
+            pool_col = f"{self.on}_std_pool"
+            if pool_col in group.columns:
+                pool_series = group[pool_col].dropna()
+                if not pool_series.empty:
+                    cand = float(pool_series.iloc[0])
+                    if np.isfinite(cand) and cand > 0:
+                        pool_value = cand
         else:
             return None
 
-        # When no positive σ exist (e.g. noise-free synthetic fixtures
-        # where all replicates agree and SEM is 0, or singleton-replicate
-        # groups where SEM is NaN), skip the weighting pathway entirely.
-        # Faking σ with an ε-fill would rescale residuals by ~1/ε and
-        # break the conditioning of robust losses (huber, soft_l1, etc.)
-        # whose ``f_scale`` threshold is interpreted in residual units.
+        # When no positive σ exist AND no pool-std is available (noise-
+        # free synthetic fixtures where replicates agree and SEM is 0,
+        # or fully-singleton-replicate fit groups where SEM is NaN),
+        # skip the weighting pathway entirely. Faking σ with an ε-fill
+        # would rescale residuals by ~1/ε and break the conditioning of
+        # robust losses (huber, soft_l1, etc.) whose ``f_scale`` threshold
+        # is interpreted in residual units.
         positive = raw[(raw > 0) & np.isfinite(raw)]
-        if positive.size == 0:
+        if positive.size == 0 and pool_value is None:
             return None
 
-        # Replace the remaining zero/NaN entries with a small epsilon
-        # scaled to the median positive stderr so the weighted residuals
-        # stay finite and commensurate with the data.
-        eps = 1e-8 * float(np.nanmedian(np.abs(positive)))
-        if eps <= 0 or not np.isfinite(eps):
-            eps = 1e-8
-        sigma = np.where((raw > 0) & np.isfinite(raw), raw, eps)
+        # Fill NaN / zero σ entries. When auto-deriving σ and the fit
+        # group has at least one multi-replicate timepoint, use the
+        # broadcast pooled point-level std — this gives n=1 rows σ ≈
+        # typical point noise, so their 1/σ² weight is commensurate
+        # with (rather than dominating) the SEM-weighted multi-replicate
+        # rows. Fall back to the original ε-scaled fill on the user-
+        # supplied ``stderr_label`` path or when no pool is available.
+        if pool_value is not None:
+            fill = pool_value
+        else:
+            eps = 1e-8 * float(np.nanmedian(np.abs(positive)))
+            if eps <= 0 or not np.isfinite(eps):
+                eps = 1e-8
+            fill = eps
+        sigma = np.where((raw > 0) & np.isfinite(raw), raw, fill)
 
         # Optional quantile floor: neutralizes coincidentally-tiny σ
         # that would otherwise dominate the 1/σ² weighting. Floor is
-        # computed from finite, >0 entries so ε-filled positions do
-        # not skew it; they still get lifted to the floor via np.maximum.
-        if self.stderr_floor_quantile is not None:
+        # computed from finite, >0 entries only so pool-/ε-filled
+        # positions do not skew it; they still get lifted to the floor
+        # via np.maximum. The ``positive.size > 0`` guard is defensive:
+        # by construction, ``positive.size == 0`` implies ``pool_value
+        # is None`` (std requires n≥2, as does SEM), which the early
+        # return above already handles — but ``np.quantile`` on an
+        # empty array would raise, so keep the guard explicit.
+        if self.stderr_floor_quantile is not None and positive.size > 0:
             floor = float(np.quantile(positive, self.stderr_floor_quantile))
             if np.isfinite(floor) and floor > 0:
                 sigma = np.maximum(sigma, floor)
@@ -882,6 +914,10 @@ class LinearSoftplusModel(ModelFitter):
             extras[self.stderr_label] = "mean"
         else:
             extras[f"{self.on}_stderr"] = "mean"
+            # Pool column is constant within each fit group — "first"
+            # carries the broadcast value through the per-timepoint
+            # aggregation without change.
+            extras[f"{self.on}_std_pool"] = "first"
         extras.update(self._prior.extra_agg_columns())
         return extras
 
@@ -893,7 +929,15 @@ class LinearSoftplusModel(ModelFitter):
 
         - When ``stderr_label`` is ``None``, a replicate-SEM column
           derived via ``groupby.transform("sem")`` so the weighted
-          loss can downweight noisy timepoints automatically.
+          loss can downweight noisy timepoints automatically, plus a
+          per-fit-group pooled point-level std column
+          (``f"{on}_std_pool"``) computed as the median of per-
+          timepoint stds across the group's n≥2 timepoints. The pool
+          gives :meth:`_resolve_y_stderr` a principled fallback σ for
+          n=1 timepoints (σ ≈ typical point noise) instead of the
+          vanishingly-small ε fill. Fit groups with zero multi-
+          replicate timepoints produce NaN here and inherit the
+          unweighted-residual fallback.
         - When the inoculum prior is column-based, a per-group median
           of ``inoc_size_label`` at the earliest observed timepoint is
           broadcast into a ``f"{label}_group_mean"`` column — the
@@ -923,6 +967,30 @@ class LinearSoftplusModel(ModelFitter):
             data[se_col] = data.groupby(
                     self.groupby + [self.time_label]
             )[self.on].transform("sem")
+
+            # Pooled point-level std, broadcast per fit group. Used by
+            # ``_resolve_y_stderr`` as the σ fallback for n=1 timepoints.
+            # Fully-singleton fit groups yield NaN here → the resolver
+            # returns ``None`` and the fit runs unweighted (preserving
+            # the existing singleton-fallback behavior).
+            #
+            # The inner ``transform("std")`` broadcasts one std value
+            # per timepoint onto every row at that timepoint, and the
+            # outer ``transform("median")`` computes the median across
+            # those rows within the fit group — so timepoints with more
+            # replicates contribute proportionally more rows (i.e. more
+            # weight) to the pool. Accepted trade-off: this tends to
+            # enlarge σ for n=1 rows (since high-replicate timepoints
+            # often carry larger absolute std), which is the safer
+            # direction — the pool-filled n=1 rows never dominate the
+            # fit over their better-supported n≥2 neighbours.
+            std_pool_col = f"{self.on}_std_pool"
+            std_pt = data.groupby(
+                    self.groupby + [self.time_label]
+            )[self.on].transform("std")
+            data[std_pool_col] = std_pt.groupby(
+                    [data[c] for c in self.groupby]
+            ).transform("median")
 
         self._prior.prepare(data, self.groupby, self.time_label)
 
