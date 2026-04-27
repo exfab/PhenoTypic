@@ -18,12 +18,26 @@ from sklearn.metrics import (
     root_mean_squared_error,
 )
 
-from phenotypic.tools_.measurement_info_ import MODEL_METRICS
+from phenotypic.tools_.measurement_info import MODEL_METRICS
 
 from ._set_analyzer import SetAnalyzer
 
 if TYPE_CHECKING:
     import plotly.graph_objects as go
+
+
+LossKind = Literal["linear", "soft_l1", "huber", "cauchy", "arctan"]
+"""Scipy ``least_squares`` loss names supported by :class:`ModelFitter`.
+
+- ``"linear"`` — standard unweighted squared-residual loss (default).
+- ``"soft_l1"`` — smooth L1; mild downweighting of large residuals.
+- ``"huber"`` — quadratic near zero, linear past ``f_scale``; classic
+  robust loss.
+- ``"cauchy"`` — heavy-tailed; aggressively suppresses outliers.
+- ``"arctan"`` — saturates to a bounded contribution; most aggressive.
+
+See :func:`scipy.optimize.least_squares` for the exact ρ formulas.
+"""
 
 
 class ModelFitter(SetAnalyzer, ABC):
@@ -43,30 +57,48 @@ class ModelFitter(SetAnalyzer, ABC):
     Attributes:
         time_label (str): Column name representing the independent
             variable (typically time).
-        loss (Literal["linear"]): Loss calculation method passed through
-            to :func:`scipy.optimize.least_squares`.
+        loss (LossKind): Loss calculation method passed through to
+            :func:`scipy.optimize.least_squares`. Defaults to
+            ``"huber"`` — quadratic near zero and linear past
+            ``f_scale``, so the fit behaves like standard
+            least-squares on inliers but downweights rare large
+            residuals (bubble artifacts, contamination spikes,
+            mis-segmented timepoints). Pass ``"linear"`` to recover
+            the classical unweighted-squared-residual loss, or
+            ``"soft_l1"`` / ``"cauchy"`` / ``"arctan"`` for
+            progressively more aggressive outlier suppression.
+        f_scale (float): Soft margin between inlier and outlier
+            residuals handed to :func:`scipy.optimize.least_squares`.
+            Only affects robust ``loss`` choices; ignored when
+            ``loss="linear"``. Must be positive and finite.
         verbose (bool): Whether to print detailed optimizer output.
     """
 
-    _measurement_info_class: type
+    _measurement_infoclass: type
 
     def __init__(
-        self,
-        on: str,
-        groupby: List[str],
-        time_label: str = "Metadata_Time",
-        agg_func: Callable | str | list | dict | None = "mean",
-        *,
-        num_workers: int = 1,
-        loss: Literal["linear"] = "linear",
-        verbose: bool = False,
+            self,
+            on: str,
+            groupby: List[str],
+            time_label: str = "Metadata_Time",
+            agg_func: Callable | str | list | dict | None = "mean",
+            *,
+            num_workers: int = 1,
+            loss: LossKind = "huber",
+            f_scale: float = 1.0,
+            verbose: bool = False,
     ):
         super().__init__(
-            on=on, groupby=groupby, agg_func=agg_func, num_workers=num_workers
+                on=on, groupby=groupby, agg_func=agg_func, num_workers=num_workers
         )
+        if not np.isfinite(f_scale) or f_scale <= 0:
+            raise ValueError(
+                    f"f_scale must be a positive finite number, got {f_scale!r}."
+            )
         self._latest_model_scores: pd.DataFrame = pd.DataFrame()
         self.time_label = time_label
         self.loss = loss
+        self.f_scale = float(f_scale)
         self.verbose = verbose
 
     # ------------------------------------------------------------------ #
@@ -87,10 +119,10 @@ class ModelFitter(SetAnalyzer, ABC):
         this hook.
         """
         raise NotImplementedError(
-            f"{type(self).__name__} uses the default MSE loss but does "
-            f"not implement `_params_to_model_kwargs`. Either implement "
-            f"it to map the optimizer vector to `model_func` kwargs, or "
-            f"override `_loss_func` with a fully custom residual."
+                f"{type(self).__name__} uses the default MSE loss but does "
+                f"not implement `_params_to_model_kwargs`. Either implement "
+                f"it to map the optimizer vector to `model_func` kwargs, or "
+                f"override `_loss_func` with a fully custom residual."
         )
 
     def _loss_func(self, params, t, y, **_):
@@ -119,31 +151,35 @@ class ModelFitter(SetAnalyzer, ABC):
 
     @abc.abstractmethod
     def _bounds(
-        self, group: pd.DataFrame
+            self, group: pd.DataFrame
     ) -> Tuple[List[float], List[float]]:
         """Return ``(lower, upper)`` bounds for the fitted parameters."""
         pass
 
     @abc.abstractmethod
     def _unpack_params(
-        self, x: np.ndarray, group: pd.DataFrame
-    ) -> Dict[Any, float]:
+            self, x: np.ndarray, group: pd.DataFrame
+    ) -> Dict[Any, Any]:
         """Map optimizer output to a dict keyed by MeasurementInfo members.
 
         Must include every fitted/derived parameter column produced by this
         model (e.g. ``r``, ``K``, ``N0``, ``µmax`` for log-growth). May also
         include per-group bounds that should be preserved in results
-        (e.g. ``K_max``).
+        (e.g. ``K_max``), or string-valued diagnostic fields (e.g. the
+        per-group fit mode emitted by :class:`LinearSoftplusModel`).
         """
         pass
 
     @abc.abstractmethod
-    def _predict_kwargs(self, row) -> Dict[str, float]:
+    def _predict_kwargs(self, row) -> Dict[str, Any]:
         """Build kwargs for ``model_func(t, **kwargs)`` from a results row.
 
         ``row`` is any mapping keyed by MeasurementInfo members — a dict
         produced by ``_unpack_params`` at fit time, or a ``pd.Series``
-        drawn from the results DataFrame at plot time.
+        drawn from the results DataFrame at plot time. Values may be
+        ``None`` for optional model kwargs (e.g. ``smax=None`` to
+        disable the saturation ceiling in
+        :class:`LinearSoftplusModel`).
         """
         pass
 
@@ -197,10 +233,10 @@ class ModelFitter(SetAnalyzer, ABC):
     def _compute_metrics(y_true, y_pred) -> Dict[Any, float]:
         """Compute the generic fit-quality metrics shared by all subclasses."""
         return {
-            MODEL_METRICS.MAE: mean_absolute_error(y_true, y_pred),
-            MODEL_METRICS.MSE: mean_squared_error(y_true, y_pred),
+            MODEL_METRICS.MAE : mean_absolute_error(y_true, y_pred),
+            MODEL_METRICS.MSE : mean_squared_error(y_true, y_pred),
             MODEL_METRICS.RMSE: root_mean_squared_error(y_true, y_pred),
-            MODEL_METRICS.R2: r2_score(y_true, y_pred),
+            MODEL_METRICS.R2  : r2_score(y_true, y_pred) if len(y_true) > 2 else np.nan,
         }
 
     def _nan_fit_columns(self) -> Dict[Any, float]:
@@ -212,7 +248,7 @@ class ModelFitter(SetAnalyzer, ABC):
         constant hyperparameter value is preserved rather than overwritten
         with NaN.
         """
-        mi = self._measurement_info_class
+        mi = self._measurement_infoclass
         post_keys = set(self._post_fit_columns().keys())
         model_cols = {
             member: np.nan
@@ -240,31 +276,32 @@ class ModelFitter(SetAnalyzer, ABC):
 
         try:
             out = optimize.least_squares(
-                self._loss_func,
-                x0=self._initial_guess(group),
-                bounds=self._bounds(group),
-                kwargs=dict(t=t_data, y=y_data, **loss_kwargs),
-                verbose=int(self.verbose),
-                method="trf",
-                loss=self.loss,
+                    self._loss_func,
+                    x0=self._initial_guess(group),
+                    bounds=self._bounds(group),
+                    kwargs=dict(t=t_data, y=y_data, **loss_kwargs),
+                    verbose=int(self.verbose),
+                    method="trf",
+                    loss=self.loss,
+                    f_scale=self.f_scale,
             )
             fitted = self._unpack_params(out.x, group)
             y_pred = self.model_func(t=t_data, **self._predict_kwargs(fitted))
-            row: Dict[Any, float] = {
+            row: Dict[Any, Any] = {
                 **fitted,
                 **self._compute_metrics(y_data, y_pred),
-                MODEL_METRICS.LOSS: out.cost,
-                MODEL_METRICS.STATUS: out.status,
+                MODEL_METRICS.LOSS       : out.cost,
+                MODEL_METRICS.STATUS     : out.status,
                 MODEL_METRICS.NUM_SAMPLES: len(t_data),
             }
         except ValueError:
             row = self._nan_fit_columns()
 
         return pd.DataFrame(
-            data=row,
-            index=pd.MultiIndex.from_tuples(
-                tuples=[group_key], names=self.groupby
-            ),
+                data=row,
+                index=pd.MultiIndex.from_tuples(
+                        tuples=[group_key], names=self.groupby
+                ),
         )
 
     # ------------------------------------------------------------------ #
@@ -280,7 +317,7 @@ class ModelFitter(SetAnalyzer, ABC):
         """
         data = data.copy(deep=True)
         data.loc[:, self.time_label] = self._ensure_float_array(
-            data.loc[:, self.time_label]
+                data.loc[:, self.time_label]
         )
         self._latest_measurements = data
 
@@ -288,7 +325,7 @@ class ModelFitter(SetAnalyzer, ABC):
         agg_dict.update(self._extra_agg_columns())
 
         agg_data = data.groupby(
-            by=self.groupby + [self.time_label], as_index=False
+                by=self.groupby + [self.time_label], as_index=False
         ).agg(agg_dict)
 
         grouped = agg_data.groupby(by=self.groupby, as_index=True)
@@ -298,8 +335,8 @@ class ModelFitter(SetAnalyzer, ABC):
             ]
         else:
             model_res = Parallel(n_jobs=self.n_jobs)(
-                delayed(self._apply2group_func)(key, group)
-                for key, group in grouped
+                    delayed(self._apply2group_func)(key, group)
+                    for key, group in grouped
             )
 
         results = pd.concat(model_res, axis=0).reset_index(drop=False)
@@ -318,15 +355,15 @@ class ModelFitter(SetAnalyzer, ABC):
     # Internal helpers for plotting
     # ------------------------------------------------------------------ #
     def _filter_for_plot(
-        self, criteria: Dict[str, Union[Any, List[Any]]] | None
+            self, criteria: Dict[str, Union[Any, List[Any]]] | None
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Apply `criteria` (if any) to both the model-scores and measurements frames."""
         if criteria is not None:
             model_scores = self._filter_by(
-                df=self._latest_model_scores, criteria=criteria, copy=True
+                    df=self._latest_model_scores, criteria=criteria, copy=True
             )
             measurements = self._filter_by(
-                df=self._latest_measurements, criteria=criteria, copy=True
+                    df=self._latest_measurements, criteria=criteria, copy=True
             )
         else:
             model_scores = self._latest_model_scores.copy()
@@ -334,14 +371,22 @@ class ModelFitter(SetAnalyzer, ABC):
         return model_scores, measurements
 
     def _time_axis(
-        self, timepoints: pd.Series, tmax: int | float | None
+            self, timepoints: pd.Series, tmax: int | float | None
     ) -> Tuple[np.ndarray, float]:
-        """Derive a uniform time axis for plotting prediction curves."""
-        step = np.abs(np.mean(timepoints.sort_values().diff().dropna()))
-        if np.isnan(step) or step <= 0:
-            step = 1.0
-        upper = timepoints.max() if tmax is None else tmax
-        return np.arange(stop=upper + step, step=step), step
+        """Derive a dense, uniform time axis for plotting prediction curves.
+
+        Samples ``[0, upper]`` with ``2 * upper`` points (floor 2) so
+        that sharp model transitions (e.g. the softplus lag/saturation
+        in :class:`LinearSoftplusModel`) render smoothly rather than as
+        a polyline sampled at the observed timepoints.
+        """
+        upper = float(timepoints.max() if tmax is None else tmax)
+        if not np.isfinite(upper) or upper <= 0:
+            upper = 1.0
+        num = max(2, int(2 * upper))
+        t = np.linspace(0.0, upper, num=num)
+        step = upper / (num - 1)
+        return t, step
 
     def _format_hover(self, row) -> str:
         """Join `_hover_fields` into a Plotly ``<extra>`` payload."""
@@ -355,14 +400,14 @@ class ModelFitter(SetAnalyzer, ABC):
     # Matplotlib visualization
     # ------------------------------------------------------------------ #
     def show(
-        self,
-        tmax: int | float | None = None,
-        criteria: Dict[str, Union[Any, List[Any]]] | None = None,
-        figsize=(6, 4),
-        cmap: str | None = "tab20",
-        legend: bool = True,
-        ax: plt.Axes | None = None,
-        **kwargs,
+            self,
+            tmax: int | float | None = None,
+            criteria: Dict[str, Union[Any, List[Any]]] | None = None,
+            figsize=(6, 4),
+            cmap: str | None = "tab20",
+            legend: bool = True,
+            ax: plt.Axes | None = None,
+            **kwargs,
     ) -> Tuple[plt.Figure, plt.Axes]:
         """Plot model predictions alongside measurements with optional filtering.
 
@@ -410,7 +455,7 @@ class ModelFitter(SetAnalyzer, ABC):
             return fig, ax
 
         measurements.loc[:, self.time_label] = self._ensure_float_array(
-            measurements.loc[:, self.time_label]
+                measurements.loc[:, self.time_label]
         )
 
         model_groups = {
@@ -429,11 +474,12 @@ class ModelFitter(SetAnalyzer, ABC):
                     matplotlib.colormaps[cmap] if isinstance(cmap, str) else cmap
                 )
                 color_iter = itertools.cycle(
-                    cmap_obj(
-                        np.linspace(
-                            start=0, stop=1, num=len(model_groups), endpoint=False
+                        cmap_obj(
+                                np.linspace(
+                                        start=0, stop=1, num=len(model_groups),
+                                        endpoint=False
+                                )
                         )
-                    )
                 )
             except (ValueError, AttributeError):
                 color_iter = itertools.cycle([cmap])
@@ -460,13 +506,13 @@ class ModelFitter(SetAnalyzer, ABC):
 
             # noinspection PyUnresolvedReferences
             errorbar_kwargs: Dict[str, Any] = {
-                "x": curr_mean.index.values,
-                "y": curr_mean.values,
-                "yerr": curr_stderr,
-                "fmt": "o",
+                "x"         : curr_mean.index.values,
+                "y"         : curr_mean.values,
+                "yerr"      : curr_stderr,
+                "fmt"       : "o",
                 "elinewidth": elinewidth,
-                "capsize": capsize,
-                "label": kwargs.get("label", f"{model_key[0]}"),
+                "capsize"   : capsize,
+                "label"     : kwargs.get("label", f"{model_key[0]}"),
             }
             if curr_color is not None:
                 errorbar_kwargs["color"] = curr_color
@@ -485,8 +531,8 @@ class ModelFitter(SetAnalyzer, ABC):
             legend_bbox = legend_obj.get_window_extent()
             axes_bbox = ax.get_window_extent()
             if (
-                legend_bbox.width > axes_bbox.width * 0.95
-                or legend_bbox.height > axes_bbox.height * 0.95
+                    legend_bbox.width > axes_bbox.width * 0.95
+                    or legend_bbox.height > axes_bbox.height * 0.95
             ):
                 legend_obj.remove()
 
@@ -497,13 +543,13 @@ class ModelFitter(SetAnalyzer, ABC):
     # Plotly visualization
     # ------------------------------------------------------------------ #
     def dash(
-        self,
-        tmax: int | float | None = None,
-        criteria: Dict[str, Union[Any, List[Any]]] | None = None,
-        figsize=(6, 4),
-        cmap: str | None = "tab20",
-        legend: bool = True,
-        **kwargs,
+            self,
+            tmax: int | float | None = None,
+            criteria: Dict[str, Union[Any, List[Any]]] | None = None,
+            figsize=(6, 4),
+            cmap: str | None = "tab20",
+            legend: bool = True,
+            **kwargs,
     ) -> "go.Figure":
         """Interactive Plotly version of :meth:`show`.
 
@@ -525,12 +571,12 @@ class ModelFitter(SetAnalyzer, ABC):
             import warnings
 
             warnings.warn(
-                "No data found matching the criteria. Returning empty figure."
+                    "No data found matching the criteria. Returning empty figure."
             )
             return go.Figure()
 
         measurements.loc[:, self.time_label] = self._ensure_float_array(
-            measurements.loc[:, self.time_label]
+                measurements.loc[:, self.time_label]
         )
 
         model_groups = {
@@ -553,7 +599,7 @@ class ModelFitter(SetAnalyzer, ABC):
                 colors = [
                     f"rgb({int(c[0] * 255)},{int(c[1] * 255)},{int(c[2] * 255)})"
                     for c in cmap_obj(
-                        np.linspace(0, 1, max(len(model_groups), 1), endpoint=False)
+                            np.linspace(0, 1, max(len(model_groups), 1), endpoint=False)
                     )
                 ]
                 color_iter = itertools.cycle(colors)
@@ -579,18 +625,18 @@ class ModelFitter(SetAnalyzer, ABC):
             hover_extra = self._format_hover(row)
 
             fig.add_trace(go.Scatter(
-                x=t,
-                y=y_pred,
-                mode="lines",
-                name=label,
-                line=dict(color=curr_color, width=2),
-                legendgroup=label,
-                hovertemplate=(
-                    "<b>%{fullData.name}</b><br>"
-                    "Time: %{x:.1f}<br>"
-                    "Predicted: %{y:.2f}<br>"
-                    f"<extra>{hover_extra}</extra>"
-                ),
+                    x=t,
+                    y=y_pred,
+                    mode="lines",
+                    name=label,
+                    line=dict(color=curr_color, width=2),
+                    legendgroup=label,
+                    hovertemplate=(
+                        "<b>%{fullData.name}</b><br>"
+                        "Time: %{x:.1f}<br>"
+                        "Predicted: %{y:.2f}<br>"
+                        f"<extra>{hover_extra}</extra>"
+                    ),
             ))
 
             curr_time_groups = curr_meas.groupby(by=self.time_label)
@@ -604,101 +650,100 @@ class ModelFitter(SetAnalyzer, ABC):
             stderr_vals = np.nan_to_num(curr_stderr.values, nan=0.0)
 
             fig.add_trace(go.Scatter(
-                x=time_vals,
-                y=mean_vals,
-                mode="markers",
-                name=label,
-                legendgroup=label,
-                showlegend=False,
-                marker=dict(
-                    color=curr_color,
-                    size=7,
-                    line=dict(color=curr_color, width=1),
-                ),
-                error_y=dict(
-                    type="data",
-                    array=stderr_vals,
-                    visible=True,
-                    color=curr_color,
-                    thickness=1,
-                ),
-                customdata=np.column_stack([time_vals, mean_vals, stderr_vals]),
-                hovertemplate=(
-                    "<b>%{fullData.name}</b><br>"
-                    "Time: %{customdata[0]:.1f}<br>"
-                    "Mean: %{customdata[1]:.2f}<br>"
-                    "SE: %{customdata[2]:.4f}<br>"
-                    "<extra></extra>"
-                ),
+                    x=time_vals,
+                    y=mean_vals,
+                    mode="markers",
+                    name=label,
+                    legendgroup=label,
+                    showlegend=False,
+                    marker=dict(
+                            color=curr_color,
+                            size=7,
+                            line=dict(color=curr_color, width=1),
+                    ),
+                    error_y=dict(
+                            type="data",
+                            array=stderr_vals,
+                            visible=True,
+                            color=curr_color,
+                            thickness=1,
+                    ),
+                    customdata=np.column_stack([time_vals, mean_vals, stderr_vals]),
+                    hovertemplate=(
+                        "<b>%{fullData.name}</b><br>"
+                        "Time: %{customdata[0]:.1f}<br>"
+                        "Mean: %{customdata[1]:.2f}<br>"
+                        "SE: %{customdata[2]:.4f}<br>"
+                        "<extra></extra>"
+                    ),
             ))
 
-        width_px = figsize[0] * 100
         height_px = figsize[1] * 100
 
         fig.update_layout(
-            width=width_px,
-            height=height_px,
-            title=dict(
-                text=kwargs.get("title", "mean±SE"),
-                font=dict(
-                    family="DM Sans, system-ui, sans-serif",
-                    size=13,
-                    color="#003660",
-                ),
-            ),
-            xaxis=dict(
+                autosize=True,
+                height=height_px,
                 title=dict(
-                    text=kwargs.get("xlabel", self.time_label),
-                    font=dict(
-                        family="DM Mono, Courier New, monospace",
-                        size=9,
-                        color="#2e3a4e",
-                    ),
+                        text=kwargs.get("title", "mean±SE"),
+                        font=dict(
+                                family="DM Sans, system-ui, sans-serif",
+                                size=13,
+                                color="#003660",
+                        ),
                 ),
-                tickfont=dict(
-                    family="DM Mono, Courier New, monospace",
-                    size=8,
-                    color="#8892a4",
+                xaxis=dict(
+                        title=dict(
+                                text=kwargs.get("xlabel", self.time_label),
+                                font=dict(
+                                        family="DM Mono, Courier New, monospace",
+                                        size=9,
+                                        color="#2e3a4e",
+                                ),
+                        ),
+                        tickfont=dict(
+                                family="DM Mono, Courier New, monospace",
+                                size=8,
+                                color="#8892a4",
+                        ),
+                        gridcolor="#e8ecf2",
+                        gridwidth=1,
+                        linecolor="#dde3ed",
+                        linewidth=1.5,
+                        showline=True,
+                        zeroline=False,
                 ),
-                gridcolor="#e8ecf2",
-                gridwidth=1,
-                linecolor="#dde3ed",
-                linewidth=1.5,
-                showline=True,
-                zeroline=False,
-            ),
-            yaxis=dict(
-                title=dict(
-                    text=kwargs.get("ylabel", self.on),
-                    font=dict(
-                        family="DM Mono, Courier New, monospace",
-                        size=9,
-                        color="#2e3a4e",
-                    ),
+                yaxis=dict(
+                        title=dict(
+                                text=kwargs.get("ylabel", self.on),
+                                font=dict(
+                                        family="DM Mono, Courier New, monospace",
+                                        size=9,
+                                        color="#2e3a4e",
+                                ),
+                        ),
+                        tickfont=dict(
+                                family="DM Mono, Courier New, monospace",
+                                size=8,
+                                color="#8892a4",
+                        ),
+                        gridcolor="#e8ecf2",
+                        gridwidth=1,
+                        linecolor="#dde3ed",
+                        linewidth=1.5,
+                        showline=True,
+                        zeroline=False,
                 ),
-                tickfont=dict(
-                    family="DM Mono, Courier New, monospace",
-                    size=8,
-                    color="#8892a4",
+                plot_bgcolor="#ffffff",
+                paper_bgcolor="#f5f7fa",
+                showlegend=legend,
+                legend=dict(
+                        font=dict(
+                                family="DM Sans, system-ui, sans-serif",
+                                size=11,
+                                color="#2e3a4e",
+                        ),
                 ),
-                gridcolor="#e8ecf2",
-                gridwidth=1,
-                linecolor="#dde3ed",
-                linewidth=1.5,
-                showline=True,
-                zeroline=False,
-            ),
-            plot_bgcolor="#ffffff",
-            paper_bgcolor="#f5f7fa",
-            showlegend=legend,
-            legend=dict(
-                font=dict(
-                    family="DM Sans, system-ui, sans-serif",
-                    size=11,
-                    color="#2e3a4e",
-                ),
-            ),
-            hovermode="closest",
+                hovermode="closest",
         )
 
         return fig

@@ -276,7 +276,7 @@ def load_yeast_plate_full(
 
 
 def load_fungi_plate_full(
-        mode: Literal["array", "Image", "GridImage"] = "Image",
+        mode: Literal["array", "Image", "GridImage"] = "GridImage",
 ) -> Union[np.ndarray, Image, GridImage]:
     """Load a full (uncropped) Neurospora filamentous fungi plate image with color checker.
 

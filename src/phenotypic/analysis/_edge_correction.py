@@ -7,7 +7,7 @@ from scipy.stats import permutation_test
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
-from phenotypic.tools_.measurement_info_ import EDGE_CORRECTION
+from phenotypic.tools_.measurement_info import EDGE_CORRECTION
 from .abc_ import SetAnalyzer
 
 
@@ -53,7 +53,7 @@ class EdgeCorrector(SetAnalyzer):
         groupby (list[str]): Column names for grouping data by experiment/plate/condition.
     """
 
-    _measurement_info_class = EDGE_CORRECTION
+    _measurement_infoclass = EDGE_CORRECTION
 
     def __init__(
             self,
@@ -373,7 +373,7 @@ class EdgeCorrector(SetAnalyzer):
             >>> import pandas as pd
             >>> import numpy as np
             >>> from phenotypic.analysis import EdgeCorrector
-            >>> from phenotypic.tools_.measurement_info_ import GRID
+            >>> from phenotypic.tools_.measurement_info import GRID
             >>> # Create sample 96-well data (8 rows x 12 cols)
             >>> np.random.seed(42)
             >>> data = pd.DataFrame({
@@ -417,7 +417,7 @@ class EdgeCorrector(SetAnalyzer):
             >>> corrected = corrector.analyze(data)  # doctest: +SKIP
             >>> # Each plate-condition combo gets its own threshold
         """
-        from phenotypic.tools_.measurement_info_ import GRID
+        from phenotypic.tools_.measurement_info import GRID
 
         # Validate input
         if data is None or len(data) == 0:
@@ -967,7 +967,7 @@ class EdgeCorrector(SetAnalyzer):
             - If p-value > self.pvalue, threshold = np.inf (no correction applied)
             - Threshold = mean of top_n interior values if correction applies
         """
-        from phenotypic.tools_.measurement_info_ import GRID
+        from phenotypic.tools_.measurement_info import GRID
 
         if len(group) == 0:
             return None
@@ -1147,7 +1147,7 @@ class EdgeCorrector(SetAnalyzer):
             ...     pvalue=0.05
             ... )  # doctest: +SKIP
         """
-        from phenotypic.tools_.measurement_info_ import GRID
+        from phenotypic.tools_.measurement_info import GRID
 
         section_col = GRID.ROW_MAJOR_IDX
 

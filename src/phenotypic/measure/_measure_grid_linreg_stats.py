@@ -10,7 +10,7 @@ from scipy.spatial.distance import euclidean
 
 from phenotypic.abc_ import GridMeasureFeatures
 from phenotypic.tools_.constants_ import OBJECT
-from phenotypic.tools_.measurement_info_ import BBOX, GRID, GRID_LINREG_STATS
+from phenotypic.tools_.measurement_info import BBOX, GRID, GRID_LINREG_STATS
 
 
 class MeasureGridLinRegStats(GridMeasureFeatures):
@@ -56,7 +56,7 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
         walkthrough of grid-level measurements.
     """
 
-    _measurement_info_class = GRID_LINREG_STATS
+    _measurement_infoclass = GRID_LINREG_STATS
 
     def __init__(self, section_num: Optional[int] = None):
         super().__init__()

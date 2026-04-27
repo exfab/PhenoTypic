@@ -1,11 +1,14 @@
 name: documentation
 
 on:
-  release:
-    types:
-      - published
+  push:
+    branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 
+concurrency:
+  group: gh-pages-write
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -19,6 +22,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Fetch all history for proper versioning
+
+      - name: Resolve DOCS_VERSION
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            echo "DOCS_VERSION=$GITHUB_REF_NAME" >> "$GITHUB_ENV"
+          else
+            echo "DOCS_VERSION=experimental" >> "$GITHUB_ENV"
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -46,20 +57,54 @@ jobs:
           sudo apt-get install -y pandoc
 
       - name: Sphinx build
+        working-directory: docs
+        env:
+          DOCS_VERSION: ${{ env.DOCS_VERSION }}
         run: |
-          cd docs
-          pwd
           uv run make html
-          # Ensure .nojekyll file exists
           touch build/html/.nojekyll
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        if: ${{ github.event_name == 'release' && github.event.action == 'published' }}
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
         with:
-          publish_branch: gh-pages
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: docs/build/html
-          force_orphan: true
-          # Add commit message
-          commit_message: "Deploy documentation ${{ github.sha }}"
+          ref: gh-pages
+          path: gh-pages
+          fetch-depth: 1
+
+      - name: Copy build into version slot
+        run: |
+          mkdir -p "gh-pages/${DOCS_VERSION}"
+          rsync -a --delete docs/build/html/ "gh-pages/${DOCS_VERSION}/"
+
+      - name: Auto-prune matching pre-releases on stable release
+        if: env.DOCS_VERSION != 'experimental'
+        run: |
+          if [[ "$DOCS_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            base="$DOCS_VERSION"
+            shopt -s nullglob
+            for d in gh-pages/${base}a* gh-pages/${base}b* gh-pages/${base}rc* gh-pages/${base}.dev*; do
+              echo "Pruning pre-release: $d"
+              rm -rf "$d"
+            done
+          fi
+
+      - name: Install packaging for regen script
+        run: |
+          python -m pip install --quiet packaging
+
+      - name: Regenerate versions.json and index.html
+        run: |
+          python .github/scripts/regen_versions_json.py gh-pages
+
+      - name: Commit and push gh-pages
+        working-directory: gh-pages
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No gh-pages changes to commit."
+          else
+            git commit -m "Deploy ${DOCS_VERSION} @ ${GITHUB_SHA}"
+            git push origin gh-pages
+          fi

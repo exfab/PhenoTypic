@@ -8,6 +8,7 @@ error logging to prevent silent data loss.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import shutil
@@ -21,6 +22,7 @@ import polars as pl
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
+    from phenotypic._core._image_pipeline import ImagePipeline
 
 from ._cli_types import Dataset
 from ._cli_duckdb_agg import duckdb_aggregate
@@ -198,11 +200,183 @@ def _cleanup_scratch(staging_dir: Path) -> None:
         pass
 
 
+def _collect_feature_headers(
+    pipeline: "ImagePipeline",
+) -> Dict[str, List[str]]:
+    """Map each ``MeasureFeatures`` operation key to its output column headers.
+
+    Reads the pipeline's ``_meas`` dict and, for every measurer, gathers the
+    prefixed headers declared by its ``MeasurementInfo`` enum(s). Handles
+    both the singular ``_measurement_infoclass`` and plural
+    ``_measurement_infoclasses`` (used by :class:`MeasureColor` to cover
+    multiple color spaces). Measurers exposing neither attribute are
+    skipped with a debug log — their columns will just remain in the
+    master file without a dedicated split.
+
+    Args:
+        pipeline: An :class:`ImagePipeline` containing the ``MeasureFeatures``
+            operations that produced the aggregated master measurements.
+
+    Returns:
+        Ordered mapping of ``_meas`` key → list of prefixed header strings
+        (e.g. ``"MeasureSize" → ["Size_Area", "Size_IntegratedIntensity"]``).
+        Keys with no discoverable headers are omitted.
+    """
+    headers_by_key: Dict[str, List[str]] = {}
+    for key, measurer in pipeline._meas.items():
+        infoclasses = []
+        single = getattr(measurer, "_measurement_infoclass", None)
+        if single is not None:
+            infoclasses.append(single)
+        plural = getattr(measurer, "_measurement_infoclasses", None)
+        if plural:
+            infoclasses.extend(plural)
+
+        if not infoclasses:
+            logger.debug(
+                "Skipping measurer %r in split: no _measurement_infoclass(es) exposed",
+                key,
+            )
+            continue
+
+        headers: List[str] = []
+        for info in infoclasses:
+            try:
+                headers.extend(info.get_headers())
+            except Exception:
+                logger.debug(
+                    "Failed to read headers from %r on measurer %r",
+                    info,
+                    key,
+                    exc_info=True,
+                )
+        if headers:
+            headers_by_key[key] = headers
+    return headers_by_key
+
+
+def _load_pipeline_from_output_dir(
+    output_dir: Path,
+) -> Optional["ImagePipeline"]:
+    """Recover the pipeline used for a run from the files left in *output_dir*.
+
+    The main CLI copies the pipeline JSON next to its outputs and writes
+    ``processing_state.json`` recording the original source path. This
+    helper reads that state file to learn the pipeline filename, then
+    loads the in-tree copy at ``output_dir / <pipeline>.json``. Returns
+    ``None`` on any failure so callers can skip the split step cleanly.
+    """
+    state_path = output_dir / "processing_state.json"
+    if not state_path.exists():
+        return None
+    try:
+        state_dict = json.loads(state_path.read_text(encoding="utf-8"))
+        original = state_dict.get("pipeline_path")
+        if not original:
+            return None
+        candidate = output_dir / Path(original).name
+        if not candidate.exists():
+            return None
+        from phenotypic._core._image_pipeline import ImagePipeline
+
+        return ImagePipeline.from_json(candidate)
+    except Exception:
+        logger.warning(
+            "Could not load pipeline from %s for per-feature split",
+            output_dir,
+            exc_info=True,
+        )
+        return None
+
+
+def split_master_by_feature(
+    master_df: "pl.DataFrame",
+    output_dir: Path,
+    pipeline: "ImagePipeline",
+) -> Dict[str, Path]:
+    """Write one CSV + Parquet per ``MeasureFeatures`` into *output_dir*.
+
+    Creates ``output_dir/measurements_by_feature/`` and, for every
+    measurer key returned by :func:`_collect_feature_headers`, emits a
+    spreadsheet containing all non-feature columns (metadata, object
+    label, grid info, joined external metadata) alongside only that
+    measurer's columns. A feature whose expected columns are entirely
+    absent from the master (e.g. its operation failed for every image)
+    is skipped.
+
+    Args:
+        master_df: Aggregated master measurements.
+        output_dir: Base output directory; the ``measurements_by_feature/``
+            subdirectory is created if missing.
+        pipeline: Pipeline whose ``_meas`` dict defines the split.
+
+    Returns:
+        Mapping of ``_meas`` key → path to the emitted CSV. Empty if
+        nothing could be split.
+    """
+    headers_by_key = _collect_feature_headers(pipeline)
+    if not headers_by_key:
+        logger.info("No MeasureFeatures exposed headers -- skipping split")
+        return {}
+
+    all_feature_cols: set[str] = set()
+    for cols in headers_by_key.values():
+        all_feature_cols.update(cols)
+
+    non_feature_cols = [c for c in master_df.columns if c not in all_feature_cols]
+
+    split_dir = output_dir / "measurements_by_feature"
+    split_dir.mkdir(parents=True, exist_ok=True)
+
+    written: Dict[str, Path] = {}
+    for key, headers in headers_by_key.items():
+        present = [c for c in headers if c in master_df.columns]
+        if not present:
+            logger.debug(
+                "Skipping split for %r: none of its columns are in master", key
+            )
+            continue
+
+        subset = master_df.select(non_feature_cols + present)
+        csv_path = split_dir / f"{key}.csv"
+        pq_path = split_dir / f"{key}.parquet"
+
+        def _write_parquet(path: str, _subset: "pl.DataFrame" = subset) -> None:
+            _subset.write_parquet(path, compression="zstd", compression_level=3)
+
+        try:
+            _atomic_write(csv_path, subset.write_csv)
+        except Exception:
+            logger.warning("Failed to write split CSV for %r", key, exc_info=True)
+            continue
+
+        try:
+            _atomic_write(pq_path, _write_parquet)
+        except Exception:
+            logger.warning(
+                "Failed to write split Parquet for %r (CSV was saved)",
+                key,
+                exc_info=True,
+            )
+
+        written[key] = csv_path
+        logger.info(
+            "Split %r: %d rows x %d cols -> %s",
+            key,
+            subset.height,
+            subset.width,
+            csv_path.name,
+        )
+
+    return written
+
+
 def aggregate_measurements(
     output_dir: Path,
     dataset_names: List[str],
     include_dataset_column: bool = True,
     metadata_csv: Optional[Path] = None,
+    pipeline: Optional["ImagePipeline"] = None,
 ) -> Optional[Path]:
     """Aggregate per-image Parquet files into a master CSV via DuckDB.
 
@@ -230,10 +404,24 @@ def aggregate_measurements(
             provided, shared columns are used as join keys for an inner
             join with metadata on the left.  Only measurement rows that
             match the metadata are kept.
+        pipeline: Optional :class:`ImagePipeline` whose ``MeasureFeatures``
+            operations define how to split the aggregated master into
+            per-feature sub-spreadsheets.  When omitted, the pipeline is
+            recovered from ``processing_state.json`` / the pipeline JSON
+            copy in *output_dir*; if it cannot be recovered, the split
+            step is skipped and a warning is logged (the master files are
+            still written).
 
     Returns:
         Path to ``master_measurements.csv``, or ``None`` if no
         measurements were found.
+
+    Side effects:
+        When a pipeline is available, also writes per-feature
+        sub-spreadsheets (CSV + Parquet) into
+        ``output_dir/measurements_by_feature/`` — one file per
+        :class:`MeasureFeatures` in ``pipeline._meas``. Split failures
+        never change the return value.
     """
     results_dir = output_dir / "results"
 
@@ -315,6 +503,23 @@ def aggregate_measurements(
         master_df.width,
         master_csv_path.name,
     )
+
+    resolved_pipeline = pipeline if pipeline is not None else _load_pipeline_from_output_dir(output_dir)
+    if resolved_pipeline is None:
+        logger.warning(
+            "Pipeline not available — skipping per-feature split "
+            "(master files still written to %s)",
+            output_dir,
+        )
+    else:
+        try:
+            split_master_by_feature(master_df, output_dir, resolved_pipeline)
+        except Exception:
+            logger.warning(
+                "Per-feature measurement split failed (master files still written)",
+                exc_info=True,
+            )
+
     return master_csv_path
 
 
@@ -665,6 +870,7 @@ class OutputManager:
         self,
         datasets: List[Dataset],
         metadata_csv: Optional[Path] = None,
+        pipeline: Optional["ImagePipeline"] = None,
     ) -> Optional[Path]:
         """Aggregate per-image measurement Parquet files into master CSV.
 
@@ -672,6 +878,9 @@ class OutputManager:
             datasets: List of all datasets processed.
             metadata_csv: Optional path to external CSV for inner-join
                 on shared columns.
+            pipeline: Optional in-memory pipeline used to split the
+                aggregated master into per-feature sub-spreadsheets. See
+                :func:`aggregate_measurements` for fallback behavior.
 
         Returns:
             Path to master_measurements.csv, or None if no measurements found.
@@ -681,4 +890,5 @@ class OutputManager:
             dataset_names=[ds.name for ds in datasets],
             include_dataset_column=self.include_dataset_column,
             metadata_csv=metadata_csv,
+            pipeline=pipeline,
         )

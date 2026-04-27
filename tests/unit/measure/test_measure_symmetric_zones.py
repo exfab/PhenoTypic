@@ -16,7 +16,7 @@ from phenotypic.measure import MeasureSymmetricZones
 
 
 def _make_image_with_objmap(
-    gray: np.ndarray, objmap: np.ndarray,
+        gray: np.ndarray, objmap: np.ndarray,
 ) -> Image:
     """Create an Image with a pre-set objmap (bypasses detection)."""
     rgb = np.stack([gray, gray, gray], axis=-1)
@@ -32,10 +32,10 @@ def _make_image_with_objmap(
 
 
 def _make_circular_colony(
-    shape: tuple[int, int],
-    center: tuple[int, int],
-    core_radius: float,
-    outer_radius: float,
+        shape: tuple[int, int],
+        center: tuple[int, int],
+        core_radius: float,
+        outer_radius: float,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Build a concentric colony: bright dense core + dimmer outer halo.
 
@@ -72,10 +72,10 @@ def _make_circular_colony(
 
 
 def _make_half_mask_colony(
-    shape: tuple[int, int],
-    center: tuple[int, int],
-    radius: float,
-    angular_range: tuple[float, float],
+        shape: tuple[int, int],
+        center: tuple[int, int],
+        radius: float,
+        angular_range: tuple[float, float],
 ) -> tuple[np.ndarray, np.ndarray]:
     """Build a solid disk restricted to pixels whose angle falls in a wedge.
 
@@ -113,12 +113,12 @@ def _make_half_mask_colony(
 
 
 def _make_lopsided_colony(
-    shape: tuple[int, int],
-    center: tuple[int, int],
-    core_radius: float,
-    base_radius: float,
-    bias_factor: float,
-    bias_angular_range: tuple[float, float],
+        shape: tuple[int, int],
+        center: tuple[int, int],
+        core_radius: float,
+        base_radius: float,
+        bias_factor: float,
+        bias_angular_range: tuple[float, float],
 ) -> tuple[np.ndarray, np.ndarray]:
     """Build a colony whose outer radius is ``base_radius`` except in a wedge.
 
@@ -171,17 +171,17 @@ def _make_lopsided_colony(
 class TestMeasureSymmetricZones:
     """Synthetic-colony ground-truth tests for MeasureSymmetricZones."""
 
-    # -- column-name constants (match the plan's SYMMETRIC_RADIUS enum) --
-    CORE_COL = "SymmetricRadius_CoreRadius"
-    SYMM_COL = "SymmetricRadius_SymmetricRadius"
-    MEAN_COL = "SymmetricRadius_MeanExpansion"
-    MAX_COL = "SymmetricRadius_MaxExpansion"
-    CORE_END_RADIUS_COL = "SymmetricRadius_CoreEndRadius"
-    DENSE_END_RADIUS_COL = "SymmetricRadius_DenseEndRadius"
-    SPARSE_END_RADIUS_COL = "SymmetricRadius_SparseEndRadius"
-    CORE_AREA_COL = "SymmetricRadius_CoreArea"
-    DENSE_AREA_COL = "SymmetricRadius_DenseArea"
-    SPARSE_AREA_COL = "SymmetricRadius_SparseArea"
+    # -- column-name constants (match the plan's SYMMETRIC_ZONES enum) --
+    CORE_COL = "SymmetricZones_CoreRadius"
+    SYMM_COL = "SymmetricZones_SymmetricRadius"
+    MEAN_COL = "SymmetricZones_MeanExpansion"
+    MAX_COL = "SymmetricZones_MaxExpansion"
+    CORE_END_RADIUS_COL = "SymmetricZones_CoreEndRadius"
+    DENSE_END_RADIUS_COL = "SymmetricZones_DenseEndRadius"
+    SPARSE_END_RADIUS_COL = "SymmetricZones_SparseEndRadius"
+    CORE_AREA_COL = "SymmetricZones_CoreArea"
+    DENSE_AREA_COL = "SymmetricZones_DenseArea"
+    SPARSE_AREA_COL = "SymmetricZones_SparseArea"
 
     # ------------------------------------------------------------------
     # Test 1 — symmetric circular colony.
@@ -192,10 +192,10 @@ class TestMeasureSymmetricZones:
         core_radius = 15.0
         outer_radius = 60.0
         gray, objmap = _make_circular_colony(
-            shape=(200, 200),
-            center=(100, 100),
-            core_radius=core_radius,
-            outer_radius=outer_radius,
+                shape=(200, 200),
+                center=(100, 100),
+                core_radius=core_radius,
+                outer_radius=outer_radius,
         )
         image = _make_image_with_objmap(gray, objmap)
 
@@ -242,10 +242,10 @@ class TestMeasureSymmetricZones:
         """Half-disk wedge: SymmetricRadius should be well below MaxExpansion."""
         radius = 60.0
         gray, objmap = _make_half_mask_colony(
-            shape=(200, 200),
-            center=(100, 100),
-            radius=radius,
-            angular_range=(0.0, np.pi),
+                shape=(200, 200),
+                center=(100, 100),
+                radius=radius,
+                angular_range=(0.0, np.pi),
         )
         image = _make_image_with_objmap(gray, objmap)
 
@@ -279,12 +279,12 @@ class TestMeasureSymmetricZones:
         base_radius = 40.0
         bias_factor = 1.5
         gray, objmap = _make_lopsided_colony(
-            shape=(200, 200),
-            center=(100, 100),
-            core_radius=core_radius,
-            base_radius=base_radius,
-            bias_factor=bias_factor,
-            bias_angular_range=(-np.pi / 3, np.pi / 3),
+                shape=(200, 200),
+                center=(100, 100),
+                core_radius=core_radius,
+                base_radius=base_radius,
+                bias_factor=bias_factor,
+                bias_angular_range=(-np.pi / 3, np.pi / 3),
         )
         image = _make_image_with_objmap(gray, objmap)
 
@@ -393,12 +393,12 @@ class TestMeasureSymmetricZones:
             assert pd.isna(val), f"{col} expected NaN for tiny object, got {val}"
 
         for col in (
-            self.CORE_END_RADIUS_COL,
-            self.DENSE_END_RADIUS_COL,
-            self.SPARSE_END_RADIUS_COL,
-            self.CORE_AREA_COL,
-            self.DENSE_AREA_COL,
-            self.SPARSE_AREA_COL,
+                self.CORE_END_RADIUS_COL,
+                self.DENSE_END_RADIUS_COL,
+                self.SPARSE_END_RADIUS_COL,
+                self.CORE_AREA_COL,
+                self.DENSE_AREA_COL,
+                self.SPARSE_AREA_COL,
         ):
             val = df[col].iloc[0]
             assert np.isclose(val, 0.0), (
@@ -471,10 +471,10 @@ class TestMeasureSymmetricZones:
         core_radius = 15.0
         outer_radius = 60.0
         gray, objmap = _make_circular_colony(
-            shape=(200, 200),
-            center=(100, 100),
-            core_radius=core_radius,
-            outer_radius=outer_radius,
+                shape=(200, 200),
+                center=(100, 100),
+                core_radius=core_radius,
+                outer_radius=outer_radius,
         )
         image = _make_image_with_objmap(gray, objmap)
 
@@ -522,10 +522,10 @@ class TestMeasureSymmetricZones:
         core_radius = 15.0
         outer_radius = 60.0
         gray, objmap = _make_circular_colony(
-            shape=(200, 200),
-            center=(100, 100),
-            core_radius=core_radius,
-            outer_radius=outer_radius,
+                shape=(200, 200),
+                center=(100, 100),
+                core_radius=core_radius,
+                outer_radius=outer_radius,
         )
         image = _make_image_with_objmap(gray, objmap)
 
@@ -571,10 +571,10 @@ class TestMeasureSymmetricZones:
         """
         radius = 50.0
         gray, objmap = _make_circular_colony(
-            shape=(200, 200),
-            center=(100, 100),
-            core_radius=radius,
-            outer_radius=radius,
+                shape=(200, 200),
+                center=(100, 100),
+                core_radius=radius,
+                outer_radius=radius,
         )
         image = _make_image_with_objmap(gray, objmap)
 
@@ -603,10 +603,10 @@ class TestMeasureSymmetricZones:
         """Half-moon mask: end radii ≤ SymmetricRadius (always-on cap)."""
         radius = 60.0
         gray, objmap = _make_half_mask_colony(
-            shape=(200, 200),
-            center=(100, 100),
-            radius=radius,
-            angular_range=(0.0, np.pi),
+                shape=(200, 200),
+                center=(100, 100),
+                radius=radius,
+                angular_range=(0.0, np.pi),
         )
         image = _make_image_with_objmap(gray, objmap)
 

@@ -171,13 +171,19 @@ class MicroSamDetector(GpuDetector):
         self.model_type = model_type
         self.device = device
         self._predictor = None  # _ prefix -> skipped by serialization
+        self._segmenter = None
 
     def _ensure_model_loaded(self) -> None:
-        """Load the micro-sam predictor on first use."""
-        if getattr(self, "_predictor", None) is not None:
+        """Load the micro-sam predictor and segmenter on first use."""
+        if (
+            getattr(self, "_predictor", None) is not None
+            and getattr(self, "_segmenter", None) is not None
+        ):
             return
         try:
-            from micro_sam.util import get_sam_model
+            from micro_sam.automatic_segmentation import (
+                get_predictor_and_segmenter,
+            )
         except ImportError:
             raise ImportError(
                 "MicroSamDetector requires the `micro_sam` package, "
@@ -190,7 +196,7 @@ class MicroSamDetector(GpuDetector):
 
         from phenotypic.nn._checkpoint_manager import resolve_device
 
-        self._predictor = get_sam_model(
+        self._predictor, self._segmenter = get_predictor_and_segmenter(
             model_type=self.model_type,
             device=resolve_device(self.device),
         )
@@ -225,7 +231,13 @@ class MicroSamDetector(GpuDetector):
             else:
                 rgb = np.zeros(rgb.shape, dtype=np.uint8)
 
-        labeled = automatic_instance_segmentation(self._predictor, rgb)
+        labeled = automatic_instance_segmentation(
+            predictor=self._predictor,
+            segmenter=self._segmenter,
+            input_path=rgb,
+            ndim=2,
+            verbose=False,
+        )
         objmap = labeled.astype(np.uint16)
 
         image.objmask = objmap > 0

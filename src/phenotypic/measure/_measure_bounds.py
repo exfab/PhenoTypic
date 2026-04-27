@@ -12,7 +12,7 @@ from skimage.measure import regionprops_table
 from phenotypic.abc_ import MeasureFeatures
 
 from ..tools_.constants_ import OBJECT
-from ..tools_.measurement_info_ import BBOX
+from ..tools_.measurement_info import BBOX
 
 
 class MeasureBounds(MeasureFeatures):
@@ -58,7 +58,7 @@ class MeasureBounds(MeasureFeatures):
         walkthrough of measuring and exporting colony data.
     """
 
-    _measurement_info_class = BBOX
+    _measurement_infoclass = BBOX
 
     def _operate(self, image: Image) -> pd.DataFrame:
         objmap = image.objmap[:]

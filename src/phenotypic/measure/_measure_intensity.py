@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 import pandas as pd
 
 from phenotypic.abc_ import MeasureFeatures
-from ..tools_.measurement_info_ import INTENSITY
+from ..tools_.measurement_info import INTENSITY
 
 
 class MeasureIntensity(MeasureFeatures):
@@ -57,11 +57,11 @@ class MeasureIntensity(MeasureFeatures):
         interpreting intensity metrics in a biological context.
     """
 
-    _measurement_info_class = INTENSITY
+    _measurement_infoclass = INTENSITY
 
     def _operate(self, image: Image) -> pd.DataFrame:
         from phenotypic.measure._measure_shape import MeasureShape
-        from ..tools_.measurement_info_ import SHAPE
+        from ..tools_.measurement_info import SHAPE
 
         intensity_matrix, objmap = image.gray[:].copy(), image.objmap[:].copy()
         measurements = {

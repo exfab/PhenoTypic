@@ -1156,11 +1156,21 @@ def phenotypic_cli(
 
         results = strategy.execute(datasets, output_dir)
 
+        # Load pipeline once for the finalizer — reused by both the
+        # per-feature split in aggregate_master_csv and the README generator.
+        finalizer_pipeline: Optional[ImagePipeline] = None
+        try:
+            finalizer_pipeline = ImagePipeline.from_json(config.pipeline_json)
+        except Exception as e:
+            logger.warning(f"Failed to load pipeline for finalizer: {e}")
+
         # Aggregate master CSV (if we have completed results)
         if results.total_completed > 0:
             click.echo("\nAggregating measurements...")
             master_path = output_manager.aggregate_master_csv(
-                datasets, metadata_csv=config.metadata_csv
+                datasets,
+                metadata_csv=config.metadata_csv,
+                pipeline=finalizer_pipeline,
             )
             if master_path:
                 click.echo(f"✓ Master measurements: {master_path}")
@@ -1189,8 +1199,12 @@ def phenotypic_cli(
         try:
             from phenotypic._cli._cli_readme_generator import READMEGenerator
 
-            pipeline = ImagePipeline.from_json(config.pipeline_json)
-            readme_gen = READMEGenerator(config, pipeline)
+            readme_pipeline = (
+                finalizer_pipeline
+                if finalizer_pipeline is not None
+                else ImagePipeline.from_json(config.pipeline_json)
+            )
+            readme_gen = READMEGenerator(config, readme_pipeline)
             readme_path = readme_gen.generate(output_dir, datasets)
             click.echo(f"✓ README: {readme_path}")
         except Exception as e:

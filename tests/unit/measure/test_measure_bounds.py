@@ -7,7 +7,7 @@ import pytest
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.measure import MeasureBounds
 from phenotypic.tools_.constants_ import OBJECT
-from phenotypic.tools_.measurement_info_ import BBOX
+from phenotypic.tools_.measurement_info import BBOX
 
 
 class TestMeasureBounds:

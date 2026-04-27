@@ -1,10 +1,11 @@
-from typing import Any, Callable, Dict, List, Literal, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
 
 from phenotypic.analysis.abc_ import ModelFitter
-from phenotypic.tools_.measurement_info_ import LOG_GROWTH_MODEL, MODEL_METRICS
+from phenotypic.analysis.abc_._model_fitter import LossKind
+from phenotypic.tools_.measurement_info import LOG_GROWTH_MODEL, MODEL_METRICS
 
 
 class LogGrowthModel(ModelFitter):
@@ -60,7 +61,7 @@ class LogGrowthModel(ModelFitter):
             values, if provided.
     """
 
-    _measurement_info_class = LOG_GROWTH_MODEL
+    _measurement_infoclass = LOG_GROWTH_MODEL
 
     def __init__(
             self,
@@ -71,7 +72,8 @@ class LogGrowthModel(ModelFitter):
             lam: float = 1.2,
             beta: float = 2,
             Kmax_label: str | None = None,
-            loss: Literal["linear"] = "linear",
+            loss: LossKind = "huber",
+            f_scale: float = 1.0,
             verbose: bool = False,
             n_jobs: int = 1,
     ):
@@ -93,8 +95,16 @@ class LogGrowthModel(ModelFitter):
                 on ``K``. When omitted, the observed maximum of ``on`` is
                 used.
             loss: Loss method passed through to
-                :func:`scipy.optimize.least_squares`. Defaults to
-                ``"linear"``.
+                :func:`scipy.optimize.least_squares`. One of
+                ``"linear"``, ``"soft_l1"``, ``"huber"``, ``"cauchy"``,
+                ``"arctan"``. Defaults to ``"huber"`` — standard
+                least-squares on inliers, linear downweighting past
+                ``f_scale`` for outlier timepoints. Pass ``"linear"``
+                for the classical sum-of-squared-residuals loss.
+            f_scale: Soft margin between inlier and outlier residuals
+                handed to :func:`scipy.optimize.least_squares`. No
+                effect when ``loss="linear"``. Must be positive;
+                defaults to ``1.0``.
             verbose: If ``True``, enables the optimizer's verbose output.
             n_jobs: Number of parallel workers for per-group fits.
         """
@@ -105,6 +115,7 @@ class LogGrowthModel(ModelFitter):
             agg_func=agg_func,
             num_workers=n_jobs,
             loss=loss,
+            f_scale=f_scale,
             verbose=verbose,
         )
         self.lam = lam
