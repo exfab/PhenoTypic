@@ -1,0 +1,28 @@
+phenotypic.detect.MeanDetector
+==============================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: MeanDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MeanDetector.__init__
+      ~MeanDetector.apply
+      ~MeanDetector.widget
+   
+   
+
+   
+   
+   

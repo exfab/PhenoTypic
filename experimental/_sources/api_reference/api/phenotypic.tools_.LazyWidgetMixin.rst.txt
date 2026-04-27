@@ -1,0 +1,27 @@
+phenotypic.tools\_.LazyWidgetMixin
+==================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autoclass:: LazyWidgetMixin
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~LazyWidgetMixin.__init__
+      ~LazyWidgetMixin.widget
+   
+   
+
+   
+   
+   

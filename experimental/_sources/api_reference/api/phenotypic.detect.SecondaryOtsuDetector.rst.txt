@@ -1,0 +1,28 @@
+phenotypic.detect.SecondaryOtsuDetector
+=======================================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: SecondaryOtsuDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SecondaryOtsuDetector.__init__
+      ~SecondaryOtsuDetector.apply
+      ~SecondaryOtsuDetector.widget
+   
+   
+
+   
+   
+   

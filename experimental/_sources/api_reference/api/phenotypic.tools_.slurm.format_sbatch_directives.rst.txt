@@ -1,0 +1,7 @@
+phenotypic.tools\_.slurm.format\_sbatch\_directives
+===================================================
+
+.. currentmodule:: phenotypic.tools_.slurm
+
+.. autofunction:: format_sbatch_directives
+   :no-index:

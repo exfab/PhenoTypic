@@ -1,0 +1,28 @@
+phenotypic.detect.OtsuDetector
+==============================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: OtsuDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~OtsuDetector.__init__
+      ~OtsuDetector.apply
+      ~OtsuDetector.widget
+   
+   
+
+   
+   
+   

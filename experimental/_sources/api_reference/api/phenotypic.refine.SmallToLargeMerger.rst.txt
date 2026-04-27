@@ -1,0 +1,28 @@
+phenotypic.refine.SmallToLargeMerger
+====================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: SmallToLargeMerger
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SmallToLargeMerger.__init__
+      ~SmallToLargeMerger.apply
+      ~SmallToLargeMerger.widget
+   
+   
+
+   
+   
+   

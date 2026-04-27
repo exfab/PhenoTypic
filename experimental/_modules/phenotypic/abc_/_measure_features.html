@@ -1,0 +1,1799 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.abc_._measure_features &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=320b28a0"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/abc_/_measure_features';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/abc_/_measure_features.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.14.0b5" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorials/index.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../how_to/index.html">
+    How-To Guides
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../explanation/index.html">
+    Explanation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../extending/index.html">
+    Extending PhenoTypic
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../../../downloads.html">
+    Downloads
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorials/index.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../how_to/index.html">
+    How-To Guides
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../explanation/index.html">
+    Explanation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../extending/index.html">
+    Extending PhenoTypic
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloads.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.abc_._measure_features</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.abc_._measure_features</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing_extensions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">numpy.typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ArrayLike</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pandas.api.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_scalar</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">partial</span><span class="p">,</span> <span class="n">wraps</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._base_operation</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseOperation</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.exceptions_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OperationFailedError</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.funcs_</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_measure_integrity</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">catch_warnings_decorator</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A decorator that catches warnings, prepends the method name to the warning message,</span>
+<span class="sd">    and reraises the warning.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">(</span><span class="n">record</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">recorded_warnings</span><span class="p">:</span>
+            <span class="c1"># Call the original function</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+            <span class="c1"># If any warnings were raised, prepend the method name and reraise</span>
+        <span class="k">for</span> <span class="n">warning</span> <span class="ow">in</span> <span class="n">recorded_warnings</span><span class="p">:</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">warning</span><span class="o">.</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">warning</span><span class="o">.</span><span class="n">category</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">return</span> <span class="n">wrapper</span>
+
+
+<span class="c1"># &lt;&lt;Interface&gt;&gt;</span>
+<div class="viewcode-block" id="MeasureFeatures">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.MeasureFeatures">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MeasureFeatures</span><span class="p">(</span><span class="n">BaseOperation</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract quantitative measurements from detected colony objects in images.</span>
+
+<span class="sd">    MeasureFeatures is the abstract base class for all feature extraction operations</span>
+<span class="sd">    in PhenoTypic. Unlike ImageOperation classes that return modified images,</span>
+<span class="sd">    MeasureFeatures subclasses extract numerical measurements from detected objects</span>
+<span class="sd">    and return pandas DataFrames.</span>
+
+<span class="sd">    **Quick Decision Guide:**</span>
+
+<span class="sd">    Use MeasureFeatures when you need to extract numerical colony phenotypes from detected objects.</span>
+<span class="sd">    Choose specific measurers based on your phenotype of interest:</span>
+
+<span class="sd">    - **Size/morphology:** [MeasureSize](src/phenotypic/measure/_measure_size.py) for area, perimeter, circularity</span>
+<span class="sd">    - **Shape characteristics:** [MeasureShape](src/phenotypic/measure/_measure_shape.py) for aspect ratio, eccentricity</span>
+<span class="sd">    - **Color/pigmentation:** [MeasureColor](src/phenotypic/measure/_measure_color.py) for RGB, Lab, HSV measurements</span>
+<span class="sd">    - **Intensity distribution:** [MeasureIntensity](src/phenotypic/measure/_measure_intensity.py) for brightness statistics</span>
+<span class="sd">    - **Surface texture:** [MeasureTexture](src/phenotypic/measure/_measure_texture.py) for roughness, biofilm detection</span>
+<span class="sd">    - **Custom features:** Subclass MeasureFeatures directly for novel measurements</span>
+
+<span class="sd">    **Design Principles:**</span>
+
+<span class="sd">    This class follows a strict pattern where subclasses implement minimal code:</span>
+
+<span class="sd">    1. **__init__:** Define parameters and configuration for your measurement</span>
+<span class="sd">    2. **_operate(image: Image) -&gt; pd.DataFrame:** Implement your measurement logic</span>
+<span class="sd">    3. Everything else (type validation, metadata handling, exception handling) is</span>
+<span class="sd">       handled by the `measure()` method</span>
+
+<span class="sd">    This ensures consistent behavior, robust error handling, and automatic memory</span>
+<span class="sd">    profiling across all measurement operations.</span>
+
+<span class="sd">    **How It Works:**</span>
+
+<span class="sd">    Users call the public API method `measure(image, include_meta=False)`, which:</span>
+
+<span class="sd">    1. Validates input (Image object with detected objects)</span>
+<span class="sd">    2. Extracts operation parameters using introspection</span>
+<span class="sd">    3. Calls `_operate()` with matched parameters</span>
+<span class="sd">    4. Optionally merges image metadata into results</span>
+<span class="sd">    5. Returns a pandas DataFrame with object labels in the first column</span>
+
+<span class="sd">    Subclasses **only** override `_operate()` and `__init__()`. The `measure()`</span>
+<span class="sd">    method provides automatic validation, exception handling, and metadata merging.</span>
+
+<span class="sd">    **Accessing Image Data in _operate():**</span>
+
+<span class="sd">    Within your `_operate()` implementation, access image data through accessors</span>
+<span class="sd">    (lazy-evaluated, cached):</span>
+
+<span class="sd">    - **image.gray[:]** - Grayscale intensity values (weighted luminance)</span>
+<span class="sd">    - **image.detect_mat[:]** - Detection matrix (preprocessed for analysis)</span>
+<span class="sd">    - **image.objmask[:]** - Binary mask of detected objects (1 = object, 0 = background)</span>
+<span class="sd">    - **image.objmap[:]** - Labeled integer array (label ID per object, 0 = background)</span>
+<span class="sd">    - **image.color.Lab[:]** - CIE Lab color space (perceptually uniform)</span>
+<span class="sd">    - **image.color.XYZ[:]** - CIE XYZ color space</span>
+<span class="sd">    - **image.color.HSV[:]** - HSV color space (hue, saturation, value)</span>
+<span class="sd">    - **image.objects** - High-level object interface (iterate with for loop)</span>
+<span class="sd">    - **image.num_objects** - Count of detected objects</span>
+
+<span class="sd">    **DataFrame Output Format:**</span>
+
+<span class="sd">    Your `_operate()` method must return a pandas DataFrame with:</span>
+
+<span class="sd">    - First column: OBJECT.LABEL (integer object IDs matching image.objmap[:])</span>
+<span class="sd">    - Subsequent columns: Measurement results (numeric values)</span>
+<span class="sd">    - One row per detected object</span>
+
+<span class="sd">    Example structure:</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        OBJECT.LABEL | Area | MeanIntensity | StdDev</span>
+<span class="sd">        -----------  |------|---------------|--------</span>
+<span class="sd">        1            | 1024 | 128.5         | 12.3</span>
+<span class="sd">        2            | 956  | 135.2         | 14.1</span>
+<span class="sd">        3            | 1101 | 120.8         | 11.9</span>
+
+<span class="sd">    **Static Helper Methods for Common Measurements:**</span>
+
+<span class="sd">    This class provides 20+ static helper methods to compute statistics on labeled objects:</span>
+
+<span class="sd">    - **Statistical:** mean, median, stddev, variance, sum, center_of_mass</span>
+<span class="sd">    - **Extrema:** minimum, maximum, min_extrema (position + value), max_extrema (position + value)</span>
+<span class="sd">    - **Quantiles:** Q1 (25th percentile), Q3 (75th percentile), IQR (interquartile range)</span>
+<span class="sd">    - **Advanced:** coefficient_of_variation (relative texture measure), custom function application</span>
+<span class="sd">    - **Custom computation:** _funcmap2objects() to apply arbitrary Python functions to object regions</span>
+<span class="sd">    - **Utilities:** _ensure_array() to normalize scalars and arrays uniformly</span>
+
+<span class="sd">    **Helper Method Usage Pattern:**</span>
+
+<span class="sd">    All helpers follow a consistent signature: `_calculate_*(array, objmap=None)` where array is</span>
+<span class="sd">    your 2D data and objmap is the labeled integer array from image.objmap[:]. If objmap=None,</span>
+<span class="sd">    the entire non-zero region is treated as one object. Returns 1D numpy array with one value</span>
+<span class="sd">    per object (or scalar for single-object mode).</span>
+
+<span class="sd">    Example within _operate():</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        gray = image.detect_mat[:]</span>
+<span class="sd">        objmap = image.objmap[:]</span>
+<span class="sd">        area = self._calculate_sum(image.objmask[:], objmap)  # Pixel count</span>
+<span class="sd">        mean_int = self._calculate_mean(gray, objmap)  # Average brightness</span>
+<span class="sd">        stddev = self._calculate_stddev(gray, objmap)  # Texture uniformity</span>
+<span class="sd">        cv = self._calculate_coeff_variation(gray, objmap)  # Relative variation</span>
+
+<span class="sd">    **Example: Creating a Custom Measurer for Bacterial Colonies**</span>
+
+<span class="sd">    Implementing a custom colony measurement class:</span>
+
+<span class="sd">    &gt;&gt;&gt; from phenotypic.abc_ import MeasureFeatures</span>
+<span class="sd">    &gt;&gt;&gt; from phenotypic.tools_.constants_ import OBJECT</span>
+<span class="sd">    &gt;&gt;&gt; import pandas as pd</span>
+<span class="sd">    &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">    &gt;&gt;&gt; class MeasureCustom(MeasureFeatures):</span>
+<span class="sd">    ...     &#39;&#39;&#39;Measure custom morphology metrics for microbial colonies.&#39;&#39;&#39;</span>
+<span class="sd">    ...</span>
+<span class="sd">    ...     def __init__(self, intensity_threshold=100):</span>
+<span class="sd">    ...         &#39;&#39;&#39;Initialize with intensity threshold for bright pixels.&#39;&#39;&#39;</span>
+<span class="sd">    ...         self.intensity_threshold = intensity_threshold</span>
+<span class="sd">    ...</span>
+<span class="sd">    ...     def _operate(self, image):</span>
+<span class="sd">    ...         &#39;&#39;&#39;Extract bright region area and mean intensity.&#39;&#39;&#39;</span>
+<span class="sd">    ...         gray = image.detect_mat[:]</span>
+<span class="sd">    ...         objmap = image.objmap[:]</span>
+<span class="sd">    ...         # Identify bright pixels within each object</span>
+<span class="sd">    ...         bright_mask = gray &gt; self.intensity_threshold</span>
+<span class="sd">    ...         # Count bright pixels per object</span>
+<span class="sd">    ...         bright_area = self._calculate_sum(</span>
+<span class="sd">    ...             array=bright_mask.astype(int),</span>
+<span class="sd">    ...             objmap=objmap</span>
+<span class="sd">    ...         )</span>
+<span class="sd">    ...         # Mean intensity of bright pixels</span>
+<span class="sd">    ...         bright_intensity = self._funcmap2objects(</span>
+<span class="sd">    ...             func=lambda arr: np.mean(arr[arr &gt; self.intensity_threshold]),</span>
+<span class="sd">    ...             out_dtype=float,</span>
+<span class="sd">    ...             array=gray,</span>
+<span class="sd">    ...             objmap=objmap,</span>
+<span class="sd">    ...             default=np.nan</span>
+<span class="sd">    ...         )</span>
+<span class="sd">    ...         # Create results DataFrame</span>
+<span class="sd">    ...         results = pd.DataFrame({</span>
+<span class="sd">    ...             &#39;BrightArea&#39;: bright_area,</span>
+<span class="sd">    ...             &#39;BrightMeanIntensity&#39;: bright_intensity,</span>
+<span class="sd">    ...         })</span>
+<span class="sd">    ...         results.insert(0, OBJECT.LABEL, image.objects.labels2series())</span>
+<span class="sd">    ...         return results</span>
+<span class="sd">    &gt;&gt;&gt; # Usage:</span>
+<span class="sd">    &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">    &gt;&gt;&gt; image = Image(&#39;colony_plate.jpg&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; # (After detection...)</span>
+<span class="sd">    &gt;&gt;&gt; measurer = MeasureCustom(intensity_threshold=150)</span>
+<span class="sd">    &gt;&gt;&gt; measurements = measurer.measure(image)  # Returns DataFrame</span>
+
+<span class="sd">    **When to Use MeasureFeatures vs ImageOperation:**</span>
+
+<span class="sd">    Use MeasureFeatures when you want to extract **numerical metrics** from objects</span>
+<span class="sd">    (returns DataFrame). Use ImageOperation (ImageEnhancer, ImageCorrector,</span>
+<span class="sd">    ObjectDetector) when you want to **modify the image** (returns Image).</span>
+
+<span class="sd">    **Microbe Phenotyping Context:**</span>
+
+<span class="sd">    In arrayed microbial growth assays, measurements extract colony phenotypes:</span>
+<span class="sd">    morphology (size, shape, compactness), color (pigmentation, growth medium</span>
+<span class="sd">    binding), texture (biofilm formation, colony surface roughness), and intensity</span>
+<span class="sd">    distribution (density variation, heterogeneity). These measurements feed into</span>
+<span class="sd">    genetic and environmental association studies.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        No public attributes. Configuration is passed through __init__() parameters.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Basic usage: measure colony area and intensity:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.measure import MeasureSize</span>
+<span class="sd">        &gt;&gt;&gt; # Load and detect colonies</span>
+<span class="sd">        &gt;&gt;&gt; image = Image(&#39;plate_image.jpg&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        &gt;&gt;&gt; detector = OtsuDetector()</span>
+<span class="sd">        &gt;&gt;&gt; image = detector.operate(image)</span>
+<span class="sd">        &gt;&gt;&gt; # Extract size measurements</span>
+<span class="sd">        &gt;&gt;&gt; measurer = MeasureSize()</span>
+<span class="sd">        &gt;&gt;&gt; df = measurer.measure(image)</span>
+<span class="sd">        &gt;&gt;&gt; print(df)</span>
+<span class="sd">        # Output:</span>
+<span class="sd">        #   OBJECT.LABEL  Area  IntegratedIntensity</span>
+<span class="sd">        # 0             1  1024                 128512</span>
+<span class="sd">        # 1             2   956                 121232</span>
+<span class="sd">        # 2             3  1101                 134232</span>
+
+<span class="sd">        Advanced: extract multiple measurement types with metadata:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic.measure import (</span>
+<span class="sd">        ...     MeasureSize,</span>
+<span class="sd">        ...     MeasureShape,</span>
+<span class="sd">        ...     MeasureColor</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic._core import ImagePipeline</span>
+<span class="sd">        &gt;&gt;&gt; # Create pipeline combining detectors and measurers</span>
+<span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline(</span>
+<span class="sd">        ...     detector=OtsuDetector(),</span>
+<span class="sd">        ...     measurers=[</span>
+<span class="sd">        ...         MeasureSize(),</span>
+<span class="sd">        ...         MeasureShape(),</span>
+<span class="sd">        ...         MeasureColor(include_XYZ=False)</span>
+<span class="sd">        ...     ]</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; # Measure a single image with metadata</span>
+<span class="sd">        &gt;&gt;&gt; results = pipeline.operate(image)</span>
+<span class="sd">        &gt;&gt;&gt; # Combine measurements: merge multiple DataFrames by OBJECT.LABEL</span>
+<span class="sd">        &gt;&gt;&gt; combined = results[0]</span>
+<span class="sd">        &gt;&gt;&gt; for df in results[1:]:</span>
+<span class="sd">        ...     combined = combined.merge(df, on=OBJECT.LABEL)</span>
+
+<span class="sd">        Custom feature engineering: growth density index:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic.abc_ import MeasureFeatures</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.tools_.constants_ import OBJECT</span>
+<span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; class MeasureGrowthDensity(MeasureFeatures):</span>
+<span class="sd">        ...     &#39;&#39;&#39;Custom measurer: compute colony compactness index.&#39;&#39;&#39;</span>
+<span class="sd">        ...</span>
+<span class="sd">        ...     def _operate(self, image):</span>
+<span class="sd">        ...         &#39;&#39;&#39;Calculate area, perimeter, and density index.&#39;&#39;&#39;</span>
+<span class="sd">        ...         objmap = image.objmap[:]</span>
+<span class="sd">        ...         gray = image.detect_mat[:]</span>
+<span class="sd">        ...         # Area and perimeter</span>
+<span class="sd">        ...         area = self._calculate_sum(image.objmask[:], objmap)</span>
+<span class="sd">        ...         perimeter = self._funcmap2objects(</span>
+<span class="sd">        ...             func=lambda arr: np.sqrt(np.sum(arr &gt; 0)) * 4,</span>
+<span class="sd">        ...             out_dtype=float,</span>
+<span class="sd">        ...             array=image.objmask[:],</span>
+<span class="sd">        ...             objmap=objmap</span>
+<span class="sd">        ...         )</span>
+<span class="sd">        ...         # Mean intensity (growth density)</span>
+<span class="sd">        ...         mean_intensity = self._calculate_mean(gray, objmap)</span>
+<span class="sd">        ...         # Compactness = 4*pi*Area / Perimeter^2</span>
+<span class="sd">        ...         compactness = (4 * np.pi * area) / (perimeter ** 2 + 1e-6)</span>
+<span class="sd">        ...         results = pd.DataFrame({</span>
+<span class="sd">        ...             &#39;Area&#39;: area,</span>
+<span class="sd">        ...             &#39;Perimeter&#39;: perimeter,</span>
+<span class="sd">        ...             &#39;MeanIntensity&#39;: mean_intensity,</span>
+<span class="sd">        ...             &#39;CompactnessIndex&#39;: compactness,</span>
+<span class="sd">        ...         })</span>
+<span class="sd">        ...         results.insert(0, OBJECT.LABEL, image.objects.labels2series())</span>
+<span class="sd">        ...         return results</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="MeasureFeatures.measure">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.MeasureFeatures.measure">[docs]</a>
+    <span class="nd">@validate_measure_integrity</span><span class="p">()</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">measure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">include_meta</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute the measurement operation on a detected-object image.</span>
+
+<span class="sd">        This is the main public API method for extracting measurements. It handles:</span>
+<span class="sd">        input validation, parameter extraction via introspection, calling the</span>
+<span class="sd">        subclass-specific `_operate()` method, optional metadata merging, and</span>
+<span class="sd">        exception handling.</span>
+
+<span class="sd">        **How it works (for users):**</span>
+
+<span class="sd">        1. Pass your processed Image (with detected objects) to measure()</span>
+<span class="sd">        2. The method calls your subclass&#39;s _operate() implementation</span>
+<span class="sd">        3. Results are validated and returned as a pandas DataFrame</span>
+<span class="sd">        4. If include_meta=True, image metadata (filename, grid info) is merged in</span>
+
+<span class="sd">        **How it works (for developers):**</span>
+
+<span class="sd">        When you subclass MeasureFeatures, you only implement _operate(). This</span>
+<span class="sd">        measure() method automatically:</span>
+
+<span class="sd">        - Extracts __init__ parameters from your instance (introspection)</span>
+<span class="sd">        - Passes matched parameters to _operate() as keyword arguments</span>
+<span class="sd">        - Validates the Image has detected objects (objmap)</span>
+<span class="sd">        - Wraps exceptions in OperationFailedError with context</span>
+<span class="sd">        - Merges grid/object metadata if requested</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image (Image): A PhenoTypic Image object with detected objects (must</span>
+<span class="sd">                have non-empty objmap from a prior detection operation).</span>
+<span class="sd">            include_meta (bool, optional): If True, merge image metadata columns</span>
+<span class="sd">                (filename, grid position, etc.) into the results DataFrame.</span>
+<span class="sd">                Defaults to False.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            pd.DataFrame: Measurement results with structure:</span>
+
+<span class="sd">                - First column: OBJECT.LABEL (integer IDs from image.objmap[:])</span>
+<span class="sd">                - Remaining columns: Measurement values (float, int, or string)</span>
+<span class="sd">                - One row per detected object</span>
+
+<span class="sd">                If include_meta=True, additional metadata columns are prepended</span>
+<span class="sd">                before OBJECT.LABEL (e.g., Filename, GridRow, GridCol).</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            OperationFailedError: If _operate() raises any exception, it is caught</span>
+<span class="sd">                and re-raised as OperationFailedError with details including the</span>
+<span class="sd">                original exception type, message, image name, and operation class.</span>
+<span class="sd">                This provides consistent error handling across all measurers.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - This method is the main entry point; do not override in subclasses</span>
+<span class="sd">            - Subclasses implement _operate() only, not this method</span>
+<span class="sd">            - Automatic memory profiling is available via logging configuration</span>
+<span class="sd">            - Image must have detected objects (image.objmap should be non-empty)</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Basic measurement extraction:</span>
+
+<span class="sd">            &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.measure import MeasureSize</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">            &gt;&gt;&gt; # Load and detect</span>
+<span class="sd">            &gt;&gt;&gt; image = Image(&#39;plate.jpg&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; image = OtsuDetector().operate(image)</span>
+<span class="sd">            &gt;&gt;&gt; # Extract measurements</span>
+<span class="sd">            &gt;&gt;&gt; measurer = MeasureSize()</span>
+<span class="sd">            &gt;&gt;&gt; df = measurer.measure(image)</span>
+<span class="sd">            &gt;&gt;&gt; print(df.head())</span>
+
+<span class="sd">            Include metadata in measurements:</span>
+
+<span class="sd">            &gt;&gt;&gt; # With image metadata (filename, grid info)</span>
+<span class="sd">            &gt;&gt;&gt; df_with_meta = measurer.measure(image, include_meta=True)</span>
+<span class="sd">            &gt;&gt;&gt; print(df_with_meta.columns)</span>
+<span class="sd">            # Output: [&#39;Filename&#39;, &#39;GridRow&#39;, &#39;GridCol&#39;, &#39;OBJECT.LABEL&#39;,</span>
+<span class="sd">            #          &#39;Area&#39;, &#39;IntegratedIntensity&#39;, ...]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">meas</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_operate</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">include_meta</span><span class="p">:</span>
+                <span class="n">meta</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">include_metadata</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;grid&quot;</span><span class="p">)</span>
+                    <span class="k">else</span> <span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">include_metadata</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="n">meas</span> <span class="o">=</span> <span class="n">meta</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">meas</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">meas</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">OperationFailedError</span><span class="p">(</span>
+                    <span class="n">operation</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                    <span class="n">image_name</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                    <span class="n">err_type</span><span class="o">=</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">),</span>
+                    <span class="n">message</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span>
+            <span class="p">)</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_ensure_array</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Ensure value is a numpy array (handle both scalars and arrays uniformly).</span>
+
+<span class="sd">        This utility method normalizes different input types (scalars, lists, tuples,</span>
+<span class="sd">        already-array values) into a consistent numpy array format. Useful internally</span>
+<span class="sd">        by helper methods to ensure consistent return types and by custom measurers</span>
+<span class="sd">        that need uniform handling of computation results.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            value: Input value (scalar, list, tuple, array, or any array-like).</span>
+<span class="sd">                Can be float, int, bool, or numpy-compatible type.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Converted numpy array. Preserves dtype of input when</span>
+<span class="sd">                possible. Scalars become 0-d arrays.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            This is primarily used internally by _calculate_*() helper methods to</span>
+<span class="sd">            ensure that both single-object results and multi-object arrays are</span>
+<span class="sd">            returned in consistent numpy array format.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Normalize various input types:</span>
+
+<span class="sd">            &gt;&gt;&gt; # Scalar to array</span>
+<span class="sd">            &gt;&gt;&gt; result = MeasureFeatures._ensure_array(5)</span>
+<span class="sd">            &gt;&gt;&gt; print(type(result), result.shape)</span>
+<span class="sd">            # Output: &lt;class &#39;numpy.ndarray&#39;&gt; ()</span>
+<span class="sd">            &gt;&gt;&gt; # List to array</span>
+<span class="sd">            &gt;&gt;&gt; result = MeasureFeatures._ensure_array([1, 2, 3])</span>
+<span class="sd">            &gt;&gt;&gt; print(result, result.shape)</span>
+<span class="sd">            # Output: [1 2 3] (3,)</span>
+<span class="sd">            &gt;&gt;&gt; # Already array</span>
+<span class="sd">            &gt;&gt;&gt; arr = np.array([1.0, 2.0, 3.0])</span>
+<span class="sd">            &gt;&gt;&gt; result = MeasureFeatures._ensure_array(arr)</span>
+<span class="sd">            &gt;&gt;&gt; print(np.array_equal(result, arr))</span>
+<span class="sd">            # Output: True</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">is_scalar</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@catch_warnings_decorator</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_center_of_mass</span><span class="p">(</span><span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">objmap</span><span class="p">:</span> <span class="n">ArrayLike</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate the weighted center of mass for each labeled object.</span>
+
+<span class="sd">        Computes the coordinate position (row, column) of the geometric center of</span>
+<span class="sd">        mass for each labeled object. The center of mass is the intensity-weighted</span>
+<span class="sd">        average position - objects with higher intensity values contribute more to</span>
+<span class="sd">        the center location. Useful for tracking colony center position or detecting</span>
+<span class="sd">        eccentricity in colony growth patterns.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            array (np.ndarray): 2D intensity array (e.g., grayscale image or</span>
+<span class="sd">                intensity within object regions). Values are weights; higher</span>
+<span class="sd">                intensities shift center toward those pixels.</span>
+<span class="sd">            objmap (ArrayLike, optional): 2D labeled integer array with same shape</span>
+<span class="sd">                as `array`. Each unique positive integer (1, 2, 3...) identifies an</span>
+<span class="sd">                object; 0 is background. If None, all non-zero elements of `array`</span>
+<span class="sd">                are treated as a single object. Defaults to None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: If objmap provided: array of shape (num_objects, 2) with</span>
+<span class="sd">                (row, col) coordinates for each object center of mass. If objmap=None:</span>
+<span class="sd">                single (row, col) tuple. Coordinates are floating-point (subpixel</span>
+<span class="sd">                precision possible).</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - Input array values act as weights; zero/near-zero values have minimal</span>
+<span class="sd">              influence on center position</span>
+<span class="sd">            - Useful for detecting colonies with uneven intensity distribution</span>
+<span class="sd">            - Center coordinates may fall outside object pixels (edge effect)</span>
+<span class="sd">            - For equal-weighted center, use uniform-intensity array with same shape</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Find colony centroid positions:</span>
+
+<span class="sd">            &gt;&gt;&gt; # Measure intensity-weighted centers for stained colonies</span>
+<span class="sd">            &gt;&gt;&gt; gray = image.detect_mat[:]  # Preprocessed intensity</span>
+<span class="sd">            &gt;&gt;&gt; objmap = image.objmap[:]</span>
+<span class="sd">            &gt;&gt;&gt; centers = MeasureFeatures._calculate_center_of_mass(</span>
+<span class="sd">            ...     array=gray,</span>
+<span class="sd">            ...     objmap=objmap</span>
+<span class="sd">            ... )</span>
+<span class="sd">            # Returns: [[42.3, 105.8], [156.2, 89.5], ...]</span>
+<span class="sd">            # (row, col) for each object</span>
+<span class="sd">            &gt;&gt;&gt; # Detect colonies with off-center intensity (asymmetric growth)</span>
+<span class="sd">            &gt;&gt;&gt; for i, (row, col) in enumerate(centers):</span>
+<span class="sd">            ...     obj_label = i + 1</span>
+<span class="sd">            ...     # Analyze intensity distribution around center</span>
+
+<span class="sd">            Single colony mass center (no objmap):</span>
+
+<span class="sd">            &gt;&gt;&gt; # Find center for isolated colony region</span>
+<span class="sd">            &gt;&gt;&gt; colony_region = image.detect_mat[50:150, 50:150]</span>
+<span class="sd">            &gt;&gt;&gt; center = MeasureFeatures._calculate_center_of_mass(colony_region)</span>
+<span class="sd">            # Returns: (42.5, 52.3) - single (row, col) tuple</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">objmap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmap</span><span class="p">)</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="n">indexes</span><span class="p">[</span><span class="n">indexes</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_ensure_array</span><span class="p">(</span>
+                <span class="n">scipy</span><span class="o">.</span><span class="n">ndimage</span><span class="o">.</span><span class="n">center_of_mass</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">objmap</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">indexes</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@catch_warnings_decorator</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_maximum</span><span class="p">(</span><span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">objmap</span><span class="p">:</span> <span class="n">ArrayLike</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate the maximum pixel value within each labeled object.</span>
+
+<span class="sd">        Finds the brightest (highest intensity) pixel within each object region.</span>
+<span class="sd">        Useful for detecting bright spots in colonies (spore centers, pigment</span>
+<span class="sd">        accumulation) or evaluating maximum growth intensity.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            array (np.ndarray): 2D intensity array (e.g., grayscale or color channel).</span>
+<span class="sd">            objmap (ArrayLike, optional): 2D labeled integer array. Each positive</span>
+<span class="sd">                integer (1, 2, 3...) identifies an object; 0 is background. If None,</span>
+<span class="sd">                all non-zero elements of `array` are treated as a single object.</span>
+<span class="sd">                Defaults to None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: 1D array of maximum values, one per object. If objmap=None,</span>
+<span class="sd">                returns scalar (0-d array).</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - Returns NaN for objects with all-zero pixels</span>
+<span class="sd">            - Sensitive to image noise; consider preprocessing with smoothing first</span>
+<span class="sd">            - Useful with binary masks to count bright-region pixels</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Find brightest pixels in colonies:</span>
+
+<span class="sd">            &gt;&gt;&gt; gray = image.detect_mat[:]</span>
+<span class="sd">            &gt;&gt;&gt; objmap = image.objmap[:]</span>
+<span class="sd">            &gt;&gt;&gt; max_intensity = MeasureFeatures._calculate_maximum(gray, objmap)</span>
+<span class="sd">            # Returns: [245, 238, 241, ...] brightness per object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">objmap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmap</span><span class="p">)</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="n">indexes</span><span class="p">[</span><span class="n">indexes</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_ensure_array</span><span class="p">(</span>
+                <span class="n">scipy</span><span class="o">.</span><span class="n">ndimage</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">objmap</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">indexes</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@catch_warnings_decorator</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_mean</span><span class="p">(</span><span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">objmap</span><span class="p">:</span> <span class="n">ArrayLike</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate the mean (average) intensity for each labeled object.</span>
+
+<span class="sd">        Computes the arithmetic mean of all pixels within each object region.</span>
+<span class="sd">        Primary measure of overall colony brightness/density. In microbial</span>
+<span class="sd">        phenotyping, mean intensity correlates with growth density, pigmentation,</span>
+<span class="sd">        and biofilm formation.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            array (np.ndarray): 2D intensity array (grayscale, color channel, etc.).</span>
+<span class="sd">            objmap (ArrayLike, optional): 2D labeled integer array (same shape as</span>
+<span class="sd">                array). Positive integers identify objects; 0 is background. If None,</span>
+<span class="sd">                all non-zero array elements are treated as single object.</span>
+<span class="sd">                Defaults to None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: 1D array of mean values (float), one per object. If objmap=None,</span>
+<span class="sd">                returns scalar (0-d array). Returns NaN for empty objects.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - Most commonly used intensity statistic</span>
+<span class="sd">            - Not robust to outliers; use median for outlier-resistant average</span>
+<span class="sd">            - Zero/background pixels excluded from calculation</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Compare colony growth intensity:</span>
+
+<span class="sd">            &gt;&gt;&gt; gray = image.detect_mat[:]</span>
+<span class="sd">            &gt;&gt;&gt; objmap = image.objmap[:]</span>
+<span class="sd">            &gt;&gt;&gt; mean_intensities = MeasureFeatures._calculate_mean(gray, objmap)</span>
+<span class="sd">            # Returns: [128.5, 142.3, 135.8, ...] avg brightness per colony</span>
+<span class="sd">            # High values = dense/pigmented growth</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">objmap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmap</span><span class="p">)</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="n">indexes</span><span class="p">[</span><span class="n">indexes</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_ensure_array</span><span class="p">(</span>
+                <span class="n">scipy</span><span class="o">.</span><span class="n">ndimage</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">objmap</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">indexes</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@catch_warnings_decorator</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_median</span><span class="p">(</span><span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">objmap</span><span class="p">:</span> <span class="n">ArrayLike</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate the median intensity for each labeled object.</span>
+
+<span class="sd">        Finds the middle value (50th percentile) of all pixels in each object.</span>
+<span class="sd">        More robust to outliers than mean - useful when colonies contain bright</span>
+<span class="sd">        specks, debris, or uneven staining. Also useful for binary masks (median</span>
+<span class="sd">        of 0/1 gives fraction threshold).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            array (np.ndarray): 2D intensity array.</span>
+<span class="sd">            objmap (ArrayLike, optional): 2D labeled integer array (same shape).</span>
+<span class="sd">                Positive integers = objects, 0 = background. If None, all non-zero</span>
+<span class="sd">                array elements treated as single object. Defaults to None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: 1D array of median values, one per object. If objmap=None,</span>
+<span class="sd">                returns scalar. Returns NaN for empty objects.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - Robust to outliers and extreme values (unlike mean)</span>
+<span class="sd">            - Slower computation than mean (requires sorting)</span>
+<span class="sd">            - Good for colonies with speckling or uneven stain distribution</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Robust growth intensity measurement:</span>
+
+<span class="sd">            &gt;&gt;&gt; gray = image.detect_mat[:]</span>
+<span class="sd">            &gt;&gt;&gt; objmap = image.objmap[:]</span>
+<span class="sd">            &gt;&gt;&gt; # For colonies with bright debris or speckles</span>
+<span class="sd">            &gt;&gt;&gt; median_int = MeasureFeatures._calculate_median(gray, objmap)</span>
+<span class="sd">            # More stable than mean for noisy images</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">objmap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmap</span><span class="p">)</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="n">indexes</span><span class="p">[</span><span class="n">indexes</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_ensure_array</span><span class="p">(</span>
+                <span class="n">scipy</span><span class="o">.</span><span class="n">ndimage</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">objmap</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">indexes</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@catch_warnings_decorator</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_minimum</span><span class="p">(</span><span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">objmap</span><span class="p">:</span> <span class="n">ArrayLike</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate the minimum pixel value within each labeled object.</span>
+
+<span class="sd">        Finds the darkest (lowest intensity) pixel within each object region.</span>
+<span class="sd">        Useful for detecting thin regions, detecting edge pixels, or checking</span>
+<span class="sd">        for completely black (dead) regions within colonies.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            array (np.ndarray): 2D intensity array (grayscale or channel).</span>
+<span class="sd">            objmap (ArrayLike, optional): 2D labeled integer array (same shape).</span>
+<span class="sd">                Positive integers identify objects; 0 is background. If None,</span>
+<span class="sd">                all non-zero array elements treated as single object.</span>
+<span class="sd">                Defaults to None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: 1D array of minimum values, one per object. If objmap=None,</span>
+<span class="sd">                returns scalar (0-d array).</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - Returns NaN for objects with all-zero pixels</span>
+<span class="sd">            - Sensitive to shadows, indentations, or dark contaminants</span>
+<span class="sd">            - Combined with maximum, reveals intensity range within colony</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Detect dark regions in colonies:</span>
+
+<span class="sd">            &gt;&gt;&gt; gray = image.detect_mat[:]</span>
+<span class="sd">            &gt;&gt;&gt; objmap = image.objmap[:]</span>
+<span class="sd">            &gt;&gt;&gt; min_int = MeasureFeatures._calculate_minimum(gray, objmap)</span>
+<span class="sd">            # Identifies colonies with dark cores (aging or death)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">objmap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmap</span><span class="p">)</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="n">indexes</span><span class="p">[</span><span class="n">indexes</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_ensure_array</span><span class="p">(</span>
+                <span class="n">scipy</span><span class="o">.</span><span class="n">ndimage</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">objmap</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">indexes</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@catch_warnings_decorator</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_stddev</span><span class="p">(</span><span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">objmap</span><span class="p">:</span> <span class="n">ArrayLike</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate the standard deviation of pixel values within each object.</span>
+
+<span class="sd">        Measures intensity variation within each colony region. High stddev</span>
+<span class="sd">        indicates uneven growth, texture, or biofilm formation. Low stddev</span>
+<span class="sd">        indicates uniform, homogeneous colonies.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            array (np.ndarray): 2D intensity array.</span>
+<span class="sd">            objmap (ArrayLike, optional): 2D labeled integer array (same shape).</span>
+<span class="sd">                Positive integers = objects, 0 = background. If None, all</span>
+<span class="sd">                non-zero array elements treated as single object.</span>
+<span class="sd">                Defaults to None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: 1D array of standard deviations, one per object. If</span>
+<span class="sd">                objmap=None, returns scalar.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - Zero for perfectly uniform colonies</span>
+<span class="sd">            - High values suggest rough surfaces, biofilms, or sectoring</span>
+<span class="sd">            - Useful for phenotyping mixed cultures or detecting morphological</span>
+<span class="sd">              mutants with rougher colony surfaces</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Detect rough/textured colonies:</span>
+
+<span class="sd">            &gt;&gt;&gt; gray = image.detect_mat[:]</span>
+<span class="sd">            &gt;&gt;&gt; objmap = image.objmap[:]</span>
+<span class="sd">            &gt;&gt;&gt; stddev = MeasureFeatures._calculate_stddev(gray, objmap)</span>
+<span class="sd">            # High stddev = rough/textured colonies</span>
+<span class="sd">            # Low stddev = smooth/uniform growth</span>
+<span class="sd">            &gt;&gt;&gt; rough_colonies = np.where(stddev &gt; 20)[0]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">objmap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmap</span><span class="p">)</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="n">indexes</span><span class="p">[</span><span class="n">indexes</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_ensure_array</span><span class="p">(</span>
+                <span class="n">scipy</span><span class="o">.</span><span class="n">ndimage</span><span class="o">.</span><span class="n">standard_deviation</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">objmap</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">indexes</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@catch_warnings_decorator</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_sum</span><span class="p">(</span><span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">objmap</span><span class="p">:</span> <span class="n">ArrayLike</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate the sum of all pixel values within each labeled object.</span>
+
+<span class="sd">        Integrates intensity across entire object region. For binary masks</span>
+<span class="sd">        (array=objmask), this equals the number of pixels (area). For intensity</span>
+<span class="sd">        arrays, gives total accumulated intensity (used for &quot;integrated intensity&quot;</span>
+<span class="sd">        in colony phenotyping). Proportional to both colony size and density.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            array (np.ndarray): 2D value array (intensity, binary mask, etc.).</span>
+<span class="sd">            objmap (ArrayLike, optional): 2D labeled integer array (same shape).</span>
+<span class="sd">                Positive integers identify objects; 0 is background. If None,</span>
+<span class="sd">                all non-zero array elements treated as single object.</span>
+<span class="sd">                Defaults to None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: 1D array of sums, one per object. If objmap=None,</span>
+<span class="sd">                returns scalar (0-d array).</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - On binary mask (0/1): sum = area (pixel count)</span>
+<span class="sd">            - On grayscale: sum = total brightness (size * mean intensity)</span>
+<span class="sd">            - Sensitive to both object size and intensity</span>
+<span class="sd">            - No division by area (unlike mean), so larger objects always sum higher</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Calculate colony area and integrated intensity:</span>
+
+<span class="sd">            &gt;&gt;&gt; # Area = sum of binary mask</span>
+<span class="sd">            &gt;&gt;&gt; area = MeasureFeatures._calculate_sum(image.objmask[:],</span>
+<span class="sd">            ...                                      image.objmap[:])</span>
+<span class="sd">            # Returns pixel count per colony</span>
+<span class="sd">            &gt;&gt;&gt; # Integrated intensity = sum of grayscale</span>
+<span class="sd">            &gt;&gt;&gt; intensity = MeasureFeatures._calculate_sum(image.gray[:],</span>
+<span class="sd">            ...                                           image.objmap[:])</span>
+<span class="sd">            # Returns total brightness per colony</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">objmap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmap</span><span class="p">)</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="n">indexes</span><span class="p">[</span><span class="n">indexes</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_ensure_array</span><span class="p">(</span>
+                <span class="n">scipy</span><span class="o">.</span><span class="n">ndimage</span><span class="o">.</span><span class="n">sum_labels</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">objmap</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">indexes</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@catch_warnings_decorator</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_variance</span><span class="p">(</span><span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">objmap</span><span class="p">:</span> <span class="n">ArrayLike</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate the variance (stddev squared) of pixel values in each object.</span>
+
+<span class="sd">        Measures intensity spread within each colony. Variance = stddev^2. Used</span>
+<span class="sd">        in statistical analysis and texture characterization. Higher variance</span>
+<span class="sd">        indicates more heterogeneous growth or surface texture.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            array (np.ndarray): 2D intensity array.</span>
+<span class="sd">            objmap (ArrayLike, optional): 2D labeled integer array (same shape).</span>
+<span class="sd">                Positive integers = objects, 0 = background. If None, all</span>
+<span class="sd">                non-zero array elements treated as single object.</span>
+<span class="sd">                Defaults to None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: 1D array of variances, one per object. If objmap=None,</span>
+<span class="sd">                returns scalar.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - Variance = stddev^2; variance is useful for statistical tests</span>
+<span class="sd">            - Units are (intensity)^2, making interpretation less intuitive</span>
+<span class="sd">            - Preferred over stddev in statistical/ML contexts</span>
+<span class="sd">            - Zero for perfectly uniform colonies</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Analyze colony texture variability:</span>
+
+<span class="sd">            &gt;&gt;&gt; gray = image.detect_mat[:]</span>
+<span class="sd">            &gt;&gt;&gt; objmap = image.objmap[:]</span>
+<span class="sd">            &gt;&gt;&gt; variance = MeasureFeatures._calculate_variance(gray, objmap)</span>
+<span class="sd">            &gt;&gt;&gt; stddev = np.sqrt(variance)  # Convert back to original units</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">objmap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmap</span><span class="p">)</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="n">indexes</span><span class="p">[</span><span class="n">indexes</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_ensure_array</span><span class="p">(</span>
+                <span class="n">scipy</span><span class="o">.</span><span class="n">ndimage</span><span class="o">.</span><span class="n">variance</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">objmap</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">indexes</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@catch_warnings_decorator</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_coeff_variation</span><span class="p">(</span><span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">objmap</span><span class="p">:</span> <span class="n">ArrayLike</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate the unbiased coefficient of variation (CV) for each object.</span>
+
+<span class="sd">        The coefficient of variation measures relative intensity variability,</span>
+<span class="sd">        normalized by the mean. CV = stddev / mean * 100%. Unbiased estimator</span>
+<span class="sd">        accounts for sample size. Useful for comparing texture across colonies</span>
+<span class="sd">        of different sizes or intensities. Lower CV = more uniform/homogeneous;</span>
+<span class="sd">        higher CV = more heterogeneous/textured (biofilm, sectoring).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            array (np.ndarray): 2D intensity array (grayscale or channel).</span>
+<span class="sd">            objmap (ArrayLike, optional): 2D labeled integer array (same shape).</span>
+<span class="sd">                Positive integers identify objects; 0 is background. If None,</span>
+<span class="sd">                calculation returns NaN (requires object counts for unbiasing).</span>
+<span class="sd">                Defaults to None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: 1D array of unbiased CV values (dimensionless ratio),</span>
+<span class="sd">                one per object. If objmap=None, returns NaN. Values typically</span>
+<span class="sd">                range 0.0 to 1.0+ (can exceed 1 for highly variable colonies).</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - Unbiased estimator: CV_unbiased = (1 + 1/n) * CV_biased</span>
+<span class="sd">            - Dimensionless (unlike stddev), allows cross-sample comparison</span>
+<span class="sd">            - Requires labeled objects (objmap); cannot compute for single-object mode</span>
+<span class="sd">            - Returns NaN if objmap=None (need object counts for unbiasing)</span>
+<span class="sd">            - Colonies with CV &lt; 0.1 are very uniform</span>
+<span class="sd">            - Colonies with CV &gt; 0.3 show significant texture/heterogeneity</span>
+
+<span class="sd">        References:</span>
+<span class="sd">            - https://en.wikipedia.org/wiki/Coefficient_of_variation</span>
+<span class="sd">            - Unbiased estimator: (1 + 1/n) * biased_cv</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Compare colony growth uniformity:</span>
+
+<span class="sd">            &gt;&gt;&gt; gray = image.detect_mat[:]</span>
+<span class="sd">            &gt;&gt;&gt; objmap = image.objmap[:]</span>
+<span class="sd">            &gt;&gt;&gt; cv = MeasureFeatures._calculate_coeff_variation(gray, objmap)</span>
+<span class="sd">            # Returns: [0.08, 0.15, 0.32, ...] relative variation</span>
+<span class="sd">            # CV &lt; 0.1: smooth, uniform colonies</span>
+<span class="sd">            # CV &gt; 0.2: rough, textured growth (biofilm)</span>
+<span class="sd">            &gt;&gt;&gt; textured = np.where(cv &gt; 0.2)[0]  # Find biofilm-like colonies</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">objmap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">unique_labels</span><span class="p">,</span> <span class="n">unique_counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmap</span><span class="p">,</span> <span class="n">return_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">unique_counts</span> <span class="o">=</span> <span class="n">unique_counts</span><span class="p">[</span><span class="n">unique_labels</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
+            <span class="n">biased_cv</span> <span class="o">=</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_calculate_stddev</span><span class="p">(</span>
+                    <span class="n">array</span><span class="p">,</span> <span class="n">objmap</span>
+            <span class="p">)</span> <span class="o">/</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_calculate_mean</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">objmap</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">unique_counts</span><span class="p">))</span> <span class="o">*</span> <span class="n">biased_cv</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># For the case when objmap is None, we can&#39;t calculate the coefficient of variation</span>
+            <span class="c1"># because we need the counts of each label</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="k">return</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_ensure_array</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_extrema</span><span class="p">(</span><span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">objmap</span><span class="p">:</span> <span class="n">ArrayLike</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Internal helper: calculate min/max values and positions for labeled objects.</span>
+
+<span class="sd">        Returns tuple of (min_values, max_values, min_positions, max_positions).</span>
+<span class="sd">        Mostly used internally by _calculate_min_extrema() and</span>
+<span class="sd">        _calculate_max_extrema(). Use those public methods instead.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            array (np.ndarray): 2D intensity array.</span>
+<span class="sd">            objmap (ArrayLike, optional): 2D labeled integer array (same shape).</span>
+<span class="sd">                Positive integers identify objects; 0 is background. If None,</span>
+<span class="sd">                all non-zero array elements treated as single object.</span>
+<span class="sd">                Defaults to None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple: (min_vals, max_vals, min_pos, max_pos) where each is numpy array</span>
+<span class="sd">                of shape (num_objects, 2) with (row, col) coordinates for extrema</span>
+<span class="sd">                or (num_objects,) for values.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">objmap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmap</span><span class="p">)</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="n">indexes</span><span class="p">[</span><span class="n">indexes</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">indexes</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">min_extrema</span><span class="p">,</span> <span class="n">max_extrema</span><span class="p">,</span> <span class="n">min_pos</span><span class="p">,</span> <span class="n">max_pos</span> <span class="o">=</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_ensure_array</span><span class="p">(</span>
+                <span class="n">scipy</span><span class="o">.</span><span class="n">ndimage</span><span class="o">.</span><span class="n">extrema</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">objmap</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">indexes</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_ensure_array</span><span class="p">(</span><span class="n">min_extrema</span><span class="p">),</span>
+            <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_ensure_array</span><span class="p">(</span><span class="n">max_extrema</span><span class="p">),</span>
+            <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_ensure_array</span><span class="p">(</span><span class="n">min_pos</span><span class="p">),</span>
+            <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_ensure_array</span><span class="p">(</span><span class="n">max_pos</span><span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@catch_warnings_decorator</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_min_extrema</span><span class="p">(</span><span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">objmap</span><span class="p">:</span> <span class="n">ArrayLike</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Find the darkest pixel and its (row, col) location in each object.</span>
+
+<span class="sd">        Identifies the minimum intensity value and the spatial coordinate where</span>
+<span class="sd">        that minimum occurs. Useful for detecting dark spots, shadows, or low-</span>
+<span class="sd">        intensity regions within colonies. Combined with max_extrema, reveals</span>
+<span class="sd">        intensity range and spatial distribution of brightness.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            array (np.ndarray): 2D intensity array.</span>
+<span class="sd">            objmap (ArrayLike, optional): 2D labeled integer array (same shape).</span>
+<span class="sd">                Positive integers = objects, 0 = background. If None, all</span>
+<span class="sd">                non-zero array elements treated as single object.</span>
+<span class="sd">                Defaults to None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple: (min_values, min_positions) where:</span>
+
+<span class="sd">                - min_values: 1D array of minimum intensity per object (float)</span>
+<span class="sd">                - min_positions: Array of (row, col) coordinates per object</span>
+<span class="sd">                  (shape depends on objmap)</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - Positions are pixel coordinates (row, col)</span>
+<span class="sd">            - Useful for detecting dark colonies or dead regions</span>
+<span class="sd">            - May return multiple positions if minimum occurs multiple times</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Locate dark regions in colonies:</span>
+
+<span class="sd">            &gt;&gt;&gt; gray = image.detect_mat[:]</span>
+<span class="sd">            &gt;&gt;&gt; objmap = image.objmap[:]</span>
+<span class="sd">            &gt;&gt;&gt; min_vals, min_pos = MeasureFeatures._calculate_min_extrema(</span>
+<span class="sd">            ...     gray, objmap</span>
+<span class="sd">            ... )</span>
+<span class="sd">            # min_vals: [50, 45, 52, ...] darkest pixel per colony</span>
+<span class="sd">            # min_pos: [(45, 103), (156, 87), ...] locations</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">min_extrema</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">min_pos</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_calculate_extrema</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">objmap</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">min_extrema</span><span class="p">,</span> <span class="n">min_pos</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@catch_warnings_decorator</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_max_extrema</span><span class="p">(</span><span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">objmap</span><span class="p">:</span> <span class="n">ArrayLike</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Find the brightest pixel and its (row, col) location in each object.</span>
+
+<span class="sd">        Identifies the maximum intensity value and the spatial coordinate where</span>
+<span class="sd">        that maximum occurs. Useful for detecting bright spores, pigment centers,</span>
+<span class="sd">        or regions of highest colony density. Combined with min_extrema, reveals</span>
+<span class="sd">        intensity range and spatial variation within colonies.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            array (np.ndarray): 2D intensity array.</span>
+<span class="sd">            objmap (ArrayLike, optional): 2D labeled integer array (same shape).</span>
+<span class="sd">                Positive integers identify objects; 0 is background. If None,</span>
+<span class="sd">                all non-zero array elements treated as single object.</span>
+<span class="sd">                Defaults to None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple: (max_values, max_positions) where:</span>
+
+<span class="sd">                - max_values: 1D array of maximum intensity per object (float)</span>
+<span class="sd">                - max_positions: Array of (row, col) coordinates per object</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - Positions are pixel coordinates (row, col)</span>
+<span class="sd">            - Useful for locating spore centers, pigmentation hotspots</span>
+<span class="sd">            - Bright colonies have high max values; dim colonies have low max values</span>
+<span class="sd">            - Multiple positions possible if maximum occurs multiple times</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Find brightest spots in colonies:</span>
+
+<span class="sd">            &gt;&gt;&gt; gray = image.detect_mat[:]</span>
+<span class="sd">            &gt;&gt;&gt; objmap = image.objmap[:]</span>
+<span class="sd">            &gt;&gt;&gt; max_vals, max_pos = MeasureFeatures._calculate_max_extrema(</span>
+<span class="sd">            ...     gray, objmap</span>
+<span class="sd">            ... )</span>
+<span class="sd">            # max_vals: [245, 238, 241, ...] brightest pixel per colony</span>
+<span class="sd">            # max_pos: [(42, 105), (155, 89), ...] center locations</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">max_extreme</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">max_pos</span> <span class="o">=</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_calculate_extrema</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">objmap</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">max_extreme</span><span class="p">,</span> <span class="n">max_pos</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_funcmap2objects</span><span class="p">(</span>
+            <span class="n">func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span>
+            <span class="n">out_dtype</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+            <span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">objmap</span><span class="p">:</span> <span class="n">ArrayLike</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">default</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="n">pass_positions</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply a custom function to each labeled region in an array (advanced helper).</span>
+
+<span class="sd">        Powerful utility for computing arbitrary measurements on labeled objects.</span>
+<span class="sd">        Applies your custom function to the pixels within each object and returns</span>
+<span class="sd">        aggregated results. Useful for custom statistics not covered by built-in</span>
+<span class="sd">        helpers (percentiles, custom transformations, etc.).</span>
+
+<span class="sd">        Internally uses scipy.ndimage.labeled_comprehension, which iterates over</span>
+<span class="sd">        unique object labels and extracts the corresponding pixels, passes them</span>
+<span class="sd">        to your function, and collects results.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            func (Callable): Function to apply to each object&#39;s pixels. Signature:</span>
+<span class="sd">                `func(pixel_array) -&gt; scalar`. If pass_positions=True:</span>
+<span class="sd">                `func(pixel_array, pixel_positions) -&gt; scalar`. Examples:</span>
+<span class="sd">                np.mean, np.percentile (use partial for arguments).</span>
+<span class="sd">            out_dtype (np.dtype): Output array data type (float64, int32, etc.).</span>
+<span class="sd">                Affects precision and memory usage.</span>
+<span class="sd">            array (np.ndarray): 2D input array (intensity, counts, etc.).</span>
+<span class="sd">            objmap (ArrayLike, optional): 2D labeled integer array (same shape as</span>
+<span class="sd">                array). Positive integers identify objects; 0 is background. If None,</span>
+<span class="sd">                all non-zero array elements are treated as a single object.</span>
+<span class="sd">                Defaults to None.</span>
+<span class="sd">            default (int | float | np.nan, optional): Value to assign to labels</span>
+<span class="sd">                not found in objmap (e.g., skipped background). Defaults to np.nan.</span>
+<span class="sd">            pass_positions (bool, optional): If True, pass (pixel_array, positions)</span>
+<span class="sd">                to func instead of just pixel_array. Positions are (row, col) tuples</span>
+<span class="sd">                of non-zero pixels. Defaults to False.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: 1D array of results (one per object). Output dtype matches</span>
+<span class="sd">                out_dtype parameter. Returns scalar if single object.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - Powerful for custom measurements beyond standard statistics</span>
+<span class="sd">            - Can be slow for large images; vectorize if possible</span>
+<span class="sd">            - Use functools.partial() to fix function parameters</span>
+<span class="sd">            - Positions only available if pass_positions=True (slower)</span>
+<span class="sd">            - func() receives actual pixel values, not labeled indices</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Custom measurement: find 90th percentile intensity:</span>
+
+<span class="sd">            &gt;&gt;&gt; from functools import partial</span>
+<span class="sd">            &gt;&gt;&gt; gray = image.detect_mat[:]</span>
+<span class="sd">            &gt;&gt;&gt; objmap = image.objmap[:]</span>
+<span class="sd">            &gt;&gt;&gt; # Define custom function</span>
+<span class="sd">            &gt;&gt;&gt; q90 = partial(np.percentile, q=90)</span>
+<span class="sd">            &gt;&gt;&gt; results = MeasureFeatures._funcmap2objects(</span>
+<span class="sd">            ...     func=q90,</span>
+<span class="sd">            ...     out_dtype=float,</span>
+<span class="sd">            ...     array=gray,</span>
+<span class="sd">            ...     objmap=objmap,</span>
+<span class="sd">            ...     default=np.nan</span>
+<span class="sd">            ... )</span>
+<span class="sd">            # Returns: [200, 195, 210, ...] 90th percentile per colony</span>
+
+<span class="sd">            Custom: count pixels above threshold:</span>
+
+<span class="sd">            &gt;&gt;&gt; # Count bright pixels within each colony</span>
+<span class="sd">            &gt;&gt;&gt; def count_bright(pixels):</span>
+<span class="sd">            ...     return np.sum(pixels &gt; 200)</span>
+<span class="sd">            &gt;&gt;&gt; bright_pixels = MeasureFeatures._funcmap2objects(</span>
+<span class="sd">            ...     func=count_bright,</span>
+<span class="sd">            ...     out_dtype=int,</span>
+<span class="sd">            ...     array=gray,</span>
+<span class="sd">            ...     objmap=objmap,</span>
+<span class="sd">            ...     default=0</span>
+<span class="sd">            ... )</span>
+<span class="sd">            # Returns: [45, 32, 58, ...] bright pixel count per colony</span>
+
+<span class="sd">            Advanced: use positions for spatial analysis:</span>
+
+<span class="sd">            &gt;&gt;&gt; # Find distance from top-left for brightest pixel</span>
+<span class="sd">            &gt;&gt;&gt; def distance_to_topleft(pixels, positions):</span>
+<span class="sd">            ...     if len(pixels) == 0:</span>
+<span class="sd">            ...         return np.nan</span>
+<span class="sd">            ...     brightest_idx = np.argmax(pixels)</span>
+<span class="sd">            ...     row, col = positions[brightest_idx]</span>
+<span class="sd">            ...     return np.sqrt(row**2 + col**2)</span>
+<span class="sd">            &gt;&gt;&gt; distances = MeasureFeatures._funcmap2objects(</span>
+<span class="sd">            ...     func=distance_to_topleft,</span>
+<span class="sd">            ...     out_dtype=float,</span>
+<span class="sd">            ...     array=gray,</span>
+<span class="sd">            ...     objmap=objmap,</span>
+<span class="sd">            ...     pass_positions=True,</span>
+<span class="sd">            ...     default=np.nan</span>
+<span class="sd">            ... )</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">objmap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmap</span><span class="p">)</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="n">index</span><span class="p">[</span><span class="n">index</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">return</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_ensure_array</span><span class="p">(</span>
+                <span class="n">scipy</span><span class="o">.</span><span class="n">ndimage</span><span class="o">.</span><span class="n">labeled_comprehension</span><span class="p">(</span>
+                        <span class="nb">input</span><span class="o">=</span><span class="n">array</span><span class="p">,</span>
+                        <span class="n">labels</span><span class="o">=</span><span class="n">objmap</span><span class="p">,</span>
+                        <span class="n">index</span><span class="o">=</span><span class="n">index</span><span class="p">,</span>
+                        <span class="n">func</span><span class="o">=</span><span class="n">func</span><span class="p">,</span>
+                        <span class="n">out_dtype</span><span class="o">=</span><span class="n">out_dtype</span><span class="p">,</span>
+                        <span class="n">pass_positions</span><span class="o">=</span><span class="n">pass_positions</span><span class="p">,</span>
+                        <span class="n">default</span><span class="o">=</span><span class="n">default</span><span class="p">,</span>
+                <span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@catch_warnings_decorator</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_q1</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">objmap</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;linear&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate the first quartile (Q1, 25th percentile) for each object.</span>
+
+<span class="sd">        Finds the value below which 25% of pixels fall. Less sensitive to extremes</span>
+<span class="sd">        than mean/median, useful for characterizing lower intensity tail of</span>
+<span class="sd">        distribution (sparse/background regions within colonies).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            array (np.ndarray): 2D intensity array.</span>
+<span class="sd">            objmap (ArrayLike, optional): 2D labeled integer array. Defaults to None.</span>
+<span class="sd">            method (str, optional): Quantile interpolation method (&#39;linear&#39;,</span>
+<span class="sd">                &#39;lower&#39;, &#39;higher&#39;, &#39;nearest&#39;, &#39;midpoint&#39;). See numpy.quantile docs.</span>
+<span class="sd">                Defaults to &#39;linear&#39;.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: 1D array of Q1 values, one per object.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - Q1, Q2 (median), Q3 together form quartile summary</span>
+<span class="sd">            - Low Q1 suggests colonies with sparse pixel coverage</span>
+<span class="sd">            - Used to compute IQR (Q3 - Q1)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">find_q1</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">quantile</span><span class="p">,</span> <span class="n">q</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">)</span>
+        <span class="n">q1</span> <span class="o">=</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_funcmap2objects</span><span class="p">(</span>
+                <span class="n">func</span><span class="o">=</span><span class="n">find_q1</span><span class="p">,</span>
+                <span class="n">out_dtype</span><span class="o">=</span><span class="n">array</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+                <span class="n">array</span><span class="o">=</span><span class="n">array</span><span class="p">,</span>
+                <span class="n">objmap</span><span class="o">=</span><span class="n">objmap</span><span class="p">,</span>
+                <span class="n">default</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                <span class="n">pass_positions</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_ensure_array</span><span class="p">(</span><span class="n">q1</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@catch_warnings_decorator</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_q3</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">objmap</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;linear&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate the third quartile (Q3, 75th percentile) for each object.</span>
+
+<span class="sd">        Finds the value below which 75% of pixels fall. Characterizes upper</span>
+<span class="sd">        intensity distribution (bright regions, dense growth areas). Together</span>
+<span class="sd">        with Q1, defines the interquartile range (IQR).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            array (np.ndarray): 2D intensity array.</span>
+<span class="sd">            objmap (ArrayLike, optional): 2D labeled integer array. Defaults to None.</span>
+<span class="sd">            method (str, optional): Quantile interpolation method (&#39;linear&#39;,</span>
+<span class="sd">                &#39;lower&#39;, &#39;higher&#39;, &#39;nearest&#39;, &#39;midpoint&#39;). Defaults to &#39;linear&#39;.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: 1D array of Q3 values, one per object.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - High Q3 indicates colonies with bright, densely-packed pixels</span>
+<span class="sd">            - IQR = Q3 - Q1 (robust measure of spread)</span>
+<span class="sd">            - Used with Q1 to identify outlier intensities</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">find_q3</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">quantile</span><span class="p">,</span> <span class="n">q</span><span class="o">=</span><span class="mf">0.75</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">)</span>
+        <span class="n">q3</span> <span class="o">=</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_funcmap2objects</span><span class="p">(</span>
+                <span class="n">func</span><span class="o">=</span><span class="n">find_q3</span><span class="p">,</span>
+                <span class="n">out_dtype</span><span class="o">=</span><span class="n">array</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+                <span class="n">array</span><span class="o">=</span><span class="n">array</span><span class="p">,</span>
+                <span class="n">objmap</span><span class="o">=</span><span class="n">objmap</span><span class="p">,</span>
+                <span class="n">default</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                <span class="n">pass_positions</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_ensure_array</span><span class="p">(</span><span class="n">q3</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@catch_warnings_decorator</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_iqr</span><span class="p">(</span>
+            <span class="n">array</span><span class="p">,</span> <span class="n">objmap</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="n">nan_policy</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;omit&quot;</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate the interquartile range (Q3 - Q1) for each object.</span>
+
+<span class="sd">        Measures the spread of the middle 50% of intensities. Robust to outliers</span>
+<span class="sd">        (unlike range or variance). Used for detecting intensity outliers and</span>
+<span class="sd">        characterizing colony texture uniformity. Low IQR = narrow intensity range</span>
+<span class="sd">        (uniform); high IQR = broad range (variable).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            array (np.ndarray): 2D intensity array.</span>
+<span class="sd">            objmap (ArrayLike, optional): 2D labeled integer array. Defaults to None.</span>
+<span class="sd">            method (str, optional): Quantile interpolation method. Defaults to &#39;linear&#39;.</span>
+<span class="sd">            nan_policy (str, optional): How to handle NaN values (&#39;omit&#39;, &#39;propagate&#39;).</span>
+<span class="sd">                Defaults to &#39;omit&#39;.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: 1D array of IQR values, one per object.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - IQR = Q3 - Q1; always non-negative</span>
+<span class="sd">            - Robust measure; unaffected by extreme outliers</span>
+<span class="sd">            - Colonies with IQR &lt; 30: uniform intensity distribution</span>
+<span class="sd">            - Colonies with IQR &gt; 100: highly variable (texture, biofilm)</span>
+<span class="sd">            - Preferred over stddev/variance for non-normal distributions</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Compare colony texture via IQR:</span>
+
+<span class="sd">            &gt;&gt;&gt; gray = image.detect_mat[:]</span>
+<span class="sd">            &gt;&gt;&gt; objmap = image.objmap[:]</span>
+<span class="sd">            &gt;&gt;&gt; iqr = MeasureFeatures._calculate_iqr(gray, objmap)</span>
+<span class="sd">            # IQR &lt; 30: smooth, uniform colonies</span>
+<span class="sd">            # IQR &gt; 100: rough, textured growth</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">find_iqr</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span>
+                <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">iqr</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nan_policy</span><span class="o">=</span><span class="n">nan_policy</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="n">method</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_ensure_array</span><span class="p">(</span>
+                <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_funcmap2objects</span><span class="p">(</span>
+                        <span class="n">func</span><span class="o">=</span><span class="n">find_iqr</span><span class="p">,</span>
+                        <span class="n">out_dtype</span><span class="o">=</span><span class="n">array</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+                        <span class="n">array</span><span class="o">=</span><span class="n">array</span><span class="p">,</span>
+                        <span class="n">objmap</span><span class="o">=</span><span class="n">objmap</span><span class="p">,</span>
+                        <span class="n">default</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+                        <span class="n">pass_positions</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="p">),</span>
+        <span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

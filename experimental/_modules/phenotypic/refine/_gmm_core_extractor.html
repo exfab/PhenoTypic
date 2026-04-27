@@ -1,0 +1,982 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.refine._gmm_core_extractor &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=320b28a0"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/refine/_gmm_core_extractor';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/refine/_gmm_core_extractor.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.14.0b5" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorials/index.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../how_to/index.html">
+    How-To Guides
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../explanation/index.html">
+    Explanation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../extending/index.html">
+    Extending PhenoTypic
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../../../downloads.html">
+    Downloads
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorials/index.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../how_to/index.html">
+    How-To Guides
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../explanation/index.html">
+    Explanation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../extending/index.html">
+    Extending PhenoTypic
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloads.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.refine._gmm_core_extractor</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.refine._gmm_core_extractor</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.mixture</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianMixture</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectRefiner</span>
+
+
+<div class="viewcode-block" id="GMMCoreExtractor">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.GMMCoreExtractor">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GMMCoreExtractor</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract compact bright cores from labeled colonies using Gaussian mixture modeling.</span>
+
+<span class="sd">    Fits a two-component GMM to each colony&#39;s intensity histogram, separating</span>
+<span class="sd">    the bright inoculum core from the dimmer surrounding halo. Regions with</span>
+<span class="sd">    insufficient intensity contrast are left unchanged. Morphological</span>
+<span class="sd">    opening and closing refine the extracted core shape.</span>
+
+<span class="sd">    For algorithm details, see :doc:`/explanation/refinement_strategies`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        n_components: Number of Gaussian components per region. Keep at 2</span>
+<span class="sd">            for canonical core-vs-surround splitting; higher values risk</span>
+<span class="sd">            over-segmentation. Default: 2.</span>
+<span class="sd">        separation_threshold: Normalized mean separation below which the</span>
+<span class="sd">            original region is left unchanged. Typical range: 0.5--1.2.</span>
+<span class="sd">            Higher values extract only high-confidence cores. Default: 0.8.</span>
+<span class="sd">        min_core_area: Minimum core area in pixels. Regions or extracted</span>
+<span class="sd">            cores smaller than this are kept as-is. Typical range: 10--500,</span>
+<span class="sd">            scale with resolution. Default: 30.</span>
+<span class="sd">        morph_open_radius: Radius of elliptical opening kernel. Removes</span>
+<span class="sd">            thin protrusions; 0 disables. Typical range: 0--5. Default: 1.</span>
+<span class="sd">        morph_close_radius: Radius of elliptical closing kernel. Fills</span>
+<span class="sd">            small gaps within cores; 0 disables. Typical range: 0--5.</span>
+<span class="sd">            Default: 2.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmap`` refined to bright-core masks.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If ``n_components`` is not a positive integer or if</span>
+<span class="sd">            ``separation_threshold`` is negative.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - Rich media plates (YPD, LB) where colonies develop dense bright</span>
+<span class="sd">          centers with obvious halos.</span>
+<span class="sd">        - Pinned-array inoculation where sharp bright cores need to be</span>
+<span class="sd">          isolated from thin outgrowth.</span>
+<span class="sd">        - High-density plates (96-well, 384-well) where core extraction</span>
+<span class="sd">          reduces inter-well spillover.</span>
+<span class="sd">        - Pre-measurement cleanup to ensure features reflect the primary</span>
+<span class="sd">          growth mass rather than diffusion halos.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`MaskEroder` for uniform inward shrinking when cores are</span>
+<span class="sd">          not intensity-distinct from halos.</span>
+<span class="sd">        - :class:`WhiteTophat` for removing small bright artifacts without</span>
+<span class="sd">          full core extraction.</span>
+<span class="sd">        - :class:`LowCircularityRemover` for shape-based filtering when</span>
+<span class="sd">          halos distort circularity measurements.</span>
+
+<span class="sd">    See Also:</span>
+<span class="sd">        :doc:`/how_to/notebooks/refine_noisy_boundaries` for core</span>
+<span class="sd">        extraction workflows.</span>
+<span class="sd">        :doc:`/explanation/refinement_strategies` for a comparison of</span>
+<span class="sd">        refinement approaches including GMM-based extraction.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GMMCoreExtractor.__init__">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.GMMCoreExtractor.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">n_components</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+        <span class="n">separation_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.8</span><span class="p">,</span>
+        <span class="n">min_core_area</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span>
+        <span class="n">morph_open_radius</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="n">morph_close_radius</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialise the GMM core extractor.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            n_components (int): Number of Gaussian components to fit per</span>
+<span class="sd">                labelled region (default 2 — core vs. surround).</span>
+<span class="sd">            separation_threshold (float): Normalised mean separation</span>
+<span class="sd">                below which the region is left unchanged (0.0–1.0+).</span>
+<span class="sd">            min_core_area (int): Minimum core area in pixels.  Regions</span>
+<span class="sd">                or connected components below this size are kept as-is</span>
+<span class="sd">                or discarded.</span>
+<span class="sd">            morph_open_radius (int): Radius for morphological opening</span>
+<span class="sd">                (0 disables).</span>
+<span class="sd">            morph_close_radius (int): Radius for morphological closing</span>
+<span class="sd">                (0 disables).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_components</span> <span class="o">=</span> <span class="n">n_components</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">separation_threshold</span> <span class="o">=</span> <span class="n">separation_threshold</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_core_area</span> <span class="o">=</span> <span class="n">min_core_area</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">morph_open_radius</span> <span class="o">=</span> <span class="n">morph_open_radius</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">morph_close_radius</span> <span class="o">=</span> <span class="n">morph_close_radius</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Static helpers</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_ellipse_kernel</span><span class="p">(</span><span class="n">radius</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create an elliptical morphological structuring element for opening/closing.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            radius (int): Radius of the kernel in pixels. When *radius* &lt;= 0,</span>
+<span class="sd">                returns ``None`` (indicating no morphological operation).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray | None: A ``(2*radius+1, 2*radius+1)`` uint8 structuring</span>
+<span class="sd">                element with elliptical (disk-like) shape generated by</span>
+<span class="sd">                ``cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))`` where</span>
+<span class="sd">                k = 2*radius+1. Returns ``None`` when *radius* is non-positive,</span>
+<span class="sd">                allowing calling code to skip morphological operations when disabled.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            Elliptical kernels are isotropic (uniform in all directions), making them</span>
+<span class="sd">            ideal for preserving rounded colony shapes during morphological operations.</span>
+<span class="sd">            They are generated by OpenCV and produce symmetric disk-like binary patterns.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">radius</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">radius</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">cv2</span><span class="o">.</span><span class="n">getStructuringElement</span><span class="p">(</span><span class="n">cv2</span><span class="o">.</span><span class="n">MORPH_ELLIPSE</span><span class="p">,</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">k</span><span class="p">))</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_normalized_separation</span><span class="p">(</span><span class="n">gmm</span><span class="p">:</span> <span class="n">GaussianMixture</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute normalized mean separation of a fitted Gaussian mixture model.</span>
+
+<span class="sd">        Computes the intensity contrast between two Gaussian components normalized by</span>
+<span class="sd">        their combined standard deviation. This metric quantifies whether the two</span>
+<span class="sd">        components (typically bright core vs. dim halo) are well-separated relative to</span>
+<span class="sd">        their spread.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            gmm (GaussianMixture): A fitted Gaussian mixture model from scikit-learn</span>
+<span class="sd">                (typically with n_components=2). Must have at least 2 components.</span>
+<span class="sd">                The model should be fitted on 1-D intensity data (reshaped as column</span>
+<span class="sd">                vector for binary classification).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float: Normalized separation defined as</span>
+<span class="sd">                |mu_1 - mu_0| / (sigma_0 + sigma_1), where mu_i is the mean and</span>
+<span class="sd">                sigma_i is the standard deviation of component i. Returns 0.0 when</span>
+<span class="sd">                the summed standard deviations are negligible (&lt; 1e-10), indicating</span>
+<span class="sd">                very tight, nearly overlapping components. Higher values (&gt;0.5)</span>
+<span class="sd">                indicate well-separated components; lower values (&lt;0.3) suggest</span>
+<span class="sd">                poor separation and unreliable core extraction.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If *gmm* has fewer than 2 components; this function</span>
+<span class="sd">                requires bimodal or higher-order separation.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - The metric is invariant to resolution (depends on intensity values</span>
+<span class="sd">              and camera properties, not pixel counts).</span>
+<span class="sd">            - For colony imaging, typical separation values range from 0.3 (barely</span>
+<span class="sd">              separated, diffuse halo) to 1.5+ (sharp bright core, dark surround).</span>
+<span class="sd">            - The function extracts variance from gmm.covariances_, handling both</span>
+<span class="sd">              full (ndim=3), diagonal (ndim=2), and spherical (ndim=1) covariance</span>
+<span class="sd">              types by taking appropriate slices.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mu</span> <span class="o">=</span> <span class="n">gmm</span><span class="o">.</span><span class="n">means_</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+        <span class="n">cov</span> <span class="o">=</span> <span class="n">gmm</span><span class="o">.</span><span class="n">covariances_</span>
+        <span class="k">if</span> <span class="n">cov</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">var</span> <span class="o">=</span> <span class="n">cov</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">cov</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">var</span> <span class="o">=</span> <span class="n">cov</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">var</span> <span class="o">=</span> <span class="n">cov</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+        <span class="n">sigma_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">sigma_sum</span> <span class="o">&lt;</span> <span class="mf">1e-10</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">mu</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">mu</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="n">sigma_sum</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_extract_single_core</span><span class="p">(</span>
+        <span class="n">intensity</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">label_map</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">label</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">n_components</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">separation_threshold</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">min_core_area</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">open_kernel</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">close_kernel</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract the bright core from a single labelled region using GMM.</span>
+
+<span class="sd">        Core extraction pipeline for one colony region:</span>
+<span class="sd">        1. Extract pixels from the labelled region</span>
+<span class="sd">        2. Fit a Gaussian mixture model (GMM) to the region&#39;s intensity histogram</span>
+<span class="sd">        3. Compute normalized separation between components</span>
+<span class="sd">        4. If separation is insufficient, return original mask unchanged</span>
+<span class="sd">        5. Identify bright component (higher mean) and predict labels for pixels</span>
+<span class="sd">        6. Apply morphological opening/closing to refine core shape</span>
+<span class="sd">        7. Select largest connected component above min_core_area</span>
+<span class="sd">        8. Return binary core mask for this region</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            intensity (np.ndarray): 2-D float grayscale intensity image</span>
+<span class="sd">                (e.g., image.detect_mat or normalized RGB). Shape (H, W).</span>
+<span class="sd">            label_map (np.ndarray): Integer label map with same shape as *intensity*.</span>
+<span class="sd">                Pixel value 0 = background; &gt;0 = object label.</span>
+<span class="sd">            label (int): The specific label value to process within label_map.</span>
+<span class="sd">            n_components (int): Number of Gaussian components to fit per region.</span>
+<span class="sd">                Typically 2 (bright core vs. dim halo).</span>
+<span class="sd">            separation_threshold (float): Normalized separation below which the</span>
+<span class="sd">                original region mask is returned unchanged (no extraction attempted).</span>
+<span class="sd">                Typical range 0.5–1.2.</span>
+<span class="sd">            min_core_area (int): Minimum core area in pixels. Extracted cores</span>
+<span class="sd">                or final connected components smaller than this are discarded;</span>
+<span class="sd">                the original region mask is returned instead.</span>
+<span class="sd">            open_kernel (np.ndarray | None): Structuring element for morphological</span>
+<span class="sd">                opening (shrink by eroding then dilating). When ``None``, skip opening.</span>
+<span class="sd">            close_kernel (np.ndarray | None): Structuring element for morphological</span>
+<span class="sd">                closing (expand by dilating then eroding). When ``None``, skip closing.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Boolean mask (same shape as *intensity*) indicating the</span>
+<span class="sd">                extracted core region. True pixels belong to the core; False pixels</span>
+<span class="sd">                are background or excluded. If extraction fails, returns the original</span>
+<span class="sd">                region mask to avoid data loss.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - The extraction is localized to the bounding box of the region</span>
+<span class="sd">              (computational efficiency; reduces memory usage for sparse objects).</span>
+<span class="sd">            - Regions smaller than min_core_area are returned as-is without</span>
+<span class="sd">              attempting GMM fitting (no point fitting on tiny regions).</span>
+<span class="sd">            - Uniform regions (std &lt; 1e-6) are returned unchanged; GMM fitting would fail.</span>
+<span class="sd">            - The GMM is fitted with covariance_type=&#39;full&#39; and random_state=42</span>
+<span class="sd">              for reproducibility.</span>
+<span class="sd">            - After morphological operations, if no valid connected component survives</span>
+<span class="sd">              min_core_area, the original region mask is returned (graceful fallback).</span>
+<span class="sd">            - Morphological operations may slightly shift core boundaries (~1–3 pixels)</span>
+<span class="sd">              and can cause 5–10% edge erosion/dilation; quantified impact depends on</span>
+<span class="sd">              kernel size.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">label_map</span> <span class="o">==</span> <span class="n">label</span>
+        <span class="n">area</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+
+        <span class="c1"># Too small — keep as-is</span>
+        <span class="k">if</span> <span class="n">area</span> <span class="o">&lt;</span> <span class="n">min_core_area</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">mask</span>
+
+        <span class="n">pixels</span> <span class="o">=</span> <span class="n">intensity</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+        <span class="c1"># Uniform region — keep as-is</span>
+        <span class="k">if</span> <span class="n">pixels</span><span class="o">.</span><span class="n">std</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mf">1e-6</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">mask</span>
+
+        <span class="n">gmm</span> <span class="o">=</span> <span class="n">GaussianMixture</span><span class="p">(</span>
+            <span class="n">n_components</span><span class="o">=</span><span class="n">n_components</span><span class="p">,</span>
+            <span class="n">covariance_type</span><span class="o">=</span><span class="s2">&quot;full&quot;</span><span class="p">,</span>
+            <span class="n">n_init</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+            <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">gmm</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">pixels</span><span class="p">)</span>
+        <span class="n">sep</span> <span class="o">=</span> <span class="n">GMMCoreExtractor</span><span class="o">.</span><span class="n">_normalized_separation</span><span class="p">(</span><span class="n">gmm</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">sep</span> <span class="o">&lt;</span> <span class="n">separation_threshold</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">mask</span>
+
+        <span class="c1"># Determine bounding box of the region</span>
+        <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+        <span class="n">r_min</span><span class="p">,</span> <span class="n">r_max</span> <span class="o">=</span> <span class="n">rows</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">rows</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">c_min</span><span class="p">,</span> <span class="n">c_max</span> <span class="o">=</span> <span class="n">cols</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">cols</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
+
+        <span class="n">roi</span> <span class="o">=</span> <span class="n">intensity</span><span class="p">[</span><span class="n">r_min</span><span class="p">:</span><span class="n">r_max</span><span class="p">,</span> <span class="n">c_min</span><span class="p">:</span><span class="n">c_max</span><span class="p">]</span>
+        <span class="n">mask_roi</span> <span class="o">=</span> <span class="n">mask</span><span class="p">[</span><span class="n">r_min</span><span class="p">:</span><span class="n">r_max</span><span class="p">,</span> <span class="n">c_min</span><span class="p">:</span><span class="n">c_max</span><span class="p">]</span>
+
+        <span class="n">bright_comp</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">gmm</span><span class="o">.</span><span class="n">means_</span><span class="o">.</span><span class="n">ravel</span><span class="p">()))</span>
+        <span class="n">labels_flat</span> <span class="o">=</span> <span class="n">gmm</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">roi</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">))</span>
+        <span class="n">core_roi</span> <span class="o">=</span> <span class="p">(</span><span class="n">labels_flat</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">roi</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="n">bright_comp</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">mask_roi</span>
+
+        <span class="n">core_u8</span> <span class="o">=</span> <span class="n">core_roi</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span> <span class="o">*</span> <span class="mi">255</span>
+        <span class="k">if</span> <span class="n">open_kernel</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">core_u8</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">morphologyEx</span><span class="p">(</span><span class="n">core_u8</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">MORPH_OPEN</span><span class="p">,</span> <span class="n">open_kernel</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">close_kernel</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">core_u8</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">morphologyEx</span><span class="p">(</span><span class="n">core_u8</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">MORPH_CLOSE</span><span class="p">,</span> <span class="n">close_kernel</span><span class="p">)</span>
+
+        <span class="n">n_labels</span><span class="p">,</span> <span class="n">cc_map</span><span class="p">,</span> <span class="n">stats</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">connectedComponentsWithStats</span><span class="p">(</span>
+            <span class="n">core_u8</span><span class="p">,</span> <span class="n">connectivity</span><span class="o">=</span><span class="mi">8</span>
+        <span class="p">)</span>
+
+        <span class="n">best_cc</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="n">best_area</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">lbl</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_labels</span><span class="p">):</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="n">lbl</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">CC_STAT_AREA</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">a</span> <span class="o">&gt;=</span> <span class="n">min_core_area</span> <span class="ow">and</span> <span class="n">a</span> <span class="o">&gt;</span> <span class="n">best_area</span><span class="p">:</span>
+                <span class="n">best_cc</span> <span class="o">=</span> <span class="n">lbl</span>
+                <span class="n">best_area</span> <span class="o">=</span> <span class="n">a</span>
+
+        <span class="k">if</span> <span class="n">best_cc</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># No valid connected component — keep original mask</span>
+            <span class="k">return</span> <span class="n">mask</span>
+
+        <span class="n">H</span><span class="p">,</span> <span class="n">W</span> <span class="o">=</span> <span class="n">intensity</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">core_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">H</span><span class="p">,</span> <span class="n">W</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="n">core_mask</span><span class="p">[</span><span class="n">r_min</span><span class="p">:</span><span class="n">r_max</span><span class="p">,</span> <span class="n">c_min</span><span class="p">:</span><span class="n">c_max</span><span class="p">]</span> <span class="o">=</span> <span class="n">cc_map</span> <span class="o">==</span> <span class="n">best_cc</span>
+        <span class="k">return</span> <span class="n">core_mask</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_extract_cores</span><span class="p">(</span>
+        <span class="n">intensity_array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">label_map</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">n_components</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+        <span class="n">separation_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.8</span><span class="p">,</span>
+        <span class="n">min_core_area</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span>
+        <span class="n">morph_open_radius</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="n">morph_close_radius</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract bright cores from all labelled regions in a label map using GMM.</span>
+
+<span class="sd">        Batch processing function that iterates over all unique labels in a labelled map,</span>
+<span class="sd">        fits a Gaussian mixture model (GMM) to each region&#39;s intensity distribution,</span>
+<span class="sd">        and extracts the bright core component. This is the main computational entry</span>
+<span class="sd">        point; it orchestrates kernel building, per-region extraction, and result</span>
+<span class="sd">        composition into a refined label map.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            intensity_array (np.ndarray): 2-D float grayscale intensity image</span>
+<span class="sd">                (H, W). Typically image.detect_mat (standardized to [0, 1] or [0, 255]).</span>
+<span class="sd">            label_map (np.ndarray): Integer-labelled object map with same shape as</span>
+<span class="sd">                *intensity_array*. Pixel value 0 = background; 1, 2, 3, ... = object</span>
+<span class="sd">                labels. Usually from image.objmap[:].</span>
+<span class="sd">            n_components (int): Number of Gaussian components to fit per region</span>
+<span class="sd">                (default 2). Standard choice separates bright core from dim halo;</span>
+<span class="sd">                higher values (3+) capture additional intensity modes but increase</span>
+<span class="sd">                fitting cost and risk over-segmentation.</span>
+<span class="sd">            separation_threshold (float): Normalized mean separation threshold below</span>
+<span class="sd">                which a region is left unchanged (default 0.8, range 0.0–1.0+).</span>
+<span class="sd">                Prevents extraction when intensity contrast is insufficient; e.g.,</span>
+<span class="sd">                separation=0.7 indicates weak separation, suggesting the halo is</span>
+<span class="sd">                nearly as bright as the core.</span>
+<span class="sd">            min_core_area (int): Minimum core area in pixels (default 30).</span>
+<span class="sd">                Regions with area &lt; min_core_area are kept as-is without attempting</span>
+<span class="sd">                extraction. Extracted cores or final connected components smaller than</span>
+<span class="sd">                this are discarded; the original region mask is returned instead.</span>
+<span class="sd">            morph_open_radius (int): Radius of elliptical kernel for morphological</span>
+<span class="sd">                opening (default 1, range 0–5). Opening removes thin protrusions and</span>
+<span class="sd">                noise speckles. Set to 0 to disable. Typical values:</span>
+<span class="sd">                - 0: No opening; retain GMM shape exactly.</span>
+<span class="sd">                - 1: Remove ~1–3 pixel speckles (salt-and-pepper noise).</span>
+<span class="sd">                - 2–3: Remove ~3–7 pixel protrusions; more aggressive smoothing.</span>
+<span class="sd">                - &gt;4: Excessive; risk merging or removing legitimate core structures.</span>
+<span class="sd">            morph_close_radius (int): Radius of elliptical kernel for morphological</span>
+<span class="sd">                closing (default 2, range 0–5). Closing fills gaps and holes within</span>
+<span class="sd">                cores. Set to 0 to disable. Typical values:</span>
+<span class="sd">                - 0: No closing; keep open result exactly.</span>
+<span class="sd">                - 1: Fill gaps ~1–3 pixels wide.</span>
+<span class="sd">                - 2 (default): Fill moderate gaps; balance closure and integrity.</span>
+<span class="sd">                - 3–4: Aggressively fill ~5–8 pixel voids; risk artificial inflation.</span>
+<span class="sd">                - &gt;5: Excessive; risk bridging separate cores.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Refined integer label map with the same shape and dtype as</span>
+<span class="sd">                *label_map*. Each pixel retains its original label if the region</span>
+<span class="sd">                was not refined (e.g., separation too low, region too small) or its</span>
+<span class="sd">                label if the region was successfully extracted (0 if the pixel is</span>
+<span class="sd">                outside the extracted core). Non-extracted pixels are 0 (background).</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - All unique labels (except 0) in label_map are processed independently.</span>
+<span class="sd">            - Processing order is arbitrary; results are deterministic within each region.</span>
+<span class="sd">            - Computational cost scales linearly with the number of labelled objects.</span>
+<span class="sd">              On typical 96-well plates (~80–96 objects), processing is &lt;100 ms.</span>
+<span class="sd">              On 384-well plates (&gt;300 objects) or megapixel images, memory/time may</span>
+<span class="sd">              be a constraint.</span>
+<span class="sd">            - Each region&#39;s GMM is fitted with covariance_type=&#39;full&#39; and</span>
+<span class="sd">              random_state=42 for reproducibility.</span>
+<span class="sd">            - Regions are processed with a bounding-box optimization for memory</span>
+<span class="sd">              efficiency; only pixels within each region&#39;s bounding box are analyzed.</span>
+<span class="sd">            - Graceful fallback: If GMM extraction fails or no valid core survives</span>
+<span class="sd">              post-processing, the original region mask is returned (no data loss).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">open_kernel</span> <span class="o">=</span> <span class="n">GMMCoreExtractor</span><span class="o">.</span><span class="n">_build_ellipse_kernel</span><span class="p">(</span><span class="n">morph_open_radius</span><span class="p">)</span>
+        <span class="n">close_kernel</span> <span class="o">=</span> <span class="n">GMMCoreExtractor</span><span class="o">.</span><span class="n">_build_ellipse_kernel</span><span class="p">(</span><span class="n">morph_close_radius</span><span class="p">)</span>
+
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">label_map</span><span class="p">)</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">labels</span><span class="p">[</span><span class="n">labels</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">label_map</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">:</span>
+            <span class="n">core_mask</span> <span class="o">=</span> <span class="n">GMMCoreExtractor</span><span class="o">.</span><span class="n">_extract_single_core</span><span class="p">(</span>
+                <span class="n">intensity_array</span><span class="p">,</span>
+                <span class="n">label_map</span><span class="p">,</span>
+                <span class="n">label</span><span class="p">,</span>
+                <span class="n">n_components</span><span class="p">,</span>
+                <span class="n">separation_threshold</span><span class="p">,</span>
+                <span class="n">min_core_area</span><span class="p">,</span>
+                <span class="n">open_kernel</span><span class="p">,</span>
+                <span class="n">close_kernel</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">output</span><span class="p">[</span><span class="n">core_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">label</span>
+
+        <span class="k">return</span> <span class="n">output</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+        <span class="n">intensity</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">label_map</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
+
+        <span class="n">refined</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_cores</span><span class="p">(</span>
+            <span class="n">intensity_array</span><span class="o">=</span><span class="n">intensity</span><span class="p">,</span>
+            <span class="n">label_map</span><span class="o">=</span><span class="n">label_map</span><span class="p">,</span>
+            <span class="n">n_components</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_components</span><span class="p">,</span>
+            <span class="n">separation_threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">separation_threshold</span><span class="p">,</span>
+            <span class="n">min_core_area</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_core_area</span><span class="p">,</span>
+            <span class="n">morph_open_radius</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">morph_open_radius</span><span class="p">,</span>
+            <span class="n">morph_close_radius</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">morph_close_radius</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">refined</span>
+        <span class="k">return</span> <span class="n">image</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,45 @@
+phenotypic.util.BackgroundMetrics
+=================================
+
+.. currentmodule:: phenotypic.util
+
+.. autoclass:: BackgroundMetrics
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~BackgroundMetrics.__init__
+      ~BackgroundMetrics.clear
+      ~BackgroundMetrics.copy
+      ~BackgroundMetrics.fromkeys
+      ~BackgroundMetrics.get
+      ~BackgroundMetrics.items
+      ~BackgroundMetrics.keys
+      ~BackgroundMetrics.pop
+      ~BackgroundMetrics.popitem
+      ~BackgroundMetrics.setdefault
+      ~BackgroundMetrics.update
+      ~BackgroundMetrics.values
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~BackgroundMetrics.nonuniformity_ratio
+      ~BackgroundMetrics.mean_gradient
+      ~BackgroundMetrics.background_estimate
+   
+   

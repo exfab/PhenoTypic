@@ -1,0 +1,819 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.correction._image_cropper &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=320b28a0"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/correction/_image_cropper';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/correction/_image_cropper.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.14.0b5" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorials/index.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../how_to/index.html">
+    How-To Guides
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../explanation/index.html">
+    Explanation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../extending/index.html">
+    Extending PhenoTypic
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="../../../downloads.html">
+    Downloads
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorials/index.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../how_to/index.html">
+    How-To Guides
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../explanation/index.html">
+    Explanation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../extending/index.html">
+    Extending PhenoTypic
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloads.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.correction._image_cropper</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.correction._image_cropper</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageCorrector</span>
+
+
+<div class="viewcode-block" id="ImageCropper">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.correction.html#phenotypic.correction.ImageCropper">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ImageCropper</span><span class="p">(</span><span class="n">ImageCorrector</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove pixels from image edges by specifying crop margins.</span>
+
+<span class="sd">    Crops all image components (rgb, gray, detect_mat, objmask, objmap)</span>
+<span class="sd">    together. When applied to a GridImage, the grid structure is preserved</span>
+<span class="sd">    and grid positions are recalculated for the cropped dimensions.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        left: Pixels to remove from the left edge. ``None`` means no</span>
+<span class="sd">            cropping. Default: ``None``.</span>
+<span class="sd">        right: Pixels to remove from the right edge. Default: ``None``.</span>
+<span class="sd">        top: Pixels to remove from the top edge. Default: ``None``.</span>
+<span class="sd">        bottom: Pixels to remove from the bottom edge. Default: ``None``.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with all components cropped to the specified</span>
+<span class="sd">        margins.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - Removing scanner margins or borders outside the agar plate.</span>
+<span class="sd">        - Eliminating edge artifacts (bent agar, labeling, moisture).</span>
+<span class="sd">        - Standardizing image dimensions across a batch of plates.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`ImagePadder` for adding pixels instead of removing them.</span>
+<span class="sd">        - :class:`BorderObjectRemover` for removing edge-touching colonies</span>
+<span class="sd">          without changing image dimensions.</span>
+
+<span class="sd">    See Also:</span>
+<span class="sd">        :doc:`/how_to/notebooks/crop_and_pad` for a visual walkthrough of</span>
+<span class="sd">        cropping and padding operations.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ImageCropper.__init__">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.correction.html#phenotypic.correction.ImageCropper.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">left</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">right</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">top</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">bottom</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+                 <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize an ImageCropper with pixel margins to remove from each edge.</span>
+
+<span class="sd">        Creates a cropper that removes the specified number of pixels from each edge of</span>
+<span class="sd">        the image. All parameters are optional and default to None (no cropping from that</span>
+<span class="sd">        edge).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            left (int | None, optional): Number of pixels to remove from the left edge.</span>
+<span class="sd">                Must be non-negative. If None, the left edge is not cropped (equivalent</span>
+<span class="sd">                to 0). Defaults to None.</span>
+<span class="sd">            right (int | None, optional): Number of pixels to remove from the right edge.</span>
+<span class="sd">                Must be non-negative. If None, the right edge is not cropped (equivalent</span>
+<span class="sd">                to 0). Defaults to None.</span>
+<span class="sd">            top (int | None, optional): Number of pixels to remove from the top edge.</span>
+<span class="sd">                Must be non-negative. If None, the top edge is not cropped (equivalent</span>
+<span class="sd">                to 0). Defaults to None.</span>
+<span class="sd">            bottom (int | None, optional): Number of pixels to remove from the bottom edge.</span>
+<span class="sd">                Must be non-negative. If None, the bottom edge is not cropped (equivalent</span>
+<span class="sd">                to 0). Defaults to None.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If any parameter is negative. All crop margins must be</span>
+<span class="sd">                non-negative integers (or None).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">left</span> <span class="o">=</span> <span class="n">left</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">right</span> <span class="o">=</span> <span class="n">right</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">top</span> <span class="o">=</span> <span class="n">top</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bottom</span> <span class="o">=</span> <span class="n">bottom</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__prescreen_idxes</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__prescreen_idxes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">left</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">left</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;left cannot be negative&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">right</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">right</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;right cannot be negative&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">top</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;top cannot be negative&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bottom</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bottom</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;bottom cannot be negative&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Crop the image by removing pixels from edges specified in __init__.</span>
+
+<span class="sd">        Extracts the crop indices for each edge and returns a new Image with the cropped</span>
+<span class="sd">        region. The entire image structure (rgb, gray, detect_mat, objmask, objmap) is</span>
+<span class="sd">        cropped identically, ensuring all components remain synchronized.</span>
+
+<span class="sd">        For GridImage instances, preserves the grid structure (grid_finder, nrows, ncols)</span>
+<span class="sd">        while recalculating grid positions for the cropped region.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image (Image): The image to crop. The image is not modified; a new cropped</span>
+<span class="sd">                Image (or GridImage if input was GridImage) is returned.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Image: A new Image instance (or GridImage if input was GridImage) containing</span>
+<span class="sd">                only the central cropped region, with all image components (rgb, gray,</span>
+<span class="sd">                detect_mat, objmask, objmap) reduced to the same rectangular region.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the crop parameters would result in an invalid slice (e.g.,</span>
+<span class="sd">                top edge &gt;= bottom edge or left edge &gt;= right edge after cropping).</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Basic cropping of a loaded image:</span>
+
+<span class="sd">            &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.correction import ImageCropper</span>
+<span class="sd">            &gt;&gt;&gt; image = Image.imread(&#39;plate.jpg&#39;)  # doctest: +SKIP</span>
+<span class="sd">            &gt;&gt;&gt; cropper = ImageCropper(top=50, bottom=50, left=40, right=40)</span>
+<span class="sd">            &gt;&gt;&gt; # Returns new cropped Image; original is unchanged</span>
+<span class="sd">            &gt;&gt;&gt; cropped = cropper.apply(image)  # doctest: +SKIP</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Original shape: {image.shape}&quot;)  # doctest: +SKIP</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Cropped shape: {cropped.shape}&quot;)  # doctest: +SKIP</span>
+
+<span class="sd">            Cropping a GridImage preserves grid settings:</span>
+
+<span class="sd">            &gt;&gt;&gt; from phenotypic import GridImage</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.correction import ImageCropper</span>
+<span class="sd">            &gt;&gt;&gt; # Load plate image with scanner border</span>
+<span class="sd">            &gt;&gt;&gt; grid_img = GridImage(&#39;plate_with_border.tiff&#39;, nrows=8, ncols=12)  # doctest: +SKIP</span>
+<span class="sd">            &gt;&gt;&gt; # Remove scanner border</span>
+<span class="sd">            &gt;&gt;&gt; cropper = ImageCropper(left=50, right=50, top=50, bottom=50)</span>
+<span class="sd">            &gt;&gt;&gt; cropped = cropper.apply(grid_img)  # doctest: +SKIP</span>
+<span class="sd">            &gt;&gt;&gt; # GridImage type and settings preserved</span>
+<span class="sd">            &gt;&gt;&gt; assert isinstance(cropped, GridImage)  # doctest: +SKIP</span>
+<span class="sd">            &gt;&gt;&gt; assert cropped.nrows == 8  # doctest: +SKIP</span>
+<span class="sd">            &gt;&gt;&gt; assert cropped.ncols == 12  # doctest: +SKIP</span>
+<span class="sd">            &gt;&gt;&gt; # Grid positions are recalculated for cropped image</span>
+<span class="sd">            &gt;&gt;&gt; cropped.show(overlay=True, show_grid=True)  # doctest: +SKIP</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">top</span><span class="p">,</span> <span class="n">bottom_idx</span><span class="p">,</span> <span class="n">left</span><span class="p">,</span> <span class="n">right_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_idxes</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+
+        <span class="c1"># Use existing slicing (__getitem__) - returns Image for both Image and GridImage</span>
+        <span class="n">cropped</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="n">top</span><span class="p">:</span><span class="n">bottom_idx</span><span class="p">,</span> <span class="n">left</span><span class="p">:</span><span class="n">right_idx</span><span class="p">]</span>
+
+        <span class="c1"># Import GridImage locally to avoid potential circular imports</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+
+        <span class="c1"># Preserve original image&#39;s name before modifications</span>
+        <span class="n">original_name</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">name</span>
+
+        <span class="c1"># If input was GridImage, upgrade the cropped Image back to GridImage</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">):</span>
+            <span class="c1"># Convert the cropped Image to GridImage with preserved settings</span>
+            <span class="n">cropped</span> <span class="o">=</span> <span class="n">GridImage</span><span class="p">(</span>
+                    <span class="n">arr</span><span class="o">=</span><span class="n">cropped</span><span class="p">,</span>  <span class="c1"># Pass the Image instance</span>
+                    <span class="n">name</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>  <span class="c1"># Preserve original image&#39;s name</span>
+                    <span class="n">grid_finder</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">grid_finder</span><span class="p">,</span>  <span class="c1"># Preserve grid_finder instance</span>
+                    <span class="n">nrows</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span>
+                    <span class="n">ncols</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span>
+                    <span class="n">bit_depth</span><span class="o">=</span><span class="n">cropped</span><span class="o">.</span><span class="n">bit_depth</span><span class="p">,</span>
+                    <span class="n">illuminant</span><span class="o">=</span><span class="n">cropped</span><span class="o">.</span><span class="n">illuminant</span><span class="p">,</span>
+                    <span class="n">gamma</span><span class="o">=</span><span class="n">cropped</span><span class="o">.</span><span class="n">gamma</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cpy_new_arrs</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">cropped</span><span class="p">)</span>
+        <span class="c1"># Restore original name (may be overwritten by set_image).</span>
+        <span class="c1"># set_image() calls _set_from_class_instance() which deep copies all metadata</span>
+        <span class="c1"># from the source image, including the name. We preserve the original image&#39;s</span>
+        <span class="c1"># name to maintain its identity through the cropping operation.</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">original_name</span>
+
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_cpy_new_arrs</span><span class="p">(</span><span class="n">img</span><span class="p">:</span> <span class="n">Image</span> <span class="o">|</span> <span class="n">GridImage</span><span class="p">,</span>
+                      <span class="n">new_img</span><span class="p">:</span> <span class="n">Image</span> <span class="o">|</span> <span class="n">GridImage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span> <span class="o">|</span> <span class="n">GridImage</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Copies the array data over. This is needed due to needing to make changes to</span>
+<span class="sd">        the image in-place.&quot;&quot;&quot;</span>
+        <span class="n">img</span><span class="o">.</span><span class="n">set_image</span><span class="p">(</span><span class="n">new_img</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">img</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_idxes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate array slice indices for the crop region based on image dimensions.</span>
+
+<span class="sd">        Given the image dimensions and the configured crop margins (left, right, top,</span>
+<span class="sd">        bottom), computes the array slice indices for the cropped region. Validates that</span>
+<span class="sd">        the resulting crop region is valid (i.e., top edge is above bottom edge and left</span>
+<span class="sd">        edge is left of right edge after cropping).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image (Image): The image to be cropped. The image&#39;s height and width are</span>
+<span class="sd">                used to determine the final slice indices.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple[int, int, int, int]: A tuple of (top_idx, bottom_idx, left_idx,</span>
+<span class="sd">                right_idx) representing the array slice bounds for the crop region:</span>
+<span class="sd">                - top_idx: The starting row index (pixels removed from top edge)</span>
+<span class="sd">                - bottom_idx: The ending row index (total height minus pixels removed</span>
+<span class="sd">                  from bottom edge)</span>
+<span class="sd">                - left_idx: The starting column index (pixels removed from left edge)</span>
+<span class="sd">                - right_idx: The ending column index (total width minus pixels removed</span>
+<span class="sd">                  from right edge)</span>
+
+<span class="sd">                These indices are intended to be used in NumPy slicing as</span>
+<span class="sd">                image_array[top_idx:bottom_idx, left_idx:right_idx].</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the crop parameters would result in invalid dimensions:</span>
+<span class="sd">                - If top_idx &gt;= bottom_idx (no valid rows remain after cropping)</span>
+<span class="sd">                - If left_idx &gt;= right_idx (no valid columns remain after cropping)</span>
+
+<span class="sd">                This can occur if the sum of crop margins from opposite edges exceeds</span>
+<span class="sd">                the image dimension (e.g., cropping 100 pixels top and 100 pixels bottom</span>
+<span class="sd">                from a 150-pixel tall image).</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Understanding slice indices from crop parameters:</span>
+
+<span class="sd">            &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.correction import ImageCropper</span>
+<span class="sd">            &gt;&gt;&gt; # Example: 1000x1200 image, crop 50 from all edges</span>
+<span class="sd">            &gt;&gt;&gt; image = Image.imread(&#39;large_plate.tiff&#39;)  # doctest: +SKIP</span>
+<span class="sd">            &gt;&gt;&gt; cropper = ImageCropper(top=50, bottom=50, left=50, right=50)</span>
+<span class="sd">            &gt;&gt;&gt; # Internal calculation:</span>
+<span class="sd">            &gt;&gt;&gt; # height=1000, width=1200</span>
+<span class="sd">            &gt;&gt;&gt; # top_idx = 0 + 50 = 50</span>
+<span class="sd">            &gt;&gt;&gt; # bottom_idx = 1000 - 50 - 1 = 949</span>
+<span class="sd">            &gt;&gt;&gt; # left_idx = 0 + 50 = 50</span>
+<span class="sd">            &gt;&gt;&gt; # right_idx = 1200 - 50 - 1 = 1149</span>
+<span class="sd">            &gt;&gt;&gt; # Result: image[50:949, 50:1149] extracts central 899x1099 region</span>
+<span class="sd">            &gt;&gt;&gt; cropped = cropper.apply(image)  # doctest: +SKIP</span>
+<span class="sd">            &gt;&gt;&gt; print(cropped.shape)  # doctest: +SKIP</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">height</span><span class="p">,</span> <span class="n">width</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="c1"># Set dynamic defaults (None means 0 pixels cropped from that edge)</span>
+        <span class="n">top</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">top</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">top</span>
+        <span class="n">bottom</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bottom</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">bottom</span>
+        <span class="n">bottom_idx</span> <span class="o">=</span> <span class="n">height</span> <span class="o">-</span> <span class="n">bottom</span>
+        <span class="k">if</span> <span class="n">top</span> <span class="o">&gt;</span> <span class="n">bottom_idx</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;top index (</span><span class="si">{</span><span class="n">top</span><span class="si">}</span><span class="s2">) cannot be &gt; bottom index (</span><span class="si">{</span><span class="n">bottom_idx</span><span class="si">}</span><span class="s2">).&quot;</span><span class="p">)</span>
+
+        <span class="n">left</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">left</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">left</span>
+        <span class="n">right</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">right</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">right</span>
+        <span class="n">right_idx</span> <span class="o">=</span> <span class="n">width</span> <span class="o">-</span> <span class="n">right</span>
+        <span class="k">if</span> <span class="n">left</span> <span class="o">&gt;</span> <span class="n">right_idx</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;left index (</span><span class="si">{</span><span class="n">left</span><span class="si">}</span><span class="s2">) cannot be &gt; right index (</span><span class="si">{</span><span class="n">right_idx</span><span class="si">}</span><span class="s2">).&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">top</span><span class="p">,</span> <span class="n">bottom_idx</span><span class="p">,</span> <span class="n">left</span><span class="p">,</span> <span class="n">right_idx</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,46 @@
+phenotypic.prefab.HeavyRoundPeaksPipeline
+=========================================
+
+.. currentmodule:: phenotypic.prefab
+
+.. autoclass:: HeavyRoundPeaksPipeline
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~HeavyRoundPeaksPipeline.__init__
+      ~HeavyRoundPeaksPipeline.apply
+      ~HeavyRoundPeaksPipeline.apply_and_measure
+      ~HeavyRoundPeaksPipeline.apply_napari
+      ~HeavyRoundPeaksPipeline.apply_with_intermediates
+      ~HeavyRoundPeaksPipeline.benchmark_results
+      ~HeavyRoundPeaksPipeline.from_json
+      ~HeavyRoundPeaksPipeline.get_meas
+      ~HeavyRoundPeaksPipeline.get_ops
+      ~HeavyRoundPeaksPipeline.measure
+      ~HeavyRoundPeaksPipeline.set_meas
+      ~HeavyRoundPeaksPipeline.set_ops
+      ~HeavyRoundPeaksPipeline.set_post
+      ~HeavyRoundPeaksPipeline.to_json
+      ~HeavyRoundPeaksPipeline.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~HeavyRoundPeaksPipeline.desc
+   
+   

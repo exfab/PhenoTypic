@@ -1,0 +1,26 @@
+phenotypic.abc\_.FootprintMixin
+===============================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: FootprintMixin
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FootprintMixin.__init__
+   
+   
+
+   
+   
+   

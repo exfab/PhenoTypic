@@ -1,0 +1,85 @@
+phenotypic.tools\_.constants\_.GAMMA\_ENCODINGS
+===============================================
+
+.. currentmodule:: phenotypic.tools_.constants_
+
+.. autoclass:: GAMMA_ENCODINGS
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GAMMA_ENCODINGS.category
+      ~GAMMA_ENCODINGS.get_labels
+      ~GAMMA_ENCODINGS.get_headers
+      ~GAMMA_ENCODINGS.rst_table
+      ~GAMMA_ENCODINGS.append_rst_to_doc
+      ~GAMMA_ENCODINGS.encode
+      ~GAMMA_ENCODINGS.replace
+      ~GAMMA_ENCODINGS.split
+      ~GAMMA_ENCODINGS.rsplit
+      ~GAMMA_ENCODINGS.join
+      ~GAMMA_ENCODINGS.capitalize
+      ~GAMMA_ENCODINGS.casefold
+      ~GAMMA_ENCODINGS.title
+      ~GAMMA_ENCODINGS.center
+      ~GAMMA_ENCODINGS.count
+      ~GAMMA_ENCODINGS.expandtabs
+      ~GAMMA_ENCODINGS.find
+      ~GAMMA_ENCODINGS.partition
+      ~GAMMA_ENCODINGS.index
+      ~GAMMA_ENCODINGS.ljust
+      ~GAMMA_ENCODINGS.lower
+      ~GAMMA_ENCODINGS.lstrip
+      ~GAMMA_ENCODINGS.rfind
+      ~GAMMA_ENCODINGS.rindex
+      ~GAMMA_ENCODINGS.rjust
+      ~GAMMA_ENCODINGS.rstrip
+      ~GAMMA_ENCODINGS.rpartition
+      ~GAMMA_ENCODINGS.splitlines
+      ~GAMMA_ENCODINGS.strip
+      ~GAMMA_ENCODINGS.swapcase
+      ~GAMMA_ENCODINGS.translate
+      ~GAMMA_ENCODINGS.upper
+      ~GAMMA_ENCODINGS.startswith
+      ~GAMMA_ENCODINGS.endswith
+      ~GAMMA_ENCODINGS.removeprefix
+      ~GAMMA_ENCODINGS.removesuffix
+      ~GAMMA_ENCODINGS.isascii
+      ~GAMMA_ENCODINGS.islower
+      ~GAMMA_ENCODINGS.isupper
+      ~GAMMA_ENCODINGS.istitle
+      ~GAMMA_ENCODINGS.isspace
+      ~GAMMA_ENCODINGS.isdecimal
+      ~GAMMA_ENCODINGS.isdigit
+      ~GAMMA_ENCODINGS.isnumeric
+      ~GAMMA_ENCODINGS.isalpha
+      ~GAMMA_ENCODINGS.isalnum
+      ~GAMMA_ENCODINGS.isidentifier
+      ~GAMMA_ENCODINGS.isprintable
+      ~GAMMA_ENCODINGS.zfill
+      ~GAMMA_ENCODINGS.format
+      ~GAMMA_ENCODINGS.format_map
+      ~GAMMA_ENCODINGS.maketrans
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GAMMA_ENCODINGS.CATEGORY
+      ~GAMMA_ENCODINGS.SRGB
+      ~GAMMA_ENCODINGS.LINEAR
+   
+   

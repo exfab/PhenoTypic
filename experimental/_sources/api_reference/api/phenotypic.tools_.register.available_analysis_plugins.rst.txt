@@ -1,0 +1,7 @@
+phenotypic.tools\_.register.available\_analysis\_plugins
+========================================================
+
+.. currentmodule:: phenotypic.tools_.register
+
+.. autofunction:: available_analysis_plugins
+   :no-index:

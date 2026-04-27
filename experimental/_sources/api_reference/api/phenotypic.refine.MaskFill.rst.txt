@@ -1,0 +1,28 @@
+phenotypic.refine.MaskFill
+==========================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: MaskFill
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MaskFill.__init__
+      ~MaskFill.apply
+      ~MaskFill.widget
+   
+   
+
+   
+   
+   

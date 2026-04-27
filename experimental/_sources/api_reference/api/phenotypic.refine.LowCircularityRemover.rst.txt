@@ -1,0 +1,28 @@
+phenotypic.refine.LowCircularityRemover
+=======================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: LowCircularityRemover
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~LowCircularityRemover.__init__
+      ~LowCircularityRemover.apply
+      ~LowCircularityRemover.widget
+   
+   
+
+   
+   
+   

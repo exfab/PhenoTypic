@@ -1,0 +1,45 @@
+phenotypic.util.NoiseMetrics
+============================
+
+.. currentmodule:: phenotypic.util
+
+.. autoclass:: NoiseMetrics
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~NoiseMetrics.__init__
+      ~NoiseMetrics.clear
+      ~NoiseMetrics.copy
+      ~NoiseMetrics.fromkeys
+      ~NoiseMetrics.get
+      ~NoiseMetrics.items
+      ~NoiseMetrics.keys
+      ~NoiseMetrics.pop
+      ~NoiseMetrics.popitem
+      ~NoiseMetrics.setdefault
+      ~NoiseMetrics.update
+      ~NoiseMetrics.values
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~NoiseMetrics.snr
+      ~NoiseMetrics.sigma_mad
+      ~NoiseMetrics.correlation_length
+   
+   

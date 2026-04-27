@@ -1,0 +1,63 @@
+﻿phenotypic.enhance
+==================
+
+.. automodule:: phenotypic.enhance
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      AnscombeForward
+      AnscombeInverse
+      BayesShrinkEnhancer
+      BilateralDenoise
+      BM3DDenoiser
+      CLAHE
+      CoherenceEnhancingDiffusion
+      ContrastStretching
+      FrangiVesselness
+      GaussianBlur
+      SubtractGaussian
+      GrayOpening
+      HessianFilter
+      HomomorphicFilter
+      ImageInverter
+      LaplaceEnhancer
+      MedianFilter
+      MeijeringRidgeFilter
+      MultiscaleLoGEnhancer
+      NonLocalMeansDenoiser
+      OpeningSubtractBg
+      PhaseCongruencyEnhancer
+      RankMedianEnhancer
+      SubtractRollingBall
+      SatoRidgeFilter
+      SobelFilter
+      UnsharpMask
+      VisuShrinkEnhancer
+      WhiteTophatEnhance
+      SubtractWhiteTophat
+      SetDetectMode
+   
+   
+
+   
+   
+   
+
+
+

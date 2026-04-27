@@ -1,0 +1,7 @@
+phenotypic.abc\_.register\_detection\_mode
+==========================================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autofunction:: register_detection_mode
+   :no-index:

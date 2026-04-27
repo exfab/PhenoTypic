@@ -1,0 +1,28 @@
+phenotypic.enhance.HessianFilter
+================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: HessianFilter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~HessianFilter.__init__
+      ~HessianFilter.apply
+      ~HessianFilter.widget
+   
+   
+
+   
+   
+   

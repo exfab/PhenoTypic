@@ -1,0 +1,7 @@
+phenotypic.tools\_.exceptions\_.InvalidShapeError
+=================================================
+
+.. currentmodule:: phenotypic.tools_.exceptions_
+
+.. autoexception:: InvalidShapeError
+   :no-index:

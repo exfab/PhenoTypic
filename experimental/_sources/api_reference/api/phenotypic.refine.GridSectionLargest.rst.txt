@@ -1,0 +1,28 @@
+phenotypic.refine.GridSectionLargest
+====================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: GridSectionLargest
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GridSectionLargest.__init__
+      ~GridSectionLargest.apply
+      ~GridSectionLargest.widget
+   
+   
+
+   
+   
+   

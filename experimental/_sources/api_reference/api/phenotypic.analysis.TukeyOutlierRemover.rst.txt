@@ -1,0 +1,30 @@
+phenotypic.analysis.TukeyOutlierRemover
+=======================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autoclass:: TukeyOutlierRemover
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~TukeyOutlierRemover.__init__
+      ~TukeyOutlierRemover.analyze
+      ~TukeyOutlierRemover.dash
+      ~TukeyOutlierRemover.results
+      ~TukeyOutlierRemover.show
+   
+   
+
+   
+   
+   

@@ -1,0 +1,28 @@
+phenotypic.enhance.FrangiVesselness
+===================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: FrangiVesselness
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FrangiVesselness.__init__
+      ~FrangiVesselness.apply
+      ~FrangiVesselness.widget
+   
+   
+
+   
+   
+   

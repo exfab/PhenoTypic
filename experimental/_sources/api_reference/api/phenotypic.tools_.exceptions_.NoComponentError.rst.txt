@@ -1,0 +1,7 @@
+phenotypic.tools\_.exceptions\_.NoComponentError
+================================================
+
+.. currentmodule:: phenotypic.tools_.exceptions_
+
+.. autoexception:: NoComponentError
+   :no-index:

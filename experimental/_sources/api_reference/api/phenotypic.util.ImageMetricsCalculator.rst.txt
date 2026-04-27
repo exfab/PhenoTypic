@@ -1,0 +1,44 @@
+phenotypic.util.ImageMetricsCalculator
+======================================
+
+.. currentmodule:: phenotypic.util
+
+.. autoclass:: ImageMetricsCalculator
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ImageMetricsCalculator.__init__
+      ~ImageMetricsCalculator.compute_all
+      ~ImageMetricsCalculator.compute_background_metrics
+      ~ImageMetricsCalculator.compute_contrast_metrics
+      ~ImageMetricsCalculator.compute_local_contrast
+      ~ImageMetricsCalculator.compute_local_variance
+      ~ImageMetricsCalculator.compute_noise_metrics
+      ~ImageMetricsCalculator.compute_psd
+      ~ImageMetricsCalculator.compute_quality_scores
+      ~ImageMetricsCalculator.compute_structure_metrics
+      ~ImageMetricsCalculator.generate_interpretation
+      ~ImageMetricsCalculator.generate_recommendations
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ImageMetricsCalculator.bit_depth
+      ~ImageMetricsCalculator.max_intensity
+   
+   

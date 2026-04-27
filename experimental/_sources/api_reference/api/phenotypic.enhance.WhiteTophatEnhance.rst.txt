@@ -1,0 +1,28 @@
+phenotypic.enhance.WhiteTophatEnhance
+=====================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: WhiteTophatEnhance
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~WhiteTophatEnhance.__init__
+      ~WhiteTophatEnhance.apply
+      ~WhiteTophatEnhance.widget
+   
+   
+
+   
+   
+   

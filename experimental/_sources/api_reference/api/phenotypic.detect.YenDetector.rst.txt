@@ -1,0 +1,28 @@
+phenotypic.detect.YenDetector
+=============================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: YenDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~YenDetector.__init__
+      ~YenDetector.apply
+      ~YenDetector.widget
+   
+   
+
+   
+   
+   

@@ -1,0 +1,7 @@
+phenotypic.tools\_.exceptions\_.OutputValueError
+================================================
+
+.. currentmodule:: phenotypic.tools_.exceptions_
+
+.. autoexception:: OutputValueError
+   :no-index:

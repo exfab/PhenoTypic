@@ -1,0 +1,29 @@
+phenotypic.detect.ManualPointDetector
+=====================================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: ManualPointDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ManualPointDetector.__init__
+      ~ManualPointDetector.apply
+      ~ManualPointDetector.napari
+      ~ManualPointDetector.widget
+   
+   
+
+   
+   
+   

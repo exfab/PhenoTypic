@@ -1,0 +1,28 @@
+phenotypic.enhance.UnsharpMask
+==============================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: UnsharpMask
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~UnsharpMask.__init__
+      ~UnsharpMask.apply
+      ~UnsharpMask.widget
+   
+   
+
+   
+   
+   

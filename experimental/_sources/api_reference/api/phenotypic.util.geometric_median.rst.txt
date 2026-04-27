@@ -1,0 +1,7 @@
+phenotypic.util.geometric\_median
+=================================
+
+.. currentmodule:: phenotypic.util
+
+.. autofunction:: geometric_median
+   :no-index:

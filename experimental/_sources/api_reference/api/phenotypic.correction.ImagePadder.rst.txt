@@ -1,0 +1,28 @@
+phenotypic.correction.ImagePadder
+=================================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: ImagePadder
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ImagePadder.__init__
+      ~ImagePadder.apply
+      ~ImagePadder.widget
+   
+   
+
+   
+   
+   

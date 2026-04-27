@@ -1,0 +1,28 @@
+phenotypic.correction.ImageCropper
+==================================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: ImageCropper
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ImageCropper.__init__
+      ~ImageCropper.apply
+      ~ImageCropper.widget
+   
+   
+
+   
+   
+   

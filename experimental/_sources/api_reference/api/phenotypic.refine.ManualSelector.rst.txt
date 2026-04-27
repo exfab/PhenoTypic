@@ -1,0 +1,29 @@
+phenotypic.refine.ManualSelector
+================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: ManualSelector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ManualSelector.__init__
+      ~ManualSelector.apply
+      ~ManualSelector.napari
+      ~ManualSelector.widget
+   
+   
+
+   
+   
+   

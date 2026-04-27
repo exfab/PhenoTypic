@@ -1,0 +1,28 @@
+phenotypic.enhance.MedianFilter
+===============================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: MedianFilter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MedianFilter.__init__
+      ~MedianFilter.apply
+      ~MedianFilter.widget
+   
+   
+
+   
+   
+   

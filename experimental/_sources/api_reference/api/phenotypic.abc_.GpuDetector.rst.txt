@@ -1,0 +1,28 @@
+phenotypic.abc\_.GpuDetector
+============================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: GpuDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GpuDetector.__init__
+      ~GpuDetector.apply
+      ~GpuDetector.widget
+   
+   
+
+   
+   
+   

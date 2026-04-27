@@ -1,0 +1,28 @@
+phenotypic.detect.LiDetector
+============================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: LiDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~LiDetector.__init__
+      ~LiDetector.apply
+      ~LiDetector.widget
+   
+   
+
+   
+   
+   

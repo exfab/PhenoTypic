@@ -1,0 +1,28 @@
+phenotypic.enhance.SubtractGaussian
+===================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: SubtractGaussian
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SubtractGaussian.__init__
+      ~SubtractGaussian.apply
+      ~SubtractGaussian.widget
+   
+   
+
+   
+   
+   

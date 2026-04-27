@@ -1,0 +1,29 @@
+phenotypic.tools\_.register.DashboardRegistry
+=============================================
+
+.. currentmodule:: phenotypic.tools_.register
+
+.. autoclass:: DashboardRegistry
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~DashboardRegistry.__init__
+      ~DashboardRegistry.available
+      ~DashboardRegistry.get
+      ~DashboardRegistry.register
+   
+   
+
+   
+   
+   

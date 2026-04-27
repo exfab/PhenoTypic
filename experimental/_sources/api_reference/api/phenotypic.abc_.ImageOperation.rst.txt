@@ -1,0 +1,28 @@
+phenotypic.abc\_.ImageOperation
+===============================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: ImageOperation
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ImageOperation.__init__
+      ~ImageOperation.apply
+      ~ImageOperation.widget
+   
+   
+
+   
+   
+   

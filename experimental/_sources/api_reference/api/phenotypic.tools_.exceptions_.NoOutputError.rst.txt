@@ -1,0 +1,7 @@
+phenotypic.tools\_.exceptions\_.NoOutputError
+=============================================
+
+.. currentmodule:: phenotypic.tools_.exceptions_
+
+.. autoexception:: NoOutputError
+   :no-index:

@@ -1,0 +1,28 @@
+phenotypic.enhance.GaussianBlur
+===============================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: GaussianBlur
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GaussianBlur.__init__
+      ~GaussianBlur.apply
+      ~GaussianBlur.widget
+   
+   
+
+   
+   
+   

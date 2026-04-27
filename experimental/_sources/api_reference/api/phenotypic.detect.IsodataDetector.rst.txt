@@ -1,0 +1,28 @@
+phenotypic.detect.IsodataDetector
+=================================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: IsodataDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~IsodataDetector.__init__
+      ~IsodataDetector.apply
+      ~IsodataDetector.widget
+   
+   
+
+   
+   
+   

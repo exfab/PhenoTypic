@@ -1,0 +1,28 @@
+phenotypic.enhance.MeijeringRidgeFilter
+=======================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: MeijeringRidgeFilter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MeijeringRidgeFilter.__init__
+      ~MeijeringRidgeFilter.apply
+      ~MeijeringRidgeFilter.widget
+   
+   
+
+   
+   
+   

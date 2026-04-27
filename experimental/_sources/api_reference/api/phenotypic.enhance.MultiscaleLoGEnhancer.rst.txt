@@ -1,0 +1,28 @@
+phenotypic.enhance.MultiscaleLoGEnhancer
+========================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: MultiscaleLoGEnhancer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MultiscaleLoGEnhancer.__init__
+      ~MultiscaleLoGEnhancer.apply
+      ~MultiscaleLoGEnhancer.widget
+   
+   
+
+   
+   
+   

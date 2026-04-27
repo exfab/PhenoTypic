@@ -1,0 +1,7 @@
+phenotypic.tools\_.exceptions\_.ObjectNotFoundError
+===================================================
+
+.. currentmodule:: phenotypic.tools_.exceptions_
+
+.. autoexception:: ObjectNotFoundError
+   :no-index:

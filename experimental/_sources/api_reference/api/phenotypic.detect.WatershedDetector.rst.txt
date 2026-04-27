@@ -1,0 +1,28 @@
+phenotypic.detect.WatershedDetector
+===================================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: WatershedDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~WatershedDetector.__init__
+      ~WatershedDetector.apply
+      ~WatershedDetector.widget
+   
+   
+
+   
+   
+   

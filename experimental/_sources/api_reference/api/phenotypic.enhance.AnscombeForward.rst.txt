@@ -1,0 +1,28 @@
+phenotypic.enhance.AnscombeForward
+==================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: AnscombeForward
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~AnscombeForward.__init__
+      ~AnscombeForward.apply
+      ~AnscombeForward.widget
+   
+   
+
+   
+   
+   

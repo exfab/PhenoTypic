@@ -1,0 +1,47 @@
+phenotypic.util.ContrastMetrics
+===============================
+
+.. currentmodule:: phenotypic.util
+
+.. autoclass:: ContrastMetrics
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ContrastMetrics.__init__
+      ~ContrastMetrics.clear
+      ~ContrastMetrics.copy
+      ~ContrastMetrics.fromkeys
+      ~ContrastMetrics.get
+      ~ContrastMetrics.items
+      ~ContrastMetrics.keys
+      ~ContrastMetrics.pop
+      ~ContrastMetrics.popitem
+      ~ContrastMetrics.setdefault
+      ~ContrastMetrics.update
+      ~ContrastMetrics.values
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ContrastMetrics.rms_contrast
+      ~ContrastMetrics.michelson
+      ~ContrastMetrics.dynamic_range
+      ~ContrastMetrics.p1
+      ~ContrastMetrics.p99
+   
+   

@@ -1,0 +1,28 @@
+phenotypic.enhance.PhaseCongruencyEnhancer
+==========================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: PhaseCongruencyEnhancer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~PhaseCongruencyEnhancer.__init__
+      ~PhaseCongruencyEnhancer.apply
+      ~PhaseCongruencyEnhancer.widget
+   
+   
+
+   
+   
+   

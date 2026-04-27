@@ -1,0 +1,29 @@
+phenotypic.tools\_.register.PlotterRegistry
+===========================================
+
+.. currentmodule:: phenotypic.tools_.register
+
+.. autoclass:: PlotterRegistry
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~PlotterRegistry.__init__
+      ~PlotterRegistry.available
+      ~PlotterRegistry.get
+      ~PlotterRegistry.register
+   
+   
+
+   
+   
+   

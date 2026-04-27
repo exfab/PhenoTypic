@@ -1,0 +1,7 @@
+phenotypic.tools\_.slurm.submit\_script
+=======================================
+
+.. currentmodule:: phenotypic.tools_.slurm
+
+.. autofunction:: submit_script
+   :no-index:

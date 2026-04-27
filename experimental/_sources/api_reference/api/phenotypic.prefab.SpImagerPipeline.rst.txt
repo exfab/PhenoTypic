@@ -1,0 +1,46 @@
+phenotypic.prefab.SpImagerPipeline
+==================================
+
+.. currentmodule:: phenotypic.prefab
+
+.. autoclass:: SpImagerPipeline
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SpImagerPipeline.__init__
+      ~SpImagerPipeline.apply
+      ~SpImagerPipeline.apply_and_measure
+      ~SpImagerPipeline.apply_napari
+      ~SpImagerPipeline.apply_with_intermediates
+      ~SpImagerPipeline.benchmark_results
+      ~SpImagerPipeline.from_json
+      ~SpImagerPipeline.get_meas
+      ~SpImagerPipeline.get_ops
+      ~SpImagerPipeline.measure
+      ~SpImagerPipeline.set_meas
+      ~SpImagerPipeline.set_ops
+      ~SpImagerPipeline.set_post
+      ~SpImagerPipeline.to_json
+      ~SpImagerPipeline.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SpImagerPipeline.desc
+   
+   

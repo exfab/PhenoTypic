@@ -1,0 +1,28 @@
+phenotypic.refine.MaskGradient
+==============================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: MaskGradient
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   :no-index:
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MaskGradient.__init__
+      ~MaskGradient.apply
+      ~MaskGradient.widget
+   
+   
+
+   
+   
+   
