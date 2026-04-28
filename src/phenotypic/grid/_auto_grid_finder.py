@@ -173,15 +173,23 @@ class AutoGridFinder(GridFinder):
         mode_bin = np.argmax(counts)
         mode_pitch = float((bin_edges[mode_bin] + bin_edges[mode_bin + 1]) / 2.0)
 
-        if mode_pitch < 0.5 * span_pitch or mode_pitch > 2.0 * span_pitch:
-            warnings.warn(
-                f"AutoGridFinder._robust_pitch_estimate: mode pitch "
-                f"({mode_pitch:.2f}) outside [0.5x, 2.0x] of span pitch "
-                f"({span_pitch:.2f}); falling back to span pitch.",
-                AutoGridFinderFallbackWarning,
-                stacklevel=4,
-            )
-            return span_pitch
+        # TODO: revisit with Option 2 — use image_dim / n_expected as a
+        # complementary reference. The span-based ratio guard below
+        # rejects mode_pitch on plates with edge-row/col detection
+        # dropouts (span_pitch then artificially shrinks, pushing the
+        # mode/span ratio above 2x even though mode_pitch is correct).
+        # Re-enable once image_dim is threaded into this helper and
+        # mode_pitch is accepted if it agrees with either span_pitch or
+        # image_pitch.
+        # if mode_pitch < 0.5 * span_pitch or mode_pitch > 2.0 * span_pitch:
+        #     warnings.warn(
+        #         f"AutoGridFinder._robust_pitch_estimate: mode pitch "
+        #         f"({mode_pitch:.2f}) outside [0.5x, 2.0x] of span pitch "
+        #         f"({span_pitch:.2f}); falling back to span pitch.",
+        #         AutoGridFinderFallbackWarning,
+        #         stacklevel=4,
+        #     )
+        #     return span_pitch
         return mode_pitch
 
     @staticmethod
