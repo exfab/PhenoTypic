@@ -392,7 +392,9 @@ class TestRobustPitchEstimate:
 
     def test_uniform_centers(self):
         centers = np.array([10.0, 30.0, 50.0, 70.0, 90.0])
-        pitch = AutoGridFinder._robust_pitch_estimate(centers, n_expected=5)
+        pitch = AutoGridFinder._robust_pitch_estimate(
+            centers, n_expected=5, image_dim=100,
+        )
         assert 15.0 < pitch < 25.0
 
     def test_outlier_at_extreme(self):
@@ -401,25 +403,31 @@ class TestRobustPitchEstimate:
             10.0, 30.0, 50.0, 70.0, 90.0,  # true grid, pitch=20
             300.0,  # far outlier
         ]))
-        pitch = AutoGridFinder._robust_pitch_estimate(centers, n_expected=5)
-        # Mode of diffs is still ~20, but span pitch is (300-10)/4=72.5
-        # Mode (~20) is < 0.5 * 72.5 = 36.25, so falls back to span pitch
-        # Either way, should return a positive value
+        pitch = AutoGridFinder._robust_pitch_estimate(
+            centers, n_expected=5, image_dim=100,
+        )
+        # span_pitch=(300-10)/4=72.5, image_pitch=100/5=20. Mode (~20) is
+        # within [0.5x, 2.0x] of image_pitch, so dual-reference accepts
+        # the mode and the span outlier no longer corrupts the result.
         assert pitch > 0
 
     def test_half_pitch_contamination_triggers_fallback(self):
-        """Objects at half-pitch intervals should trigger sanity check fallback."""
+        """Objects at half-pitch intervals — mode lies at the boundary."""
         # True pitch = 20, but objects at every 10px
         centers = np.arange(10.0, 100.0, 10.0)  # 9 points at pitch 10
-        pitch = AutoGridFinder._robust_pitch_estimate(centers, n_expected=5)
-        # mode of diffs = 10, span pitch = (90-10)/4 = 20
-        # 10 == 0.5 * 20 → borderline, should fall back to span pitch
+        pitch = AutoGridFinder._robust_pitch_estimate(
+            centers, n_expected=5, image_dim=100,
+        )
+        # mode=10, span_pitch=20, image_pitch=20. ref_low=10, ref_high=40
+        # → mode=10 is at the inclusive lower bound, so accepted.
         assert pitch >= 10.0
 
     def test_few_diffs_falls_back(self):
         centers = np.array([10.0, 30.0])
-        pitch = AutoGridFinder._robust_pitch_estimate(centers, n_expected=5)
-        # Only 1 diff → falls back to span pitch
+        pitch = AutoGridFinder._robust_pitch_estimate(
+            centers, n_expected=5, image_dim=40,
+        )
+        # Only 1 diff → falls back to span pitch (early-return branch)
         expected_span = (30.0 - 10.0) / 4
         assert pitch == pytest.approx(expected_span)
 
@@ -504,16 +512,6 @@ class TestAssignGridIndicesWithAnchor:
 
 class TestHighObjectCountRobustness:
 
-    @pytest.mark.xfail(
-        reason=(
-            "Mode-vs-span ratio guard in _robust_pitch_estimate is "
-            "temporarily disabled (see TODO there). With many detections "
-            "per cell, mode_pitch now reflects within-cluster spacing "
-            "rather than inter-cell pitch. Re-enable when Option 2 "
-            "(image_dim/n_expected reference) is implemented."
-        ),
-        strict=True,
-    )
     def test_many_objects_per_cell(self):
         """Simulate ~50 objects per grid cell + noise, verify edges are sane."""
         rng = np.random.default_rng(123)

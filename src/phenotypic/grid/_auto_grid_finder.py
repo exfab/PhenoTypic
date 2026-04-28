@@ -132,20 +132,34 @@ class AutoGridFinder(GridFinder):
         return float((centers[-1] - centers[0]) / max(n_expected - 1, 1))
 
     @staticmethod
-    def _robust_pitch_estimate(centers: np.ndarray, n_expected: int) -> float:
+    def _robust_pitch_estimate(
+            centers: np.ndarray, n_expected: int, image_dim: int,
+    ) -> float:
         """Estimate grid pitch robustly using the mode of successive differences.
 
-        Falls back to span-based estimation when the mode is outside a
-        plausible range (0.5x–2.0x the span estimate).
+        Two reference pitches are computed: ``span_pitch`` from
+        ``(max - min) / (n_expected - 1)`` and ``image_pitch`` from
+        ``image_dim / n_expected``. The mode of successive differences
+        is binned at ``image_pitch / 4`` (more reliable than span-based
+        binning when edge wells are missing). The mode is accepted when
+        it falls within ``[0.5x, 2.0x]`` of *either* reference; when
+        neither agrees the function falls back to whichever reference
+        is closer to the mode. This dual-reference scheme tolerates
+        edge-row/col detection dropouts (where ``span_pitch`` shrinks
+        artificially) without losing protection against mode estimates
+        dominated by within-cell fragmentation.
 
         Args:
             centers: Sorted 1-D array of object center coordinates.
             n_expected: Number of expected grid positions along this axis.
+            image_dim: Image extent along this axis, used to compute the
+                structural ``image_pitch`` reference.
 
         Returns:
             Estimated pitch in pixels.
         """
         span_pitch = AutoGridFinder._estimate_pitch(centers, n_expected)
+        image_pitch = float(image_dim / n_expected)
         if span_pitch <= 0:
             warnings.warn(
                 f"AutoGridFinder._robust_pitch_estimate: span pitch <= 0 "
@@ -167,29 +181,31 @@ class AutoGridFinder(GridFinder):
             )
             return span_pitch
 
-        bin_width = span_pitch / 4.0
+        bin_width = image_pitch / 4.0
         n_bins = max(int(np.ceil(diffs.max() / bin_width)), 1)
         counts, bin_edges = np.histogram(diffs, bins=n_bins, range=(0, diffs.max() + bin_width))
         mode_bin = np.argmax(counts)
         mode_pitch = float((bin_edges[mode_bin] + bin_edges[mode_bin + 1]) / 2.0)
 
-        # TODO: revisit with Option 2 — use image_dim / n_expected as a
-        # complementary reference. The span-based ratio guard below
-        # rejects mode_pitch on plates with edge-row/col detection
-        # dropouts (span_pitch then artificially shrinks, pushing the
-        # mode/span ratio above 2x even though mode_pitch is correct).
-        # Re-enable once image_dim is threaded into this helper and
-        # mode_pitch is accepted if it agrees with either span_pitch or
-        # image_pitch.
-        # if mode_pitch < 0.5 * span_pitch or mode_pitch > 2.0 * span_pitch:
-        #     warnings.warn(
-        #         f"AutoGridFinder._robust_pitch_estimate: mode pitch "
-        #         f"({mode_pitch:.2f}) outside [0.5x, 2.0x] of span pitch "
-        #         f"({span_pitch:.2f}); falling back to span pitch.",
-        #         AutoGridFinderFallbackWarning,
-        #         stacklevel=4,
-        #     )
-        #     return span_pitch
+        ref_low = min(0.5 * span_pitch, 0.5 * image_pitch)
+        ref_high = max(2.0 * span_pitch, 2.0 * image_pitch)
+        if not (ref_low <= mode_pitch <= ref_high):
+            closer_ref = (
+                image_pitch
+                if abs(mode_pitch - image_pitch) < abs(mode_pitch - span_pitch)
+                else span_pitch
+            )
+            which = "image" if closer_ref == image_pitch else "span"
+            warnings.warn(
+                f"AutoGridFinder._robust_pitch_estimate: mode pitch "
+                f"({mode_pitch:.2f}) outside [{ref_low:.2f}, {ref_high:.2f}] "
+                f"of either span_pitch ({span_pitch:.2f}) or image_pitch "
+                f"({image_pitch:.2f}); falling back to {which}_pitch "
+                f"({closer_ref:.2f}).",
+                AutoGridFinderFallbackWarning,
+                stacklevel=4,
+            )
+            return closer_ref
         return mode_pitch
 
     @staticmethod
@@ -455,7 +471,7 @@ class AutoGridFinder(GridFinder):
         # --- Robust pipeline for high object counts ---
 
         # Step 1: robust pitch estimate (mode of successive differences)
-        pitch = self._robust_pitch_estimate(centers, n_expected)
+        pitch = self._robust_pitch_estimate(centers, n_expected, image_dim)
         if pitch <= 0:
             warnings.warn(
                 f"AutoGridFinder ({axis_label}): robust pitch estimate "
