@@ -13,6 +13,25 @@ from phenotypic.abc_ import GridFinder
 from phenotypic.tools_.measurement_info import BBOX, GRID
 
 
+class AutoGridFinderFallbackWarning(UserWarning):
+    """Warning category for fallbacks and geometry overrides in
+    :class:`AutoGridFinder`.
+
+    Emitted whenever the grid fitter takes a fallback (uniform spacing,
+    switch to simple pipeline, span-based pitch) or overrides the
+    fitted offset (symmetry anchoring, pitch shrink). Use this category
+    to filter only AutoGridFinder diagnostics in batch runs::
+
+        import warnings
+        from phenotypic.grid._auto_grid_finder import (
+            AutoGridFinderFallbackWarning,
+        )
+        warnings.filterwarnings(
+            "ignore", category=AutoGridFinderFallbackWarning,
+        )
+    """
+
+
 class AutoGridFinder(GridFinder):
     """
     Automatically determines grid row and column edges from detected object
@@ -37,6 +56,21 @@ class AutoGridFinder(GridFinder):
 
         tol: Deprecated. Accepted for backward compatibility but ignored.
         max_iter: Deprecated. Accepted for backward compatibility but ignored.
+
+    Notes:
+        Diagnostic warnings of category
+        :class:`AutoGridFinderFallbackWarning` are emitted at every
+        fallback (uniform spacing, simple-pipeline switch, span-based
+        pitch) and geometry override (symmetry anchoring, pitch shrink).
+        Suppress them in batch runs with::
+
+            import warnings
+            from phenotypic.grid._auto_grid_finder import (
+                AutoGridFinderFallbackWarning,
+            )
+            warnings.filterwarnings(
+                "ignore", category=AutoGridFinderFallbackWarning,
+            )
     """
 
     _MAX_OBJECTS_PER_CELL: int = 250
@@ -113,11 +147,24 @@ class AutoGridFinder(GridFinder):
         """
         span_pitch = AutoGridFinder._estimate_pitch(centers, n_expected)
         if span_pitch <= 0:
+            warnings.warn(
+                f"AutoGridFinder._robust_pitch_estimate: span pitch <= 0 "
+                f"(span_pitch={span_pitch}); returning as-is.",
+                AutoGridFinderFallbackWarning,
+                stacklevel=4,
+            )
             return span_pitch
 
         diffs = np.diff(centers)
         diffs = diffs[diffs > 0]
         if len(diffs) < 2:
+            warnings.warn(
+                f"AutoGridFinder._robust_pitch_estimate: only {len(diffs)} "
+                f"positive successive differences; falling back to span pitch "
+                f"({span_pitch:.2f}).",
+                AutoGridFinderFallbackWarning,
+                stacklevel=4,
+            )
             return span_pitch
 
         bin_width = span_pitch / 4.0
@@ -127,6 +174,13 @@ class AutoGridFinder(GridFinder):
         mode_pitch = float((bin_edges[mode_bin] + bin_edges[mode_bin + 1]) / 2.0)
 
         if mode_pitch < 0.5 * span_pitch or mode_pitch > 2.0 * span_pitch:
+            warnings.warn(
+                f"AutoGridFinder._robust_pitch_estimate: mode pitch "
+                f"({mode_pitch:.2f}) outside [0.5x, 2.0x] of span pitch "
+                f"({span_pitch:.2f}); falling back to span pitch.",
+                AutoGridFinderFallbackWarning,
+                stacklevel=4,
+            )
             return span_pitch
         return mode_pitch
 
@@ -176,6 +230,13 @@ class AutoGridFinder(GridFinder):
         idx_dev = indices - idx_mean
         denom = float(idx_dev @ idx_dev)
         if denom == 0.0:
+            warnings.warn(
+                f"AutoGridFinder._fit_pitch_and_offset: degenerate indices "
+                f"(all {len(indices)} centers map to the same grid index); "
+                f"pitch set to 0.0, offset to centers mean ({ctr_mean:.2f}).",
+                AutoGridFinderFallbackWarning,
+                stacklevel=4,
+            )
             return 0.0, ctr_mean
         pitch = float(idx_dev @ (centers - ctr_mean)) / denom
         offset = ctr_mean - pitch * idx_mean
@@ -217,6 +278,14 @@ class AutoGridFinder(GridFinder):
         max_offset = image_dim - pitch * n_bins + half  # last edge <= image_dim
 
         if min_offset > max_offset:
+            warnings.warn(
+                f"AutoGridFinder._compute_grid_edges: fitted pitch "
+                f"({pitch:.2f}) too large for image_dim={image_dim} with "
+                f"n_bins={n_bins}; shrinking pitch to "
+                f"{image_dim / n_bins:.2f} and recentering.",
+                AutoGridFinderFallbackWarning,
+                stacklevel=3,
+            )
             # Pitch is too large for the image — shrink to fit
             pitch = image_dim / n_bins
             half = pitch / 2.0
@@ -246,6 +315,7 @@ class AutoGridFinder(GridFinder):
             centers: np.ndarray,
             n_expected: int,
             image_dim: int,
+            axis_label: str = "axis",
     ) -> np.ndarray:
         """Simple pipeline used when the object count is low.
 
@@ -253,26 +323,60 @@ class AutoGridFinder(GridFinder):
         """
         pitch = self._estimate_pitch(centers, n_expected)
         if pitch <= 0:
+            warnings.warn(
+                f"AutoGridFinder ({axis_label}, simple): span-based pitch "
+                f"<= 0 ({pitch}); falling back to uniform edges.",
+                AutoGridFinderFallbackWarning,
+                stacklevel=4,
+            )
             return self._uniform_edges(n_expected, image_dim)
 
         indices = self._assign_grid_indices(centers, pitch)
         pitch, offset = self._fit_pitch_and_offset(centers, indices)
         if pitch <= 0:
+            warnings.warn(
+                f"AutoGridFinder ({axis_label}, simple): initial fit pitch "
+                f"<= 0 ({pitch}); falling back to uniform edges.",
+                AutoGridFinderFallbackWarning,
+                stacklevel=4,
+            )
             return self._uniform_edges(n_expected, image_dim)
 
         threshold = pitch * self.residual_fraction
         inlier_mask = self._identify_inliers(
             centers, indices, pitch, offset, threshold,
         )
-        if inlier_mask.sum() >= 2:
+        n_inliers = int(inlier_mask.sum())
+        if n_inliers >= 2:
             pitch, offset = self._fit_pitch_and_offset(
                 centers[inlier_mask], indices[inlier_mask],
             )
+        else:
+            warnings.warn(
+                f"AutoGridFinder ({axis_label}, simple): only {n_inliers} "
+                f"inliers of {len(centers)} centers within residual threshold "
+                f"({threshold:.2f}); skipping refit and using initial fit.",
+                AutoGridFinderFallbackWarning,
+                stacklevel=4,
+            )
         if pitch <= 0:
+            warnings.warn(
+                f"AutoGridFinder ({axis_label}, simple): refit pitch <= 0 "
+                f"({pitch}); falling back to uniform edges.",
+                AutoGridFinderFallbackWarning,
+                stacklevel=4,
+            )
             return self._uniform_edges(n_expected, image_dim)
 
         span = int(indices.max() - indices.min()) + 1
         if span < n_expected:
+            warnings.warn(
+                f"AutoGridFinder ({axis_label}, simple): detected span "
+                f"({span}) < n_expected ({n_expected}); recentering grid on "
+                f"image (symmetry anchoring overrides fitted offset).",
+                AutoGridFinderFallbackWarning,
+                stacklevel=4,
+            )
             image_center = image_dim / 2.0
             grid_center_idx = (n_expected - 1) / 2.0
             offset = image_center - pitch * grid_center_idx
@@ -292,27 +396,51 @@ class AutoGridFinder(GridFinder):
         Uses the simple pipeline for low object counts and the robust
         pipeline (median aggregation + robust pitch) for high counts.
         """
+        axis_label = (
+            "rows" if axis == 0 else "cols" if axis == 1 else f"axis {axis}"
+        )
         try:
             centers = self._extract_axis_centers(info_table, axis)
-        except (KeyError, IndexError):
-            centers = np.array([])
+        except (KeyError, IndexError) as exc:
+            warnings.warn(
+                f"AutoGridFinder ({axis_label}): could not extract centers "
+                f"({type(exc).__name__}); falling back to uniform edges.",
+                AutoGridFinderFallbackWarning,
+                stacklevel=3,
+            )
+            return self._uniform_edges(n_expected, image_dim)
 
         if len(centers) < 2:
+            warnings.warn(
+                f"AutoGridFinder ({axis_label}): {len(centers)} centers "
+                f"available (< 2); falling back to uniform edges.",
+                AutoGridFinderFallbackWarning,
+                stacklevel=3,
+            )
             return self._uniform_edges(n_expected, image_dim)
 
         # Low-N guard: use simple pipeline when few objects
         if len(centers) < 2 * n_expected:
+            warnings.warn(
+                f"AutoGridFinder ({axis_label}): {len(centers)} centers < "
+                f"2 * n_expected ({2 * n_expected}); using simple pipeline "
+                f"instead of robust pipeline.",
+                AutoGridFinderFallbackWarning,
+                stacklevel=3,
+            )
             return self._fit_axis_edges_simple(
-                centers, n_expected, image_dim,
+                centers, n_expected, image_dim, axis_label=axis_label,
             )
 
         # High-N guard: skip fitting for pathological object counts
         if len(centers) > self._MAX_OBJECTS_PER_CELL * n_expected:
             warnings.warn(
-                f"Detected {len(centers)} objects for {n_expected} expected "
-                f"grid positions (>{self._MAX_OBJECTS_PER_CELL} per cell). "
-                f"Falling back to uniform grid spacing.",
-                stacklevel=2,
+                f"AutoGridFinder ({axis_label}): detected {len(centers)} "
+                f"objects for {n_expected} expected grid positions "
+                f"(>{self._MAX_OBJECTS_PER_CELL} per cell). Falling back to "
+                f"uniform grid spacing.",
+                AutoGridFinderFallbackWarning,
+                stacklevel=3,
             )
             return self._uniform_edges(n_expected, image_dim)
 
@@ -321,6 +449,12 @@ class AutoGridFinder(GridFinder):
         # Step 1: robust pitch estimate (mode of successive differences)
         pitch = self._robust_pitch_estimate(centers, n_expected)
         if pitch <= 0:
+            warnings.warn(
+                f"AutoGridFinder ({axis_label}): robust pitch estimate "
+                f"<= 0 ({pitch}); falling back to uniform edges.",
+                AutoGridFinderFallbackWarning,
+                stacklevel=3,
+            )
             return self._uniform_edges(n_expected, image_dim)
 
         # Step 2: assign grid indices with median anchor
@@ -335,6 +469,12 @@ class AutoGridFinder(GridFinder):
         # Step 4: fit on aggregated medians (equal weight per cell)
         pitch, offset = self._fit_pitch_and_offset(medians, unique_idx)
         if pitch <= 0:
+            warnings.warn(
+                f"AutoGridFinder ({axis_label}): initial cell-median fit "
+                f"pitch <= 0 ({pitch}); falling back to uniform edges.",
+                AutoGridFinderFallbackWarning,
+                stacklevel=3,
+            )
             return self._uniform_edges(n_expected, image_dim)
 
         # Step 5: outlier rejection + refit on cells
@@ -342,16 +482,38 @@ class AutoGridFinder(GridFinder):
         inlier_mask = self._identify_inliers(
             medians, unique_idx, pitch, offset, threshold,
         )
-        if inlier_mask.sum() >= 2:
+        n_inliers = int(inlier_mask.sum())
+        if n_inliers >= 2:
             pitch, offset = self._fit_pitch_and_offset(
                 medians[inlier_mask], unique_idx[inlier_mask],
             )
+        else:
+            warnings.warn(
+                f"AutoGridFinder ({axis_label}): only {n_inliers} cell-median "
+                f"inliers of {len(medians)} cells within residual threshold "
+                f"({threshold:.2f}); skipping refit and using initial fit.",
+                AutoGridFinderFallbackWarning,
+                stacklevel=3,
+            )
         if pitch <= 0:
+            warnings.warn(
+                f"AutoGridFinder ({axis_label}): refit pitch <= 0 ({pitch}); "
+                f"falling back to uniform edges.",
+                AutoGridFinderFallbackWarning,
+                stacklevel=3,
+            )
             return self._uniform_edges(n_expected, image_dim)
 
         # Step 6: symmetry anchoring when detected span < expected
         span = int(unique_idx.max() - unique_idx.min()) + 1
         if span < n_expected:
+            warnings.warn(
+                f"AutoGridFinder ({axis_label}): detected span ({span}) < "
+                f"n_expected ({n_expected}); recentering grid on image "
+                f"(symmetry anchoring overrides fitted offset).",
+                AutoGridFinderFallbackWarning,
+                stacklevel=3,
+            )
             image_center = image_dim / 2.0
             grid_center_idx = (n_expected - 1) / 2.0
             offset = image_center - pitch * grid_center_idx
@@ -372,6 +534,12 @@ class AutoGridFinder(GridFinder):
             Integer array of length ``nrows + 1``.
         """
         if image.num_objects == 0:
+            warnings.warn(
+                "AutoGridFinder.get_row_edges: no objects detected; "
+                "falling back to uniform row edges.",
+                AutoGridFinderFallbackWarning,
+                stacklevel=2,
+            )
             return self._uniform_edges(self.nrows, image.shape[0])
         info_table = image.objects.info(include_metadata=False)
         return self._fit_axis_edges(
@@ -388,6 +556,12 @@ class AutoGridFinder(GridFinder):
             Integer array of length ``ncols + 1``.
         """
         if image.num_objects == 0:
+            warnings.warn(
+                "AutoGridFinder.get_col_edges: no objects detected; "
+                "falling back to uniform column edges.",
+                AutoGridFinderFallbackWarning,
+                stacklevel=2,
+            )
             return self._uniform_edges(self.ncols, image.shape[1])
         info_table = image.objects.info(include_metadata=False)
         return self._fit_axis_edges(
@@ -404,6 +578,12 @@ class AutoGridFinder(GridFinder):
             DataFrame with grid assignments (ROW_NUM, COL_NUM, ROW_MAJOR_IDX).
         """
         if image.num_objects == 0:
+            warnings.warn(
+                "AutoGridFinder._operate: no objects detected; falling back "
+                "to uniform grid edges for both axes.",
+                AutoGridFinderFallbackWarning,
+                stacklevel=2,
+            )
             return super()._get_grid_info(
                 image=image,
                 row_edges=self._uniform_edges(self.nrows, image.shape[0]),
