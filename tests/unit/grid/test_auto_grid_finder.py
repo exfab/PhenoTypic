@@ -384,55 +384,6 @@ class TestAutoGridFinderIntegration:
 
 
 # ===========================================================================
-# _robust_pitch_estimate
-# ===========================================================================
-
-
-class TestRobustPitchEstimate:
-
-    def test_uniform_centers(self):
-        centers = np.array([10.0, 30.0, 50.0, 70.0, 90.0])
-        pitch = AutoGridFinder._robust_pitch_estimate(
-            centers, n_expected=5, image_dim=100,
-        )
-        assert 15.0 < pitch < 25.0
-
-    def test_outlier_at_extreme(self):
-        """Outlier at the far end should not corrupt the estimate."""
-        centers = np.sort(np.array([
-            10.0, 30.0, 50.0, 70.0, 90.0,  # true grid, pitch=20
-            300.0,  # far outlier
-        ]))
-        pitch = AutoGridFinder._robust_pitch_estimate(
-            centers, n_expected=5, image_dim=100,
-        )
-        # span_pitch=(300-10)/4=72.5, image_pitch=100/5=20. Mode (~20) is
-        # within [0.5x, 2.0x] of image_pitch, so dual-reference accepts
-        # the mode and the span outlier no longer corrupts the result.
-        assert pitch > 0
-
-    def test_half_pitch_contamination_triggers_fallback(self):
-        """Objects at half-pitch intervals — mode lies at the boundary."""
-        # True pitch = 20, but objects at every 10px
-        centers = np.arange(10.0, 100.0, 10.0)  # 9 points at pitch 10
-        pitch = AutoGridFinder._robust_pitch_estimate(
-            centers, n_expected=5, image_dim=100,
-        )
-        # mode=10, span_pitch=20, image_pitch=20. ref_low=10, ref_high=40
-        # → mode=10 is at the inclusive lower bound, so accepted.
-        assert pitch >= 10.0
-
-    def test_few_diffs_falls_back(self):
-        centers = np.array([10.0, 30.0])
-        pitch = AutoGridFinder._robust_pitch_estimate(
-            centers, n_expected=5, image_dim=40,
-        )
-        # Only 1 diff → falls back to span pitch (early-return branch)
-        expected_span = (30.0 - 10.0) / 4
-        assert pitch == pytest.approx(expected_span)
-
-
-# ===========================================================================
 # _aggregate_to_cell_medians
 # ===========================================================================
 

@@ -132,83 +132,6 @@ class AutoGridFinder(GridFinder):
         return float((centers[-1] - centers[0]) / max(n_expected - 1, 1))
 
     @staticmethod
-    def _robust_pitch_estimate(
-            centers: np.ndarray, n_expected: int, image_dim: int,
-    ) -> float:
-        """Estimate grid pitch robustly using the mode of successive differences.
-
-        Two reference pitches are computed: ``span_pitch`` from
-        ``(max - min) / (n_expected - 1)`` and ``image_pitch`` from
-        ``image_dim / n_expected``. The mode of successive differences
-        is binned at ``image_pitch / 4`` (more reliable than span-based
-        binning when edge wells are missing). The mode is accepted when
-        it falls within ``[0.5x, 2.0x]`` of *either* reference; when
-        neither agrees the function falls back to whichever reference
-        is closer to the mode. This dual-reference scheme tolerates
-        edge-row/col detection dropouts (where ``span_pitch`` shrinks
-        artificially) without losing protection against mode estimates
-        dominated by within-cell fragmentation.
-
-        Args:
-            centers: Sorted 1-D array of object center coordinates.
-            n_expected: Number of expected grid positions along this axis.
-            image_dim: Image extent along this axis, used to compute the
-                structural ``image_pitch`` reference.
-
-        Returns:
-            Estimated pitch in pixels.
-        """
-        span_pitch = AutoGridFinder._estimate_pitch(centers, n_expected)
-        image_pitch = float(image_dim / n_expected)
-        if span_pitch <= 0:
-            warnings.warn(
-                f"AutoGridFinder._robust_pitch_estimate: span pitch <= 0 "
-                f"(span_pitch={span_pitch}); returning as-is.",
-                AutoGridFinderFallbackWarning,
-                stacklevel=4,
-            )
-            return span_pitch
-
-        diffs = np.diff(centers)
-        diffs = diffs[diffs > 0]
-        if len(diffs) < 2:
-            warnings.warn(
-                f"AutoGridFinder._robust_pitch_estimate: only {len(diffs)} "
-                f"positive successive differences; falling back to span pitch "
-                f"({span_pitch:.2f}).",
-                AutoGridFinderFallbackWarning,
-                stacklevel=4,
-            )
-            return span_pitch
-
-        bin_width = image_pitch / 4.0
-        n_bins = max(int(np.ceil(diffs.max() / bin_width)), 1)
-        counts, bin_edges = np.histogram(diffs, bins=n_bins, range=(0, diffs.max() + bin_width))
-        mode_bin = np.argmax(counts)
-        mode_pitch = float((bin_edges[mode_bin] + bin_edges[mode_bin + 1]) / 2.0)
-
-        ref_low = min(0.5 * span_pitch, 0.5 * image_pitch)
-        ref_high = max(2.0 * span_pitch, 2.0 * image_pitch)
-        if not (ref_low <= mode_pitch <= ref_high):
-            closer_ref = (
-                image_pitch
-                if abs(mode_pitch - image_pitch) < abs(mode_pitch - span_pitch)
-                else span_pitch
-            )
-            which = "image" if closer_ref == image_pitch else "span"
-            warnings.warn(
-                f"AutoGridFinder._robust_pitch_estimate: mode pitch "
-                f"({mode_pitch:.2f}) outside [{ref_low:.2f}, {ref_high:.2f}] "
-                f"of either span_pitch ({span_pitch:.2f}) or image_pitch "
-                f"({image_pitch:.2f}); falling back to {which}_pitch "
-                f"({closer_ref:.2f}).",
-                AutoGridFinderFallbackWarning,
-                stacklevel=4,
-            )
-            return closer_ref
-        return mode_pitch
-
-    @staticmethod
     def _assign_grid_indices(
             centers: np.ndarray,
             pitch: float,
@@ -334,6 +257,53 @@ class AutoGridFinder(GridFinder):
             pitch, pitch / 2, n_expected, image_dim,
         )
 
+    @staticmethod
+    def _image_pitch_indices(
+            centers: np.ndarray, n_expected: int, image_dim: int,
+    ) -> np.ndarray:
+        """Assign cell indices using image-pitch prior (sparse-robust).
+
+        Independent of any fitted pitch, so usable as diagnostic ground
+        truth even when the fitter has failed. Centers are rounded to
+        the nearest cell using ``image_dim / n_expected`` as pitch with
+        cell 0 anchored at ``image_pitch / 2``. Indices are clipped to
+        ``[0, n_expected - 1]``.
+        """
+        if len(centers) == 0:
+            return np.empty(0, dtype=int)
+        image_pitch = image_dim / n_expected
+        anchor = image_pitch / 2.0
+        idx = np.rint((centers - anchor) / image_pitch).astype(int)
+        return np.clip(idx, 0, n_expected - 1)
+
+    @staticmethod
+    def _classify_axis_pipeline(
+            centers: np.ndarray, n_expected: int, image_dim: int,
+    ) -> str:
+        """Return ``"iterative"`` or ``"simple"`` per the per-axis gate.
+
+        The simple pipeline runs only when BOTH the raw count and the
+        per-axis occupancy (via :meth:`_image_pitch_indices`) are too
+        low for iterative refinement to seed reliably:
+
+        - ``count_low``: ``len(centers) < 1.5 * n_expected``
+        - ``occupancy_low``: ``n_occupied < 0.5 * n_expected``
+
+        Either condition alone routes to ``"iterative"``. This helper
+        is the single source of truth for the gate, used by
+        :meth:`_fit_axis_edges` (dispatch) and
+        :meth:`_run_timed_pipeline` (dashboard label).
+        """
+        if len(centers) < 2:
+            return "iterative"  # caller handles len < 2 separately
+        axis_indices = AutoGridFinder._image_pitch_indices(
+            centers, n_expected, image_dim,
+        )
+        n_occupied = int(np.unique(axis_indices).size)
+        count_low = len(centers) < 1.5 * n_expected
+        occupancy_low = n_occupied < 0.5 * n_expected
+        return "simple" if (count_low and occupancy_low) else "iterative"
+
     def _fit_axis_edges_simple(
             self,
             centers: np.ndarray,
@@ -407,6 +377,140 @@ class AutoGridFinder(GridFinder):
 
         return self._compute_grid_edges(pitch, offset, n_expected, image_dim)
 
+    def _fit_axis_edges_iterative(
+            self,
+            centers: np.ndarray,
+            n_expected: int,
+            image_dim: int,
+            axis_label: str = "axis",
+    ) -> np.ndarray:
+        """Iterative cell-median refinement seeded from image-pitch indices.
+
+        Each iteration: aggregate centers to one median per occupied cell,
+        closed-form fit ``center = pitch * idx + offset``, reassign
+        indices using the new fit. Terminates when index assignments
+        stop changing (or only a single boundary cell flickers after
+        an initial stabilization phase) or after ``MAX_ITER``
+        iterations. The image-pitch seed makes this robust to sparse
+        plates and within-cell fragmentation, since the initial
+        assignment uses only the structural prior, not the diff
+        distribution.
+        """
+        # MAX_ITER=16 covers the empirical worst case observed on dense
+        # plates (~1500 centers, convergence at iter 10). Each iteration
+        # is cheap (one closed-form fit + index reassignment).
+        MAX_ITER = 16
+        # After a stabilization phase, accept a single border-cell
+        # flicker as converged: the resulting fit drift is sub-pixel
+        # (e.g. on km-plate-12hr at iter 7, pitch=161.22 vs true
+        # convergence pitch=161.16, a 0.04% difference irrelevant
+        # post-rounding to integer edges).
+        STABILITY_PHASE = 4
+        STABILITY_TOL = 1
+
+        image_pitch = image_dim / n_expected
+        indices = self._image_pitch_indices(centers, n_expected, image_dim)
+        pitch, offset = image_pitch, image_pitch / 2.0
+
+        converged = False
+        for iter_num in range(MAX_ITER):
+            medians, unique_idx = self._aggregate_to_cell_medians(
+                centers, indices,
+            )
+            new_pitch, new_offset = self._fit_pitch_and_offset(
+                medians, unique_idx,
+            )
+            if new_pitch <= 0:
+                warnings.warn(
+                    f"AutoGridFinder ({axis_label}, iterative): degenerate "
+                    f"fit pitch <= 0 ({new_pitch}) at iter {iter_num}; "
+                    f"falling back to uniform edges.",
+                    AutoGridFinderFallbackWarning,
+                    stacklevel=4,
+                )
+                return self._uniform_edges(n_expected, image_dim)
+
+            new_indices = np.rint(
+                (centers - new_offset) / new_pitch,
+            ).astype(int)
+            new_indices = np.clip(new_indices, 0, n_expected - 1)
+
+            n_changed = int(np.sum(new_indices != indices))
+            pitch, offset = new_pitch, new_offset
+            if n_changed == 0:
+                converged = True
+                indices = new_indices
+                break
+            if iter_num >= STABILITY_PHASE and n_changed <= STABILITY_TOL:
+                # Single boundary cell flickering after stabilization
+                converged = True
+                indices = new_indices
+                break
+            indices = new_indices
+
+        if not converged:
+            warnings.warn(
+                f"AutoGridFinder ({axis_label}, iterative): index "
+                f"assignments did not stabilize after {MAX_ITER} iterations; "
+                f"using last fit.",
+                AutoGridFinderFallbackWarning,
+                stacklevel=4,
+            )
+
+        # Final outlier rejection + refit on inlier cells
+        medians, unique_idx = self._aggregate_to_cell_medians(centers, indices)
+        threshold = pitch * self.residual_fraction
+        inlier_mask = self._identify_inliers(
+            medians, unique_idx, pitch, offset, threshold,
+        )
+        n_inliers = int(inlier_mask.sum())
+        if n_inliers >= 2:
+            pitch, offset = self._fit_pitch_and_offset(
+                medians[inlier_mask], unique_idx[inlier_mask],
+            )
+        else:
+            warnings.warn(
+                f"AutoGridFinder ({axis_label}, iterative): only {n_inliers} "
+                f"cell-median inliers of {len(medians)} cells within residual "
+                f"threshold ({threshold:.2f}); skipping refit and using last "
+                f"fit.",
+                AutoGridFinderFallbackWarning,
+                stacklevel=4,
+            )
+        if pitch <= 0:
+            warnings.warn(
+                f"AutoGridFinder ({axis_label}, iterative): refit pitch "
+                f"<= 0 ({pitch}); falling back to uniform edges.",
+                AutoGridFinderFallbackWarning,
+                stacklevel=4,
+            )
+            return self._uniform_edges(n_expected, image_dim)
+
+        # Symmetry anchoring when detected span < expected.
+        #
+        # NOTE (latent design choice): unique_idx is post-clip to
+        # [0, n_expected - 1], so a single spurious detection past the
+        # image edge inflates the span and suppresses anchoring even
+        # when real coverage is genuinely sparse. The deleted robust
+        # path had the same blind spot. Tightening this would require
+        # an occupancy-based gate or a pitch-drift sanity guard
+        # (deferred per plan; see "Future enhancement" in
+        # /Users/alex/.claude/plans/lively-baking-plum.md).
+        span = int(unique_idx.max() - unique_idx.min()) + 1
+        if span < n_expected:
+            warnings.warn(
+                f"AutoGridFinder ({axis_label}, iterative): detected span "
+                f"({span}) < n_expected ({n_expected}); recentering grid on "
+                f"image (symmetry anchoring overrides fitted offset).",
+                AutoGridFinderFallbackWarning,
+                stacklevel=4,
+            )
+            image_center = image_dim / 2.0
+            grid_center_idx = (n_expected - 1) / 2.0
+            offset = image_center - pitch * grid_center_idx
+
+        return self._compute_grid_edges(pitch, offset, n_expected, image_dim)
+
     def _fit_axis_edges(
             self,
             info_table: pd.DataFrame,
@@ -414,11 +518,12 @@ class AutoGridFinder(GridFinder):
             n_expected: int,
             image_dim: int,
     ) -> np.ndarray:
-        """Full pipeline: extract centers → fit → reject → refit → edges.
+        """Full pipeline: extract centers → fit → edges.
 
         Falls back to uniform spacing when fewer than 2 objects are found.
-        Uses the simple pipeline for low object counts and the robust
-        pipeline (median aggregation + robust pitch) for high counts.
+        Uses the simple pipeline for low-count *and* low-occupancy axes;
+        otherwise routes to the iterative pipeline (image-pitch seed +
+        cell-median refinement).
         """
         axis_label = (
             "rows" if axis == 0 else "cols" if axis == 1 else f"axis {axis}"
@@ -443,12 +548,20 @@ class AutoGridFinder(GridFinder):
             )
             return self._uniform_edges(n_expected, image_dim)
 
-        # Low-N guard: use simple pipeline when few objects
-        if len(centers) < 2 * n_expected:
+        # Per-axis sparsity gate: shared with `_run_timed_pipeline` via
+        # `_classify_axis_pipeline` so the dashboard label and the
+        # actual dispatch can never drift apart.
+        if self._classify_axis_pipeline(
+            centers, n_expected, image_dim,
+        ) == "simple":
+            n_occupied = int(np.unique(self._image_pitch_indices(
+                centers, n_expected, image_dim,
+            )).size)
             warnings.warn(
-                f"AutoGridFinder ({axis_label}): {len(centers)} centers < "
-                f"2 * n_expected ({2 * n_expected}); using simple pipeline "
-                f"instead of robust pipeline.",
+                f"AutoGridFinder ({axis_label}): {len(centers)} centers "
+                f"(< 1.5 * n_expected = {1.5 * n_expected:.1f}) and "
+                f"{n_occupied}/{n_expected} occupied cells (< 50%); using "
+                f"simple pipeline instead of iterative pipeline.",
                 AutoGridFinderFallbackWarning,
                 stacklevel=3,
             )
@@ -468,81 +581,9 @@ class AutoGridFinder(GridFinder):
             )
             return self._uniform_edges(n_expected, image_dim)
 
-        # --- Robust pipeline for high object counts ---
-
-        # Step 1: robust pitch estimate (mode of successive differences)
-        pitch = self._robust_pitch_estimate(centers, n_expected, image_dim)
-        if pitch <= 0:
-            warnings.warn(
-                f"AutoGridFinder ({axis_label}): robust pitch estimate "
-                f"<= 0 ({pitch}); falling back to uniform edges.",
-                AutoGridFinderFallbackWarning,
-                stacklevel=3,
-            )
-            return self._uniform_edges(n_expected, image_dim)
-
-        # Step 2: assign grid indices with median anchor
-        anchor = float(np.median(centers))
-        indices = self._assign_grid_indices(centers, pitch, anchor=anchor)
-
-        # Step 3: aggregate to one median per grid cell
-        medians, unique_idx = self._aggregate_to_cell_medians(
-            centers, indices,
+        return self._fit_axis_edges_iterative(
+            centers, n_expected, image_dim, axis_label=axis_label,
         )
-
-        # Step 4: fit on aggregated medians (equal weight per cell)
-        pitch, offset = self._fit_pitch_and_offset(medians, unique_idx)
-        if pitch <= 0:
-            warnings.warn(
-                f"AutoGridFinder ({axis_label}): initial cell-median fit "
-                f"pitch <= 0 ({pitch}); falling back to uniform edges.",
-                AutoGridFinderFallbackWarning,
-                stacklevel=3,
-            )
-            return self._uniform_edges(n_expected, image_dim)
-
-        # Step 5: outlier rejection + refit on cells
-        threshold = pitch * self.residual_fraction
-        inlier_mask = self._identify_inliers(
-            medians, unique_idx, pitch, offset, threshold,
-        )
-        n_inliers = int(inlier_mask.sum())
-        if n_inliers >= 2:
-            pitch, offset = self._fit_pitch_and_offset(
-                medians[inlier_mask], unique_idx[inlier_mask],
-            )
-        else:
-            warnings.warn(
-                f"AutoGridFinder ({axis_label}): only {n_inliers} cell-median "
-                f"inliers of {len(medians)} cells within residual threshold "
-                f"({threshold:.2f}); skipping refit and using initial fit.",
-                AutoGridFinderFallbackWarning,
-                stacklevel=3,
-            )
-        if pitch <= 0:
-            warnings.warn(
-                f"AutoGridFinder ({axis_label}): refit pitch <= 0 ({pitch}); "
-                f"falling back to uniform edges.",
-                AutoGridFinderFallbackWarning,
-                stacklevel=3,
-            )
-            return self._uniform_edges(n_expected, image_dim)
-
-        # Step 6: symmetry anchoring when detected span < expected
-        span = int(unique_idx.max() - unique_idx.min()) + 1
-        if span < n_expected:
-            warnings.warn(
-                f"AutoGridFinder ({axis_label}): detected span ({span}) < "
-                f"n_expected ({n_expected}); recentering grid on image "
-                f"(symmetry anchoring overrides fitted offset).",
-                AutoGridFinderFallbackWarning,
-                stacklevel=3,
-            )
-            image_center = image_dim / 2.0
-            grid_center_idx = (n_expected - 1) / 2.0
-            offset = image_center - pitch * grid_center_idx
-
-        return self._compute_grid_edges(pitch, offset, n_expected, image_dim)
 
     # ------------------------------------------------------------------
     # Public interface
@@ -743,12 +784,29 @@ class AutoGridFinder(GridFinder):
             n_centers = len(info_table)
             if n_centers < 2:
                 pipeline_path = "uniform (< 2 objects)"
-            elif n_centers < 2 * self.nrows:
-                pipeline_path = "simple"
             elif n_centers > self._MAX_OBJECTS_PER_CELL * self.nrows:
                 pipeline_path = "uniform (object count guard)"
             else:
-                pipeline_path = "robust"
+                # Per-axis labels via the shared classifier; reported as
+                # "rows: X / cols: Y" so divergent decisions are visible.
+                row_centers = AutoGridFinder._extract_axis_centers(
+                    info_table, 0,
+                )
+                col_centers = AutoGridFinder._extract_axis_centers(
+                    info_table, 1,
+                )
+                row_label = AutoGridFinder._classify_axis_pipeline(
+                    row_centers, self.nrows, image.shape[0],
+                )
+                col_label = AutoGridFinder._classify_axis_pipeline(
+                    col_centers, self.ncols, image.shape[1],
+                )
+                if row_label == col_label:
+                    pipeline_path = row_label
+                else:
+                    pipeline_path = (
+                        f"rows: {row_label} / cols: {col_label}"
+                    )
             row_edges = self._fit_axis_edges(
                 info_table, axis=0, n_expected=self.nrows,
                 image_dim=image.shape[0],
@@ -917,6 +975,155 @@ class AutoGridFinder(GridFinder):
             return pane
 
     @classmethod
+    def _plot_successive_diffs(
+        cls, info_table: pd.DataFrame, nrows: int, ncols: int,
+        image_shape: tuple[int, ...],
+    ):
+        """Histogram of successive center diffs with image-pitch markers.
+
+        Two subplots (rows, cols) showing ``np.diff(sorted(centers))`` per
+        axis, with vertical reference lines at 1x, 2x, 3x ``image_pitch``.
+        A peak at 1x means dense, well-separated detections; secondary
+        peaks at 2x or 3x indicate sparse plates with missing cells; a
+        peak below 1x indicates within-cell fragmentation.
+        """
+        import panel as pn
+        import matplotlib.pyplot as plt
+
+        with plt.rc_context(cls._dashboard_rcparams()):
+            fig, axes = plt.subplots(1, 2, figsize=(8.5, 3.0))
+
+            for ax, axis, n_expected, dim, label in [
+                (axes[0], 0, nrows, image_shape[0], "Row"),
+                (axes[1], 1, ncols, image_shape[1], "Col"),
+            ]:
+                image_pitch = dim / n_expected
+
+                if info_table.empty:
+                    ax.text(
+                        0.5, 0.5, "No objects detected",
+                        ha="center", va="center", fontsize=10,
+                        color="#8892a4", transform=ax.transAxes,
+                    )
+                    ax.set_title(f"{label} diffs")
+                    continue
+
+                centers = cls._extract_axis_centers(info_table, axis)
+                if len(centers) < 2:
+                    ax.text(
+                        0.5, 0.5, "<2 centers",
+                        ha="center", va="center", fontsize=10,
+                        color="#8892a4", transform=ax.transAxes,
+                    )
+                    ax.set_title(f"{label} diffs")
+                    continue
+
+                diffs = np.diff(centers)
+                diffs = diffs[diffs > 0]
+                if len(diffs) == 0:
+                    ax.text(
+                        0.5, 0.5, "No positive diffs",
+                        ha="center", va="center", fontsize=10,
+                        color="#8892a4", transform=ax.transAxes,
+                    )
+                    ax.set_title(f"{label} diffs")
+                    continue
+
+                bin_width = image_pitch / 8.0
+                upper = max(float(diffs.max()), 3.5 * image_pitch)
+                n_bins = max(int(np.ceil(upper / bin_width)), 1)
+                ax.hist(
+                    diffs, bins=n_bins, range=(0, upper + bin_width),
+                    color=cls._OI_NAVY, alpha=0.85,
+                )
+                ax.axvline(
+                    image_pitch, color=cls._OI_VERMILION, ls="--", lw=1.2,
+                    label=f"1x ({image_pitch:.0f})",
+                )
+                ax.axvline(
+                    2 * image_pitch, color=cls._OI_GREY, ls="--", lw=1.0,
+                    label="2x",
+                )
+                ax.axvline(
+                    3 * image_pitch, color=cls._OI_GREY, ls=":", lw=1.0,
+                    label="3x",
+                )
+
+                ax.set_xlabel("Δ between adjacent centers (px)")
+                ax.set_ylabel("count")
+                ax.set_title(f"{label} diffs (image_pitch={image_pitch:.0f})")
+                ax.legend(fontsize=7, framealpha=0.8)
+
+            fig.tight_layout()
+            pane = pn.pane.Matplotlib(fig, tight=True, dpi=100)
+            plt.close(fig)
+            return pane
+
+    @classmethod
+    def _plot_axis_occupancy(
+        cls, info_table: pd.DataFrame, nrows: int, ncols: int,
+        image_shape: tuple[int, ...],
+    ):
+        """Bar chart of detection counts per cell index per axis.
+
+        Cells assigned via ``_image_pitch_indices`` so the result is
+        independent of the fitted pitch. Empty cells (count 0) are drawn
+        in vermilion to make missing rows/columns visually obvious.
+        """
+        import panel as pn
+        import matplotlib.pyplot as plt
+
+        with plt.rc_context(cls._dashboard_rcparams()):
+            fig, axes = plt.subplots(1, 2, figsize=(8.5, 3.0))
+
+            for ax, axis, n_expected, dim, label in [
+                (axes[0], 0, nrows, image_shape[0], "Row"),
+                (axes[1], 1, ncols, image_shape[1], "Col"),
+            ]:
+                if info_table.empty:
+                    ax.text(
+                        0.5, 0.5, "No objects detected",
+                        ha="center", va="center", fontsize=10,
+                        color="#8892a4", transform=ax.transAxes,
+                    )
+                    ax.set_title(f"{label} occupancy")
+                    continue
+
+                centers = cls._extract_axis_centers(info_table, axis)
+                indices = cls._image_pitch_indices(centers, n_expected, dim)
+                counts = np.bincount(indices, minlength=n_expected)
+                occupied = int((counts > 0).sum())
+
+                colors = [
+                    cls._OI_VERMILION if c == 0 else cls._OI_NAVY
+                    for c in counts
+                ]
+                bars = ax.bar(
+                    range(n_expected), counts, color=colors, alpha=0.85,
+                )
+                for bar, c in zip(bars, counts):
+                    if c > 0:
+                        ax.text(
+                            bar.get_x() + bar.get_width() / 2,
+                            bar.get_height(), str(int(c)),
+                            ha="center", va="bottom",
+                            fontsize=7, fontfamily="monospace",
+                            color="#2e3a4e",
+                        )
+
+                ax.set_xticks(range(n_expected))
+                ax.set_xlabel(f"{label} index")
+                ax.set_ylabel("# detections")
+                ax.set_title(
+                    f"{label} occupancy ({occupied}/{n_expected} cells)"
+                )
+
+            fig.tight_layout()
+            pane = pn.pane.Matplotlib(fig, tight=True, dpi=100)
+            plt.close(fig)
+            return pane
+
+    @classmethod
     def _build_inspect_summary(
         cls, result: dict, nrows: int, ncols: int,
         image_shape: tuple[int, ...],
@@ -964,6 +1171,30 @@ class AutoGridFinder(GridFinder):
         row_pitch = float(np.median(np.diff(row_edges)))
         col_pitch = float(np.median(np.diff(col_edges)))
 
+        # Sparse-plate diagnostics: image-pitch indices give occupancy
+        # and span coverage independent of the fitted pitch
+        if not info_table.empty:
+            row_centers = AutoGridFinder._extract_axis_centers(info_table, 0)
+            col_centers = AutoGridFinder._extract_axis_centers(info_table, 1)
+            row_idx = AutoGridFinder._image_pitch_indices(
+                row_centers, nrows, image_shape[0],
+            )
+            col_idx = AutoGridFinder._image_pitch_indices(
+                col_centers, ncols, image_shape[1],
+            )
+            row_counts = np.bincount(row_idx, minlength=nrows)
+            col_counts = np.bincount(col_idx, minlength=ncols)
+            occupied_rows = int((row_counts > 0).sum())
+            occupied_cols = int((col_counts > 0).sum())
+            row_span = (
+                int(row_idx.max() - row_idx.min() + 1) if len(row_idx) else 0
+            )
+            col_span = (
+                int(col_idx.max() - col_idx.min() + 1) if len(col_idx) else 0
+            )
+        else:
+            occupied_rows = occupied_cols = row_span = col_span = 0
+
         md = (
             f"### Summary\n\n"
             f"| Metric | Value |\n"
@@ -977,6 +1208,14 @@ class AutoGridFinder(GridFinder):
             f"| Row pitch | {row_pitch:.1f} px |\n"
             f"| Col pitch | {col_pitch:.1f} px |\n"
             f"| Pipeline path | {result['pipeline_path']} |\n"
+            f"| Row occupancy | {occupied_rows}/{nrows} "
+            f"({occupied_rows / nrows:.0%}) |\n"
+            f"| Col occupancy | {occupied_cols}/{ncols} "
+            f"({occupied_cols / ncols:.0%}) |\n"
+            f"| Row span coverage | {row_span}/{nrows} "
+            f"({row_span / nrows:.0%}) |\n"
+            f"| Col span coverage | {col_span}/{ncols} "
+            f"({col_span / ncols:.0%}) |\n"
             f"| Total time | {total_time:.3f} s |\n"
         )
         return pn.pane.Markdown(
@@ -1034,11 +1273,18 @@ class AutoGridFinder(GridFinder):
         p4 = self._build_inspect_summary(
             result, self.nrows, self.ncols, image.shape,
         )
+        p5 = self._plot_successive_diffs(
+            result["info_table"], self.nrows, self.ncols, image.shape,
+        )
+        p6 = self._plot_axis_occupancy(
+            result["info_table"], self.nrows, self.ncols, image.shape,
+        )
 
         return pn.Column(
             header,
             pn.Row(p1, p4),
             pn.Row(p3, p2),
+            pn.Row(p5, p6),
         )
 
 
