@@ -37,7 +37,7 @@ class SerializablePipeline(NapariPipelineViewer):
     automatically excluded from serialization.
     """
 
-    def to_json(self, filepath: Optional[Union[str, Path]] = None) -> str:
+    def to_json(self, filepath: Optional[Union[str, Path]] = None) -> str | None:
         """
         Serialize the pipeline configuration to JSON format.
 
@@ -66,8 +66,9 @@ class SerializablePipeline(NapariPipelineViewer):
 
         if filepath is not None:
             Path(filepath).write_text(json_str)
-
-        return json_str
+            return None
+        else:
+            return json_str
 
     def __str__(self) -> str:
         """
@@ -209,15 +210,17 @@ class SerializablePipeline(NapariPipelineViewer):
             # Handle operations that are themselves pipelines (e.g., PrefabPipeline as op)
             if isinstance(op, SerializablePipeline):
                 serialized[name] = {
-                    "class": class_name,
+                    "class"   : class_name,
                     "__type__": "pipeline_operation",
-                    "config": {
-                        "version": __version__,
-                        "name": op.name,
-                        "desc": op._desc,
-                        "reset": op._reset,
-                        "pipe_cfgs": SerializablePipeline._serialize_operations(op._ops),
-                        "meas": SerializablePipeline._serialize_operations(op._meas),
+                    "config"  : {
+                        "version"  : __version__,
+                        "name"     : op.name,
+                        "desc"     : op._desc,
+                        "reset"    : op._reset,
+                        "pipe_cfgs": SerializablePipeline._serialize_operations(
+                                op._ops),
+                        "meas"     : SerializablePipeline._serialize_operations(
+                                op._meas),
                     },
                 }
                 continue
@@ -237,44 +240,52 @@ class SerializablePipeline(NapariPipelineViewer):
                 if isinstance(value, (ImageOperation, MeasureFeatures)):
                     params[key] = {
                         "__type__": "operation",
-                        "class": value.__class__.__name__,
-                        "params": SerializablePipeline._serialize_single_operation(value)
+                        "class"   : value.__class__.__name__,
+                        "params"  : SerializablePipeline._serialize_single_operation(
+                                value)
                     }
                     continue
 
                 # Handle nested ImagePipeline instances (check before operations)
                 if isinstance(value, SerializablePipeline):
                     pipeline_config = {
-                        "version": __version__,
-                        "name": value.name,
-                        "desc": value._desc,
-                        "pipe_cfgs": SerializablePipeline._serialize_operations(value._ops),
-                        "meas": SerializablePipeline._serialize_operations(value._meas),
+                        "version"  : __version__,
+                        "name"     : value.name,
+                        "desc"     : value._desc,
+                        "pipe_cfgs": SerializablePipeline._serialize_operations(
+                                value._ops),
+                        "meas"     : SerializablePipeline._serialize_operations(
+                                value._meas),
                     }
                     params[key] = {
                         "__type__": "pipeline",
-                        "config": pipeline_config
+                        "config"  : pipeline_config
                     }
                     continue
 
                 # Handle lists - check for mixed types (operations and/or pipelines)
                 if isinstance(value, list) and value:
                     # Check if list contains any pipelines
-                    has_pipeline = any(isinstance(item, SerializablePipeline) for item in value)
-                    has_operation = any(isinstance(item, (ImageOperation, MeasureFeatures)) for item in value)
+                    has_pipeline = any(
+                            isinstance(item, SerializablePipeline) for item in value)
+                    has_operation = any(
+                            isinstance(item, (ImageOperation, MeasureFeatures)) for item
+                            in value)
 
                     if has_pipeline and not has_operation:
                         # Pure pipeline list
                         params[key] = {
                             "__type__": "pipeline_list",
-                            "items": [
+                            "items"   : [
                                 {
                                     "config": {
-                                        "version": __version__,
-                                        "name": item.name,
-                                        "desc": item._desc,
-                                        "pipe_cfgs": SerializablePipeline._serialize_operations(item._ops),
-                                        "meas": SerializablePipeline._serialize_operations(item._meas),
+                                        "version"  : __version__,
+                                        "name"     : item.name,
+                                        "desc"     : item._desc,
+                                        "pipe_cfgs": SerializablePipeline._serialize_operations(
+                                                item._ops),
+                                        "meas"     : SerializablePipeline._serialize_operations(
+                                                item._meas),
                                     }
                                 }
                                 for item in value
@@ -285,10 +296,11 @@ class SerializablePipeline(NapariPipelineViewer):
                         # Pure operation list
                         params[key] = {
                             "__type__": "operation_list",
-                            "items": [
+                            "items"   : [
                                 {
-                                    "class": item.__class__.__name__,
-                                    "params": SerializablePipeline._serialize_single_operation(item)
+                                    "class" : item.__class__.__name__,
+                                    "params": SerializablePipeline._serialize_single_operation(
+                                            item)
                                 }
                                 for item in value
                             ]
@@ -301,22 +313,25 @@ class SerializablePipeline(NapariPipelineViewer):
                             if isinstance(item, SerializablePipeline):
                                 items.append({
                                     "__type__": "pipeline",
-                                    "config": {
-                                        "version": __version__,
-                                        "name": item.name,
-                                        "desc": item._desc,
-                                        "pipe_cfgs": SerializablePipeline._serialize_operations(item._ops),
-                                        "meas": SerializablePipeline._serialize_operations(item._meas),
+                                    "config"  : {
+                                        "version"  : __version__,
+                                        "name"     : item.name,
+                                        "desc"     : item._desc,
+                                        "pipe_cfgs": SerializablePipeline._serialize_operations(
+                                                item._ops),
+                                        "meas"     : SerializablePipeline._serialize_operations(
+                                                item._meas),
                                     }
                                 })
                             else:
                                 items.append({
-                                    "class": item.__class__.__name__,
-                                    "params": SerializablePipeline._serialize_single_operation(item)
+                                    "class" : item.__class__.__name__,
+                                    "params": SerializablePipeline._serialize_single_operation(
+                                            item)
                                 })
                         params[key] = {
                             "__type__": "operation_list",
-                            "items": items
+                            "items"   : items
                         }
                         continue
 
@@ -358,15 +373,16 @@ class SerializablePipeline(NapariPipelineViewer):
             # Handle nested ImagePipeline instances (check before operations)
             if isinstance(value, SerializablePipeline):
                 pipeline_config = {
-                    "version": __version__,
-                    "name": value.name,
-                    "desc": value._desc,
+                    "version"  : __version__,
+                    "name"     : value.name,
+                    "desc"     : value._desc,
                     "pipe_cfgs": SerializablePipeline._serialize_operations(value._ops),
-                    "meas": SerializablePipeline._serialize_operations(value._meas),
+                    "meas"     : SerializablePipeline._serialize_operations(
+                            value._meas),
                 }
                 params[key] = {
                     "__type__": "pipeline",
-                    "config": pipeline_config
+                    "config"  : pipeline_config
                 }
                 continue
 
@@ -374,29 +390,34 @@ class SerializablePipeline(NapariPipelineViewer):
             if isinstance(value, (ImageOperation, MeasureFeatures)):
                 params[key] = {
                     "__type__": "operation",
-                    "class": value.__class__.__name__,
-                    "params": SerializablePipeline._serialize_single_operation(value)
+                    "class"   : value.__class__.__name__,
+                    "params"  : SerializablePipeline._serialize_single_operation(value)
                 }
                 continue
 
             # Handle lists - check for mixed types (operations and/or pipelines)
             if isinstance(value, list) and value:
                 # Check if list contains any pipelines
-                has_pipeline = any(isinstance(item, SerializablePipeline) for item in value)
-                has_operation = any(isinstance(item, (ImageOperation, MeasureFeatures)) for item in value)
+                has_pipeline = any(
+                        isinstance(item, SerializablePipeline) for item in value)
+                has_operation = any(
+                        isinstance(item, (ImageOperation, MeasureFeatures)) for item in
+                        value)
 
                 if has_pipeline and not has_operation:
                     # Pure pipeline list
                     params[key] = {
                         "__type__": "pipeline_list",
-                        "items": [
+                        "items"   : [
                             {
                                 "config": {
-                                    "version": __version__,
-                                    "name": item.name,
-                                    "desc": item._desc,
-                                    "pipe_cfgs": SerializablePipeline._serialize_operations(item._ops),
-                                    "meas": SerializablePipeline._serialize_operations(item._meas),
+                                    "version"  : __version__,
+                                    "name"     : item.name,
+                                    "desc"     : item._desc,
+                                    "pipe_cfgs": SerializablePipeline._serialize_operations(
+                                            item._ops),
+                                    "meas"     : SerializablePipeline._serialize_operations(
+                                            item._meas),
                                 }
                             }
                             for item in value
@@ -407,10 +428,11 @@ class SerializablePipeline(NapariPipelineViewer):
                     # Pure operation list
                     params[key] = {
                         "__type__": "operation_list",
-                        "items": [
+                        "items"   : [
                             {
-                                "class": item.__class__.__name__,
-                                "params": SerializablePipeline._serialize_single_operation(item)
+                                "class" : item.__class__.__name__,
+                                "params": SerializablePipeline._serialize_single_operation(
+                                        item)
                             }
                             for item in value
                         ]
@@ -423,22 +445,25 @@ class SerializablePipeline(NapariPipelineViewer):
                         if isinstance(item, SerializablePipeline):
                             items.append({
                                 "__type__": "pipeline",
-                                "config": {
-                                    "version": __version__,
-                                    "name": item.name,
-                                    "desc": item._desc,
-                                    "pipe_cfgs": SerializablePipeline._serialize_operations(item._ops),
-                                    "meas": SerializablePipeline._serialize_operations(item._meas),
+                                "config"  : {
+                                    "version"  : __version__,
+                                    "name"     : item.name,
+                                    "desc"     : item._desc,
+                                    "pipe_cfgs": SerializablePipeline._serialize_operations(
+                                            item._ops),
+                                    "meas"     : SerializablePipeline._serialize_operations(
+                                            item._meas),
                                 }
                             })
                         else:
                             items.append({
-                                "class": item.__class__.__name__,
-                                "params": SerializablePipeline._serialize_single_operation(item)
+                                "class" : item.__class__.__name__,
+                                "params": SerializablePipeline._serialize_single_operation(
+                                        item)
                             })
                     params[key] = {
                         "__type__": "operation_list",
-                        "items": items
+                        "items"   : items
                     }
                     continue
 
@@ -477,6 +502,7 @@ class SerializablePipeline(NapariPipelineViewer):
             # Handle pipeline-as-operation entries
             if op_data.get("__type__") == "pipeline_operation":
                 from phenotypic._core._image_pipeline import ImagePipeline
+
                 pipeline = ImagePipeline.from_json(op_data["config"])
                 # Re-tag to specific subclass if found
                 op_class = SerializablePipeline._find_class_in_phenotypic(class_name)
@@ -531,8 +557,8 @@ class SerializablePipeline(NapariPipelineViewer):
             op_class = cls._find_class_in_phenotypic(value["class"])
             if op_class is None:
                 raise AttributeError(
-                    f"Class '{value['class']}' not found in phenotypic namespace. "
-                    f"Make sure it's properly imported in phenotypic.__init__.py"
+                        f"Class '{value['class']}' not found in phenotypic namespace. "
+                        f"Make sure it's properly imported in phenotypic.__init__.py"
                 )
             instance = op_class()
             for nested_key, nested_value in value["params"].items():
@@ -546,6 +572,7 @@ class SerializablePipeline(NapariPipelineViewer):
                 # Check if item is a pipeline
                 if item_data.get("__type__") == "pipeline":
                     from phenotypic import ImagePipeline
+
                     json_str = json.dumps(item_data["config"])
                     pipeline = ImagePipeline.from_json(json_str)
                     operation_list.append(pipeline)
@@ -554,18 +581,20 @@ class SerializablePipeline(NapariPipelineViewer):
                     item_class = cls._find_class_in_phenotypic(item_data["class"])
                     if item_class is None:
                         raise AttributeError(
-                            f"Class '{item_data['class']}' not found in phenotypic namespace. "
-                            f"Make sure it's properly imported in phenotypic.__init__.py"
+                                f"Class '{item_data['class']}' not found in phenotypic namespace. "
+                                f"Make sure it's properly imported in phenotypic.__init__.py"
                         )
                     item_instance = item_class()
                     for item_key, item_value in item_data["params"].items():
-                        setattr(item_instance, item_key, cls._deserialize_value(item_value))
+                        setattr(item_instance, item_key,
+                                cls._deserialize_value(item_value))
                     operation_list.append(item_instance)
             return operation_list
 
         # Handle nested ImagePipeline
         elif isinstance(value, dict) and value.get("__type__") == "pipeline":
             from phenotypic import ImagePipeline
+
             json_str = json.dumps(value["config"])
             pipeline = ImagePipeline.from_json(json_str)
             return pipeline
@@ -573,6 +602,7 @@ class SerializablePipeline(NapariPipelineViewer):
         # Handle list of ImagePipeline instances
         elif isinstance(value, dict) and value.get("__type__") == "pipeline_list":
             from phenotypic import ImagePipeline
+
             pipeline_list = []
             for item_data in value["items"]:
                 json_str = json.dumps(item_data["config"])
