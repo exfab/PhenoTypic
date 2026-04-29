@@ -114,6 +114,7 @@ class OperationRegistry:
         import phenotypic.correction as correction_module
         import phenotypic.measure as measure_module
         import phenotypic.grid as grid_module
+        import phenotypic.post as post_module
 
         from phenotypic.abc_ import (
             ImageEnhancer,
@@ -122,6 +123,7 @@ class OperationRegistry:
             ImageCorrector,
             MeasureFeatures,
             GridOperation,
+            PostMeasurement,
         )
 
         # Map modules to categories
@@ -132,6 +134,7 @@ class OperationRegistry:
             (correction_module, "Corrector", ImageCorrector),
             (measure_module, "Measure", MeasureFeatures),
             (grid_module, "Grid", GridOperation),
+            (post_module, "Post", PostMeasurement),
         ]
 
         for module, category, base_class in module_category_map:

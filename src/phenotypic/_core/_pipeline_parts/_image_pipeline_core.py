@@ -315,6 +315,17 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         """
         return dict(self._meas)
 
+    def get_post(self) -> Dict[str, PostMeasurement]:
+        """Get a copy of the post-measurement transforms dictionary.
+
+        Returns a shallow copy to prevent accidental mutation of internal state.
+
+        Returns:
+            Dict[str, PostMeasurement]: Dictionary mapping post-measurement
+                names to ``PostMeasurement`` instances.
+        """
+        return dict(self._post)
+
     @staticmethod
     def __make_unique(class_names):
         """

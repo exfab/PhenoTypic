@@ -1,0 +1,82 @@
+/* PhenoTypic Pipeline Builder — visual styles auto-loaded by Dash.
+ *
+ * Dash discovers any *.css under an ``assets/`` folder colocated with the
+ * module that calls ``dash.Dash(__name__)``
+ * (``phenotypic/gui/builder/_app.py``). No manual <link> registration needed.
+ */
+
+/* ===========================================================================
+ * Scroll affordance — explicit chevron indicators
+ *
+ * Markup contract:
+ *   <div class="pheno-scroll-wrap">
+ *       <div class="pheno-scroll" ...>...</div>
+ *   </div>
+ *
+ * The companion script (``builder.js``) sets ``data-more-up="1"`` and/or
+ * ``data-more-down="1"`` on the wrapper based on the inner scroll element's
+ * ``scrollTop``, ``scrollHeight``, and ``clientHeight``. The CSS reveals the
+ * appropriate chevron only when its data attribute is present, so each
+ * indicator appears strictly when there is content to scroll toward.
+ * ========================================================================= */
+
+.pheno-scroll-wrap {
+    position: relative;
+}
+
+/* Inner scroll container — bare, no shadows. The chevrons live on the
+ * wrapper, which is more reliable across browsers than ``background-
+ * attachment: local`` (which struggles when child elements have their own
+ * backgrounds, e.g. the accordion). */
+.pheno-scroll {
+    position: relative;
+}
+
+/* Shared base style for both chevrons. Rendered as round badges anchored to
+ * the right edge of the scroll container so they don't span the full width
+ * (full-width banners visually compete with the content underneath). */
+.pheno-scroll-wrap::before,
+.pheno-scroll-wrap::after {
+    content: "";
+    position: absolute;
+    right: 6px;
+    width: 24px;
+    height: 24px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.18s ease-in-out;
+    z-index: 5;
+    background-color: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 14px 14px;
+}
+
+.pheno-scroll-wrap::before {
+    top: 6px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='%23495057' d='M7.247 4.86l-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z'/></svg>");
+}
+
+.pheno-scroll-wrap::after {
+    bottom: 6px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='%23495057' d='M7.247 11.14l-4.796-5.481C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/></svg>");
+}
+
+/* Chevron visibility is driven by data attributes the JS sets at scroll /
+ * resize / mutation time. Absent attribute = chevron stays at opacity 0. */
+.pheno-scroll-wrap[data-more-up="1"]::before {
+    opacity: 1;
+}
+
+.pheno-scroll-wrap[data-more-down="1"]::after {
+    opacity: 1;
+}
+
+/* Section spacing — keeps consecutive palette sections (Operations,
+ * Measurements, Post-measurements) tight against each other. */
+.pheno-palette-section + .pheno-palette-section {
+    margin-top: 0.75rem;
+}
