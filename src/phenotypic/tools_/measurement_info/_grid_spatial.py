@@ -12,27 +12,28 @@ class GRID_SPATIAL(MeasurementInfo):
 
     LEFT_NEIGHBOR_OBJ_LABEL = "LeftNeighborObjLabel", ("The object label of the left"
                                                        " neighbor colony")
-    LEFT_DISTANCE = "LeftDistance", ("The distance of the left neighbor colony"
-                                     " calculated using euclidean distance between"
-                                     " bounding boxes")
+    LEFT_DISTANCE = "LeftDistance", ("The minimum pixel-to-pixel distance to the left"
+                                     " neighbor colony, computed via a Euclidean"
+                                     " distance transform of object pixel masks")
 
     RIGHT_NEIGHBOR_OBJ_LABEL = "RightNeighborObjLabel", ("The object label of"
                                                          " the right neighbor colony")
     RIGHT_DISTANCE = (
         "RightDistance",
-        "The distance of the right neighbor colony calculated"
-        " using euclidean distance between bounding boxes"
+        "The minimum pixel-to-pixel distance to the right neighbor colony, computed"
+        " via a Euclidean distance transform of object pixel masks"
     )
     ABOVE_NEIGHBOR_OBJ_LABEL = "AboveNeighborObjLabel", ("The object label of"
                                                          " the above neighbor colony")
     ABOVE_DISTANCE = (
         "AboveDistance",
-        "The distance of the above neighbor colony calculated using euclidean"
-        " distance between bounding boxes"
+        "The minimum pixel-to-pixel distance to the above neighbor colony, computed"
+        " via a Euclidean distance transform of object pixel masks"
     )
     UNDER_NEIGHBOR_OBJ_LABEL = ("UnderNeighborObjLabel",
                                 "The object label of the under neighbor colony")
     UNDER_DISTANCE = (
         "UnderDistance",
-        "The distance of the under neighbor colony calculated using euclidean distance between bounding boxes"
+        "The minimum pixel-to-pixel distance to the under neighbor colony, computed"
+        " via a Euclidean distance transform of object pixel masks"
     )
