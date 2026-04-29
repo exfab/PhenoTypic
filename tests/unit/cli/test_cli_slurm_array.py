@@ -321,8 +321,48 @@ class TestArrayJobScriptGeneration:
             array_limit=1000,
         )
 
-        # Should have 3 chunks (0-1000, 1000-2000, 2000-2500)
+        # Each chunk reserves slots for inserted checkpoint/manifest/finalizer
+        # sentinels, so the per-chunk image count is slightly below array_limit;
+        # 2500 images at limit=1000 still splits into 3 chunks.
         assert len(all_scripts["large_dataset"]) == 3
+
+    def test_generate_all_array_job_scripts_array_directive_within_limit(
+        self, tmp_path, config
+    ):
+        """Generated #SBATCH --array=0-N must satisfy N+1 <= array_limit
+        even after sentinel insertion. Regression for the
+        'Invalid job array specification' sbatch failure when chunk size
+        equaled array_limit and sentinels pushed len(entries) past MaxArraySize.
+        """
+        import re
+
+        images = [tmp_path / f"image_{i:05d}.tif" for i in range(3663)]
+        for img in images:
+            img.touch()
+        ds = Dataset(
+            name="big",
+            images=images,
+            input_dir=tmp_path,
+            output_dir=tmp_path / "output",
+        )
+
+        array_limit = 2500
+        all_scripts = generate_all_array_job_scripts(
+            datasets=[ds],
+            config=config,
+            output_dir=tmp_path / "output",
+            array_limit=array_limit,
+        )
+
+        for script_path in all_scripts["big"]:
+            content = script_path.read_text()
+            match = re.search(r"#SBATCH --array=0-(\d+)", content)
+            assert match is not None, f"No array directive in {script_path}"
+            top_index = int(match.group(1))
+            assert top_index + 1 <= array_limit, (
+                f"Array directive 0-{top_index} ({top_index + 1} entries) "
+                f"exceeds array_limit={array_limit} in {script_path.name}"
+            )
 
     def test_generate_array_job_script_empty_chunk_raises(
         self, dataset, config, tmp_path

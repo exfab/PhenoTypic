@@ -65,6 +65,23 @@ def _build_entry_list(
     return entries
 
 
+def _max_images_per_chunk(array_limit: int, checkpoint_interval: int) -> int:
+    """Largest per-chunk image count whose entry list fits ``array_limit``.
+
+    The bash entry list interleaves checkpoint/manifest sentinels every
+    ``checkpoint_interval`` images and may append a checkpoint+manifest+
+    finalizer triple on the last chunk. The ``--array=0-N`` directive is
+    sized from ``len(entries)`` and must satisfy ``len(entries) <=
+    MaxArraySize``. Solves ``C + 2*ceil(C/K) + 3 <= L`` for ``C``.
+    """
+    if array_limit <= 3:
+        return max(1, array_limit)
+    if checkpoint_interval is None or checkpoint_interval <= 0:
+        return max(1, array_limit - 3)
+    k = checkpoint_interval
+    return max(1, (array_limit - 3) * k // (k + 2))
+
+
 def _resolve_checkpoint_interval(config: ExecutionConfig) -> int:
     """Resolve checkpoint interval from config or auto-estimate from SLURM capacity.
 
@@ -411,13 +428,15 @@ def generate_all_array_job_scripts(
     from ._cli_slurm_config import calculate_optimal_array_chunks
 
     checkpoint_interval = _resolve_checkpoint_interval(config)
+    # Reserve array slots for sentinels so len(entries) stays within MaxArraySize.
+    image_chunk_limit = _max_images_per_chunk(array_limit, checkpoint_interval)
     all_scripts: Dict[str, List[Path]] = {}
 
     # Pre-compute chunk lists per dataset so we can identify the last chunk
     # across all datasets for finalizer sentinel placement.
     active_datasets = [ds for ds in datasets if ds.images]
     dataset_chunks = [
-        (ds, calculate_optimal_array_chunks(len(ds.images), array_limit))
+        (ds, calculate_optimal_array_chunks(len(ds.images), image_chunk_limit))
         for ds in active_datasets
     ]
 
