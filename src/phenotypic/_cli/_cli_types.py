@@ -119,8 +119,9 @@ class ExecutionConfig:
     # Detection mode (default: gray)
     detect_mode: str = "gray"
 
-    # Overlay PNG output is opt-in (default: off)
-    save_overlays: bool = False
+    # Overlay PNG output is always-on for forward runs; --measure runs
+    # never regenerate overlays regardless of this flag.
+    save_overlays: bool = True
 
     # Measure-only mode: reload HDFs and rerun pipeline.measure() without detection
     measure_only: bool = False

@@ -243,7 +243,7 @@ def generate_array_job_script(
     # Measure-only mode supersedes overlay generation; they are mutually exclusive.
     if config.measure_only:
         cmd_parts.append("--measure")
-    elif config.save_overlays:
+    else:
         cmd_parts.append("--save-overlays")
 
     # Add event log

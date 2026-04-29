@@ -538,7 +538,7 @@ class OutputManager:
         extensions: Dict[str, str],
         include_dataset_column: bool = True,
         overlay_alpha: float = 0.3,
-        save_overlays: bool = False,
+        save_overlays: bool = True,
     ):
         """
         Initialize OutputManager.
@@ -553,8 +553,9 @@ class OutputManager:
             include_dataset_column: Whether to add Metadata_Dataset column to measurements (default: True)
             overlay_alpha: Alpha transparency for label overlay (0.0-1.0, default: 0.3)
             save_overlays: If True, ``create_structure`` provisions an
-                ``overlays/`` directory per dataset; workers should consult
-                this flag before calling :meth:`save_overlay`.
+                ``overlays/`` directory per dataset and workers will save
+                a PNG overlay per image. Defaults to True; set False only
+                for ``--measure`` reruns that should not regenerate overlays.
         """
         self.base_dir = Path(base_dir)
         self.save_layers = save_layers
@@ -576,14 +577,14 @@ class OutputManager:
         ext: str,
         include_dataset_column: bool = True,
         overlay_alpha: float = 0.3,
-        save_overlays: bool = False,
+        save_overlays: bool = True,
     ) -> "OutputManager":
         """Create an OutputManager configured for HDF-centric forward runs.
 
         Forward runs now write a single ``.h5`` per image under
-        ``results/<ds>/hdf/`` (in addition to the parquet measurements and
-        an opt-in overlay PNG). The ``ext`` argument is retained for
-        backward compatibility with callers that still construct overlay
+        ``results/<ds>/hdf/`` plus the parquet measurements and an
+        overlay PNG. The ``ext`` argument is retained for backward
+        compatibility with callers that still construct overlay
         filenames via :meth:`get_output_path`.
 
         Args:
@@ -592,7 +593,10 @@ class OutputManager:
                 no longer the forward-run image-layer switch.
             include_dataset_column: Add Metadata_Dataset to measurements.
             overlay_alpha: Alpha for overlay compositing.
-            save_overlays: If True, provision ``overlays/`` per dataset.
+            save_overlays: If True (default), provision ``overlays/`` per
+                dataset and save an overlay per image. Pass False only
+                for ``--measure`` reruns that should not regenerate
+                overlays.
         """
         return cls(
             base_dir=base_dir,
@@ -608,9 +612,9 @@ class OutputManager:
         Create complete output directory structure.
 
         Always creates dataset-first structure with each dataset in its own
-        folder.  Forward runs provision ``measurements/`` and ``hdf/`` for
-        every dataset; ``overlays/`` is provisioned only when
-        :attr:`save_overlays` is True.
+        folder.  Forward runs provision ``measurements/``, ``hdf/``, and
+        ``overlays/`` for every dataset; ``overlays/`` is skipped only
+        when :attr:`save_overlays` is False (e.g. ``--measure`` reruns).
 
         Args:
             datasets: List of datasets to create directories for

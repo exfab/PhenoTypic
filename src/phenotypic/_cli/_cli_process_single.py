@@ -240,10 +240,9 @@ def process_single_hdf_measure_core(
     help="Rerun pipeline.measure() on the input HDF; skip detection.",
 )
 @click.option(
-    "--save-overlays",
-    is_flag=True,
-    default=False,
-    help="Save a PNG overlay per image. Ignored in --measure mode.",
+    "--save-overlays/--no-save-overlays",
+    default=True,
+    help="Save a PNG overlay per image (default: on). Ignored in --measure mode.",
 )
 def main(
     pipeline: Path,

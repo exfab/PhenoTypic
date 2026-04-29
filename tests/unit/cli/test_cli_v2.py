@@ -425,19 +425,19 @@ class TestOutputManager:
         assert manager.extensions == {"hdf": ".h5"}
         assert manager.overlay_alpha == 0.5
         assert manager.include_dataset_column is True
-        # Overlays default to OFF (opt-in via --save-overlays).
-        assert manager.save_overlays is False
+        # Overlays are always-on by default for forward runs.
+        assert manager.save_overlays is True
 
-    def test_from_config_factory_with_overlays(self, temp_output_dir):
-        """from_config(save_overlays=True) enables overlay output."""
+    def test_from_config_factory_overlays_disabled(self, temp_output_dir):
+        """from_config(save_overlays=False) disables overlay output (e.g. --measure)."""
         manager = OutputManager.from_config(
             base_dir=temp_output_dir,
             ext=".tiff",
             overlay_alpha=0.5,
-            save_overlays=True,
+            save_overlays=False,
         )
 
-        assert manager.save_overlays is True
+        assert manager.save_overlays is False
 
     def test_pipeline_json_copied_to_output(self, temp_output_dir):
         """Test pipeline JSON is copied to output directory for reproducibility."""
@@ -1088,7 +1088,6 @@ class TestEdgeCases:
                 "--n-jobs",
                 "1",
                 "--skip-validation",
-                "--save-overlays",
             ],
         )
 
@@ -1106,7 +1105,7 @@ class TestEdgeCases:
 
         assert measurements_file.exists(), f"Expected {measurements_file} to exist"
         assert hdf_file.exists(), f"Expected {hdf_file} to exist"
-        # Overlay only produced because --save-overlays was passed
+        # Overlays are always written for forward runs.
         assert overlay_file.exists(), f"Expected {overlay_file} to exist"
 
         # Verify results and dataset folder is created
