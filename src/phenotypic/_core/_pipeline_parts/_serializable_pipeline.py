@@ -83,7 +83,7 @@ class SerializablePipeline(NapariPipelineViewer):
             in a human-readable manner. This includes the phenotypic version, pipeline
             name, description, and the lists of operations and measurements.
         """
-        config = {
+        config: Dict[str, object] = {
             "version"  : __version__,
             "name"     : self.name,
             "desc"     : self._desc,
@@ -92,6 +92,12 @@ class SerializablePipeline(NapariPipelineViewer):
             "meas"     : self._serialize_operations(self._meas),
             "post"     : self._serialize_operations(self._post),
         }
+
+        # Omit when unset so legacy JSONs round-trip unchanged.
+        if self._nrows is not None:
+            config["nrows"] = self._nrows
+        if self._ncols is not None:
+            config["ncols"] = self._ncols
 
         return json.dumps(config, indent=2)
 
@@ -163,6 +169,8 @@ class SerializablePipeline(NapariPipelineViewer):
         name = config.get("name", None)
         desc = config.get("desc", None)
         reset = config.get("reset", False)  # Default False for backwards compatibility
+        nrows = config.get("nrows", None)
+        ncols = config.get("ncols", None)
         saved_version = config.get("version", None)
 
         # Check version compatibility
@@ -177,7 +185,7 @@ class SerializablePipeline(NapariPipelineViewer):
 
         # Create and return new pipeline instance
         return cls(ops=ops, meas=meas, post=post, benchmark=benchmark, verbose=verbose,
-                   name=name, desc=desc, reset=reset)
+                   name=name, desc=desc, reset=reset, nrows=nrows, ncols=ncols)
 
     @staticmethod
     def _serialize_operations(

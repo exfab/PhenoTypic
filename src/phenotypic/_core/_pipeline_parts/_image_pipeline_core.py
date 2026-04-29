@@ -106,6 +106,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             name: Optional[str] = None,
             desc: Optional[str] = None,
             reset: bool = False,
+            nrows: Optional[int] = None,
+            ncols: Optional[int] = None,
     ):
         """
         This class represents a processing and measurement interface for Image operations
@@ -131,6 +133,12 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             reset: Default reset behavior for the apply() method. When True, the image
                 will be reset before applying operations. Can be overridden per-call
                 in apply() and apply_and_measure(). Defaults to False.
+            nrows: Optional soft preset for the grid row count. When set together with
+                ``ncols``, ``measure()`` auto-injects an ``AutoGridFinder(nrows, ncols)``
+                at the front of the measurement run order if no ``GridFinder`` step is
+                already configured. Consumed by the CLIs to drive grid-aware image
+                construction. ``None`` (default) means "no preset".
+            ncols: Optional soft preset for the grid column count. See ``nrows``.
         """
         # If pipe_cfgs is a list of operations convert to a dictionary
         self._ops: Dict[str, ImageOperation] = {}
@@ -149,6 +157,9 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         self._benchmark = benchmark
         self._verbose = verbose
         self._reset = reset
+
+        self._nrows: Optional[int] = nrows
+        self._ncols: Optional[int] = ncols
 
         # Set pipeline name (generate UUID4 if not provided)
         self.name = name if name is not None else str(uuid.uuid4())
@@ -179,6 +190,16 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     def desc(self, value: Optional[str]):
         """Set pipeline description."""
         self._desc = value
+
+    @property
+    def nrows(self) -> Optional[int]:
+        """Soft preset for grid row count, or ``None`` if unset."""
+        return self._nrows
+
+    @property
+    def ncols(self) -> Optional[int]:
+        """Soft preset for grid column count, or ``None`` if unset."""
+        return self._ncols
 
     def set_ops(self, ops: List[ImageOperation | ImagePipeline] | Dict[str, ImageOperation | ImagePipeline]):
         """
@@ -578,6 +599,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             self._measurement_memory = {}
             self._measurement_rss = {}
 
+        meas_to_run: Dict[str, MeasureFeatures] = self._build_measurement_run_order()
+
         # Print message if verbose and benchmark are enabled
         if self._benchmark and self._verbose:
             print("Measuring image properties...")
@@ -613,7 +636,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 from tqdm import tqdm
 
                 # Create a tqdm instance without items to manually update it
-                total_measurements = len(self._meas)
+                total_measurements = len(meas_to_run)
                 pbar = tqdm(
                         total=total_measurements,
                         desc="Applying measurements",
@@ -626,8 +649,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             has_tqdm = False
 
         # perform measurements
-        for i, (key, measurement) in enumerate(self._meas.items()):
-            logger.debug("Running measurement [%d/%d]: %s", i + 1, len(self._meas), key)
+        for i, (key, measurement) in enumerate(meas_to_run.items()):
+            logger.debug("Running measurement [%d/%d]: %s", i + 1, len(meas_to_run), key)
             try:
                 # Update progress bar description with current measurement
                 if self._benchmark and self._verbose:
@@ -686,6 +709,41 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             df = post_op.apply(df)
 
         return df
+
+    def _build_measurement_run_order(self) -> Dict[str, MeasureFeatures]:
+        """Return the measurements to execute for this ``measure()`` call.
+
+        Returns a copy of ``self._meas`` with one optional addition: when both
+        ``self._nrows`` and ``self._ncols`` are set and no existing measurement
+        is an instance of :class:`GridFinder`, an ``AutoGridFinder`` configured
+        with the preset is prepended so it runs before downstream grid-aware
+        measurements. The persistent ``self._meas`` mapping is never mutated,
+        which keeps repeat ``measure()`` calls idempotent and serialization
+        unaffected.
+
+        Returns:
+            Dict[str, MeasureFeatures]: Ordered measurement dict for this run.
+        """
+        if self._nrows is None or self._ncols is None:
+            return self._meas
+
+        # Lazy imports to avoid circular dependency with phenotypic.grid.
+        from phenotypic.abc_ import GridFinder
+        from phenotypic.grid import AutoGridFinder
+
+        if any(isinstance(m, GridFinder) for m in self._meas.values()):
+            return self._meas
+
+        injected_key = (
+            "AutoGridFinder"
+            if "AutoGridFinder" not in self._meas
+            else "_AutoGridFinder_preset"
+        )
+        run_order: Dict[str, MeasureFeatures] = {
+            injected_key: AutoGridFinder(nrows=self._nrows, ncols=self._ncols),
+        }
+        run_order.update(self._meas)
+        return run_order
 
     def apply_and_measure(
             self,
