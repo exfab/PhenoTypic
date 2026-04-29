@@ -182,7 +182,7 @@ def load_yeast_plate(
                                  "RhodotorulaYeastCenterCrop.png",
             mode=mode,
             nrows=2,
-            ncols=3
+            ncols=4
     )
 
 

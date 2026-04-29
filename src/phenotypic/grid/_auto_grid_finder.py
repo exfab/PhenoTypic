@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import warnings
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -54,6 +55,9 @@ class AutoGridFinder(GridFinder):
             whose fit residual exceeds ``pitch * residual_fraction`` are
             excluded from the refined fit (default 0.25).
 
+        warn: Whether to emit :class:`AutoGridFinderFallbackWarning`
+            diagnostics for fallbacks and geometry overrides. Defaults
+            to ``False`` (silent); set to ``True`` to surface them.
         tol: Deprecated. Accepted for backward compatibility but ignored.
         max_iter: Deprecated. Accepted for backward compatibility but ignored.
 
@@ -81,11 +85,13 @@ class AutoGridFinder(GridFinder):
             ncols: int = 12,
             residual_fraction: float = 0.25,
             *,
+            warn: bool = False,
             tol: float | None = None,
             max_iter: int | None = None,
     ):
         super().__init__(nrows=nrows, ncols=ncols)
         self.residual_fraction: float = residual_fraction
+        self.warn: bool = warn
 
         if tol is not None:
             warnings.warn(
@@ -101,6 +107,16 @@ class AutoGridFinder(GridFinder):
                 DeprecationWarning,
                 stacklevel=2,
             )
+
+    @contextmanager
+    def _warning_filter(self):
+        """Suppress :class:`AutoGridFinderFallbackWarning` when ``self.warn`` is False."""
+        if self.warn:
+            yield
+        else:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", AutoGridFinderFallbackWarning)
+                yield
 
     # ------------------------------------------------------------------
     # Static helper methods
@@ -598,18 +614,20 @@ class AutoGridFinder(GridFinder):
         Returns:
             Integer array of length ``nrows + 1``.
         """
-        if image.num_objects == 0:
-            warnings.warn(
-                "AutoGridFinder.get_row_edges: no objects detected; "
-                "falling back to uniform row edges.",
-                AutoGridFinderFallbackWarning,
-                stacklevel=2,
+        with self._warning_filter():
+            if image.num_objects == 0:
+                warnings.warn(
+                    "AutoGridFinder.get_row_edges: no objects detected; "
+                    "falling back to uniform row edges.",
+                    AutoGridFinderFallbackWarning,
+                    stacklevel=2,
+                )
+                return self._uniform_edges(self.nrows, image.shape[0])
+            info_table = image.objects.info(include_metadata=False)
+            return self._fit_axis_edges(
+                info_table, axis=0, n_expected=self.nrows,
+                image_dim=image.shape[0],
             )
-            return self._uniform_edges(self.nrows, image.shape[0])
-        info_table = image.objects.info(include_metadata=False)
-        return self._fit_axis_edges(
-            info_table, axis=0, n_expected=self.nrows, image_dim=image.shape[0],
-        )
 
     def get_col_edges(self, image: Image) -> np.ndarray:
         """Return column edge coordinates for *image*.
@@ -620,18 +638,20 @@ class AutoGridFinder(GridFinder):
         Returns:
             Integer array of length ``ncols + 1``.
         """
-        if image.num_objects == 0:
-            warnings.warn(
-                "AutoGridFinder.get_col_edges: no objects detected; "
-                "falling back to uniform column edges.",
-                AutoGridFinderFallbackWarning,
-                stacklevel=2,
+        with self._warning_filter():
+            if image.num_objects == 0:
+                warnings.warn(
+                    "AutoGridFinder.get_col_edges: no objects detected; "
+                    "falling back to uniform column edges.",
+                    AutoGridFinderFallbackWarning,
+                    stacklevel=2,
+                )
+                return self._uniform_edges(self.ncols, image.shape[1])
+            info_table = image.objects.info(include_metadata=False)
+            return self._fit_axis_edges(
+                info_table, axis=1, n_expected=self.ncols,
+                image_dim=image.shape[1],
             )
-            return self._uniform_edges(self.ncols, image.shape[1])
-        info_table = image.objects.info(include_metadata=False)
-        return self._fit_axis_edges(
-            info_table, axis=1, n_expected=self.ncols, image_dim=image.shape[1],
-        )
 
     def _operate(self, image: Image) -> pd.DataFrame:
         """Compute grid edges and assign each detected object to a grid cell.
@@ -642,29 +662,32 @@ class AutoGridFinder(GridFinder):
         Returns:
             DataFrame with grid assignments (ROW_NUM, COL_NUM, ROW_MAJOR_IDX).
         """
-        if image.num_objects == 0:
-            warnings.warn(
-                "AutoGridFinder._operate: no objects detected; falling back "
-                "to uniform grid edges for both axes.",
-                AutoGridFinderFallbackWarning,
-                stacklevel=2,
+        with self._warning_filter():
+            if image.num_objects == 0:
+                warnings.warn(
+                    "AutoGridFinder._operate: no objects detected; falling "
+                    "back to uniform grid edges for both axes.",
+                    AutoGridFinderFallbackWarning,
+                    stacklevel=2,
+                )
+                return super()._get_grid_info(
+                    image=image,
+                    row_edges=self._uniform_edges(self.nrows, image.shape[0]),
+                    col_edges=self._uniform_edges(self.ncols, image.shape[1]),
+                )
+            info_table = image.objects.info(include_metadata=False)
+            row_edges = self._fit_axis_edges(
+                info_table, axis=0, n_expected=self.nrows,
+                image_dim=image.shape[0],
+            )
+            col_edges = self._fit_axis_edges(
+                info_table, axis=1, n_expected=self.ncols,
+                image_dim=image.shape[1],
             )
             return super()._get_grid_info(
-                image=image,
-                row_edges=self._uniform_edges(self.nrows, image.shape[0]),
-                col_edges=self._uniform_edges(self.ncols, image.shape[1]),
+                image=image, row_edges=row_edges, col_edges=col_edges,
+                info_table=info_table,
             )
-        info_table = image.objects.info(include_metadata=False)
-        row_edges = self._fit_axis_edges(
-            info_table, axis=0, n_expected=self.nrows, image_dim=image.shape[0],
-        )
-        col_edges = self._fit_axis_edges(
-            info_table, axis=1, n_expected=self.ncols, image_dim=image.shape[1],
-        )
-        return super()._get_grid_info(
-            image=image, row_edges=row_edges, col_edges=col_edges,
-            info_table=info_table,
-        )
 
     # ------------------------------------------------------------------
     # Diagnostic inspect() method
@@ -768,69 +791,70 @@ class AutoGridFinder(GridFinder):
                 else:  # tqdm
                     pbar.update(1)
 
-        # Step 1: regionprops
-        t0 = time.perf_counter()
-        if image.num_objects == 0:
-            info_table = pd.DataFrame()
-        else:
-            info_table = image.objects.info(include_metadata=False)
-        _tick("regionprops", t0)
-
-        # Step 2: fit rows
-        t0 = time.perf_counter()
-        if image.num_objects == 0:
-            row_edges = self._uniform_edges(self.nrows, image.shape[0])
-        else:
-            n_centers = len(info_table)
-            if n_centers < 2:
-                pipeline_path = "uniform (< 2 objects)"
-            elif n_centers > self._MAX_OBJECTS_PER_CELL * self.nrows:
-                pipeline_path = "uniform (object count guard)"
+        with self._warning_filter():
+            # Step 1: regionprops
+            t0 = time.perf_counter()
+            if image.num_objects == 0:
+                info_table = pd.DataFrame()
             else:
-                # Per-axis labels via the shared classifier; reported as
-                # "rows: X / cols: Y" so divergent decisions are visible.
-                row_centers = AutoGridFinder._extract_axis_centers(
-                    info_table, 0,
-                )
-                col_centers = AutoGridFinder._extract_axis_centers(
-                    info_table, 1,
-                )
-                row_label = AutoGridFinder._classify_axis_pipeline(
-                    row_centers, self.nrows, image.shape[0],
-                )
-                col_label = AutoGridFinder._classify_axis_pipeline(
-                    col_centers, self.ncols, image.shape[1],
-                )
-                if row_label == col_label:
-                    pipeline_path = row_label
+                info_table = image.objects.info(include_metadata=False)
+            _tick("regionprops", t0)
+
+            # Step 2: fit rows
+            t0 = time.perf_counter()
+            if image.num_objects == 0:
+                row_edges = self._uniform_edges(self.nrows, image.shape[0])
+            else:
+                n_centers = len(info_table)
+                if n_centers < 2:
+                    pipeline_path = "uniform (< 2 objects)"
+                elif n_centers > self._MAX_OBJECTS_PER_CELL * self.nrows:
+                    pipeline_path = "uniform (object count guard)"
                 else:
-                    pipeline_path = (
-                        f"rows: {row_label} / cols: {col_label}"
+                    # Per-axis labels via the shared classifier; reported as
+                    # "rows: X / cols: Y" so divergent decisions are visible.
+                    row_centers = AutoGridFinder._extract_axis_centers(
+                        info_table, 0,
                     )
-            row_edges = self._fit_axis_edges(
-                info_table, axis=0, n_expected=self.nrows,
-                image_dim=image.shape[0],
-            )
-        _tick("fit rows", t0)
+                    col_centers = AutoGridFinder._extract_axis_centers(
+                        info_table, 1,
+                    )
+                    row_label = AutoGridFinder._classify_axis_pipeline(
+                        row_centers, self.nrows, image.shape[0],
+                    )
+                    col_label = AutoGridFinder._classify_axis_pipeline(
+                        col_centers, self.ncols, image.shape[1],
+                    )
+                    if row_label == col_label:
+                        pipeline_path = row_label
+                    else:
+                        pipeline_path = (
+                            f"rows: {row_label} / cols: {col_label}"
+                        )
+                row_edges = self._fit_axis_edges(
+                    info_table, axis=0, n_expected=self.nrows,
+                    image_dim=image.shape[0],
+                )
+            _tick("fit rows", t0)
 
-        # Step 3: fit cols
-        t0 = time.perf_counter()
-        if image.num_objects == 0:
-            col_edges = self._uniform_edges(self.ncols, image.shape[1])
-        else:
-            col_edges = self._fit_axis_edges(
-                info_table, axis=1, n_expected=self.ncols,
-                image_dim=image.shape[1],
-            )
-        _tick("fit cols", t0)
+            # Step 3: fit cols
+            t0 = time.perf_counter()
+            if image.num_objects == 0:
+                col_edges = self._uniform_edges(self.ncols, image.shape[1])
+            else:
+                col_edges = self._fit_axis_edges(
+                    info_table, axis=1, n_expected=self.ncols,
+                    image_dim=image.shape[1],
+                )
+            _tick("fit cols", t0)
 
-        # Step 4: grid assignment
-        t0 = time.perf_counter()
-        grid_df = super()._get_grid_info(
-            image=image, row_edges=row_edges, col_edges=col_edges,
-            info_table=info_table if not info_table.empty else None,
-        )
-        _tick("grid assignment", t0)
+            # Step 4: grid assignment
+            t0 = time.perf_counter()
+            grid_df = super()._get_grid_info(
+                image=image, row_edges=row_edges, col_edges=col_edges,
+                info_table=info_table if not info_table.empty else None,
+            )
+            _tick("grid assignment", t0)
 
         if pbar is not None and hasattr(pbar, "close"):
             pbar.close()
