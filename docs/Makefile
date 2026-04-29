@@ -8,6 +8,11 @@ SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = source
 BUILDDIR      = build
 
+# Signals to phenotypic's plotly init that nbsphinx-executed kernels should
+# emit HTML-renderable Plotly output instead of the default JSON MIME bundle.
+# See src/phenotypic/_core/.../_accessor_dash_handler.py.
+export PHENOTYPIC_DOCS_BUILD = 1
+
 # Put it first so that "make" without argument is like "make help".
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)

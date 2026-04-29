@@ -60,6 +60,7 @@ jobs:
         working-directory: docs
         env:
           DOCS_VERSION: ${{ env.DOCS_VERSION }}
+          PHENOTYPIC_DOCS_BUILD: "1"
         run: |
           uv run make html
           touch build/html/.nojekyll

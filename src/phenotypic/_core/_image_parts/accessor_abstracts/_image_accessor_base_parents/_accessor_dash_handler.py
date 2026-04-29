@@ -16,6 +16,18 @@ try:
     import plotly.graph_objects as go
 
     PLOTLY_AVAILABLE = True
+
+    import os as _os
+
+    if _os.environ.get("PHENOTYPIC_DOCS_BUILD"):
+        # nbsphinx captures cell outputs from the kernel's HTML mimetype, but
+        # Plotly's default ``plotly_mimetype+notebook`` renderer emits a JSON
+        # MIME bundle that nbsphinx drops. ``notebook_connected`` swaps that for
+        # an HTML+CDN-script bundle so dash() figures survive into the static
+        # site.
+        import plotly.io as _pio
+
+        _pio.renderers.default = "notebook_connected"
 except ImportError:  # pragma: no cover
     PLOTLY_AVAILABLE = False
 

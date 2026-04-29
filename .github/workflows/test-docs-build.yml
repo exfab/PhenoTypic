@@ -47,6 +47,8 @@ jobs:
           sudo apt-get install -y pandoc
 
       - name: Build documentation (test only)
+        env:
+          PHENOTYPIC_DOCS_BUILD: "1"
         run: |
           cd docs
           uv run make html
