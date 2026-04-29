@@ -55,9 +55,6 @@ Examples:
     uv run python -m phenotypic pipeline.json ./plates \
         --image-type GridImage --nrows 16 --ncols 24
 
-    # Save PNG overlays alongside HDFs (opt-in; default: OFF)
-    uv run python -m phenotypic pipeline.json ./images --save-overlays
-
     # Rerun measurements on a previous forward run without re-detecting
     # (reads HDFs from <previous-output-dir>/results/*/hdf/, rewrites
     # parquet measurements + master CSV, skips detection, does NOT
@@ -69,8 +66,9 @@ Outputs:
     Forward runs write a single HDF5 per input image under
     `<output>/results/<dataset>/hdf/<stem>.h5` (layers + metadata + grid
     state, reloadable via `Image.load_hdf5` / `GridImage.load_hdf5`).
-    Overlay PNGs under `<output>/results/<dataset>/overlays/<stem>.png`
-    are opt-in and only written when `--save-overlays` is set.
+    Overlay PNGs are always written under
+    `<output>/results/<dataset>/overlays/<stem>.png` for forward runs;
+    `--measure` reruns reuse existing overlays and do not regenerate them.
 
 SLURM Execution (Autonomous HPC Cluster Processing):
     Use --slurm to submit jobs to an HPC cluster via SLURM. The CLI will:
@@ -385,7 +383,13 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
     # Image settings
     table.add_row("Image Type", config.image_type)
     if config.image_type == "GridImage":
-        table.add_row("Grid Dimensions", f"{config.nrows} × {config.ncols}")
+        if config.nrows is None and config.ncols is None:
+            grid_str = "auto (from pipeline preset, default 8 × 12)"
+        else:
+            nr = "auto" if config.nrows is None else str(config.nrows)
+            nc = "auto" if config.ncols is None else str(config.ncols)
+            grid_str = f"{nr} × {nc}"
+        table.add_row("Grid Dimensions", grid_str)
     if config.bit_depth:
         table.add_row("Bit Depth", str(config.bit_depth))
     if config.detect_mode != "gray":
@@ -459,16 +463,16 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
 @click.option(
     "--nrows",
     type=click.IntRange(min=1),
-    default=8,
-    show_default=True,
-    help="Number of rows for GridImage (must be positive)",
+    default=None,
+    help="Number of rows for GridImage. Overrides any pipeline-level "
+    "preset; when omitted, the pipeline preset is used, falling back to 8.",
 )
 @click.option(
     "--ncols",
     type=click.IntRange(min=1),
-    default=12,
-    show_default=True,
-    help="Number of columns for GridImage (must be positive)",
+    default=None,
+    help="Number of columns for GridImage. Overrides any pipeline-level "
+    "preset; when omitted, the pipeline preset is used, falling back to 12.",
 )
 @click.option(
     "--bit-depth",
@@ -517,12 +521,6 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
     "File extension for legacy per-layer outputs. Forward runs now "
     "write a single .h5 per image; only overlay PNG rendering still "
     "consults this value.",
-)
-@click.option(
-    "--save-overlays",
-    is_flag=True,
-    default=False,
-    help="Save PNG overlay per image (default: off).",
 )
 @click.option(
     "--measure",
@@ -616,8 +614,8 @@ def phenotypic_cli(
     input_path: Optional[Path],
     output_dir: Optional[Path],
     image_type: str,
-    nrows: int,
-    ncols: int,
+    nrows: Optional[int],
+    ncols: Optional[int],
     bit_depth: Optional[int],
     detect_mode: str,
     n_jobs: int,
@@ -625,7 +623,6 @@ def phenotypic_cli(
     force_local: bool,
     wait: bool,
     ext: str,
-    save_overlays: bool,
     measure_only: bool,
     overlay_alpha: float,
     include_dataset_column: bool,
@@ -859,7 +856,6 @@ def phenotypic_cli(
             skip_validation=skip_validation,
             metadata_csv=metadata_csv,
             checkpoint_interval=checkpoint_interval,
-            save_overlays=save_overlays,
             measure_only=measure_only,
         )
 
@@ -1121,8 +1117,8 @@ def phenotypic_cli(
                 }
             else:
                 state = create_initial_state(config, datasets, output_dir)
-                # Forward runs: persist save_overlays alongside the other
-                # resume-compat keys so a later --resume can pick it up.
+                # Recorded for diagnostic transparency; no longer drives
+                # resume compatibility (overlays are always-on).
                 state.config["save_overlays"] = config.save_overlays
             save_processing_state(state, output_dir)
 

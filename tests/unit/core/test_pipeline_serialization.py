@@ -317,6 +317,47 @@ class TestEdgeCases:
         assert "GaussianBlur_1" in op_names
         assert "GaussianBlur_2" in op_names
 
+    def test_grid_preset_roundtrip(self):
+        """nrows/ncols soft preset survives to_json / from_json."""
+        pipe = ImagePipeline(nrows=16, ncols=24)
+        json_str = pipe.to_json()
+
+        config = json.loads(json_str)
+        assert config["nrows"] == 16
+        assert config["ncols"] == 24
+
+        loaded = ImagePipeline.from_json(json_str)
+        assert loaded.nrows == 16
+        assert loaded.ncols == 24
+
+    def test_grid_preset_omitted_when_unset(self):
+        """When nrows/ncols are unset, JSON contains no such keys."""
+        pipe = ImagePipeline(ops=[OtsuDetector()])
+        json_str = pipe.to_json()
+
+        config = json.loads(json_str)
+        assert "nrows" not in config
+        assert "ncols" not in config
+
+        loaded = ImagePipeline.from_json(json_str)
+        assert loaded.nrows is None
+        assert loaded.ncols is None
+
+    def test_legacy_json_without_grid_preset_loads(self):
+        """Old JSON without nrows/ncols keys still loads cleanly."""
+        legacy_json = json.dumps({
+            "pipe_cfgs": {},
+            "meas": {},
+            "post": {},
+            "name": "legacy",
+            "desc": None,
+            "reset": False,
+        })
+
+        loaded = ImagePipeline.from_json(legacy_json)
+        assert loaded.nrows is None
+        assert loaded.ncols is None
+
     def test_benchmark_and_verbose_flags_not_serialized(self):
         """Test that benchmark and verbose flags are not serialized but can be passed as params."""
         pipe = ImagePipeline(ops=[OtsuDetector()], benchmark=True, verbose=True)

@@ -75,11 +75,13 @@ def validate_execution_config(
     if not config.input_path.exists():
         return False, f"Input path not found: {config.input_path}"
     
-    # Check grid dimensions for GridImage
+    # Check grid dimensions for GridImage. ``None`` means "no CLI override —
+    # fall back to the pipeline preset / built-in default at resolve time"
+    # and is valid here; only explicit non-positive values are rejected.
     if config.image_type == "GridImage":
-        if config.nrows <= 0:
+        if config.nrows is not None and config.nrows <= 0:
             return False, f"Invalid nrows: {config.nrows} (must be positive)"
-        if config.ncols <= 0:
+        if config.ncols is not None and config.ncols <= 0:
             return False, f"Invalid ncols: {config.ncols} (must be positive)"
     
     # Check n_jobs is valid

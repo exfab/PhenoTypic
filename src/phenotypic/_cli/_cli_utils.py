@@ -30,10 +30,52 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 import click
 
+from ._cli_constants import DEFAULT_GRID_ROWS, DEFAULT_GRID_COLS
+
 logger = logging.getLogger(__name__)
 
 # Allowed image file extensions for PhenoTypic processing
 ALLOWED_EXTENSIONS: Set[str] = {".png", ".tif", ".tiff", ".jpg", ".jpeg"}
+
+
+def resolve_grid_shape(
+    cli_nrows: Optional[int],
+    cli_ncols: Optional[int],
+    pipeline_nrows: Optional[int],
+    pipeline_ncols: Optional[int],
+    default_nrows: int = DEFAULT_GRID_ROWS,
+    default_ncols: int = DEFAULT_GRID_COLS,
+) -> Tuple[int, int]:
+    """Resolve effective ``(nrows, ncols)`` for a ``GridImage`` load.
+
+    Precedence: explicit CLI flag > pipeline soft preset > built-in default.
+
+    Args:
+        cli_nrows: Value from the ``--nrows`` flag, or ``None`` if not passed.
+        cli_ncols: Value from the ``--ncols`` flag, or ``None`` if not passed.
+        pipeline_nrows: Pipeline-level preset (``ImagePipeline.nrows``), or
+            ``None`` if unset.
+        pipeline_ncols: Pipeline-level preset (``ImagePipeline.ncols``), or
+            ``None`` if unset.
+        default_nrows: Built-in fallback when neither CLI nor pipeline supplies
+            a value.
+        default_ncols: Built-in fallback when neither CLI nor pipeline supplies
+            a value.
+
+    Returns:
+        Tuple ``(nrows, ncols)`` with all ``None`` values resolved.
+    """
+    nrows = (
+        cli_nrows
+        if cli_nrows is not None
+        else (pipeline_nrows if pipeline_nrows is not None else default_nrows)
+    )
+    ncols = (
+        cli_ncols
+        if cli_ncols is not None
+        else (pipeline_ncols if pipeline_ncols is not None else default_ncols)
+    )
+    return nrows, ncols
 
 # Thread-pinning snippet for SLURM bash scripts. Ensures Polars and NumPy
 # respect the SLURM CPU allocation. Must appear before any Python import.
@@ -91,7 +133,6 @@ def scan_parquets(
         Ordered dict mapping each original *Path* to a lazy frame.
         Files that could not be scanned/read are omitted.
     """
-    import polars as pl
 
     if not parquet_files:
         return {}

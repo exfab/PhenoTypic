@@ -32,11 +32,15 @@ class SweepExecutionStrategy(ABC):
         image_type: Literal["Image", "GridImage"],
         read_kwargs: Dict[str, Any],
         output_manager: SweepOutputManager,
+        cli_nrows: Optional[int] = None,
+        cli_ncols: Optional[int] = None,
     ):
         self.pipeline_json_strs = pipeline_json_strs
         self.image_type = image_type
         self.read_kwargs = read_kwargs
         self.output_manager = output_manager
+        self.cli_nrows = cli_nrows
+        self.cli_ncols = cli_ncols
 
     @abstractmethod
     def execute(
@@ -68,8 +72,17 @@ class LocalSweepStrategy(SweepExecutionStrategy):
         n_jobs: int = -1,
         event_log: Optional[Path] = None,
         save_intermediates: bool = False,
+        cli_nrows: Optional[int] = None,
+        cli_ncols: Optional[int] = None,
     ):
-        super().__init__(pipeline_json_strs, image_type, read_kwargs, output_manager)
+        super().__init__(
+            pipeline_json_strs,
+            image_type,
+            read_kwargs,
+            output_manager,
+            cli_nrows=cli_nrows,
+            cli_ncols=cli_ncols,
+        )
         self.n_jobs = n_jobs
         self.event_log = event_log
         self.save_intermediates = save_intermediates
@@ -109,6 +122,8 @@ class LocalSweepStrategy(SweepExecutionStrategy):
                 output_manager=self.output_manager,
                 n_jobs=self.n_jobs,
                 save_intermediates=self.save_intermediates,
+                cli_nrows=self.cli_nrows,
+                cli_ncols=self.cli_ncols,
             )
 
             img_ok = sum(1 for _, ok, _ in results if ok)
@@ -179,8 +194,17 @@ class SLURMSweepStrategy(SweepExecutionStrategy):
         wait: bool = False,
         verbose: bool = False,
         save_intermediates: bool = False,
+        cli_nrows: Optional[int] = None,
+        cli_ncols: Optional[int] = None,
     ):
-        super().__init__(pipeline_json_strs, image_type, read_kwargs, output_manager)
+        super().__init__(
+            pipeline_json_strs,
+            image_type,
+            read_kwargs,
+            output_manager,
+            cli_nrows=cli_nrows,
+            cli_ncols=cli_ncols,
+        )
         self.manifest_path = manifest_path
         self.slurm_args = slurm_args
         self.wait = wait
@@ -236,6 +260,8 @@ class SLURMSweepStrategy(SweepExecutionStrategy):
             array_limit=array_limit,
             verbose=self.verbose,
             save_intermediates=self.save_intermediates,
+            cli_nrows=self.cli_nrows,
+            cli_ncols=self.cli_ncols,
         )
 
         # Generate dispatcher chain for drip-feed submission

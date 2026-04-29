@@ -24,6 +24,8 @@ def _build_worker_command(
     read_kwargs: Dict[str, Any],
     verbose: bool = False,
     save_intermediates: bool = False,
+    cli_nrows: Optional[int] = None,
+    cli_ncols: Optional[int] = None,
 ) -> str:
     """Build the worker CLI command string (without image/pipeline args).
 
@@ -31,11 +33,18 @@ def _build_worker_command(
         manifest_path: Path to the sweep manifest JSON.
         output_dir: Base output directory.
         image_type: ``"Image"`` or ``"GridImage"``.
-        read_kwargs: Image read kwargs (nrows, ncols, etc.).
+        read_kwargs: Image read kwargs (bit_depth, detect_mode). ``nrows``
+            and ``ncols`` are NOT read from this dict — pass them via
+            ``cli_nrows``/``cli_ncols`` so per-pipeline preset resolution
+            happens inside the worker.
         verbose: When True, append ``--verbose`` to enable per-operation
             debug logging in the worker process.
         save_intermediates: When True, append ``--save-intermediates``
             to save intermediate image state after each pipeline operation.
+        cli_nrows: Explicit CLI ``--nrows`` override, or ``None`` to leave
+            the flag off (worker falls back to pipeline preset).
+        cli_ncols: Explicit CLI ``--ncols`` override, or ``None`` to leave
+            the flag off (worker falls back to pipeline preset).
 
     Returns:
         Command string with ``${CURRENT_IMAGE}`` and ``${CURRENT_PIPELINE}``
@@ -58,12 +67,13 @@ def _build_worker_command(
         image_type,
     ]
 
-    # Grid params
-    nrows = read_kwargs.get("nrows")
-    ncols = read_kwargs.get("ncols")
+    # Grid params: only emit when the user explicitly supplied a CLI value.
+    # Otherwise the worker falls back to each pipeline's soft preset.
     if image_type == "GridImage":
-        cmd_parts.extend(["--nrows", str(nrows or 8)])
-        cmd_parts.extend(["--ncols", str(ncols or 12)])
+        if cli_nrows is not None:
+            cmd_parts.extend(["--nrows", str(cli_nrows)])
+        if cli_ncols is not None:
+            cmd_parts.extend(["--ncols", str(cli_ncols)])
 
     bit_depth = read_kwargs.get("bit_depth")
     if bit_depth is not None:
@@ -99,6 +109,8 @@ def generate_sweep_array_script(
     verbose: bool = False,
     batch_size: int = 1,
     save_intermediates: bool = False,
+    cli_nrows: Optional[int] = None,
+    cli_ncols: Optional[int] = None,
 ) -> Path:
     """Generate a SLURM array job script for sweep processing.
 
@@ -180,6 +192,8 @@ def generate_sweep_array_script(
         read_kwargs=read_kwargs,
         verbose=verbose,
         save_intermediates=save_intermediates,
+        cli_nrows=cli_nrows,
+        cli_ncols=cli_ncols,
     )
 
     # Offset section (only included for chunked scripts)
@@ -348,6 +362,8 @@ def generate_sweep_array_scripts_chunked(
     verbose: bool = False,
     batch_size: int = 1,
     save_intermediates: bool = False,
+    cli_nrows: Optional[int] = None,
+    cli_ncols: Optional[int] = None,
 ) -> List[Path]:
     """Generate chunked SLURM array scripts for large sweeps.
 
@@ -395,6 +411,8 @@ def generate_sweep_array_scripts_chunked(
             verbose=verbose,
             batch_size=batch_size,
             save_intermediates=save_intermediates,
+            cli_nrows=cli_nrows,
+            cli_ncols=cli_ncols,
         )
         return [path]
 
@@ -416,6 +434,8 @@ def generate_sweep_array_scripts_chunked(
             verbose=verbose,
             batch_size=batch_size,
             save_intermediates=save_intermediates,
+            cli_nrows=cli_nrows,
+            cli_ncols=cli_ncols,
         )
         script_paths.append(path)
 

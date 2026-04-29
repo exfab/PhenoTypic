@@ -384,47 +384,6 @@ class TestAutoGridFinderIntegration:
 
 
 # ===========================================================================
-# _robust_pitch_estimate
-# ===========================================================================
-
-
-class TestRobustPitchEstimate:
-
-    def test_uniform_centers(self):
-        centers = np.array([10.0, 30.0, 50.0, 70.0, 90.0])
-        pitch = AutoGridFinder._robust_pitch_estimate(centers, n_expected=5)
-        assert 15.0 < pitch < 25.0
-
-    def test_outlier_at_extreme(self):
-        """Outlier at the far end should not corrupt the estimate."""
-        centers = np.sort(np.array([
-            10.0, 30.0, 50.0, 70.0, 90.0,  # true grid, pitch=20
-            300.0,  # far outlier
-        ]))
-        pitch = AutoGridFinder._robust_pitch_estimate(centers, n_expected=5)
-        # Mode of diffs is still ~20, but span pitch is (300-10)/4=72.5
-        # Mode (~20) is < 0.5 * 72.5 = 36.25, so falls back to span pitch
-        # Either way, should return a positive value
-        assert pitch > 0
-
-    def test_half_pitch_contamination_triggers_fallback(self):
-        """Objects at half-pitch intervals should trigger sanity check fallback."""
-        # True pitch = 20, but objects at every 10px
-        centers = np.arange(10.0, 100.0, 10.0)  # 9 points at pitch 10
-        pitch = AutoGridFinder._robust_pitch_estimate(centers, n_expected=5)
-        # mode of diffs = 10, span pitch = (90-10)/4 = 20
-        # 10 == 0.5 * 20 → borderline, should fall back to span pitch
-        assert pitch >= 10.0
-
-    def test_few_diffs_falls_back(self):
-        centers = np.array([10.0, 30.0])
-        pitch = AutoGridFinder._robust_pitch_estimate(centers, n_expected=5)
-        # Only 1 diff → falls back to span pitch
-        expected_span = (30.0 - 10.0) / 4
-        assert pitch == pytest.approx(expected_span)
-
-
-# ===========================================================================
 # _aggregate_to_cell_medians
 # ===========================================================================
 

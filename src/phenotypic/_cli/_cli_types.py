@@ -84,10 +84,12 @@ class ExecutionConfig:
     input_path: Path
     output_dir: Optional[Path]
     
-    # Image configuration
+    # Image configuration. ``nrows``/``ncols`` are optional CLI overrides:
+    # ``None`` means "no explicit CLI value, fall back to the pipeline's soft
+    # preset or the built-in default at image-load time".
     image_type: Literal["Image", "GridImage"]
-    nrows: int
-    ncols: int
+    nrows: Optional[int]
+    ncols: Optional[int]
     bit_depth: Optional[int]
 
     # Execution mode
@@ -117,8 +119,9 @@ class ExecutionConfig:
     # Detection mode (default: gray)
     detect_mode: str = "gray"
 
-    # Overlay PNG output is opt-in (default: off)
-    save_overlays: bool = False
+    # Overlay PNG output is always-on for forward runs; --measure runs
+    # never regenerate overlays regardless of this flag.
+    save_overlays: bool = True
 
     # Measure-only mode: reload HDFs and rerun pipeline.measure() without detection
     measure_only: bool = False

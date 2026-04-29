@@ -245,11 +245,8 @@ class LocalParallelStrategy(ExecutionStrategy):
         append_event(event_log, dataset.name, image_path.name, "started")
 
         try:
-            # Prepare read kwargs
-            read_kwargs = {}
-            if self.config.image_type == "GridImage":
-                read_kwargs["nrows"] = self.config.nrows
-                read_kwargs["ncols"] = self.config.ncols
+            # Prepare read kwargs.
+            read_kwargs: Dict[str, Any] = {}
             if self.config.bit_depth:
                 read_kwargs["bit_depth"] = self.config.bit_depth
             if self.config.detect_mode != "gray":
@@ -264,6 +261,8 @@ class LocalParallelStrategy(ExecutionStrategy):
                 image_type=self.config.image_type,
                 read_kwargs=read_kwargs,
                 output_manager=self.output_manager,
+                cli_nrows=self.config.nrows,
+                cli_ncols=self.config.ncols,
             )
 
             # Log success

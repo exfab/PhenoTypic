@@ -8,7 +8,7 @@ the behaviour promised by Phase 7 of the HDF-centric CLI plan:
   ``results/<dataset>/hdf/<stem>.h5`` and a parquet measurements file under
   ``results/<dataset>/measurements/<stem>.parquet`` — and nothing else
   (no per-layer ``rgb/`` / ``gray/`` / ``detect_mat/`` / ``objmap/`` folders).
-* Overlays are gated behind ``--save-overlays`` and default OFF.
+* Forward runs always write a PNG overlay per image alongside the HDF.
 * ``--measure`` reruns :meth:`ImagePipeline.measure` on existing HDFs
   without touching the HDF files on disk and without regenerating overlays.
 * ``--measure`` rejects incompatible flags with a clear error message.
@@ -124,6 +124,7 @@ class TestForwardRunHdfLayout:
         dataset_dir = output_dir / "results" / "plates"
         hdf_file = dataset_dir / "hdf" / "plate_001.h5"
         parquet_file = dataset_dir / "measurements" / "plate_001.parquet"
+        overlay_file = dataset_dir / "overlays" / "plate_001.png"
 
         assert hdf_file.exists(), (
             f"Expected HDF output at {hdf_file} (got contents: "
@@ -132,9 +133,13 @@ class TestForwardRunHdfLayout:
         assert parquet_file.exists(), (
             f"Expected parquet measurements at {parquet_file}"
         )
+        assert overlay_file.exists(), (
+            f"Expected overlay PNG at {overlay_file} (overlays are always "
+            f"written for forward runs)"
+        )
 
         # None of the legacy per-layer directories must be created.
-        for legacy_folder in ("rgb", "gray", "detect_mat", "objmap", "overlays"):
+        for legacy_folder in ("rgb", "gray", "detect_mat", "objmap"):
             legacy_path = dataset_dir / legacy_folder
             assert not legacy_path.exists(), (
                 f"Legacy per-layer folder {legacy_path} should NOT exist "
@@ -142,88 +147,52 @@ class TestForwardRunHdfLayout:
             )
 
         # Whitelist check: after a default forward run the dataset directory
-        # must contain ONLY `hdf/` and `measurements/`. Any other subdir
-        # (e.g. a renamed or new per-layer folder) would regress the layout.
+        # must contain exactly `hdf/`, `measurements/`, and `overlays/`. Any
+        # other subdir (e.g. a renamed or new per-layer folder) would regress
+        # the layout.
         actual_children = {p.name for p in dataset_dir.iterdir() if p.is_dir()}
-        assert actual_children == {"hdf", "measurements"}, (
+        assert actual_children == {"hdf", "measurements", "overlays"}, (
             f"Unexpected dataset-level folders after forward run. "
-            f"Got {sorted(actual_children)}; expected {{'hdf', 'measurements'}}."
-        )
-
-        # No stray PNGs should have landed anywhere under the dataset dir
-        # on a default run (they would indicate an overlay regression).
-        stray_pngs = list(dataset_dir.rglob("*.png"))
-        assert not stray_pngs, (
-            f"No PNG files should exist under {dataset_dir} on a default "
-            f"forward run, but found: {stray_pngs}"
+            f"Got {sorted(actual_children)}; expected "
+            f"{{'hdf', 'measurements', 'overlays'}}."
         )
 
 
 # ---------------------------------------------------------------------------
-# Overlay gating — default OFF, enabled by --save-overlays
+# Overlays — always-on for forward runs
 # ---------------------------------------------------------------------------
 
 
-class TestOverlayGating:
-    """Overlays are opt-in: off by default, on with --save-overlays."""
+class TestOverlayAlwaysOn:
+    """Forward runs always write an overlay PNG per image."""
 
-    def test_forward_run_overlays_gated(
+    def test_forward_run_writes_overlay(
         self, runner, temp_pipeline, plates_input_dir, tmp_path
     ):
-        """Two separate runs: default has no overlays/, --save-overlays does."""
-        # --- Run 1: default (no --save-overlays). No overlays/ dir. ---
-        output_dir_default = tmp_path / "out_default"
-        result_default = runner.invoke(
+        """A default forward run produces an overlay PNG without any flag."""
+        output_dir = tmp_path / "out"
+        result = runner.invoke(
             phenotypic_cli,
             [
                 str(temp_pipeline),
                 str(plates_input_dir),
                 "-o",
-                str(output_dir_default),
+                str(output_dir),
                 "--n-jobs",
                 "1",
                 "--skip-validation",
                 "--force-local",
             ],
         )
-        assert result_default.exit_code == 0, (
-            f"Default forward run failed:\n{result_default.output}"
-        )
-
-        default_overlays_dir = (
-            output_dir_default / "results" / "plates" / "overlays"
-        )
-        assert not default_overlays_dir.exists(), (
-            f"Default run should NOT create overlays/ directory, "
-            f"but found {default_overlays_dir}."
-        )
-
-        # --- Run 2: --save-overlays. PNG must exist. ---
-        output_dir_ov = tmp_path / "out_overlays"
-        result_ov = runner.invoke(
-            phenotypic_cli,
-            [
-                str(temp_pipeline),
-                str(plates_input_dir),
-                "-o",
-                str(output_dir_ov),
-                "--n-jobs",
-                "1",
-                "--skip-validation",
-                "--force-local",
-                "--save-overlays",
-            ],
-        )
-        assert result_ov.exit_code == 0, (
-            f"--save-overlays forward run failed:\n{result_ov.output}"
+        assert result.exit_code == 0, (
+            f"Default forward run failed:\n{result.output}"
         )
 
         overlay_png = (
-            output_dir_ov / "results" / "plates" / "overlays" / "plate_001.png"
+            output_dir / "results" / "plates" / "overlays" / "plate_001.png"
         )
         assert overlay_png.exists(), (
-            f"Expected overlay PNG at {overlay_png} when --save-overlays "
-            f"was passed."
+            f"Expected overlay PNG at {overlay_png} on a default forward run."
         )
 
 
@@ -262,12 +231,17 @@ class TestMeasureRerun:
         dataset_dir = output_dir / "results" / "plates"
         hdf_path = dataset_dir / "hdf" / "plate_001.h5"
         parquet_path = dataset_dir / "measurements" / "plate_001.parquet"
+        overlay_path = dataset_dir / "overlays" / "plate_001.png"
 
         assert hdf_path.exists()
         assert parquet_path.exists()
+        assert overlay_path.exists(), (
+            "Forward run should always write overlay PNG."
+        )
 
         hdf_mtime_before = hdf_path.stat().st_mtime_ns
         parquet_mtime_before = parquet_path.stat().st_mtime_ns
+        overlay_mtime_before = overlay_path.stat().st_mtime_ns
 
         # Sleep so mtimes actually differ on filesystems that round to seconds.
         time.sleep(0.1)
@@ -308,9 +282,12 @@ class TestMeasureRerun:
             f"--measure must not rewrite HDF files."
         )
 
-        # No overlays should be created on a measure rerun.
-        assert not (dataset_dir / "overlays").exists(), (
-            "--measure must not regenerate or create overlays/."
+        # Existing overlay must NOT be rewritten by a measure rerun.
+        overlay_mtime_after = overlay_path.stat().st_mtime_ns
+        assert overlay_mtime_after == overlay_mtime_before, (
+            f"Overlay mtime changed after --measure rerun "
+            f"(before={overlay_mtime_before}, after={overlay_mtime_after}). "
+            f"--measure must not regenerate overlays."
         )
 
     def test_measure_rerun_grid_image_hdf(

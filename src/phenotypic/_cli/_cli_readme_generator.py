@@ -91,7 +91,7 @@ output_folder/
 {dataset_list}
 |       +-- hdf/                  # Processed images as single .h5 per input (layers + metadata + grid state)
 |       +-- measurements/         # Per-image Parquet measurement files
-|       +-- overlays/             # Detection overlay PNGs (only when --save-overlays is set; default: OFF)
+|       +-- overlays/             # Detection overlay PNGs (one per input image)
 +-- dashboard.html                # Live processing dashboard
 +-- analysis.html                 # Analysis & visualization
 +-- master_measurements.csv       # Aggregated measurements (all datasets)
@@ -112,7 +112,7 @@ Each dataset directory contains the following folders:
 |--------|--------|-------------|
 | `hdf/` | HDF5 | Processed image (layers + metadata + grid state) saved as a single `.h5` per input image, reloadable via `Image.load_hdf5` / `GridImage.load_hdf5`. |
 | `measurements/` | Parquet | Per-object measurements. |
-| `overlays/` | PNG | Detection overlay visualizations. Created only when the run was invoked with `--save-overlays` (default: OFF). |"""
+| `overlays/` | PNG | Detection overlay visualizations (always written for forward runs). |"""
 
     def _generate_measurements_section(self) -> str:
         """Generate measurement documentation from pipeline's MeasureFeatures.

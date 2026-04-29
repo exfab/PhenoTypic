@@ -236,16 +236,6 @@ def validate_resume_compatibility(
         if state.config.get("ncols") != config.ncols:
             return False, f"Grid cols mismatch: saved={state.config.get('ncols')}, current={config.ncols}"
 
-    # Check save_overlays flag — default to False for state files written
-    # before --save-overlays existed, so older state files remain resumable.
-    saved_save_overlays = state.config.get("save_overlays", False)
-    current_save_overlays = getattr(config, "save_overlays", False)
-    if saved_save_overlays != current_save_overlays:
-        return False, (
-            f"save_overlays mismatch: saved={saved_save_overlays}, "
-            f"current={current_save_overlays}"
-        )
-
     return True, None
 
 
