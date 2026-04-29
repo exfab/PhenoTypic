@@ -38,6 +38,8 @@ def _run_single_pipeline(
     read_kwargs: Dict[str, Any],
     output_manager: SweepOutputManager,
     save_intermediates: bool = False,
+    cli_nrows: Optional[int] = None,
+    cli_ncols: Optional[int] = None,
 ) -> Tuple[str, bool, str]:
     """Run a single pipeline on an image.
 
@@ -50,10 +52,15 @@ def _run_single_pipeline(
         pipeline_name: Human-readable pipeline name.
         image_path: Path to the input image.
         image_type: ``"Image"`` or ``"GridImage"``.
-        read_kwargs: Kwargs for ``imread`` (nrows, ncols, etc.).
+        read_kwargs: Kwargs for ``imread`` (bit_depth, detect_mode). Should
+            NOT contain ``nrows``/``ncols``; those are resolved per-pipeline
+            from ``cli_nrows``/``cli_ncols`` and the deserialized pipeline's
+            soft preset.
         output_manager: Sweep output manager instance.
         save_intermediates: When True, save intermediate image state
             after each pipeline operation as HDF5.
+        cli_nrows: Explicit CLI ``--nrows`` override, or ``None``.
+        cli_ncols: Explicit CLI ``--ncols`` override, or ``None``.
 
     Returns:
         Tuple of ``(pipeline_name, success, error_message)``.
@@ -67,9 +74,20 @@ def _run_single_pipeline(
         # Deserialize pipeline
         pipeline = ImagePipeline.from_json(pipeline_json_str)
 
-        # Load image from disk
+        # Resolve nrows/ncols per-pipeline so each carries its own preset.
         image_cls = GridImage if image_type == "GridImage" else Image
         rk = dict(read_kwargs)  # shallow copy
+        if image_type == "GridImage":
+            from phenotypic._cli._cli_utils import resolve_grid_shape
+
+            nrows, ncols = resolve_grid_shape(
+                cli_nrows=cli_nrows,
+                cli_ncols=cli_ncols,
+                pipeline_nrows=pipeline.nrows,
+                pipeline_ncols=pipeline.ncols,
+            )
+            rk["nrows"] = nrows
+            rk["ncols"] = ncols
         detect_mode = rk.pop("detect_mode", "gray")
         image = image_cls.imread(image_path, **rk)
 
@@ -142,6 +160,8 @@ def process_image_all_pipelines(
     output_manager: SweepOutputManager,
     n_jobs: int = -1,
     save_intermediates: bool = False,
+    cli_nrows: Optional[int] = None,
+    cli_ncols: Optional[int] = None,
 ) -> List[Tuple[str, bool, str]]:
     """Process a single image through all pipelines in parallel.
 
@@ -152,11 +172,13 @@ def process_image_all_pipelines(
         image_path: Path to the input image.
         pipeline_json_strs: Mapping of pipeline_name to JSON string.
         image_type: ``"Image"`` or ``"GridImage"``.
-        read_kwargs: Kwargs for ``imread``.
+        read_kwargs: Kwargs for ``imread`` (bit_depth, detect_mode).
         output_manager: Sweep output manager instance.
         n_jobs: Number of parallel jobs (``-1`` = all cores).
         save_intermediates: When True, save intermediate image state
             after each pipeline operation as HDF5.
+        cli_nrows: Explicit CLI ``--nrows`` override, or ``None``.
+        cli_ncols: Explicit CLI ``--ncols`` override, or ``None``.
 
     Returns:
         List of ``(pipeline_name, success, error_message)`` tuples.
@@ -172,6 +194,8 @@ def process_image_all_pipelines(
             read_kwargs=read_kwargs,
             output_manager=output_manager,
             save_intermediates=save_intermediates,
+            cli_nrows=cli_nrows,
+            cli_ncols=cli_ncols,
         )
         for pipe_name, json_str in pipeline_json_strs.items()
     )
@@ -186,6 +210,8 @@ def process_image_all_pipelines_sequential(
     read_kwargs: Dict[str, Any],
     output_manager: SweepOutputManager,
     save_intermediates: bool = False,
+    cli_nrows: Optional[int] = None,
+    cli_ncols: Optional[int] = None,
 ) -> List[Tuple[str, bool, str]]:
     """Process a single image through all pipelines sequentially.
 
@@ -196,10 +222,12 @@ def process_image_all_pipelines_sequential(
         image_path: Path to the input image.
         pipeline_json_strs: Mapping of pipeline_name to JSON string.
         image_type: ``"Image"`` or ``"GridImage"``.
-        read_kwargs: Kwargs for ``imread``.
+        read_kwargs: Kwargs for ``imread`` (bit_depth, detect_mode).
         output_manager: Sweep output manager instance.
         save_intermediates: When True, save intermediate image state
             after each pipeline operation as HDF5.
+        cli_nrows: Explicit CLI ``--nrows`` override, or ``None``.
+        cli_ncols: Explicit CLI ``--ncols`` override, or ``None``.
 
     Returns:
         List of ``(pipeline_name, success, error_message)`` tuples.
@@ -217,6 +245,8 @@ def process_image_all_pipelines_sequential(
             read_kwargs=read_kwargs,
             output_manager=output_manager,
             save_intermediates=save_intermediates,
+            cli_nrows=cli_nrows,
+            cli_ncols=cli_ncols,
         )
         elapsed = time.monotonic() - t0
         status = "OK" if result[1] else "FAILED"
@@ -247,8 +277,20 @@ def process_image_all_pipelines_sequential(
     "--image-type", type=click.Choice(["Image", "GridImage"]),
     default="GridImage", help="Image class to use.",
 )
-@click.option("--nrows", type=int, default=8, help="Grid rows (for GridImage).")
-@click.option("--ncols", type=int, default=12, help="Grid columns (for GridImage).")
+@click.option(
+    "--nrows",
+    type=int,
+    default=None,
+    help="Grid rows (for GridImage). Overrides any pipeline preset; "
+    "falls back to the pipeline preset or 8 when omitted.",
+)
+@click.option(
+    "--ncols",
+    type=int,
+    default=None,
+    help="Grid columns (for GridImage). Overrides any pipeline preset; "
+    "falls back to the pipeline preset or 12 when omitted.",
+)
 @click.option("--bit-depth", type=int, default=None, help="Bit depth (8 or 16).")
 @click.option("--detect-mode", default="gray", help="Detection channel.")
 @click.option(
@@ -272,8 +314,8 @@ def sweep_worker_cli(
     image: Path,
     output_dir: Path,
     image_type: str,
-    nrows: int,
-    ncols: int,
+    nrows: Optional[int],
+    ncols: Optional[int],
     bit_depth: Optional[int],
     detect_mode: str,
     event_log: Optional[Path],
@@ -291,11 +333,8 @@ def sweep_worker_cli(
     from ._sweep_output import SweepOutputManager
 
     try:
-        # Build read kwargs
+        # Build read kwargs.
         read_kwargs: Dict[str, Any] = {}
-        if image_type == "GridImage":
-            read_kwargs["nrows"] = nrows
-            read_kwargs["ncols"] = ncols
         if bit_depth is not None:
             read_kwargs["bit_depth"] = bit_depth
         if detect_mode != "gray":
@@ -337,6 +376,8 @@ def sweep_worker_cli(
             read_kwargs=read_kwargs,
             output_manager=output_manager,
             save_intermediates=save_intermediates,
+            cli_nrows=nrows,
+            cli_ncols=ncols,
         )
 
         # Log results

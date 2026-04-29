@@ -147,8 +147,8 @@ def _display_sweep_config(
         num_images: int,
         num_pipelines: int,
         image_type: str,
-        nrows: int,
-        ncols: int,
+        nrows: Optional[int],
+        ncols: Optional[int],
         n_jobs: int,
         slurm_args: Dict[str, Any],
         is_slurm: bool,
@@ -181,7 +181,13 @@ def _display_sweep_config(
     table.add_row("", "")
     table.add_row("Image Type", image_type)
     if image_type == "GridImage":
-        table.add_row("Grid", f"{nrows} x {ncols}")
+        if nrows is None and ncols is None:
+            grid_str = "auto (per-pipeline preset, default 8 x 12)"
+        else:
+            nr = "auto" if nrows is None else str(nrows)
+            nc = "auto" if ncols is None else str(ncols)
+            grid_str = f"{nr} x {nc}"
+        table.add_row("Grid", grid_str)
 
     if not is_slurm:
         n_str = "All cores" if n_jobs == -1 else str(n_jobs)
@@ -228,16 +234,16 @@ def _format_duration(seconds: float) -> str:
 @click.option(
         "--nrows",
         type=click.IntRange(min=1),
-        default=8,
-        show_default=True,
-        help="Grid rows (for GridImage).",
+        default=None,
+        help="Grid rows (for GridImage). Overrides any per-pipeline preset; "
+             "falls back to each pipeline's preset or 8 when omitted.",
 )
 @click.option(
         "--ncols",
         type=click.IntRange(min=1),
-        default=12,
-        show_default=True,
-        help="Grid columns (for GridImage).",
+        default=None,
+        help="Grid columns (for GridImage). Overrides any per-pipeline preset; "
+             "falls back to each pipeline's preset or 12 when omitted.",
 )
 @click.option(
         "--bit-depth",
@@ -276,8 +282,8 @@ def sweep_cli(
         input_dir: Path,
         output_dir: Optional[Path],
         image_type: str,
-        nrows: int,
-        ncols: int,
+        nrows: Optional[int],
+        ncols: Optional[int],
         bit_depth: Optional[int],
         detect_mode: str,
         n_jobs: int,
@@ -350,11 +356,8 @@ def sweep_cli(
         pipeline_names = list(pipeline_json_strs.keys())
         click.echo(f"Loaded {len(pipeline_names)} pipeline configurations")
 
-        # Build read kwargs
+        # Build read kwargs.
         read_kwargs: Dict[str, Any] = {}
-        if image_type == "GridImage":
-            read_kwargs["nrows"] = nrows
-            read_kwargs["ncols"] = ncols
         if bit_depth is not None:
             read_kwargs["bit_depth"] = bit_depth
         if detect_mode != "gray":
@@ -463,6 +466,8 @@ def sweep_cli(
                     wait=wait,
                     verbose=verbose,
                     save_intermediates=save_intermediates,
+                    cli_nrows=nrows,
+                    cli_ncols=ncols,
             )
         else:
             strategy = LocalSweepStrategy(
@@ -473,6 +478,8 @@ def sweep_cli(
                     n_jobs=n_jobs,
                     event_log=event_log,
                     save_intermediates=save_intermediates,
+                    cli_nrows=nrows,
+                    cli_ncols=ncols,
             )
 
         results = strategy.execute(image_paths, output_dir)
