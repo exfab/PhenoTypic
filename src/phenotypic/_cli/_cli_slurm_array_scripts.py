@@ -213,10 +213,12 @@ def generate_array_job_script(
         config.image_type,
     ]
 
-    # Add grid parameters if GridImage
+    # Omit when unset so the worker falls back to the pipeline's preset.
     if config.image_type == "GridImage":
-        cmd_parts.extend(["--nrows", str(config.nrows)])
-        cmd_parts.extend(["--ncols", str(config.ncols)])
+        if config.nrows is not None:
+            cmd_parts.extend(["--nrows", str(config.nrows)])
+        if config.ncols is not None:
+            cmd_parts.extend(["--ncols", str(config.ncols)])
 
     # Add bit depth if specified
     if config.bit_depth is not None:

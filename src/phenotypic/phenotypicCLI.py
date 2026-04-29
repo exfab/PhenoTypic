@@ -385,7 +385,13 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
     # Image settings
     table.add_row("Image Type", config.image_type)
     if config.image_type == "GridImage":
-        table.add_row("Grid Dimensions", f"{config.nrows} × {config.ncols}")
+        if config.nrows is None and config.ncols is None:
+            grid_str = "auto (from pipeline preset, default 8 × 12)"
+        else:
+            nr = "auto" if config.nrows is None else str(config.nrows)
+            nc = "auto" if config.ncols is None else str(config.ncols)
+            grid_str = f"{nr} × {nc}"
+        table.add_row("Grid Dimensions", grid_str)
     if config.bit_depth:
         table.add_row("Bit Depth", str(config.bit_depth))
     if config.detect_mode != "gray":
@@ -459,16 +465,16 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
 @click.option(
     "--nrows",
     type=click.IntRange(min=1),
-    default=8,
-    show_default=True,
-    help="Number of rows for GridImage (must be positive)",
+    default=None,
+    help="Number of rows for GridImage. Overrides any pipeline-level "
+    "preset; when omitted, the pipeline preset is used, falling back to 8.",
 )
 @click.option(
     "--ncols",
     type=click.IntRange(min=1),
-    default=12,
-    show_default=True,
-    help="Number of columns for GridImage (must be positive)",
+    default=None,
+    help="Number of columns for GridImage. Overrides any pipeline-level "
+    "preset; when omitted, the pipeline preset is used, falling back to 12.",
 )
 @click.option(
     "--bit-depth",
@@ -616,8 +622,8 @@ def phenotypic_cli(
     input_path: Optional[Path],
     output_dir: Optional[Path],
     image_type: str,
-    nrows: int,
-    ncols: int,
+    nrows: Optional[int],
+    ncols: Optional[int],
     bit_depth: Optional[int],
     detect_mode: str,
     n_jobs: int,

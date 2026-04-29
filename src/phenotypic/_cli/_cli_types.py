@@ -84,10 +84,12 @@ class ExecutionConfig:
     input_path: Path
     output_dir: Optional[Path]
     
-    # Image configuration
+    # Image configuration. ``nrows``/``ncols`` are optional CLI overrides:
+    # ``None`` means "no explicit CLI value, fall back to the pipeline's soft
+    # preset or the built-in default at image-load time".
     image_type: Literal["Image", "GridImage"]
-    nrows: int
-    ncols: int
+    nrows: Optional[int]
+    ncols: Optional[int]
     bit_depth: Optional[int]
 
     # Execution mode

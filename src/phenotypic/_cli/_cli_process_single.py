@@ -37,6 +37,8 @@ def process_single_image_core(
     image_type: Literal["Image", "GridImage"],
     read_kwargs: Dict[str, Any],
     output_manager: OutputManager,
+    cli_nrows: Optional[int] = None,
+    cli_ncols: Optional[int] = None,
 ) -> bool:
     """
     Core processing logic for a single image.
@@ -47,8 +49,12 @@ def process_single_image_core(
         output_dir: Base output directory
         dataset_name: Dataset name for this image
         image_type: "Image" or "GridImage"
-        read_kwargs: Kwargs for imread (nrows, ncols, bit_depth)
+        read_kwargs: Kwargs for imread (bit_depth, detect_mode). Should NOT
+            include ``nrows``/``ncols`` — those are resolved here from the CLI
+            override (``cli_nrows``/``cli_ncols``) and the pipeline preset.
         output_manager: OutputManager instance
+        cli_nrows: Explicit CLI ``--nrows`` override, or ``None`` if not passed.
+        cli_ncols: Explicit CLI ``--ncols`` override, or ``None`` if not passed.
 
     Returns:
         True if successful. This function always returns True on success;
@@ -64,6 +70,19 @@ def process_single_image_core(
 
     # Determine image class
     image_cls = GridImage if image_type == "GridImage" else Image
+
+    if image_type == "GridImage":
+        from ._cli_utils import resolve_grid_shape
+
+        nrows, ncols = resolve_grid_shape(
+            cli_nrows=cli_nrows,
+            cli_ncols=cli_ncols,
+            pipeline_nrows=pipeline.nrows,
+            pipeline_ncols=pipeline.ncols,
+        )
+        read_kwargs = dict(read_kwargs)  # local copy; do not mutate caller's dict
+        read_kwargs["nrows"] = nrows
+        read_kwargs["ncols"] = ncols
 
     # Load image
     detect_mode = read_kwargs.pop("detect_mode", "gray")
@@ -167,9 +186,19 @@ def process_single_hdf_measure_core(
     default="GridImage",
     help="Image class to use",
 )
-@click.option("--nrows", type=int, default=8, help="Number of grid rows (for GridImage)")
 @click.option(
-    "--ncols", type=int, default=12, help="Number of grid columns (for GridImage)"
+    "--nrows",
+    type=int,
+    default=None,
+    help="Number of grid rows (for GridImage). Overrides any pipeline-level "
+    "preset; falls back to the pipeline preset or 8 when omitted.",
+)
+@click.option(
+    "--ncols",
+    type=int,
+    default=None,
+    help="Number of grid columns (for GridImage). Overrides any pipeline-level "
+    "preset; falls back to the pipeline preset or 12 when omitted.",
 )
 @click.option("--bit-depth", type=int, default=None, help="Bit depth (8 or 16)")
 @click.option(
@@ -222,8 +251,8 @@ def main(
     output_dir: Path,
     dataset_name: str,
     image_type: str,
-    nrows: int,
-    ncols: int,
+    nrows: Optional[int],
+    ncols: Optional[int],
     bit_depth: Optional[int],
     detect_mode: str,
     ext: str,
@@ -316,9 +345,6 @@ def main(
         else:
             # Forward run: prepare read kwargs and dispatch to the detection path.
             read_kwargs: Dict[str, Any] = {}
-            if image_type == "GridImage":
-                read_kwargs["nrows"] = nrows
-                read_kwargs["ncols"] = ncols
             if bit_depth is not None:
                 read_kwargs["bit_depth"] = bit_depth
             if detect_mode != "gray":
@@ -341,6 +367,8 @@ def main(
                 image_type=image_type,  # type: ignore[arg-type]
                 read_kwargs=read_kwargs,
                 output_manager=output_manager,
+                cli_nrows=nrows,
+                cli_ncols=ncols,
             )
 
         # Log completion if event log provided
