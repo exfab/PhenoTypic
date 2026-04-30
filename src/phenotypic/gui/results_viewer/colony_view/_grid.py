@@ -445,6 +445,13 @@ def _build_stack_popover(
                 [
                     html.Img(
                         src=crop_url,
+                        # Defer the fetch until the popover scrolls into
+                        # view. With cells that aggregate hundreds of
+                        # colonies the alternative is a wave of /crops/
+                        # requests on initial page render -- the popover
+                        # is click-gated, so the user only ever opens
+                        # one at a time.
+                        loading="lazy",
                         style={
                             "width": f"{display_size}px",
                             "height": f"{display_size}px",
