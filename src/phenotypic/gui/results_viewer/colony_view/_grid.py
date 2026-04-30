@@ -69,6 +69,11 @@ _GRID_PREFIX = "Grid_"
 #: Minimum crop side length, even on degenerate (tiny / empty) frames.
 _MIN_CROP_SIZE = 64
 
+#: Vertical room reserved beneath every cell for the multi-colony stack
+#: tab to peek out of. Applied to every tile (even single-colony ones)
+#: so the grid stays evenly spaced regardless of which cells aggregate.
+_STACK_TAB_OFFSET = 14
+
 
 # ---------------------------------------------------------------------------
 # Column introspection
@@ -220,18 +225,17 @@ def _representative_per_cell(
         ``Metadata_ImageFile``, ``Metadata_Dataset``, ``ObjectLabel``, and
         ``count`` (number of colonies in the cell).
     """
-    # If an axis column happens to also be one of the columns we want to
-    # carry through with `pl.first(...)`, polars complains about a
-    # duplicate output column. Skip those agg-firsts here — the axis
-    # values are already available on the resulting frame as the
-    # group-by keys.
-    forwarded_cols = [KEY_IMAGE_FILE, "Metadata_Dataset", _OBJECT_LABEL_COL]
+    # Collect the full per-cell list of `(image_file, dataset, label)` tuples
+    # via `pl.col(...)` aggregates that return polars lists. Aliased to
+    # `_members_*` so the names never collide with group-by keys (one of
+    # the forwarded columns may also be an axis column when the user
+    # picks e.g. Metadata_Dataset as an axis).
     aggs = [
-        pl.first(col).alias(col)
-        for col in forwarded_cols
-        if col not in (x_axis_col, y_axis_col)
+        pl.col(KEY_IMAGE_FILE).alias("_members_image_file"),
+        pl.col("Metadata_Dataset").alias("_members_dataset"),
+        pl.col(_OBJECT_LABEL_COL).alias("_members_label"),
+        pl.len().alias("count"),
     ]
-    aggs.append(pl.len().alias("count"))
     return (
         df.sort([x_axis_col, y_axis_col, _OBJECT_LABEL_COL])
         .group_by([x_axis_col, y_axis_col], maintain_order=True)
@@ -262,9 +266,12 @@ def _build_cell(
     dataset: str,
     count: int,
     max_size: int,
+    display_size: int,
     has_overlay: bool,
     is_removed: bool,
     is_selected: bool,
+    members: list[tuple[str, str, int]] | None = None,
+    removed_keys: set[tuple[str, int]] | None = None,
 ) -> Component:
     """Render the chrome + crop for a single grid cell.
 
@@ -273,7 +280,12 @@ def _build_cell(
         label: ``ObjectLabel`` of the representative colony.
         dataset: ``Metadata_Dataset`` of the representative colony.
         count: Number of colonies aggregated into this cell.
-        max_size: Crop side length, in pixels.
+        max_size: Server crop side length, in pixels (used in the URL so
+            the PNG is generated at full resolution covering the colony's
+            bbox).
+        display_size: CSS render size, in pixels. The browser scales the
+            ``<img>`` to this size; ``object-fit`` keeps colonies centered
+            without distortion.
         has_overlay: Whether the source overlay PNG exists on disk; if not,
             a striped placeholder is rendered instead of an ``<img>``.
         is_removed: Whether the representative colony is in the curated
@@ -295,8 +307,8 @@ def _build_cell(
             src=crop_url,
             className="colony-cell-img",
             style={
-                "width": f"{max_size}px",
-                "height": f"{max_size}px",
+                "width": f"{display_size}px",
+                "height": f"{display_size}px",
                 "display": "block",
                 "opacity": "0.3" if is_removed else "1",
                 "objectFit": "cover",
@@ -306,8 +318,8 @@ def _build_cell(
         crop_node = html.Div(
             className="colony-cell-placeholder",
             style={
-                "width": f"{max_size}px",
-                "height": f"{max_size}px",
+                "width": f"{display_size}px",
+                "height": f"{display_size}px",
                 "backgroundImage": (
                     "repeating-linear-gradient(45deg, "
                     "rgba(0,54,96,0.05) 0px, rgba(0,54,96,0.05) 8px, "
@@ -358,42 +370,126 @@ def _build_cell(
             "padding": "0 0.4rem",
             "lineHeight": "1.2",
         },
-        title="Restore colony" if is_removed else "Remove colony",
+        title=(
+            "add colony to measurements"
+            if is_removed
+            else "remove colony from measurements"
+        ),
     )
 
-    children: list[Component] = [crop_node, checkbox, remove_btn]
+    # Image card: the framed display_size×display_size area carrying the
+    # crop, checkbox, and remove button. Sits in front of the stack tab
+    # via z-index so the tab can peek out from beneath the bottom edge.
+    frame = html.Div(
+        [crop_node, checkbox, remove_btn],
+        className="colony-cell-frame",
+    )
+
+    children: list[Component] = [frame]
 
     if count > 1:
-        # Render the badge as a button so an expand-on-click drilldown
-        # can hook into it later without changing the DOM shape.
+        badge_id = colony_cell_count_badge_id(image_file, label)
         children.append(
             dbc.Button(
                 f"N={count}",
-                id=colony_cell_count_badge_id(image_file, label),
-                color="light",
-                size="sm",
-                className="colony-cell-count-badge",
-                style={
-                    "position": "absolute",
-                    "bottom": "4px",
-                    "right": "4px",
-                    "zIndex": "2",
-                    "padding": "0 0.35rem",
-                    "fontSize": "0.65rem",
-                    "lineHeight": "1.2",
-                    "fontFamily": "'DM Mono', monospace",
-                },
+                id=badge_id,
+                className="colony-cell-stack-tab",
+                title=f"click to expand all {count} colonies in this cell",
+                n_clicks=0,
             )
         )
+        if members:
+            removed_lookup = removed_keys or set()
+            children.append(
+                _build_stack_popover(
+                    target_id=badge_id,
+                    members=members,
+                    crop_size=max_size,
+                    display_size=display_size,
+                    removed_keys=removed_lookup,
+                )
+            )
 
     return html.Div(
         children,
         className=" ".join(classes),
         style={
             "position": "relative",
-            "width": f"{max_size}px",
-            "height": f"{max_size}px",
+            "width": f"{display_size}px",
+            "height": f"{display_size + _STACK_TAB_OFFSET}px",
+            "overflow": "visible",
         },
+    )
+
+
+def _build_stack_popover(
+    *,
+    target_id: dict[str, str],
+    members: list[tuple[str, str, int]],
+    crop_size: int,
+    display_size: int,
+    removed_keys: set[tuple[str, int]],
+) -> Component:
+    """Render the click-to-expand stack of crops for a multi-colony cell.
+
+    Each member colony renders as a small ``<img>`` with its label visible
+    beneath. Removed colonies are dimmed. The popover anchors to the cell's
+    ``N=k`` badge button and toggles open on click.
+    """
+    rows: list[Component] = []
+    for image_file, dataset, label in members:
+        is_removed = (image_file, label) in removed_keys
+        crop_url = f"/crops/{dataset}/{image_file}/{label}.png?size={crop_size}"
+        rows.append(
+            html.Div(
+                [
+                    html.Img(
+                        src=crop_url,
+                        # Defer the fetch until the popover scrolls into
+                        # view. With cells that aggregate hundreds of
+                        # colonies the alternative is a wave of /crops/
+                        # requests on initial page render -- the popover
+                        # is click-gated, so the user only ever opens
+                        # one at a time.
+                        loading="lazy",
+                        style={
+                            "width": f"{display_size}px",
+                            "height": f"{display_size}px",
+                            "objectFit": "cover",
+                            "display": "block",
+                            "borderRadius": "3px",
+                            "opacity": "0.3" if is_removed else "1",
+                        },
+                    ),
+                    html.Div(
+                        f"label {label}"
+                        + ("  (removed)" if is_removed else ""),
+                        style={
+                            "fontFamily": "'DM Mono', monospace",
+                            "fontSize": "0.65rem",
+                            "color": "#003660",
+                            "textAlign": "center",
+                            "marginTop": "0.15rem",
+                        },
+                    ),
+                ],
+                style={"marginBottom": "0.4rem"},
+            )
+        )
+    return dbc.Popover(
+        dbc.PopoverBody(
+            rows,
+            style={
+                "maxHeight": "60vh",
+                "overflowY": "auto",
+                "padding": "0.5rem",
+            },
+        ),
+        target=target_id,
+        trigger="legacy",
+        placement="right",
+        hide_arrow=False,
+        style={"zIndex": "1080"},
     )
 
 
@@ -405,6 +501,7 @@ def build_grid(
     removed_keys: set[tuple[str, int]],
     selected_keys: set[tuple[str, int]],
     output_root: OutputRoot,
+    display_size: int | None = None,
 ) -> tuple[Component, list[tuple[str, int]]]:
     """Render the colony-grid component and its row-major key order.
 
@@ -430,13 +527,21 @@ def build_grid(
         df: Filtered master frame (after :class:`FilterSpec.apply_to`).
         x_axis_col: Column projected onto the X-axis.
         y_axis_col: Column projected onto the Y-axis.
-        max_size: Side length, in pixels, of every crop tile.
+        max_size: Side length, in pixels, of every server-side crop tile.
+            Used in the crop URL so the PNG always covers the colony bbox
+            at full resolution. Independent of how the tile is sized in
+            the browser.
         removed_keys: Set of ``(image_file, label)`` keys currently in
             the curated removal set.
         selected_keys: Set of ``(image_file, label)`` keys currently in
             the active multi-select.
         output_root: Validated handle on the output root, used to answer
             :meth:`OutputRoot.has_overlay` per cell.
+        display_size: CSS render size, in pixels, for each tile. Defaults
+            to ``max_size`` (no scaling). Pass a smaller value to shrink
+            the grid into the viewport without re-cropping; the browser
+            scales the ``<img>`` and ``object-fit: cover`` keeps the
+            colony centred.
 
     Returns:
         A tuple ``(component, grid_order)``. ``grid_order`` is the
@@ -445,6 +550,9 @@ def build_grid(
         the rendered cells. Consumed by the selection-range callback to
         resolve shift+click slices.
     """
+    if display_size is None:
+        display_size = max_size
+
     if df.is_empty() or x_axis_col not in df.columns or y_axis_col not in df.columns:
         return html.Div("No colonies match the active filter.", className="text-muted"), []
 
@@ -470,14 +578,30 @@ def build_grid(
 
     representatives = _representative_per_cell(df, x_axis_col, y_axis_col)
 
-    # Index the representative frame for O(1) per-cell lookup.
+    # Index the representative frame for O(1) per-cell lookup. The
+    # representative is the first member (smallest ObjectLabel) and the
+    # `members` list carries every colony in the cell so the click-to-
+    # expand popover can render the full mini-stack.
     cell_index: dict[tuple[object, object], dict[str, object]] = {}
     for row in representatives.iter_rows(named=True):
+        members_image_file = list(row["_members_image_file"])
+        members_dataset = list(row["_members_dataset"])
+        members_label = list(row["_members_label"])
+        members = [
+            (str(im), str(ds), int(lbl))
+            for im, ds, lbl in zip(
+                members_image_file,
+                members_dataset,
+                members_label,
+                strict=True,
+            )
+        ]
         cell_index[(row[x_axis_col], row[y_axis_col])] = {
-            "image_file": row[KEY_IMAGE_FILE],
-            "dataset": row["Metadata_Dataset"],
-            "label": row[_OBJECT_LABEL_COL],
+            "image_file": members_image_file[0] if members_image_file else None,
+            "dataset": members_dataset[0] if members_dataset else None,
+            "label": members_label[0] if members_label else None,
             "count": row["count"],
+            "members": members,
         }
 
     # Build the grid, walking Y outer / X inner so the row-major key list
@@ -501,8 +625,8 @@ def build_grid(
                     html.Div(
                         className="colony-cell colony-cell--empty",
                         style={
-                            "width": f"{max_size}px",
-                            "height": f"{max_size}px",
+                            "width": f"{display_size}px",
+                            "height": f"{display_size + _STACK_TAB_OFFSET}px",
                             "background": "rgba(0,54,96,0.03)",
                             "borderRadius": "4px",
                         },
@@ -517,6 +641,12 @@ def build_grid(
             count = int(entry["count"])  # type: ignore[call-overload]
             key = (image_file, label)
             grid_order.append(key)
+            members = entry.get("members") or []
+            # ``members`` came in already typed as ``list[tuple[str, str, int]]``
+            # from the index; cast for the local helper.
+            typed_members = [
+                (str(m[0]), str(m[1]), int(m[2])) for m in members  # type: ignore[index]
+            ]
             children.append(
                 _build_cell(
                     image_file=image_file,
@@ -524,9 +654,12 @@ def build_grid(
                     dataset=dataset,
                     count=count,
                     max_size=max_size,
+                    display_size=display_size,
                     has_overlay=output_root.has_overlay(dataset, image_file),
                     is_removed=key in removed_keys,
                     is_selected=key in selected_keys,
+                    members=typed_members,
+                    removed_keys=removed_keys,
                 )
             )
 
@@ -536,10 +669,18 @@ def build_grid(
         className="colony-grid",
         style={
             "display": "grid",
-            "gridTemplateColumns": "auto " + " ".join([f"{max_size}px"] * len(x_values)),
-            "gridTemplateRows": "auto " + " ".join([f"{max_size}px"] * len(y_values)),
+            "gridTemplateColumns": "auto " + " ".join([f"{display_size}px"] * len(x_values)),
+            "gridTemplateRows": (
+                "auto "
+                + " ".join([f"{display_size + _STACK_TAB_OFFSET}px"] * len(y_values))
+            ),
             "gap": "8px",
             "padding": "0.5rem",
+            # Shrink-wrap to the column widths so the grid sits flush
+            # against the container's left edge instead of stretching to
+            # block-level width and floating its tracks.
+            "width": "max-content",
+            "justifySelf": "start",
         },
     )
     return grid, grid_order

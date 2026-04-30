@@ -102,6 +102,32 @@ def _build_toolbar() -> Component:
         size="sm",
     )
 
+    tile_size_slider = html.Div(
+        [
+            html.Span(
+                "Tile size",
+                className="me-1",
+                style={"color": _NAVY, "fontWeight": 500, "fontSize": "0.85rem"},
+            ),
+            dcc.Slider(
+                id=ids.COLONY_TILE_SIZE_SLIDER_ID,
+                min=64,
+                max=400,
+                step=16,
+                value=150,
+                marks=None,
+                tooltip={"placement": "bottom", "always_visible": False},
+            ),
+        ],
+        style={
+            "display": "flex",
+            "alignItems": "center",
+            "gap": "0.5rem",
+            "minWidth": "180px",
+            "flex": "0 0 220px",
+        },
+    )
+
     return html.Div(
         [
             html.Div(
@@ -112,6 +138,7 @@ def _build_toolbar() -> Component:
                 [y_label, y_dropdown],
                 style={"display": "flex", "alignItems": "center", "gap": "0.25rem"},
             ),
+            tile_size_slider,
             crop_size_info,
             html.Div(style={"flex": "1 1 auto"}),  # spacer pushes refresh to the right
             refresh_button,
@@ -250,7 +277,7 @@ def layout(output_root: OutputRoot) -> Component:
         style={
             "padding": "1rem",
             "maxHeight": "calc(100vh - 8rem)",
-            "overflowY": "auto",
+            "overflow": "auto",
             "background": _BG,
         },
     )

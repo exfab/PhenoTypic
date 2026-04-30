@@ -115,6 +115,7 @@ def register_callbacks(
         Input(ids.COLONY_X_AXIS_DROPDOWN_ID, "value"),
         Input(ids.COLONY_Y_AXIS_DROPDOWN_ID, "value"),
         Input(ids.COLONY_BTN_REFRESH_ID, "n_clicks"),
+        Input(ids.COLONY_TILE_SIZE_SLIDER_ID, "value"),
         Input(ids.TABS_ID, "active_tab"),
     )
     def _render_colony_grid(
@@ -123,6 +124,7 @@ def register_callbacks(
         x_axis: str | None,
         y_axis: str | None,
         refresh_clicks: int | None,
+        tile_size: int | None,
         active_tab: str | None,
     ) -> tuple[Any, Any, Any]:
         """Rebuild the grid whenever any of its data inputs change.
@@ -152,6 +154,12 @@ def register_callbacks(
             filtered_df = df
 
         max_size = compute_max_bbox_size(filtered_df)
+        # Display size: clamp the slider value into the slider's own range
+        # then cap at the server crop size so the browser never upscales
+        # the PNG beyond its native resolution.
+        slider_value = int(tile_size) if tile_size else 150
+        slider_value = max(64, min(400, slider_value))
+        display_size = min(slider_value, max_size)
         removed_keys = set(decode_removed_keys_payload(removed_payload))
 
         # Selection styling is applied by the JS lifecycle layer, so we
@@ -165,8 +173,12 @@ def register_callbacks(
             removed_keys,
             set(),
             output_root,
+            display_size=display_size,
         )
-        info = f"crop size: {max_size} px ({filtered_df.height} colonies)"
+        info = (
+            f"crop {max_size}px → {display_size}px "
+            f"({filtered_df.height} colonies)"
+        )
         order_payload = [[img, label] for img, label in grid_order]
         return component, info, order_payload
 

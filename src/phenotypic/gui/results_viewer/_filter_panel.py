@@ -288,8 +288,7 @@ def _render_filter_row(
         value=column or None,
         searchable=True,
         clearable=False,
-        placeholder="Select column…",
-        style={"minWidth": "10rem"},
+        placeholder="column",
     )
 
     values_dropdown = dcc.Dropdown(
@@ -297,12 +296,11 @@ def _render_filter_row(
         options=[{"label": v, "value": v} for v in values],
         value=values,
         multi=True,
-        placeholder="Select values…",
-        style={"minWidth": "12rem"},
+        placeholder="values",
     )
 
     paste_button = dbc.Button(
-        "Paste…",
+        "Paste",
         id=ids.filter_row_paste_btn_id(idx),
         color="secondary",
         outline=True,
@@ -357,20 +355,11 @@ def _render_filter_row(
 
     return html.Div(
         [
-            dbc.Row(
-                [
-                    dbc.Col(column_dropdown, md=4, className="pe-1"),
-                    dbc.Col(values_dropdown, md=5, className="px-1"),
-                    dbc.Col(
-                        html.Div(
-                            [paste_button, remove_button],
-                            className="d-flex gap-1 justify-content-end",
-                        ),
-                        md=3,
-                        className="ps-1",
-                    ),
-                ],
-                className="g-1 align-items-center",
+            html.Div(column_dropdown, className="mb-2"),
+            html.Div(values_dropdown, className="mb-2"),
+            html.Div(
+                [paste_button, remove_button],
+                className="d-flex gap-1 justify-content-start",
             ),
             paste_popover,
         ],
