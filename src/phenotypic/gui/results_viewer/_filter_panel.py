@@ -666,9 +666,18 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         Output(ids.STORE_IMAGE_PAIRS, "data"),
         Output(ids.FILTER_MATCH_COUNT_ID, "children"),
         Input(ids.STORE_FILTER_SPEC, "data"),
+        State(ids.STORE_IMAGE_PAIRS, "data"),
     )
-    def _derive_image_pairs(stored: Any) -> tuple[list[dict[str, str]], str]:
-        """Re-derive the filtered (dataset, stem) pairs and update the chip."""
+    def _derive_image_pairs(
+        stored: Any, current_pairs: Any
+    ) -> tuple[Any, Any]:
+        """Re-derive the filtered (dataset, stem) pairs and update the chip.
+
+        Returns ``no_update`` for both outputs when the filter result is
+        unchanged from the existing store payload — otherwise every
+        viewer card's picker options refresh and the OSD clientside
+        callback re-runs even when nothing actually moved.
+        """
         spec = FilterSpec.from_store(_normalise_spec(stored))
         try:
             filtered = spec.apply_to(df)
@@ -677,6 +686,8 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
             filtered = df
         pairs = output_root.image_pairs(filtered)
         payload = [{"dataset": dataset, "stem": stem} for dataset, stem in pairs]
+        if isinstance(current_pairs, list) and current_pairs == payload:
+            return no_update, no_update
         return payload, f"{len(pairs)} images match"
 
 

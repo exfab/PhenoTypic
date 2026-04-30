@@ -14,7 +14,6 @@ import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from types import MappingProxyType
 
 import polars as pl
 
@@ -61,6 +60,11 @@ class OutputRoot:
     column_value_sets: Mapping[str, list[str]]
     cache_dir: Path
     pipeline_summary: str | None
+    #: Snapshot of ``(dataset, stem)`` pairs that have an overlay PNG on
+    #: disk at discovery time. Used as an O(1) replacement for the
+    #: :meth:`has_overlay` per-call ``stat`` so picker callbacks don't
+    #: hit the filesystem on every render.
+    overlay_index: frozenset[tuple[str, str]]
 
     @classmethod
     def discover(cls, root: Path) -> OutputRoot:
@@ -141,6 +145,7 @@ class OutputRoot:
         cache_dir.mkdir(parents=True, exist_ok=True)
 
         pipeline_summary = _read_pipeline_summary(root / _PIPELINE_JSON)
+        overlay_index = _scan_overlay_index(results_dir, datasets_with_overlays)
 
         return cls(
             root=root,
@@ -148,7 +153,13 @@ class OutputRoot:
             column_value_sets=column_value_sets,
             cache_dir=cache_dir,
             pipeline_summary=pipeline_summary,
+            overlay_index=overlay_index,
         )
+
+    @property
+    def results_dir(self) -> Path:
+        """Path to ``<root>/results``."""
+        return self.root / _RESULTS_DIRNAME
 
     def overlay_path(self, dataset: str, stem: str) -> Path:
         """Return the absolute path of an overlay PNG.
@@ -168,15 +179,19 @@ class OutputRoot:
     def has_overlay(self, dataset: str, stem: str) -> bool:
         """Return ``True`` if the overlay PNG exists on disk.
 
+        Backed by a frozenset snapshot taken at discovery time, so this
+        is O(1) regardless of how many overlays exist. Overlays added
+        after the viewer launches are not visible until restart; that is
+        acceptable for an interactive review tool.
+
         Args:
             dataset: Dataset name.
             stem: Image stem.
 
         Returns:
-            ``True`` if :meth:`overlay_path` resolves to a regular
-            file, ``False`` otherwise.
+            ``True`` if the overlay PNG was present at discovery time.
         """
-        return self.overlay_path(dataset, stem).is_file()
+        return (dataset, stem) in self.overlay_index
 
     def image_pairs(self, df: pl.DataFrame) -> list[tuple[str, str]]:
         """Extract unique ``(dataset, image_stem)`` pairs from a frame.
@@ -314,20 +329,79 @@ def _ensure_required_columns(
     return enriched
 
 
-def _build_column_value_sets(df: pl.DataFrame) -> Mapping[str, list[str]]:
-    """Compute sorted unique string values for every column."""
-    value_sets: dict[str, list[str]] = {}
-    for column in df.columns:
-        unique_strings = (
-            df.get_column(column)
+def _scan_overlay_index(
+    results_dir: Path, datasets_with_overlays: list[str]
+) -> frozenset[tuple[str, str]]:
+    """Snapshot every ``(dataset, stem)`` whose overlay PNG exists on disk.
+
+    Args:
+        results_dir: ``<root>/results``.
+        datasets_with_overlays: Dataset names known to have an
+            ``overlays`` subdirectory; pre-filtered by the discovery
+            scan to avoid an extra ``is_dir`` check.
+
+    Returns:
+        Frozen set of ``(dataset, stem)`` tuples; the stem is the PNG
+        filename minus its ``.png`` suffix.
+    """
+    pairs: set[tuple[str, str]] = set()
+    for dataset in datasets_with_overlays:
+        overlays_dir = results_dir / dataset / _OVERLAYS_DIRNAME
+        for entry in overlays_dir.iterdir():
+            if entry.suffix.lower() == ".png" and entry.is_file():
+                pairs.add((dataset, entry.stem))
+    return frozenset(pairs)
+
+
+_METADATA_PREFIX = "Metadata_"
+
+
+class _LazyColumnValueSets(Mapping[str, list[str]]):
+    """Sorted unique string values per column, computed on first access.
+
+    Eagerly materialises ``Metadata_*`` columns (always small, always
+    surfaced in the filter sidebar) and defers everything else until a
+    callback actually asks for it. Avoids the multi-MB string allocation
+    that would otherwise happen at boot for wide masters with hundreds
+    of high-cardinality measurement columns.
+    """
+
+    def __init__(self, df: pl.DataFrame) -> None:
+        self._df = df
+        self._cache: dict[str, list[str]] = {}
+        for column in df.columns:
+            if column.startswith(_METADATA_PREFIX):
+                self._cache[column] = self._compute(column)
+
+    def _compute(self, column: str) -> list[str]:
+        return (
+            self._df.get_column(column)
             .cast(pl.String)
             .drop_nulls()
             .unique()
             .sort()
             .to_list()
         )
-        value_sets[column] = unique_strings
-    return MappingProxyType(value_sets)
+
+    def __getitem__(self, column: str) -> list[str]:
+        if column not in self._df.columns:
+            raise KeyError(column)
+        cached = self._cache.get(column)
+        if cached is None:
+            cached = self._compute(column)
+            self._cache[column] = cached
+        return cached
+
+    def __iter__(self):  # type: ignore[no-untyped-def]
+        return iter(self._df.columns)
+
+    def __len__(self) -> int:
+        return len(self._df.columns)
+
+
+def _build_column_value_sets(df: pl.DataFrame) -> Mapping[str, list[str]]:
+    """Return a mapping from column name to sorted unique string values."""
+    return _LazyColumnValueSets(df)
 
 
 def _read_pipeline_summary(pipeline_json: Path) -> str | None:

@@ -17,6 +17,7 @@ current working directory at launch time.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import dash
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
@@ -58,7 +59,9 @@ def create_app(output_root: OutputRoot) -> dash.Dash:
         external_stylesheets=[dbc.themes.BOOTSTRAP],
         suppress_callback_exceptions=True,
         title="PhenoTypic Results Viewer",
-        assets_folder="_assets",
+        # Pin to the in-package directory so the assets ship correctly
+        # regardless of the user's CWD at launch.
+        assets_folder=str(Path(__file__).parent / "_assets"),
     )
 
     # Stash the output root on the underlying Flask server so future

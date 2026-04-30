@@ -13,8 +13,8 @@ The shell composes (left → right):
 Layout-level callbacks are minimal — only the ``Lock views`` switch
 mirror — because the heavy callbacks live in the modules that own each
 sub-tree (``_filter_panel`` for the sidebar, ``_viewer_card`` for the
-cards). This keeps each module self-contained and Wave 4 ends up as a
-thin ``register_callbacks(app, output_root)`` orchestrator.
+cards). This keeps each module self-contained and the top-level
+``_callbacks.register_callbacks`` ends up as a thin orchestrator.
 """
 
 from __future__ import annotations
@@ -135,12 +135,7 @@ def _build_header(output_root: OutputRoot) -> Component:
 
 
 def _build_cards_column() -> Component:
-    """Build the right-side cards column (container + add-card button).
-
-    Wave 3B (``_viewer_card``) is responsible for the actual card
-    component trees rendered into ``CARDS_CONTAINER_ID``; this module
-    only wires the static skeleton.
-    """
+    """Build the right-side cards column (container + add-card button)."""
     cards_container = html.Div(
         children=[],
         id=ids.CARDS_CONTAINER_ID,
@@ -214,7 +209,7 @@ def _build_stores() -> Component:
     In addition to the four session-storage stores backing the filter spec,
     image pair list, card list, and lock-views toggle, this also mounts two
     hidden trigger stores (:data:`ids.OSD_MOUNT_TRIGGER_ID` and
-    :data:`ids.LOCK_VIEWS_EFFECT_ID`) used by Wave 4's clientside callbacks
+    :data:`ids.LOCK_VIEWS_EFFECT_ID`) used by the clientside callbacks
     to bridge Dash state changes into the OpenSeadragon JS lifecycle.
     """
     return html.Div(
@@ -259,7 +254,7 @@ def build_app_layout(output_root: OutputRoot) -> Component:
     Mounts every shared ``dcc.Store``, the header bar, the dismissable
     startup banner, and the two-column body. Sub-trees defer to their
     owning modules (``_filter_panel`` for the sidebar; ``_viewer_card``
-    for cards in Wave 3B).
+    for cards).
 
     Args:
         output_root: Validated handle on the CLI output directory.
@@ -304,10 +299,10 @@ def build_app_layout(output_root: OutputRoot) -> Component:
 def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
     """Register layout-owned callbacks.
 
-    Currently a single mirror callback that copies the ``Lock views``
-    switch value into ``STORE_LOCK_VIEWS`` so downstream consumers
-    (clientside OSD JS in Wave 3C) can subscribe to the store rather
-    than the switch.
+    Bridges the ``Lock views`` ``dbc.Switch`` to ``STORE_LOCK_VIEWS``.
+    The clientside callback in :mod:`._callbacks` subscribes to a Store
+    rather than the Switch so Dash's pattern-matching can include the
+    boolean alongside other state without coupling to component types.
 
     Other layout-area callbacks (filter rows, card spawning, etc.)
     belong to the modules that own those component trees.
@@ -315,9 +310,9 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
     Args:
         app: The Dash application to attach the callbacks to.
         output_root: Validated handle on the CLI output directory.
-            Currently unused at this level — kept in the signature so
-            Wave 4's orchestrator can call every module's
-            ``register_callbacks`` with a uniform shape.
+            Unused at this level; kept in the signature so the
+            orchestrator can call every module's ``register_callbacks``
+            with a uniform shape.
     """
     del output_root  # currently unused at the layout level
 

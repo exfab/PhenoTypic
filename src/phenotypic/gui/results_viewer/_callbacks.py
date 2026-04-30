@@ -1,6 +1,6 @@
 """Callback orchestrator for the results viewer.
 
-Wave 4 deliverable. This module wires three pieces together:
+This module wires three pieces together:
 
 1. **Per-module Python callbacks.** Each layout module
    (:mod:`._layout`, :mod:`._filter_panel`, :mod:`._viewer_card`) owns

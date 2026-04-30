@@ -2,9 +2,8 @@
 
 This module exposes plain string constants for static (non-pattern-matching)
 component ids, plus small helpers for the pattern-matching ids used by the
-dynamic filter rows and viewer cards. Both layout (Wave 3) and callbacks
-(Wave 4) import from here so the contract between them is stable and
-grep-able.
+dynamic filter rows and viewer cards. Layout and callback modules both
+import from here so the contract between them is stable and grep-able.
 
 Notes:
     - Pattern-matching ids returned by helpers are plain dicts; Dash hashes
@@ -222,7 +221,7 @@ def card_picker_id(idx: str) -> Dict[str, str]:
 def card_osd_div_id(idx: str) -> Dict[str, str]:
     """Build the pattern-matching id for a card's OpenSeadragon container.
 
-    The clientside JS (mounted in Wave 3C) reads the ``index`` to key the
+    The clientside JS reads the ``index`` to key the
     ``Map<divId, OSD.Viewer>`` so each card has exactly one viewer at any
     time.
 

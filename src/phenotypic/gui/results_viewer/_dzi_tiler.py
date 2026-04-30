@@ -19,6 +19,7 @@ in-flight requests don't double-tile.
 
 from __future__ import annotations
 
+import functools
 import logging
 import math
 import shutil
@@ -41,11 +42,15 @@ __all__ = ["tile"]
 logger = logging.getLogger(__name__)
 
 # Per-image locks: serialises duplicate concurrent tile requests for the
-# same source PNG so we never double-write the cache.
-_LOCKS: dict[Path, threading.Lock] = {}
-_LOCKS_GUARD = threading.Lock()
+# same source PNG so we never double-write the cache. Bounded LRU so a
+# long-running viewer that browses thousands of images doesn't grow the
+# lock table without limit; an evicted lock that was being held would
+# still block correctly via its existing references on the stack, and
+# eviction only happens after ``maxsize`` distinct paths have been seen.
+_LOCK_CACHE_SIZE = 512
 
 
+@functools.lru_cache(maxsize=_LOCK_CACHE_SIZE)
 def _get_lock(png_path: Path) -> threading.Lock:
     """Return a per-image lock, creating one on first access.
 
@@ -55,12 +60,7 @@ def _get_lock(png_path: Path) -> threading.Lock:
     Returns:
         A :class:`threading.Lock` unique to ``png_path``.
     """
-    with _LOCKS_GUARD:
-        lock = _LOCKS.get(png_path)
-        if lock is None:
-            lock = threading.Lock()
-            _LOCKS[png_path] = lock
-        return lock
+    return threading.Lock()
 
 
 def tile(

@@ -94,9 +94,17 @@
             console.warn("[results_viewer] mountViewer: no element", divId);
             return null;
         }
-        // Always tear down any prior viewer before mounting a new one.
-        if (ns.viewers.has(divId)) {
-            try { ns.viewers.get(divId).destroy(); }
+        // Skip if the same DZI is already mounted on this div: the
+        // pattern-matching ALL clientside callback fires for *every*
+        // card-state change, not just the one that changed, so an
+        // unconditional teardown would needlessly re-fetch tiles for
+        // every other card on every selection.
+        const existing = ns.viewers.get(divId);
+        if (existing && existing._phenotypicDziUrl === dziUrl) {
+            return existing;
+        }
+        if (existing) {
+            try { existing.destroy(); }
             catch (e) { console.error(e); }
             ns.viewers.delete(divId);
         }
@@ -115,6 +123,7 @@
             // Defer rendering until tiles are ready; produces a softer crossfade.
             immediateRender: false,
         });
+        viewer._phenotypicDziUrl = dziUrl;
         ns.viewers.set(divId, viewer);
         if (ns.lockViewsActive) ns._attachLockHandlers(viewer);
         return viewer;
@@ -180,8 +189,8 @@
     };
 
     /**
-     * Toggle lock-views mode. Wave 4 wires this up to the
-     * STORE_LOCK_VIEWS dcc.Store via a clientside callback.
+     * Toggle lock-views mode. The Python clientside callback in
+     * `_callbacks.py` invokes this on STORE_LOCK_VIEWS changes.
      */
     ns.setLockViews = function (active) {
         ns.lockViewsActive = !!active;
@@ -243,7 +252,7 @@
 })();
 
 /* ============================================================
- * (E) Helper invoked by Wave 4's clientside callbacks.
+ * (E) Helper invoked by the Python clientside callbacks.
  * ============================================================ */
 (function () {
     "use strict";
@@ -257,8 +266,8 @@
      * If `dataset` or `stem` is missing/falsy the card's viewer is
      * disposed (used when a card is "cleared").
      *
-     * The DZI URL is constructed as `/tiles/<dataset>/<stem>.dzi`, which
-     * matches the route Wave 2 registers for tile delivery.
+     * The DZI URL is `/tiles/<dataset>/<stem>.dzi`, served by the
+     * Flask blueprint in `_tile_routes.py`.
      */
     ns.applyImageSelection = function (cardStates) {
         if (!Array.isArray(cardStates)) return null;

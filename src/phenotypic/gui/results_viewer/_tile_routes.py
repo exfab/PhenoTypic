@@ -33,11 +33,14 @@ _NAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 _TILE_NAME_RE = re.compile(r"^\d+_\d+\.png$")
 
 
-def _is_safe_dataset(name: str) -> bool:
-    """Return ``True`` if ``name`` is safe to use as a path component.
+def _is_safe_path_component(name: str) -> bool:
+    """Return ``True`` if ``name`` is safe to use as a single path component.
+
+    Validates both the ``<dataset>`` and ``<stem>`` URL captures before
+    feeding them into filesystem paths.
 
     Args:
-        name: Candidate dataset identifier from the URL.
+        name: Candidate identifier from the URL.
 
     Returns:
         ``True`` only if ``name`` is non-empty, contains no path
@@ -49,21 +52,6 @@ def _is_safe_dataset(name: str) -> bool:
     if "/" in name or "\\" in name or ".." in name:
         return False
     return bool(_NAME_RE.match(name))
-
-
-def _is_safe_stem(name: str) -> bool:
-    """Return ``True`` if ``name`` is safe to use as an image stem.
-
-    Same hardening as :func:`_is_safe_dataset` — the stem is
-    structurally identical (a single path component).
-
-    Args:
-        name: Candidate image stem from the URL.
-
-    Returns:
-        ``True`` if the stem is safe to embed in a filesystem path.
-    """
-    return _is_safe_dataset(name)
 
 
 def register(app: dash.Dash, output_root: OutputRoot) -> None:
@@ -84,12 +72,11 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
             the per-image cache directory.
     """
     bp = Blueprint("results_viewer_tiles", __name__, url_prefix="/tiles")
-    results_dir = output_root.root / "results"
 
     @bp.route("/<dataset>/<stem>.dzi")
     def manifest(dataset: str, stem: str) -> Response:
         """Serve the DZI XML manifest, generating the pyramid if needed."""
-        if not _is_safe_dataset(dataset) or not _is_safe_stem(stem):
+        if not _is_safe_path_component(dataset) or not _is_safe_path_component(stem):
             logger.warning(
                 "Rejected tile manifest request with unsafe identifiers: "
                 "dataset=%r stem=%r",
@@ -98,7 +85,7 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
             )
             return _json_error("invalid dataset or stem", 404)
 
-        if not (results_dir / dataset).is_dir():
+        if not (output_root.results_dir / dataset).is_dir():
             return _json_error(
                 f"unknown dataset: {dataset!r}", 404
             )
@@ -132,7 +119,7 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
         dataset: str, stem: str, level: int, filename: str
     ) -> Response:
         """Serve an individual tile PNG from the per-image cache."""
-        if not _is_safe_dataset(dataset) or not _is_safe_stem(stem):
+        if not _is_safe_path_component(dataset) or not _is_safe_path_component(stem):
             logger.warning(
                 "Rejected tile request with unsafe identifiers: "
                 "dataset=%r stem=%r",

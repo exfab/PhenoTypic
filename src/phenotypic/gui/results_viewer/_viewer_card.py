@@ -11,10 +11,10 @@ This module owns:
 * :func:`layout` -- the per-card component tree, keyed by a hex UUID.
 * :func:`register_callbacks` -- every callback that mutates card state
   (spawn / remove / picker options / per-card state / info chips /
-  details toggle / details DataTable). The clientside OpenSeadragon
-  mount/dispose is the responsibility of Wave 3C and the integrator
-  (Wave 4) -- this module only renders an empty ``html.Div`` with the
-  agreed pattern-matching id where the JS layer will mount.
+  details toggle / details DataTable). The OpenSeadragon mount/dispose
+  is owned by the JS layer in ``_assets/results_viewer.js``; this
+  module only renders an empty ``html.Div`` with the agreed
+  pattern-matching id where the JS will mount.
 
 Picker option-value encoding
 -----------------------------
@@ -81,7 +81,7 @@ _MAX_DETAILS_ROWS = 5000
 #: Prefix used to recognise metadata columns (``Metadata_Dataset`` etc.).
 _METADATA_PREFIX = "Metadata_"
 
-#: Default OSD canvas height; can be overridden by Wave 3C CSS.
+#: Default OSD canvas height; CSS in ``_assets/results_viewer.css`` may override.
 _OSD_CANVAS_STYLE: dict[str, str] = {"height": "600px", "width": "100%"}
 
 
@@ -145,8 +145,8 @@ def layout(card_id: str, output_root: OutputRoot) -> Any:
 
     1. A header row holding the image-picker dropdown, dataset/stem/
        n-objects info chips, and a remove (``x``) button.
-    2. A full-bleed OpenSeadragon canvas div (the JS layer in
-       Wave 3C mounts an OSD viewer here when an image is selected).
+    2. A full-bleed OpenSeadragon canvas div (the JS layer mounts an
+       OSD viewer here when an image is selected).
     3. A details toggle button and a collapsible per-object
        :class:`dash_table.DataTable`.
     4. A per-card :class:`dcc.Store` holding the selected
@@ -539,14 +539,12 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
     """
     _ensure_initial_card_trigger(app)
 
-    # 1. Render the cards container from STORE_CARD_LIST. We diff the
-    #    list against the most-recently-rendered ids (tracked in a
-    #    callback-local closure) and use ``dash.Patch`` to incrementally
-    #    add/remove cards. Re-rendering existing cards in place would
-    #    destroy their internal React state -- including the
-    #    image-picker selection and the OSD viewer mounted on the
-    #    canvas div -- which we want to preserve across "+ Add card"
-    #    and remove-card actions.
+    # Diff the incoming card-id list against the previously-rendered
+    # one and emit a ``dash.Patch`` so existing cards (and their OSD
+    # viewers) survive sibling add/remove. The previously-rendered list
+    # lives in the closure: this is correct under Dash's single-process
+    # dev server (the only deployment shipped here); multi-worker
+    # deployments would need to lift the state into a Store.
     rendered_ids: list[str] = []
 
     @app.callback(
@@ -674,36 +672,58 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
             "filter_columns": active_columns,
         }
 
-    # 7. Update info chips (dataset / stem / n_objects) for a card.
+    # 7. Card payload: info chips + per-object DataTable, computed in
+    #    one pass so the (slice + filter) work isn't duplicated across
+    #    two callbacks that fire on the same trigger.
     @app.callback(
         Output({"type": "card-info-dataset", "index": MATCH}, "children"),
         Output({"type": "card-info-stem", "index": MATCH}, "children"),
         Output({"type": "card-info-count", "index": MATCH}, "children"),
+        Output({"type": "card-details-table", "index": MATCH}, "columns"),
+        Output({"type": "card-details-table", "index": MATCH}, "data"),
         Input({"type": "card-state", "index": MATCH}, "data"),
         State(STORE_FILTER_SPEC, "data"),
     )
-    def _update_info_chips(
+    def _update_card_payload(
         state: dict[str, Any] | None, filter_payload: list[dict] | None
-    ) -> tuple[str, str, str]:
+    ) -> tuple[str, str, str, list[dict[str, str]], list[dict[str, Any]]]:
+        empty_chips = ("--", "--", "-- objects")
         if not state:
-            return "--", "--", "-- objects"
+            return *empty_chips, [], []
         dataset = state.get("dataset")
         stem = state.get("stem")
         if not dataset or not stem:
-            return "--", "--", "-- objects"
+            return *empty_chips, [], []
+
         try:
             slice_df = _slice_for_image(output_root, dataset, stem)
             spec = FilterSpec.from_store(filter_payload)
             filtered = spec.apply_to(slice_df)
-            n_objects = filtered.height
         except Exception:
             logger.exception(
-                "Failed to compute info-chip counts for %s/%s",
+                "Failed to slice/filter master for %s/%s", dataset, stem
+            )
+            return dataset, stem, "0 objects", [], []
+
+        n_objects = filtered.height
+        filter_columns = [
+            row.column for row in spec.rows if row.column and row.values
+        ]
+        project = _project_details_columns(filtered, filter_columns)
+        if not project:
+            return dataset, stem, f"{n_objects} objects", [], []
+        projected = filtered.select(project)
+        if projected.height > _MAX_DETAILS_ROWS:
+            logger.info(
+                "Capping details DataTable for %s/%s at %d rows (had %d)",
                 dataset,
                 stem,
+                _MAX_DETAILS_ROWS,
+                projected.height,
             )
-            n_objects = 0
-        return dataset, stem, f"{n_objects} objects"
+            projected = projected.head(_MAX_DETAILS_ROWS)
+        columns = [{"name": col, "id": col} for col in project]
+        return dataset, stem, f"{n_objects} objects", columns, projected.to_dicts()
 
     # 8. Toggle the details collapse.
     @app.callback(
@@ -716,51 +736,6 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         if not n_clicks:
             return bool(is_open)
         return not bool(is_open)
-
-    # 9. Populate the per-object DataTable.
-    @app.callback(
-        Output({"type": "card-details-table", "index": MATCH}, "columns"),
-        Output({"type": "card-details-table", "index": MATCH}, "data"),
-        Input({"type": "card-state", "index": MATCH}, "data"),
-        State(STORE_FILTER_SPEC, "data"),
-    )
-    def _populate_details_table(
-        state: dict[str, Any] | None, filter_payload: list[dict] | None
-    ) -> tuple[list[dict[str, str]], list[dict[str, Any]]]:
-        if not state:
-            return [], []
-        dataset = state.get("dataset")
-        stem = state.get("stem")
-        if not dataset or not stem:
-            return [], []
-        try:
-            slice_df = _slice_for_image(output_root, dataset, stem)
-            spec = FilterSpec.from_store(filter_payload)
-            filtered = spec.apply_to(slice_df)
-            filter_columns = [
-                row.column for row in spec.rows if row.column and row.values
-            ]
-            project = _project_details_columns(filtered, filter_columns)
-            if not project:
-                return [], []
-            projected = filtered.select(project)
-            if projected.height > _MAX_DETAILS_ROWS:
-                logger.info(
-                    "Capping details DataTable for %s/%s at %d rows (had %d)",
-                    dataset,
-                    stem,
-                    _MAX_DETAILS_ROWS,
-                    projected.height,
-                )
-                projected = projected.head(_MAX_DETAILS_ROWS)
-            columns = [{"name": col, "id": col} for col in project]
-            data = projected.to_dicts()
-        except Exception:
-            logger.exception(
-                "Failed to populate details table for %s/%s", dataset, stem
-            )
-            return [], []
-        return columns, data
 
 
 __all__ = [
