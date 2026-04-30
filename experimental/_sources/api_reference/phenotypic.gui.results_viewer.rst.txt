@@ -1,0 +1,15 @@
+phenotypic.gui.results\_viewer package
+======================================
+
+.. automodule:: phenotypic.gui.results_viewer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   phenotypic.gui.results_viewer.colony_view
