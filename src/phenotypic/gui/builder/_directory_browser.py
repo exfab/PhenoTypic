@@ -136,6 +136,33 @@ def _safe_iterdir(path: Path) -> List[Path]:
 # Layout builders
 # ---------------------------------------------------------------------------
 
+
+def _entry_item(
+    *,
+    icon: str,
+    label: str,
+    id_type: str,
+    kind: str,
+    path: Path,
+) -> dbc.ListGroupItem:
+    """Build one clickable :class:`dbc.ListGroupItem` for the directory tree.
+
+    Args:
+        icon: Leading single-character glyph (folder, picture, up-arrow).
+        label: Text shown after the icon (filename or directory name).
+        id_type: ``DIR_ENTRY_TYPE_*`` value placed in the pattern-matching id.
+        kind: One of ``"parent"``, ``"dir"``, ``"file"``.
+        path: Filesystem path serialised into the id so callbacks can act on
+            it without needing extra state.
+    """
+    return dbc.ListGroupItem(
+        [html.Span(f"{icon} "), html.Span(label)],
+        id={"type": id_type, "kind": kind, "path": str(path)},
+        action=True,
+        n_clicks=0,
+    )
+
+
 def directory_tree(
     root: Path,
     current: Path | None = None,
@@ -219,24 +246,19 @@ def directory_tree(
             parent = here.parent
             if _is_within(parent, root):
                 list_items.append(
-                    dbc.ListGroupItem(
-                        [html.Span("↑ "), html.Span("Parent directory")],
-                        id={
-                            "type": id_type,
-                            "kind": "parent",
-                            "path": str(parent),
-                        },
-                        action=True,
-                        n_clicks=0,
+                    _entry_item(
+                        icon="↑",
+                        label="Parent directory",
+                        id_type=id_type,
+                        kind="parent",
+                        path=parent,
                     )
                 )
 
     # Walk depth-1 of `here`, filtering hidden entries and out-of-root symlinks.
-    entries = _safe_iterdir(here)
-
     subdirs: List[Path] = []
     files: List[Path] = []
-    for entry in entries:
+    for entry in _safe_iterdir(here):
         if entry.name.startswith("."):
             continue
         try:
@@ -248,37 +270,32 @@ def directory_tree(
             continue
         if is_dir:
             subdirs.append(entry)
-        elif select_files:
-            if extensions is None or entry.suffix.lower() in extensions:
-                files.append(entry)
+        elif select_files and (
+            extensions is None or entry.suffix.lower() in extensions
+        ):
+            files.append(entry)
 
     subdirs.sort(key=lambda p: p.name.lower())
     files.sort(key=lambda p: p.name.lower())
 
     for d in subdirs:
         list_items.append(
-            dbc.ListGroupItem(
-                [html.Span("\U0001F4C1 "), html.Span(d.name + "/")],
-                id={
-                    "type": id_type,
-                    "kind": "dir",
-                    "path": str(d),
-                },
-                action=True,
-                n_clicks=0,
+            _entry_item(
+                icon="\U0001F4C1",
+                label=f"{d.name}/",
+                id_type=id_type,
+                kind="dir",
+                path=d,
             )
         )
     for f in files:
         list_items.append(
-            dbc.ListGroupItem(
-                [html.Span("\U0001F5BC️ "), html.Span(f.name)],
-                id={
-                    "type": id_type,
-                    "kind": "file",
-                    "path": str(f),
-                },
-                action=True,
-                n_clicks=0,
+            _entry_item(
+                icon="\U0001F5BC️",
+                label=f.name,
+                id_type=id_type,
+                kind="file",
+                path=f,
             )
         )
 

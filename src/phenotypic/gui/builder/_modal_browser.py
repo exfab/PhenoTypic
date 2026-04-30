@@ -28,7 +28,7 @@ to the matching trigger-button click (e.g. :data:`~_ids.BTN_SAVE`,
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List
+from typing import Any, FrozenSet, List
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
@@ -37,11 +37,16 @@ from . import _ids as ids
 from ._directory_browser import IMAGE_EXTS, PIPELINE_EXTS, directory_tree
 
 # ---------------------------------------------------------------------------
-# Private helpers
+# Helpers
 # ---------------------------------------------------------------------------
 
-def _no_root_placeholder() -> html.Div:
-    """Return an italic muted ``Div`` shown when no working directory is set."""
+def no_root_placeholder() -> html.Div:
+    """Return an italic muted ``Div`` shown when no working directory is set.
+
+    Used by both the modal factories here and the body-render callbacks in
+    :mod:`._callbacks` so the "no --image-root configured" placeholder is
+    visually identical wherever it appears.
+    """
     return html.Div(
         "(no working directory configured)",
         className="text-muted small fst-italic",
@@ -127,17 +132,12 @@ def _back_button() -> dbc.Button:
 
 def _json_page(root: Path | None) -> List:
     """Build the JSON-browser body: :func:`directory_tree` filtered to ``*.json``."""
-    if root is None:
-        return [_no_root_placeholder()]
-    return [
-        directory_tree(
-            root,
-            current=None,
-            extensions=PIPELINE_EXTS,
-            select_files=True,
-            id_type=ids.DIR_ENTRY_TYPE_JSON,
-        ),
-    ]
+    return _initial_tree_body(
+        root,
+        extensions=PIPELINE_EXTS,
+        select_files=True,
+        id_type=ids.DIR_ENTRY_TYPE_JSON,
+    )
 
 
 def _prefab_page() -> List:
@@ -181,6 +181,66 @@ def _prefab_page() -> List:
         ]
 
     return [dbc.ListGroup(items, flush=True)]
+
+
+def _initial_tree_body(
+    root: Path | None,
+    *,
+    extensions: FrozenSet[str] | None,
+    select_files: bool,
+    id_type: str,
+) -> List:
+    """Return the initial body children for a tree-based modal.
+
+    Yields a single :func:`directory_tree` rooted at *root* when one is
+    configured, otherwise the muted "(no working directory configured)"
+    placeholder so the modal still renders cleanly.
+    """
+
+    if root is None:
+        return [no_root_placeholder()]
+    return [
+        directory_tree(
+            root,
+            current=None,
+            extensions=extensions,
+            select_files=select_files,
+            id_type=id_type,
+        )
+    ]
+
+
+def _make_browser_modal(
+    *,
+    modal_id: str,
+    title: str,
+    body_children: List,
+    footer: dbc.ModalFooter | None = None,
+    extra_body_widgets: List[Any] | None = None,
+) -> dbc.Modal:
+    """Build a generic large/scrollable file-browser modal.
+
+    All three modals share identical chrome (header title, large scrollable
+    body, sibling :class:`dcc.Store` widgets that survive body re-renders);
+    this helper keeps the factories declarative. ``extra_body_widgets`` are
+    inserted before ``body_children`` so dcc.Store widgets stay in the DOM
+    independent of the swappable body.
+    """
+
+    body = list(extra_body_widgets or [])
+    body.extend(body_children)
+    children: List[Any] = [dbc.ModalHeader(dbc.ModalTitle(title)), dbc.ModalBody(body)]
+    if footer is not None:
+        children.append(footer)
+    return dbc.Modal(
+        children,
+        id=modal_id,
+        is_open=False,
+        size="lg",
+        scrollable=True,
+        backdrop=True,
+        centered=True,
+    )
 
 
 def render_load_picker_body(page: str, root: Path | None) -> List:
@@ -240,18 +300,12 @@ def save_pipeline_modal(root: Path | None) -> dbc.Modal:
         ``backdrop=True``, and ``centered=True``, ready to be mounted once
         at app start by :func:`~_layout.build_app_layout`.
     """
-    if root is None:
-        body_children: List = [_no_root_placeholder()]
-    else:
-        body_children = [
-            directory_tree(
-                root,
-                current=None,
-                extensions=None,
-                select_files=False,
-                id_type=ids.DIR_ENTRY_TYPE_SAVE,
-            )
-        ]
+    body_children = _initial_tree_body(
+        root,
+        extensions=None,
+        select_files=False,
+        id_type=ids.DIR_ENTRY_TYPE_SAVE,
+    )
 
     footer = dbc.ModalFooter(
         [
@@ -282,26 +336,17 @@ def save_pipeline_modal(root: Path | None) -> dbc.Modal:
     # ``STORE_BROWSE_DIR_SAVE`` is a sibling of (not inside) ``MODAL_SAVE_BODY``
     # so re-rendering the body doesn't replace the store mid-callback (which
     # would cycle ``render_save_body`` -> store -> body re-render).
-    return dbc.Modal(
-        [
-            dbc.ModalHeader(dbc.ModalTitle("Save pipeline")),
-            dbc.ModalBody(
-                [
-                    dcc.Store(
-                        id=ids.STORE_BROWSE_DIR_SAVE,
-                        data=str(root) if root else None,
-                    ),
-                    html.Div(id=ids.MODAL_SAVE_BODY, children=body_children),
-                ]
+    return _make_browser_modal(
+        modal_id=ids.MODAL_SAVE,
+        title="Save pipeline",
+        body_children=[html.Div(id=ids.MODAL_SAVE_BODY, children=body_children)],
+        footer=footer,
+        extra_body_widgets=[
+            dcc.Store(
+                id=ids.STORE_BROWSE_DIR_SAVE,
+                data=str(root) if root else None,
             ),
-            footer,
         ],
-        id=ids.MODAL_SAVE,
-        is_open=False,
-        size="lg",
-        scrollable=True,
-        backdrop=True,
-        centered=True,
     )
 
 
@@ -337,34 +382,21 @@ def load_picker_modal(root: Path | None) -> dbc.Modal:
     # of the body so swap_load_picker_page's pattern-matching Inputs always
     # resolve. A separate callback toggles their inline ``style.display``
     # based on STORE_LOAD_PICKER_PAGE.
-    return dbc.Modal(
-        [
-            dbc.ModalHeader(dbc.ModalTitle("Load pipeline")),
-            dbc.ModalBody(
-                [
-                    dcc.Store(
-                        id=ids.STORE_LOAD_PICKER_PAGE,
-                        data="chooser",
-                    ),
-                    dcc.Store(
-                        id=ids.STORE_BROWSE_DIR_JSON,
-                        data=str(root) if root else None,
-                    ),
-                    _back_button(),
-                    _chooser_buttons(),
-                    html.Div(
-                        id=ids.MODAL_LOAD_PICKER_BODY,
-                        children=[],
-                    ),
-                ]
+    return _make_browser_modal(
+        modal_id=ids.MODAL_LOAD_PICKER,
+        title="Load pipeline",
+        body_children=[
+            _back_button(),
+            _chooser_buttons(),
+            html.Div(id=ids.MODAL_LOAD_PICKER_BODY, children=[]),
+        ],
+        extra_body_widgets=[
+            dcc.Store(id=ids.STORE_LOAD_PICKER_PAGE, data="chooser"),
+            dcc.Store(
+                id=ids.STORE_BROWSE_DIR_JSON,
+                data=str(root) if root else None,
             ),
         ],
-        id=ids.MODAL_LOAD_PICKER,
-        is_open=False,
-        size="lg",
-        scrollable=True,
-        backdrop=True,
-        centered=True,
     )
 
 
@@ -394,18 +426,12 @@ def load_image_modal(root: Path | None) -> dbc.Modal:
         ``is_open=False``, ``size="lg"``, ``scrollable=True``,
         ``backdrop=True``, and ``centered=True``.
     """
-    if root is None:
-        body_children: List = [_no_root_placeholder()]
-    else:
-        body_children = [
-            directory_tree(
-                root,
-                current=None,
-                extensions=IMAGE_EXTS,
-                select_files=True,
-                id_type=ids.DIR_ENTRY_TYPE_IMAGE,
-            )
-        ]
+    body_children = _initial_tree_body(
+        root,
+        extensions=IMAGE_EXTS,
+        select_files=True,
+        id_type=ids.DIR_ENTRY_TYPE_IMAGE,
+    )
 
     footer = dbc.ModalFooter(
         dbc.Button(
@@ -419,26 +445,19 @@ def load_image_modal(root: Path | None) -> dbc.Modal:
 
     # ``STORE_BROWSE_DIR_IMAGE`` is a sibling of (not inside) ``MODAL_LOAD_IMAGE_BODY``
     # so re-rendering the body doesn't replace the store mid-callback.
-    return dbc.Modal(
-        [
-            dbc.ModalHeader(dbc.ModalTitle("Load image")),
-            dbc.ModalBody(
-                [
-                    dcc.Store(
-                        id=ids.STORE_BROWSE_DIR_IMAGE,
-                        data=str(root) if root else None,
-                    ),
-                    html.Div(id=ids.MODAL_LOAD_IMAGE_BODY, children=body_children),
-                ]
-            ),
-            footer,
+    return _make_browser_modal(
+        modal_id=ids.MODAL_LOAD_IMAGE,
+        title="Load image",
+        body_children=[
+            html.Div(id=ids.MODAL_LOAD_IMAGE_BODY, children=body_children),
         ],
-        id=ids.MODAL_LOAD_IMAGE,
-        is_open=False,
-        size="lg",
-        scrollable=True,
-        backdrop=True,
-        centered=True,
+        footer=footer,
+        extra_body_widgets=[
+            dcc.Store(
+                id=ids.STORE_BROWSE_DIR_IMAGE,
+                data=str(root) if root else None,
+            ),
+        ],
     )
 
 
@@ -447,4 +466,5 @@ __all__ = [
     "load_picker_modal",
     "load_image_modal",
     "render_load_picker_body",
+    "no_root_placeholder",
 ]

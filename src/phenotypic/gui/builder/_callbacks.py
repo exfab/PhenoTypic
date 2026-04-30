@@ -63,7 +63,10 @@ from phenotypic.gui.builder._layout import (
     build_canvas,
     build_inspector,
 )
-from phenotypic.gui.builder._modal_browser import render_load_picker_body
+from phenotypic.gui.builder._modal_browser import (
+    no_root_placeholder,
+    render_load_picker_body,
+)
 from phenotypic.gui.builder._param_form import parse_widget_value
 from phenotypic.gui.builder._session import get_cache
 from phenotypic.gui.builder._state import (
@@ -86,6 +89,43 @@ logger = logging.getLogger(__name__)
 # ``STORE_IMAGE_PATH`` lives on :mod:`._ids` now; alias here for backwards
 # compatibility with callers that imported it from this module.
 STORE_IMAGE_PATH = ids.STORE_IMAGE_PATH
+
+
+# Pre-built ``no_update`` tuples for the long-output callbacks.  Building them
+# once at import time keeps the callback bodies readable and avoids re-emitting
+# the same long literal on every early-return branch.
+_NOOP_FAN_IN: Tuple[Any, ...] = (no_update,) * 8
+
+
+def _trigger_kind_path(triggered: Any, expected_type: str) -> Optional[Tuple[str, str]]:
+    """Validate a directory-tree click and return ``(kind, path)`` if usable.
+
+    Tree-entry callbacks all share the same trigger validation: the trigger
+    must be a pattern-matched dict whose ``type`` matches the modal's
+    :data:`DIR_ENTRY_TYPE_*` sentinel and whose first triggered value is
+    truthy (a real click rather than the initial render's zero ``n_clicks``).
+
+    Args:
+        triggered: ``dash.callback_context.triggered_id`` value.
+        expected_type: The :data:`DIR_ENTRY_TYPE_*` constant the callback
+            subscribes to.
+
+    Returns:
+        ``(kind, path)`` from the trigger when validation passes, else
+        ``None`` so the caller can short-circuit to ``no_update``.
+    """
+
+    if not isinstance(triggered, dict):
+        return None
+    if triggered.get("type") != expected_type:
+        return None
+    if not ctx.triggered or not ctx.triggered[0].get("value"):
+        return None
+    kind = triggered.get("kind")
+    path = triggered.get("path")
+    if not isinstance(kind, str) or not isinstance(path, str):
+        return None
+    return kind, path
 
 
 # ---------------------------------------------------------------------------
@@ -533,6 +573,43 @@ def _registry() -> Any:
     return current_app.config.get("pheno_registry")
 
 
+def _image_root() -> Optional[Any]:
+    """Return the configured ``--image-root`` :class:`Path`, or ``None``.
+
+    Stashed on ``app.server.config`` by ``create_app``; many callbacks
+    consult it to seed their browse-dir stores.
+    """
+
+    return current_app.config.get("pheno_image_root")
+
+
+def _render_tree_body(
+    dir_value: Optional[str],
+    *,
+    extensions: Any,
+    select_files: bool,
+    id_type: str,
+) -> Any:
+    """Render a :func:`directory_tree` body for a modal navigation update.
+
+    Used by ``render_save_body`` and ``render_load_image_body``: both take a
+    string from a browse-dir store, validate the configured ``--image-root``,
+    and emit either a refreshed tree or the muted placeholder.
+    """
+
+    image_root = _image_root()
+    if image_root is None:
+        return no_root_placeholder()
+    current = Path(dir_value).expanduser() if dir_value else None
+    return directory_tree(
+        Path(image_root),
+        current=current,
+        extensions=extensions,
+        select_files=select_files,
+        id_type=id_type,
+    )
+
+
 def _render_views(state: BuilderState) -> Tuple[Any, Any, Any]:
     """Re-render breadcrumb, canvas, and inspector for a given state.
 
@@ -559,6 +636,21 @@ def _render_views(state: BuilderState) -> Tuple[Any, Any, Any]:
     return breadcrumb, canvas, inspector
 
 
+def _state_replacement_payload(pipeline: Any) -> Tuple[Dict[str, Any], Any, Any, Any]:
+    """Build ``(state_dict, breadcrumb, canvas, inspector)`` for a fresh pipeline.
+
+    Both the JSON-load and prefab-load callbacks blow away the current
+    builder state and replace it with one derived from a freshly-built
+    :class:`ImagePipeline`. Both then need the same four output values; this
+    helper centralises the conversion + view rendering.
+    """
+
+    scope = from_pipeline(pipeline)
+    new_state = BuilderState(root=scope, breadcrumb=[], selected_node_id=None)
+    breadcrumb, canvas, inspector = _render_views(new_state)
+    return state_to_json(new_state), breadcrumb, canvas, inspector
+
+
 # ---------------------------------------------------------------------------
 # register_callbacks
 # ---------------------------------------------------------------------------
@@ -573,11 +665,6 @@ def register_callbacks(app: dash.Dash) -> None:
     Args:
         app: The :class:`dash.Dash` instance returned by ``create_app``.
     """
-
-    # --- Hidden store for the active image path ---------------------------
-    # Mounted after the fact so layout doesn't need editing.  We slot it into
-    # the layout via a dedicated callback that injects the store on first
-    # paint (see init_session_id below).
 
     # ----------------------------------------------------------------------
     # 1. Initialize STORE_SESSION_ID on first paint
@@ -696,19 +783,10 @@ def register_callbacks(app: dash.Dash) -> None:
         See module docstring for the dispatch table.
         """
 
-        if state_data is None:
-            return (
-                no_update, no_update, no_update, no_update,
-                no_update, no_update, no_update, no_update,
-            )
+        if state_data is None or ctx.triggered_id is None:
+            return _NOOP_FAN_IN
 
         triggered = ctx.triggered_id
-        if triggered is None:
-            return (
-                no_update, no_update, no_update, no_update,
-                no_update, no_update, no_update, no_update,
-            )
-
         new_state_dict = state_data
 
         try:
@@ -716,14 +794,10 @@ def register_callbacks(app: dash.Dash) -> None:
             if isinstance(triggered, dict):
                 t_type = triggered.get("type")
                 if t_type == "palette-add":
-                    # Some clicks may be zero (initial render of a button
-                    # group with shared n_clicks=0).  Skip those.
-                    nclicks_list = ctx.triggered[0]["value"]
-                    if not nclicks_list:
-                        return (
-                no_update, no_update, no_update, no_update,
-                no_update, no_update, no_update, no_update,
-            )
+                    # Skip clicks where ``n_clicks`` is still zero (initial
+                    # render of the palette button group).
+                    if not ctx.triggered[0]["value"]:
+                        return _NOOP_FAN_IN
                     new_state_dict = _dispatch_state_update(
                         state_data,
                         "add_node",
@@ -758,12 +832,8 @@ def register_callbacks(app: dash.Dash) -> None:
                         tuple_ids=tuple_ids,
                     )
                 elif t_type == "param-edit-nested":
-                    nclicks_val = ctx.triggered[0].get("value")
-                    if not nclicks_val:
-                        return (
-                no_update, no_update, no_update, no_update,
-                no_update, no_update, no_update, no_update,
-            )
+                    if not ctx.triggered[0].get("value"):
+                        return _NOOP_FAN_IN
                     new_state_dict = _dispatch_state_update(
                         state_data,
                         "drill_in_param",
@@ -787,10 +857,7 @@ def register_callbacks(app: dash.Dash) -> None:
                         tuple_ids=tuple_ids,
                     )
                 else:
-                    return (
-                no_update, no_update, no_update, no_update,
-                no_update, no_update, no_update, no_update,
-            )
+                    return _NOOP_FAN_IN
 
             # --- Plain string ids -------------------------------------
             elif triggered == ids.BTN_NEW_PIPELINE_NODE:
@@ -802,10 +869,7 @@ def register_callbacks(app: dash.Dash) -> None:
                 trigger_prop = ctx.triggered[0]["prop_id"].split(".")[-1]
                 if trigger_prop == "tapNodeData":
                     if not tap_node_data:
-                        return (
-                no_update, no_update, no_update, no_update,
-                no_update, no_update, no_update, no_update,
-            )
+                        return _NOOP_FAN_IN
                     new_state_dict = _dispatch_state_update(
                         state_data,
                         "select_node",
@@ -816,15 +880,9 @@ def register_callbacks(app: dash.Dash) -> None:
                         state_data, elements
                     )
                     if new_state_dict is state_data:
-                        return (
-                no_update, no_update, no_update, no_update,
-                no_update, no_update, no_update, no_update,
-            )
+                        return _NOOP_FAN_IN
                 else:
-                    return (
-                no_update, no_update, no_update, no_update,
-                no_update, no_update, no_update, no_update,
-            )
+                    return _NOOP_FAN_IN
             elif triggered == ids.BTN_DRILL_IN:
                 # The inspector renders a visible "Drill in ▸" button only on
                 # ImagePipeline nodes; for any other selection the button is a
@@ -840,10 +898,7 @@ def register_callbacks(app: dash.Dash) -> None:
             elif triggered == ids.INPUT_NODE_LABEL:
                 state = state_from_json(state_data)
                 if state.selected_node_id is None:
-                    return (
-                no_update, no_update, no_update, no_update,
-                no_update, no_update, no_update, no_update,
-            )
+                    return _NOOP_FAN_IN
                 new_state_dict = _dispatch_state_update(
                     state_data,
                     "edit_label",
@@ -853,28 +908,33 @@ def register_callbacks(app: dash.Dash) -> None:
                     },
                 )
             else:
-                return (
-                no_update, no_update, no_update, no_update,
-                no_update, no_update, no_update, no_update,
-            )
+                return _NOOP_FAN_IN
 
             # --- Render ----------------------------------------------
             new_state = state_from_json(new_state_dict)
             breadcrumb, canvas, inspector = _render_views(new_state)
             return (
-                new_state_dict, breadcrumb, canvas, inspector,
-                no_update, no_update, no_update, no_update,
+                new_state_dict,
+                breadcrumb,
+                canvas,
+                inspector,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
             )
 
         except Exception as exc:
-            # Never crash the UI on a bad mutation — log full traceback and
-            # surface the message via the toast instead of silently dropping
-            # the user's interaction.
+            # Never crash the UI on a bad mutation — log the traceback and
+            # surface the failure via the toast instead.
             logger.exception("fan_in_state_mutation failed")
             return (
-                no_update, no_update, no_update, no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
                 True,
-                f"{type(exc).__name__}: {exc}",
+                _format_exception(exc),
                 "danger",
                 "Update failed",
             )
@@ -914,55 +974,38 @@ def register_callbacks(app: dash.Dash) -> None:
             session_id = uuid.uuid4().hex
 
         try:
-            t0 = time.time()
-
-            from phenotypic import GridImage, Image
             from phenotypic.abc_ import GridOperation
 
+            t0 = time.time()
             state = state_from_json(state_data)
             pipeline = to_pipeline(state.root)
-
             uses_grid = _pipeline_uses_grid(pipeline, GridOperation)
 
-            if not image_path or image_path == SYNTHETIC_SENTINEL:
-                from phenotypic.data._synthetic_data import load_synth_yeast_plate
-
-                image = load_synth_yeast_plate()
-            else:
-                p = Path(image_path)
-                if uses_grid:
-                    image = GridImage.imread(
-                        p,
-                        nrows=int(nrows) if nrows else 8,
-                        ncols=int(ncols) if ncols else 12,
-                    )
-                else:
-                    image = Image.imread(p)
+            image = _load_preview_image(image_path, uses_grid, nrows, ncols)
 
             cache = get_cache()
             cache.set_image(session_id, image, str(image_path) if image_path else None)
 
             result = pipeline.apply_with_intermediates(image)
 
-            # Map intermediate keys (op-keys e.g. "GaussianBlur",
-            # "GaussianBlur_2") back to BuilderState node-ids by walking ops
-            # in declaration order.
-            ops_keys: List[str] = list(pipeline.get_ops().keys())
+            # Map intermediate keys ("GaussianBlur", "GaussianBlur_2", ...) back
+            # to BuilderState node-ids by walking ops in declaration order.
             ops_nodes: List[StepNode] = [
                 n
                 for n in state.root.nodes
-                if stage_of(n.class_name) == "ops" or n.class_name == PIPELINE_CLASS_NAME
+                if n.class_name == PIPELINE_CLASS_NAME
+                or stage_of(n.class_name) == "ops"
             ]
-            for op_key, node in zip(ops_keys, ops_nodes):
+            for op_key, node in zip(pipeline.get_ops().keys(), ops_nodes):
                 inter = result.intermediates.get(op_key)
                 if inter is not None:
                     cache.set_intermediate(session_id, node.node_id, inter)
 
-            # Run measurements if any are configured.  Their output is a
-            # single DataFrame; we attach it to every measurement node so
-            # the inspector can show it for whichever the user selects.
-            # `measure()` needs the *processed* image (objmap populated by
-            # the detector chain), not the raw input.
+            # Run measurements if any are configured.  Their output is a single
+            # DataFrame; attach it to every measurement / post node so the
+            # inspector can show it for whichever the user selects.  measure()
+            # needs the *processed* image (objmap populated by the detector
+            # chain), not the raw input.
             if pipeline.get_meas() or pipeline.get_post():
                 try:
                     df = pipeline.measure(result.image)
@@ -1070,24 +1113,7 @@ def register_callbacks(app: dash.Dash) -> None:
         if pd is not None and isinstance(cached, pd.DataFrame):
             return dataframe_to_table(cached)
 
-        # Otherwise treat as Image — pick channel by stage.
-        try:
-            stage = stage_of(node.class_name)
-        except KeyError:
-            stage = "ops"
-        channel = "rgb"
-        if stage == "ops":
-            try:
-                from phenotypic.gui._operation_registry import get_registry
-
-                info = get_registry().get(node.class_name)
-                if info is not None and info.category == "Enhancer":
-                    channel = "detect_mat"
-                elif info is not None and info.category in {"Detector", "Refiner"}:
-                    channel = "objmap"
-            except Exception:  # noqa: BLE001
-                pass
-
+        channel = _preview_channel_for(node.class_name)
         try:
             uri = to_data_uri(cached, channel=channel)  # type: ignore[arg-type]
         except Exception as exc:  # noqa: BLE001
@@ -1137,7 +1163,7 @@ def register_callbacks(app: dash.Dash) -> None:
         """
         if not n_clicks:
             return no_update, no_update
-        image_root = current_app.config.get("pheno_image_root")
+        image_root = _image_root()
         return True, str(image_root) if image_root else None
 
     @app.callback(
@@ -1214,7 +1240,7 @@ def register_callbacks(app: dash.Dash) -> None:
             # touching the filesystem. Normal users cannot reach such paths
             # through the tree (it is bounded by ``_is_within``), but the store
             # is reachable from devtools.
-            image_root = current_app.config.get("pheno_image_root")
+            image_root = _image_root()
             if image_root is not None:
                 try:
                     target.relative_to(Path(image_root).resolve())
@@ -1260,15 +1286,13 @@ def register_callbacks(app: dash.Dash) -> None:
             The clicked path string, or ``no_update`` when the trigger is not
             a valid directory entry click.
         """
-        triggered = ctx.triggered_id
-        if not isinstance(triggered, dict):
+        # Save tree only renders dirs / parents (select_files=False), so any
+        # validated trigger is a navigation click.
+        match = _trigger_kind_path(ctx.triggered_id, ids.DIR_ENTRY_TYPE_SAVE)
+        if match is None:
             return no_update
-        if triggered.get("type") != ids.DIR_ENTRY_TYPE_SAVE:
-            return no_update
-        if not ctx.triggered or not ctx.triggered[0].get("value"):
-            return no_update
-        # Save tree only renders dirs / parents (select_files=False).
-        return triggered.get("path") or no_update
+        _, path = match
+        return path
 
     @app.callback(
         Output(ids.MODAL_SAVE_BODY, "children"),
@@ -1290,16 +1314,8 @@ def register_callbacks(app: dash.Dash) -> None:
             A :func:`directory_tree` component, or a muted placeholder ``Div``
             when no working directory is configured.
         """
-        image_root = current_app.config.get("pheno_image_root")
-        if image_root is None:
-            return html.Div(
-                "(no working directory configured)",
-                className="text-muted small fst-italic",
-            )
-        current = Path(dir_value).expanduser() if dir_value else None
-        return directory_tree(
-            Path(image_root),
-            current=current,
+        return _render_tree_body(
+            dir_value,
             extensions=None,
             select_files=False,
             id_type=ids.DIR_ENTRY_TYPE_SAVE,
@@ -1332,7 +1348,7 @@ def register_callbacks(app: dash.Dash) -> None:
         """
         if not n_clicks:
             return no_update, no_update, no_update
-        image_root = current_app.config.get("pheno_image_root")
+        image_root = _image_root()
         return True, "chooser", str(image_root) if image_root else None
 
     @app.callback(
@@ -1394,17 +1410,14 @@ def register_callbacks(app: dash.Dash) -> None:
             A list (or single component) of Dash components for
             :data:`ids.MODAL_LOAD_PICKER_BODY`.
         """
-        image_root = current_app.config.get("pheno_image_root")
-        if page == "json" and image_root is not None:
-            current = Path(dir_value).expanduser() if dir_value else None
-            return directory_tree(
-                Path(image_root),
-                current=current,
+        if page == "json" and _image_root() is not None:
+            return _render_tree_body(
+                dir_value,
                 extensions=PIPELINE_EXTS,
                 select_files=True,
                 id_type=ids.DIR_ENTRY_TYPE_JSON,
             )
-        return render_load_picker_body(page or "chooser", image_root)
+        return render_load_picker_body(page or "chooser", _image_root())
 
     @app.callback(
         Output(ids.BTN_LOAD_PICKER_BACK, "style"),
@@ -1461,35 +1474,25 @@ def register_callbacks(app: dash.Dash) -> None:
             toast_header)``. Directory clicks populate only the first element;
             file clicks populate elements 2–10.
         """
-        triggered = ctx.triggered_id
-        if not isinstance(triggered, dict):
+        match = _trigger_kind_path(ctx.triggered_id, ids.DIR_ENTRY_TYPE_JSON)
+        if match is None:
             return (no_update,) * 10
-        if triggered.get("type") != ids.DIR_ENTRY_TYPE_JSON:
-            return (no_update,) * 10
-        if not ctx.triggered or not ctx.triggered[0].get("value"):
-            return (no_update,) * 10
-
-        kind = triggered.get("kind")
-        path_str = triggered.get("path")
-        if kind in {"dir", "parent"} and path_str:
+        kind, path_str = match
+        if kind in {"dir", "parent"}:
             return (path_str, *((no_update,) * 9))
 
-        if kind == "file" and path_str:
+        if kind == "file":
             try:
                 from phenotypic import ImagePipeline
 
                 with open(Path(path_str).expanduser(), encoding="utf-8") as fh:
-                    content = fh.read()
-                pipeline = ImagePipeline.from_json(content)
-                scope = from_pipeline(pipeline)
-                new_state = BuilderState(
-                    root=scope, breadcrumb=[], selected_node_id=None
+                    pipeline = ImagePipeline.from_json(fh.read())
+                state_dict, breadcrumb, canvas, inspector = _state_replacement_payload(
+                    pipeline
                 )
-                new_state_dict = state_to_json(new_state)
-                breadcrumb, canvas, inspector = _render_views(new_state)
                 return (
                     no_update,
-                    new_state_dict,
+                    state_dict,
                     breadcrumb,
                     canvas,
                     inspector,
@@ -1538,9 +1541,7 @@ def register_callbacks(app: dash.Dash) -> None:
             toast_header)``.
         """
         triggered = ctx.triggered_id
-        if not isinstance(triggered, dict):
-            return (no_update,) * 9
-        if triggered.get("type") != "prefab-card":
+        if not isinstance(triggered, dict) or triggered.get("type") != "prefab-card":
             return (no_update,) * 9
         if not ctx.triggered or not ctx.triggered[0].get("value"):
             return (no_update,) * 9
@@ -1551,16 +1552,12 @@ def register_callbacks(app: dash.Dash) -> None:
         try:
             import phenotypic.prefab as prefab_module
 
-            cls = getattr(prefab_module, class_name)
-            pipeline = cls()
-            scope = from_pipeline(pipeline)
-            new_state = BuilderState(
-                root=scope, breadcrumb=[], selected_node_id=None
+            pipeline = getattr(prefab_module, class_name)()
+            state_dict, breadcrumb, canvas, inspector = _state_replacement_payload(
+                pipeline
             )
-            new_state_dict = state_to_json(new_state)
-            breadcrumb, canvas, inspector = _render_views(new_state)
             return (
-                new_state_dict,
+                state_dict,
                 breadcrumb,
                 canvas,
                 inspector,
@@ -1598,7 +1595,7 @@ def register_callbacks(app: dash.Dash) -> None:
         """
         if not n_clicks:
             return no_update, no_update
-        image_root = current_app.config.get("pheno_image_root")
+        image_root = _image_root()
         return True, str(image_root) if image_root else None
 
     @app.callback(
@@ -1633,22 +1630,16 @@ def register_callbacks(app: dash.Dash) -> None:
             clicks populate only the first element; file clicks populate
             elements 2–7.
         """
-        triggered = ctx.triggered_id
-        if not isinstance(triggered, dict):
+        match = _trigger_kind_path(ctx.triggered_id, ids.DIR_ENTRY_TYPE_IMAGE)
+        if match is None:
             return (no_update,) * 7
-        if triggered.get("type") != ids.DIR_ENTRY_TYPE_IMAGE:
-            return (no_update,) * 7
-        if not ctx.triggered or not ctx.triggered[0].get("value"):
-            return (no_update,) * 7
-
-        kind = triggered.get("kind")
-        path_str = triggered.get("path")
-        if kind in {"dir", "parent"} and path_str:
+        kind, path_str = match
+        if kind in {"dir", "parent"}:
             return (path_str, *((no_update,) * 6))
-        if kind == "file" and path_str:
+        if kind == "file":
             return (
                 no_update,
-                str(path_str),
+                path_str,
                 False,
                 *_toast(f"Image set: {Path(path_str).name}", ok=True),
             )
@@ -1678,16 +1669,8 @@ def register_callbacks(app: dash.Dash) -> None:
             A :func:`directory_tree` div, or a placeholder div when no
             working directory is configured.
         """
-        image_root = current_app.config.get("pheno_image_root")
-        if image_root is None:
-            return html.Div(
-                "(no working directory configured)",
-                className="text-muted small fst-italic",
-            )
-        current = Path(dir_value).expanduser() if dir_value else None
-        return directory_tree(
-            Path(image_root),
-            current=current,
+        return _render_tree_body(
+            dir_value,
             extensions=IMAGE_EXTS,
             select_files=True,
             id_type=ids.DIR_ENTRY_TYPE_IMAGE,
@@ -1780,63 +1763,105 @@ def register_callbacks(app: dash.Dash) -> None:
     #
     # ``window.phenoGetCy()`` is defined in ``assets/builder.js``.
 
-    app.clientside_callback(
-        """
-        function(n_clicks, prev) {
-            if (!n_clicks) return window.dash_clientside.no_update;
-            const cy = window.phenoGetCy && window.phenoGetCy();
-            if (cy) cy.animate({fit: {padding: 24}}, {duration: 200});
-            return (prev || 0) + 1;
-        }
-        """,
-        Output(ids.STORE_CANVAS_CONTROL, "data", allow_duplicate=True),
-        Input(ids.BTN_CANVAS_FIT, "n_clicks"),
-        State(ids.STORE_CANVAS_CONTROL, "data"),
-        prevent_initial_call=True,
-    )
+    def _register_canvas_clientside(button_id: str, body: str) -> None:
+        """Register a clientside callback ``button_id → body`` against ``cy``."""
 
-    app.clientside_callback(
-        """
-        function(n_clicks, prev) {
-            if (!n_clicks) return window.dash_clientside.no_update;
-            const cy = window.phenoGetCy && window.phenoGetCy();
-            if (cy) {
-                const z = cy.zoom() * 1.25;
-                const center = {x: cy.width() / 2, y: cy.height() / 2};
-                cy.zoom({level: z, renderedPosition: center});
-            }
-            return (prev || 0) + 1;
-        }
-        """,
-        Output(ids.STORE_CANVAS_CONTROL, "data", allow_duplicate=True),
-        Input(ids.BTN_CANVAS_ZOOM_IN, "n_clicks"),
-        State(ids.STORE_CANVAS_CONTROL, "data"),
-        prevent_initial_call=True,
-    )
+        app.clientside_callback(
+            f"""
+            function(n_clicks, prev) {{
+                if (!n_clicks) return window.dash_clientside.no_update;
+                const cy = window.phenoGetCy && window.phenoGetCy();
+                if (cy) {{ {body} }}
+                return (prev || 0) + 1;
+            }}
+            """,
+            Output(ids.STORE_CANVAS_CONTROL, "data", allow_duplicate=True),
+            Input(button_id, "n_clicks"),
+            State(ids.STORE_CANVAS_CONTROL, "data"),
+            prevent_initial_call=True,
+        )
 
-    app.clientside_callback(
-        """
-        function(n_clicks, prev) {
-            if (!n_clicks) return window.dash_clientside.no_update;
-            const cy = window.phenoGetCy && window.phenoGetCy();
-            if (cy) {
-                const z = cy.zoom() / 1.25;
-                const center = {x: cy.width() / 2, y: cy.height() / 2};
-                cy.zoom({level: z, renderedPosition: center});
-            }
-            return (prev || 0) + 1;
-        }
-        """,
-        Output(ids.STORE_CANVAS_CONTROL, "data", allow_duplicate=True),
-        Input(ids.BTN_CANVAS_ZOOM_OUT, "n_clicks"),
-        State(ids.STORE_CANVAS_CONTROL, "data"),
-        prevent_initial_call=True,
+    _register_canvas_clientside(
+        ids.BTN_CANVAS_FIT,
+        "cy.animate({fit: {padding: 24}}, {duration: 200});",
+    )
+    _register_canvas_clientside(
+        ids.BTN_CANVAS_ZOOM_IN,
+        "const z = cy.zoom() * 1.25;"
+        " const c = {x: cy.width() / 2, y: cy.height() / 2};"
+        " cy.zoom({level: z, renderedPosition: c});",
+    )
+    _register_canvas_clientside(
+        ids.BTN_CANVAS_ZOOM_OUT,
+        "const z = cy.zoom() / 1.25;"
+        " const c = {x: cy.width() / 2, y: cy.height() / 2};"
+        " cy.zoom({level: z, renderedPosition: c});",
     )
 
 
 # ---------------------------------------------------------------------------
 # Helpers (private to this module)
 # ---------------------------------------------------------------------------
+
+
+def _load_preview_image(
+    image_path: Optional[str],
+    uses_grid: bool,
+    nrows: Optional[Any],
+    ncols: Optional[Any],
+) -> Any:
+    """Load the input :class:`Image` / :class:`GridImage` for a preview run.
+
+    Falls back to :func:`load_synth_yeast_plate` when *image_path* is empty or
+    the synthetic sentinel.  Otherwise reads from disk via :class:`GridImage`
+    when the pipeline contains a :class:`GridOperation`, else :class:`Image`.
+    Default grid is ``8 × 12`` when *nrows* / *ncols* are unset.
+    """
+
+    from phenotypic import GridImage, Image
+
+    if not image_path or image_path == SYNTHETIC_SENTINEL:
+        from phenotypic.data._synthetic_data import load_synth_yeast_plate
+
+        return load_synth_yeast_plate()
+
+    p = Path(image_path)
+    if uses_grid:
+        return GridImage.imread(
+            p,
+            nrows=int(nrows) if nrows else 8,
+            ncols=int(ncols) if ncols else 12,
+        )
+    return Image.imread(p)
+
+
+def _preview_channel_for(class_name: str) -> str:
+    """Pick the image channel best showing *class_name*'s output.
+
+    Enhancers act on ``detect_mat``; detectors/refiners populate the object
+    map; everything else (correctors, nested pipelines, unknown classes,
+    measurement nodes that fell through here) defaults to RGB.
+    """
+
+    try:
+        stage = stage_of(class_name)
+    except KeyError:
+        return "rgb"
+    if stage != "ops":
+        return "rgb"
+    try:
+        from phenotypic.gui._operation_registry import get_registry
+
+        info = get_registry().get(class_name)
+    except Exception:  # noqa: BLE001
+        return "rgb"
+    if info is None:
+        return "rgb"
+    if info.category == "Enhancer":
+        return "detect_mat"
+    if info.category in {"Detector", "Refiner"}:
+        return "objmap"
+    return "rgb"
 
 
 def _pipeline_uses_grid(pipeline: Any, grid_op_cls: type) -> bool:
