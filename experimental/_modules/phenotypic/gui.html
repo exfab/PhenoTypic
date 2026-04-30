@@ -599,6 +599,17 @@
 
             <span class="k">return</span> <span class="n">launch_sweep_viewer</span>
 
+    <span class="c1"># Dash node-graph builder (requires dash + dash-cytoscape, lazy)</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;create_builder_app&quot;</span><span class="p">,</span> <span class="s2">&quot;BuilderState&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;create_builder_app&quot;</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">.builder</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_app</span>
+
+            <span class="k">return</span> <span class="n">create_app</span>
+        <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;BuilderState&quot;</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">.builder</span><span class="w"> </span><span class="kn">import</span> <span class="n">BuilderState</span>
+
+            <span class="k">return</span> <span class="n">BuilderState</span>
+
     <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;module </span><span class="si">{</span><span class="vm">__name__</span><span class="si">!r}</span><span class="s2"> has no attribute </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
 
@@ -614,6 +625,9 @@
     <span class="c1"># Napari sweep viewer</span>
     <span class="s2">&quot;NapariSweepViewer&quot;</span><span class="p">,</span>
     <span class="s2">&quot;launch_sweep_viewer&quot;</span><span class="p">,</span>
+    <span class="c1"># Dash node-graph builder</span>
+    <span class="s2">&quot;create_builder_app&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;BuilderState&quot;</span><span class="p">,</span>
 <span class="p">]</span>
 </pre></div>
 

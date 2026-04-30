@@ -506,29 +506,30 @@
 
     <span class="n">LEFT_NEIGHBOR_OBJ_LABEL</span> <span class="o">=</span> <span class="s2">&quot;LeftNeighborObjLabel&quot;</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;The object label of the left&quot;</span>
                                                        <span class="s2">&quot; neighbor colony&quot;</span><span class="p">)</span>
-    <span class="n">LEFT_DISTANCE</span> <span class="o">=</span> <span class="s2">&quot;LeftDistance&quot;</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;The distance of the left neighbor colony&quot;</span>
-                                     <span class="s2">&quot; calculated using euclidean distance between&quot;</span>
-                                     <span class="s2">&quot; bounding boxes&quot;</span><span class="p">)</span>
+    <span class="n">LEFT_DISTANCE</span> <span class="o">=</span> <span class="s2">&quot;LeftDistance&quot;</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;The minimum pixel-to-pixel distance to the left&quot;</span>
+                                     <span class="s2">&quot; neighbor colony, computed via a Euclidean&quot;</span>
+                                     <span class="s2">&quot; distance transform of object pixel masks&quot;</span><span class="p">)</span>
 
     <span class="n">RIGHT_NEIGHBOR_OBJ_LABEL</span> <span class="o">=</span> <span class="s2">&quot;RightNeighborObjLabel&quot;</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;The object label of&quot;</span>
                                                          <span class="s2">&quot; the right neighbor colony&quot;</span><span class="p">)</span>
     <span class="n">RIGHT_DISTANCE</span> <span class="o">=</span> <span class="p">(</span>
         <span class="s2">&quot;RightDistance&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The distance of the right neighbor colony calculated&quot;</span>
-        <span class="s2">&quot; using euclidean distance between bounding boxes&quot;</span>
+        <span class="s2">&quot;The minimum pixel-to-pixel distance to the right neighbor colony, computed&quot;</span>
+        <span class="s2">&quot; via a Euclidean distance transform of object pixel masks&quot;</span>
     <span class="p">)</span>
     <span class="n">ABOVE_NEIGHBOR_OBJ_LABEL</span> <span class="o">=</span> <span class="s2">&quot;AboveNeighborObjLabel&quot;</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;The object label of&quot;</span>
                                                          <span class="s2">&quot; the above neighbor colony&quot;</span><span class="p">)</span>
     <span class="n">ABOVE_DISTANCE</span> <span class="o">=</span> <span class="p">(</span>
         <span class="s2">&quot;AboveDistance&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The distance of the above neighbor colony calculated using euclidean&quot;</span>
-        <span class="s2">&quot; distance between bounding boxes&quot;</span>
+        <span class="s2">&quot;The minimum pixel-to-pixel distance to the above neighbor colony, computed&quot;</span>
+        <span class="s2">&quot; via a Euclidean distance transform of object pixel masks&quot;</span>
     <span class="p">)</span>
     <span class="n">UNDER_NEIGHBOR_OBJ_LABEL</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;UnderNeighborObjLabel&quot;</span><span class="p">,</span>
                                 <span class="s2">&quot;The object label of the under neighbor colony&quot;</span><span class="p">)</span>
     <span class="n">UNDER_DISTANCE</span> <span class="o">=</span> <span class="p">(</span>
         <span class="s2">&quot;UnderDistance&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The distance of the under neighbor colony calculated using euclidean distance between bounding boxes&quot;</span>
+        <span class="s2">&quot;The minimum pixel-to-pixel distance to the under neighbor colony, computed&quot;</span>
+        <span class="s2">&quot; via a Euclidean distance transform of object pixel masks&quot;</span>
     <span class="p">)</span></div>
 
 </pre></div>

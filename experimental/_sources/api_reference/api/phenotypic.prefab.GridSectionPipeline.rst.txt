@@ -26,6 +26,7 @@ phenotypic.prefab.GridSectionPipeline
       ~GridSectionPipeline.from_json
       ~GridSectionPipeline.get_meas
       ~GridSectionPipeline.get_ops
+      ~GridSectionPipeline.get_post
       ~GridSectionPipeline.measure
       ~GridSectionPipeline.set_meas
       ~GridSectionPipeline.set_ops
@@ -42,5 +43,7 @@ phenotypic.prefab.GridSectionPipeline
    .. autosummary::
    
       ~GridSectionPipeline.desc
+      ~GridSectionPipeline.ncols
+      ~GridSectionPipeline.nrows
    
    

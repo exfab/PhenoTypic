@@ -496,22 +496,26 @@
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ndimage</span> <span class="k">as</span> <span class="n">ndi</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridMeasureFeatures</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID_SPATIAL</span><span class="p">,</span> <span class="n">BBOX</span><span class="p">,</span> <span class="n">GRID</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID_SPATIAL</span><span class="p">,</span> <span class="n">GRID</span>
 
 
 <div class="viewcode-block" id="MeasureGridSpatial">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.measure.html#phenotypic.measure.MeasureGridSpatial">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MeasureGridSpatial</span><span class="p">(</span><span class="n">GridMeasureFeatures</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure edge-to-edge distances to neighbors in adjacent grid cells.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure pixel-to-pixel distances to neighbors in adjacent grid cells.</span>
 
 <span class="sd">    For each detected colony, identify the nearest object in the left,</span>
-<span class="sd">    right, above, and below grid cells and compute the minimum</span>
-<span class="sd">    bounding-box edge-to-edge distance. Edge and corner colonies report</span>
+<span class="sd">    right, above, and below grid cells and report the minimum Euclidean</span>
+<span class="sd">    distance between their pixel masks. Distances are computed via a</span>
+<span class="sd">    per-section distance transform over a local window covering the target</span>
+<span class="sd">    cell and its immediate neighbors, so round colonies are not</span>
+<span class="sd">    over-estimated by their bounding boxes. Edge and corner colonies report</span>
 <span class="sd">    ``NaN`` for directions beyond the plate boundary.</span>
 
 <span class="sd">    Returns:</span>
@@ -522,18 +526,22 @@
 <span class="sd">            - RightNeighborObjLabel, RightDistance.</span>
 <span class="sd">            - AboveNeighborObjLabel, AboveDistance.</span>
 <span class="sd">            - UnderNeighborObjLabel, UnderDistance.</span>
-<span class="sd">            - ``NaN`` where no neighbor exists in a given direction.</span>
+<span class="sd">            - ``NaN`` where no neighbor exists (out of plate, empty</span>
+<span class="sd">              neighbor cell, or the colony is shielded by another colony</span>
+<span class="sd">              in the same cell).</span>
 
 <span class="sd">    Best For:</span>
 <span class="sd">        - Quantifying colony spacing and crowding to assess nutrient</span>
-<span class="sd">          competition risk on arrayed plates.</span>
+<span class="sd">          competition risk on arrayed plates, especially for round or</span>
+<span class="sd">          irregular colony shapes where bounding-box geometry overstates</span>
+<span class="sd">          proximity.</span>
 <span class="sd">        - Flagging closely spaced colonies that may cross-contaminate.</span>
 <span class="sd">        - Enabling neighbor-aware paired statistical comparisons for</span>
 <span class="sd">          competition or cooperation studies.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`MeasureGridLinRegStats` for regression-based</span>
-<span class="sd">          positional quality metrics.</span>
+<span class="sd">        - :class:`MeasureGridLinRegStats` for regression-based positional</span>
+<span class="sd">          quality metrics.</span>
 <span class="sd">        - :class:`MeasureGridSpread` for within-well colony dispersion</span>
 <span class="sd">          rather than between-well distances.</span>
 <span class="sd">        - :class:`MeasureBounds` for raw bounding boxes and centroids</span>
@@ -546,167 +554,173 @@
 
     <span class="n">_measurement_infoclass</span> <span class="o">=</span> <span class="n">GRID_SPATIAL</span>
 
+    <span class="c1"># (d_row, d_col, label_col, dist_col)</span>
+    <span class="n">_DIRECTIONS</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">LEFT_NEIGHBOR_OBJ_LABEL</span><span class="p">,</span>
+         <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">LEFT_DISTANCE</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">RIGHT_NEIGHBOR_OBJ_LABEL</span><span class="p">,</span>
+         <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">RIGHT_DISTANCE</span><span class="p">),</span>
+        <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">ABOVE_NEIGHBOR_OBJ_LABEL</span><span class="p">,</span>
+         <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">ABOVE_DISTANCE</span><span class="p">),</span>
+        <span class="p">(</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">UNDER_NEIGHBOR_OBJ_LABEL</span><span class="p">,</span>
+         <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">UNDER_DISTANCE</span><span class="p">),</span>
+    <span class="p">)</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-        <span class="n">gs_table</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">include_metadata</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">grid_info</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">include_metadata</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="c1"># Densify once; subsequent windowing is pure numpy slicing on this view.</span>
+        <span class="n">objmap_full</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
+        <span class="n">nrows</span><span class="p">,</span> <span class="n">ncols</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">ncols</span>
 
-        <span class="c1"># Build lookup: (row, col) -&gt; list of (label, min_rr, max_rr, min_cc, max_cc)</span>
-        <span class="n">cell_lookup</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_cell_lookup</span><span class="p">(</span><span class="n">gs_table</span><span class="p">)</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">grid_info</span><span class="p">[</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="n">n_objs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+        <span class="n">label_to_row</span> <span class="o">=</span> <span class="p">{</span><span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="p">):</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">labels</span><span class="p">)}</span>
 
-        <span class="c1"># Initialize result arrays (MeasurementInfo members are strings, use directly)</span>
-        <span class="n">n_objects</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">gs_table</span><span class="p">)</span>
-        <span class="n">results</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">LEFT_NEIGHBOR_OBJ_LABEL</span> <span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_objects</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
-            <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">LEFT_DISTANCE</span>           <span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_objects</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
-            <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">RIGHT_NEIGHBOR_OBJ_LABEL</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_objects</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
-            <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">RIGHT_DISTANCE</span>          <span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_objects</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
-            <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">ABOVE_NEIGHBOR_OBJ_LABEL</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_objects</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
-            <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">ABOVE_DISTANCE</span>          <span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_objects</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
-            <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">UNDER_NEIGHBOR_OBJ_LABEL</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_objects</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
-            <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">UNDER_DISTANCE</span>          <span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_objects</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+        <span class="n">results</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">LEFT_NEIGHBOR_OBJ_LABEL</span> <span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_objs</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+            <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">LEFT_DISTANCE</span>           <span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_objs</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+            <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">RIGHT_NEIGHBOR_OBJ_LABEL</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_objs</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+            <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">RIGHT_DISTANCE</span>          <span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_objs</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+            <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">ABOVE_NEIGHBOR_OBJ_LABEL</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_objs</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+            <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">ABOVE_DISTANCE</span>          <span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_objs</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+            <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">UNDER_NEIGHBOR_OBJ_LABEL</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_objs</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+            <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">UNDER_DISTANCE</span>          <span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_objs</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
         <span class="p">}</span>
 
-        <span class="c1"># Process each object</span>
-        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">row</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">gs_table</span><span class="o">.</span><span class="n">iterrows</span><span class="p">()):</span>
-            <span class="n">obj_row</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">]</span>
-            <span class="n">obj_col</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="n">GRID</span><span class="o">.</span><span class="n">COL_NUM</span><span class="p">]</span>
-            <span class="n">obj_bbox</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_bbox</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+        <span class="c1"># Build (row, col) -&gt; section_df once so neighbour lookups are O(1)</span>
+        <span class="c1"># instead of an O(n_objects) DataFrame scan per direction per target.</span>
+        <span class="n">section_groups</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">g_row</span><span class="p">,</span> <span class="n">g_col</span><span class="p">),</span> <span class="n">sec_df</span> <span class="ow">in</span> <span class="n">grid_info</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">,</span> <span class="n">GRID</span><span class="o">.</span><span class="n">COL_NUM</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">):</span>
+            <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">isna</span><span class="p">(</span><span class="n">g_row</span><span class="p">)</span> <span class="ow">or</span> <span class="n">pd</span><span class="o">.</span><span class="n">isna</span><span class="p">(</span><span class="n">g_col</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="n">section_groups</span><span class="p">[(</span><span class="nb">int</span><span class="p">(</span><span class="n">g_row</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">g_col</span><span class="p">))]</span> <span class="o">=</span> <span class="n">sec_df</span>
 
-            <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">isna</span><span class="p">(</span><span class="n">obj_row</span><span class="p">)</span> <span class="ow">or</span> <span class="n">pd</span><span class="o">.</span><span class="n">isna</span><span class="p">(</span><span class="n">obj_col</span><span class="p">):</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">target_row</span><span class="p">,</span> <span class="n">target_col</span><span class="p">),</span> <span class="n">section_df</span> <span class="ow">in</span> <span class="n">section_groups</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">target_idx</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">_idx_ref_matrix</span><span class="p">[</span><span class="n">target_row</span><span class="p">,</span> <span class="n">target_col</span><span class="p">])</span>
+            <span class="n">target_labels</span> <span class="o">=</span> <span class="n">section_df</span><span class="p">[</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">target_labels</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="k">continue</span>
 
-            <span class="n">obj_row</span><span class="p">,</span> <span class="n">obj_col</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">obj_row</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">obj_col</span><span class="p">)</span>
+            <span class="n">target_bbox</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_section_bbox</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">target_idx</span><span class="p">,</span> <span class="n">grid_info</span><span class="p">)</span>
 
-            <span class="c1"># Check each direction: (direction_name, neighbor_row, neighbor_col, label_col, dist_col)</span>
-            <span class="n">directions</span> <span class="o">=</span> <span class="p">[</span>
-                <span class="p">(</span><span class="n">obj_row</span><span class="p">,</span> <span class="n">obj_col</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">LEFT_NEIGHBOR_OBJ_LABEL</span><span class="p">,</span>
-                 <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">LEFT_DISTANCE</span><span class="p">),</span>
-                <span class="p">(</span><span class="n">obj_row</span><span class="p">,</span> <span class="n">obj_col</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">RIGHT_NEIGHBOR_OBJ_LABEL</span><span class="p">,</span>
-                 <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">RIGHT_DISTANCE</span><span class="p">),</span>
-                <span class="p">(</span><span class="n">obj_row</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">obj_col</span><span class="p">,</span> <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">ABOVE_NEIGHBOR_OBJ_LABEL</span><span class="p">,</span>
-                 <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">ABOVE_DISTANCE</span><span class="p">),</span>
-                <span class="p">(</span><span class="n">obj_row</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">obj_col</span><span class="p">,</span> <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">UNDER_NEIGHBOR_OBJ_LABEL</span><span class="p">,</span>
-                 <span class="n">GRID_SPATIAL</span><span class="o">.</span><span class="n">UNDER_DISTANCE</span><span class="p">),</span>
-            <span class="p">]</span>
+            <span class="n">valid_neighbors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_collect_neighbors</span><span class="p">(</span>
+                    <span class="n">image</span><span class="p">,</span> <span class="n">grid_info</span><span class="p">,</span> <span class="n">section_groups</span><span class="p">,</span>
+                    <span class="n">target_row</span><span class="p">,</span> <span class="n">target_col</span><span class="p">,</span> <span class="n">nrows</span><span class="p">,</span> <span class="n">ncols</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">valid_neighbors</span><span class="p">:</span>
+                <span class="k">continue</span>
 
-            <span class="k">for</span> <span class="n">n_row</span><span class="p">,</span> <span class="n">n_col</span><span class="p">,</span> <span class="n">label_col</span><span class="p">,</span> <span class="n">dist_col</span> <span class="ow">in</span> <span class="n">directions</span><span class="p">:</span>
-                <span class="n">neighbor_label</span><span class="p">,</span> <span class="n">neighbor_dist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_closest_neighbor</span><span class="p">(</span>
-                        <span class="n">cell_lookup</span><span class="p">,</span> <span class="n">n_row</span><span class="p">,</span> <span class="n">n_col</span><span class="p">,</span> <span class="n">obj_bbox</span>
-                <span class="p">)</span>
-                <span class="k">if</span> <span class="n">neighbor_label</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">results</span><span class="p">[</span><span class="n">label_col</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">neighbor_label</span>
-                    <span class="n">results</span><span class="p">[</span><span class="n">dist_col</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">neighbor_dist</span>
+            <span class="c1"># Include target bbox so any target-object pixels that spilled past</span>
+            <span class="c1"># the section&#39;s grid edges are still seeded into target_mask (the</span>
+            <span class="c1"># object-fitting bounds may extend beyond the naive grid edges).</span>
+            <span class="n">all_bboxes</span> <span class="o">=</span> <span class="p">[</span><span class="n">target_bbox</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="n">n</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">valid_neighbors</span><span class="p">]</span>
+            <span class="n">win</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_window_bbox</span><span class="p">(</span><span class="n">all_bboxes</span><span class="p">)</span>
 
-        <span class="c1"># Build output DataFrame</span>
+            <span class="n">objmap_win</span> <span class="o">=</span> <span class="n">objmap_full</span><span class="p">[</span><span class="n">win</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="n">win</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">win</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span><span class="n">win</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="n">target_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">objmap_win</span><span class="p">,</span> <span class="n">target_labels</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">target_mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># Distance from each window pixel to the nearest target-section</span>
+            <span class="c1"># object pixel, with index back-pointers so we can attribute every</span>
+            <span class="c1"># pixel to a specific target object.</span>
+            <span class="n">dt</span><span class="p">,</span> <span class="n">indices</span> <span class="o">=</span> <span class="n">ndi</span><span class="o">.</span><span class="n">distance_transform_edt</span><span class="p">(</span>
+                    <span class="o">~</span><span class="n">target_mask</span><span class="p">,</span> <span class="n">return_indices</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+            <span class="n">nearest_target_label</span> <span class="o">=</span> <span class="n">objmap_win</span><span class="p">[</span><span class="n">indices</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">indices</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+
+            <span class="k">for</span> <span class="p">(</span><span class="n">_n_row</span><span class="p">,</span> <span class="n">_n_col</span><span class="p">,</span> <span class="n">n_bbox</span><span class="p">,</span> <span class="n">n_labels</span><span class="p">,</span>
+                 <span class="n">label_col</span><span class="p">,</span> <span class="n">dist_col</span><span class="p">)</span> <span class="ow">in</span> <span class="n">valid_neighbors</span><span class="p">:</span>
+                <span class="n">lo_rr</span> <span class="o">=</span> <span class="n">n_bbox</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">win</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">hi_rr</span> <span class="o">=</span> <span class="n">n_bbox</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">win</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+                <span class="n">lo_cc</span> <span class="o">=</span> <span class="n">n_bbox</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">win</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+                <span class="n">hi_cc</span> <span class="o">=</span> <span class="n">n_bbox</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">-</span> <span class="n">win</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+
+                <span class="n">objmap_n</span> <span class="o">=</span> <span class="n">objmap_win</span><span class="p">[</span><span class="n">lo_rr</span><span class="p">:</span><span class="n">hi_rr</span><span class="p">,</span> <span class="n">lo_cc</span><span class="p">:</span><span class="n">hi_cc</span><span class="p">]</span>
+                <span class="n">neighbor_pixel_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">objmap_n</span><span class="p">,</span> <span class="n">n_labels</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">neighbor_pixel_mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                    <span class="k">continue</span>
+
+                <span class="n">dt_n</span> <span class="o">=</span> <span class="n">dt</span><span class="p">[</span><span class="n">lo_rr</span><span class="p">:</span><span class="n">hi_rr</span><span class="p">,</span> <span class="n">lo_cc</span><span class="p">:</span><span class="n">hi_cc</span><span class="p">]</span>
+                <span class="n">nearest_n</span> <span class="o">=</span> <span class="n">nearest_target_label</span><span class="p">[</span><span class="n">lo_rr</span><span class="p">:</span><span class="n">hi_rr</span><span class="p">,</span> <span class="n">lo_cc</span><span class="p">:</span><span class="n">hi_cc</span><span class="p">]</span>
+
+                <span class="k">for</span> <span class="n">target_label</span> <span class="ow">in</span> <span class="n">target_labels</span><span class="p">:</span>
+                    <span class="n">cand</span> <span class="o">=</span> <span class="n">neighbor_pixel_mask</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">nearest_n</span> <span class="o">==</span> <span class="n">target_label</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">cand</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                        <span class="k">continue</span>
+                    <span class="n">cand_dt</span> <span class="o">=</span> <span class="n">dt_n</span><span class="p">[</span><span class="n">cand</span><span class="p">]</span>
+                    <span class="n">cand_obj</span> <span class="o">=</span> <span class="n">objmap_n</span><span class="p">[</span><span class="n">cand</span><span class="p">]</span>
+                    <span class="n">argmin</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">cand_dt</span><span class="p">))</span>
+                    <span class="n">row_idx</span> <span class="o">=</span> <span class="n">label_to_row</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">target_label</span><span class="p">)]</span>
+                    <span class="n">results</span><span class="p">[</span><span class="n">label_col</span><span class="p">][</span><span class="n">row_idx</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">cand_obj</span><span class="p">[</span><span class="n">argmin</span><span class="p">])</span>
+                    <span class="n">results</span><span class="p">[</span><span class="n">dist_col</span><span class="p">][</span><span class="n">row_idx</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">cand_dt</span><span class="p">[</span><span class="n">argmin</span><span class="p">])</span>
+
         <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
-        <span class="n">df</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">,</span> <span class="n">gs_table</span><span class="p">[</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">df</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_build_cell_lookup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gs_table</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build lookup mapping (row, col) -&gt; list of (label, bbox).</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_section_bbox</span><span class="p">(</span>
+            <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">,</span> <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">grid_info</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return integer (min_rr, max_rr, min_cc, max_cc) for a grid section.</span>
 
-<span class="sd">        Args:</span>
-<span class="sd">            gs_table: DataFrame from image.grid.info() with object positions.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Dictionary mapping (grid_row, grid_col) tuples to lists of</span>
-<span class="sd">            (object_label, bbox_tuple) for all objects in that cell.</span>
+<span class="sd">        Uses the object-fitting section slices so colonies that spill past</span>
+<span class="sd">        their grid line are not cropped at the boundary.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">lookup</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">gs_table</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
-            <span class="n">grid_row</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">]</span>
-            <span class="n">grid_col</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="n">GRID</span><span class="o">.</span><span class="n">COL_NUM</span><span class="p">]</span>
-            <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">isna</span><span class="p">(</span><span class="n">grid_row</span><span class="p">)</span> <span class="ow">or</span> <span class="n">pd</span><span class="o">.</span><span class="n">isna</span><span class="p">(</span><span class="n">grid_col</span><span class="p">):</span>
-                <span class="k">continue</span>
-            <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">grid_row</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">grid_col</span><span class="p">))</span>
-            <span class="n">bbox</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_bbox</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
-            <span class="n">label</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">]</span>
-            <span class="n">lookup</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">label</span><span class="p">,</span> <span class="n">bbox</span><span class="p">))</span>
-        <span class="k">return</span> <span class="n">lookup</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_extract_bbox</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract bounding box tuple from DataFrame row.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            row: Single row from grid info DataFrame.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Tuple of (min_rr, max_rr, min_cc, max_cc) bounding box coordinates.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="p">(</span><span class="n">min_rr</span><span class="p">,</span> <span class="n">min_cc</span><span class="p">),</span> <span class="p">(</span><span class="n">max_rr</span><span class="p">,</span> <span class="n">max_cc</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">_adv_get_grid_section_slices</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">grid_info</span><span class="p">)</span>
+        <span class="p">)</span>
         <span class="k">return</span> <span class="p">(</span>
-            <span class="n">row</span><span class="p">[</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MIN_RR</span><span class="p">],</span>
-            <span class="n">row</span><span class="p">[</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MAX_RR</span><span class="p">],</span>
-            <span class="n">row</span><span class="p">[</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MIN_CC</span><span class="p">],</span>
-            <span class="n">row</span><span class="p">[</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MAX_CC</span><span class="p">],</span>
+            <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">min_rr</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()),</span>
+            <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">max_rr</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()),</span>
+            <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">min_cc</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()),</span>
+            <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">max_cc</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()),</span>
         <span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_find_closest_neighbor</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span> <span class="n">lookup</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">n_row</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n_col</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">obj_bbox</span><span class="p">:</span> <span class="nb">tuple</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Find closest object in neighbor cell.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            lookup: Cell lookup dictionary from _build_cell_lookup.</span>
-<span class="sd">            n_row: Grid row index of neighbor cell.</span>
-<span class="sd">            n_col: Grid column index of neighbor cell.</span>
-<span class="sd">            obj_bbox: Bounding box of the current object.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Tuple of (neighbor_label, distance) if neighbor exists,</span>
-<span class="sd">            otherwise (None, None).</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">n_row</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">n_col</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
-
-        <span class="n">neighbors</span> <span class="o">=</span> <span class="n">lookup</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">n_row</span><span class="p">,</span> <span class="n">n_col</span><span class="p">),</span> <span class="p">[])</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">neighbors</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
-
-        <span class="n">closest_label</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="n">closest_dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
-
-        <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">n_bbox</span> <span class="ow">in</span> <span class="n">neighbors</span><span class="p">:</span>
-            <span class="n">dist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bbox_distance</span><span class="p">(</span><span class="n">obj_bbox</span><span class="p">,</span> <span class="n">n_bbox</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">dist</span> <span class="o">&lt;</span> <span class="n">closest_dist</span><span class="p">:</span>
-                <span class="n">closest_dist</span> <span class="o">=</span> <span class="n">dist</span>
-                <span class="n">closest_label</span> <span class="o">=</span> <span class="n">label</span>
-
-        <span class="k">return</span> <span class="n">closest_label</span><span class="p">,</span> <span class="n">closest_dist</span>
-
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_bbox_distance</span><span class="p">(</span><span class="n">bbox1</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">bbox2</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute minimum edge-to-edge Euclidean distance between bounding boxes.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_window_bbox</span><span class="p">(</span>
+            <span class="n">bboxes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Union of (min_rr, max_rr, min_cc, max_cc) bboxes.&quot;&quot;&quot;</span>
+        <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">bboxes</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="nb">int</span><span class="p">(</span><span class="n">arr</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()),</span>
+            <span class="nb">int</span><span class="p">(</span><span class="n">arr</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()),</span>
+            <span class="nb">int</span><span class="p">(</span><span class="n">arr</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()),</span>
+            <span class="nb">int</span><span class="p">(</span><span class="n">arr</span><span class="p">[:,</span> <span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()),</span>
+        <span class="p">)</span>
 
-<span class="sd">        This computes the minimum distance between any point on the first bounding</span>
-<span class="sd">        box and any point on the second bounding box. If the boxes overlap, the</span>
-<span class="sd">        distance is 0.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            bbox1: First bounding box as (min_rr, max_rr, min_cc, max_cc).</span>
-<span class="sd">            bbox2: Second bounding box as (min_rr, max_rr, min_cc, max_cc).</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Minimum Euclidean distance between the bounding boxes (0 if overlapping).</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">min_rr1</span><span class="p">,</span> <span class="n">max_rr1</span><span class="p">,</span> <span class="n">min_cc1</span><span class="p">,</span> <span class="n">max_cc1</span> <span class="o">=</span> <span class="n">bbox1</span>
-        <span class="n">min_rr2</span><span class="p">,</span> <span class="n">max_rr2</span><span class="p">,</span> <span class="n">min_cc2</span><span class="p">,</span> <span class="n">max_cc2</span> <span class="o">=</span> <span class="n">bbox2</span>
-
-        <span class="c1"># Distance in row direction (0 if overlapping)</span>
-        <span class="k">if</span> <span class="n">max_rr1</span> <span class="o">&lt;</span> <span class="n">min_rr2</span><span class="p">:</span>
-            <span class="n">rr_dist</span> <span class="o">=</span> <span class="n">min_rr2</span> <span class="o">-</span> <span class="n">max_rr1</span>
-        <span class="k">elif</span> <span class="n">max_rr2</span> <span class="o">&lt;</span> <span class="n">min_rr1</span><span class="p">:</span>
-            <span class="n">rr_dist</span> <span class="o">=</span> <span class="n">min_rr1</span> <span class="o">-</span> <span class="n">max_rr2</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">rr_dist</span> <span class="o">=</span> <span class="mi">0</span>
-
-        <span class="c1"># Distance in column direction (0 if overlapping)</span>
-        <span class="k">if</span> <span class="n">max_cc1</span> <span class="o">&lt;</span> <span class="n">min_cc2</span><span class="p">:</span>
-            <span class="n">cc_dist</span> <span class="o">=</span> <span class="n">min_cc2</span> <span class="o">-</span> <span class="n">max_cc1</span>
-        <span class="k">elif</span> <span class="n">max_cc2</span> <span class="o">&lt;</span> <span class="n">min_cc1</span><span class="p">:</span>
-            <span class="n">cc_dist</span> <span class="o">=</span> <span class="n">min_cc1</span> <span class="o">-</span> <span class="n">max_cc2</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">cc_dist</span> <span class="o">=</span> <span class="mi">0</span>
-
-        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">rr_dist</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">cc_dist</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span></div>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_collect_neighbors</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">,</span>
+            <span class="n">grid_info</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+            <span class="n">section_groups</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">],</span>
+            <span class="n">target_row</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">target_col</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">ncols</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Enumerate valid (in-bounds, non-empty) neighbor sections.&quot;&quot;&quot;</span>
+        <span class="n">valid</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span>
+            <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span>
+        <span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">d_row</span><span class="p">,</span> <span class="n">d_col</span><span class="p">,</span> <span class="n">label_col</span><span class="p">,</span> <span class="n">dist_col</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_DIRECTIONS</span><span class="p">:</span>
+            <span class="n">n_row</span><span class="p">,</span> <span class="n">n_col</span> <span class="o">=</span> <span class="n">target_row</span> <span class="o">+</span> <span class="n">d_row</span><span class="p">,</span> <span class="n">target_col</span> <span class="o">+</span> <span class="n">d_col</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">n_row</span> <span class="o">&lt;</span> <span class="n">nrows</span> <span class="ow">and</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">n_col</span> <span class="o">&lt;</span> <span class="n">ncols</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="n">n_section_df</span> <span class="o">=</span> <span class="n">section_groups</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">n_row</span><span class="p">,</span> <span class="n">n_col</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">n_section_df</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">n_section_df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">n_idx</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">_idx_ref_matrix</span><span class="p">[</span><span class="n">n_row</span><span class="p">,</span> <span class="n">n_col</span><span class="p">])</span>
+            <span class="n">n_bbox</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_section_bbox</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">n_idx</span><span class="p">,</span> <span class="n">grid_info</span><span class="p">)</span>
+            <span class="n">n_labels</span> <span class="o">=</span> <span class="n">n_section_df</span><span class="p">[</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+            <span class="n">valid</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">(</span><span class="n">n_row</span><span class="p">,</span> <span class="n">n_col</span><span class="p">,</span> <span class="n">n_bbox</span><span class="p">,</span> <span class="n">n_labels</span><span class="p">,</span> <span class="n">label_col</span><span class="p">,</span> <span class="n">dist_col</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">valid</span></div>
 
 
 

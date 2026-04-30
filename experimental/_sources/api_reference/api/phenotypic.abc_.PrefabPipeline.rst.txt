@@ -26,6 +26,7 @@ phenotypic.abc\_.PrefabPipeline
       ~PrefabPipeline.from_json
       ~PrefabPipeline.get_meas
       ~PrefabPipeline.get_ops
+      ~PrefabPipeline.get_post
       ~PrefabPipeline.measure
       ~PrefabPipeline.set_meas
       ~PrefabPipeline.set_ops
@@ -42,5 +43,7 @@ phenotypic.abc\_.PrefabPipeline
    .. autosummary::
    
       ~PrefabPipeline.desc
+      ~PrefabPipeline.ncols
+      ~PrefabPipeline.nrows
    
    

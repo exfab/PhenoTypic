@@ -26,6 +26,7 @@ phenotypic.prefab.SpImagerPipeline
       ~SpImagerPipeline.from_json
       ~SpImagerPipeline.get_meas
       ~SpImagerPipeline.get_ops
+      ~SpImagerPipeline.get_post
       ~SpImagerPipeline.measure
       ~SpImagerPipeline.set_meas
       ~SpImagerPipeline.set_ops
@@ -42,5 +43,7 @@ phenotypic.prefab.SpImagerPipeline
    .. autosummary::
    
       ~SpImagerPipeline.desc
+      ~SpImagerPipeline.ncols
+      ~SpImagerPipeline.nrows
    
    

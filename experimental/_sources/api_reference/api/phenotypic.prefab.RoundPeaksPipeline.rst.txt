@@ -26,6 +26,7 @@ phenotypic.prefab.RoundPeaksPipeline
       ~RoundPeaksPipeline.from_json
       ~RoundPeaksPipeline.get_meas
       ~RoundPeaksPipeline.get_ops
+      ~RoundPeaksPipeline.get_post
       ~RoundPeaksPipeline.measure
       ~RoundPeaksPipeline.set_meas
       ~RoundPeaksPipeline.set_ops
@@ -42,5 +43,7 @@ phenotypic.prefab.RoundPeaksPipeline
    .. autosummary::
    
       ~RoundPeaksPipeline.desc
+      ~RoundPeaksPipeline.ncols
+      ~RoundPeaksPipeline.nrows
    
    

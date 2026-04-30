@@ -26,6 +26,7 @@ phenotypic.prefab.FilamentousFungiPipeline
       ~FilamentousFungiPipeline.from_json
       ~FilamentousFungiPipeline.get_meas
       ~FilamentousFungiPipeline.get_ops
+      ~FilamentousFungiPipeline.get_post
       ~FilamentousFungiPipeline.measure
       ~FilamentousFungiPipeline.set_meas
       ~FilamentousFungiPipeline.set_ops
@@ -42,5 +43,7 @@ phenotypic.prefab.FilamentousFungiPipeline
    .. autosummary::
    
       ~FilamentousFungiPipeline.desc
+      ~FilamentousFungiPipeline.ncols
+      ~FilamentousFungiPipeline.nrows
    
    

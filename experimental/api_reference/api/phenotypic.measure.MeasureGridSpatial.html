@@ -834,11 +834,14 @@
 <dt class="sig sig-object py">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.measure.</span></span><span class="sig-name descname"><span class="pre">MeasureGridSpatial</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/measure/_measure_grid_spatial.html#MeasureGridSpatial"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Bases: <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GridMeasureFeatures" title="phenotypic.abc_._grid_measure.GridMeasureFeatures"><code class="xref py py-class docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code></a></p>
-<p>Measure edge-to-edge distances to neighbors in adjacent grid cells.</p>
+<p>Measure pixel-to-pixel distances to neighbors in adjacent grid cells.</p>
 <blockquote>
 <div><p>For each detected colony, identify the nearest object in the left,
-right, above, and below grid cells and compute the minimum
-bounding-box edge-to-edge distance. Edge and corner colonies report
+right, above, and below grid cells and report the minimum Euclidean
+distance between their pixel masks. Distances are computed via a
+per-section distance transform over a local window covering the target
+cell and its immediate neighbors, so round colonies are not
+over-estimated by their bounding boxes. Edge and corner colonies report
 <code class="docutils literal notranslate"><span class="pre">NaN</span></code> for directions beyond the plate boundary.</p>
 <dl>
 <dt>Returns:</dt><dd><p>pd.DataFrame: Object-level neighbor measurements with columns:</p>
@@ -849,21 +852,25 @@ bounding-box edge-to-edge distance. Edge and corner colonies report
 <li><p>RightNeighborObjLabel, RightDistance.</p></li>
 <li><p>AboveNeighborObjLabel, AboveDistance.</p></li>
 <li><p>UnderNeighborObjLabel, UnderDistance.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">NaN</span></code> where no neighbor exists in a given direction.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">NaN</span></code> where no neighbor exists (out of plate, empty
+neighbor cell, or the colony is shielded by another colony
+in the same cell).</p></li>
 </ul>
 </div></blockquote>
 </dd>
 <dt>Best For:</dt><dd><ul class="simple">
 <li><p>Quantifying colony spacing and crowding to assess nutrient
-competition risk on arrayed plates.</p></li>
+competition risk on arrayed plates, especially for round or
+irregular colony shapes where bounding-box geometry overstates
+proximity.</p></li>
 <li><p>Flagging closely spaced colonies that may cross-contaminate.</p></li>
 <li><p>Enabling neighbor-aware paired statistical comparisons for
 competition or cooperation studies.</p></li>
 </ul>
 </dd>
 <dt>Consider Also:</dt><dd><ul class="simple">
-<li><p><a class="reference internal" href="../phenotypic.measure.html#phenotypic.measure.MeasureGridLinRegStats" title="phenotypic.measure.MeasureGridLinRegStats"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureGridLinRegStats</span></code></a> for regression-based
-positional quality metrics.</p></li>
+<li><p><a class="reference internal" href="../phenotypic.measure.html#phenotypic.measure.MeasureGridLinRegStats" title="phenotypic.measure.MeasureGridLinRegStats"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureGridLinRegStats</span></code></a> for regression-based positional
+quality metrics.</p></li>
 <li><p><a class="reference internal" href="../phenotypic.measure.html#phenotypic.measure.MeasureGridSpread" title="phenotypic.measure.MeasureGridSpread"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureGridSpread</span></code></a> for within-well colony dispersion
 rather than between-well distances.</p></li>
 <li><p><a class="reference internal" href="../phenotypic.measure.html#phenotypic.measure.MeasureBounds" title="phenotypic.measure.MeasureBounds"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureBounds</span></code></a> for raw bounding boxes and centroids
@@ -887,25 +894,25 @@ walkthrough of grid-level measurements.</p>
 <td><p>The object label of the left neighbor colony</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">LeftDistance</span></code></p></td>
-<td><p>The distance of the left neighbor colony calculated using euclidean distance between bounding boxes</p></td>
+<td><p>The minimum pixel-to-pixel distance to the left neighbor colony, computed via a Euclidean distance transform of object pixel masks</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RightNeighborObjLabel</span></code></p></td>
 <td><p>The object label of the right neighbor colony</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">RightDistance</span></code></p></td>
-<td><p>The distance of the right neighbor colony calculated using euclidean distance between bounding boxes</p></td>
+<td><p>The minimum pixel-to-pixel distance to the right neighbor colony, computed via a Euclidean distance transform of object pixel masks</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">AboveNeighborObjLabel</span></code></p></td>
 <td><p>The object label of the above neighbor colony</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">AboveDistance</span></code></p></td>
-<td><p>The distance of the above neighbor colony calculated using euclidean distance between bounding boxes</p></td>
+<td><p>The minimum pixel-to-pixel distance to the above neighbor colony, computed via a Euclidean distance transform of object pixel masks</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">UnderNeighborObjLabel</span></code></p></td>
 <td><p>The object label of the under neighbor colony</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">UnderDistance</span></code></p></td>
-<td><p>The distance of the under neighbor colony calculated using euclidean distance between bounding boxes</p></td>
+<td><p>The minimum pixel-to-pixel distance to the under neighbor colony, computed via a Euclidean distance transform of object pixel masks</p></td>
 </tr>
 </tbody>
 </table>

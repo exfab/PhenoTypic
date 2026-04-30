@@ -26,6 +26,7 @@ phenotypic.prefab.HeavyRoundPeaksPipeline
       ~HeavyRoundPeaksPipeline.from_json
       ~HeavyRoundPeaksPipeline.get_meas
       ~HeavyRoundPeaksPipeline.get_ops
+      ~HeavyRoundPeaksPipeline.get_post
       ~HeavyRoundPeaksPipeline.measure
       ~HeavyRoundPeaksPipeline.set_meas
       ~HeavyRoundPeaksPipeline.set_ops
@@ -42,5 +43,7 @@ phenotypic.prefab.HeavyRoundPeaksPipeline
    .. autosummary::
    
       ~HeavyRoundPeaksPipeline.desc
+      ~HeavyRoundPeaksPipeline.ncols
+      ~HeavyRoundPeaksPipeline.nrows
    
    

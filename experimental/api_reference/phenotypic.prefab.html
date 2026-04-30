@@ -833,6 +833,25 @@ configuration.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.prefab.FilamentousFungiPipeline.get_post">
+<span class="sig-name descname"><span class="pre">get_post</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.PostMeasurement" title="phenotypic.abc_._post_measurement.PostMeasurement"><span class="pre">PostMeasurement</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.prefab.FilamentousFungiPipeline.get_post" title="Link to this definition">#</a></dt>
+<dd><p>Get a copy of the post-measurement transforms dictionary.</p>
+<p>Returns a shallow copy to prevent accidental mutation of internal state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>Dictionary mapping post-measurement</dt><dd><p>names to <code class="docutils literal notranslate"><span class="pre">PostMeasurement</span></code> instances.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.PostMeasurement" title="phenotypic.abc_.PostMeasurement">PostMeasurement</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.prefab.FilamentousFungiPipeline.measure">
 <span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pd.DataFrame</span></span></span><a class="headerlink" href="#phenotypic.prefab.FilamentousFungiPipeline.measure" title="Link to this definition">#</a></dt>
 <dd><p>Measures properties of a given image and optionally includes metadata. The method performs
@@ -923,7 +942,7 @@ If a list, class names are used as keys.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.prefab.FilamentousFungiPipeline.to_json">
-<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.prefab.FilamentousFungiPipeline.to_json" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.prefab.FilamentousFungiPipeline.to_json" title="Link to this definition">#</a></dt>
 <dd><p>Serialize the pipeline configuration to JSON format.</p>
 <p>This method captures the pipeline’s operations and measurements.
 It excludes internal state (attributes starting with ‘_’) and pandas
@@ -982,6 +1001,18 @@ visualization controls will be added to the widget.</p></li>
 <dt class="sig sig-object py" id="phenotypic.prefab.FilamentousFungiPipeline.desc">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">desc</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.prefab.FilamentousFungiPipeline.desc" title="Link to this definition">#</a></dt>
 <dd><p>Get pipeline description. Returns class docstring if no description set.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.prefab.FilamentousFungiPipeline.ncols">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ncols</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.prefab.FilamentousFungiPipeline.ncols" title="Link to this definition">#</a></dt>
+<dd><p>Soft preset for grid column count, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if unset.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.prefab.FilamentousFungiPipeline.nrows">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">nrows</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.prefab.FilamentousFungiPipeline.nrows" title="Link to this definition">#</a></dt>
+<dd><p>Soft preset for grid row count, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if unset.</p>
 </dd></dl>
 
 </dd></dl>
@@ -1367,6 +1398,25 @@ configuration.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.prefab.GridSectionPipeline.get_post">
+<span class="sig-name descname"><span class="pre">get_post</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.PostMeasurement" title="phenotypic.abc_._post_measurement.PostMeasurement"><span class="pre">PostMeasurement</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.prefab.GridSectionPipeline.get_post" title="Link to this definition">#</a></dt>
+<dd><p>Get a copy of the post-measurement transforms dictionary.</p>
+<p>Returns a shallow copy to prevent accidental mutation of internal state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>Dictionary mapping post-measurement</dt><dd><p>names to <code class="docutils literal notranslate"><span class="pre">PostMeasurement</span></code> instances.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.PostMeasurement" title="phenotypic.abc_.PostMeasurement">PostMeasurement</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.prefab.GridSectionPipeline.measure">
 <span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pd.DataFrame</span></span></span><a class="headerlink" href="#phenotypic.prefab.GridSectionPipeline.measure" title="Link to this definition">#</a></dt>
 <dd><p>Measures properties of a given image and optionally includes metadata. The method performs
@@ -1457,7 +1507,7 @@ If a list, class names are used as keys.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.prefab.GridSectionPipeline.to_json">
-<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.prefab.GridSectionPipeline.to_json" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.prefab.GridSectionPipeline.to_json" title="Link to this definition">#</a></dt>
 <dd><p>Serialize the pipeline configuration to JSON format.</p>
 <p>This method captures the pipeline’s operations and measurements.
 It excludes internal state (attributes starting with ‘_’) and pandas
@@ -1516,6 +1566,18 @@ visualization controls will be added to the widget.</p></li>
 <dt class="sig sig-object py" id="phenotypic.prefab.GridSectionPipeline.desc">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">desc</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.prefab.GridSectionPipeline.desc" title="Link to this definition">#</a></dt>
 <dd><p>Get pipeline description. Returns class docstring if no description set.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.prefab.GridSectionPipeline.ncols">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ncols</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.prefab.GridSectionPipeline.ncols" title="Link to this definition">#</a></dt>
+<dd><p>Soft preset for grid column count, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if unset.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.prefab.GridSectionPipeline.nrows">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">nrows</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.prefab.GridSectionPipeline.nrows" title="Link to this definition">#</a></dt>
+<dd><p>Soft preset for grid row count, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if unset.</p>
 </dd></dl>
 
 </dd></dl>
@@ -1869,6 +1931,25 @@ configuration.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.prefab.HeavyOtsuPipeline.get_post">
+<span class="sig-name descname"><span class="pre">get_post</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.PostMeasurement" title="phenotypic.abc_._post_measurement.PostMeasurement"><span class="pre">PostMeasurement</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.prefab.HeavyOtsuPipeline.get_post" title="Link to this definition">#</a></dt>
+<dd><p>Get a copy of the post-measurement transforms dictionary.</p>
+<p>Returns a shallow copy to prevent accidental mutation of internal state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>Dictionary mapping post-measurement</dt><dd><p>names to <code class="docutils literal notranslate"><span class="pre">PostMeasurement</span></code> instances.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.PostMeasurement" title="phenotypic.abc_.PostMeasurement">PostMeasurement</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.prefab.HeavyOtsuPipeline.measure">
 <span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pd.DataFrame</span></span></span><a class="headerlink" href="#phenotypic.prefab.HeavyOtsuPipeline.measure" title="Link to this definition">#</a></dt>
 <dd><p>Measures properties of a given image and optionally includes metadata. The method performs
@@ -1959,7 +2040,7 @@ If a list, class names are used as keys.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.prefab.HeavyOtsuPipeline.to_json">
-<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.prefab.HeavyOtsuPipeline.to_json" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.prefab.HeavyOtsuPipeline.to_json" title="Link to this definition">#</a></dt>
 <dd><p>Serialize the pipeline configuration to JSON format.</p>
 <p>This method captures the pipeline’s operations and measurements.
 It excludes internal state (attributes starting with ‘_’) and pandas
@@ -2018,6 +2099,18 @@ visualization controls will be added to the widget.</p></li>
 <dt class="sig sig-object py" id="phenotypic.prefab.HeavyOtsuPipeline.desc">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">desc</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.prefab.HeavyOtsuPipeline.desc" title="Link to this definition">#</a></dt>
 <dd><p>Get pipeline description. Returns class docstring if no description set.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.prefab.HeavyOtsuPipeline.ncols">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ncols</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.prefab.HeavyOtsuPipeline.ncols" title="Link to this definition">#</a></dt>
+<dd><p>Soft preset for grid column count, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if unset.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.prefab.HeavyOtsuPipeline.nrows">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">nrows</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.prefab.HeavyOtsuPipeline.nrows" title="Link to this definition">#</a></dt>
+<dd><p>Soft preset for grid row count, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if unset.</p>
 </dd></dl>
 
 </dd></dl>
@@ -2719,6 +2812,25 @@ configuration.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.prefab.HeavyRoundPeaksPipeline.get_post">
+<span class="sig-name descname"><span class="pre">get_post</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.PostMeasurement" title="phenotypic.abc_._post_measurement.PostMeasurement"><span class="pre">PostMeasurement</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.get_post" title="Link to this definition">#</a></dt>
+<dd><p>Get a copy of the post-measurement transforms dictionary.</p>
+<p>Returns a shallow copy to prevent accidental mutation of internal state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>Dictionary mapping post-measurement</dt><dd><p>names to <code class="docutils literal notranslate"><span class="pre">PostMeasurement</span></code> instances.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.PostMeasurement" title="phenotypic.abc_.PostMeasurement">PostMeasurement</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.prefab.HeavyRoundPeaksPipeline.measure">
 <span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pd.DataFrame</span></span></span><a class="headerlink" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.measure" title="Link to this definition">#</a></dt>
 <dd><p>Measures properties of a given image and optionally includes metadata. The method performs
@@ -2809,7 +2921,7 @@ If a list, class names are used as keys.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.prefab.HeavyRoundPeaksPipeline.to_json">
-<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.to_json" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.to_json" title="Link to this definition">#</a></dt>
 <dd><p>Serialize the pipeline configuration to JSON format.</p>
 <p>This method captures the pipeline’s operations and measurements.
 It excludes internal state (attributes starting with ‘_’) and pandas
@@ -2868,6 +2980,18 @@ visualization controls will be added to the widget.</p></li>
 <dt class="sig sig-object py" id="phenotypic.prefab.HeavyRoundPeaksPipeline.desc">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">desc</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.desc" title="Link to this definition">#</a></dt>
 <dd><p>Get pipeline description. Returns class docstring if no description set.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.prefab.HeavyRoundPeaksPipeline.ncols">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ncols</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.ncols" title="Link to this definition">#</a></dt>
+<dd><p>Soft preset for grid column count, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if unset.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.prefab.HeavyRoundPeaksPipeline.nrows">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">nrows</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.nrows" title="Link to this definition">#</a></dt>
+<dd><p>Soft preset for grid row count, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if unset.</p>
 </dd></dl>
 
 </dd></dl>
@@ -3231,6 +3355,25 @@ configuration.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.prefab.HeavyWatershedPipeline.get_post">
+<span class="sig-name descname"><span class="pre">get_post</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.PostMeasurement" title="phenotypic.abc_._post_measurement.PostMeasurement"><span class="pre">PostMeasurement</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.prefab.HeavyWatershedPipeline.get_post" title="Link to this definition">#</a></dt>
+<dd><p>Get a copy of the post-measurement transforms dictionary.</p>
+<p>Returns a shallow copy to prevent accidental mutation of internal state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>Dictionary mapping post-measurement</dt><dd><p>names to <code class="docutils literal notranslate"><span class="pre">PostMeasurement</span></code> instances.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.PostMeasurement" title="phenotypic.abc_.PostMeasurement">PostMeasurement</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.prefab.HeavyWatershedPipeline.measure">
 <span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pd.DataFrame</span></span></span><a class="headerlink" href="#phenotypic.prefab.HeavyWatershedPipeline.measure" title="Link to this definition">#</a></dt>
 <dd><p>Measures properties of a given image and optionally includes metadata. The method performs
@@ -3321,7 +3464,7 @@ If a list, class names are used as keys.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.prefab.HeavyWatershedPipeline.to_json">
-<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.prefab.HeavyWatershedPipeline.to_json" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.prefab.HeavyWatershedPipeline.to_json" title="Link to this definition">#</a></dt>
 <dd><p>Serialize the pipeline configuration to JSON format.</p>
 <p>This method captures the pipeline’s operations and measurements.
 It excludes internal state (attributes starting with ‘_’) and pandas
@@ -3380,6 +3523,18 @@ visualization controls will be added to the widget.</p></li>
 <dt class="sig sig-object py" id="phenotypic.prefab.HeavyWatershedPipeline.desc">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">desc</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.prefab.HeavyWatershedPipeline.desc" title="Link to this definition">#</a></dt>
 <dd><p>Get pipeline description. Returns class docstring if no description set.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.prefab.HeavyWatershedPipeline.ncols">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ncols</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.prefab.HeavyWatershedPipeline.ncols" title="Link to this definition">#</a></dt>
+<dd><p>Soft preset for grid column count, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if unset.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.prefab.HeavyWatershedPipeline.nrows">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">nrows</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.prefab.HeavyWatershedPipeline.nrows" title="Link to this definition">#</a></dt>
+<dd><p>Soft preset for grid row count, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if unset.</p>
 </dd></dl>
 
 </dd></dl>
@@ -3712,6 +3867,25 @@ configuration.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.prefab.RoundPeaksPipeline.get_post">
+<span class="sig-name descname"><span class="pre">get_post</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.PostMeasurement" title="phenotypic.abc_._post_measurement.PostMeasurement"><span class="pre">PostMeasurement</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.prefab.RoundPeaksPipeline.get_post" title="Link to this definition">#</a></dt>
+<dd><p>Get a copy of the post-measurement transforms dictionary.</p>
+<p>Returns a shallow copy to prevent accidental mutation of internal state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>Dictionary mapping post-measurement</dt><dd><p>names to <code class="docutils literal notranslate"><span class="pre">PostMeasurement</span></code> instances.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.PostMeasurement" title="phenotypic.abc_.PostMeasurement">PostMeasurement</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.prefab.RoundPeaksPipeline.measure">
 <span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pd.DataFrame</span></span></span><a class="headerlink" href="#phenotypic.prefab.RoundPeaksPipeline.measure" title="Link to this definition">#</a></dt>
 <dd><p>Measures properties of a given image and optionally includes metadata. The method performs
@@ -3802,7 +3976,7 @@ If a list, class names are used as keys.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.prefab.RoundPeaksPipeline.to_json">
-<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.prefab.RoundPeaksPipeline.to_json" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.prefab.RoundPeaksPipeline.to_json" title="Link to this definition">#</a></dt>
 <dd><p>Serialize the pipeline configuration to JSON format.</p>
 <p>This method captures the pipeline’s operations and measurements.
 It excludes internal state (attributes starting with ‘_’) and pandas
@@ -3861,6 +4035,18 @@ visualization controls will be added to the widget.</p></li>
 <dt class="sig sig-object py" id="phenotypic.prefab.RoundPeaksPipeline.desc">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">desc</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.prefab.RoundPeaksPipeline.desc" title="Link to this definition">#</a></dt>
 <dd><p>Get pipeline description. Returns class docstring if no description set.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.prefab.RoundPeaksPipeline.ncols">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ncols</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.prefab.RoundPeaksPipeline.ncols" title="Link to this definition">#</a></dt>
+<dd><p>Soft preset for grid column count, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if unset.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.prefab.RoundPeaksPipeline.nrows">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">nrows</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.prefab.RoundPeaksPipeline.nrows" title="Link to this definition">#</a></dt>
+<dd><p>Soft preset for grid row count, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if unset.</p>
 </dd></dl>
 
 </dd></dl>
@@ -4122,6 +4308,25 @@ configuration.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.prefab.SpImagerPipeline.get_post">
+<span class="sig-name descname"><span class="pre">get_post</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.PostMeasurement" title="phenotypic.abc_._post_measurement.PostMeasurement"><span class="pre">PostMeasurement</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.prefab.SpImagerPipeline.get_post" title="Link to this definition">#</a></dt>
+<dd><p>Get a copy of the post-measurement transforms dictionary.</p>
+<p>Returns a shallow copy to prevent accidental mutation of internal state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>Dictionary mapping post-measurement</dt><dd><p>names to <code class="docutils literal notranslate"><span class="pre">PostMeasurement</span></code> instances.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.PostMeasurement" title="phenotypic.abc_.PostMeasurement">PostMeasurement</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.prefab.SpImagerPipeline.measure">
 <span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pd.DataFrame</span></span></span><a class="headerlink" href="#phenotypic.prefab.SpImagerPipeline.measure" title="Link to this definition">#</a></dt>
 <dd><p>Measures properties of a given image and optionally includes metadata. The method performs
@@ -4212,7 +4417,7 @@ If a list, class names are used as keys.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.prefab.SpImagerPipeline.to_json">
-<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.prefab.SpImagerPipeline.to_json" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.prefab.SpImagerPipeline.to_json" title="Link to this definition">#</a></dt>
 <dd><p>Serialize the pipeline configuration to JSON format.</p>
 <p>This method captures the pipeline’s operations and measurements.
 It excludes internal state (attributes starting with ‘_’) and pandas
@@ -4273,6 +4478,18 @@ visualization controls will be added to the widget.</p></li>
 <dd><p>Get pipeline description. Returns class docstring if no description set.</p>
 </dd></dl>
 
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.prefab.SpImagerPipeline.ncols">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ncols</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.prefab.SpImagerPipeline.ncols" title="Link to this definition">#</a></dt>
+<dd><p>Soft preset for grid column count, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if unset.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.prefab.SpImagerPipeline.nrows">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">nrows</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.prefab.SpImagerPipeline.nrows" title="Link to this definition">#</a></dt>
+<dd><p>Soft preset for grid row count, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if unset.</p>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -4312,6 +4529,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.FilamentousFungiPipeline.from_json"><code class="docutils literal notranslate"><span class="pre">FilamentousFungiPipeline.from_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.FilamentousFungiPipeline.get_meas"><code class="docutils literal notranslate"><span class="pre">FilamentousFungiPipeline.get_meas()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.FilamentousFungiPipeline.get_ops"><code class="docutils literal notranslate"><span class="pre">FilamentousFungiPipeline.get_ops()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.FilamentousFungiPipeline.get_post"><code class="docutils literal notranslate"><span class="pre">FilamentousFungiPipeline.get_post()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.FilamentousFungiPipeline.measure"><code class="docutils literal notranslate"><span class="pre">FilamentousFungiPipeline.measure()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.FilamentousFungiPipeline.set_meas"><code class="docutils literal notranslate"><span class="pre">FilamentousFungiPipeline.set_meas()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.FilamentousFungiPipeline.set_ops"><code class="docutils literal notranslate"><span class="pre">FilamentousFungiPipeline.set_ops()</span></code></a></li>
@@ -4319,6 +4537,8 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.FilamentousFungiPipeline.to_json"><code class="docutils literal notranslate"><span class="pre">FilamentousFungiPipeline.to_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.FilamentousFungiPipeline.widget"><code class="docutils literal notranslate"><span class="pre">FilamentousFungiPipeline.widget()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.FilamentousFungiPipeline.desc"><code class="docutils literal notranslate"><span class="pre">FilamentousFungiPipeline.desc</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.FilamentousFungiPipeline.ncols"><code class="docutils literal notranslate"><span class="pre">FilamentousFungiPipeline.ncols</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.FilamentousFungiPipeline.nrows"><code class="docutils literal notranslate"><span class="pre">FilamentousFungiPipeline.nrows</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.GridSectionPipeline"><code class="docutils literal notranslate"><span class="pre">GridSectionPipeline</span></code></a><ul class="visible nav section-nav flex-column">
@@ -4334,6 +4554,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.GridSectionPipeline.from_json"><code class="docutils literal notranslate"><span class="pre">GridSectionPipeline.from_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.GridSectionPipeline.get_meas"><code class="docutils literal notranslate"><span class="pre">GridSectionPipeline.get_meas()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.GridSectionPipeline.get_ops"><code class="docutils literal notranslate"><span class="pre">GridSectionPipeline.get_ops()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.GridSectionPipeline.get_post"><code class="docutils literal notranslate"><span class="pre">GridSectionPipeline.get_post()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.GridSectionPipeline.measure"><code class="docutils literal notranslate"><span class="pre">GridSectionPipeline.measure()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.GridSectionPipeline.set_meas"><code class="docutils literal notranslate"><span class="pre">GridSectionPipeline.set_meas()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.GridSectionPipeline.set_ops"><code class="docutils literal notranslate"><span class="pre">GridSectionPipeline.set_ops()</span></code></a></li>
@@ -4341,6 +4562,8 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.GridSectionPipeline.to_json"><code class="docutils literal notranslate"><span class="pre">GridSectionPipeline.to_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.GridSectionPipeline.widget"><code class="docutils literal notranslate"><span class="pre">GridSectionPipeline.widget()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.GridSectionPipeline.desc"><code class="docutils literal notranslate"><span class="pre">GridSectionPipeline.desc</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.GridSectionPipeline.ncols"><code class="docutils literal notranslate"><span class="pre">GridSectionPipeline.ncols</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.GridSectionPipeline.nrows"><code class="docutils literal notranslate"><span class="pre">GridSectionPipeline.nrows</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyOtsuPipeline"><code class="docutils literal notranslate"><span class="pre">HeavyOtsuPipeline</span></code></a><ul class="visible nav section-nav flex-column">
@@ -4356,6 +4579,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyOtsuPipeline.from_json"><code class="docutils literal notranslate"><span class="pre">HeavyOtsuPipeline.from_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyOtsuPipeline.get_meas"><code class="docutils literal notranslate"><span class="pre">HeavyOtsuPipeline.get_meas()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyOtsuPipeline.get_ops"><code class="docutils literal notranslate"><span class="pre">HeavyOtsuPipeline.get_ops()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyOtsuPipeline.get_post"><code class="docutils literal notranslate"><span class="pre">HeavyOtsuPipeline.get_post()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyOtsuPipeline.measure"><code class="docutils literal notranslate"><span class="pre">HeavyOtsuPipeline.measure()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyOtsuPipeline.set_meas"><code class="docutils literal notranslate"><span class="pre">HeavyOtsuPipeline.set_meas()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyOtsuPipeline.set_ops"><code class="docutils literal notranslate"><span class="pre">HeavyOtsuPipeline.set_ops()</span></code></a></li>
@@ -4363,6 +4587,8 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyOtsuPipeline.to_json"><code class="docutils literal notranslate"><span class="pre">HeavyOtsuPipeline.to_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyOtsuPipeline.widget"><code class="docutils literal notranslate"><span class="pre">HeavyOtsuPipeline.widget()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyOtsuPipeline.desc"><code class="docutils literal notranslate"><span class="pre">HeavyOtsuPipeline.desc</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyOtsuPipeline.ncols"><code class="docutils literal notranslate"><span class="pre">HeavyOtsuPipeline.ncols</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyOtsuPipeline.nrows"><code class="docutils literal notranslate"><span class="pre">HeavyOtsuPipeline.nrows</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyRoundPeaksPipeline"><code class="docutils literal notranslate"><span class="pre">HeavyRoundPeaksPipeline</span></code></a><ul class="visible nav section-nav flex-column">
@@ -4419,6 +4645,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.from_json"><code class="docutils literal notranslate"><span class="pre">HeavyRoundPeaksPipeline.from_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.get_meas"><code class="docutils literal notranslate"><span class="pre">HeavyRoundPeaksPipeline.get_meas()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.get_ops"><code class="docutils literal notranslate"><span class="pre">HeavyRoundPeaksPipeline.get_ops()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.get_post"><code class="docutils literal notranslate"><span class="pre">HeavyRoundPeaksPipeline.get_post()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.measure"><code class="docutils literal notranslate"><span class="pre">HeavyRoundPeaksPipeline.measure()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.set_meas"><code class="docutils literal notranslate"><span class="pre">HeavyRoundPeaksPipeline.set_meas()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.set_ops"><code class="docutils literal notranslate"><span class="pre">HeavyRoundPeaksPipeline.set_ops()</span></code></a></li>
@@ -4426,6 +4653,8 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.to_json"><code class="docutils literal notranslate"><span class="pre">HeavyRoundPeaksPipeline.to_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.widget"><code class="docutils literal notranslate"><span class="pre">HeavyRoundPeaksPipeline.widget()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.desc"><code class="docutils literal notranslate"><span class="pre">HeavyRoundPeaksPipeline.desc</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.ncols"><code class="docutils literal notranslate"><span class="pre">HeavyRoundPeaksPipeline.ncols</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.nrows"><code class="docutils literal notranslate"><span class="pre">HeavyRoundPeaksPipeline.nrows</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyWatershedPipeline"><code class="docutils literal notranslate"><span class="pre">HeavyWatershedPipeline</span></code></a><ul class="visible nav section-nav flex-column">
@@ -4441,6 +4670,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyWatershedPipeline.from_json"><code class="docutils literal notranslate"><span class="pre">HeavyWatershedPipeline.from_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyWatershedPipeline.get_meas"><code class="docutils literal notranslate"><span class="pre">HeavyWatershedPipeline.get_meas()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyWatershedPipeline.get_ops"><code class="docutils literal notranslate"><span class="pre">HeavyWatershedPipeline.get_ops()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyWatershedPipeline.get_post"><code class="docutils literal notranslate"><span class="pre">HeavyWatershedPipeline.get_post()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyWatershedPipeline.measure"><code class="docutils literal notranslate"><span class="pre">HeavyWatershedPipeline.measure()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyWatershedPipeline.set_meas"><code class="docutils literal notranslate"><span class="pre">HeavyWatershedPipeline.set_meas()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyWatershedPipeline.set_ops"><code class="docutils literal notranslate"><span class="pre">HeavyWatershedPipeline.set_ops()</span></code></a></li>
@@ -4448,6 +4678,8 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyWatershedPipeline.to_json"><code class="docutils literal notranslate"><span class="pre">HeavyWatershedPipeline.to_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyWatershedPipeline.widget"><code class="docutils literal notranslate"><span class="pre">HeavyWatershedPipeline.widget()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyWatershedPipeline.desc"><code class="docutils literal notranslate"><span class="pre">HeavyWatershedPipeline.desc</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyWatershedPipeline.ncols"><code class="docutils literal notranslate"><span class="pre">HeavyWatershedPipeline.ncols</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyWatershedPipeline.nrows"><code class="docutils literal notranslate"><span class="pre">HeavyWatershedPipeline.nrows</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.RoundPeaksPipeline"><code class="docutils literal notranslate"><span class="pre">RoundPeaksPipeline</span></code></a><ul class="visible nav section-nav flex-column">
@@ -4462,6 +4694,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.RoundPeaksPipeline.from_json"><code class="docutils literal notranslate"><span class="pre">RoundPeaksPipeline.from_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.RoundPeaksPipeline.get_meas"><code class="docutils literal notranslate"><span class="pre">RoundPeaksPipeline.get_meas()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.RoundPeaksPipeline.get_ops"><code class="docutils literal notranslate"><span class="pre">RoundPeaksPipeline.get_ops()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.RoundPeaksPipeline.get_post"><code class="docutils literal notranslate"><span class="pre">RoundPeaksPipeline.get_post()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.RoundPeaksPipeline.measure"><code class="docutils literal notranslate"><span class="pre">RoundPeaksPipeline.measure()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.RoundPeaksPipeline.set_meas"><code class="docutils literal notranslate"><span class="pre">RoundPeaksPipeline.set_meas()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.RoundPeaksPipeline.set_ops"><code class="docutils literal notranslate"><span class="pre">RoundPeaksPipeline.set_ops()</span></code></a></li>
@@ -4469,6 +4702,8 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.RoundPeaksPipeline.to_json"><code class="docutils literal notranslate"><span class="pre">RoundPeaksPipeline.to_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.RoundPeaksPipeline.widget"><code class="docutils literal notranslate"><span class="pre">RoundPeaksPipeline.widget()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.RoundPeaksPipeline.desc"><code class="docutils literal notranslate"><span class="pre">RoundPeaksPipeline.desc</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.RoundPeaksPipeline.ncols"><code class="docutils literal notranslate"><span class="pre">RoundPeaksPipeline.ncols</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.RoundPeaksPipeline.nrows"><code class="docutils literal notranslate"><span class="pre">RoundPeaksPipeline.nrows</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.SpImagerPipeline"><code class="docutils literal notranslate"><span class="pre">SpImagerPipeline</span></code></a><ul class="visible nav section-nav flex-column">
@@ -4483,6 +4718,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.SpImagerPipeline.from_json"><code class="docutils literal notranslate"><span class="pre">SpImagerPipeline.from_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.SpImagerPipeline.get_meas"><code class="docutils literal notranslate"><span class="pre">SpImagerPipeline.get_meas()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.SpImagerPipeline.get_ops"><code class="docutils literal notranslate"><span class="pre">SpImagerPipeline.get_ops()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.SpImagerPipeline.get_post"><code class="docutils literal notranslate"><span class="pre">SpImagerPipeline.get_post()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.SpImagerPipeline.measure"><code class="docutils literal notranslate"><span class="pre">SpImagerPipeline.measure()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.SpImagerPipeline.set_meas"><code class="docutils literal notranslate"><span class="pre">SpImagerPipeline.set_meas()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.SpImagerPipeline.set_ops"><code class="docutils literal notranslate"><span class="pre">SpImagerPipeline.set_ops()</span></code></a></li>
@@ -4490,6 +4726,8 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.SpImagerPipeline.to_json"><code class="docutils literal notranslate"><span class="pre">SpImagerPipeline.to_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.SpImagerPipeline.widget"><code class="docutils literal notranslate"><span class="pre">SpImagerPipeline.widget()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.SpImagerPipeline.desc"><code class="docutils literal notranslate"><span class="pre">SpImagerPipeline.desc</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.SpImagerPipeline.ncols"><code class="docutils literal notranslate"><span class="pre">SpImagerPipeline.ncols</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.SpImagerPipeline.nrows"><code class="docutils literal notranslate"><span class="pre">SpImagerPipeline.nrows</span></code></a></li>
 </ul>
 </li>
 </ul>

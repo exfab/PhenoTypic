@@ -531,20 +531,29 @@ uv run python -m phenotypic pipeline.json ./images         –slurm slurm_partit
 uv run python -m phenotypic pipeline.json ./images         –slurm slurm_partition=compute         –slurm slurm_account=proj         –wait</p>
 <p># GridImage with custom dimensions
 uv run python -m phenotypic pipeline.json ./plates         –image-type GridImage –nrows 16 –ncols 24</p>
-<p># Save PNG overlays alongside HDFs (opt-in; default: OFF)
-uv run python -m phenotypic pipeline.json ./images –save-overlays</p>
 <p># Rerun measurements on a previous forward run without re-detecting
 # (reads HDFs from &lt;previous-output-dir&gt;/results/<a href="#id1"><span class="problematic" id="id2">*</span></a>/hdf/, rewrites
 # parquet measurements + master CSV, skips detection, does NOT
 # regenerate overlays, does NOT touch processing state):
 uv run python -m phenotypic pipeline.json –measure         -o &lt;previous-output-dir&gt;</p>
+<p># Recompile a previous output directory: re-aggregate the master
+# measurements CSV, fill in any overlay PNGs missing under
+# results/&lt;ds&gt;/overlays/ by reloading their HDFs (threaded across
+# –n-jobs workers, alpha from –overlay-alpha), rerun analysis
+# plugins, rebuild the manifest, and regenerate the HTML dashboard.
+# Existing overlays are left untouched.  Pipeline JSON is NOT
+# required:
+uv run python -m phenotypic –recompile &lt;previous-output-dir&gt;</p>
 </div>
 <dl>
 <dt>Outputs:</dt><dd><p>Forward runs write a single HDF5 per input image under
 <cite>&lt;output&gt;/results/&lt;dataset&gt;/hdf/&lt;stem&gt;.h5</cite> (layers + metadata + grid
 state, reloadable via <cite>Image.load_hdf5</cite> / <cite>GridImage.load_hdf5</cite>).
-Overlay PNGs under <cite>&lt;output&gt;/results/&lt;dataset&gt;/overlays/&lt;stem&gt;.png</cite>
-are opt-in and only written when <cite>–save-overlays</cite> is set.</p>
+Overlay PNGs are always written under
+<cite>&lt;output&gt;/results/&lt;dataset&gt;/overlays/&lt;stem&gt;.png</cite> for forward runs;
+<cite>–measure</cite> reruns reuse existing overlays and do not regenerate them.
+<cite>–recompile</cite> fills in only-missing overlay PNGs from HDFs but
+leaves existing ones untouched.</p>
 </dd>
 <dt>SLURM Execution (Autonomous HPC Cluster Processing):</dt><dd><p>Use –slurm to submit jobs to an HPC cluster via SLURM. The CLI will:
 1. Generate SBATCH scripts for each dataset
