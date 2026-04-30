@@ -28,12 +28,17 @@ import dash_cytoscape as cyto  # type: ignore[import-untyped]
 from dash import dcc, html
 
 from phenotypic.gui.builder import _ids as ids
-from phenotypic.gui.builder._directory_browser import directory_picker
+from phenotypic.gui.builder._modal_browser import (
+    load_image_modal,
+    load_picker_modal,
+    save_pipeline_modal,
+)
 from phenotypic.gui.builder._param_form import param_form
 from phenotypic.gui.builder._state import (
     PIPELINE_CLASS_NAME,
     BuilderScope,
     BuilderState,
+    _ensure_param_scope,
     current_scope,
     stage_of,
     state_to_json,
@@ -50,11 +55,13 @@ if TYPE_CHECKING:  # pragma: no cover - type-only imports
 # ---------------------------------------------------------------------------
 
 #: Background colour for canvas nodes by inferred stage (or pipeline sentinel).
+#: Light tints matched to the palette accordion stage colours so a glance at
+#: the canvas tells the user which stage of the pipeline a node belongs to.
 _STAGE_COLORS = {
-    "ops": "#c5e3ff",
-    "meas": "#fff3c5",
-    "post": "#d5f5d5",
-    "pipeline": "#e0d5ff",
+    "ops": "#dbe8f5",       # navy-tinted (image ops)
+    "meas": "#fdebc7",      # gold-tinted (measurements)
+    "post": "#cfeee2",      # green-tinted (post-measurements)
+    "pipeline": "#e8e0f0",  # purple-tinted (nested pipeline sentinel)
 }
 
 #: Text colour for palette buttons by stage. Matches canvas backgrounds in
@@ -122,8 +129,6 @@ def _scope_path_labels(state: BuilderState) -> List[str]:
             # storage details.
             base = node.label or node.class_name
             labels.append(f"{base}.{param}")
-            from phenotypic.gui.builder._state import _ensure_param_scope
-
             scope = _ensure_param_scope(node, str(param))
     return labels
 
@@ -269,20 +274,22 @@ def _canvas_stylesheet() -> List[dict]:
                 "text-valign": "center",
                 "text-halign": "center",
                 "background-color": "data(bg)",
-                "border-color": "#666",
+                "border-color": "#dde3ed",
                 "border-width": 1,
                 "padding": "12px",
+                "font-family": "DM Mono, Courier New, monospace",
                 "font-size": "12px",
+                "font-weight": "500",
                 "width": "label",
-                "height": 36,
+                "height": 40,
                 "min-width": 80,
-                "color": "#222",
+                "color": "#003660",
             },
         },
         {
             "selector": "node.selected",
             "style": {
-                "border-color": "#0d6efd",
+                "border-color": "#1b75bc",
                 "border-width": 3,
             },
         },
@@ -291,8 +298,8 @@ def _canvas_stylesheet() -> List[dict]:
             "style": {
                 "curve-style": "bezier",
                 "target-arrow-shape": "triangle",
-                "target-arrow-color": "#888",
-                "line-color": "#888",
+                "target-arrow-color": "#8892a4",
+                "line-color": "#8892a4",
                 "width": 1.5,
             },
         },
@@ -400,35 +407,24 @@ def build_canvas_section(
     layout dicts.
     """
 
+    def _control(label: str, btn_id: str, tooltip: str) -> dbc.Button:
+        """Render one canvas-control button with consistent chrome."""
+
+        return dbc.Button(
+            label,
+            id=btn_id,
+            color="secondary",
+            outline=True,
+            size="sm",
+            n_clicks=0,
+            title=tooltip,
+        )
+
     controls = dbc.ButtonGroup(
         [
-            dbc.Button(
-                "−",
-                id=ids.BTN_CANVAS_ZOOM_OUT,
-                color="secondary",
-                outline=True,
-                size="sm",
-                n_clicks=0,
-                title="Zoom out",
-            ),
-            dbc.Button(
-                "+",
-                id=ids.BTN_CANVAS_ZOOM_IN,
-                color="secondary",
-                outline=True,
-                size="sm",
-                n_clicks=0,
-                title="Zoom in",
-            ),
-            dbc.Button(
-                "Reset view",
-                id=ids.BTN_CANVAS_FIT,
-                color="secondary",
-                outline=True,
-                size="sm",
-                n_clicks=0,
-                title="Recenter and zoom-to-fit",
-            ),
+            _control("−", ids.BTN_CANVAS_ZOOM_OUT, "Zoom out"),
+            _control("+", ids.BTN_CANVAS_ZOOM_IN, "Zoom in"),
+            _control("Reset view", ids.BTN_CANVAS_FIT, "Recenter and zoom-to-fit"),
         ],
         size="sm",
     )
@@ -519,6 +515,15 @@ def _empty_inspector_card() -> dbc.Card:
     )
 
 
+def _empty_inspector_div() -> html.Div:
+    """Inspector container shown when no node is selected (or selection is stale)."""
+
+    return html.Div(
+        [_empty_inspector_card(), *_hidden_inspector_widgets()],
+        id=ids.INSPECTOR_CONTAINER,
+    )
+
+
 def build_inspector(
     state: BuilderState,
     registry: "OperationRegistry",
@@ -548,28 +553,19 @@ def build_inspector(
     """
 
     if state.selected_node_id is None:
-        return html.Div(
-            [_empty_inspector_card(), *_hidden_inspector_widgets()],
-            id=ids.INSPECTOR_CONTAINER,
-        )
+        return _empty_inspector_div()
 
     try:
         scope = current_scope(state)
     except KeyError:
-        return html.Div(
-            [_empty_inspector_card(), *_hidden_inspector_widgets()],
-            id=ids.INSPECTOR_CONTAINER,
-        )
+        return _empty_inspector_div()
 
     node = next(
         (n for n in scope.nodes if n.node_id == state.selected_node_id),
         None,
     )
     if node is None:
-        return html.Div(
-            [_empty_inspector_card(), *_hidden_inspector_widgets()],
-            id=ids.INSPECTOR_CONTAINER,
-        )
+        return _empty_inspector_div()
 
     label_value = node.label or node.class_name
     header_children: List[Any] = [
@@ -674,32 +670,19 @@ def build_breadcrumb(state: BuilderState) -> html.Nav:
         state: The full builder state.
 
     Returns:
-        ``html.Nav`` containing a single ``dbc.Breadcrumb``.
+        ``html.Nav`` whose children are alternating buttons (clickable
+        ancestor scopes) and ``" / "`` separators, terminated by a bold
+        ``html.Span`` for the active scope.
     """
 
     labels = _scope_path_labels(state)
-    items: List[dict] = []
-    for depth, label in enumerate(labels):
-        is_last = depth == len(labels) - 1
-        items.append(
-            {
-                "label": label,
-                "active": is_last,
-                # ``href`` is optional; Dash's ``Breadcrumb`` renders text-only
-                # items when omitted. Pattern-matched buttons are placed
-                # alongside via the parent <nav> wrapper.
-            }
-        )
+    last_index = len(labels) - 1
 
-    # Use a list of buttons so we can register pattern-matching callbacks per
-    # depth. dbc.Breadcrumb itself is decorative-only here.
     children: List[Any] = []
     for depth, label in enumerate(labels):
-        is_last = depth == len(labels) - 1
+        is_last = depth == last_index
         if is_last:
-            children.append(
-                html.Span(label, className="fw-bold")
-            )
+            children.append(html.Span(label, className="fw-bold"))
         else:
             children.append(
                 dbc.Button(
@@ -711,13 +694,12 @@ def build_breadcrumb(state: BuilderState) -> html.Nav:
                     n_clicks=0,
                 )
             )
-        if not is_last:
             children.append(html.Span(" / ", className="text-muted mx-1"))
 
     return html.Nav(
         children,
         id=ids.BREADCRUMB_CONTAINER,
-        className="d-flex align-items-center mb-2 small",
+        className="pheno-breadcrumb d-flex align-items-center mb-2 small",
     )
 
 
@@ -726,41 +708,19 @@ def build_breadcrumb(state: BuilderState) -> html.Nav:
 # ---------------------------------------------------------------------------
 
 
-def _pipeline_io_card() -> dbc.Card:
-    """Save / Load controls. Lives above the inspector in the right column."""
+def _action_card(title: str, buttons: List[Any]) -> dbc.Card:
+    """Build a small card with a title and a single ``ButtonGroup`` row.
 
-    save_row = dbc.InputGroup(
-        [
-            dbc.Input(
-                id=ids.INPUT_SAVE_PATH,
-                type="text",
-                placeholder="/abs/path/to/pipeline.json",
-                debounce=True,
-            ),
-            dbc.Button("Save", id=ids.BTN_SAVE, color="primary", n_clicks=0),
-        ],
-        size="sm",
-        className="mb-2",
-    )
-    load_row = dbc.InputGroup(
-        [
-            dbc.Input(
-                id=ids.INPUT_LOAD_PATH,
-                type="text",
-                placeholder="/abs/path/to/pipeline.json",
-                debounce=True,
-            ),
-            dbc.Button("Load", id=ids.BTN_LOAD, color="primary", n_clicks=0),
-        ],
-        size="sm",
-        className="mb-0",
-    )
+    Used for the Pipeline I/O and Structure cards in the right column of the
+    body row — both have identical chrome (small heading, bordered card,
+    full-width button group) so they share a builder.
+    """
+
     return dbc.Card(
         dbc.CardBody(
             [
-                html.H6("Pipeline I/O", className="mb-2"),
-                save_row,
-                load_row,
+                html.H6(title, className="mb-2"),
+                dbc.ButtonGroup(buttons, className="w-100", size="sm"),
             ],
             className="py-2",
         ),
@@ -768,10 +728,54 @@ def _pipeline_io_card() -> dbc.Card:
     )
 
 
+def _pipeline_io_card() -> dbc.Card:
+    """Build the "Pipeline I/O" card with Save and Load buttons.
+
+    Renders a small :class:`dbc.ButtonGroup` containing two outline buttons
+    that each open a modal file browser defined in :mod:`._modal_browser`:
+
+    * **Save** (:data:`ids.BTN_SAVE`) — opens :func:`~_modal_browser.save_pipeline_modal`,
+      a folder browser where the user navigates to a target directory and
+      enters a filename before confirming the write.
+    * **Load** (:data:`ids.BTN_LOAD`) — opens :func:`~_modal_browser.load_picker_modal`,
+      a two-stage chooser offering either a JSON file browser (for pipelines
+      previously saved with ``ImagePipeline.to_json()``) or a prefab list
+      (built-in pipelines from :mod:`phenotypic.prefab`).
+
+    The card lives above the inspector in the right column of the builder
+    layout, assembled by :func:`build_app_layout`.
+
+    Returns:
+        A :class:`dbc.Card` containing the labelled button group, with
+        ``className="mb-2"`` for spacing.
+    """
+
+    return _action_card(
+        "Pipeline I/O",
+        [
+            dbc.Button(
+                "Save",
+                id=ids.BTN_SAVE,
+                color="primary",
+                outline=True,
+                n_clicks=0,
+            ),
+            dbc.Button(
+                "Load",
+                id=ids.BTN_LOAD,
+                color="primary",
+                outline=True,
+                n_clicks=0,
+            ),
+        ],
+    )
+
+
 def _structure_card() -> dbc.Card:
     """+ Pipeline / Delete buttons. Lives above the inspector in the right column."""
 
-    structural_buttons = dbc.ButtonGroup(
+    return _action_card(
+        "Structure",
         [
             dbc.Button(
                 "+ Pipeline",
@@ -788,41 +792,46 @@ def _structure_card() -> dbc.Card:
                 n_clicks=0,
             ),
         ],
-        className="w-100",
-        size="sm",
-    )
-    return dbc.Card(
-        dbc.CardBody(
-            [
-                html.H6("Structure", className="mb-2"),
-                structural_buttons,
-            ],
-            className="py-2",
-        ),
-        className="mb-2",
     )
 
 
 def build_footer(image_root: Optional[Path]) -> dbc.Card:
-    """Render the footer row with image source + grid + run-preview controls.
+    """Render the footer row with image-source, grid override, and run-preview controls.
 
-    Pipeline I/O (Save/Load) and Structure (+ Pipeline / Delete) live above
-    the inspector in the right column — see :func:`_pipeline_io_card` and
-    :func:`_structure_card`.
+    Pipeline I/O (Save/Load) and Structure (+ Pipeline / Delete) have their
+    own cards above the inspector in the right column — see
+    :func:`_pipeline_io_card` and :func:`_structure_card`. This footer card
+    handles the image-selection and execution surface.
 
-    Layout (left to right):
+    Layout (left to right inside the card body):
 
-    * Directory picker (via :func:`directory_picker`).
-    * ``nrows`` / ``ncols`` overrides for grid pipelines.
-    * "Run preview" button (wrapped in a ``dcc.Loading``).
+    * **Image source** (left column): two buttons and a status label.
+      "Load image…" (:data:`ids.BTN_LOAD_IMAGE`) opens
+      :func:`~_modal_browser.load_image_modal`, a directory browser filtered
+      to plate image formats. "Use synthetic plate"
+      (:data:`ids.BTN_USE_SYNTHETIC`) immediately loads the bundled synthetic
+      yeast plate without opening any modal — useful for quick iteration
+      without a real plate image. The :data:`ids.ACTIVE_IMAGE_LABEL` below
+      the buttons shows the basename of the currently active image so the
+      user can confirm the selection before running.
+    * **Grid** (right column): optional ``nrows`` / ``ncols`` inputs
+      (:data:`ids.INPUT_NROWS`, :data:`ids.INPUT_NCOLS`) for pipelines that
+      contain :class:`~phenotypic.abc_.GridOperation` steps. Leave blank to
+      use the default ``8 × 12`` grid assumed by ``GridImage.imread()``.
+    * **Run preview**: :data:`ids.BTN_RUN_PREVIEW` wrapped in a
+      :class:`dcc.Loading` spinner (:data:`ids.PREVIEW_LOADING`).
 
     Args:
-        image_root: Path forwarded to :func:`directory_picker`. ``None``
-            disables the directory tree section.
+        image_root: Accepted for API parity with the previous inline picker
+            but not consumed directly by this function. The modal factories
+            in :mod:`._modal_browser` receive it via :func:`build_app_layout`,
+            which mounts the three modals separately.
 
     Returns:
-        A :class:`dbc.Card` whose body is the footer row.
+        A :class:`dbc.Card` with id :data:`ids.FOOTER_CONTAINER` whose body
+        is the two-column footer row.
     """
+    del image_root  # consumed by load_image_modal in build_app_layout
 
     grid_inputs = dbc.Row(
         [
@@ -876,6 +885,36 @@ def build_footer(image_root: Optional[Path]) -> dbc.Card:
         ),
     )
 
+    image_source = html.Div(
+        [
+            dbc.ButtonGroup(
+                [
+                    dbc.Button(
+                        "Load image…",
+                        id=ids.BTN_LOAD_IMAGE,
+                        color="primary",
+                        n_clicks=0,
+                    ),
+                    dbc.Button(
+                        "Use synthetic plate",
+                        id=ids.BTN_USE_SYNTHETIC,
+                        color="secondary",
+                        outline=True,
+                        n_clicks=0,
+                    ),
+                ],
+                size="sm",
+                className="mb-2",
+            ),
+            html.Div(
+                "(no image loaded)",
+                id=ids.ACTIVE_IMAGE_LABEL,
+                className="text-muted small text-monospace",
+                style={"wordBreak": "break-all"},
+            ),
+        ]
+    )
+
     return dbc.Card(
         dbc.CardBody(
             dbc.Row(
@@ -883,7 +922,7 @@ def build_footer(image_root: Optional[Path]) -> dbc.Card:
                     dbc.Col(
                         [
                             html.H6("Image source", className="mb-2"),
-                            directory_picker(image_root),
+                            image_source,
                         ],
                         md=8,
                     ),
@@ -968,28 +1007,20 @@ def build_app_layout(
     # Inner container holds the actual scrolling content; the outer wrapper
     # gives the chevron pseudo-elements a positioning context (see
     # ``assets/builder.css`` and ``assets/builder.js``).
+    def _palette_section(title: str, accordion: dbc.Accordion) -> html.Div:
+        """Wrap one palette accordion under a labelled section heading."""
+
+        return html.Div(
+            [html.H6(title, className="mb-2"), accordion],
+            className="pheno-palette-section",
+        )
+
     palette_inner = html.Div(
         [
-            html.Div(
-                [
-                    html.H6("Operations", className="mb-2"),
-                    build_palette(registry),
-                ],
-                className="pheno-palette-section",
-            ),
-            html.Div(
-                [
-                    html.H6("Measurements", className="mb-2"),
-                    build_measure_palette(registry),
-                ],
-                className="pheno-palette-section",
-            ),
-            html.Div(
-                [
-                    html.H6("Post-measurements", className="mb-2"),
-                    build_post_palette(registry),
-                ],
-                className="pheno-palette-section",
+            _palette_section("Operations", build_palette(registry)),
+            _palette_section("Measurements", build_measure_palette(registry)),
+            _palette_section(
+                "Post-measurements", build_post_palette(registry)
             ),
         ],
         className="pheno-scroll pe-2",
@@ -1016,11 +1047,7 @@ def build_app_layout(
     inspector_inner = html.Div(
         build_inspector(state, registry),
         className="pheno-scroll pe-2",
-        style={
-            "flex": "1 1 0",
-            "minHeight": 0,
-            "overflowY": "auto",
-        },
+        style=_SCROLL_FILL_STYLE,
     )
     inspector_wrap = html.Div(
         inspector_inner,
@@ -1158,25 +1185,44 @@ def build_app_layout(
         },
     )
 
+    modals = html.Div(
+        [
+            save_pipeline_modal(image_root),
+            load_picker_modal(image_root),
+            load_image_modal(image_root),
+        ]
+    )
+
+    header = html.Div(
+        [
+            html.Img(
+                src="/assets/pheno_logo.png",
+                alt="PhenoTypic",
+                className="pheno-app-header__logo",
+            ),
+            html.Div(
+                [
+                    html.H1(
+                        "PhenoTypic",
+                        className="pheno-app-header__title",
+                    ),
+                    html.Div(
+                        "Pipeline Builder",
+                        className="pheno-app-header__subtitle",
+                    ),
+                ],
+            ),
+        ],
+        className="pheno-app-header",
+    )
+
     return html.Div(
         [
             stores,
             toast,
+            modals,
             dbc.Container(
-                [
-                    html.Div(
-                        [
-                            html.H4(
-                                "PhenoTypic Pipeline Builder",
-                                className="mb-1",
-                            ),
-                            build_breadcrumb(state),
-                        ],
-                        className="pt-3 pb-2",
-                    ),
-                    body_row,
-                    build_footer(image_root),
-                ],
+                [header, build_breadcrumb(state), body_row, build_footer(image_root)],
                 fluid=True,
             ),
         ]
