@@ -119,6 +119,17 @@ def __getattr__(name: str):
 
             return BuilderState
 
+    # Dash CLI-output results viewer (Dash + OpenSeadragon, lazy)
+    if name in ("create_results_viewer_app", "launch_results_viewer"):
+        if name == "create_results_viewer_app":
+            from .results_viewer import create_app
+
+            return create_app
+        elif name == "launch_results_viewer":
+            from .results_viewer import launch_results_viewer
+
+            return launch_results_viewer
+
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
@@ -136,4 +147,7 @@ __all__ = [
     # Dash node-graph builder
     "create_builder_app",
     "BuilderState",
+    # Dash CLI-output results viewer
+    "create_results_viewer_app",
+    "launch_results_viewer",
 ]

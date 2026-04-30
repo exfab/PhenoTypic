@@ -3797,6 +3797,7 @@ gui = [
     { name = "napari", version = "0.6.6", source = { registry = "https://pypi.org/simple" }, extra = ["optional", "pyqt5"], marker = "(platform_machine != 'x86_64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'win32')" },
     { name = "panel" },
     { name = "param" },
+    { name = "pyvips" },
 ]
 torch = [
     { name = "sam2", marker = "sys_platform != 'win32'" },
@@ -3879,6 +3880,7 @@ requires-dist = [
     { name = "psutil", specifier = ">=7.0.0" },
     { name = "pyarrow", specifier = ">=23.0.1" },
     { name = "pympler", specifier = ">=1.0.1" },
+    { name = "pyvips", marker = "extra == 'gui'", specifier = ">=2.2" },
     { name = "rawpy", marker = "sys_platform != 'win32'" },
     { name = "rich", specifier = ">=14.2.0" },
     { name = "ruptures", specifier = ">=1.1.9" },
@@ -4783,6 +4785,15 @@ sdist = { url = "https://files.pythonhosted.org/packages/f8/bf/abbd3cdfb8fbc7fb3
 wheels = [
     { url = "https://files.pythonhosted.org/packages/81/c4/34e93fe5f5429d7570ec1fa436f1986fb1f00c3e0f43a589fe2bbcd22c3f/pytz-2025.2-py2.py3-none-any.whl", hash = "sha256:5ddf76296dd8c44c26eb8f4b6f35488f3ccbf6fbbd7adee0b7262d43f0ec2f00", size = 509225, upload-time = "2025-03-25T02:24:58.468Z" },
 ]
+
+[[package]]
+name = "pyvips"
+version = "3.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cffi" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2d/6a/282936de9faac6addf6bc8792c18e006489d0023ffd8856b8643f54d0558/pyvips-3.1.1.tar.gz", hash = "sha256:84fe744d023b1084ac2516bb17064cacd41c7f8aabf8e524dd383534941b9301", size = 56951, upload-time = "2025-12-09T18:38:06.355Z" }
 
 [[package]]
 name = "pyviz-comms"

@@ -88,6 +88,7 @@ gui = [
     "ipykernel>=6.31.0",
     "ipywidgets>=8.1.7",
     "jupyter>=1.1.1",
+    "pyvips>=2.2",  # optional fast path for DZI tile generation
 ]
 
 torch = [
