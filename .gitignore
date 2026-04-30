@@ -60,6 +60,7 @@ tmp/
 # Development tools
 .ropeproject/
 .git.backup/
+.playwright-mcp/
 
 # pytest-testmon database (local only, not for version control)
 .testmondata*

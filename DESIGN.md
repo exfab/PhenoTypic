@@ -34,6 +34,12 @@ Agents must treat violations as hard errors.
 
 ---
 
+## 00 -- Logo and Branding
+
+Use the following logo to the left of the dashboard view title: @docs/source/_static/assets/500x500_png/LogoArtOnly.png
+
+---
+
 ## 01 -- Color Palette
 
 ### Primary Colors -- UI Only
