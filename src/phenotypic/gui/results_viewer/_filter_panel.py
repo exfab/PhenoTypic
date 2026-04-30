@@ -35,6 +35,7 @@ from dash.development.base_component import Component
 
 from phenotypic.gui.results_viewer import _ids as ids
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
+from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 
 logger = logging.getLogger(__name__)
@@ -389,7 +390,11 @@ def _render_filter_row(
 # ---------------------------------------------------------------------------
 
 
-def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
+def register_callbacks(
+    app: dash.Dash,
+    output_root: OutputRoot,
+    filtered_state: FilteredMeasurements,
+) -> None:
     """Register every callback owned by the filter sidebar.
 
     Callbacks registered here:
@@ -406,7 +411,8 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
     8. Validate the paste textarea against the row's column value-set
        and commit matches into the row's values on Apply.
     9. Derive ``STORE_IMAGE_PAIRS`` (and the count chip) from the
-       current spec.
+       current spec, with the chip's ``(− K removed)`` suffix sourced
+       from the curation backend.
 
     Args:
         app: The Dash application to attach the callbacks to.
@@ -690,21 +696,12 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         pairs = output_root.image_pairs(filtered)
         payload = [{"dataset": dataset, "stem": stem} for dataset, stem in pairs]
 
-        removed_set: set[tuple[str, int]] = set()
-        if isinstance(removed_keys, list):
-            for entry in removed_keys:
-                if isinstance(entry, (list, tuple)) and len(entry) == 2:
-                    try:
-                        removed_set.add((str(entry[0]), int(entry[1])))
-                    except (TypeError, ValueError):
-                        continue
-        removed_in_filtered = 0
-        if removed_set and not filtered.is_empty():
-            image_files = filtered.get_column("Metadata_ImageFile").to_list()
-            object_labels = filtered.get_column("ObjectLabel").to_list()
-            for image_file, object_label in zip(image_files, object_labels, strict=True):
-                if (str(image_file), int(object_label)) in removed_set:
-                    removed_in_filtered += 1
+        # ``removed_keys`` is plumbed through as an Input only to retrigger
+        # this callback on curation changes; the actual count comes from
+        # the curation backend so it stays in sync with the lock-guarded
+        # source of truth.
+        del removed_keys
+        removed_in_filtered = filtered_state.removed_count_in(filtered)
 
         chip_text = f"{len(pairs)} images match"
         if removed_in_filtered > 0:

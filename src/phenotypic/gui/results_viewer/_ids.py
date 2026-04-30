@@ -356,6 +356,14 @@ OSD_MOUNT_TRIGGER_ID = "osd-mount-trigger"
 #: Same trigger-only semantics as :data:`OSD_MOUNT_TRIGGER_ID`.
 LOCK_VIEWS_EFFECT_ID = "lock-views-effect"
 
+#: Hidden ``dcc.Store`` written by the clientside callback that toggles
+#: ``.is-selected`` on colony cells in response to
+#: :data:`STORE_COLONY_SELECTION` changes. Carries a millisecond
+#: timestamp purely as a change-trigger; the data itself is unused on
+#: the Python side. Keeping selection styling in JS lets shift-click
+#: avoid a full server round-trip + grid re-render.
+COLONY_SELECTION_EFFECT_ID = "colony-selection-effect"
+
 
 # ---------------------------------------------------------------------------
 # Tabs
@@ -560,6 +568,7 @@ __all__ = [
     "INITIAL_CARD_TRIGGER_ID",
     "OSD_MOUNT_TRIGGER_ID",
     "LOCK_VIEWS_EFFECT_ID",
+    "COLONY_SELECTION_EFFECT_ID",
     "TABS_ID",
     "TAB_PLATE_ID",
     "TAB_COLONY_ID",

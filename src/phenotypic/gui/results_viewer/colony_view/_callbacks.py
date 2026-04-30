@@ -32,7 +32,10 @@ from dash import ALL, Input, Output, State, callback_context, no_update
 
 from phenotypic.gui.results_viewer import _ids as ids
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
-from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
+from phenotypic.gui.results_viewer._filtered_state import (
+    FilteredMeasurements,
+    decode_removed_keys_payload,
+)
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer.colony_view._grid import (
     build_grid,
@@ -49,23 +52,9 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-def _coerce_key_list(payload: Any) -> list[tuple[str, int]]:
-    """Coerce a Dash store payload of ``[[img, label], ...]`` into tuples.
-
-    Malformed entries are silently skipped so a stale or partially-written
-    store never crashes a callback.
-    """
-    out: list[tuple[str, int]] = []
-    if not isinstance(payload, list):
-        return out
-    for entry in payload:
-        if not isinstance(entry, (list, tuple)) or len(entry) != 2:
-            continue
-        try:
-            out.append((str(entry[0]), int(entry[1])))
-        except (TypeError, ValueError):
-            continue
-    return out
+# Empty selection payload — used by Clear, layout-change reset, and the
+# post-bulk-action emission. Module-level so all three sites agree.
+_EMPTY_SELECTION: dict[str, Any] = {"anchor": None, "selected": []}
 
 
 def _coerce_anchor(payload: Any) -> tuple[str, int] | None:
@@ -123,7 +112,6 @@ def register_callbacks(
         Output(ids.STORE_COLONY_GRID_ORDER, "data"),
         Input(ids.STORE_FILTER_SPEC, "data"),
         Input(ids.STORE_REMOVED_KEYS, "data"),
-        Input(ids.STORE_COLONY_SELECTION, "data"),
         Input(ids.COLONY_X_AXIS_DROPDOWN_ID, "value"),
         Input(ids.COLONY_Y_AXIS_DROPDOWN_ID, "value"),
         Input(ids.COLONY_BTN_REFRESH_ID, "n_clicks"),
@@ -132,13 +120,18 @@ def register_callbacks(
     def _render_colony_grid(
         filter_payload: Any,
         removed_payload: Any,
-        selection_payload: Any,
         x_axis: str | None,
         y_axis: str | None,
         refresh_clicks: int | None,
         active_tab: str | None,
     ) -> tuple[Any, Any, Any]:
-        """Rebuild the grid whenever any of its inputs change.
+        """Rebuild the grid whenever any of its data inputs change.
+
+        Selection-only changes (which fire frequently as the user
+        shift-clicks) DO NOT trigger this callback; instead a
+        clientside callback toggles the ``is-selected`` class on the
+        existing DOM. This keeps the heavy polars + Component synthesis
+        work off the click hot path.
 
         Short-circuits with ``no_update`` when the colony tab is not
         active so we don't pay the polars work for a hidden subtree.
@@ -159,19 +152,18 @@ def register_callbacks(
             filtered_df = df
 
         max_size = compute_max_bbox_size(filtered_df)
-        removed_keys = set(_coerce_key_list(removed_payload))
+        removed_keys = set(decode_removed_keys_payload(removed_payload))
 
-        selected_keys: set[tuple[str, int]] = set()
-        if isinstance(selection_payload, dict):
-            selected_keys = set(_coerce_key_list(selection_payload.get("selected")))
-
+        # Selection styling is applied by the JS lifecycle layer, so we
+        # always render the grid as if nothing were selected. This
+        # keeps the click hot path off the server.
         component, grid_order = build_grid(
             filtered_df,
             x_axis,
             y_axis,
             max_size,
             removed_keys,
-            selected_keys,
+            set(),
             output_root,
         )
         info = f"crop size: {max_size} px ({filtered_df.height} colonies)"
@@ -273,13 +265,9 @@ def register_callbacks(
 
         # Mutate + emit under the same lock so a concurrent bulk action
         # can't slip a divergent payload between us and the next render.
-        def _toggle(state: FilteredMeasurements) -> None:
-            if state.is_removed(image_file, label):
-                state.restore(image_file, label)
-            else:
-                state.remove(image_file, label)
-
-        return filtered_state.mutate_and_payload(_toggle)
+        return filtered_state.mutate_and_payload(
+            lambda s: s.toggle(image_file, label)
+        )
 
     # ----------------------------------------------------------------------
     # 4. Selection-delta consumer
@@ -314,8 +302,8 @@ def register_callbacks(
 
         current = current_selection if isinstance(current_selection, dict) else {}
         current_anchor = _coerce_anchor(current.get("anchor"))
-        current_selected = set(_coerce_key_list(current.get("selected")))
-        grid_order = _coerce_key_list(grid_order_payload)
+        original_selected = set(decode_removed_keys_payload(current.get("selected")))
+        grid_order = decode_removed_keys_payload(grid_order_payload)
 
         shift = bool(delta.get("shift"))
 
@@ -327,24 +315,34 @@ def register_callbacks(
                 # the filter or axis changed since the anchor was
                 # captured). Fall back to a single-toggle on the delta
                 # key, dropping the stale anchor.
-                if delta_key in current_selected:
-                    current_selected.discard(delta_key)
+                working = set(original_selected)
+                if delta_key in working:
+                    working.discard(delta_key)
                     new_anchor: tuple[str, int] | None = None
                 else:
-                    current_selected.add(delta_key)
+                    working.add(delta_key)
                     new_anchor = delta_key
-                return _selection_payload(new_anchor, sorted(current_selected))
-            new_selected = current_selected | set(slice_keys)
-            return _selection_payload(current_anchor, sorted(new_selected))
-
-        # Single-toggle.
-        if delta_key in current_selected:
-            current_selected.discard(delta_key)
-            new_anchor = None
+                new_selected = working
+            else:
+                new_selected = original_selected | set(slice_keys)
+                new_anchor = current_anchor
         else:
-            current_selected.add(delta_key)
-            new_anchor = delta_key
-        return _selection_payload(new_anchor, sorted(current_selected))
+            working = set(original_selected)
+            if delta_key in working:
+                working.discard(delta_key)
+                new_anchor = None
+            else:
+                working.add(delta_key)
+                new_anchor = delta_key
+            new_selected = working
+
+        # Suppress same-value re-emissions so a click that doesn't
+        # change the selection (e.g. shift-click within an already-fully-
+        # covered range) doesn't re-fire the downstream visibility +
+        # render callbacks.
+        if new_anchor == current_anchor and new_selected == original_selected:
+            return no_update
+        return _selection_payload(new_anchor, sorted(new_selected))
 
     # ----------------------------------------------------------------------
     # 5. Bulk-bar visibility / count label
@@ -400,7 +398,7 @@ def register_callbacks(
 
         selected: list[tuple[str, int]] = []
         if isinstance(selection_payload, dict):
-            selected = _coerce_key_list(selection_payload.get("selected"))
+            selected = decode_removed_keys_payload(selection_payload.get("selected"))
         if not selected:
             return no_update, no_update
 
@@ -421,7 +419,7 @@ def register_callbacks(
                 state.restore_many(selected)
 
         payload = filtered_state.mutate_and_payload(_apply)
-        return payload, {"anchor": None, "selected": []}
+        return payload, _EMPTY_SELECTION
 
     # ----------------------------------------------------------------------
     # 7. Bulk Clear
@@ -435,38 +433,79 @@ def register_callbacks(
     def _bulk_clear(n_clicks: int | None) -> dict[str, Any]:
         """Reset the active selection without touching the curated set."""
         del n_clicks
-        return {"anchor": None, "selected": []}
+        return _EMPTY_SELECTION
 
     # ----------------------------------------------------------------------
     # 8. Reset selection when the grid layout changes
     # ----------------------------------------------------------------------
-    #
-    # The plan's "Risks & mitigations / Stale grid_order" entry calls for
-    # clearing the selection whenever the grid is about to be re-keyed.
-    # Without this, ``STORE_COLONY_SELECTION`` keeps stale keys after an
-    # axis swap or a filter change: the bulk bar still says "N selected"
-    # but the keys point at colonies that are no longer rendered, and a
-    # subsequent shift+click falls back to single-toggle through
-    # ``expand_range``'s ValueError path.
 
     @app.callback(
         Output(ids.STORE_COLONY_SELECTION, "data", allow_duplicate=True),
         Input(ids.COLONY_X_AXIS_DROPDOWN_ID, "value"),
         Input(ids.COLONY_Y_AXIS_DROPDOWN_ID, "value"),
         Input(ids.STORE_FILTER_SPEC, "data"),
+        State(ids.STORE_COLONY_SELECTION, "data"),
         prevent_initial_call=True,
     )
     def _reset_selection_on_layout_change(
-        x_axis: Any, y_axis: Any, filter_spec: Any
-    ) -> dict[str, Any]:
+        x_axis: Any,
+        y_axis: Any,
+        filter_spec: Any,
+        current_selection: Any,
+    ) -> Any:
         """Clear the active selection on any change that re-keys the grid.
 
         Triggers on axis-dropdown swaps and filter-spec changes. Removed
         rows survive (they live on the parquet, not the selection store);
-        only the transient multi-select state is reset.
+        only the transient multi-select state is reset. Short-circuits
+        when the selection is already empty so a filter-row keystroke
+        with nothing selected doesn't re-fire the downstream visibility
+        and grid-render callbacks.
         """
         del x_axis, y_axis, filter_spec
-        return {"anchor": None, "selected": []}
+        if isinstance(current_selection, dict):
+            anchor = current_selection.get("anchor")
+            selected = current_selection.get("selected") or []
+            if anchor is None and not selected:
+                return no_update
+        return _EMPTY_SELECTION
+
+    # ----------------------------------------------------------------------
+    # 9. Clientside selection-styling
+    # ----------------------------------------------------------------------
+    #
+    # ``STORE_COLONY_SELECTION`` changes can fire dozens of times per
+    # second (every shift+click), but the only DOM effect is toggling
+    # the ``is-selected`` class on cells whose ``data-key`` is in the
+    # selection. Doing that in JS instead of through a Python callback
+    # avoids re-running ``FilterSpec.apply_to`` and rebuilding the
+    # Component tree on every click.
+    app.clientside_callback(
+        """
+        function(selection) {
+            const container = document.getElementById("colony-grid-container");
+            if (!container) return window.dash_clientside.no_update;
+            const selected = (selection && Array.isArray(selection.selected))
+                ? selection.selected : [];
+            const wanted = new Set();
+            selected.forEach(function (entry) {
+                if (Array.isArray(entry) && entry.length === 2) {
+                    wanted.add(entry[0] + "::" + entry[1]);
+                }
+            });
+            container.querySelectorAll(".colony-cell").forEach(function (cell) {
+                const cb = cell.querySelector(".colony-cell-checkbox");
+                const key = cb ? cb.dataset.key : null;
+                const shouldBeSelected = !!key && wanted.has(key);
+                cell.classList.toggle("is-selected", shouldBeSelected);
+                if (cb) cb.classList.toggle("is-checked", shouldBeSelected);
+            });
+            return Date.now();
+        }
+        """,
+        Output(ids.COLONY_SELECTION_EFFECT_ID, "data"),
+        Input(ids.STORE_COLONY_SELECTION, "data"),
+    )
 
 
 __all__ = ["register_callbacks"]

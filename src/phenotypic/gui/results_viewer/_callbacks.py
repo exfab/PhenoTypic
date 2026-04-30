@@ -87,7 +87,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
     """
     filtered_state: FilteredMeasurements = app.server.config["filtered_state"]
     _layout.register_callbacks(app, output_root)
-    _filter_panel.register_callbacks(app, output_root)
+    _filter_panel.register_callbacks(app, output_root, filtered_state)
     _viewer_card.register_callbacks(app, output_root)
     _colony_callbacks.register_callbacks(app, output_root, filtered_state)
     _register_clientside_callbacks(app)

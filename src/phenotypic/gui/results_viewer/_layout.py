@@ -261,6 +261,7 @@ def _build_stores(filtered_state: "FilteredMeasurements") -> Component:
             # Python side never reads it.
             dcc.Store(id=ids.OSD_MOUNT_TRIGGER_ID, data=0),
             dcc.Store(id=ids.LOCK_VIEWS_EFFECT_ID, data=0),
+            dcc.Store(id=ids.COLONY_SELECTION_EFFECT_ID, data=0),
             # Colony-view curation + selection stores. Memory-storage so
             # the curation/selection state survives tab switches but not
             # full page reloads (the on-disk parquet mirror is the

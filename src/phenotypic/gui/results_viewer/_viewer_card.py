@@ -50,7 +50,10 @@ from dash import (
 )
 
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
-from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
+from phenotypic.gui.results_viewer._filtered_state import (
+    FilteredMeasurements,
+    decode_removed_keys_payload,
+)
 from phenotypic.gui.results_viewer._ids import (
     BTN_ADD_CARD,
     CARDS_CONTAINER_ID,
@@ -162,7 +165,7 @@ def _decode_picker_value(value: str | None) -> tuple[str, str] | None:
 # ---------------------------------------------------------------------------
 
 
-def layout(card_id: str, output_root: OutputRoot) -> Any:
+def layout(idx: str, output_root: OutputRoot) -> Any:
     """Build the component tree for a single viewer card.
 
     The card is a self-contained ``dbc.Card`` with:
@@ -178,7 +181,7 @@ def layout(card_id: str, output_root: OutputRoot) -> Any:
        filter spec.
 
     Args:
-        card_id: Hex UUID identifying this card. Used as the ``index``
+        idx: Hex UUID identifying this card. Used as the ``index``
             of every pattern-matching component id below.
         output_root: Validated CLI output handle. Currently unused at
             layout time -- options/values are populated by callbacks --
@@ -193,7 +196,7 @@ def layout(card_id: str, output_root: OutputRoot) -> Any:
     del output_root  # currently only callbacks need it; future-proof signature.
 
     picker = dcc.Dropdown(
-        id=card_picker_id(card_id),
+        id=card_picker_id(idx),
         options=[],
         value=None,
         placeholder="Select image...",
@@ -206,19 +209,19 @@ def layout(card_id: str, output_root: OutputRoot) -> Any:
         [
             dbc.Badge(
                 "--",
-                id=card_info_chip_dataset_id(card_id),
+                id=card_info_chip_dataset_id(idx),
                 color="secondary",
                 className="card-info-chip me-1",
             ),
             dbc.Badge(
                 "--",
-                id=card_info_chip_stem_id(card_id),
+                id=card_info_chip_stem_id(idx),
                 color="info",
                 className="card-info-chip me-1",
             ),
             dbc.Badge(
                 "-- objects",
-                id=card_info_chip_count_id(card_id),
+                id=card_info_chip_count_id(idx),
                 color="light",
                 text_color="dark",
                 className="card-info-chip",
@@ -230,7 +233,7 @@ def layout(card_id: str, output_root: OutputRoot) -> Any:
 
     remove_btn = dbc.Button(
         "x",
-        id=card_remove_id(card_id),
+        id=card_remove_id(idx),
         color="danger",
         outline=True,
         size="sm",
@@ -255,14 +258,14 @@ def layout(card_id: str, output_root: OutputRoot) -> Any:
     )
 
     osd_div = html.Div(
-        id=card_osd_div_id(card_id),
+        id=card_osd_div_id(idx),
         className="osd-canvas",
         style=_OSD_CANVAS_STYLE,
     )
 
     details_toggle = dbc.Button(
         "> Details",
-        id=card_details_toggle_id(card_id),
+        id=card_details_toggle_id(idx),
         color="link",
         outline=False,
         size="sm",
@@ -270,7 +273,7 @@ def layout(card_id: str, output_root: OutputRoot) -> Any:
     )
 
     details_table = dash_table.DataTable(  # type: ignore[attr-defined]
-        id=card_details_table_id(card_id),
+        id=card_details_table_id(idx),
         columns=[],
         data=[],
         page_size=20,
@@ -312,13 +315,13 @@ def layout(card_id: str, output_root: OutputRoot) -> Any:
 
     details_collapse = dbc.Collapse(
         html.Div(details_table, className="card-details-table-wrap"),
-        id=card_details_collapse_id(card_id),
+        id=card_details_collapse_id(idx),
         is_open=False,
         className="card-details-collapse",
     )
 
     state_store = dcc.Store(
-        id=card_state_store_id(card_id),
+        id=card_state_store_id(idx),
         data=None,
         storage_type="session",
     )
@@ -338,24 +341,11 @@ def layout(card_id: str, output_root: OutputRoot) -> Any:
 
     return dbc.Card(
         [header, body],
-        id=card_id_pattern(card_id),
+        id=card_id(idx),
         className="viewer-card mb-3",
     )
 
 
-def card_id_pattern(idx: str) -> dict[str, str]:
-    """Wrap :func:`card_id` for clarity at layout call sites.
-
-    Kept separate from the imported :func:`card_id` so the local
-    ``card_id`` parameter name in :func:`layout` is unambiguous.
-
-    Args:
-        idx: The card's hex UUID.
-
-    Returns:
-        Pattern-matching id dict.
-    """
-    return card_id(idx)
 
 
 # ---------------------------------------------------------------------------
@@ -459,37 +449,13 @@ def _slice_for_image(
 def _decode_removed_keys_payload(
     payload: list[list[Any]] | None,
 ) -> set[tuple[str, int]]:
-    """Decode :data:`STORE_REMOVED_KEYS` into a lookup set.
+    """Decode :data:`STORE_REMOVED_KEYS` into a hash-set for membership tests.
 
-    Dash stores marshal tuples to lists, so the payload is a list of
-    ``[image_file, object_label]`` pairs. We coerce ``image_file`` to
-    ``str`` and ``object_label`` to ``int`` so the resulting tuples
-    compare equal to the keys produced from the master frame
-    regardless of the source dtype (e.g. ``UInt32`` labels in
-    polars vs. JSON-decoded ``int`` from the store).
-
-    Args:
-        payload: Raw store payload (a list of two-element lists) or
-            ``None`` when the store has not yet been initialised.
-
-    Returns:
-        A set of ``(image_file, object_label)`` tuples. Malformed
-        entries are silently skipped rather than raised; the viewer
-        should never crash on a stale/unparseable store.
+    Thin wrapper around the shared :func:`decode_removed_keys_payload`
+    helper that turns the list-of-tuples result into a set so the
+    per-row Status check is O(1).
     """
-    if not payload:
-        return set()
-    out: set[tuple[str, int]] = set()
-    for entry in payload:
-        if not isinstance(entry, (list, tuple)) or len(entry) < 2:
-            continue
-        image_file_raw, label_raw = entry[0], entry[1]
-        try:
-            out.add((str(image_file_raw), int(label_raw)))
-        except (TypeError, ValueError):
-            logger.debug("Skipping malformed removed-keys entry: %r", entry)
-            continue
-    return out
+    return set(decode_removed_keys_payload(payload))
 
 
 def _row_status(
@@ -652,9 +618,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
 
     # Capture the curation backend at registration time. Dash callbacks
     # don't run inside a Flask request, so reaching for
-    # ``flask.current_app`` later would fail; closing over the instance
-    # here keeps :func:`register_callbacks`'s public signature stable
-    # for Wave 4's planned cascade. ``None`` is allowed only so legacy
+    # ``flask.current_app`` later would fail. ``None`` is tolerated so
     # tests / harnesses that don't seed the config still register
     # callbacks (the toggle becomes a no-op in that case).
     filtered_state: FilteredMeasurements | None = app.server.config.get(
@@ -835,9 +799,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
             return dataset, stem, "0 objects", [], []
 
         n_objects = filtered.height
-        filter_columns = [
-            row.column for row in spec.rows if row.column and row.values
-        ]
+        filter_columns = _filter_active_columns(filter_payload)
         project = _project_details_columns(filtered, filter_columns)
         if not project:
             return dataset, stem, f"{n_objects} objects", [], []
@@ -960,10 +922,9 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
             return no_update
 
         try:
-            if filtered_state.is_removed(image_file, object_label):
-                filtered_state.restore(image_file, object_label)
-            else:
-                filtered_state.remove(image_file, object_label)
+            return filtered_state.mutate_and_payload(
+                lambda s: s.toggle(image_file, object_label)
+            )
         except Exception:
             logger.exception(
                 "Failed to toggle curation state for %s / %d",
@@ -971,7 +932,6 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
                 object_label,
             )
             return no_update
-        return filtered_state.removed_keys_payload()
 
 
 __all__ = [

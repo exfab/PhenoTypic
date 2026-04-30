@@ -9,17 +9,42 @@ the filtered colony set, plus padding) so every tile in the displayed
 grid shares the same canvas size.
 
 Crops that spill past the image edge are padded with ``pad_value`` so
-the returned image is always exactly ``size`` x ``size``. No disk I/O
-beyond reading the source PNG -- caching is handled by the Flask route
-that wraps this function.
+the returned image is always exactly ``size`` x ``size``. The decoded
+overlay is held in a small LRU cache keyed on
+``(path, mtime_ns)`` because a typical grid render hits the same handful
+of plate scans dozens of times in quick succession; without the cache
+each cell would re-decode the full overlay.
 """
 
 from __future__ import annotations
 
+import functools
 import io
+import os
 from pathlib import Path
 
 from PIL import Image as PILImage
+
+#: Number of distinct overlay PNGs to keep decoded in memory. A typical
+#: grid pulls from 1–8 plates per render, so this comfortably covers a
+#: full grid without holding more than a few hundred MB of pixel data.
+_OVERLAY_CACHE_SIZE = 8
+
+
+@functools.lru_cache(maxsize=_OVERLAY_CACHE_SIZE)
+def _load_overlay_rgb(path: str, mtime_ns: int) -> PILImage.Image:
+    """Decode an overlay PNG to RGB and cache the result.
+
+    Args:
+        path: Absolute path to the overlay PNG, as a string so the
+            cache key is hashable.
+        mtime_ns: ``st_mtime_ns`` at lookup time. Including it in the
+            cache key invalidates the cached frame when the overlay is
+            regenerated under a running viewer.
+    """
+    del mtime_ns  # Cache-key only.
+    with PILImage.open(path) as img:
+        return img.convert("RGB")
 
 
 def crop_overlay(
@@ -59,8 +84,8 @@ def crop_overlay(
     # loads the raw RGB layer via Image.load_hdf5 (see
     # src/phenotypic/_core/_image_parts/_image_io_handler.py:944) for
     # overlay-free crops.
-    with PILImage.open(png_path) as img:
-        source = img.convert("RGB")
+    mtime_ns = os.stat(png_path).st_mtime_ns
+    source = _load_overlay_rgb(str(png_path), mtime_ns)
 
     src_width, src_height = source.size
 

@@ -8,7 +8,7 @@ at once and remove or restore them in bulk via a multi-select.
 This module owns only the *static* skeleton of the tab body — a toolbar
 (axis dropdowns, refresh button, crop-size info chip), a hidden-by-default
 bulk-action alert bar, and an empty grid container. The grid itself is
-rendered by callbacks in :mod:`._callbacks` (Wave 3B); the per-cell
+rendered by callbacks in :mod:`._callbacks`; the per-cell
 HTML is built by :mod:`._grid`.
 
 DESIGN.md tokens are honoured throughout: navy ``#003660`` for primary
@@ -189,7 +189,7 @@ def _build_bulk_bar() -> Component:
 def _build_grid_container() -> Component:
     """Build the (initially empty) colony-grid container.
 
-    The grid is populated by a callback in :mod:`._callbacks` (Wave 3B).
+    The grid is populated by a callback in :mod:`._callbacks`.
     Styling is intentionally minimal here — the grid component manages
     its own CSS via :mod:`._assets/results_viewer.css`.
 
@@ -221,7 +221,7 @@ def layout(output_root: OutputRoot) -> Component:
        label plus Remove / Restore / Clear; hidden by default.
     3. **Grid container** (:data:`ids.COLONY_GRID_CONTAINER_ID`) — the
        2D grid of per-colony crops; populated by callbacks in
-       :mod:`._callbacks` (Wave 3B).
+       :mod:`._callbacks`.
 
     The whole tab body is wrapped in a scrollable container that mirrors
     the cards column's max-height so vertical sizing matches the Plate

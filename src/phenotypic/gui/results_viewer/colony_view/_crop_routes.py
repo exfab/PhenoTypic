@@ -17,6 +17,10 @@ import dash
 import polars as pl
 from flask import Blueprint, Response, request
 
+from phenotypic.gui.results_viewer._filtered_state import (
+    KEY_IMAGE_FILE,
+    KEY_OBJECT_LABEL,
+)
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer._tile_routes import _is_safe_path_component
 from phenotypic.gui.results_viewer.colony_view._cropper import crop_overlay
@@ -103,8 +107,8 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
         try:
             row = (
                 output_root.master_df.filter(
-                    (pl.col("Metadata_ImageFile").cast(pl.String) == stem)
-                    & (pl.col("ObjectLabel").cast(pl.Int64) == label_int)
+                    (pl.col(KEY_IMAGE_FILE).cast(pl.String) == stem)
+                    & (pl.col(KEY_OBJECT_LABEL).cast(pl.Int64) == label_int)
                 )
                 .select(["Bbox_CenterRR", "Bbox_CenterCC"])
                 .head(1)

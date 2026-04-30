@@ -35,6 +35,10 @@ from phenotypic.gui.results_viewer._ids import (
     colony_cell_count_badge_id,
     colony_cell_remove_btn_id,
 )
+from phenotypic.gui.results_viewer._filtered_state import (
+    KEY_IMAGE_FILE,
+    KEY_OBJECT_LABEL,
+)
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 
 # ---------------------------------------------------------------------------
@@ -54,8 +58,9 @@ _MEASUREMENT_PREFIXES: tuple[str, ...] = (
     "GridSpatial_",
 )
 
-#: Per-object identifier; high cardinality, never a meaningful axis.
-_OBJECT_LABEL_COL = "ObjectLabel"
+#: Per-object identifier alias — sourced from :mod:`._filtered_state` so
+#: the curation key columns and the colony grid stay in sync.
+_OBJECT_LABEL_COL = KEY_OBJECT_LABEL
 
 #: Sort buckets — Metadata_ first, then Grid_, then everything else.
 _METADATA_PREFIX = "Metadata_"
@@ -220,7 +225,7 @@ def _representative_per_cell(
     # duplicate output column. Skip those agg-firsts here — the axis
     # values are already available on the resulting frame as the
     # group-by keys.
-    forwarded_cols = ["Metadata_ImageFile", "Metadata_Dataset", _OBJECT_LABEL_COL]
+    forwarded_cols = [KEY_IMAGE_FILE, "Metadata_Dataset", _OBJECT_LABEL_COL]
     aggs = [
         pl.first(col).alias(col)
         for col in forwarded_cols
@@ -359,8 +364,8 @@ def _build_cell(
     children: list[Component] = [crop_node, checkbox, remove_btn]
 
     if count > 1:
-        # Render the count badge as a button so a future wave can layer in
-        # an expand-on-click drilldown without changing the DOM shape.
+        # Render the badge as a button so an expand-on-click drilldown
+        # can hook into it later without changing the DOM shape.
         children.append(
             dbc.Button(
                 f"N={count}",
@@ -469,7 +474,7 @@ def build_grid(
     cell_index: dict[tuple[object, object], dict[str, object]] = {}
     for row in representatives.iter_rows(named=True):
         cell_index[(row[x_axis_col], row[y_axis_col])] = {
-            "image_file": row["Metadata_ImageFile"],
+            "image_file": row[KEY_IMAGE_FILE],
             "dataset": row["Metadata_Dataset"],
             "label": row[_OBJECT_LABEL_COL],
             "count": row["count"],

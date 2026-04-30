@@ -32,7 +32,53 @@ import polars as pl
 
 logger = logging.getLogger(__name__)
 
-_KEY_COLUMNS: tuple[str, str] = ("Metadata_ImageFile", "ObjectLabel")
+#: Column name that identifies the source image of a colony.
+KEY_IMAGE_FILE: str = "Metadata_ImageFile"
+
+#: Column name that identifies a colony within its source image.
+KEY_OBJECT_LABEL: str = "ObjectLabel"
+
+#: Tuple form of the curation key columns. Importable from a single
+#: source so callers (filter panel, viewer card, colony grid, crop
+#: route) don't drift apart on string literals.
+KEY_COLUMNS: tuple[str, str] = (KEY_IMAGE_FILE, KEY_OBJECT_LABEL)
+
+# Backwards-compat alias for code that already grew up reading the
+# leading-underscore name; do not introduce new uses.
+_KEY_COLUMNS = KEY_COLUMNS
+
+
+def decode_removed_keys_payload(
+    payload: object,
+) -> list[tuple[str, int]]:
+    """Coerce a ``STORE_REMOVED_KEYS`` / selection payload into typed keys.
+
+    Dash stores marshal data as JSON, so what arrives is a list of two-
+    element lists with possibly stringified ints. This helper round-trips
+    each entry to ``(str, int)`` and silently drops anything malformed
+    (logged at DEBUG so the coercion is observable but not noisy).
+
+    Args:
+        payload: Whatever the Dash store returned. Expected shape is
+            ``[[image_file, label], ...]`` but anything else is tolerated.
+
+    Returns:
+        A list of ``(image_file, object_label)`` tuples in the order
+        they appeared in the input. Use ``set(...)`` if you need a
+        hash-set instead.
+    """
+    if not isinstance(payload, list):
+        return []
+    out: list[tuple[str, int]] = []
+    for entry in payload:
+        if not isinstance(entry, (list, tuple)) or len(entry) != 2:
+            continue
+        try:
+            out.append((str(entry[0]), int(entry[1])))
+        except (TypeError, ValueError):
+            logger.debug("Dropping malformed removed-keys entry %r", entry)
+            continue
+    return out
 
 
 def _extract_keys(df: pl.DataFrame) -> set[tuple[str, int]]:
@@ -338,6 +384,26 @@ class FilteredMeasurements:
             if not removals:
                 return
             self.removed_keys -= removals
+            self._save_locked()
+
+    def toggle(self, image_file: str, object_label: int) -> None:
+        """Flip the curation state for a single colony, lock-guarded.
+
+        Equivalent to ``restore`` if the key was removed, ``remove`` if
+        it wasn't. Implemented as a single critical section so callers
+        don't have to choose-then-mutate (which would race) and so the
+        save fires exactly once.
+
+        Args:
+            image_file: Value of ``Metadata_ImageFile`` for the colony.
+            object_label: Value of ``ObjectLabel`` for the colony.
+        """
+        key = (image_file, object_label)
+        with self._lock:
+            if key in self.removed_keys:
+                self.removed_keys.discard(key)
+            else:
+                self.removed_keys.add(key)
             self._save_locked()
 
     def mutate_and_payload(

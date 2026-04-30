@@ -223,5 +223,5 @@
 }
 
 /* Toolbar / bulk action bar */
-.colony-toolbar { /* set inline by Wave 3A */ }
+.colony-toolbar { /* sized inline by colony_view._layout */ }
 .colony-bulk-bar { /* dbc.Alert handles base styling */ }
