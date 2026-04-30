@@ -64,6 +64,9 @@ dependencies = [
     "ruptures>=1.1.9",
     "typing_extensions>=4.0.0",
     "pooch>=1.8",
+    "dash>=4.1.0",
+    "dash-cytoscape>=1.0.2",
+    "dash-bootstrap-components>=2.0.4",
 ]
 
 [project.urls]

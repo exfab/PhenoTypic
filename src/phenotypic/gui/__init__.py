@@ -108,6 +108,17 @@ def __getattr__(name: str):
 
             return launch_sweep_viewer
 
+    # Dash node-graph builder (requires dash + dash-cytoscape, lazy)
+    if name in ("create_builder_app", "BuilderState"):
+        if name == "create_builder_app":
+            from .builder import create_app
+
+            return create_app
+        elif name == "BuilderState":
+            from .builder import BuilderState
+
+            return BuilderState
+
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
@@ -122,4 +133,7 @@ __all__ = [
     # Napari sweep viewer
     "NapariSweepViewer",
     "launch_sweep_viewer",
+    # Dash node-graph builder
+    "create_builder_app",
+    "BuilderState",
 ]
