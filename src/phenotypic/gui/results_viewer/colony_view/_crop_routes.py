@@ -97,11 +97,14 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
             )
 
         # --- 4. Lookup ----------------------------------------------------
+        # Cast key columns explicitly so the comparison still matches when
+        # the master frame stores Metadata_ImageFile as Categorical or
+        # ObjectLabel as a narrower int type.
         try:
             row = (
                 output_root.master_df.filter(
-                    (pl.col("Metadata_ImageFile") == stem)
-                    & (pl.col("ObjectLabel") == label_int)
+                    (pl.col("Metadata_ImageFile").cast(pl.String) == stem)
+                    & (pl.col("ObjectLabel").cast(pl.Int64) == label_int)
                 )
                 .select(["Bbox_CenterRR", "Bbox_CenterCC"])
                 .head(1)

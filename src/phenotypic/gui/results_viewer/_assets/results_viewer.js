@@ -300,10 +300,13 @@
 (function () {
     "use strict";
 
-    let attached = false;
-
     function attachListener(container) {
-        if (attached) return;
+        // The dataset flag is the single source of truth for "this
+        // container already has our listener". Setting it here means
+        // the polling path and the body MutationObserver agree even if
+        // they race against each other on the same fresh container.
+        if (container.dataset._colonyShiftBridge === "1") return;
+        container.dataset._colonyShiftBridge = "1";
         container.addEventListener("click", function (event) {
             const tgt = event.target;
             if (!tgt || !tgt.classList ||
@@ -340,7 +343,6 @@
             }
             dc.set_props("store-colony-selection-delta", { data: payload });
         });
-        attached = true;
         console.info("[results_viewer] colony shift-click bridge attached");
     }
 
@@ -368,10 +370,8 @@
         const obs = new MutationObserver(function () {
             const container = document.getElementById("colony-grid-container");
             if (!container) return;
-            if (container.dataset._colonyShiftBridge === "1") return;
-            // Fresh container: clear the closure flag and re-attach.
-            attached = false;
-            container.dataset._colonyShiftBridge = "1";
+            // attachListener is idempotent — its dataset-flag guard
+            // makes a no-op cheap, so we can fire on every mutation.
             attachListener(container);
         });
         obs.observe(document.body, { childList: true, subtree: true });

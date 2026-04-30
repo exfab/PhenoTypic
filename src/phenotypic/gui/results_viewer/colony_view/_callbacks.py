@@ -271,11 +271,15 @@ def register_callbacks(
         except (TypeError, ValueError):
             return no_update
 
-        if filtered_state.is_removed(image_file, label):
-            filtered_state.restore(image_file, label)
-        else:
-            filtered_state.remove(image_file, label)
-        return filtered_state.removed_keys_payload()
+        # Mutate + emit under the same lock so a concurrent bulk action
+        # can't slip a divergent payload between us and the next render.
+        def _toggle(state: FilteredMeasurements) -> None:
+            if state.is_removed(image_file, label):
+                state.restore(image_file, label)
+            else:
+                state.remove(image_file, label)
+
+        return filtered_state.mutate_and_payload(_toggle)
 
     # ----------------------------------------------------------------------
     # 4. Selection-delta consumer
@@ -319,10 +323,10 @@ def register_callbacks(
             try:
                 slice_keys = expand_range(grid_order, current_anchor, delta_key)
             except ValueError:
-                # Anchor or target slipped out of the current grid (e.g. the
-                # filter changed since the anchor was captured). Fall back
-                # to a single-toggle on the delta key.
-                slice_keys = []
+                # Anchor or target slipped out of the current grid (e.g.
+                # the filter or axis changed since the anchor was
+                # captured). Fall back to a single-toggle on the delta
+                # key, dropping the stale anchor.
                 if delta_key in current_selected:
                     current_selected.discard(delta_key)
                     new_anchor: tuple[str, int] | None = None
@@ -350,6 +354,7 @@ def register_callbacks(
         Output(ids.COLONY_BULK_BAR_ID, "style"),
         Output(ids.COLONY_BULK_COUNT_LABEL_ID, "children"),
         Input(ids.STORE_COLONY_SELECTION, "data"),
+        prevent_initial_call=True,
     )
     def _bulk_bar_visibility(selection_payload: Any) -> tuple[dict[str, str], str]:
         """Show the bulk-action bar iff at least one cell is selected."""
@@ -400,13 +405,23 @@ def register_callbacks(
             return no_update, no_update
 
         if triggered == ids.COLONY_BULK_REMOVE_BTN_ID:
-            filtered_state.remove_many(selected)
+            action = "remove"
         elif triggered == ids.COLONY_BULK_RESTORE_BTN_ID:
-            filtered_state.restore_many(selected)
+            action = "restore"
         else:
             return no_update, no_update
 
-        return filtered_state.removed_keys_payload(), {"anchor": None, "selected": []}
+        # Mutate + emit under the same lock so a concurrent click can't
+        # slip a divergent payload between the bulk save and the next
+        # render.
+        def _apply(state: FilteredMeasurements) -> None:
+            if action == "remove":
+                state.remove_many(selected)
+            else:
+                state.restore_many(selected)
+
+        payload = filtered_state.mutate_and_payload(_apply)
+        return payload, {"anchor": None, "selected": []}
 
     # ----------------------------------------------------------------------
     # 7. Bulk Clear
@@ -420,6 +435,37 @@ def register_callbacks(
     def _bulk_clear(n_clicks: int | None) -> dict[str, Any]:
         """Reset the active selection without touching the curated set."""
         del n_clicks
+        return {"anchor": None, "selected": []}
+
+    # ----------------------------------------------------------------------
+    # 8. Reset selection when the grid layout changes
+    # ----------------------------------------------------------------------
+    #
+    # The plan's "Risks & mitigations / Stale grid_order" entry calls for
+    # clearing the selection whenever the grid is about to be re-keyed.
+    # Without this, ``STORE_COLONY_SELECTION`` keeps stale keys after an
+    # axis swap or a filter change: the bulk bar still says "N selected"
+    # but the keys point at colonies that are no longer rendered, and a
+    # subsequent shift+click falls back to single-toggle through
+    # ``expand_range``'s ValueError path.
+
+    @app.callback(
+        Output(ids.STORE_COLONY_SELECTION, "data", allow_duplicate=True),
+        Input(ids.COLONY_X_AXIS_DROPDOWN_ID, "value"),
+        Input(ids.COLONY_Y_AXIS_DROPDOWN_ID, "value"),
+        Input(ids.STORE_FILTER_SPEC, "data"),
+        prevent_initial_call=True,
+    )
+    def _reset_selection_on_layout_change(
+        x_axis: Any, y_axis: Any, filter_spec: Any
+    ) -> dict[str, Any]:
+        """Clear the active selection on any change that re-keys the grid.
+
+        Triggers on axis-dropdown swaps and filter-spec changes. Removed
+        rows survive (they live on the parquet, not the selection store);
+        only the transient multi-select state is reset.
+        """
+        del x_axis, y_axis, filter_spec
         return {"anchor": None, "selected": []}
 
 

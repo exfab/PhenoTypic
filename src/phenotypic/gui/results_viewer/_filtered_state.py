@@ -13,7 +13,10 @@ The curated view is mirrored to two sibling files in the output root:
 The :class:`FilteredMeasurements` dataclass holds the in-memory removal set,
 loads existing curation files, and atomically rewrites both mirrors whenever
 the user mutates the set. All public mutators serialise on a per-instance
-lock so concurrent Dash callbacks cannot interleave reads and writes.
+re-entrant lock so concurrent Dash callbacks cannot interleave reads and
+writes — and so a future caller that wraps an external mutation in
+``with state._lock:`` cannot deadlock against the lock-acquiring
+:meth:`save`.
 """
 
 from __future__ import annotations
@@ -23,7 +26,7 @@ import os
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable
 
 import polars as pl
 
@@ -43,7 +46,17 @@ def _extract_keys(df: pl.DataFrame) -> set[tuple[str, int]]:
         coerced to ``str`` and ``object_label`` to ``int`` so the set is safe
         to compare across frames that may differ in dtype (e.g. parquet vs.
         Dash JSON round-trip).
+
+    Raises:
+        ValueError: If either key column is missing from ``df``.
     """
+    missing = [col for col in _KEY_COLUMNS if col not in df.columns]
+    if missing:
+        raise ValueError(
+            "FilteredMeasurements requires the master frame to expose "
+            f"{list(_KEY_COLUMNS)} but the following are missing: {missing}. "
+            "Re-run the pipeline or pass a frame that exposes these columns."
+        )
     image_files = df.get_column(_KEY_COLUMNS[0]).to_list()
     object_labels = df.get_column(_KEY_COLUMNS[1]).to_list()
     return {(str(f), int(label)) for f, label in zip(image_files, object_labels)}
@@ -60,6 +73,13 @@ class FilteredMeasurements:
     :meth:`restore_many`) acquire :attr:`_lock` for the duration of the
     mutation and the subsequent save so concurrent callbacks cannot race.
 
+    The :attr:`_master_df` reference is captured at :meth:`load` time and
+    reused on every save, so mutations don't pay a parquet re-read per
+    click. This also keeps the in-memory and on-disk views of the master
+    frame in sync — if some external process replaced the parquet under
+    the running viewer, callers must explicitly re-:meth:`load` to pick
+    up the change.
+
     Attributes:
         root: Output root directory (the parent that holds
             ``master_measurements.parquet``).
@@ -70,15 +90,22 @@ class FilteredMeasurements:
         removed_keys: Set of removed ``(image_file, object_label)`` tuples.
             Mutating this set directly bypasses the lock and the on-disk
             mirrors — prefer the public mutators.
-        _lock: Per-instance mutex protecting concurrent mutations and
-            saves. Excluded from the dataclass repr.
+        _master_df: Cached reference to the master frame supplied at
+            :meth:`load` time. Used by every internal save so mutations
+            don't pay a parquet re-read on the click hot path.
+        _lock: Per-instance re-entrant mutex protecting concurrent
+            mutations and saves. Re-entrant so callers (or future code)
+            can hold the lock across a mutation + save without
+            deadlocking on the lock that :meth:`save` itself takes.
+            Excluded from the dataclass repr.
     """
 
     root: Path
     parquet_path: Path
     csv_path: Path
     removed_keys: set[tuple[str, int]]
-    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+    _master_df: pl.DataFrame = field(repr=False)
+    _lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
 
     @classmethod
     def load(cls, root: Path, master_df: pl.DataFrame) -> "FilteredMeasurements":
@@ -97,16 +124,27 @@ class FilteredMeasurements:
         Args:
             root: Output root directory.
             master_df: The full master measurements frame, used to compute
-                the removal set as ``master_keys − filtered_keys``. Must
-                expose both ``Metadata_ImageFile`` and ``ObjectLabel``.
+                the removal set as ``master_keys − filtered_keys`` and
+                cached on the instance for subsequent saves. Must expose
+                both ``Metadata_ImageFile`` and ``ObjectLabel``.
 
         Returns:
             A new :class:`FilteredMeasurements` whose :attr:`removed_keys`
             reflects the on-disk curation state (or an empty set if the
             mirrors do not exist yet).
+
+        Raises:
+            ValueError: If the master frame is missing one of the key
+                columns. Re-raised from :func:`_extract_keys` with a
+                friendly message rather than letting polars' own
+                ``ColumnNotFoundError`` bubble up at viewer-boot time.
         """
         parquet_path = root / "filtered_measurements.parquet"
         csv_path = root / "filtered_measurements.csv"
+
+        # Validate up front so a bad master surfaces at boot, not on the
+        # first user click.
+        master_keys = _extract_keys(master_df)
 
         if not parquet_path.exists():
             return cls(
@@ -114,10 +152,10 @@ class FilteredMeasurements:
                 parquet_path=parquet_path,
                 csv_path=csv_path,
                 removed_keys=set(),
+                _master_df=master_df,
             )
 
         filtered_df = pl.read_parquet(parquet_path)
-        master_keys = _extract_keys(master_df)
         filtered_keys = _extract_keys(filtered_df)
 
         unknown = filtered_keys - master_keys
@@ -136,6 +174,7 @@ class FilteredMeasurements:
             parquet_path=parquet_path,
             csv_path=csv_path,
             removed_keys=removed_keys,
+            _master_df=master_df,
         )
 
     # ------------------------------------------------------------------ #
@@ -245,7 +284,7 @@ class FilteredMeasurements:
             if key in self.removed_keys:
                 return
             self.removed_keys.add(key)
-            self._save_locked(self._load_master_for_save())
+            self._save_locked()
 
     def restore(self, image_file: str, object_label: int) -> None:
         """Restore a single colony and persist the change.
@@ -263,7 +302,7 @@ class FilteredMeasurements:
             if key not in self.removed_keys:
                 return
             self.removed_keys.discard(key)
-            self._save_locked(self._load_master_for_save())
+            self._save_locked()
 
     def remove_many(self, keys: Iterable[tuple[str, int]]) -> None:
         """Mark a batch of colonies as removed in a single save.
@@ -281,7 +320,7 @@ class FilteredMeasurements:
             if not additions:
                 return
             self.removed_keys |= additions
-            self._save_locked(self._load_master_for_save())
+            self._save_locked()
 
     def restore_many(self, keys: Iterable[tuple[str, int]]) -> None:
         """Restore a batch of colonies in a single save.
@@ -299,13 +338,38 @@ class FilteredMeasurements:
             if not removals:
                 return
             self.removed_keys -= removals
-            self._save_locked(self._load_master_for_save())
+            self._save_locked()
+
+    def mutate_and_payload(
+        self, action: Callable[["FilteredMeasurements"], None]
+    ) -> list[list]:
+        """Apply ``action`` and return the new payload, all under the lock.
+
+        Callers that write ``STORE_REMOVED_KEYS`` after a mutation should
+        prefer this helper over a separate ``mutate`` + ``removed_keys_payload``
+        pair: the second call would happen after the lock had been released,
+        so a concurrent mutator could change the payload between the two.
+        Holding the (re-entrant) lock across both gives Dash a consistent
+        snapshot.
+
+        Args:
+            action: A callable that performs whatever mutation is desired.
+                Receives this :class:`FilteredMeasurements` instance and
+                may call any of the public mutators (which will re-enter
+                the lock harmlessly thanks to :class:`threading.RLock`).
+
+        Returns:
+            The updated :meth:`removed_keys_payload` after ``action`` ran.
+        """
+        with self._lock:
+            action(self)
+            return self.removed_keys_payload()
 
     # ------------------------------------------------------------------ #
     # Public save (used by callers that already have the master frame).
     # ------------------------------------------------------------------ #
 
-    def save(self, master_df: pl.DataFrame) -> None:
+    def save(self, master_df: pl.DataFrame | None = None) -> None:
         """Atomically rewrite both on-disk mirrors.
 
         Acquires :attr:`_lock` for the duration of the write. The parquet
@@ -321,8 +385,11 @@ class FilteredMeasurements:
         viewer shows.
 
         Args:
-            master_df: The master measurements frame, used to compute the
-                curated subset via :meth:`filtered_df`.
+            master_df: Optional override of the master frame to write. If
+                omitted (the common case from the public mutators) the
+                cached :attr:`_master_df` reference is used. Pass an
+                explicit frame only when the master has been refreshed
+                out-of-band.
         """
         with self._lock:
             self._save_locked(master_df)
@@ -331,32 +398,19 @@ class FilteredMeasurements:
     # Internal helpers.
     # ------------------------------------------------------------------ #
 
-    def _load_master_for_save(self) -> pl.DataFrame:
-        """Read the master parquet from disk for an internal save.
-
-        The single-key mutators (:meth:`remove`, :meth:`restore`) and
-        their batched siblings need the master frame to recompute the
-        curated view, but accepting it as a method argument would force
-        every Dash callback to thread it through. Reading from
-        ``<root>/master_measurements.parquet`` keeps the API ergonomic at
-        the cost of one parquet read per save.
-
-        Returns:
-            The full master measurements frame.
-        """
-        return pl.read_parquet(self.root / "master_measurements.parquet")
-
-    def _save_locked(self, master_df: pl.DataFrame) -> None:
+    def _save_locked(self, master_df: pl.DataFrame | None = None) -> None:
         """Write both mirrors, assuming :attr:`_lock` is already held.
 
         Args:
-            master_df: The master measurements frame.
+            master_df: Optional override; defaults to the cached
+                :attr:`_master_df` reference captured at :meth:`load` time.
         """
+        df = master_df if master_df is not None else self._master_df
         if not self.removed_keys and not self.parquet_path.exists() and not self.csv_path.exists():
             # Never been curated; don't create empty mirror files.
             return
 
-        filtered = self.filtered_df(master_df)
+        filtered = self.filtered_df(df)
 
         parquet_tmp = self.parquet_path.with_suffix(self.parquet_path.suffix + ".tmp")
         csv_tmp = self.csv_path.with_suffix(self.csv_path.suffix + ".tmp")
@@ -364,5 +418,16 @@ class FilteredMeasurements:
         filtered.write_parquet(parquet_tmp)
         os.replace(parquet_tmp, self.parquet_path)
 
-        filtered.write_csv(csv_tmp)
-        os.replace(csv_tmp, self.csv_path)
+        try:
+            filtered.write_csv(csv_tmp)
+            os.replace(csv_tmp, self.csv_path)
+        except Exception:
+            # Parquet has succeeded; the CSV is best-effort and
+            # regenerated from parquet on next load. Log loudly so
+            # operators notice if non-CSV-encodable columns were added
+            # upstream.
+            logger.exception(
+                "Failed to write curation CSV mirror at %s; parquet write "
+                "succeeded so curation state is preserved.",
+                self.csv_path,
+            )

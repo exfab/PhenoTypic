@@ -196,3 +196,96 @@ def test_load_warns_on_unknown_keys_in_existing_file(
     # Removed keys = master keys − filtered keys, restricted to master.
     # The bogus img-999/42 is not in master so it's not propagated.
     assert state.removed_keys == {("img-001", 2), ("img-002", 2)}
+
+
+def test_load_raises_friendly_error_when_master_missing_key_columns(
+    tmp_path: Path,
+) -> None:
+    """A master without the curation key columns surfaces a clear error.
+
+    Avoids the previous behaviour where polars' raw ``ColumnNotFoundError``
+    bubbled up from deep inside ``_extract_keys`` at viewer-boot time.
+    """
+    bad_master = pl.DataFrame(
+        {"some_column": ["a", "b"], "other": [1, 2]}
+    )
+    with pytest.raises(ValueError, match=r"Metadata_ImageFile"):
+        FilteredMeasurements.load(tmp_path, bad_master)
+
+
+def test_concurrent_remove_and_restore_dont_interleave(tmp_path: Path) -> None:
+    """Two threads racing remove_many vs. restore_many produce a consistent result.
+
+    The lock guarantees serialised execution: whichever thread runs
+    second observes the other's mutation and produces a deterministic
+    final state. Without locking, the parquet on disk could disagree
+    with ``removed_keys``.
+    """
+    import concurrent.futures as cf
+
+    master = _make_master(tmp_path)
+    state = FilteredMeasurements.load(tmp_path, master)
+
+    keys = [("img-001", 1), ("img-001", 2), ("img-002", 1), ("img-002", 2)]
+
+    # Pre-seed all four removed so restore_many has work to do.
+    state.remove_many(keys)
+    assert state.removed_keys == set(keys)
+
+    def remove_again() -> None:
+        # Idempotent (already removed) but still acquires the lock.
+        state.remove_many(keys)
+
+    def restore_two() -> None:
+        state.restore_many([("img-001", 1), ("img-002", 1)])
+
+    with cf.ThreadPoolExecutor(max_workers=2) as ex:
+        f1 = ex.submit(remove_again)
+        f2 = ex.submit(restore_two)
+        f1.result()
+        f2.result()
+
+    # Whichever order won, removed_keys must be exactly the two that
+    # weren't restored, and the on-disk parquet must agree.
+    expected = {("img-001", 2), ("img-002", 2)}
+    assert state.removed_keys == expected
+
+    on_disk = pl.read_parquet(state.parquet_path)
+    on_disk_keys = set(
+        zip(on_disk["Metadata_ImageFile"].to_list(), on_disk["ObjectLabel"].to_list())
+    )
+    assert ("img-001", 2) not in on_disk_keys
+    assert ("img-002", 2) not in on_disk_keys
+    assert ("img-001", 1) in on_disk_keys
+    assert ("img-002", 1) in on_disk_keys
+
+
+def test_save_holding_lock_does_not_deadlock(tmp_path: Path) -> None:
+    """Calling save() from inside a held lock is safe with RLock.
+
+    Re-entrant lock semantics let a future caller wrap external state
+    transitions in ``with state._lock`` without deadlocking on the
+    second acquire that ``save()`` performs.
+    """
+    master = _make_master(tmp_path)
+    state = FilteredMeasurements.load(tmp_path, master)
+
+    state.removed_keys.add(("img-001", 1))
+    with state._lock:
+        # If _lock were a non-reentrant Lock, this would hang the test.
+        state.save()
+
+    assert state.parquet_path.exists()
+
+
+def test_mutate_and_payload_runs_under_one_lock(tmp_path: Path) -> None:
+    """``mutate_and_payload`` returns the post-mutation payload atomically."""
+    master = _make_master(tmp_path)
+    state = FilteredMeasurements.load(tmp_path, master)
+
+    payload = state.mutate_and_payload(
+        lambda s: s.remove_many([("img-001", 1), ("img-002", 1)])
+    )
+
+    assert payload == [["img-001", 1], ["img-002", 1]]
+    assert state.removed_keys == {("img-001", 1), ("img-002", 1)}

@@ -443,6 +443,17 @@ def build_grid(
     if df.is_empty() or x_axis_col not in df.columns or y_axis_col not in df.columns:
         return html.Div("No colonies match the active filter.", className="text-muted"), []
 
+    if x_axis_col == y_axis_col:
+        # polars rejects ``group_by([col, col])`` with a duplicate-column
+        # error; head off the crash with a friendly message instead.
+        return (
+            html.Div(
+                "Pick distinct X and Y axis columns to render the grid.",
+                className="text-muted",
+            ),
+            [],
+        )
+
     x_values = (
         df.get_column(x_axis_col).drop_nulls().unique().sort().to_list()
     )
