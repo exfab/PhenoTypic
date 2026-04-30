@@ -91,7 +91,12 @@
 
 /* ---------- Colony view ---------- */
 /* Outer grid container — sized by inline style from build_grid */
-.colony-grid-container { /* no rules — placeholder */ }
+.colony-grid-container {
+    /* Keep the grid flush left even when the parent flex-/block- box is
+     * wider than the rendered tracks. */
+    display: flex;
+    justify-content: flex-start;
+}
 
 /* Per-cell wrapper */
 .colony-cell {

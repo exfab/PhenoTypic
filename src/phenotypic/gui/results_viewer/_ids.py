@@ -407,6 +407,12 @@ COLONY_CROP_SIZE_INFO_ID = "colony-crop-size-info"
 #: re-builds the tile DOM).
 COLONY_BTN_REFRESH_ID = "colony-btn-refresh"
 
+#: Slider controlling the rendered tile size in pixels (lets the user
+#: shrink to fit narrow screens or enlarge to inspect detail). The
+#: server-side crop is still produced at the full bbox resolution; this
+#: slider only scales the on-screen ``<img>`` width/height via CSS.
+COLONY_TILE_SIZE_SLIDER_ID = "colony-tile-size-slider"
+
 #: Toggle that turns the per-cell objmap/contour overlay on or off.
 COLONY_OVERLAY_TOGGLE_ID = "colony-overlay-toggle"
 
@@ -578,6 +584,7 @@ __all__ = [
     "COLONY_TOOLBAR_ID",
     "COLONY_CROP_SIZE_INFO_ID",
     "COLONY_BTN_REFRESH_ID",
+    "COLONY_TILE_SIZE_SLIDER_ID",
     "COLONY_OVERLAY_TOGGLE_ID",
     "COLONY_BULK_BAR_ID",
     "COLONY_BULK_COUNT_LABEL_ID",
