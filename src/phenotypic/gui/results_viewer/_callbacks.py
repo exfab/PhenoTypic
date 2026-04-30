@@ -103,11 +103,14 @@ def _register_clientside_callbacks(app: dash.Dash) -> None:
     # sorted alphabetically).
     app.clientside_callback(
         """
-        function(stateList, idList) {
+        function(stateList, idList, _cardList) {
             const ns = window.__phenotypicResultsViewer;
             if (!ns || !ns.applyImageSelection) {
                 return window.dash_clientside.no_update;
             }
+            // Defer one frame so the DOM has finished re-rendering after
+            // a cards-container update; otherwise a fresh osd-canvas div
+            // can be missed by getElementById.
             const states = (stateList || []).map(function (s, i) {
                 const idObj = (idList && idList[i]) || {};
                 // Dash renders pattern-matching ids as JSON strings with
@@ -125,13 +128,16 @@ def _register_clientside_callbacks(app: dash.Dash) -> None:
                     stem: s.stem || null
                 };
             });
-            ns.applyImageSelection(states);
+            requestAnimationFrame(function () {
+                ns.applyImageSelection(states);
+            });
             return Date.now();
         }
         """,
         Output(ids.OSD_MOUNT_TRIGGER_ID, "data"),
         Input({"type": "card-state", "index": ALL}, "data"),
         Input({"type": "card-state", "index": ALL}, "id"),
+        Input(ids.STORE_CARD_LIST, "data"),
     )
 
     # ----------------------------------------------------------------------

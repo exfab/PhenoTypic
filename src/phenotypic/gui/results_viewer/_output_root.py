@@ -23,9 +23,12 @@ logger = logging.getLogger(__name__)
 _MASTER_FILENAME = "master_measurements.parquet"
 _RESULTS_DIRNAME = "results"
 _OVERLAYS_DIRNAME = "overlays"
+_MEASUREMENTS_DIRNAME = "measurements"
 _CACHE_RELATIVE = Path(".viewer_cache") / "dzi"
 _PIPELINE_JSON = "pipeline.json"
-_REQUIRED_COLUMNS = ("Metadata_Dataset", "Metadata_ImageFile")
+_DATASET_COL = "Metadata_Dataset"
+_IMAGEFILE_COL = "Metadata_ImageFile"
+_IMAGENAME_COL = "Metadata_ImageName"
 
 
 @dataclass(frozen=True)
@@ -95,14 +98,6 @@ class OutputRoot:
         logger.info("Loading master measurements from %s", master_path)
         master_df = pl.read_parquet(master_path)
 
-        missing = [c for c in _REQUIRED_COLUMNS if c not in master_df.columns]
-        if missing:
-            raise ValueError(
-                "Master measurements parquet is missing required column(s) "
-                f"{missing!r}. Expected columns include {list(_REQUIRED_COLUMNS)!r}; "
-                f"found columns: {master_df.columns!r}."
-            )
-
         results_dir = root / _RESULTS_DIRNAME
         if not results_dir.is_dir():
             raise FileNotFoundError(
@@ -113,17 +108,32 @@ class OutputRoot:
             )
 
         datasets = sorted(
-            entry.name
-            for entry in results_dir.iterdir()
-            if entry.is_dir() and (entry / _OVERLAYS_DIRNAME).is_dir()
+            entry.name for entry in results_dir.iterdir() if entry.is_dir()
         )
         if not datasets:
             raise FileNotFoundError(
-                f"No dataset overlays directories found under {results_dir!s}. "
-                "Expected at least one <root>/results/<dataset>/overlays/ "
-                "directory with overlay PNGs from `python -m phenotypic`."
+                f"No dataset directories found under {results_dir!s}. "
+                "Expected at least one <root>/results/<dataset>/ directory "
+                "produced by `python -m phenotypic`."
             )
-        logger.info("Discovered datasets: %s", datasets)
+
+        master_df = _ensure_required_columns(master_df, results_dir, datasets)
+        datasets_with_overlays = [
+            ds for ds in datasets if (results_dir / ds / _OVERLAYS_DIRNAME).is_dir()
+        ]
+        if datasets_with_overlays:
+            logger.info(
+                "Discovered datasets: %s (with overlays: %s)",
+                datasets,
+                datasets_with_overlays,
+            )
+        else:
+            logger.warning(
+                "Discovered datasets: %s — none have an overlays/ directory. "
+                "Image picker entries will be disabled. Re-run with "
+                "`--save-overlays` to enable pixel-level viewing.",
+                datasets,
+            )
 
         column_value_sets = _build_column_value_sets(master_df)
 
@@ -201,6 +211,107 @@ class OutputRoot:
                 strict=True,
             )
         ]
+
+
+def _ensure_required_columns(
+    df: pl.DataFrame,
+    results_dir: Path,
+    datasets: list[str],
+) -> pl.DataFrame:
+    """Backfill ``Metadata_Dataset`` and ``Metadata_ImageFile`` if missing.
+
+    Real-world masters produced by older runs or by aggregators that
+    skip ``include_dataset_column`` may lack one or both of these
+    columns. The dataset is recoverable from the on-disk layout
+    (``results/<dataset>/measurements/<stem>.parquet``); the image
+    stem can fall back to ``Metadata_ImageName`` when present.
+
+    Args:
+        df: Loaded master DataFrame.
+        results_dir: ``<root>/results``.
+        datasets: Dataset directory names already discovered.
+
+    Returns:
+        The DataFrame with both required columns guaranteed present.
+
+    Raises:
+        ValueError: If neither column can be derived.
+    """
+    if _IMAGEFILE_COL not in df.columns and _IMAGENAME_COL in df.columns:
+        logger.info(
+            "Master lacks %s; aliasing %s as the image stem column.",
+            _IMAGEFILE_COL,
+            _IMAGENAME_COL,
+        )
+        df = df.with_columns(
+            pl.col(_IMAGENAME_COL).cast(pl.String).alias(_IMAGEFILE_COL)
+        )
+
+    if _IMAGEFILE_COL not in df.columns:
+        raise ValueError(
+            f"Master measurements parquet is missing column {_IMAGEFILE_COL!r} "
+            f"(and the {_IMAGENAME_COL!r} fallback). Re-run `python -m phenotypic` "
+            f"with the current version to regenerate the master."
+        )
+
+    if _DATASET_COL in df.columns:
+        return df
+
+    stem_to_dataset: dict[str, str] = {}
+    collisions: set[str] = set()
+    for dataset in datasets:
+        meas_dir = results_dir / dataset / _MEASUREMENTS_DIRNAME
+        if not meas_dir.is_dir():
+            continue
+        for entry in meas_dir.iterdir():
+            if entry.suffix != ".parquet":
+                continue
+            stem = entry.stem
+            existing = stem_to_dataset.get(stem)
+            if existing is not None and existing != dataset:
+                collisions.add(stem)
+                continue
+            stem_to_dataset[stem] = dataset
+
+    if not stem_to_dataset:
+        raise ValueError(
+            f"Master measurements parquet is missing column {_DATASET_COL!r} "
+            "and no per-image parquets were found under "
+            f"{results_dir!s}/<dataset>/measurements/ to recover it from."
+        )
+
+    if collisions:
+        logger.warning(
+            "%d image stems appear in multiple dataset directories "
+            "(%s). The first-seen dataset wins; expect ambiguous filtering.",
+            len(collisions),
+            sorted(collisions)[:5],
+        )
+
+    logger.info(
+        "Backfilling %s from filesystem layout (%d stems mapped across %d datasets).",
+        _DATASET_COL,
+        len(stem_to_dataset),
+        len(datasets),
+    )
+    mapping_df = pl.DataFrame(
+        {
+            _IMAGEFILE_COL: list(stem_to_dataset.keys()),
+            _DATASET_COL: list(stem_to_dataset.values()),
+        }
+    )
+    df = df.with_columns(pl.col(_IMAGEFILE_COL).cast(pl.String))
+    enriched = df.join(mapping_df, on=_IMAGEFILE_COL, how="left")
+
+    null_count = enriched.get_column(_DATASET_COL).null_count()
+    if null_count:
+        logger.warning(
+            "%d/%d master rows could not be linked to a dataset directory and "
+            "will be excluded from filter results.",
+            null_count,
+            enriched.height,
+        )
+    return enriched
 
 
 def _build_column_value_sets(df: pl.DataFrame) -> Mapping[str, list[str]]:

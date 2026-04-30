@@ -96,8 +96,8 @@ def test_discover_missing_results_dir_raises(tmp_path: Path) -> None:
     assert "overlays" in msg
 
 
-def test_discover_results_with_no_dataset_overlays_raises(tmp_path: Path) -> None:
-    """A results dir with no ``<ds>/overlays`` subdir raises ``FileNotFoundError``."""
+def test_discover_results_with_no_datasets_raises(tmp_path: Path) -> None:
+    """An empty ``results/`` directory raises ``FileNotFoundError``."""
 
     (tmp_path / "results").mkdir()
     df = pl.DataFrame(
@@ -107,33 +107,71 @@ def test_discover_results_with_no_dataset_overlays_raises(tmp_path: Path) -> Non
 
     with pytest.raises(FileNotFoundError) as excinfo:
         OutputRoot.discover(tmp_path)
-    assert "overlays" in str(excinfo.value)
+    assert "dataset" in str(excinfo.value).lower()
 
 
-@pytest.mark.parametrize("missing", ["Metadata_Dataset", "Metadata_ImageFile"])
-def test_discover_missing_required_column_raises(
-    tmp_path: Path, missing: str
+def test_discover_results_with_no_overlays_succeeds(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """Missing either required column raises ``ValueError`` listing actual columns."""
+    """A dataset dir without ``overlays/`` is allowed; the picker disables those entries."""
+
+    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True)
+    df = pl.DataFrame(
+        {"Metadata_Dataset": ["d1"], "Metadata_ImageFile": ["a"]}
+    )
+    df.write_parquet(tmp_path / "master_measurements.parquet")
+
+    with caplog.at_level("WARNING"):
+        out = OutputRoot.discover(tmp_path)
+    assert out.master_df.height == 1
+    assert any("overlays" in rec.message.lower() for rec in caplog.records)
+    assert out.has_overlay("d1", "a") is False
+
+
+def test_discover_missing_imagefile_column_raises(tmp_path: Path) -> None:
+    """Missing both ``Metadata_ImageFile`` and ``Metadata_ImageName`` raises."""
 
     (tmp_path / "results" / "d1" / "overlays").mkdir(parents=True)
-    columns = {
-        "Metadata_Dataset": ["d1"],
-        "Metadata_ImageFile": ["a"],
-        "Metadata_Strain": ["s1"],
-    }
-    columns.pop(missing)
-    pl.DataFrame(columns).write_parquet(
+    pl.DataFrame({"Metadata_Dataset": ["d1"], "Other": ["x"]}).write_parquet(
         tmp_path / "master_measurements.parquet"
     )
-
     with pytest.raises(ValueError) as excinfo:
         OutputRoot.discover(tmp_path)
-    msg = str(excinfo.value)
-    assert missing in msg
-    # Message should also list the actual columns present.
-    for present in columns:
-        assert present in msg
+    assert "Metadata_ImageFile" in str(excinfo.value)
+
+
+def test_discover_aliases_imagename_when_imagefile_absent(tmp_path: Path) -> None:
+    """``Metadata_ImageName`` is aliased as ``Metadata_ImageFile`` when the latter is absent."""
+
+    (tmp_path / "results" / "d1" / "overlays").mkdir(parents=True)
+    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True)
+    (tmp_path / "results" / "d1" / "measurements" / "a.parquet").touch()
+    pl.DataFrame(
+        {"Metadata_Dataset": ["d1"], "Metadata_ImageName": ["a"]}
+    ).write_parquet(tmp_path / "master_measurements.parquet")
+
+    out = OutputRoot.discover(tmp_path)
+    assert "Metadata_ImageFile" in out.master_df.columns
+    assert out.master_df["Metadata_ImageFile"].to_list() == ["a"]
+
+
+def test_discover_backfills_dataset_from_filesystem(tmp_path: Path) -> None:
+    """When master lacks ``Metadata_Dataset``, it is recovered from the per-image parquets."""
+
+    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True)
+    (tmp_path / "results" / "d1" / "overlays").mkdir(parents=True)
+    (tmp_path / "results" / "d1" / "measurements" / "a.parquet").touch()
+    (tmp_path / "results" / "d2" / "measurements").mkdir(parents=True)
+    (tmp_path / "results" / "d2" / "overlays").mkdir(parents=True)
+    (tmp_path / "results" / "d2" / "measurements" / "b.parquet").touch()
+    pl.DataFrame(
+        {"Metadata_ImageFile": ["a", "b"], "Size_Area": [100.0, 200.0]}
+    ).write_parquet(tmp_path / "master_measurements.parquet")
+
+    out = OutputRoot.discover(tmp_path)
+    assert "Metadata_Dataset" in out.master_df.columns
+    pairs = out.image_pairs(out.master_df)
+    assert pairs == [("d1", "a"), ("d2", "b")]
 
 
 def test_column_value_sets_are_sorted_unique_str(tmp_path: Path) -> None:

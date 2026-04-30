@@ -35,7 +35,19 @@ from typing import Any
 import dash
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 import polars as pl
-from dash import ALL, MATCH, Input, Output, State, ctx, dash_table, dcc, html, no_update
+from dash import (
+    ALL,
+    MATCH,
+    Input,
+    Output,
+    Patch,
+    State,
+    ctx,
+    dash_table,
+    dcc,
+    html,
+    no_update,
+)
 
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
 from phenotypic.gui.results_viewer._ids import (
@@ -267,7 +279,7 @@ def layout(card_id: str, output_root: OutputRoot) -> Any:
     state_store = dcc.Store(
         id=card_state_store_id(card_id),
         data=None,
-        storage_type="memory",
+        storage_type="session",
     )
 
     body = dbc.CardBody(
@@ -334,12 +346,21 @@ def _build_picker_options(
     for raw in pairs or []:
         if not raw:
             continue
-        try:
-            dataset = str(raw[0])
-            stem = str(raw[1])
-        except (IndexError, TypeError):
-            logger.debug("Skipping malformed image pair entry: %r", raw)
-            continue
+        if isinstance(raw, dict):
+            dataset_value = raw.get("dataset")
+            stem_value = raw.get("stem")
+            if dataset_value is None or stem_value is None:
+                logger.debug("Skipping malformed image pair entry: %r", raw)
+                continue
+            dataset = str(dataset_value)
+            stem = str(stem_value)
+        else:
+            try:
+                dataset = str(raw[0])
+                stem = str(raw[1])
+            except (IndexError, TypeError):
+                logger.debug("Skipping malformed image pair entry: %r", raw)
+                continue
         present = output_root.has_overlay(dataset, stem)
         if present:
             label = f"{dataset} / {stem}"
@@ -518,15 +539,48 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
     """
     _ensure_initial_card_trigger(app)
 
-    # 1. Render the cards container from STORE_CARD_LIST.
+    # 1. Render the cards container from STORE_CARD_LIST. We diff the
+    #    list against the most-recently-rendered ids (tracked in a
+    #    callback-local closure) and use ``dash.Patch`` to incrementally
+    #    add/remove cards. Re-rendering existing cards in place would
+    #    destroy their internal React state -- including the
+    #    image-picker selection and the OSD viewer mounted on the
+    #    canvas div -- which we want to preserve across "+ Add card"
+    #    and remove-card actions.
+    rendered_ids: list[str] = []
+
     @app.callback(
         Output(CARDS_CONTAINER_ID, "children"),
         Input(STORE_CARD_LIST, "data"),
     )
-    def _render_cards(card_ids: list[str] | None) -> list[Any]:
-        if not card_ids:
-            return []
-        return [layout(cid, output_root) for cid in card_ids if cid]
+    def _render_cards(card_ids: list[str] | None) -> Any:
+        target = [cid for cid in (card_ids or []) if cid]
+
+        # First-time render: build the container from scratch.
+        if not rendered_ids:
+            if not target:
+                return []
+            rendered_ids[:] = list(target)
+            return [layout(cid, output_root) for cid in target]
+
+        # No-op if nothing actually changed.
+        if target == rendered_ids:
+            return no_update
+
+        # Diff existing -> target.
+        target_set = set(target)
+        patch = Patch()
+        # Remove deleted cards from highest index first to keep indices stable.
+        for idx in range(len(rendered_ids) - 1, -1, -1):
+            if rendered_ids[idx] not in target_set:
+                del patch[idx]
+        # Append cards that are in target but not currently rendered.
+        existing_set = set(rendered_ids)
+        for cid in target:
+            if cid not in existing_set:
+                patch.append(layout(cid, output_root))
+        rendered_ids[:] = list(target)
+        return patch
 
     # 2. Append a fresh card on every "+ Add card" click.
     @app.callback(
