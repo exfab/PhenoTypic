@@ -1,40 +1,448 @@
-/* PhenoTypic Pipeline Builder — visual styles auto-loaded by Dash.
+/* PhenoTypic Pipeline Builder -- visual styles auto-loaded by Dash.
  *
  * Dash discovers any *.css under an ``assets/`` folder colocated with the
  * module that calls ``dash.Dash(__name__)``
  * (``phenotypic/gui/builder/_app.py``). No manual <link> registration needed.
+ *
+ * Implements the design system documented in DESIGN.md:
+ *   -- Primary palette (navy, blue, gold) for chrome
+ *   -- Okabe-Ito reserved for data viz only
+ *   -- DM Serif Display / DM Sans / DM Mono three-font stack
+ *   -- 8pt spacing grid, navy-tinted shadows, generous radii
  */
 
+/* Google Fonts -- DM Sans + DM Serif Display + DM Mono */
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Serif+Display&display=swap");
+
 /* ===========================================================================
- * Scroll affordance — explicit chevron indicators
- *
- * Markup contract:
- *   <div class="pheno-scroll-wrap">
- *       <div class="pheno-scroll" ...>...</div>
- *   </div>
- *
- * The companion script (``builder.js``) sets ``data-more-up="1"`` and/or
- * ``data-more-down="1"`` on the wrapper based on the inner scroll element's
- * ``scrollTop``, ``scrollHeight``, and ``clientHeight``. The CSS reveals the
- * appropriate chevron only when its data attribute is present, so each
- * indicator appears strictly when there is content to scroll toward.
+ * Design tokens
  * ========================================================================= */
+:root {
+    /* Primary palette -- UI only */
+    --color-navy:    #003660;
+    --color-blue:    #1b75bc;
+    --color-gold:    #febc11;
+    --color-white:   #ffffff;
+    --color-bg:      #f5f7fa;
+    --color-surface: #ffffff;
+    --color-border:  #dde3ed;
+    --color-rule:    #e8ecf2;
+    --color-muted:   #8892a4;
+    --color-body:    #2e3a4e;
+    --color-heading: #003660;
 
-.pheno-scroll-wrap {
-    position: relative;
+    /* Data palette -- Okabe-Ito (charts only) */
+    --oi-orange:    #E69F00;
+    --oi-sky:       #56B4E9;
+    --oi-green:     #009E73;
+    --oi-vermilion: #D55E00;
+    --oi-blue:      #0072B2;
+    --oi-purple:    #CC79A7;
+    --oi-yellow:    #F0E442;
+    --oi-grey:      #BBBBBB;
+
+    /* Typography */
+    --font-display: 'DM Serif Display', Georgia, serif;
+    --font-body:    'DM Sans', system-ui, sans-serif;
+    --font-mono:    'DM Mono', 'Courier New', monospace;
+
+    --text-xs:   0.6875rem;
+    --text-sm:   0.8125rem;
+    --text-base: 0.9375rem;
+    --text-md:   1.0625rem;
+    --text-lg:   1.25rem;
+    --text-xl:   1.5rem;
+    --text-2xl:  1.875rem;
+
+    /* Spacing (8pt grid) */
+    --sp-1:  0.25rem;
+    --sp-2:  0.5rem;
+    --sp-3:  0.75rem;
+    --sp-4:  1rem;
+    --sp-5:  1.25rem;
+    --sp-6:  1.5rem;
+    --sp-8:  2rem;
+
+    --radius-sm: 3px;
+    --radius:    6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+
+    --shadow-sm: 0 1px 3px rgba(0,54,96,0.07), 0 1px 2px rgba(0,54,96,0.04);
+    --shadow:    0 4px 12px rgba(0,54,96,0.08), 0 1px 3px rgba(0,54,96,0.05);
+    --shadow-md: 0 8px 24px rgba(0,54,96,0.10), 0 2px 6px rgba(0,54,96,0.06);
+
+    --ease-out:   cubic-bezier(0.22, 1, 0.36, 1);
+    --transition: 180ms var(--ease-out);
 }
 
-/* Inner scroll container — bare, no shadows. The chevrons live on the
- * wrapper, which is more reliable across browsers than ``background-
- * attachment: local`` (which struggles when child elements have their own
- * backgrounds, e.g. the accordion). */
-.pheno-scroll {
-    position: relative;
+/* ===========================================================================
+ * Page chrome
+ * ========================================================================= */
+body {
+    background: var(--color-bg);
+    color: var(--color-body);
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    line-height: 1.55;
 }
 
-/* Shared base style for both chevrons. Rendered as round badges anchored to
- * the right edge of the scroll container so they don't span the full width
- * (full-width banners visually compete with the content underneath). */
+/* Headings -- DM Serif Display for h1-h3, DM Sans 600 for h4-h6 */
+h1, .h1, h2, .h2, h3, .h3 {
+    font-family: var(--font-display);
+    color: var(--color-heading);
+    font-weight: 400;
+    letter-spacing: -0.005em;
+}
+h4, .h4, h5, .h5, h6, .h6 {
+    font-family: var(--font-body);
+    color: var(--color-heading);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+code, pre, .text-monospace, .font-monospace {
+    font-family: var(--font-mono);
+}
+
+/* ===========================================================================
+ * Builder header (logo + title)
+ * ========================================================================= */
+.pheno-app-header {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-4) 0 var(--sp-3) 0;
+    border-bottom: 1px solid var(--color-rule);
+    margin-bottom: var(--sp-3);
+}
+.pheno-app-header__logo {
+    height: 44px;
+    width: auto;
+    flex-shrink: 0;
+}
+.pheno-app-header__title {
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    color: var(--color-heading);
+    margin: 0;
+    line-height: 1.1;
+}
+.pheno-app-header__subtitle {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-muted);
+    margin-top: 2px;
+}
+
+/* ===========================================================================
+ * Cards & surfaces
+ * ========================================================================= */
+.card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+}
+.card .card-body { padding: var(--sp-5) var(--sp-6); }
+
+/* Section headings inside cards (H6) -- DM Mono overlines */
+.card-body > h6:first-child,
+.card-body > .h6:first-child {
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-muted);
+    font-weight: 500;
+    margin-bottom: var(--sp-3);
+}
+
+/* Breadcrumb area */
+.pheno-breadcrumb {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-muted);
+    letter-spacing: 0.04em;
+}
+.pheno-breadcrumb .btn-link {
+    color: var(--color-blue);
+    text-decoration: none;
+    padding: 0 var(--sp-1);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+}
+.pheno-breadcrumb .btn-link:hover {
+    text-decoration: underline;
+    color: var(--color-navy);
+}
+.pheno-breadcrumb .fw-bold {
+    color: var(--color-heading);
+    font-weight: 600;
+}
+
+/* ===========================================================================
+ * Buttons -- override Bootstrap colours per DESIGN.md
+ * ========================================================================= */
+.btn {
+    font-family: var(--font-body);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    border-radius: var(--radius);
+    border-width: 1.5px;
+    transition: all var(--transition);
+}
+
+/* Primary -> navy */
+.btn-primary {
+    background: var(--color-navy);
+    border-color: var(--color-navy);
+    color: var(--color-white);
+}
+.btn-primary:hover, .btn-primary:focus {
+    background: #00284a;
+    border-color: #00284a;
+    color: var(--color-white);
+    box-shadow: 0 4px 12px rgba(0, 54, 96, 0.28);
+}
+.btn-outline-primary {
+    color: var(--color-navy);
+    border-color: var(--color-border);
+    background: transparent;
+}
+.btn-outline-primary:hover, .btn-outline-primary:focus {
+    color: var(--color-blue);
+    border-color: var(--color-blue);
+    background: rgba(27, 117, 188, 0.04);
+}
+
+/* Secondary outline -> ghost-styled */
+.btn-secondary {
+    background: var(--color-blue);
+    border-color: var(--color-blue);
+    color: var(--color-white);
+}
+.btn-outline-secondary {
+    color: var(--color-body);
+    border-color: var(--color-border);
+    background: transparent;
+}
+.btn-outline-secondary:hover, .btn-outline-secondary:focus {
+    color: var(--color-blue);
+    border-color: var(--color-blue);
+    background: rgba(27, 117, 188, 0.04);
+}
+
+/* Success -> Okabe-Ito green (semantic) */
+.btn-success {
+    background: var(--oi-green);
+    border-color: var(--oi-green);
+    color: var(--color-white);
+}
+.btn-success:hover, .btn-success:focus {
+    background: #00805d;
+    border-color: #00805d;
+    box-shadow: 0 4px 12px rgba(0, 158, 115, 0.28);
+}
+
+/* Danger -> vermilion */
+.btn-danger, .btn-outline-danger {
+    color: var(--oi-vermilion);
+    border-color: var(--oi-vermilion);
+    background: transparent;
+}
+.btn-danger:hover, .btn-outline-danger:hover,
+.btn-danger:focus, .btn-outline-danger:focus {
+    background: var(--oi-vermilion);
+    color: var(--color-white);
+}
+
+/* Info / Warning palette buttons in palette accordion -- subtle outline */
+.btn-outline-info {
+    color: var(--color-blue);
+    border-color: var(--color-border);
+    background: transparent;
+}
+.btn-outline-info:hover, .btn-outline-info:focus {
+    color: var(--color-blue);
+    border-color: var(--color-blue);
+    background: rgba(27, 117, 188, 0.04);
+}
+.btn-outline-warning {
+    color: #9A6B00;
+    border-color: var(--color-border);
+    background: transparent;
+}
+.btn-outline-warning:hover, .btn-outline-warning:focus {
+    color: #9A6B00;
+    border-color: var(--oi-orange);
+    background: rgba(230, 159, 0, 0.06);
+}
+.btn-outline-success {
+    color: #006B4F;
+    border-color: var(--color-border);
+    background: transparent;
+}
+.btn-outline-success:hover, .btn-outline-success:focus {
+    color: #006B4F;
+    border-color: var(--oi-green);
+    background: rgba(0, 158, 115, 0.06);
+}
+
+/* Link buttons (used in breadcrumb) */
+.btn-link {
+    color: var(--color-blue);
+    text-decoration: none;
+    font-weight: 500;
+}
+.btn-link:hover { color: var(--color-navy); text-decoration: underline; }
+
+/* ===========================================================================
+ * Inputs
+ * ========================================================================= */
+.form-control, .form-select {
+    background: var(--color-white);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 0.5rem 0.875rem;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-body);
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+.form-control:focus, .form-select:focus {
+    border-color: var(--color-blue);
+    box-shadow: 0 0 0 3px rgba(27, 117, 188, 0.12);
+    outline: none;
+}
+.input-group-text {
+    background: var(--color-bg);
+    border: 1.5px solid var(--color-border);
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+/* ===========================================================================
+ * Modals -- elevated surfaces, navy-tinted shadows, large radius
+ * ========================================================================= */
+.modal-content {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+.modal-header {
+    border-bottom: 1px solid var(--color-rule);
+    padding: var(--sp-5) var(--sp-6);
+    background: var(--color-white);
+}
+.modal-title {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    color: var(--color-heading);
+    font-weight: 400;
+    line-height: 1.2;
+}
+.modal-body { padding: var(--sp-5) var(--sp-6); }
+.modal-footer {
+    border-top: 1px solid var(--color-rule);
+    background: var(--color-bg);
+    padding: var(--sp-4) var(--sp-6);
+    gap: var(--sp-2);
+}
+
+/* ===========================================================================
+ * List groups -- file/dir entries, prefab cards
+ * ========================================================================= */
+.list-group { border-radius: var(--radius); overflow: hidden; }
+.list-group-flush { border-radius: 0; }
+
+.list-group-item {
+    background: var(--color-white);
+    border-color: var(--color-rule);
+    color: var(--color-body);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    padding: var(--sp-3) var(--sp-4);
+    transition: background var(--transition);
+}
+.list-group-item-action:hover, .list-group-item-action:focus {
+    background: rgba(27, 117, 188, 0.05);
+    color: var(--color-navy);
+    cursor: pointer;
+}
+.list-group-item-action:active {
+    background: rgba(27, 117, 188, 0.10);
+}
+
+/* Prefab-list cards have richer body content (strong + muted line) */
+.list-group-item strong {
+    font-family: var(--font-body);
+    font-weight: 600;
+    color: var(--color-heading);
+    font-size: var(--text-base);
+}
+
+/* ===========================================================================
+ * Toast notifications
+ * ========================================================================= */
+.toast {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    font-family: var(--font-body);
+}
+.toast-header {
+    background: var(--color-white);
+    border-bottom: 1px solid var(--color-rule);
+    color: var(--color-heading);
+    font-weight: 600;
+}
+
+/* ===========================================================================
+ * Accordion (palette) -- flat, subtle dividers
+ * ========================================================================= */
+.accordion-flush .accordion-button {
+    background: transparent;
+    color: var(--color-heading);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.10em;
+    font-weight: 500;
+    padding: var(--sp-3) 0;
+    box-shadow: none;
+}
+.accordion-flush .accordion-button:not(.collapsed) {
+    color: var(--color-navy);
+    background: transparent;
+    box-shadow: none;
+}
+.accordion-flush .accordion-button:focus {
+    box-shadow: none;
+    border-color: transparent;
+}
+.accordion-flush .accordion-item {
+    border-color: var(--color-rule);
+    background: transparent;
+}
+.accordion-flush .accordion-body { padding: var(--sp-2) 0 var(--sp-3) 0; }
+
+.pheno-palette-section + .pheno-palette-section { margin-top: var(--sp-3); }
+
+/* ===========================================================================
+ * Scroll affordance -- chevron indicators (data attributes set by builder.js)
+ * ========================================================================= */
+.pheno-scroll-wrap { position: relative; }
+.pheno-scroll { position: relative; }
+
 .pheno-scroll-wrap::before,
 .pheno-scroll-wrap::after {
     content: "";
@@ -47,36 +455,50 @@
     transition: opacity 0.18s ease-in-out;
     z-index: 5;
     background-color: rgba(255, 255, 255, 0.96);
-    border: 1px solid rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(0, 54, 96, 0.12);
     border-radius: 50%;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-sm);
     background-repeat: no-repeat;
     background-position: center;
     background-size: 14px 14px;
 }
-
 .pheno-scroll-wrap::before {
     top: 6px;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='%23495057' d='M7.247 4.86l-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z'/></svg>");
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='%23003660' d='M7.247 4.86l-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z'/></svg>");
 }
-
 .pheno-scroll-wrap::after {
     bottom: 6px;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='%23495057' d='M7.247 11.14l-4.796-5.481C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/></svg>");
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='%23003660' d='M7.247 11.14l-4.796-5.481C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/></svg>");
+}
+.pheno-scroll-wrap[data-more-up="1"]::before { opacity: 1; }
+.pheno-scroll-wrap[data-more-down="1"]::after { opacity: 1; }
+
+/* ===========================================================================
+ * Active-image label (footer)
+ * ========================================================================= */
+#active-image-label {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-muted);
+    word-break: break-all;
+    padding: var(--sp-2) var(--sp-3);
+    background: var(--color-bg);
+    border-radius: var(--radius);
+    border: 1px solid var(--color-rule);
 }
 
-/* Chevron visibility is driven by data attributes the JS sets at scroll /
- * resize / mutation time. Absent attribute = chevron stays at opacity 0. */
-.pheno-scroll-wrap[data-more-up="1"]::before {
-    opacity: 1;
-}
+/* ===========================================================================
+ * Badges & utility text
+ * ========================================================================= */
+.text-muted { color: var(--color-muted) !important; }
 
-.pheno-scroll-wrap[data-more-down="1"]::after {
-    opacity: 1;
-}
-
-/* Section spacing — keeps consecutive palette sections (Operations,
- * Measurements, Post-measurements) tight against each other. */
-.pheno-palette-section + .pheno-palette-section {
-    margin-top: 0.75rem;
+.badge {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.65rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 9999px;
+    border: 1px solid;
 }

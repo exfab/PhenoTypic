@@ -66,6 +66,8 @@ class TestHandleRecompile:
                 output_dir=output_dir,
                 metadata_csv=None,
                 include_dataset_column=True,
+                overlay_alpha=0.3,
+                n_jobs=1,
             )
 
         mock_sidecar.assert_not_called()
@@ -110,6 +112,8 @@ class TestHandleRecompile:
                 output_dir=output_dir,
                 metadata_csv=None,
                 include_dataset_column=True,
+                overlay_alpha=0.3,
+                n_jobs=1,
             )
 
         mock_manifest.assert_called_once()

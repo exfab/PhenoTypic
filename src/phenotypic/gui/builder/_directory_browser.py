@@ -15,7 +15,7 @@ module has a single source of truth.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Optional
+from typing import FrozenSet, List, Optional
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
@@ -25,18 +25,26 @@ from dash import dcc, html
 # ---------------------------------------------------------------------------
 
 #: Image file extensions surfaced by the directory tree (case-insensitive).
-IMAGE_EXTS = {
-    ".png",
-    ".tif",
-    ".tiff",
-    ".jpg",
-    ".jpeg",
-    ".raw",
-    ".nef",
-    ".cr2",
-    ".arw",
-    ".dng",
-}
+IMAGE_EXTS: FrozenSet[str] = frozenset(
+    {
+        ".png",
+        ".tif",
+        ".tiff",
+        ".jpg",
+        ".jpeg",
+        ".raw",
+        ".nef",
+        ".cr2",
+        ".arw",
+        ".dng",
+    }
+)
+
+#: Pipeline-config file extensions surfaced when the modal is loading a saved
+#: pipeline. The dash builder writes ``ImagePipeline.to_json`` outputs, so only
+#: ``.json`` is currently recognised — YAML support is intentionally out of
+#: scope.
+PIPELINE_EXTS: FrozenSet[str] = frozenset({".json"})
 
 #: Sentinel path injected into the path input when the user clicks
 #: "Use synthetic plate" and the bundled synthetic plate cannot be located on
@@ -128,32 +136,88 @@ def _safe_iterdir(path: Path) -> List[Path]:
 # Layout builders
 # ---------------------------------------------------------------------------
 
-def directory_tree(root: Path, current: Path | None = None) -> html.Div:
-    """Render a depth-1 directory tree rooted at ``root``.
 
-    The tree shows the absolute path of ``current or root`` as a header,
-    optionally followed by a "↑ Parent directory" entry (when navigation
-    upward stays within ``root``), then all immediate subdirectories
-    (alphabetical), then all immediate image files (alphabetical) whose
-    extension is in :data:`IMAGE_EXTS` (case-insensitive).
-
-    Hidden entries (names starting with ``.``) are skipped. Symlinks whose
-    target resolves outside ``root`` are skipped to prevent the user from
-    navigating off the configured root.
+def _entry_item(
+    *,
+    icon: str,
+    label: str,
+    id_type: str,
+    kind: str,
+    path: Path,
+) -> dbc.ListGroupItem:
+    """Build one clickable :class:`dbc.ListGroupItem` for the directory tree.
 
     Args:
-        root: Configured image root. Used as both the security boundary and
-            the fallback location when ``current`` is not supplied.
-        current: Directory currently being viewed. If ``None``, defaults to
-            ``root``. If outside ``root``, falls back to ``root``.
+        icon: Leading single-character glyph (folder, picture, up-arrow).
+        label: Text shown after the icon (filename or directory name).
+        id_type: ``DIR_ENTRY_TYPE_*`` value placed in the pattern-matching id.
+        kind: One of ``"parent"``, ``"dir"``, ``"file"``.
+        path: Filesystem path serialised into the id so callbacks can act on
+            it without needing extra state.
+    """
+    return dbc.ListGroupItem(
+        [html.Span(f"{icon} "), html.Span(label)],
+        id={"type": id_type, "kind": kind, "path": str(path)},
+        action=True,
+        n_clicks=0,
+    )
+
+
+def directory_tree(
+    root: Path,
+    current: Path | None = None,
+    *,
+    extensions: FrozenSet[str] | None = IMAGE_EXTS,
+    select_files: bool = True,
+    id_type: str = "dir-entry",
+) -> html.Div:
+    """Render a depth-1 directory listing rooted at ``root``.
+
+    Builds a :class:`dbc.ListGroup` showing the immediate children of
+    ``current`` (or ``root`` when ``current`` is ``None``): an optional
+    "↑ Parent directory" entry, then subdirectories alphabetically, then
+    selectable files whose extension matches ``extensions``. Hidden entries
+    (names starting with ``.``) and symlinks that resolve outside ``root``
+    are excluded.
+
+    By default the tree surfaces :data:`IMAGE_EXTS`, which includes ``.tif``
+    and raw formats (``.nef``, ``.cr2``, ``.arw``, ``.dng``) commonly
+    produced by DSLR cameras used to photograph agar plates. Pass
+    :data:`PIPELINE_EXTS` to filter for saved ``ImagePipeline.to_json()``
+    files, or ``None`` to show all files regardless of extension.
+
+    Args:
+        root: Configured working directory. Acts as both the security boundary
+            (navigation cannot leave this directory, even via symlinks) and the
+            starting location when ``current`` is ``None``.
+        current: Directory currently being viewed. Defaults to ``root`` when
+            ``None``. Silently falls back to ``root`` if ``current`` resolves
+            outside ``root``.
+        extensions: Allowed file extensions (lowercase, with leading dot).
+            Defaults to :data:`IMAGE_EXTS` so the image picker shows plate
+            image files suitable for loading with :class:`phenotypic.Image` or
+            :class:`phenotypic.GridImage`. Pass :data:`PIPELINE_EXTS` for the
+            JSON pipeline browser, or ``None`` to surface all files. Ignored
+            when ``select_files`` is ``False``.
+        select_files: When ``True`` (default), matching files appear as
+            clickable list items below the subdirectory entries. When
+            ``False``, only directories are shown — used by the Save modal
+            where the user picks a target folder and types the filename
+            separately.
+        id_type: Value placed in the ``"type"`` slot of each item's
+            pattern-matching id. Each modal passes a distinct value (e.g.
+            :data:`ids.DIR_ENTRY_TYPE_IMAGE`, :data:`ids.DIR_ENTRY_TYPE_JSON`,
+            :data:`ids.DIR_ENTRY_TYPE_SAVE`) so its callback can subscribe
+            without conflicting with trees rendered by other modals on the
+            same page.
 
     Returns:
-        A :class:`dash.html.Div` containing the header and the listing as a
-        :class:`dash_bootstrap_components.ListGroup`. Each list item carries a
-        pattern-matching id of the form
-        ``{"type": "dir-entry", "kind": "dir" | "file" | "parent", "path":
-        str(path)}`` so the callbacks module can wire one handler for the
-        whole tree.
+        A :class:`dash.html.Div` containing a path header and the listing as
+        a :class:`dbc.ListGroup`. Each item carries a pattern-matching id of
+        the form ``{"type": id_type, "kind": "dir" | "file" | "parent",
+        "path": str(path)}`` so the callback layer can wire a single handler
+        for the whole tree via ``Input({"type": id_type, "kind": ALL, "path":
+        ALL}, "n_clicks")``.
     """
     here = current if current is not None else root
     if not _is_within(here, root):
@@ -182,24 +246,19 @@ def directory_tree(root: Path, current: Path | None = None) -> html.Div:
             parent = here.parent
             if _is_within(parent, root):
                 list_items.append(
-                    dbc.ListGroupItem(
-                        [html.Span("↑ "), html.Span("Parent directory")],
-                        id={
-                            "type": "dir-entry",
-                            "kind": "parent",
-                            "path": str(parent),
-                        },
-                        action=True,
-                        n_clicks=0,
+                    _entry_item(
+                        icon="↑",
+                        label="Parent directory",
+                        id_type=id_type,
+                        kind="parent",
+                        path=parent,
                     )
                 )
 
     # Walk depth-1 of `here`, filtering hidden entries and out-of-root symlinks.
-    entries = _safe_iterdir(here)
-
     subdirs: List[Path] = []
     files: List[Path] = []
-    for entry in entries:
+    for entry in _safe_iterdir(here):
         if entry.name.startswith("."):
             continue
         try:
@@ -211,46 +270,46 @@ def directory_tree(root: Path, current: Path | None = None) -> html.Div:
             continue
         if is_dir:
             subdirs.append(entry)
-        else:
-            if entry.suffix.lower() in IMAGE_EXTS:
-                files.append(entry)
+        elif select_files and (
+            extensions is None or entry.suffix.lower() in extensions
+        ):
+            files.append(entry)
 
     subdirs.sort(key=lambda p: p.name.lower())
     files.sort(key=lambda p: p.name.lower())
 
     for d in subdirs:
         list_items.append(
-            dbc.ListGroupItem(
-                [html.Span("\U0001F4C1 "), html.Span(d.name + "/")],
-                id={
-                    "type": "dir-entry",
-                    "kind": "dir",
-                    "path": str(d),
-                },
-                action=True,
-                n_clicks=0,
+            _entry_item(
+                icon="\U0001F4C1",
+                label=f"{d.name}/",
+                id_type=id_type,
+                kind="dir",
+                path=d,
             )
         )
     for f in files:
         list_items.append(
-            dbc.ListGroupItem(
-                [html.Span("\U0001F5BC️ "), html.Span(f.name)],
-                id={
-                    "type": "dir-entry",
-                    "kind": "file",
-                    "path": str(f),
-                },
-                action=True,
-                n_clicks=0,
+            _entry_item(
+                icon="\U0001F5BC️",
+                label=f.name,
+                id_type=id_type,
+                kind="file",
+                path=f,
             )
         )
 
     if list_items:
         children.append(dbc.ListGroup(list_items, flush=True))
     else:
+        empty_msg = (
+            "(no subdirectories)"
+            if not select_files
+            else "(no subdirectories or matching files)"
+        )
         children.append(
             html.Div(
-                "(no subdirectories or images)",
+                empty_msg,
                 className="text-muted small fst-italic",
             )
         )
