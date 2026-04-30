@@ -62,6 +62,15 @@ Examples:
     uv run python -m phenotypic pipeline.json --measure \
         -o <previous-output-dir>
 
+    # Recompile a previous output directory: re-aggregate the master
+    # measurements CSV, fill in any overlay PNGs missing under
+    # results/<ds>/overlays/ by reloading their HDFs (threaded across
+    # --n-jobs workers, alpha from --overlay-alpha), rerun analysis
+    # plugins, rebuild the manifest, and regenerate the HTML dashboard.
+    # Existing overlays are left untouched.  Pipeline JSON is NOT
+    # required:
+    uv run python -m phenotypic --recompile <previous-output-dir>
+
 Outputs:
     Forward runs write a single HDF5 per input image under
     `<output>/results/<dataset>/hdf/<stem>.h5` (layers + metadata + grid
@@ -69,6 +78,8 @@ Outputs:
     Overlay PNGs are always written under
     `<output>/results/<dataset>/overlays/<stem>.png` for forward runs;
     `--measure` reruns reuse existing overlays and do not regenerate them.
+    `--recompile` fills in only-missing overlay PNGs from HDFs but
+    leaves existing ones untouched.
 
 SLURM Execution (Autonomous HPC Cluster Processing):
     Use --slurm to submit jobs to an HPC cluster via SLURM. The CLI will:
@@ -606,8 +617,10 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
     type=click.Path(exists=True, path_type=Path),
     default=None,
     help="Recompile master measurements from existing output directory. "
-         "Skips pipeline execution — re-aggregates parquets, runs analysis, "
-         "rebuilds manifest, and regenerates dashboard.",
+         "Skips pipeline execution — re-aggregates parquets, regenerates "
+         "any overlay PNGs missing under results/<ds>/overlays/ from "
+         "their HDFs (threaded by --n-jobs, alpha from --overlay-alpha), "
+         "runs analysis, rebuilds manifest, and regenerates dashboard.",
 )
 def phenotypic_cli(
     pipeline_json: Optional[Path],
@@ -647,7 +660,13 @@ def phenotypic_cli(
     """
     try:
         if recompile is not None:
-            _handle_recompile(recompile, metadata_csv, include_dataset_column)
+            _handle_recompile(
+                recompile,
+                metadata_csv,
+                include_dataset_column,
+                overlay_alpha,
+                n_jobs,
+            )
             sys.exit(0)
 
         # ---- Early validation for --measure (measure_only) -------------
@@ -1236,15 +1255,147 @@ def phenotypic_cli(
         sys.exit(1)
 
 
+def _regenerate_missing_overlays(
+    output_dir: Path,
+    overlay_alpha: float,
+    n_jobs: int,
+) -> None:
+    """Re-render overlay PNGs that are missing under ``results/<ds>/overlays/``.
+
+    HDF-driven: walks ``results/<ds>/hdf/*.h5`` (the same discovery
+    used by ``--measure``) and, for each HDF whose corresponding
+    overlay PNG is absent, loads the HDF as the right ``Image`` /
+    ``GridImage`` subclass and writes the overlay using the same
+    :class:`OutputManager` writer the forward run uses.  Existing
+    overlays are left untouched.  Per-image failures are logged and
+    swallowed so one corrupt HDF doesn't abort the rest.
+
+    Parallelized with a thread pool sized by ``n_jobs``.  Threading
+    rather than multiprocessing because the heavy ops (h5py reads,
+    numpy/skimage label2rgb compositing, PNG zlib encoding) all
+    release the GIL, and per-image memory is large enough that
+    fan-out to processes risks exhausting RAM.
+
+    Args:
+        output_dir: Existing output directory.
+        overlay_alpha: Alpha for overlay compositing, mirrors the
+            ``--overlay-alpha`` flag used by forward runs.
+        n_jobs: Number of worker threads.  ``-1`` means
+            ``os.cpu_count()``.  ``1`` runs in-thread.  Mirrors the
+            ``--n-jobs`` flag used by forward runs.
+    """
+    import os
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    import h5py
+    from rich.console import Console
+    from rich.progress import (
+        BarColumn, MofNCompleteColumn, Progress, TextColumn, TimeElapsedColumn,
+    )
+
+    from phenotypic import GridImage, Image
+
+    console = Console()
+    try:
+        datasets = scan_hdf_outputs(output_dir)
+    except ValueError:
+        console.print(
+            "[yellow]No HDFs found under results/; skipping overlay regeneration"
+        )
+        return
+
+    output_manager = OutputManager.from_config(
+        base_dir=output_dir,
+        ext=".png",
+        include_dataset_column=False,
+        overlay_alpha=overlay_alpha,
+        save_overlays=True,
+    )
+
+    work: list[tuple[str, Path]] = []
+    for dataset in datasets:
+        for hdf_path in dataset.images:
+            overlay_path = output_manager.get_output_path(
+                dataset.name, "overlays", hdf_path.stem
+            )
+            if not overlay_path.exists():
+                work.append((dataset.name, hdf_path))
+
+    if not work:
+        console.print("[green]All overlays present; nothing to regenerate")
+        return
+
+    for dataset_name in {ds for ds, _ in work}:
+        (output_dir / "results" / dataset_name / "overlays").mkdir(
+            parents=True, exist_ok=True
+        )
+
+    workers = os.cpu_count() or 1 if n_jobs == -1 else max(1, n_jobs)
+    workers = min(workers, len(work))
+
+    def _render_one(dataset_name: str, hdf_path: Path) -> None:
+        with h5py.File(hdf_path, "r") as fh:
+            cls_attr = fh.attrs.get("phenotypic_class", "Image")
+        if isinstance(cls_attr, bytes):
+            cls_attr = cls_attr.decode("utf-8", errors="replace")
+        image_cls = GridImage if cls_attr == "GridImage" else Image
+        image = image_cls.load_hdf5(hdf_path)
+        output_manager.save_overlay(image, dataset_name, hdf_path.stem)
+
+    console.print(
+        f"[cyan]Regenerating {len(work)} missing overlay(s) "
+        f"with {workers} thread(s)..."
+    )
+    failures = 0
+    with Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
+        console=console,
+    ) as progress:
+        task_id = progress.add_task("overlays", total=len(work))
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = {
+                pool.submit(_render_one, ds_name, hdf_path): (ds_name, hdf_path)
+                for ds_name, hdf_path in work
+            }
+            for future in as_completed(futures):
+                ds_name, hdf_path = futures[future]
+                try:
+                    future.result()
+                except Exception:
+                    failures += 1
+                    logger.warning(
+                        "Failed to regenerate overlay for %s/%s",
+                        ds_name,
+                        hdf_path.stem,
+                        exc_info=True,
+                    )
+                finally:
+                    progress.advance(task_id)
+
+    if failures:
+        console.print(
+            f"[yellow]Overlay regeneration finished with {failures} failure(s); "
+            f"see logs for details"
+        )
+    else:
+        console.print("[green]Overlay regeneration complete")
+
+
 def _handle_recompile(
     output_dir: Path,
     metadata_csv: Optional[Path],
     include_dataset_column: bool,
+    overlay_alpha: float,
+    n_jobs: int,
 ) -> None:
     """Recompile master measurements and dashboard from existing results.
 
     Auto-discovers datasets under ``output_dir/results``, re-aggregates
-    measurement Parquet files into ``master_measurements.csv``, runs
+    measurement Parquet files into ``master_measurements.csv``,
+    regenerates any missing overlay PNGs from their HDFs, runs
     analysis plugins, rebuilds the progress manifest, and regenerates
     the HTML dashboard.
 
@@ -1254,6 +1405,12 @@ def _handle_recompile(
             left-joining onto measurements.
         include_dataset_column: Whether to insert ``Metadata_Dataset``
             into measurements that lack it.
+        overlay_alpha: Alpha used when re-rendering missing overlay
+            PNGs from HDFs.  Forwarded from the ``--overlay-alpha``
+            CLI flag.
+        n_jobs: Worker thread count for overlay regeneration.
+            Forwarded from the ``--n-jobs`` CLI flag (``-1`` = all
+            cores, ``1`` = single-threaded).
     """
     from rich.console import Console
 
@@ -1300,6 +1457,9 @@ def _handle_recompile(
         console.print(f"[green]Master measurements: {master_path}")
     else:
         console.print("[yellow]No measurements found for aggregation")
+
+    console.print("[cyan]Checking for missing overlays...")
+    _regenerate_missing_overlays(output_dir, overlay_alpha, n_jobs)
 
     console.print("[cyan]Running analysis plugins...")
     try:
