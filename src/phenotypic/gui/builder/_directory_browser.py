@@ -15,7 +15,7 @@ module has a single source of truth.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Optional
+from typing import FrozenSet, List, Optional
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
@@ -25,18 +25,26 @@ from dash import dcc, html
 # ---------------------------------------------------------------------------
 
 #: Image file extensions surfaced by the directory tree (case-insensitive).
-IMAGE_EXTS = {
-    ".png",
-    ".tif",
-    ".tiff",
-    ".jpg",
-    ".jpeg",
-    ".raw",
-    ".nef",
-    ".cr2",
-    ".arw",
-    ".dng",
-}
+IMAGE_EXTS: FrozenSet[str] = frozenset(
+    {
+        ".png",
+        ".tif",
+        ".tiff",
+        ".jpg",
+        ".jpeg",
+        ".raw",
+        ".nef",
+        ".cr2",
+        ".arw",
+        ".dng",
+    }
+)
+
+#: Pipeline-config file extensions surfaced when the modal is loading a saved
+#: pipeline. The dash builder writes ``ImagePipeline.to_json`` outputs, so only
+#: ``.json`` is currently recognised — YAML support is intentionally out of
+#: scope.
+PIPELINE_EXTS: FrozenSet[str] = frozenset({".json"})
 
 #: Sentinel path injected into the path input when the user clicks
 #: "Use synthetic plate" and the bundled synthetic plate cannot be located on
@@ -128,32 +136,61 @@ def _safe_iterdir(path: Path) -> List[Path]:
 # Layout builders
 # ---------------------------------------------------------------------------
 
-def directory_tree(root: Path, current: Path | None = None) -> html.Div:
-    """Render a depth-1 directory tree rooted at ``root``.
+def directory_tree(
+    root: Path,
+    current: Path | None = None,
+    *,
+    extensions: FrozenSet[str] | None = IMAGE_EXTS,
+    select_files: bool = True,
+    id_type: str = "dir-entry",
+) -> html.Div:
+    """Render a depth-1 directory listing rooted at ``root``.
 
-    The tree shows the absolute path of ``current or root`` as a header,
-    optionally followed by a "↑ Parent directory" entry (when navigation
-    upward stays within ``root``), then all immediate subdirectories
-    (alphabetical), then all immediate image files (alphabetical) whose
-    extension is in :data:`IMAGE_EXTS` (case-insensitive).
+    Builds a :class:`dbc.ListGroup` showing the immediate children of
+    ``current`` (or ``root`` when ``current`` is ``None``): an optional
+    "↑ Parent directory" entry, then subdirectories alphabetically, then
+    selectable files whose extension matches ``extensions``. Hidden entries
+    (names starting with ``.``) and symlinks that resolve outside ``root``
+    are excluded.
 
-    Hidden entries (names starting with ``.``) are skipped. Symlinks whose
-    target resolves outside ``root`` are skipped to prevent the user from
-    navigating off the configured root.
+    By default the tree surfaces :data:`IMAGE_EXTS`, which includes ``.tif``
+    and raw formats (``.nef``, ``.cr2``, ``.arw``, ``.dng``) commonly
+    produced by DSLR cameras used to photograph agar plates. Pass
+    :data:`PIPELINE_EXTS` to filter for saved ``ImagePipeline.to_json()``
+    files, or ``None`` to show all files regardless of extension.
 
     Args:
-        root: Configured image root. Used as both the security boundary and
-            the fallback location when ``current`` is not supplied.
-        current: Directory currently being viewed. If ``None``, defaults to
-            ``root``. If outside ``root``, falls back to ``root``.
+        root: Configured working directory. Acts as both the security boundary
+            (navigation cannot leave this directory, even via symlinks) and the
+            starting location when ``current`` is ``None``.
+        current: Directory currently being viewed. Defaults to ``root`` when
+            ``None``. Silently falls back to ``root`` if ``current`` resolves
+            outside ``root``.
+        extensions: Allowed file extensions (lowercase, with leading dot).
+            Defaults to :data:`IMAGE_EXTS` so the image picker shows plate
+            image files suitable for loading with :class:`phenotypic.Image` or
+            :class:`phenotypic.GridImage`. Pass :data:`PIPELINE_EXTS` for the
+            JSON pipeline browser, or ``None`` to surface all files. Ignored
+            when ``select_files`` is ``False``.
+        select_files: When ``True`` (default), matching files appear as
+            clickable list items below the subdirectory entries. When
+            ``False``, only directories are shown — used by the Save modal
+            where the user picks a target folder and types the filename
+            separately.
+        id_type: Value placed in the ``"type"`` slot of each item's
+            pattern-matching id. Each modal passes a distinct value (e.g.
+            :data:`ids.DIR_ENTRY_TYPE_IMAGE`, :data:`ids.DIR_ENTRY_TYPE_JSON`,
+            :data:`ids.DIR_ENTRY_TYPE_SAVE`) so its callback can subscribe
+            without conflicting with trees rendered by other modals on the
+            same page.
 
     Returns:
-        A :class:`dash.html.Div` containing the header and the listing as a
-        :class:`dash_bootstrap_components.ListGroup`. Each list item carries a
-        pattern-matching id of the form
-        ``{"type": "dir-entry", "kind": "dir" | "file" | "parent", "path":
-        str(path)}`` so the callbacks module can wire one handler for the
-        whole tree.
+        A :class:`dash.html.Div` containing a path header and the listing as
+        a :class:`dbc.ListGroup`. Each item carries a pattern-matching id of
+        the form ``{"type": id_type, "kind": "dir" | "file" | "parent",
+        "path": str(path)}`` so the callback layer can wire a single handler
+        for the whole tree via ``Input({"type": id_type, "kind": ALL, "path":
+        ALL}, "n_clicks")``.
     """
     here = current if current is not None else root
     if not _is_within(here, root):
@@ -185,7 +222,7 @@ def directory_tree(root: Path, current: Path | None = None) -> html.Div:
                     dbc.ListGroupItem(
                         [html.Span("↑ "), html.Span("Parent directory")],
                         id={
-                            "type": "dir-entry",
+                            "type": id_type,
                             "kind": "parent",
                             "path": str(parent),
                         },
@@ -211,8 +248,8 @@ def directory_tree(root: Path, current: Path | None = None) -> html.Div:
             continue
         if is_dir:
             subdirs.append(entry)
-        else:
-            if entry.suffix.lower() in IMAGE_EXTS:
+        elif select_files:
+            if extensions is None or entry.suffix.lower() in extensions:
                 files.append(entry)
 
     subdirs.sort(key=lambda p: p.name.lower())
@@ -223,7 +260,7 @@ def directory_tree(root: Path, current: Path | None = None) -> html.Div:
             dbc.ListGroupItem(
                 [html.Span("\U0001F4C1 "), html.Span(d.name + "/")],
                 id={
-                    "type": "dir-entry",
+                    "type": id_type,
                     "kind": "dir",
                     "path": str(d),
                 },
@@ -236,7 +273,7 @@ def directory_tree(root: Path, current: Path | None = None) -> html.Div:
             dbc.ListGroupItem(
                 [html.Span("\U0001F5BC️ "), html.Span(f.name)],
                 id={
-                    "type": "dir-entry",
+                    "type": id_type,
                     "kind": "file",
                     "path": str(f),
                 },
@@ -248,9 +285,14 @@ def directory_tree(root: Path, current: Path | None = None) -> html.Div:
     if list_items:
         children.append(dbc.ListGroup(list_items, flush=True))
     else:
+        empty_msg = (
+            "(no subdirectories)"
+            if not select_files
+            else "(no subdirectories or matching files)"
+        )
         children.append(
             html.Div(
-                "(no subdirectories or images)",
+                empty_msg,
                 className="text-muted small fst-italic",
             )
         )

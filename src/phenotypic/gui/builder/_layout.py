@@ -28,7 +28,11 @@ import dash_cytoscape as cyto  # type: ignore[import-untyped]
 from dash import dcc, html
 
 from phenotypic.gui.builder import _ids as ids
-from phenotypic.gui.builder._directory_browser import directory_picker
+from phenotypic.gui.builder._modal_browser import (
+    load_image_modal,
+    load_picker_modal,
+    save_pipeline_modal,
+)
 from phenotypic.gui.builder._param_form import param_form
 from phenotypic.gui.builder._state import (
     PIPELINE_CLASS_NAME,
@@ -727,40 +731,52 @@ def build_breadcrumb(state: BuilderState) -> html.Nav:
 
 
 def _pipeline_io_card() -> dbc.Card:
-    """Save / Load controls. Lives above the inspector in the right column."""
+    """Build the "Pipeline I/O" card with Save and Load buttons.
 
-    save_row = dbc.InputGroup(
+    Renders a small :class:`dbc.ButtonGroup` containing two outline buttons
+    that each open a modal file browser defined in :mod:`._modal_browser`:
+
+    * **Save** (:data:`ids.BTN_SAVE`) — opens :func:`~_modal_browser.save_pipeline_modal`,
+      a folder browser where the user navigates to a target directory and
+      enters a filename before confirming the write.
+    * **Load** (:data:`ids.BTN_LOAD`) — opens :func:`~_modal_browser.load_picker_modal`,
+      a two-stage chooser offering either a JSON file browser (for pipelines
+      previously saved with ``ImagePipeline.to_json()``) or a prefab list
+      (built-in pipelines from :mod:`phenotypic.prefab`).
+
+    The card lives above the inspector in the right column of the builder
+    layout, assembled by :func:`build_app_layout`.
+
+    Returns:
+        A :class:`dbc.Card` containing the labelled button group, with
+        ``className="mb-2"`` for spacing.
+    """
+
+    button_row = dbc.ButtonGroup(
         [
-            dbc.Input(
-                id=ids.INPUT_SAVE_PATH,
-                type="text",
-                placeholder="/abs/path/to/pipeline.json",
-                debounce=True,
+            dbc.Button(
+                "Save",
+                id=ids.BTN_SAVE,
+                color="primary",
+                outline=True,
+                n_clicks=0,
             ),
-            dbc.Button("Save", id=ids.BTN_SAVE, color="primary", n_clicks=0),
-        ],
-        size="sm",
-        className="mb-2",
-    )
-    load_row = dbc.InputGroup(
-        [
-            dbc.Input(
-                id=ids.INPUT_LOAD_PATH,
-                type="text",
-                placeholder="/abs/path/to/pipeline.json",
-                debounce=True,
+            dbc.Button(
+                "Load",
+                id=ids.BTN_LOAD,
+                color="primary",
+                outline=True,
+                n_clicks=0,
             ),
-            dbc.Button("Load", id=ids.BTN_LOAD, color="primary", n_clicks=0),
         ],
+        className="w-100",
         size="sm",
-        className="mb-0",
     )
     return dbc.Card(
         dbc.CardBody(
             [
                 html.H6("Pipeline I/O", className="mb-2"),
-                save_row,
-                load_row,
+                button_row,
             ],
             className="py-2",
         ),
@@ -804,25 +820,42 @@ def _structure_card() -> dbc.Card:
 
 
 def build_footer(image_root: Optional[Path]) -> dbc.Card:
-    """Render the footer row with image source + grid + run-preview controls.
+    """Render the footer row with image-source, grid override, and run-preview controls.
 
-    Pipeline I/O (Save/Load) and Structure (+ Pipeline / Delete) live above
-    the inspector in the right column — see :func:`_pipeline_io_card` and
-    :func:`_structure_card`.
+    Pipeline I/O (Save/Load) and Structure (+ Pipeline / Delete) have their
+    own cards above the inspector in the right column — see
+    :func:`_pipeline_io_card` and :func:`_structure_card`. This footer card
+    handles the image-selection and execution surface.
 
-    Layout (left to right):
+    Layout (left to right inside the card body):
 
-    * Directory picker (via :func:`directory_picker`).
-    * ``nrows`` / ``ncols`` overrides for grid pipelines.
-    * "Run preview" button (wrapped in a ``dcc.Loading``).
+    * **Image source** (left column): two buttons and a status label.
+      "Load image…" (:data:`ids.BTN_LOAD_IMAGE`) opens
+      :func:`~_modal_browser.load_image_modal`, a directory browser filtered
+      to plate image formats. "Use synthetic plate"
+      (:data:`ids.BTN_USE_SYNTHETIC`) immediately loads the bundled synthetic
+      yeast plate without opening any modal — useful for quick iteration
+      without a real plate image. The :data:`ids.ACTIVE_IMAGE_LABEL` below
+      the buttons shows the basename of the currently active image so the
+      user can confirm the selection before running.
+    * **Grid** (right column): optional ``nrows`` / ``ncols`` inputs
+      (:data:`ids.INPUT_NROWS`, :data:`ids.INPUT_NCOLS`) for pipelines that
+      contain :class:`~phenotypic.abc_.GridOperation` steps. Leave blank to
+      use the default ``8 × 12`` grid assumed by ``GridImage.imread()``.
+    * **Run preview**: :data:`ids.BTN_RUN_PREVIEW` wrapped in a
+      :class:`dcc.Loading` spinner (:data:`ids.PREVIEW_LOADING`).
 
     Args:
-        image_root: Path forwarded to :func:`directory_picker`. ``None``
-            disables the directory tree section.
+        image_root: Accepted for API parity with the previous inline picker
+            but not consumed directly by this function. The modal factories
+            in :mod:`._modal_browser` receive it via :func:`build_app_layout`,
+            which mounts the three modals separately.
 
     Returns:
-        A :class:`dbc.Card` whose body is the footer row.
+        A :class:`dbc.Card` with id :data:`ids.FOOTER_CONTAINER` whose body
+        is the two-column footer row.
     """
+    del image_root  # consumed by load_image_modal in build_app_layout
 
     grid_inputs = dbc.Row(
         [
@@ -876,6 +909,36 @@ def build_footer(image_root: Optional[Path]) -> dbc.Card:
         ),
     )
 
+    image_source = html.Div(
+        [
+            dbc.ButtonGroup(
+                [
+                    dbc.Button(
+                        "Load image…",
+                        id=ids.BTN_LOAD_IMAGE,
+                        color="primary",
+                        n_clicks=0,
+                    ),
+                    dbc.Button(
+                        "Use synthetic plate",
+                        id=ids.BTN_USE_SYNTHETIC,
+                        color="secondary",
+                        outline=True,
+                        n_clicks=0,
+                    ),
+                ],
+                size="sm",
+                className="mb-2",
+            ),
+            html.Div(
+                "(no image loaded)",
+                id=ids.ACTIVE_IMAGE_LABEL,
+                className="text-muted small text-monospace",
+                style={"wordBreak": "break-all"},
+            ),
+        ]
+    )
+
     return dbc.Card(
         dbc.CardBody(
             dbc.Row(
@@ -883,7 +946,7 @@ def build_footer(image_root: Optional[Path]) -> dbc.Card:
                     dbc.Col(
                         [
                             html.H6("Image source", className="mb-2"),
-                            directory_picker(image_root),
+                            image_source,
                         ],
                         md=8,
                     ),
@@ -1158,10 +1221,19 @@ def build_app_layout(
         },
     )
 
+    modals = html.Div(
+        [
+            save_pipeline_modal(image_root),
+            load_picker_modal(image_root),
+            load_image_modal(image_root),
+        ]
+    )
+
     return html.Div(
         [
             stores,
             toast,
+            modals,
             dbc.Container(
                 [
                     html.Div(

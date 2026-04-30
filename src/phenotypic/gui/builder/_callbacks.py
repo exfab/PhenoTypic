@@ -51,10 +51,8 @@ from flask import current_app
 
 from phenotypic.gui.builder import _ids as ids
 from phenotypic.gui.builder._directory_browser import (
-    DIR_PICKER_PATH_INPUT,
-    DIR_PICKER_SYNTH_BTN,
-    DIR_PICKER_TREE_CONTAINER,
-    DIR_PICKER_USE_PATH_BTN,
+    IMAGE_EXTS,
+    PIPELINE_EXTS,
     SYNTHETIC_SENTINEL,
     directory_tree,
     find_synthetic_plate_path,
@@ -65,6 +63,7 @@ from phenotypic.gui.builder._layout import (
     build_canvas,
     build_inspector,
 )
+from phenotypic.gui.builder._modal_browser import render_load_picker_body
 from phenotypic.gui.builder._param_form import parse_widget_value
 from phenotypic.gui.builder._session import get_cache
 from phenotypic.gui.builder._state import (
@@ -1099,80 +1098,461 @@ def register_callbacks(app: dash.Dash) -> None:
         return html.Img(src=uri, style={"maxWidth": "100%"})
 
     # ----------------------------------------------------------------------
-    # 5. Save
+    # 5. Save modal — open / close / confirm / dir-nav / body re-render
     # ----------------------------------------------------------------------
+    #
+    # The Save flow used to be a single text-input + button. It is now a
+    # modal file browser:
+    #
+    #   * BTN_SAVE          → open MODAL_SAVE
+    #   * BTN_SAVE_CANCEL   → close MODAL_SAVE
+    #   * BTN_SAVE_CONFIRM  → write JSON to STORE_BROWSE_DIR_SAVE /
+    #                         INPUT_SAVE_FILENAME, close on success, toast
+    #   * dir-entry click   → update STORE_BROWSE_DIR_SAVE
+    #   * STORE_BROWSE_DIR_SAVE change → re-render MODAL_SAVE_BODY tree
+    #
+    # The existing path-safety rules and toast variants are preserved by
+    # delegating into the same ``to_pipeline().to_json()`` flow.
 
     @app.callback(
+        Output(ids.MODAL_SAVE, "is_open", allow_duplicate=True),
+        Output(ids.STORE_BROWSE_DIR_SAVE, "data", allow_duplicate=True),
+        Input(ids.BTN_SAVE, "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def open_save_modal(n_clicks: Optional[int]) -> Tuple[Any, Any]:
+        """Open :data:`ids.MODAL_SAVE` and seed :data:`ids.STORE_BROWSE_DIR_SAVE`.
+
+        Triggered by :data:`ids.BTN_SAVE`. Seeds the browse-dir store with the
+        ``pheno_image_root`` Flask config value so the folder tree starts at
+        the configured working directory.
+
+        Args:
+            n_clicks: Click count from :data:`ids.BTN_SAVE`.
+
+        Returns:
+            Tuple of ``(is_open, store_data)`` — ``(True, root_str)`` on a
+            valid click, or ``(no_update, no_update)`` to suppress the initial
+            call.
+        """
+        if not n_clicks:
+            return no_update, no_update
+        image_root = current_app.config.get("pheno_image_root")
+        return True, str(image_root) if image_root else None
+
+    @app.callback(
+        Output(ids.MODAL_SAVE, "is_open", allow_duplicate=True),
+        Input(ids.BTN_SAVE_CANCEL, "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def close_save_modal(n_clicks: Optional[int]) -> Any:
+        """Close :data:`ids.MODAL_SAVE` when the Cancel button is clicked.
+
+        Args:
+            n_clicks: Click count from :data:`ids.BTN_SAVE_CANCEL`.
+
+        Returns:
+            ``False`` to close the modal, or ``no_update`` to suppress the
+            initial call.
+        """
+        if not n_clicks:
+            return no_update
+        return False
+
+    @app.callback(
+        Output(ids.MODAL_SAVE, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "header", allow_duplicate=True),
-        Input(ids.BTN_SAVE, "n_clicks"),
+        Input(ids.BTN_SAVE_CONFIRM, "n_clicks"),
         State(ids.STORE_BUILDER_STATE, "data"),
-        State(ids.INPUT_SAVE_PATH, "value"),
+        State(ids.STORE_BROWSE_DIR_SAVE, "data"),
+        State(ids.INPUT_SAVE_FILENAME, "value"),
         prevent_initial_call=True,
     )
     def save_pipeline(
-        n_clicks: Optional[int], state_data: Dict[str, Any], path_value: Optional[str]
-    ) -> Tuple[bool, str, str, str]:
+        n_clicks: Optional[int],
+        state_data: Dict[str, Any],
+        dir_value: Optional[str],
+        filename_value: Optional[str],
+    ) -> Tuple[Any, ...]:
+        """Write the current pipeline to disk and close :data:`ids.MODAL_SAVE`.
+
+        Triggered by :data:`ids.BTN_SAVE_CONFIRM`. Deserialises the builder
+        state, converts it to an :class:`~phenotypic.ImagePipeline` via
+        ``to_pipeline()``, calls ``to_json()``, and writes the result to
+        ``dir_value / filename_value``. A toast confirms the save path; if the
+        path falls outside ``--image-root`` a warning variant is shown instead
+        of an error. The modal is closed on success.
+
+        Args:
+            n_clicks: Click count from :data:`ids.BTN_SAVE_CONFIRM`.
+            state_data: JSON-serialised :class:`BuilderState` from
+                :data:`ids.STORE_BUILDER_STATE`.
+            dir_value: Currently selected directory string from
+                :data:`ids.STORE_BROWSE_DIR_SAVE`.
+            filename_value: Filename entered in :data:`ids.INPUT_SAVE_FILENAME`.
+
+        Returns:
+            Five-tuple ``(modal_is_open, toast_is_open, toast_msg,
+            toast_icon, toast_header)``.
+        """
         if not n_clicks:
-            return _toast("Nothing to save", ok=False)
-        if not path_value:
-            return _toast("Provide a save path first", ok=False)
+            return (no_update,) * 5
+        if not dir_value:
+            return (no_update, *_toast("Pick a folder first", ok=False))
+        if not filename_value:
+            return (no_update, *_toast("Provide a filename first", ok=False))
 
         try:
             state = state_from_json(state_data)
             pipeline = to_pipeline(state.root)
-            payload = pipeline.to_json()
-            target = Path(path_value).expanduser()
-            target.parent.mkdir(parents=True, exist_ok=True)
-            with open(target, "w", encoding="utf-8") as fh:
-                fh.write(payload if isinstance(payload, str) else json.dumps(payload))
+            target = (Path(dir_value).expanduser() / filename_value).resolve()
 
+            # Defense-in-depth: reject targets outside ``--image-root`` before
+            # touching the filesystem. Normal users cannot reach such paths
+            # through the tree (it is bounded by ``_is_within``), but the store
+            # is reachable from devtools.
             image_root = current_app.config.get("pheno_image_root")
             if image_root is not None:
                 try:
-                    target.resolve().relative_to(Path(image_root).resolve())
+                    target.relative_to(Path(image_root).resolve())
                 except ValueError:
-                    return _toast(
-                        f"Saved to {target} (warning: outside --image-root)",
-                        ok=True,
+                    return (
+                        no_update,
+                        *_toast(
+                            f"Refused: {target} is outside --image-root",
+                            ok=False,
+                        ),
                     )
-            return _toast(f"Saved to {target}", ok=True)
+
+            payload = pipeline.to_json()
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with open(target, "w", encoding="utf-8") as fh:
+                fh.write(payload if isinstance(payload, str) else json.dumps(payload))
+            return (False, *_toast(f"Saved to {target}", ok=True))
         except Exception as exc:  # noqa: BLE001
             logger.exception("Save failed")
-            return _toast(_format_exception(exc), ok=False)
+            return (no_update, *_toast(_format_exception(exc), ok=False))
+
+    @app.callback(
+        Output(ids.STORE_BROWSE_DIR_SAVE, "data", allow_duplicate=True),
+        Input(
+            {"type": ids.DIR_ENTRY_TYPE_SAVE, "kind": ALL, "path": ALL},
+            "n_clicks",
+        ),
+        prevent_initial_call=True,
+    )
+    def navigate_save_dir(_entry_clicks: List[int]) -> Any:
+        """Update :data:`ids.STORE_BROWSE_DIR_SAVE` when a folder is clicked in the Save tree.
+
+        The Save modal renders only directories (``select_files=False``), so
+        any triggered item is either a subdirectory or a parent entry. The new
+        path is written to the store, which triggers ``render_save_body`` to
+        refresh the tree.
+
+        Args:
+            _entry_clicks: Pattern-matched click counts from dir-entry items
+                with type :data:`ids.DIR_ENTRY_TYPE_SAVE`.
+
+        Returns:
+            The clicked path string, or ``no_update`` when the trigger is not
+            a valid directory entry click.
+        """
+        triggered = ctx.triggered_id
+        if not isinstance(triggered, dict):
+            return no_update
+        if triggered.get("type") != ids.DIR_ENTRY_TYPE_SAVE:
+            return no_update
+        if not ctx.triggered or not ctx.triggered[0].get("value"):
+            return no_update
+        # Save tree only renders dirs / parents (select_files=False).
+        return triggered.get("path") or no_update
+
+    @app.callback(
+        Output(ids.MODAL_SAVE_BODY, "children"),
+        Input(ids.STORE_BROWSE_DIR_SAVE, "data"),
+        prevent_initial_call=True,
+    )
+    def render_save_body(dir_value: Optional[str]) -> Any:
+        """Rebuild the folder tree inside :data:`ids.MODAL_SAVE_BODY` after navigation.
+
+        Triggered whenever :data:`ids.STORE_BROWSE_DIR_SAVE` changes (i.e.
+        when the user clicks a folder entry). Renders a directory-only tree
+        (``select_files=False``) rooted at ``pheno_image_root``.
+
+        Args:
+            dir_value: Currently selected directory path string from
+                :data:`ids.STORE_BROWSE_DIR_SAVE`, or ``None`` if unset.
+
+        Returns:
+            A :func:`directory_tree` component, or a muted placeholder ``Div``
+            when no working directory is configured.
+        """
+        image_root = current_app.config.get("pheno_image_root")
+        if image_root is None:
+            return html.Div(
+                "(no working directory configured)",
+                className="text-muted small fst-italic",
+            )
+        current = Path(dir_value).expanduser() if dir_value else None
+        return directory_tree(
+            Path(image_root),
+            current=current,
+            extensions=None,
+            select_files=False,
+            id_type=ids.DIR_ENTRY_TYPE_SAVE,
+        )
 
     # ----------------------------------------------------------------------
-    # 6. Load
+    # 6. Load picker modal — open / page-swap / dir-nav / JSON / Prefab
     # ----------------------------------------------------------------------
+
+    @app.callback(
+        Output(ids.MODAL_LOAD_PICKER, "is_open", allow_duplicate=True),
+        Output(ids.STORE_LOAD_PICKER_PAGE, "data", allow_duplicate=True),
+        Output(ids.STORE_BROWSE_DIR_JSON, "data", allow_duplicate=True),
+        Input(ids.BTN_LOAD, "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def open_load_picker(n_clicks: Optional[int]) -> Tuple[Any, ...]:
+        """Open :data:`ids.MODAL_LOAD_PICKER` on the chooser page.
+
+        Triggered by :data:`ids.BTN_LOAD`. Resets the page store to
+        ``"chooser"`` and seeds :data:`ids.STORE_BROWSE_DIR_JSON` with the
+        configured ``pheno_image_root`` so the JSON page starts at the right
+        directory if the user navigates there.
+
+        Args:
+            n_clicks: Click count from :data:`ids.BTN_LOAD`.
+
+        Returns:
+            Three-tuple ``(modal_is_open, page_token, browse_dir_str)``.
+        """
+        if not n_clicks:
+            return no_update, no_update, no_update
+        image_root = current_app.config.get("pheno_image_root")
+        return True, "chooser", str(image_root) if image_root else None
+
+    @app.callback(
+        Output(ids.STORE_LOAD_PICKER_PAGE, "data", allow_duplicate=True),
+        Input(ids.BTN_LOAD_JSON_CHOICE, "n_clicks"),
+        Input(ids.BTN_LOAD_PREFAB_CHOICE, "n_clicks"),
+        Input(ids.BTN_LOAD_PICKER_BACK, "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def swap_load_picker_page(
+        _json_clicks: Optional[int],
+        _prefab_clicks: Optional[int],
+        _back_clicks: Optional[int],
+    ) -> Any:
+        """Update :data:`ids.STORE_LOAD_PICKER_PAGE` to navigate between chooser subpages.
+
+        Triggered by any of :data:`ids.BTN_LOAD_JSON_CHOICE`,
+        :data:`ids.BTN_LOAD_PREFAB_CHOICE`, or :data:`ids.BTN_LOAD_PICKER_BACK`.
+        Writing to the store in turn triggers ``render_load_picker`` to swap
+        the modal body.
+
+        Returns:
+            The new page token: ``"json"``, ``"prefab"``, or ``"chooser"``,
+            or ``no_update`` when triggered by an unexpected id.
+        """
+        triggered = ctx.triggered_id
+        if triggered == ids.BTN_LOAD_JSON_CHOICE:
+            return "json"
+        if triggered == ids.BTN_LOAD_PREFAB_CHOICE:
+            return "prefab"
+        if triggered == ids.BTN_LOAD_PICKER_BACK:
+            return "chooser"
+        return no_update
+
+    @app.callback(
+        Output(ids.MODAL_LOAD_PICKER_BODY, "children"),
+        Input(ids.STORE_LOAD_PICKER_PAGE, "data"),
+        Input(ids.STORE_BROWSE_DIR_JSON, "data"),
+        prevent_initial_call=True,
+    )
+    def render_load_picker(
+        page: Optional[str], dir_value: Optional[str]
+    ) -> Any:
+        """Rebuild :data:`ids.MODAL_LOAD_PICKER_BODY` when the page or browse directory changes.
+
+        Handles the JSON page specially: re-renders the full
+        :func:`directory_tree` (filtered to ``.json`` files) for the active
+        ``dir_value``. Chooser and prefab pages are delegated to
+        :func:`~_modal_browser.render_load_picker_body`. The Back button is
+        a permanent sibling of this body container (see
+        :func:`load_picker_modal`), so it is not re-emitted here.
+
+        Args:
+            page: Current page token from :data:`ids.STORE_LOAD_PICKER_PAGE`.
+            dir_value: Currently viewed directory string from
+                :data:`ids.STORE_BROWSE_DIR_JSON`.
+
+        Returns:
+            A list (or single component) of Dash components for
+            :data:`ids.MODAL_LOAD_PICKER_BODY`.
+        """
+        image_root = current_app.config.get("pheno_image_root")
+        if page == "json" and image_root is not None:
+            current = Path(dir_value).expanduser() if dir_value else None
+            return directory_tree(
+                Path(image_root),
+                current=current,
+                extensions=PIPELINE_EXTS,
+                select_files=True,
+                id_type=ids.DIR_ENTRY_TYPE_JSON,
+            )
+        return render_load_picker_body(page or "chooser", image_root)
+
+    @app.callback(
+        Output(ids.BTN_LOAD_PICKER_BACK, "style"),
+        Output("load-picker-chooser-buttons", "style"),
+        Input(ids.STORE_LOAD_PICKER_PAGE, "data"),
+    )
+    def toggle_load_picker_chrome(
+        page: Optional[str],
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        """Show/hide back button + chooser buttons based on the active page.
+
+        On the chooser page, the chooser buttons are visible and the back
+        button is hidden. On the JSON / Prefab pages it's the inverse — the
+        back button shows so the user can return to the chooser. Both stay
+        in the DOM so :func:`swap_load_picker_page`'s pattern-matching
+        ``Input`` subscriptions always resolve.
+        """
+        if page in ("json", "prefab"):
+            return {"display": "block"}, {"display": "none"}
+        return {"display": "none"}, {"display": "block"}
+
+    @app.callback(
+        Output(ids.STORE_BROWSE_DIR_JSON, "data", allow_duplicate=True),
+        Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
+        Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
+        Output("canvas-cytoscape-wrapper", "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.MODAL_LOAD_PICKER, "is_open", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "header", allow_duplicate=True),
+        Input(
+            {"type": ids.DIR_ENTRY_TYPE_JSON, "kind": ALL, "path": ALL},
+            "n_clicks",
+        ),
+        prevent_initial_call=True,
+    )
+    def click_json_entry(_entry_clicks: List[int]) -> Tuple[Any, ...]:
+        """Handle a click on a JSON-browser tree entry.
+
+        Directory and parent clicks update :data:`ids.STORE_BROWSE_DIR_JSON`
+        to navigate the tree. File clicks read the selected ``.json`` path,
+        call ``ImagePipeline.from_json()``, replace the builder state, and
+        close the modal with a success toast.
+
+        Args:
+            _entry_clicks: Pattern-matched click counts from dir-entry items
+                with type :data:`ids.DIR_ENTRY_TYPE_JSON`.
+
+        Returns:
+            Ten-tuple ``(browse_dir, state_data, breadcrumb, canvas,
+            inspector, modal_is_open, toast_is_open, toast_msg, toast_icon,
+            toast_header)``. Directory clicks populate only the first element;
+            file clicks populate elements 2–10.
+        """
+        triggered = ctx.triggered_id
+        if not isinstance(triggered, dict):
+            return (no_update,) * 10
+        if triggered.get("type") != ids.DIR_ENTRY_TYPE_JSON:
+            return (no_update,) * 10
+        if not ctx.triggered or not ctx.triggered[0].get("value"):
+            return (no_update,) * 10
+
+        kind = triggered.get("kind")
+        path_str = triggered.get("path")
+        if kind in {"dir", "parent"} and path_str:
+            return (path_str, *((no_update,) * 9))
+
+        if kind == "file" and path_str:
+            try:
+                from phenotypic import ImagePipeline
+
+                with open(Path(path_str).expanduser(), encoding="utf-8") as fh:
+                    content = fh.read()
+                pipeline = ImagePipeline.from_json(content)
+                scope = from_pipeline(pipeline)
+                new_state = BuilderState(
+                    root=scope, breadcrumb=[], selected_node_id=None
+                )
+                new_state_dict = state_to_json(new_state)
+                breadcrumb, canvas, inspector = _render_views(new_state)
+                return (
+                    no_update,
+                    new_state_dict,
+                    breadcrumb,
+                    canvas,
+                    inspector,
+                    False,
+                    *_toast(f"Loaded {Path(path_str).name}", ok=True),
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("Load JSON failed")
+                return (
+                    (no_update,) * 6 + _toast(_format_exception(exc), ok=False)
+                )
+
+        return (no_update,) * 10
 
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
         Output("canvas-cytoscape-wrapper", "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.MODAL_LOAD_PICKER, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "header", allow_duplicate=True),
-        Input(ids.BTN_LOAD, "n_clicks"),
-        State(ids.INPUT_LOAD_PATH, "value"),
+        Input(
+            {"type": "prefab-card", "class_name": ALL},
+            "n_clicks",
+        ),
         prevent_initial_call=True,
     )
-    def load_pipeline(
-        n_clicks: Optional[int], path_value: Optional[str]
-    ) -> Tuple[Any, ...]:
-        if not n_clicks:
-            return (no_update,) * 4 + _toast("Nothing to load", ok=False)
-        if not path_value:
-            return (no_update,) * 4 + _toast("Provide a load path first", ok=False)
-        try:
-            from phenotypic import ImagePipeline
+    def click_prefab_card(_clicks: List[int]) -> Tuple[Any, ...]:
+        """Instantiate a prefab pipeline and replace the current builder state.
 
-            with open(Path(path_value).expanduser(), encoding="utf-8") as fh:
-                content = fh.read()
-            pipeline = ImagePipeline.from_json(content)
+        Triggered by a click on any :func:`~_ids.prefab_card_id` list item.
+        Imports the named class from :mod:`phenotypic.prefab`, calls its
+        constructor with no arguments, converts the result to a
+        :class:`BuilderScope` via ``from_pipeline()``, and replaces the
+        builder state. The modal is closed and a success toast is shown.
+
+        Args:
+            _clicks: Pattern-matched click counts from prefab-card items.
+
+        Returns:
+            Nine-tuple ``(state_data, breadcrumb, canvas, inspector,
+            modal_is_open, toast_is_open, toast_msg, toast_icon,
+            toast_header)``.
+        """
+        triggered = ctx.triggered_id
+        if not isinstance(triggered, dict):
+            return (no_update,) * 9
+        if triggered.get("type") != "prefab-card":
+            return (no_update,) * 9
+        if not ctx.triggered or not ctx.triggered[0].get("value"):
+            return (no_update,) * 9
+        class_name = triggered.get("class_name")
+        if not class_name:
+            return (no_update,) * 9
+
+        try:
+            import phenotypic.prefab as prefab_module
+
+            cls = getattr(prefab_module, class_name)
+            pipeline = cls()
             scope = from_pipeline(pipeline)
             new_state = BuilderState(
                 root=scope, breadcrumb=[], selected_node_id=None
@@ -1184,101 +1564,210 @@ def register_callbacks(app: dash.Dash) -> None:
                 breadcrumb,
                 canvas,
                 inspector,
-                *_toast(f"Loaded {path_value}", ok=True),
+                False,
+                *_toast(f"Loaded prefab {class_name}", ok=True),
             )
         except Exception as exc:  # noqa: BLE001
-            logger.exception("Load failed")
-            return (no_update,) * 4 + _toast(_format_exception(exc), ok=False)
+            logger.exception("Load prefab failed")
+            return (no_update,) * 5 + _toast(_format_exception(exc), ok=False)
 
     # ----------------------------------------------------------------------
-    # 7. Directory picker
+    # 7. Load Image modal — open / dir-nav / file pick / synthetic shortcut
     # ----------------------------------------------------------------------
 
     @app.callback(
-        Output(STORE_IMAGE_PATH, "data"),
-        Output(DIR_PICKER_PATH_INPUT, "value"),
-        Output(DIR_PICKER_TREE_CONTAINER, "children"),
+        Output(ids.MODAL_LOAD_IMAGE, "is_open", allow_duplicate=True),
+        Output(ids.STORE_BROWSE_DIR_IMAGE, "data", allow_duplicate=True),
+        Input(ids.BTN_LOAD_IMAGE, "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def open_load_image_modal(n_clicks: Optional[int]) -> Tuple[Any, Any]:
+        """Open :data:`ids.MODAL_LOAD_IMAGE` and seed :data:`ids.STORE_BROWSE_DIR_IMAGE`.
+
+        Triggered by :data:`ids.BTN_LOAD_IMAGE`. Seeds the browse-dir store
+        with ``pheno_image_root`` so the image tree starts at the configured
+        directory.
+
+        Args:
+            n_clicks: Click count from :data:`ids.BTN_LOAD_IMAGE`.
+
+        Returns:
+            Tuple of ``(is_open, store_data)`` — ``(True, root_str)`` on a
+            valid click, or ``(no_update, no_update)`` to suppress the initial
+            call.
+        """
+        if not n_clicks:
+            return no_update, no_update
+        image_root = current_app.config.get("pheno_image_root")
+        return True, str(image_root) if image_root else None
+
+    @app.callback(
+        Output(ids.STORE_BROWSE_DIR_IMAGE, "data", allow_duplicate=True),
+        Output(ids.STORE_IMAGE_PATH, "data", allow_duplicate=True),
+        Output(ids.MODAL_LOAD_IMAGE, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "header", allow_duplicate=True),
-        Input({"type": "dir-entry", "kind": ALL, "path": ALL}, "n_clicks"),
-        Input(DIR_PICKER_USE_PATH_BTN, "n_clicks"),
-        Input(DIR_PICKER_SYNTH_BTN, "n_clicks"),
-        State(DIR_PICKER_PATH_INPUT, "value"),
+        Input(
+            {"type": ids.DIR_ENTRY_TYPE_IMAGE, "kind": ALL, "path": ALL},
+            "n_clicks",
+        ),
         prevent_initial_call=True,
     )
-    def directory_picker_actions(
-        _entry_clicks: List[int],
-        _use_clicks: Optional[int],
-        _synth_clicks: Optional[int],
-        path_value: Optional[str],
-    ) -> Tuple[Any, ...]:
+    def click_image_entry(_entry_clicks: List[int]) -> Tuple[Any, ...]:
+        """Handle a click on an image-browser tree entry.
+
+        Directory and parent clicks update :data:`ids.STORE_BROWSE_DIR_IMAGE`
+        to navigate the tree. File clicks write the selected path to
+        :data:`ids.STORE_IMAGE_PATH` and close the modal with a toast
+        confirming the selected plate image filename.
+
+        Args:
+            _entry_clicks: Pattern-matched click counts from dir-entry items
+                with type :data:`ids.DIR_ENTRY_TYPE_IMAGE`.
+
+        Returns:
+            Seven-tuple ``(browse_dir, image_path, modal_is_open,
+            toast_is_open, toast_msg, toast_icon, toast_header)``. Directory
+            clicks populate only the first element; file clicks populate
+            elements 2–7.
+        """
         triggered = ctx.triggered_id
-        if triggered is None:
+        if not isinstance(triggered, dict):
             return (no_update,) * 7
-        image_root: Optional[Path] = current_app.config.get("pheno_image_root")
+        if triggered.get("type") != ids.DIR_ENTRY_TYPE_IMAGE:
+            return (no_update,) * 7
+        if not ctx.triggered or not ctx.triggered[0].get("value"):
+            return (no_update,) * 7
 
-        try:
-            if isinstance(triggered, dict) and triggered.get("type") == "dir-entry":
-                # Skip noisy zero-click events (Dash fires once per registered
-                # entry on first paint).
-                value = ctx.triggered[0].get("value")
-                if not value:
-                    return (no_update,) * 7
-                kind = triggered["kind"]
-                clicked_path = Path(triggered["path"])
-                if kind == "file":
-                    return (
-                        str(clicked_path),
-                        str(clicked_path),
-                        no_update,
-                        *_toast(f"Image set: {clicked_path.name}", ok=True),
-                    )
-                # dir or parent
-                if image_root is not None:
-                    tree = directory_tree(image_root, clicked_path)
-                    return (
-                        no_update,
-                        no_update,
-                        tree,
-                        False,
-                        no_update,
-                        no_update,
-                        no_update,
-                    )
-                return (no_update,) * 7
-
-            if triggered == DIR_PICKER_USE_PATH_BTN:
-                if not path_value:
-                    return (no_update,) * 4 + _toast(
-                        "Type a path first", ok=False
-                    )
-                p = Path(path_value).expanduser()
-                if not p.exists():
-                    return (no_update,) * 4 + _toast(
-                        f"Path does not exist: {p}", ok=False
-                    )
-                return (
-                    str(p),
-                    str(p),
-                    no_update,
-                    *_toast(f"Image path set: {p}", ok=True),
-                )
-
-            if triggered == DIR_PICKER_SYNTH_BTN:
-                synth = find_synthetic_plate_path()
-                return (
-                    str(synth),
-                    str(synth),
-                    no_update,
-                    *_toast("Using synthetic yeast plate", ok=True),
-                )
-        except Exception as exc:  # noqa: BLE001
-            logger.exception("Directory picker failed")
-            return (no_update,) * 4 + _toast(_format_exception(exc), ok=False)
-
+        kind = triggered.get("kind")
+        path_str = triggered.get("path")
+        if kind in {"dir", "parent"} and path_str:
+            return (path_str, *((no_update,) * 6))
+        if kind == "file" and path_str:
+            return (
+                no_update,
+                str(path_str),
+                False,
+                *_toast(f"Image set: {Path(path_str).name}", ok=True),
+            )
         return (no_update,) * 7
+
+    @app.callback(
+        Output(ids.MODAL_LOAD_IMAGE_BODY, "children"),
+        Input(ids.STORE_BROWSE_DIR_IMAGE, "data"),
+        prevent_initial_call=True,
+    )
+    def render_load_image_body(dir_value: Optional[str]) -> Any:
+        """Rebuild the image-file tree inside :data:`ids.MODAL_LOAD_IMAGE_BODY` after navigation.
+
+        Triggered whenever :data:`ids.STORE_BROWSE_DIR_IMAGE` changes.
+        Renders :func:`directory_tree` filtered to :data:`IMAGE_EXTS`
+        (plate image formats including DSLR raw formats ``.nef``, ``.cr2``,
+        ``.arw``). The store itself lives outside this body container — see
+        :func:`._modal_browser.load_image_modal` — so it survives body
+        re-renders without re-emitting itself (which would cycle this
+        callback).
+
+        Args:
+            dir_value: Currently browsed directory path string from
+                :data:`ids.STORE_BROWSE_DIR_IMAGE`, or ``None`` if unset.
+
+        Returns:
+            A :func:`directory_tree` div, or a placeholder div when no
+            working directory is configured.
+        """
+        image_root = current_app.config.get("pheno_image_root")
+        if image_root is None:
+            return html.Div(
+                "(no working directory configured)",
+                className="text-muted small fst-italic",
+            )
+        current = Path(dir_value).expanduser() if dir_value else None
+        return directory_tree(
+            Path(image_root),
+            current=current,
+            extensions=IMAGE_EXTS,
+            select_files=True,
+            id_type=ids.DIR_ENTRY_TYPE_IMAGE,
+        )
+
+    @app.callback(
+        Output(ids.STORE_IMAGE_PATH, "data", allow_duplicate=True),
+        Output(ids.MODAL_LOAD_IMAGE, "is_open", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "header", allow_duplicate=True),
+        Input(ids.BTN_USE_SYNTHETIC, "n_clicks"),
+        Input(ids.BTN_USE_SYNTHETIC_MODAL, "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def use_synthetic_plate(
+        _top_clicks: Optional[int], _modal_clicks: Optional[int]
+    ) -> Tuple[Any, ...]:
+        """Set :data:`ids.STORE_IMAGE_PATH` to the bundled synthetic yeast plate.
+
+        Handles both the footer-level :data:`ids.BTN_USE_SYNTHETIC` and the
+        in-modal :data:`ids.BTN_USE_SYNTHETIC_MODAL`. When triggered from
+        inside the modal the modal is also closed; the footer button leaves the
+        modal state unchanged. Uses :func:`find_synthetic_plate_path` to
+        resolve the on-disk path; falls back to :data:`SYNTHETIC_SENTINEL`
+        when the file cannot be found, and the run-preview callback detects
+        the sentinel and calls :func:`~phenotypic.data.load_synth_yeast_plate`
+        programmatically.
+
+        Args:
+            _top_clicks: Click count from :data:`ids.BTN_USE_SYNTHETIC`
+                (footer bar button).
+            _modal_clicks: Click count from :data:`ids.BTN_USE_SYNTHETIC_MODAL`
+                (modal footer button).
+
+        Returns:
+            Six-tuple ``(image_path, modal_is_open, toast_is_open, toast_msg,
+            toast_icon, toast_header)``.
+        """
+        triggered = ctx.triggered_id
+        if triggered not in (ids.BTN_USE_SYNTHETIC, ids.BTN_USE_SYNTHETIC_MODAL):
+            return (no_update,) * 6
+        if not ctx.triggered or not ctx.triggered[0].get("value"):
+            return (no_update,) * 6
+        synth = find_synthetic_plate_path()
+        # Close the load-image modal if the user triggered from inside it.
+        close_modal = False if triggered == ids.BTN_USE_SYNTHETIC_MODAL else no_update
+        return (
+            str(synth),
+            close_modal,
+            *_toast("Using synthetic yeast plate", ok=True),
+        )
+
+    @app.callback(
+        Output(ids.ACTIVE_IMAGE_LABEL, "children"),
+        Input(ids.STORE_IMAGE_PATH, "data"),
+    )
+    def update_active_image_label(image_path: Optional[str]) -> str:
+        """Update :data:`ids.ACTIVE_IMAGE_LABEL` to reflect the currently loaded image.
+
+        Triggered whenever :data:`ids.STORE_IMAGE_PATH` changes. Displays the
+        filename of the loaded plate image (or a synthetic-plate label) beneath
+        the "Load image" / "Use synthetic plate" buttons in the footer so the
+        user can confirm which image will be used for "Run preview".
+
+        Args:
+            image_path: Path string from :data:`ids.STORE_IMAGE_PATH`, or
+                ``None`` / empty string when no image is loaded.
+
+        Returns:
+            A short display string: ``"(no image loaded)"``,
+            ``"synthetic yeast plate"``, or the image filename (basename only).
+        """
+        if not image_path:
+            return "(no image loaded)"
+        if image_path == SYNTHETIC_SENTINEL:
+            return "synthetic yeast plate"
+        return Path(image_path).name
+
 
     # ----------------------------------------------------------------------
     # 8. Canvas zoom / fit — clientside (calls cytoscape.js directly)
