@@ -69,6 +69,11 @@ _GRID_PREFIX = "Grid_"
 #: Minimum crop side length, even on degenerate (tiny / empty) frames.
 _MIN_CROP_SIZE = 64
 
+#: Vertical room reserved beneath every cell for the multi-colony stack
+#: tab to peek out of. Applied to every tile (even single-colony ones)
+#: so the grid stays evenly spaced regardless of which cells aggregate.
+_STACK_TAB_OFFSET = 14
+
 
 # ---------------------------------------------------------------------------
 # Column introspection
@@ -372,7 +377,15 @@ def _build_cell(
         ),
     )
 
-    children: list[Component] = [crop_node, checkbox, remove_btn]
+    # Image card: the framed display_size×display_size area carrying the
+    # crop, checkbox, and remove button. Sits in front of the stack tab
+    # via z-index so the tab can peek out from beneath the bottom edge.
+    frame = html.Div(
+        [crop_node, checkbox, remove_btn],
+        className="colony-cell-frame",
+    )
+
+    children: list[Component] = [frame]
 
     if count > 1:
         badge_id = colony_cell_count_badge_id(image_file, label)
@@ -380,19 +393,7 @@ def _build_cell(
             dbc.Button(
                 f"N={count}",
                 id=badge_id,
-                color="light",
-                size="sm",
-                className="colony-cell-count-badge",
-                style={
-                    "position": "absolute",
-                    "bottom": "4px",
-                    "right": "4px",
-                    "zIndex": "2",
-                    "padding": "0 0.35rem",
-                    "fontSize": "0.65rem",
-                    "lineHeight": "1.2",
-                    "fontFamily": "'DM Mono', monospace",
-                },
+                className="colony-cell-stack-tab",
                 title=f"click to expand all {count} colonies in this cell",
                 n_clicks=0,
             )
@@ -415,7 +416,8 @@ def _build_cell(
         style={
             "position": "relative",
             "width": f"{display_size}px",
-            "height": f"{display_size}px",
+            "height": f"{display_size + _STACK_TAB_OFFSET}px",
+            "overflow": "visible",
         },
     )
 
@@ -617,7 +619,7 @@ def build_grid(
                         className="colony-cell colony-cell--empty",
                         style={
                             "width": f"{display_size}px",
-                            "height": f"{display_size}px",
+                            "height": f"{display_size + _STACK_TAB_OFFSET}px",
                             "background": "rgba(0,54,96,0.03)",
                             "borderRadius": "4px",
                         },
@@ -661,7 +663,10 @@ def build_grid(
         style={
             "display": "grid",
             "gridTemplateColumns": "auto " + " ".join([f"{display_size}px"] * len(x_values)),
-            "gridTemplateRows": "auto " + " ".join([f"{display_size}px"] * len(y_values)),
+            "gridTemplateRows": (
+                "auto "
+                + " ".join([f"{display_size + _STACK_TAB_OFFSET}px"] * len(y_values))
+            ),
             "gap": "8px",
             "padding": "0.5rem",
             # Shrink-wrap to the column widths so the grid sits flush
