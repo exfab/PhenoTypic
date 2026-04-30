@@ -284,3 +284,103 @@
         return null;
     };
 })();
+
+/* ============================================================
+ * (F) Colony multi-select shift-click bridge.
+ *
+ * Bridges native checkbox click events on the colony grid into a
+ * Dash dcc.Store (id: store-colony-selection-delta) so the Python
+ * side can apply selection logic (single toggle, shift-range, etc.)
+ * without round-tripping every image's <input> through the server.
+ *
+ * Each click emits a payload of the form:
+ *   { key: [image_file, label], shift: <bool>, ts: <ms> }
+ * via window.dash_clientside.set_props.
+ * ============================================================ */
+(function () {
+    "use strict";
+
+    let attached = false;
+
+    function attachListener(container) {
+        if (attached) return;
+        container.addEventListener("click", function (event) {
+            const tgt = event.target;
+            if (!tgt || !tgt.classList ||
+                !tgt.classList.contains("colony-cell-checkbox")) {
+                return;
+            }
+            const raw = tgt.dataset ? tgt.dataset.key : null;
+            if (!raw || typeof raw !== "string") {
+                console.warn("[results_viewer] colony checkbox missing data-key");
+                return;
+            }
+            const parts = raw.split("::");
+            if (parts.length !== 2) {
+                console.warn("[results_viewer] colony data-key malformed:", raw);
+                return;
+            }
+            const imageFile = parts[0];
+            const label = parseInt(parts[1], 10);
+            if (Number.isNaN(label)) {
+                console.warn("[results_viewer] colony label not an int:", raw);
+                return;
+            }
+            // Suppress the native toggle: Python owns the checked state.
+            event.preventDefault();
+            const payload = {
+                key: [imageFile, label],
+                shift: !!event.shiftKey,
+                ts: Date.now(),
+            };
+            const dc = window.dash_clientside;
+            if (!dc || typeof dc.set_props !== "function") {
+                console.warn("[results_viewer] dash_clientside.set_props unavailable");
+                return;
+            }
+            dc.set_props("store-colony-selection-delta", { data: payload });
+        });
+        attached = true;
+        console.info("[results_viewer] colony shift-click bridge attached");
+    }
+
+    function tryAttach() {
+        const container = document.getElementById("colony-grid-container");
+        if (!container) return false;
+        attachListener(container);
+        return true;
+    }
+
+    // Dash mounts the Colony tab lazily; poll until the container exists,
+    // then attach the delegated listener and stop polling.
+    if (!tryAttach()) {
+        const interval = setInterval(function () {
+            if (tryAttach()) clearInterval(interval);
+        }, 100);
+    }
+
+    // If Dash later replaces the container (tab switch / re-render), the
+    // closure flag would still read attached=true even though our listener
+    // was thrown away with the old node. Watch <body> for re-mounts and
+    // re-attach to the fresh container.
+    function startReattachObserver() {
+        if (!document.body) return false;
+        const obs = new MutationObserver(function () {
+            const container = document.getElementById("colony-grid-container");
+            if (!container) return;
+            if (container.dataset._colonyShiftBridge === "1") return;
+            // Fresh container: clear the closure flag and re-attach.
+            attached = false;
+            container.dataset._colonyShiftBridge = "1";
+            attachListener(container);
+        });
+        obs.observe(document.body, { childList: true, subtree: true });
+        return true;
+    }
+
+    if (!startReattachObserver()) {
+        const bodyInterval = setInterval(function () {
+            if (startReattachObserver()) clearInterval(bodyInterval);
+        }, 100);
+    }
+})();

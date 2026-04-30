@@ -50,6 +50,7 @@ from dash import (
 )
 
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
+from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
 from phenotypic.gui.results_viewer._ids import (
     BTN_ADD_CARD,
     CARDS_CONTAINER_ID,
@@ -57,6 +58,7 @@ from phenotypic.gui.results_viewer._ids import (
     STORE_CARD_LIST,
     STORE_FILTER_SPEC,
     STORE_IMAGE_PAIRS,
+    STORE_REMOVED_KEYS,
     card_details_collapse_id,
     card_details_table_id,
     card_details_toggle_id,
@@ -83,6 +85,28 @@ _METADATA_PREFIX = "Metadata_"
 
 #: Default OSD canvas height; CSS in ``_assets/results_viewer.css`` may override.
 _OSD_CANVAS_STYLE: dict[str, str] = {"height": "600px", "width": "100%"}
+
+#: Column id and human-facing name for the curation Status column injected
+#: as the leftmost column of the per-object DataTable. Clicking a Status
+#: cell toggles whether that ``(Metadata_ImageFile, ObjectLabel)`` row is
+#: marked as removed.
+_STATUS_COLUMN_ID = "Status"
+
+#: Cell value rendered when the row is *not* in
+#: :attr:`FilteredMeasurements.removed_keys`.
+_STATUS_ACTIVE = "Active"
+
+#: Cell value rendered when the row *is* in
+#: :attr:`FilteredMeasurements.removed_keys`.
+_STATUS_REMOVED = "Removed"
+
+#: Soft-red row tint (DESIGN.md ``#cc4f4f`` at 10% alpha) applied to rows
+#: whose Status cell reads "Removed".
+_REMOVED_ROW_BG = "rgba(204, 79, 79, 0.10)"
+
+#: Darker red used for the row text when the row is removed; keeps
+#: contrast acceptable against :data:`_REMOVED_ROW_BG`.
+_REMOVED_ROW_FG = "#803030"
 
 
 # ---------------------------------------------------------------------------
@@ -252,6 +276,11 @@ def layout(card_id: str, output_root: OutputRoot) -> Any:
         page_size=20,
         sort_action="native",
         filter_action="native",
+        # ``cell_selectable=True`` is required so ``active_cell`` events
+        # fire on click; ``editable=False`` keeps Dash from opening an
+        # in-place editor for the Status cell.
+        cell_selectable=True,
+        editable=False,
         style_table={"overflowX": "auto"},
         style_cell={
             "fontFamily": "DM Mono, monospace",
@@ -267,6 +296,18 @@ def layout(card_id: str, output_root: OutputRoot) -> Any:
             "color": "#8892a4",
             "borderBottom": "2px solid #003660",
         },
+        # Tint rows whose Status cell reads "Removed" with a soft red
+        # background plus a darker text color (DESIGN.md token
+        # ``#cc4f4f`` at 10% alpha).
+        style_data_conditional=[
+            {
+                "if": {
+                    "filter_query": f'{{{_STATUS_COLUMN_ID}}} = "{_STATUS_REMOVED}"'
+                },
+                "backgroundColor": _REMOVED_ROW_BG,
+                "color": _REMOVED_ROW_FG,
+            },
+        ],
     )
 
     details_collapse = dbc.Collapse(
@@ -415,21 +456,91 @@ def _slice_for_image(
     )
 
 
+def _decode_removed_keys_payload(
+    payload: list[list[Any]] | None,
+) -> set[tuple[str, int]]:
+    """Decode :data:`STORE_REMOVED_KEYS` into a lookup set.
+
+    Dash stores marshal tuples to lists, so the payload is a list of
+    ``[image_file, object_label]`` pairs. We coerce ``image_file`` to
+    ``str`` and ``object_label`` to ``int`` so the resulting tuples
+    compare equal to the keys produced from the master frame
+    regardless of the source dtype (e.g. ``UInt32`` labels in
+    polars vs. JSON-decoded ``int`` from the store).
+
+    Args:
+        payload: Raw store payload (a list of two-element lists) or
+            ``None`` when the store has not yet been initialised.
+
+    Returns:
+        A set of ``(image_file, object_label)`` tuples. Malformed
+        entries are silently skipped rather than raised; the viewer
+        should never crash on a stale/unparseable store.
+    """
+    if not payload:
+        return set()
+    out: set[tuple[str, int]] = set()
+    for entry in payload:
+        if not isinstance(entry, (list, tuple)) or len(entry) < 2:
+            continue
+        image_file_raw, label_raw = entry[0], entry[1]
+        try:
+            out.add((str(image_file_raw), int(label_raw)))
+        except (TypeError, ValueError):
+            logger.debug("Skipping malformed removed-keys entry: %r", entry)
+            continue
+    return out
+
+
+def _row_status(
+    image_file: Any,
+    object_label: Any,
+    removed_keys_set: set[tuple[str, int]],
+) -> str:
+    """Resolve the Status cell value for a single DataTable row.
+
+    Args:
+        image_file: Value of ``Metadata_ImageFile`` from the row dict.
+            Coerced to ``str`` to match the lookup-set dtype.
+        object_label: Value of ``ObjectLabel`` from the row dict.
+            Coerced to ``int`` to match the lookup-set dtype.
+        removed_keys_set: Lookup set produced by
+            :func:`_decode_removed_keys_payload`.
+
+    Returns:
+        ``"Removed"`` when the row's key is in the lookup set, else
+        ``"Active"``. Rows whose key cannot be coerced -- e.g.
+        ``ObjectLabel`` is ``None`` -- default to ``"Active"`` rather
+        than raising; this is conservative because misclassifying a row
+        as removed would silently strip it from exports.
+    """
+    if image_file is None or object_label is None:
+        return _STATUS_ACTIVE
+    try:
+        key = (str(image_file), int(object_label))
+    except (TypeError, ValueError):
+        return _STATUS_ACTIVE
+    return _STATUS_REMOVED if key in removed_keys_set else _STATUS_ACTIVE
+
+
 def _project_details_columns(
     df: pl.DataFrame, filter_columns: list[str]
 ) -> list[str]:
     """Pick which columns to show in the per-object DataTable.
 
-    The projection is: every ``Metadata_*`` column, plus every column
-    referenced in the active filter spec, deduplicated and intersected
-    with the columns actually present in *df*. This lets the user see
-    why a row passed/failed each clause without dragging in the full
-    measurement payload.
+    The projection is: every ``Metadata_*`` column, plus ``ObjectLabel``
+    (so the per-row Status toggle callback can resolve the curation key),
+    plus every column referenced in the active filter spec, deduplicated
+    and intersected with the columns actually present in *df*. This
+    lets the user see why a row passed/failed each clause without
+    dragging in the full measurement payload.
     """
     available = set(df.columns)
     metadata_cols = [c for c in df.columns if c.startswith(_METADATA_PREFIX)]
-    extra = [c for c in filter_columns if c in available and c not in metadata_cols]
-    return metadata_cols + extra
+    object_label_cols = ["ObjectLabel"] if "ObjectLabel" in available else []
+    seen = set(metadata_cols) | set(object_label_cols)
+    extra = [c for c in filter_columns if c in available and c not in seen]
+    return metadata_cols + object_label_cols + extra
 
 
 # ---------------------------------------------------------------------------
@@ -538,6 +649,17 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         included the interval themselves.
     """
     _ensure_initial_card_trigger(app)
+
+    # Capture the curation backend at registration time. Dash callbacks
+    # don't run inside a Flask request, so reaching for
+    # ``flask.current_app`` later would fail; closing over the instance
+    # here keeps :func:`register_callbacks`'s public signature stable
+    # for Wave 4's planned cascade. ``None`` is allowed only so legacy
+    # tests / harnesses that don't seed the config still register
+    # callbacks (the toggle becomes a no-op in that case).
+    filtered_state: FilteredMeasurements | None = app.server.config.get(
+        "filtered_state"
+    )
 
     # Diff the incoming card-id list against the previously-rendered
     # one and emit a ``dash.Patch`` so existing cards (and their OSD
@@ -674,7 +796,11 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
 
     # 7. Card payload: info chips + per-object DataTable, computed in
     #    one pass so the (slice + filter) work isn't duplicated across
-    #    two callbacks that fire on the same trigger.
+    #    two callbacks that fire on the same trigger. ``STORE_REMOVED_KEYS``
+    #    is an ``Input`` rather than a ``State`` because flipping a row's
+    #    Status must immediately re-render the affected card -- e.g. when
+    #    a colony-grid bulk-remove updates the store, every open card
+    #    table should pick up the new tint.
     @app.callback(
         Output({"type": "card-info-dataset", "index": MATCH}, "children"),
         Output({"type": "card-info-stem", "index": MATCH}, "children"),
@@ -682,10 +808,13 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         Output({"type": "card-details-table", "index": MATCH}, "columns"),
         Output({"type": "card-details-table", "index": MATCH}, "data"),
         Input({"type": "card-state", "index": MATCH}, "data"),
+        Input(STORE_REMOVED_KEYS, "data"),
         State(STORE_FILTER_SPEC, "data"),
     )
     def _update_card_payload(
-        state: dict[str, Any] | None, filter_payload: list[dict] | None
+        state: dict[str, Any] | None,
+        removed_keys_payload: list[list[Any]] | None,
+        filter_payload: list[dict] | None,
     ) -> tuple[str, str, str, list[dict[str, str]], list[dict[str, Any]]]:
         empty_chips = ("--", "--", "-- objects")
         if not state:
@@ -722,8 +851,21 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
                 projected.height,
             )
             projected = projected.head(_MAX_DETAILS_ROWS)
-        columns = [{"name": col, "id": col} for col in project]
-        return dataset, stem, f"{n_objects} objects", columns, projected.to_dicts()
+        # Project columns: Status leftmost, then metadata + filter columns.
+        columns: list[dict[str, str]] = [
+            {"name": _STATUS_COLUMN_ID, "id": _STATUS_COLUMN_ID}
+        ]
+        columns.extend({"name": col, "id": col} for col in project)
+
+        removed_keys_set = _decode_removed_keys_payload(removed_keys_payload)
+        rows = projected.to_dicts()
+        for row in rows:
+            image_file = row.get("Metadata_ImageFile")
+            label = row.get("ObjectLabel")
+            row[_STATUS_COLUMN_ID] = _row_status(
+                image_file, label, removed_keys_set
+            )
+        return dataset, stem, f"{n_objects} objects", columns, rows
 
     # 8. Toggle the details collapse.
     @app.callback(
@@ -736,6 +878,100 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         if not n_clicks:
             return bool(is_open)
         return not bool(is_open)
+
+    # 9. Click-to-toggle on a Status cell. Pattern-matches on every
+    #    card's details DataTable; the matching ``data`` State is read
+    #    in lock-step so we can resolve the clicked cell's
+    #    ``(Metadata_ImageFile, ObjectLabel)`` without re-querying the
+    #    master frame.
+    @app.callback(
+        Output(STORE_REMOVED_KEYS, "data", allow_duplicate=True),
+        Input({"type": "card-details-table", "index": ALL}, "active_cell"),
+        State({"type": "card-details-table", "index": ALL}, "data"),
+        State({"type": "card-details-table", "index": ALL}, "id"),
+        prevent_initial_call=True,
+    )
+    def _toggle_status_cell(
+        active_cells: list[dict[str, Any] | None],
+        data_list: list[list[dict[str, Any]] | None],
+        id_list: list[dict[str, str]],
+    ) -> Any:
+        """Flip the curation state when a Status cell is clicked.
+
+        Args:
+            active_cells: Per-table ``active_cell`` payloads, one entry
+                per matched DataTable (Dash pads with ``None`` for tables
+                with no active cell).
+            data_list: Per-table ``data`` lists. Used to recover the
+                clicked row's ``Metadata_ImageFile`` / ``ObjectLabel``.
+            id_list: Per-table ``id`` dicts. Matched index-aligned with
+                ``active_cells`` so the triggered card can be located.
+
+        Returns:
+            The new :data:`STORE_REMOVED_KEYS` payload from
+            :meth:`FilteredMeasurements.removed_keys_payload` after the
+            toggle, or :func:`dash.no_update` if the click should not
+            mutate state (curation backend missing, non-Status column,
+            no row available, etc.).
+        """
+        if filtered_state is None:
+            return no_update
+        triggered = ctx.triggered_id
+        if not isinstance(triggered, dict):
+            return no_update
+        triggered_index = triggered.get("index")
+        if triggered_index is None:
+            return no_update
+
+        # Locate the table whose id matches the trigger. ``id_list`` is
+        # index-aligned with ``active_cells`` and ``data_list``.
+        table_pos: int | None = None
+        for pos, id_obj in enumerate(id_list):
+            if id_obj.get("index") == triggered_index:
+                table_pos = pos
+                break
+        if table_pos is None:
+            return no_update
+
+        active_cell = active_cells[table_pos]
+        if not active_cell:
+            return no_update
+        if active_cell.get("column_id") != _STATUS_COLUMN_ID:
+            return no_update
+
+        rows = data_list[table_pos] or []
+        row_idx = active_cell.get("row")
+        if not isinstance(row_idx, int) or row_idx < 0 or row_idx >= len(rows):
+            return no_update
+        row = rows[row_idx]
+        image_file_raw = row.get("Metadata_ImageFile")
+        label_raw = row.get("ObjectLabel")
+        if image_file_raw is None or label_raw is None:
+            return no_update
+        try:
+            image_file = str(image_file_raw)
+            object_label = int(label_raw)
+        except (TypeError, ValueError):
+            logger.debug(
+                "Could not coerce Status toggle key (%r, %r)",
+                image_file_raw,
+                label_raw,
+            )
+            return no_update
+
+        try:
+            if filtered_state.is_removed(image_file, object_label):
+                filtered_state.restore(image_file, object_label)
+            else:
+                filtered_state.remove(image_file, object_label)
+        except Exception:
+            logger.exception(
+                "Failed to toggle curation state for %s / %d",
+                image_file,
+                object_label,
+            )
+            return no_update
+        return filtered_state.removed_keys_payload()
 
 
 __all__ = [

@@ -357,6 +357,174 @@ OSD_MOUNT_TRIGGER_ID = "osd-mount-trigger"
 LOCK_VIEWS_EFFECT_ID = "lock-views-effect"
 
 
+# ---------------------------------------------------------------------------
+# Tabs
+# ---------------------------------------------------------------------------
+
+#: Top-level ``dbc.Tabs`` container switching between the plate-level cards
+#: view and the colony-level grid view.
+TABS_ID = "results-viewer-tabs"
+
+#: ``dbc.Tab`` value for the plate (per-image cards) view.
+TAB_PLATE_ID = "tab-plate"
+
+#: ``dbc.Tab`` value for the colony (per-object grid) view.
+TAB_COLONY_ID = "tab-colony"
+
+
+# ---------------------------------------------------------------------------
+# Colony-view static
+# ---------------------------------------------------------------------------
+
+#: Dropdown selecting the measurement column plotted on the colony-grid
+#: x-axis (or used as the primary sort key when laying out the grid).
+COLONY_X_AXIS_DROPDOWN_ID = "colony-x-axis-dropdown"
+
+#: Dropdown selecting the measurement column plotted on the colony-grid
+#: y-axis (or used as the secondary sort key when laying out the grid).
+COLONY_Y_AXIS_DROPDOWN_ID = "colony-y-axis-dropdown"
+
+#: Parent ``<div>`` wrapping every colony-cell tile. The clientside layer
+#: queries this node to wire up checkbox / drag-select behaviour.
+COLONY_GRID_CONTAINER_ID = "colony-grid-container"
+
+#: Toolbar above the colony grid hosting axis dropdowns, refresh, overlay
+#: toggle and the crop-size info chip.
+COLONY_TOOLBAR_ID = "colony-toolbar"
+
+#: Read-only chip showing the per-cell crop size (e.g. ``128x128 px``).
+COLONY_CROP_SIZE_INFO_ID = "colony-crop-size-info"
+
+#: Button forcing a re-render of the colony grid (re-reads stores and
+#: re-builds the tile DOM).
+COLONY_BTN_REFRESH_ID = "colony-btn-refresh"
+
+#: Toggle that turns the per-cell objmap/contour overlay on or off.
+COLONY_OVERLAY_TOGGLE_ID = "colony-overlay-toggle"
+
+
+# ---------------------------------------------------------------------------
+# Bulk action bar
+# ---------------------------------------------------------------------------
+
+#: Container for the bulk-selection action bar. Hidden when the
+#: selection store is empty; revealed once one or more cells are checked.
+COLONY_BULK_BAR_ID = "colony-bulk-bar"
+
+#: Label inside the bulk bar reporting how many colonies are currently
+#: selected (``"N selected"``).
+COLONY_BULK_COUNT_LABEL_ID = "colony-bulk-count-label"
+
+#: Button removing every currently-selected colony from the curated set
+#: (writes their keys into ``STORE_REMOVED_KEYS``).
+COLONY_BULK_REMOVE_BTN_ID = "colony-bulk-remove-btn"
+
+#: Button restoring every currently-selected colony — i.e. dropping their
+#: keys from ``STORE_REMOVED_KEYS``.
+COLONY_BULK_RESTORE_BTN_ID = "colony-bulk-restore-btn"
+
+#: Button clearing the active selection without touching the curated set.
+COLONY_BULK_CLEAR_BTN_ID = "colony-bulk-clear-btn"
+
+
+# ---------------------------------------------------------------------------
+# Curation
+# ---------------------------------------------------------------------------
+
+#: ``dcc.Store`` holding the curated removed-colony keys as a list of
+#: ``"<image_file>::<label>"`` strings. Persisted across reloads so manual
+#: curation survives a page refresh.
+STORE_REMOVED_KEYS = "store-removed-keys"
+
+
+# ---------------------------------------------------------------------------
+# Selection
+# ---------------------------------------------------------------------------
+
+#: ``dcc.Store`` holding the current colony multi-select as a list of
+#: ``"<image_file>::<label>"`` keys. Owned by the clientside layer; the
+#: Python side only reads it to drive the bulk action bar.
+STORE_COLONY_SELECTION = "store-colony-selection"
+
+#: ``dcc.Store`` written by the clientside layer carrying the most recent
+#: selection delta (``{"added": [...], "removed": [...]}``). Trigger-only
+#: store used to keep large full-selection diffs out of the callback graph.
+STORE_COLONY_SELECTION_DELTA = "store-colony-selection-delta"
+
+#: ``dcc.Store`` holding the current visual order of the colony grid as a
+#: list of ``"<image_file>::<label>"`` keys, so range-selection (shift-click)
+#: in JS can resolve "everything between A and B" without re-querying Dash.
+STORE_COLONY_GRID_ORDER = "store-colony-grid-order"
+
+
+# ---------------------------------------------------------------------------
+# Pattern-matching id-builders — colony cells
+# ---------------------------------------------------------------------------
+
+
+def colony_cell_id(image_file: str, label: int) -> Dict[str, str | int]:
+    """Build the pattern-matching id for a colony-grid cell container.
+
+    Args:
+        image_file: ``Metadata_ImageFile`` for the cell's representative colony.
+        label: ``ObjectLabel`` for the cell's representative colony.
+
+    Returns:
+        Dict of shape ``{"type": "colony-cell", "image_file": image_file, "label": label}``.
+    """
+    return {"type": "colony-cell", "image_file": image_file, "label": label}
+
+
+def colony_cell_remove_btn_id(image_file: str, label: int) -> Dict[str, str | int]:
+    """Build the pattern-matching id for a colony-cell single-action remove button.
+
+    Args:
+        image_file: ``Metadata_ImageFile`` for the cell's representative colony.
+        label: ``ObjectLabel`` for the cell's representative colony.
+
+    Returns:
+        Dict of shape
+        ``{"type": "colony-cell-remove-btn", "image_file": image_file, "label": label}``.
+    """
+    return {"type": "colony-cell-remove-btn", "image_file": image_file, "label": label}
+
+
+def colony_cell_count_badge_id(image_file: str, label: int) -> Dict[str, str | int]:
+    """Build the pattern-matching id for a colony-cell N=k badge.
+
+    The badge reports how many colonies are aggregated behind a given tile
+    (relevant when the grid bins by axis values rather than rendering one
+    tile per object).
+
+    Args:
+        image_file: ``Metadata_ImageFile`` for the cell's representative colony.
+        label: ``ObjectLabel`` for the cell's representative colony.
+
+    Returns:
+        Dict of shape
+        ``{"type": "colony-cell-count-badge", "image_file": image_file, "label": label}``.
+    """
+    return {"type": "colony-cell-count-badge", "image_file": image_file, "label": label}
+
+
+def colony_cell_expand_btn_id(image_file: str, label: int) -> Dict[str, str | int]:
+    """Build the pattern-matching id for a colony-cell expand-on-click trigger.
+
+    Clicking the trigger opens a detailed view of the cell's underlying
+    colonies (e.g. when the tile aggregates multiple objects into a single
+    representative thumbnail).
+
+    Args:
+        image_file: ``Metadata_ImageFile`` for the cell's representative colony.
+        label: ``ObjectLabel`` for the cell's representative colony.
+
+    Returns:
+        Dict of shape
+        ``{"type": "colony-cell-expand-btn", "image_file": image_file, "label": label}``.
+    """
+    return {"type": "colony-cell-expand-btn", "image_file": image_file, "label": label}
+
+
 __all__ = [
     "STORE_FILTER_SPEC",
     "STORE_IMAGE_PAIRS",
@@ -392,4 +560,27 @@ __all__ = [
     "INITIAL_CARD_TRIGGER_ID",
     "OSD_MOUNT_TRIGGER_ID",
     "LOCK_VIEWS_EFFECT_ID",
+    "TABS_ID",
+    "TAB_PLATE_ID",
+    "TAB_COLONY_ID",
+    "COLONY_X_AXIS_DROPDOWN_ID",
+    "COLONY_Y_AXIS_DROPDOWN_ID",
+    "COLONY_GRID_CONTAINER_ID",
+    "COLONY_TOOLBAR_ID",
+    "COLONY_CROP_SIZE_INFO_ID",
+    "COLONY_BTN_REFRESH_ID",
+    "COLONY_OVERLAY_TOGGLE_ID",
+    "COLONY_BULK_BAR_ID",
+    "COLONY_BULK_COUNT_LABEL_ID",
+    "COLONY_BULK_REMOVE_BTN_ID",
+    "COLONY_BULK_RESTORE_BTN_ID",
+    "COLONY_BULK_CLEAR_BTN_ID",
+    "STORE_REMOVED_KEYS",
+    "STORE_COLONY_SELECTION",
+    "STORE_COLONY_SELECTION_DELTA",
+    "STORE_COLONY_GRID_ORDER",
+    "colony_cell_id",
+    "colony_cell_remove_btn_id",
+    "colony_cell_count_badge_id",
+    "colony_cell_expand_btn_id",
 ]

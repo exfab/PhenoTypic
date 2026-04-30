@@ -59,7 +59,11 @@ from phenotypic.gui.results_viewer import (
     _layout,
     _viewer_card,
 )
+from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.results_viewer.colony_view import (
+    _callbacks as _colony_callbacks,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +73,11 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
 
     Dispatches to each layout module's ``register_callbacks`` in a
     deterministic order, then attaches the two clientside callbacks
-    that bridge Dash state to the OpenSeadragon JS layer.
+    that bridge Dash state to the OpenSeadragon JS layer. The colony
+    view's curation callbacks receive the shared
+    :class:`FilteredMeasurements` instance pulled off
+    ``app.server.config["filtered_state"]`` (seeded by
+    :func:`._app.create_app`).
 
     Args:
         app: The Dash application owning the viewer's layout.
@@ -77,9 +85,11 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
             by closure to every per-module callback that needs to slice
             ``master_df`` or resolve overlay paths.
     """
+    filtered_state: FilteredMeasurements = app.server.config["filtered_state"]
     _layout.register_callbacks(app, output_root)
     _filter_panel.register_callbacks(app, output_root)
     _viewer_card.register_callbacks(app, output_root)
+    _colony_callbacks.register_callbacks(app, output_root, filtered_state)
     _register_clientside_callbacks(app)
 
 

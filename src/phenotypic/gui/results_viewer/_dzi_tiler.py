@@ -33,7 +33,10 @@ try:
     import pyvips  # type: ignore[import-untyped,import-not-found]
 
     _BACKEND = "pyvips"
-except ImportError:  # pragma: no cover - environment-dependent
+except (ImportError, OSError):  # pragma: no cover - environment-dependent
+    # ImportError: pyvips Python package not installed.
+    # OSError: pyvips installed but the libvips C library is missing
+    # (cffi raises OSError from dlopen). Either way fall back to Pillow.
     pyvips = None  # type: ignore[assignment]
     _BACKEND = "pillow"
 

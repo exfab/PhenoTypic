@@ -5,30 +5,38 @@ The shell composes (left → right):
 * a header bar with the app title, a one-line ``pipeline.json`` chip, a
   ``Lock views`` switch, and a monospace subtitle showing the absolute
   output-root path;
-* a two-column body: the filter sidebar (left) and a scrollable cards
-  column (right) with an ``+ Add card`` button below;
+* a two-column body: the filter sidebar (left) and a tabbed right
+  column with two tabs — a scrollable cards ``Plate`` view (with an
+  ``+ Add card`` button) and a per-colony ``Colony`` grid view; both
+  tab bodies stay mounted so switching is a CSS-only operation;
 * every shared ``dcc.Store`` instance the rest of the viewer reads
-  (filter spec, image pairs, card list, lock-views).
+  (filter spec, image pairs, card list, lock-views, plus the colony-
+  view curation, selection-delta, and grid-order stores).
 
 Layout-level callbacks are minimal — only the ``Lock views`` switch
 mirror — because the heavy callbacks live in the modules that own each
 sub-tree (``_filter_panel`` for the sidebar, ``_viewer_card`` for the
-cards). This keeps each module self-contained and the top-level
-``_callbacks.register_callbacks`` ends up as a thin orchestrator.
+cards, ``colony_view._callbacks`` for the colony grid). This keeps each
+module self-contained and the top-level ``_callbacks.register_callbacks``
+ends up as a thin orchestrator.
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import dash
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import Input, Output, dcc, html
 from dash.development.base_component import Component
 
-from phenotypic.gui.results_viewer import _filter_panel, _ids as ids
+from phenotypic.gui.results_viewer import _filter_panel, _ids as ids, colony_view
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.results_viewer.colony_view import _layout as _colony_layout  # noqa: F401
+
+if TYPE_CHECKING:
+    from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
 
 logger = logging.getLogger(__name__)
 
@@ -203,15 +211,29 @@ def _build_startup_banner(output_root: OutputRoot) -> Component:
     )
 
 
-def _build_stores() -> Component:
+def _build_stores(filtered_state: "FilteredMeasurements") -> Component:
     """Mount every shared ``dcc.Store`` the viewer reads.
 
     In addition to the four session-storage stores backing the filter spec,
     image pair list, card list, and lock-views toggle, this also mounts two
     hidden trigger stores (:data:`ids.OSD_MOUNT_TRIGGER_ID` and
     :data:`ids.LOCK_VIEWS_EFFECT_ID`) used by the clientside callbacks
-    to bridge Dash state changes into the OpenSeadragon JS lifecycle.
+    to bridge Dash state changes into the OpenSeadragon JS lifecycle, plus
+    four memory-storage stores backing the colony-view curation and
+    multi-select state (removed keys, current selection, selection delta,
+    and visual grid order).
+
+    Args:
+        filtered_state: The on-disk curation state loaded by
+            :func:`phenotypic.gui.results_viewer._app.create_app`. Used to
+            seed :data:`ids.STORE_REMOVED_KEYS` so the UI reflects existing
+            curation at boot.
+
+    Returns:
+        A :class:`dash.html.Div` wrapping every ``dcc.Store``.
     """
+    initial_removed_keys = filtered_state.removed_keys_payload()
+
     return html.Div(
         [
             dcc.Store(
@@ -239,6 +261,31 @@ def _build_stores() -> Component:
             # Python side never reads it.
             dcc.Store(id=ids.OSD_MOUNT_TRIGGER_ID, data=0),
             dcc.Store(id=ids.LOCK_VIEWS_EFFECT_ID, data=0),
+            # Colony-view curation + selection stores. Memory-storage so
+            # the curation/selection state survives tab switches but not
+            # full page reloads (the on-disk parquet mirror is the
+            # source of truth across sessions; the store is rehydrated
+            # from it at every boot via ``filtered_state``).
+            dcc.Store(
+                id=ids.STORE_REMOVED_KEYS,
+                data=initial_removed_keys,
+                storage_type="memory",
+            ),
+            dcc.Store(
+                id=ids.STORE_COLONY_SELECTION,
+                data={"anchor": None, "selected": []},
+                storage_type="memory",
+            ),
+            dcc.Store(
+                id=ids.STORE_COLONY_SELECTION_DELTA,
+                data=None,
+                storage_type="memory",
+            ),
+            dcc.Store(
+                id=ids.STORE_COLONY_GRID_ORDER,
+                data=[],
+                storage_type="memory",
+            ),
         ]
     )
 
@@ -248,16 +295,26 @@ def _build_stores() -> Component:
 # ---------------------------------------------------------------------------
 
 
-def build_app_layout(output_root: OutputRoot) -> Component:
+def build_app_layout(
+    output_root: OutputRoot,
+    filtered_state: "FilteredMeasurements",
+) -> Component:
     """Compose the top-level Dash component tree for the results viewer.
 
     Mounts every shared ``dcc.Store``, the header bar, the dismissable
-    startup banner, and the two-column body. Sub-trees defer to their
-    owning modules (``_filter_panel`` for the sidebar; ``_viewer_card``
-    for cards).
+    startup banner, and the two-column body. The right-hand column is
+    a :class:`dbc.Tabs` switching between the existing per-image
+    ``Plate`` view (cards) and the per-colony ``Colony`` grid view; both
+    tab bodies stay mounted at all times so switching is a CSS-only
+    operation (no callback re-render of either subtree). Sub-trees defer
+    to their owning modules (``_filter_panel`` for the sidebar;
+    ``_viewer_card`` for cards; ``colony_view._layout`` for the grid).
 
     Args:
         output_root: Validated handle on the CLI output directory.
+        filtered_state: On-disk curation state, used to seed
+            :data:`ids.STORE_REMOVED_KEYS` at boot so the colony view
+            reflects existing manual curation.
 
     Returns:
         A :class:`dash.html.Div` ready to assign to ``app.layout``.
@@ -266,7 +323,25 @@ def build_app_layout(output_root: OutputRoot) -> Component:
     banner = _build_startup_banner(output_root)
     sidebar = _filter_panel.layout(output_root)
     cards_column = _build_cards_column()
-    stores = _build_stores()
+    colony_tab_body = colony_view._layout.layout(output_root)
+    stores = _build_stores(filtered_state)
+
+    tabs = dbc.Tabs(
+        [
+            dbc.Tab(
+                cards_column,
+                label="Plate",
+                tab_id=ids.TAB_PLATE_ID,
+            ),
+            dbc.Tab(
+                colony_tab_body,
+                label="Colony",
+                tab_id=ids.TAB_COLONY_ID,
+            ),
+        ],
+        id=ids.TABS_ID,
+        active_tab=ids.TAB_PLATE_ID,
+    )
 
     body = dbc.Row(
         [
@@ -278,7 +353,7 @@ def build_app_layout(output_root: OutputRoot) -> Component:
                 style={"background": _BG},
             ),
             dbc.Col(
-                cards_column,
+                tabs,
                 width=12,
                 lg=9,
                 className="px-0",

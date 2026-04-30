@@ -666,17 +666,20 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         Output(ids.STORE_IMAGE_PAIRS, "data"),
         Output(ids.FILTER_MATCH_COUNT_ID, "children"),
         Input(ids.STORE_FILTER_SPEC, "data"),
+        Input(ids.STORE_REMOVED_KEYS, "data"),
         State(ids.STORE_IMAGE_PAIRS, "data"),
     )
     def _derive_image_pairs(
-        stored: Any, current_pairs: Any
+        stored: Any, removed_keys: Any, current_pairs: Any
     ) -> tuple[Any, Any]:
         """Re-derive the filtered (dataset, stem) pairs and update the chip.
 
-        Returns ``no_update`` for both outputs when the filter result is
-        unchanged from the existing store payload — otherwise every
+        Returns ``no_update`` for the pairs output when the filter result
+        is unchanged from the existing store payload — otherwise every
         viewer card's picker options refresh and the OSD clientside
-        callback re-runs even when nothing actually moved.
+        callback re-runs even when nothing actually moved. The chip text
+        always re-emits because the removed-count suffix can change even
+        when the surviving image pairs do not.
         """
         spec = FilterSpec.from_store(_normalise_spec(stored))
         try:
@@ -686,9 +689,30 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
             filtered = df
         pairs = output_root.image_pairs(filtered)
         payload = [{"dataset": dataset, "stem": stem} for dataset, stem in pairs]
+
+        removed_set: set[tuple[str, int]] = set()
+        if isinstance(removed_keys, list):
+            for entry in removed_keys:
+                if isinstance(entry, (list, tuple)) and len(entry) == 2:
+                    try:
+                        removed_set.add((str(entry[0]), int(entry[1])))
+                    except (TypeError, ValueError):
+                        continue
+        removed_in_filtered = 0
+        if removed_set and not filtered.is_empty():
+            image_files = filtered.get_column("Metadata_ImageFile").to_list()
+            object_labels = filtered.get_column("ObjectLabel").to_list()
+            for image_file, object_label in zip(image_files, object_labels, strict=True):
+                if (str(image_file), int(object_label)) in removed_set:
+                    removed_in_filtered += 1
+
+        chip_text = f"{len(pairs)} images match"
+        if removed_in_filtered > 0:
+            chip_text += f" (− {removed_in_filtered} removed)"
+
         if isinstance(current_pairs, list) and current_pairs == payload:
-            return no_update, no_update
-        return payload, f"{len(pairs)} images match"
+            return no_update, chip_text
+        return payload, chip_text
 
 
 __all__ = ["layout", "register_callbacks"]
