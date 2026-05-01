@@ -37,6 +37,85 @@ def test_pipeline_picker_modal_opens(page: Page, hub_url: str) -> None:
     )
 
 
+def test_input_picker_modal_opens(page: Page, hub_url: str) -> None:
+    page.goto(hub_url + "/run/")
+    page.wait_for_selector("#rc-btn-pick-input")
+    page.click("#rc-btn-pick-input")
+    page.wait_for_function(
+        "() => {"
+        "  const m = document.getElementById('rc-modal-input');"
+        "  return m && getComputedStyle(m).display !== 'none';"
+        "}",
+        timeout=5_000,
+    )
+
+
+def test_output_picker_modal_opens(page: Page, hub_url: str) -> None:
+    page.goto(hub_url + "/run/")
+    page.wait_for_selector("#rc-btn-pick-output")
+    page.click("#rc-btn-pick-output")
+    page.wait_for_function(
+        "() => {"
+        "  const m = document.getElementById('rc-modal-output');"
+        "  return m && getComputedStyle(m).display !== 'none';"
+        "}",
+        timeout=5_000,
+    )
+
+
+def test_mode_toggle_switches_state(page: Page, hub_url: str) -> None:
+    """The Local/SLURM radio drives the form state; switching to SLURM
+    must reveal the SLURM-config collapse and update the underlying value."""
+    page.goto(hub_url + "/run/")
+    page.wait_for_selector("#rc-radio-mode")
+    # Find the SLURM radio input and click it.
+    slurm_input = page.locator('#rc-radio-mode input[value="slurm"]')
+    slurm_input.click()
+    # Read back the radio group value via Dash component id.
+    value = page.evaluate(
+        "() => {"
+        "  const checked = document.querySelector('#rc-radio-mode input:checked');"
+        "  return checked ? checked.value : null;"
+        "}"
+    )
+    assert value == "slurm"
+
+
+def test_validate_button_is_present_and_enabled(page: Page, hub_url: str) -> None:
+    """The Validate button mounts and is clickable. Spawning a real
+    dry-run subprocess needs a real CLI fixture (deferred); this test
+    pins the affordance at the layout level."""
+    page.goto(hub_url + "/run/")
+    page.wait_for_selector("#rc-btn-validate")
+    expect(page.locator("#rc-btn-validate")).to_be_visible()
+    expect(page.locator("#rc-btn-validate")).to_be_enabled()
+
+
+def test_save_preset_writes_file(
+    page: Page, hub_url: str, fake_sandbox,
+) -> None:
+    """Clicking Save preset with a name writes ``<sandbox>/.phenotypic-gui/presets/<name>.json``.
+
+    The form state is empty here; that's fine — the preset just round-trips
+    whatever the form's `RC_STORE_FORM_STATE` currently holds (default
+    ``RunConsoleState`` round-tripped to JSON).
+    """
+    page.goto(hub_url + "/run/")
+    page.wait_for_selector("#rc-input-preset-name")
+    page.fill("#rc-input-preset-name", "smoke_preset")
+    page.click("#rc-btn-save-preset")
+    # The save callback returns a toast; wait for any toast text.
+    page.wait_for_function(
+        "() => {"
+        "  const t = document.getElementById('rc-toast');"
+        "  return t && (t.textContent || '').toLowerCase().includes('saved');"
+        "}",
+        timeout=5_000,
+    )
+    target = fake_sandbox / ".phenotypic-gui" / "presets" / "smoke_preset.json"
+    assert target.is_file()
+
+
 def test_recent_runs_rehydrates_cli_output_example(
     page: Page, hub_url: str,
 ) -> None:

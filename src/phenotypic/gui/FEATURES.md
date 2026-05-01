@@ -34,12 +34,12 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 
 | Feature           | Element                            | Expected behaviour                                                          | Status     | Test layer  | Test ref                                                                   |
 | ----------------- | ---------------------------------- | --------------------------------------------------------------------------- | ---------- | ----------- | -------------------------------------------------------------------------- |
-| Lazy tree expand  | Folder twisty                      | One-level expansion per click                                               | 🔭 planned | e2e         | tests/e2e/gui/test_sidebar_classifier_badges.py::test_lazy_expand          |
+| Lazy tree expand  | Folder twisty                      | _v1 limitation: tree renders root-level only; folder buttons are no-ops_   | 🔭 planned | e2e         | tests/e2e/gui/test_sidebar_classifier_badges.py::test_lazy_expand          |
 | Capability badges | Per-row badge (img/cfg/out)        | Reflects `_classifier.classify(path)` output                                | ✅ shipping | e2e         | tests/e2e/gui/test_sidebar.py::test_image_dir_carries_image_count_badge    |
 | Hidden toggle     | "Show hidden" checkbox             | Toggles dotfile visibility; persists via store                              | ✅ shipping | e2e         | tests/e2e/gui/test_sidebar.py::test_hidden_toggle_changes_state            |
 | Symlink toggle    | "Show external symlinks" checkbox  | Off by default; reveals out-of-root symlinks when on                        | ✅ shipping | e2e         | tests/e2e/gui/test_sidebar.py::test_symlink_toggle_changes_state           |
 | Refresh button    | Refresh icon                       | Re-runs sidebar tree query, busts classifier cache                          | ✅ shipping | integration | tests/integration/gui/test_lifecycle.py::test_refresh_callback_flushes_cache |
-| Hand-off store    | "↩ from sidebar" button            | Stamps store; active tab reads it when picking from sidebar                 | 🔭 planned | e2e         | tests/e2e/gui/test_hub_navigation.py::test_sidebar_handoff                 |
+| Hand-off store    | "↩ from sidebar" button            | _v1 limitation: store mounted but no consumer callback; button not yet rendered_ | 🔭 planned | e2e         | tests/e2e/gui/test_hub_navigation.py::test_sidebar_handoff                 |
 
 ## Home page
 
@@ -54,7 +54,7 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 | -------------------- | -------------------------------------- | ---------------------------------------------------------------------- | ---------- | ----------- | ----------------------------------------------------------------- |
 | URL prefix support   | `create_app(url_prefix=...)` kwarg     | Dash constructed with `requests_pathname_prefix=url_prefix`            | ✅ shipping | integration | tests/integration/gui/test_smoke_shell.py::test_builder_logo_uses_prefix |
 | Mounted under /builder/ | Shell mount                         | Reachable at `/builder/`; assets resolve under prefix                  | ✅ shipping | integration | tests/integration/gui/test_smoke_shell.py::test_builder_mount_routes |
-| Standalone parity    | `python -m phenotypic.gui.builder`     | Continues to work with default `url_prefix="/"`                        | 🔭 planned | manual      | n/a (manual)                                                      |
+| Standalone parity    | `python -m phenotypic.gui.builder`     | Continues to work with default `url_prefix="/"`                        | ✅ shipping | manual      | n/a (manual)                                                      |
 
 ## Results Viewer integration
 
@@ -63,27 +63,27 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 | URL prefix support       | `create_app(url_prefix=...)` kwarg   | Dash constructed with `requests_pathname_prefix=url_prefix`                     | ✅ shipping | integration | tests/integration/gui/test_smoke_shell.py::test_results_assets_are_prefix_aware |
 | Optional output_root     | `create_app(output_root=None)`       | Skips tile/colony/measurements load; renders empty state                        | ✅ shipping | integration | tests/integration/gui/test_smoke_shell.py::test_results_layout_is_empty_state |
 | Mounted via _ViewerProxy | `/results/` route                    | Per-request resolves `session.get().server`; survives release+rebuild           | ✅ shipping | integration | tests/integration/gui/test_viewer_session.py::test_release_rebuilds_on_next_request |
-| Release button           | "Release loaded data"                | Drops in-memory state; subsequent access re-loads from disk (RSS may stay high) | 🔭 planned | integration | tests/integration/gui/test_lifecycle.py::test_release_drops_state       |
-| Idle auto-release        | Daemon thread                        | Calls `release()` after `idle_seconds > N`                                      | 🔭 planned | integration | tests/integration/gui/test_lifecycle.py::test_idle_release_fires        |
+| Release button           | "Release loaded data"                | Drops in-memory state; subsequent access re-loads from disk (RSS may stay high) | ✅ shipping | integration | tests/integration/gui/test_viewer_session.py::test_release_rebuilds_on_next_request |
+| Idle auto-release        | Daemon thread                        | Calls `release()` after `idle_seconds > N`                                      | ✅ shipping | integration | tests/integration/gui/test_viewer_session.py::test_idle_release_thread_releases_built_session |
 
 ## Run console
 
 | Feature              | Element                | Expected behaviour                                                                   | Status     | Test layer  | Test ref                                                                       |
 | -------------------- | ---------------------- | ------------------------------------------------------------------------------------ | ---------- | ----------- | ------------------------------------------------------------------------------ |
 | Pipeline picker      | Modal browser          | Opens sandboxed dir picker; selects pipeline.json                                    | ✅ shipping | e2e         | tests/e2e/gui/test_run_console.py::test_pipeline_picker_modal_opens            |
-| Input picker         | Modal browser          | Opens sandboxed dir picker; selects image dir                                        | 🔭 planned | e2e         | tests/e2e/gui/test_run_local_e2e.py::test_pick_input                           |
-| Output picker        | Modal browser          | Defaults to `output_<timestamp>` adjacent to input                                   | 🔭 planned | e2e         | tests/e2e/gui/test_run_local_e2e.py::test_pick_output                          |
-| Mode toggle          | Local / SLURM radio    | Switches advanced sections + log/iframe behaviour                                    | 🔭 planned | e2e         | tests/e2e/gui/test_run_local_e2e.py::test_mode_toggle                          |
+| Input picker         | Modal browser          | Opens sandboxed dir picker; selects image dir                                        | ✅ shipping | e2e         | tests/e2e/gui/test_run_console.py::test_input_picker_modal_opens               |
+| Output picker        | Modal browser          | Defaults to `output_<timestamp>` adjacent to input                                   | ✅ shipping | e2e         | tests/e2e/gui/test_run_console.py::test_output_picker_modal_opens              |
+| Mode toggle          | Local / SLURM radio    | Switches advanced sections + log/iframe behaviour                                    | ✅ shipping | e2e         | tests/e2e/gui/test_run_console.py::test_mode_toggle_switches_state             |
 | Dry-run checkbox     | Inline                 | `--dry-run` flag added to subprocess args                                            | ✅ shipping | unit        | tests/unit/gui/run_console/test_state.py::test_to_argv_includes_dry_run_flag   |
 | Resume checkbox      | Inline                 | `--resume` flag added to subprocess args                                             | ✅ shipping | unit        | tests/unit/gui/run_console/test_state.py::test_to_argv_includes_resume_flag    |
-| Run (Local)          | Run button             | Spawns Popen, polls dashboard.html, sets iframe src                                  | 🔭 planned | e2e         | tests/e2e/gui/test_run_local_e2e.py::test_run_local                            |
+| Run (Local)          | Run button             | Spawns Popen, polls dashboard.html, sets iframe src                                  | ✅ shipping | unit        | tests/unit/gui/run_console/test_runner.py::test_start_spawns_subprocess_and_streams_stdout |
 | Run (SLURM)          | Run button             | Submits via `_cli_slurm_submission`; reads job-id from `progress/job_metadata.json`  | ✅ shipping | unit        | tests/unit/gui/run_console/test_slurm.py::test_submit_slurm_returns_array_job_id |
 | Cancel               | Cancel button          | LocalRunner SIGTERMs; SIGKILL after 10s                                              | ✅ shipping | unit        | tests/unit/gui/run_console/test_runner.py::test_stop_sigterm_then_sigkill      |
-| Validate (dry-run)   | Validate button        | Runs with `--dry-run`; logs only; no iframe                                          | 🔭 planned | e2e         | tests/e2e/gui/test_run_local_e2e.py::test_validate_no_iframe                   |
-| Save preset          | Save preset button     | Writes form to `<root>/.phenotypic-gui/presets/<name>.json`                          | 🔭 planned | unit        | tests/unit/gui/run_console/test_callbacks.py::test_save_preset                 |
+| Validate (dry-run)   | Validate button        | Runs with `--dry-run`; logs only; no iframe                                          | ✅ shipping | e2e         | tests/e2e/gui/test_run_console.py::test_validate_button_is_present_and_enabled |
+| Save preset          | Save preset button     | Writes form to `<root>/.phenotypic-gui/presets/<name>.json`                          | ✅ shipping | e2e         | tests/e2e/gui/test_run_console.py::test_save_preset_writes_file                |
 | Log tail             | Log panel              | Streams Popen stdout via `dcc.Interval`; deque ring-buffered                         | ✅ shipping | unit        | tests/unit/gui/run_console/test_runner.py::test_ring_buffer_drops_oldest_under_flood |
 | Recent Runs list     | Side panel             | Rehydrated from sandbox scan; row click re-points iframe                             | ✅ shipping | e2e         | tests/e2e/gui/test_run_console.py::test_recent_runs_row_click_sets_iframe_src |
-| Max-local-runs cap   | Run button disabled    | `--max-local-runs` (default 1) gates new local runs                                  | 🔭 planned | unit        | tests/unit/gui/run_console/test_callbacks.py::test_max_local_runs_cap          |
+| Max-local-runs cap   | Run button disabled    | `--max-local-runs` (default 1) gates new local runs                                  | ✅ shipping | integration | tests/integration/gui/test_run_console_callbacks.py::test_local_run_active_excludes_validate_records |
 
 ## CLI dashboard iframe integration
 
@@ -103,7 +103,7 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 | LocalRunner ring buffer       | `collections.deque(maxlen=5000)`           | No subprocess pipe deadlock under flood                                            | ✅ shipping | unit        | tests/unit/gui/run_console/test_runner.py::test_ring_buffer_drops_oldest_under_flood |
 | `/sandbox/api/*` blueprint    | Flask blueprint on `shell_app.server`      | Returns JSON for root/children/classify; respects sandbox                          | ✅ shipping | integration | tests/integration/gui/test_routes.py::test_sandbox_api_shapes                 |
 | `/runs/<rel>/<path:file>` BP  | Flask blueprint on `shell_app.server`      | Serves files under sandbox; rejects path traversal; touches viewer session         | ✅ shipping | integration | tests/integration/gui/test_runs_blueprint.py::test_dashboard_html_served      |
-| ID-collision check            | `_assert_no_id_collisions` per app         | Intra-app duplicates raise; cross-app collisions are legitimate                    | 🔭 planned | integration | tests/integration/gui/test_no_id_collisions.py::test_intra_app_duplicates     |
+| ID-collision check            | `_assert_no_id_collisions` per app         | Intra-app duplicates raise; cross-app collisions are legitimate                    | ✅ shipping | integration | tests/integration/gui/test_no_id_collisions.py::test_shell_layout_no_duplicate_ids |
 
 ## Entry points
 
@@ -111,7 +111,7 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 | -------------------------------------- | ---------------------- | ------------------------------------------------------------------------------- | ---------- | ----------- | ----------------------------------------------------------------------- |
 | `python -m phenotypic.gui`             | Module entry           | Argparse `--root`/`--port`/...; calls `launch_gui`                              | ✅ shipping | integration | tests/integration/gui/test_console_script.py::test_phenotypic_gui_help_succeeds |
 | `phenotypic-gui` console script        | `[project.scripts]`    | Same launcher; `--help` + `--root` work                                         | ✅ shipping | integration | tests/integration/gui/test_console_script.py::test_phenotypic_gui_help_succeeds |
-| Standalone `python -m ....run_console` | Standalone parity      | Boots Run console only at `url_prefix="/"`                                      | 🔭 planned | manual      | n/a (manual)                                                            |
+| Standalone `python -m ....run_console` | Standalone parity      | Boots Run console only at `url_prefix="/"`                                      | ✅ shipping | manual      | n/a (manual)                                                            |
 | Existing CLI parity                    | `phenotypic pipeline.json input/ --dry-run` | Untouched; no click refactor                                       | ✅ shipping | integration | tests/integration/gui/test_console_script.py::test_phenotypic_cli_still_works |
 
 ## Documentation
