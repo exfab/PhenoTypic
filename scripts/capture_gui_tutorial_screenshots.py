@@ -305,6 +305,19 @@ def _capture_file_explorer(context, base_url: str) -> None:
         sidebar.screenshot(path=str(target_dir / "03_capability_badges.png"))
         print("[shot]   file_explorer/03_capability_badges.png")
 
+    # Collapsed-sidebar shot — click the chrome's collapse button so the
+    # whole file explorer slides off, then capture the page so readers
+    # see the wide-canvas mode the toggle unlocks.
+    collapse_btn = page.locator("#shell-sidebar-collapse-button")
+    if collapse_btn.count() > 0:
+        collapse_btn.click()
+        page.wait_for_timeout(400)  # CSS transition is 200ms
+        _save(page, "file_explorer", "04_sidebar_hidden.png")
+        # Restore the expanded state so the next workflow's screenshots
+        # still show the sidebar (localStorage persists otherwise).
+        collapse_btn.click()
+        page.wait_for_timeout(400)
+
     page.close()
 
 

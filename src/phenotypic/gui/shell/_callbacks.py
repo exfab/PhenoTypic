@@ -34,6 +34,8 @@ from phenotypic.gui.shell._ids import (
     SHELL_HELP_MODAL,
     SHELL_RSS_INTERVAL,
     SHELL_RSS_LABEL,
+    SHELL_SIDEBAR_COLLAPSE_BUTTON,
+    SHELL_SIDEBAR_COLLAPSE_STORE,
     SHELL_SIDEBAR_EXPANDED_STORE,
     SHELL_SIDEBAR_HIDDEN_TOGGLE,
     SHELL_SIDEBAR_REFRESH,
@@ -252,3 +254,37 @@ def register_chrome_callbacks(
             include_external=bool(symlink_value),
             expanded=set(expanded or []),
         )
+
+    # ----------------------------------------------------------------------
+    # Sidebar collapse — clientside callbacks. Two callbacks form a clean
+    # DAG: (1) button click flips the store; (2) store change toggles the
+    # ``shell-sidebar-collapsed`` class on ``.shell-root`` and swaps the
+    # button glyph. The store uses ``storage_type="local"`` so the state
+    # persists across the four DispatcherMiddleware mounts.
+    # ----------------------------------------------------------------------
+
+    app.clientside_callback(
+        """
+        function(n, current) {
+            if (!n) { return current; }
+            return !current;
+        }
+        """,
+        Output(SHELL_SIDEBAR_COLLAPSE_STORE, "data"),
+        Input(SHELL_SIDEBAR_COLLAPSE_BUTTON, "n_clicks"),
+        State(SHELL_SIDEBAR_COLLAPSE_STORE, "data"),
+    )
+
+    app.clientside_callback(
+        """
+        function(collapsed) {
+            const root = document.querySelector('.shell-root');
+            if (root) {
+                root.classList.toggle('shell-sidebar-collapsed', !!collapsed);
+            }
+            return collapsed ? '»' : '«';
+        }
+        """,
+        Output(SHELL_SIDEBAR_COLLAPSE_BUTTON, "children"),
+        Input(SHELL_SIDEBAR_COLLAPSE_STORE, "data"),
+    )

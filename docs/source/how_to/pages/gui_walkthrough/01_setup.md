@@ -90,8 +90,10 @@ Open the URL in your browser:
 
 The landing page shows:
 
-- **Top bar** — `Home`, `Builder`, `Viewer`, `Run` tabs plus an RSS readout
-  on the right.
+- **Top bar** — a `«` chevron that hides the file explorer (covered on
+  the [next page](02_file_explorer.md)), the `PhenoTypic GUI` title, the
+  sandbox-root chip, the `Home` / `Builder` / `Viewer` / `Run` tabs, and
+  on the right an RSS readout plus a `?` help button.
 - **Sidebar** — the sandbox tree. Each entry carries capability badges
   computed by the classifier (`img`, `cfg`, `out`); see the next page for
   details.

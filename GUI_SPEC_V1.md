@@ -296,7 +296,7 @@ rejects path traversal with a 404.
 ### Top bar
 
 ```
-[ phenotypic GUI ] [ root: /scratch/alex ]   …   [ Home ] [ Builder ] [ Viewer ] [ Run ]   …   [ ⓘ ]
+[ « ] [ PhenoTypic GUI ] [ root: /scratch/alex ]   …   [ Home ] [ Builder ] [ Viewer ] [ Run ]   …   [ ⓘ ]
 ```
 
 - **Title + root display** (left). Root path is read-only; clicking copies to clipboard.

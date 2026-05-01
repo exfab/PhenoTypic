@@ -20,7 +20,8 @@ The builder has four regions:
 | **Palette** (left) | Operations grouped by role: `Corrector`, `Detector`, `Enhancer`, `Refiner`, `Measure`, and `Post`. Each group's count is visible in the section header. |
 | **Canvas** (center) | The pipeline graph. Empty by default; drag operations into it. |
 | **Inspector** (lower) | Parameters of the currently-selected node. Empty when nothing is selected. |
-| **Pipeline I/O** (top right) | `Save` writes the current graph to a pipeline JSON; `Load` reads one. The structure card has `+ Pipeline` (start a new pipeline graph) and `Delete selected` (remove the current node). |
+| **Pipeline I/O** (top right) | `Save` writes the current graph to a pipeline JSON; `Load` reads one. |
+| **Structure** (top right, below Pipeline I/O) | `+ Pipeline` starts a new pipeline graph; `Delete selected` removes the currently-selected node. |
 
 ## Compose a small pipeline
 

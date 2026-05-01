@@ -1,27 +1,110 @@
-/* PhenoTypic GUI shell chrome styling.
+/* PhenoTypic GUI shell chrome -- DESIGN.md compliant.
  *
- * Scoped to the .shell-* class namespace so it does not collide with the
- * builder's or viewer's CSS once the apps are mounted side-by-side. See
- * GUI_SPEC_V1.md section 4.
+ * Scoped to the .shell-* namespace so it does not collide with the
+ * builder's, viewer's, or run-console's CSS once the apps are mounted
+ * side-by-side under DispatcherMiddleware. The shell.css bytes are
+ * inlined into every chrome-wrapped Dash app's index_string by
+ * `_layout.py::_inject_shell_css` so all four mounts render the same
+ * chrome regardless of which assets folder Dash auto-discovered.
+ *
+ * Implements the design system documented in DESIGN.md:
+ *   - Primary palette (navy, blue, gold) for chrome
+ *   - Okabe-Ito reserved for data viz only (we use it on capability
+ *     badges as small chips, which DESIGN.md explicitly allows)
+ *   - DM Serif Display / DM Sans / DM Mono three-font stack
+ *   - 8pt spacing grid, navy-tinted shadows
  */
+
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Serif+Display&display=swap");
+
+/* ===========================================================================
+ * Design tokens (mirrors builder/assets/builder.css; consolidating these
+ * across all sub-app stylesheets is a follow-up).
+ * ========================================================================= */
+:root {
+  /* Primary palette -- UI only */
+  --color-navy:    #003660;
+  --color-blue:    #1b75bc;
+  --color-gold:    #febc11;
+  --color-white:   #ffffff;
+  --color-bg:      #f5f7fa;
+  --color-surface: #ffffff;
+  --color-border:  #dde3ed;
+  --color-rule:    #e8ecf2;
+  --color-muted:   #8892a4;
+  --color-body:    #2e3a4e;
+  --color-heading: #003660;
+
+  /* Data palette -- Okabe-Ito (badges + charts only) */
+  --oi-orange:    #E69F00;
+  --oi-sky:       #56B4E9;
+  --oi-green:     #009E73;
+  --oi-vermilion: #D55E00;
+  --oi-blue:      #0072B2;
+  --oi-purple:    #CC79A7;
+  --oi-yellow:    #F0E442;
+  --oi-grey:      #BBBBBB;
+
+  /* Typography */
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-body:    'DM Sans', system-ui, sans-serif;
+  --font-mono:    'DM Mono', 'Courier New', monospace;
+
+  --text-xs:   0.6875rem;   /* 11px */
+  --text-sm:   0.8125rem;   /* 13px */
+  --text-base: 0.9375rem;   /* 15px */
+  --text-md:   1.0625rem;   /* 17px */
+  --text-lg:   1.25rem;     /* 20px */
+
+  /* Spacing (8pt grid) */
+  --sp-1:  0.25rem;
+  --sp-2:  0.5rem;
+  --sp-3:  0.75rem;
+  --sp-4:  1rem;
+  --sp-5:  1.25rem;
+  --sp-6:  1.5rem;
+  --sp-8:  2rem;
+
+  --radius-sm: 3px;
+  --radius:    6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --shadow-sm: 0 1px 3px rgba(0,54,96,0.07), 0 1px 2px rgba(0,54,96,0.04);
+  --shadow:    0 4px 12px rgba(0,54,96,0.08), 0 1px 3px rgba(0,54,96,0.05);
+  --shadow-md: 0 8px 24px rgba(0,54,96,0.10), 0 2px 6px rgba(0,54,96,0.06);
+
+  --ease-out:   cubic-bezier(0.22, 1, 0.36, 1);
+  --transition: 180ms var(--ease-out);
+}
+
+/* ===========================================================================
+ * Root + page chrome
+ * ========================================================================= */
 
 .shell-root {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  color: var(--color-body);
+  background: var(--color-bg);
 }
 
-/* ----- Top bar ---------------------------------------------------------- */
+/* ===========================================================================
+ * Top bar -- navy strip with title, tab nav, RSS readout, help button
+ * ========================================================================= */
 
 .shell-top-bar {
   display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.5rem 1rem;
-  background: #1f2937;
-  color: #f3f4f6;
-  border-bottom: 1px solid #111827;
+  align-items: stretch;
+  gap: var(--sp-4);
+  padding: 0 var(--sp-4);
+  height: 52px;
+  background: var(--color-navy);
+  color: var(--color-white);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.25);
   z-index: 1090; /* above Bootstrap modal backdrop (1080) */
 }
 
@@ -29,7 +112,7 @@
 .shell-top-bar-right {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--sp-3);
 }
 
 .shell-top-bar-left {
@@ -43,55 +126,123 @@
 
 .shell-tab-nav {
   display: flex;
-  gap: 0.25rem;
+  align-items: stretch;
+  gap: 0;
   flex: 1 1 auto;
   justify-content: center;
 }
 
 .shell-title {
-  font-size: 1rem;
-  letter-spacing: 0.02em;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 400;
+  letter-spacing: 0.005em;
+  color: var(--color-white);
+  line-height: 1;
 }
 
 .shell-root-label {
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
-  font-size: 0.85rem;
-  color: #9ca3af;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: rgba(255, 255, 255, 0.65);
   max-width: 320px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  letter-spacing: 0.02em;
 }
 
+/* Sidebar collapse button: icon-only chevron in the top bar */
+.shell-sidebar-collapse-button,
+.shell-sidebar-collapse-button:focus,
+.shell-sidebar-collapse-button:active {
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  font-size: var(--text-md);
+  line-height: 1;
+  padding: 0 var(--sp-2) !important;
+  min-width: 32px;
+  height: 28px;
+  border-radius: var(--radius);
+  box-shadow: none !important;
+  transition: var(--transition);
+}
+
+.shell-sidebar-collapse-button:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: var(--color-white) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Tabs: gold underline on active, white-translucent border on hover */
 .shell-tab {
-  color: #d1d5db;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--sp-4);
+  color: rgba(255, 255, 255, 0.70);
   text-decoration: none;
-  padding: 0.25rem 0.75rem;
-  border-radius: 0.25rem;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
   font-weight: 500;
+  letter-spacing: 0.01em;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px; /* overlap top-bar bottom border */
+  transition: color var(--transition), border-color var(--transition);
 }
 
 .shell-tab:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
+  color: var(--color-white);
+  border-bottom-color: rgba(255, 255, 255, 0.40);
+  text-decoration: none;
 }
 
 .shell-tab-active {
-  background: rgba(255, 255, 255, 0.18);
-  color: #ffffff;
+  color: var(--color-gold);
+  border-bottom-color: var(--color-gold);
+}
+
+.shell-tab-active:hover {
+  color: var(--color-gold);
+  border-bottom-color: var(--color-gold);
 }
 
 .shell-rss-readout {
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
-  font-size: 0.8rem;
-  color: #9ca3af;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: rgba(255, 255, 255, 0.65);
+  letter-spacing: 0.02em;
 }
 
-.shell-help-button {
-  font-weight: 700;
+.shell-help-button,
+.shell-help-button:focus,
+.shell-help-button:active {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  background: transparent !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.4) !important;
+  color: var(--color-white) !important;
+  border-radius: var(--radius);
+  width: 28px;
+  height: 28px;
+  padding: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: none !important;
+  transition: var(--transition);
 }
 
-/* ----- Body (sidebar + main pane) -------------------------------------- */
+.shell-help-button:hover {
+  background: rgba(255, 255, 255, 0.10) !important;
+  border-color: var(--color-gold) !important;
+  color: var(--color-gold) !important;
+}
+
+/* ===========================================================================
+ * Body (sidebar + main pane) with collapsible-sidebar transition
+ * ========================================================================= */
 
 .shell-body {
   display: flex;
@@ -102,27 +253,48 @@
 .shell-sidebar {
   width: 280px;
   flex: 0 0 280px;
-  background: #f9fafb;
-  border-right: 1px solid #e5e7eb;
+  background: var(--color-bg);
+  border-right: 1px solid var(--color-border);
   overflow-y: auto;
-  padding: 0.5rem;
+  overflow-x: hidden;
+  padding: var(--sp-3);
+  transition:
+    width 200ms var(--ease-out),
+    flex-basis 200ms var(--ease-out),
+    padding 200ms var(--ease-out),
+    border-right-width 200ms var(--ease-out);
+}
+
+/* Collapsed state: width snaps to 0 but the sub-tree stays in the DOM
+ * so dcc.Stores keep their values. overflow:hidden hides the inner
+ * controls cleanly mid-transition. */
+.shell-root.shell-sidebar-collapsed .shell-sidebar {
+  width: 0;
+  flex: 0 0 0;
+  padding-left: 0;
+  padding-right: 0;
+  border-right-width: 0;
 }
 
 .shell-sidebar-controls {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.5rem;
-  border-bottom: 1px solid #e5e7eb;
-  margin-bottom: 0.5rem;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-1);
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--sp-2);
 }
 
 .shell-sidebar-toggle .form-check-label {
-  font-size: 0.85rem;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-body);
 }
 
 .shell-sidebar-tree {
-  font-size: 0.9rem;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-body);
 }
 
 .shell-sidebar-list {
@@ -134,18 +306,23 @@
 .shell-sidebar-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--sp-2);
   width: 100%;
   border: none;
   background: none;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--radius-sm);
   text-align: left;
   cursor: pointer;
+  color: var(--color-body);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  transition: background-color var(--transition);
 }
 
 .shell-sidebar-row:hover {
-  background: #e5e7eb;
+  background: rgba(27, 117, 188, 0.06);
+  color: var(--color-heading);
 }
 
 .shell-sidebar-row-external {
@@ -154,7 +331,8 @@
 }
 
 .shell-sidebar-icon {
-  font-size: 1rem;
+  font-size: var(--text-base);
+  flex: 0 0 auto;
 }
 
 .shell-sidebar-name {
@@ -166,61 +344,91 @@
 
 .shell-sidebar-badges {
   display: inline-flex;
-  gap: 0.25rem;
+  gap: var(--sp-1);
+  flex: 0 0 auto;
 }
 
 .shell-sidebar-empty {
-  padding: 0.5rem;
-  color: #6b7280;
+  padding: var(--sp-2);
+  color: var(--color-muted);
   font-style: italic;
+  font-size: var(--text-xs);
 }
 
-/* ----- Capability badges ---------------------------------------------- */
+/* ===========================================================================
+ * Capability badges (DESIGN.md §05 Badges)
+ * Colored dot + uppercase DM Mono text with darkened Okabe-Ito colours
+ * to clear WCAG AA on white surfaces.
+ * ========================================================================= */
 
 .shell-badge {
-  display: inline-block;
-  font-size: 0.7rem;
-  padding: 0.1rem 0.4rem;
-  border-radius: 0.25rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.shell-badge::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 5px;
 }
 
 .shell-badge-img {
-  background: #dbeafe;
-  color: #1e3a8a;
+  background: rgba(86, 180, 233, 0.10);
+  color: #0B6E9E;
+  border-color: rgba(86, 180, 233, 0.25);
 }
 
 .shell-badge-cfg {
-  background: #fef3c7;
-  color: #92400e;
+  background: rgba(254, 188, 17, 0.10);
+  color: #a87a00;
+  border-color: rgba(254, 188, 17, 0.30);
 }
 
 .shell-badge-out {
-  background: #d1fae5;
-  color: #065f46;
+  background: rgba(0, 158, 115, 0.08);
+  color: #006B4F;
+  border-color: rgba(0, 158, 115, 0.20);
 }
 
 .shell-badge-perm {
-  background: #fee2e2;
-  color: #991b1b;
+  background: rgba(213, 94, 0, 0.08);
+  color: #D55E00;
+  border-color: rgba(213, 94, 0, 0.20);
 }
 
 .shell-badge-external {
-  background: #e5e7eb;
-  color: #4b5563;
+  background: rgba(0, 54, 96, 0.06);
+  color: var(--color-muted);
+  border-color: rgba(0, 54, 96, 0.12);
 }
 
-/* ----- Main pane ------------------------------------------------------- */
+/* ===========================================================================
+ * Main pane (where the active tool's body renders)
+ * ========================================================================= */
 
 .shell-main-pane {
   flex: 1 1 auto;
   overflow-y: auto;
-  padding: 1rem;
-  background: #ffffff;
+  padding: var(--sp-4);
+  background: var(--color-surface);
 }
 
-/* ----- Home page ------------------------------------------------------- */
+/* ===========================================================================
+ * Home page
+ * ========================================================================= */
 
 .shell-home {
   max-width: 960px;
@@ -228,69 +436,107 @@
 }
 
 .shell-home-card {
-  margin-top: 1rem;
+  margin-top: var(--sp-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
 }
 
 .shell-home-root {
-  margin-top: 0.5rem;
-  font-size: 0.95rem;
+  margin-top: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-body);
 }
 
 .shell-home-summary {
-  margin-top: 1rem;
+  margin-top: var(--sp-4);
 }
 
 .shell-summary-card {
   text-align: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.shell-summary-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--color-navy);
 }
 
 .shell-summary-num {
-  font-size: 2rem;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 400;
+  color: var(--color-heading);
+  line-height: 1.1;
 }
 
 .shell-summary-lbl {
-  color: #6b7280;
-  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.shell-summary-img {
-  border-color: #93c5fd;
+.shell-summary-img::before {
+  background: var(--oi-sky);
 }
 
-.shell-summary-out {
-  border-color: #6ee7b7;
+.shell-summary-out::before {
+  background: var(--oi-green);
 }
 
-.shell-summary-cfg {
-  border-color: #fcd34d;
+.shell-summary-cfg::before {
+  background: var(--color-gold);
 }
 
 .shell-home-quicklinks {
-  margin-top: 1rem;
+  margin-top: var(--sp-4);
 }
 
 .shell-home-tutorials-title {
-  font-size: 1rem;
-  margin-bottom: 0.5rem;
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-heading);
+  margin-bottom: var(--sp-2);
 }
 
-/* ----- Help modal pre block ------------------------------------------- */
+/* ===========================================================================
+ * Help modal
+ * ========================================================================= */
 
 .shell-help-pre {
-  background: #1f2937;
-  color: #f3f4f6;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.25rem;
-  font-size: 0.85rem;
+  background: var(--color-navy);
+  color: var(--color-white);
+  font-family: var(--font-mono);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
 }
 
-/* ----- Release button ------------------------------------------------- */
+/* ===========================================================================
+ * Release control
+ * ========================================================================= */
 
 .shell-release-control {
-  font-size: 0.85rem;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
 }
 
 .shell-release-status {
-  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  letter-spacing: 0.02em;
 }

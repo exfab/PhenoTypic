@@ -40,6 +40,20 @@ Click the `plates` row to expand it. The three TIFFs from the previous step
 appear as children, and the parent folder swaps its closed-folder icon (📁)
 for the open one (📂). A second click collapses the folder again.
 
+## Hide the sidebar
+
+The chevron button at the far left of the top bar (`«` when the sidebar
+is visible, `»` when hidden) collapses the file explorer so the active
+tool's pane spans the full width. Useful when you're focused on the
+builder canvas or the run console's log tail and don't need the tree.
+
+![Sidebar collapsed via the top-bar chevron.](../../../_static/gui_images/file_explorer/04_sidebar_hidden.png)
+
+The collapsed flag is persisted to your browser's `localStorage` under
+`shell-sidebar-collapse-store`, so it survives a page reload and
+remains in effect as you tab between Builder, Viewer, and Run. Clear
+your site data (or click the chevron again) to bring the sidebar back.
+
 ## Hand-off to the run console
 
 Clicking a sidebar entry doesn't just expand it — the path is also stamped

@@ -68,6 +68,14 @@ SHELL_SIDEBAR_HIDDEN_TOGGLE = "shell-sidebar-hidden-toggle"
 #: Sidebar "External symlinks" toggle.
 SHELL_SIDEBAR_SYMLINK_TOGGLE = "shell-sidebar-symlink-toggle"
 
+#: Top-bar button that toggles sidebar visibility (the file explorer).
+SHELL_SIDEBAR_COLLAPSE_BUTTON = "shell-sidebar-collapse-button"
+
+#: Persistent store (``localStorage``) holding the sidebar collapsed flag
+#: so the state survives navigation between mounts (``/``, ``/builder/``,
+#: ``/results/``, ``/run/``).
+SHELL_SIDEBAR_COLLAPSE_STORE = "shell-sidebar-collapse-store"
+
 #: Memory store: relative path of the currently-selected sidebar entry, or
 #: ``None`` if nothing is selected. Per-tool ``[↩ from sidebar]`` buttons
 #: read this; the sidebar writes it on click.
@@ -146,6 +154,8 @@ __all__ = [
     "SHELL_SIDEBAR_REFRESH",
     "SHELL_SIDEBAR_HIDDEN_TOGGLE",
     "SHELL_SIDEBAR_SYMLINK_TOGGLE",
+    "SHELL_SIDEBAR_COLLAPSE_BUTTON",
+    "SHELL_SIDEBAR_COLLAPSE_STORE",
     "SHELL_SIDEBAR_SELECTION_STORE",
     "SHELL_SIDEBAR_EXPANDED_STORE",
     "SHELL_CLASSIFIER_CACHE_STORE",

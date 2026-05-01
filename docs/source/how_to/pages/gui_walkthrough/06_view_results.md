@@ -36,7 +36,7 @@ the output the [Run Locally](04_run_local.md) page produced.
 
 ```{note}
 The screenshots below are the **standalone** results viewer (no top bar /
-sidebar) so the page header reads "Results Viewer" instead of "phenotypic
+sidebar) so the page header reads "Results Viewer" instead of "PhenoTypic
 GUI". The body is identical to what the hub viewer would show once
 rebuild-on-select lands.
 ```
@@ -66,9 +66,10 @@ Scrolling further shows the full measurements table.
 The viewer loads the master measurements parquet and per-image overlays
 into memory on first access. If the parquet is large (tens of MB+),
 expect the first navigation to take a moment. Subsequent navigation
-between plates reuses the in-memory state. The hub's `Release` button
-(top right) drops the in-memory state; the next access reloads from
-disk.
+between plates reuses the in-memory state. When the viewer is mounted
+inside the hub, the hub chrome's `Release` control (not visible in the
+standalone screenshots above) drops the in-memory state; the next
+access reloads from disk.
 
 Process RSS may not return to the OS after release — the CPython
 allocator pools freed pages rather than returning them immediately.

@@ -32,6 +32,8 @@ from phenotypic.gui.shell._ids import (
     SHELL_ROOT_LABEL,
     SHELL_RSS_INTERVAL,
     SHELL_RSS_LABEL,
+    SHELL_SIDEBAR_COLLAPSE_BUTTON,
+    SHELL_SIDEBAR_COLLAPSE_STORE,
     SHELL_TAB_BUILDER,
     SHELL_TAB_HOME,
     SHELL_TAB_RUN,
@@ -104,7 +106,16 @@ def build_top_bar(
         [
             html.Div(
                 [
-                    html.Strong("phenotypic GUI", className="shell-title"),
+                    dbc.Button(
+                        "«",
+                        id=SHELL_SIDEBAR_COLLAPSE_BUTTON,
+                        size="sm",
+                        color="link",
+                        n_clicks=0,
+                        title="Toggle file explorer",
+                        className="shell-sidebar-collapse-button",
+                    ),
+                    html.Strong("PhenoTypic GUI", className="shell-title"),
                     html.Span(
                         f"root: {sandbox.root}",
                         id=SHELL_ROOT_LABEL,
@@ -256,6 +267,14 @@ def wrap_in_chrome(
             ),
             build_help_modal(),
             dcc.Interval(id=SHELL_RSS_INTERVAL, interval=5_000, n_intervals=0),
+            # Persists across mounts: each Dash instance reads the same
+            # localStorage key and the clientside callback toggles the
+            # ``shell-sidebar-collapsed`` class on the outer ``.shell-root``.
+            dcc.Store(
+                id=SHELL_SIDEBAR_COLLAPSE_STORE,
+                storage_type="local",
+                data=False,
+            ),
         ],
         className="shell-root",
     )

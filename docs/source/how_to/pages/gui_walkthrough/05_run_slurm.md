@@ -51,8 +51,8 @@ A successful submission writes:
   and per-chunk job ids. The hub reads this file to surface the
   `slurm-<id>` row in Recent Runs — it does **not** parse Rich-formatted
   stdout (locale and terminal-width fragile).
-- `<output_dir>/dashboard.html` immediately, so the iframe panel can
-  point at the dashboard before any chunk completes.
+- `<output_dir>/dashboard.html` (written by the CLI submission flow), so
+  the iframe panel can point at the dashboard before any chunk completes.
 
 For deeper SLURM operational detail (chunk sizing, recompile-on-resume,
 per-chunk cgroups), see [SLURM Pipelines](../slurm_pipelines.md).
