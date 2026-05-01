@@ -273,6 +273,7 @@ def build_run_console_layout(
     iframe_panel = _iframe_panel()
     log_section = _log_tail()
     recents_panel = _recents_panel(sandbox, registry)
+    handoff_banner = _handoff_banner()
     modals = html.Div(
         [
             build_pipeline_picker_modal(sandbox),
@@ -296,7 +297,7 @@ def build_run_console_layout(
     )
 
     body = dbc.Container(
-        [main_row, recents_panel],
+        [handoff_banner, main_row, recents_panel],
         fluid=True,
         className="run-console-container",
     )
@@ -305,4 +306,70 @@ def build_run_console_layout(
         [_stores(), _toast(), modals, body],
         id=ids.RC_ROOT,
         className="run-console-root",
+    )
+
+
+def _handoff_banner() -> html.Div:
+    """Banner shown when ``SHELL_SIDEBAR_SELECTION_STORE`` carries a path.
+
+    Renders four buttons — ``Set as pipeline`` / ``Set as input dir`` /
+    ``Set as output dir`` / ``Dismiss`` — that route the sidebar's
+    selection into the form's stores. The banner stays hidden when no
+    selection is active; the consumer callback in ``_callbacks.py``
+    flips ``style.display`` based on the store payload.
+    """
+    return html.Div(
+        [
+            html.Span(
+                "Sidebar selection: ",
+                className="run-console-handoff-prefix",
+            ),
+            html.Code(
+                "(none)",
+                id=ids.RC_HANDOFF_LABEL,
+                className="run-console-handoff-label",
+            ),
+            dbc.Button(
+                "Set as pipeline",
+                id=ids.RC_HANDOFF_USE_PIPELINE,
+                size="sm",
+                color="primary",
+                outline=True,
+                disabled=True,
+                n_clicks=0,
+                className="ms-2",
+            ),
+            dbc.Button(
+                "Set as input dir",
+                id=ids.RC_HANDOFF_USE_INPUT,
+                size="sm",
+                color="primary",
+                outline=True,
+                disabled=True,
+                n_clicks=0,
+                className="ms-1",
+            ),
+            dbc.Button(
+                "Set as output dir",
+                id=ids.RC_HANDOFF_USE_OUTPUT,
+                size="sm",
+                color="primary",
+                outline=True,
+                disabled=True,
+                n_clicks=0,
+                className="ms-1",
+            ),
+            dbc.Button(
+                "Dismiss",
+                id=ids.RC_HANDOFF_DISMISS,
+                size="sm",
+                color="secondary",
+                outline=True,
+                n_clicks=0,
+                className="ms-1",
+            ),
+        ],
+        id=ids.RC_HANDOFF_BANNER,
+        className="run-console-handoff-banner",
+        style={"display": "none"},
     )

@@ -73,6 +73,10 @@ SHELL_SIDEBAR_SYMLINK_TOGGLE = "shell-sidebar-symlink-toggle"
 #: read this; the sidebar writes it on click.
 SHELL_SIDEBAR_SELECTION_STORE = "shell-sidebar-selection-store"
 
+#: Memory store: list of currently-expanded directory rel-paths. Mutated
+#: by the entry-click callback; consumed by the tree-render callback.
+SHELL_SIDEBAR_EXPANDED_STORE = "shell-sidebar-expanded-store"
+
 #: Memory store: classifier cache version key. Bumped by Refresh; chrome
 #: callbacks watch it to know when to re-render.
 SHELL_CLASSIFIER_CACHE_STORE = "shell-classifier-cache-store"
@@ -143,6 +147,7 @@ __all__ = [
     "SHELL_SIDEBAR_HIDDEN_TOGGLE",
     "SHELL_SIDEBAR_SYMLINK_TOGGLE",
     "SHELL_SIDEBAR_SELECTION_STORE",
+    "SHELL_SIDEBAR_EXPANDED_STORE",
     "SHELL_CLASSIFIER_CACHE_STORE",
     "SHELL_MAIN_PANE",
     "BUILDER_IMAGE_ROOT_STORE",

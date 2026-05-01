@@ -215,7 +215,7 @@ def test_chrome_callbacks_registered(sandbox: SandboxRoot) -> None:
     assert "shell-classifier-cache-store" in deps_text
 
 
-def test_every_callback_id_is_in_layout(sandbox: SandboxRoot) -> None:
+def test_every_callback_id_is_in_layout(tmp_path: Path) -> None:
     """Hard invariant: every callback Output/Input/State must be in the layout.
 
     With ``suppress_callback_exceptions=True`` Dash registers callbacks
@@ -225,7 +225,16 @@ def test_every_callback_id_is_in_layout(sandbox: SandboxRoot) -> None:
     from the layout. Catches the regression "removed a Store but forgot
     to update the callback" before it surfaces as a clientside
     ReferenceError.
+
+    Plants one child in the sandbox so that pattern-matching callback
+    types (e.g. ``shell-sidebar-entry``) have at least one concrete
+    layout instance to match against — otherwise the empty-sandbox
+    fixture would falsely report the pattern as unbound.
     """
+    sandbox_dir = tmp_path / "sandbox"
+    sandbox_dir.mkdir()
+    (sandbox_dir / "plate1").mkdir()
+    sandbox = SandboxRoot.from_path(sandbox_dir)
     app = create_app(sandbox)
     client = app.server.test_client()
 
@@ -258,8 +267,39 @@ def test_every_callback_id_is_in_layout(sandbox: SandboxRoot) -> None:
     layout_ids: set[str] = set()
     collect_ids(layout, layout_ids)
 
+    def _classify_dep_id(cid: object) -> tuple[str | None, str | None]:
+        """Return ``(literal_id, pattern_type)`` for a dep-entry id.
+
+        Dash serialises pattern-matching dict ids as JSON strings inside
+        ``/_dash-dependencies`` (sometimes — Dash 4.x is inconsistent).
+        Treat both forms uniformly: if the ID parses as a JSON dict
+        whose values include a list (i.e. an ALL/MATCH/ALLSMALLER
+        wildcard), classify as a pattern type; otherwise as a literal.
+        """
+        if isinstance(cid, dict):
+            parsed_dict = cid
+        elif isinstance(cid, str):
+            try:
+                parsed = json.loads(cid)
+            except json.JSONDecodeError:
+                return cid, None
+            if not isinstance(parsed, dict):
+                return cid, None
+            parsed_dict = parsed
+        else:
+            return None, None
+
+        if any(isinstance(v, list) for v in parsed_dict.values()):
+            type_ = parsed_dict.get("type")
+            return None, type_ if isinstance(type_, str) else None
+        return (
+            json.dumps(parsed_dict, sort_keys=True, separators=(",", ":")),
+            None,
+        )
+
     deps = client.get("/_dash-dependencies").get_json()
     referenced: set[str] = set()
+    pattern_types_referenced: set[str] = set()
     for dep in deps:
         for slot in ("output", "inputs", "state"):
             entries = dep.get(slot)
@@ -269,14 +309,33 @@ def test_every_callback_id_is_in_layout(sandbox: SandboxRoot) -> None:
                 entries = [entries]
             for e in entries:
                 cid = e.get("id") if isinstance(e, dict) else None
-                if isinstance(cid, str):
-                    referenced.add(cid)
-                elif isinstance(cid, dict):
-                    referenced.add(
-                        json.dumps(cid, sort_keys=True, separators=(",", ":"))
-                    )
+                literal, pattern_type = _classify_dep_id(cid)
+                if literal is not None:
+                    referenced.add(literal)
+                if pattern_type is not None:
+                    pattern_types_referenced.add(pattern_type)
 
     missing = referenced - layout_ids
     assert not missing, (
         f"Callback references IDs not in layout: {sorted(missing)}"
+    )
+
+    # Pattern-matching IDs: at least one concrete layout id with the
+    # matching ``type`` must exist. Walk the layout ids again, parsing
+    # the JSON-encoded dict ones, and check coverage.
+    layout_pattern_types: set[str] = set()
+    for lid in layout_ids:
+        if lid.startswith("{") and lid.endswith("}"):
+            try:
+                parsed = json.loads(lid)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(parsed, dict):
+                type_ = parsed.get("type")
+                if isinstance(type_, str):
+                    layout_pattern_types.add(type_)
+    missing_patterns = pattern_types_referenced - layout_pattern_types
+    assert not missing_patterns, (
+        f"Pattern-matching callback types with no concrete layout "
+        f"instance: {sorted(missing_patterns)}"
     )

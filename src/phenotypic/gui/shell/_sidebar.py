@@ -1,16 +1,16 @@
 """Sidebar tree component + capability badges + hidden / symlink toggles.
 
 The sidebar is a thin Dash wrapper around the JSON ``/sandbox/api/*`` blueprint
-shipped in Phase 2. Lazy expansion (one level per click) and badges are
-client-driven via ``fetch()`` against the blueprint, but Phase 3 ships the
-shell-only happy path: the initial root listing + the toggles + the refresh
-button + the selection store. Real lazy expansion lands as a clientside
-callback in Phase 5 once we have the JS asset bundle plumbed in.
+shipped in Phase 2. The initial root listing is rendered server-side at
+layout build time. A pair of post-Phase-9 callbacks drives lazy expansion
+(one level per click, recursively addressable via the
+``SHELL_SIDEBAR_EXPANDED_STORE``) and stamps a selection payload onto
+``SHELL_SIDEBAR_SELECTION_STORE`` so per-tool ``[↩ from sidebar]`` buttons
+can route a chosen path to the active tab.
 
-For Phase 3 we render the root listing server-side once at layout build time.
-This keeps the integration tests deterministic (no clientside fetch to
-mock) and means the sidebar is *useful* even before Phase 5 wires up the
-expand/refresh callbacks.
+Server-side rendering keeps the integration tests deterministic (no
+clientside ``fetch`` to mock) and matches the rest of the chrome's
+"render-then-callback" idiom.
 """
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ from phenotypic.gui.shell._classifier import Capabilities, classify
 from phenotypic.gui.shell._ids import (
     SHELL_CLASSIFIER_CACHE_STORE,
     SHELL_SIDEBAR,
+    SHELL_SIDEBAR_EXPANDED_STORE,
     SHELL_SIDEBAR_HIDDEN_TOGGLE,
     SHELL_SIDEBAR_REFRESH,
     SHELL_SIDEBAR_SELECTION_STORE,
@@ -33,6 +34,11 @@ from phenotypic.gui.shell._ids import (
 from phenotypic.gui.shell._sandbox import SandboxRoot
 
 __all__ = ["build_sidebar", "render_tree", "build_badges"]
+
+#: Cap on recursive depth so a pathological symlink loop or huge tree
+#: cannot lock the render thread. Eight is enough for v1; lazy expansion
+#: still works manually past this depth via Refresh.
+_SIDEBAR_MAX_DEPTH = 8
 
 #: Maximum number of children classified at layout-build time. Beyond this
 #: limit, surplus rows are rendered with placeholder badges + a trailing
@@ -90,6 +96,7 @@ def build_sidebar(sandbox: SandboxRoot) -> html.Div:
                 className="shell-sidebar-tree",
             ),
             dcc.Store(id=SHELL_SIDEBAR_SELECTION_STORE),
+            dcc.Store(id=SHELL_SIDEBAR_EXPANDED_STORE, data=[]),
             dcc.Store(id=SHELL_CLASSIFIER_CACHE_STORE, data=0),
         ],
         id=SHELL_SIDEBAR,
@@ -102,20 +109,72 @@ def render_tree(
     *,
     include_hidden: bool,
     include_external: bool,
+    expanded: "set[str] | None" = None,
 ) -> html.Ul:
-    """Render the top-level sandbox listing as a ``<ul>`` of entries.
+    """Render the sandbox tree as a nested ``<ul>``.
 
-    Used both at layout-build time (Phase 3) and as the response shape for
-    the future lazy-expand callback (Phase 5).
+    The root listing always renders. When ``expanded`` contains a
+    directory's sandbox-relative path, that directory's children are
+    rendered as a nested ``<ul>`` directly underneath the row. Recursion
+    is capped at :data:`_SIDEBAR_MAX_DEPTH` to avoid pathological deep
+    trees.
+
+    Args:
+        sandbox: Frozen-at-launch sandbox root.
+        include_hidden: Pass-through for :meth:`SandboxRoot.list_children`.
+        include_external: Pass-through; external symlinks render as
+            disabled rows when ``True``.
+        expanded: Set of currently-expanded directory rel-paths. Pass
+            ``None`` (default) for the chrome's first paint.
+
+    Returns:
+        A :class:`dash.html.Ul` with class ``shell-sidebar-list``.
     """
+    return _render_dir_listing(
+        sandbox.root,
+        sandbox,
+        expanded=expanded or set(),
+        include_hidden=include_hidden,
+        include_external=include_external,
+        depth=0,
+    )
+
+
+def _render_dir_listing(
+    directory: Path,
+    sandbox: SandboxRoot,
+    *,
+    expanded: "set[str]",
+    include_hidden: bool,
+    include_external: bool,
+    depth: int,
+) -> html.Ul:
+    """Render one directory's contents (used by :func:`render_tree` and itself).
+
+    Recursive helper. The root call (``depth == 0``) starts at
+    ``sandbox.root``; expanded sub-directories recurse with ``depth + 1``.
+    """
+    if depth > _SIDEBAR_MAX_DEPTH:
+        return html.Ul(
+            [
+                html.Li(
+                    f"(max depth {_SIDEBAR_MAX_DEPTH})",
+                    className="shell-sidebar-empty text-muted",
+                )
+            ],
+            className="shell-sidebar-list",
+        )
+
+    listing_arg = directory if directory != sandbox.root else None
     try:
         children = list(
             sandbox.list_children(
+                listing_arg,
                 include_hidden=include_hidden,
                 include_external_symlinks=include_external,
             )
         )
-    except (PermissionError, FileNotFoundError):
+    except (PermissionError, FileNotFoundError, ValueError):
         return html.Ul(
             [html.Li("(unreadable)", className="shell-sidebar-empty")],
             className="shell-sidebar-list",
@@ -125,10 +184,11 @@ def render_tree(
         children, key=lambda p: (not p.is_dir(), p.name.lower())
     )
     if not sorted_children:
+        empty_text = "Empty directory." if depth == 0 else "(empty)"
         return html.Ul(
             [
                 html.Li(
-                    "Empty directory.",
+                    empty_text,
                     className="shell-sidebar-empty text-muted",
                 )
             ],
@@ -139,14 +199,38 @@ def render_tree(
     truncated = False
     for idx, child in enumerate(sorted_children):
         classify_this = idx < _SIDEBAR_CLASSIFY_CAP
+        try:
+            rel_path = str(child.relative_to(sandbox.root))
+        except ValueError:
+            # Symlink target outside sandbox; ``rel_path`` is meaningless,
+            # so this row can't be expanded — fall back to the basename.
+            rel_path = child.name
+        is_expanded = rel_path in expanded
         rows.append(
             _build_row(
                 child,
                 sandbox,
                 include_external=include_external,
                 classify_this=classify_this,
+                is_expanded=is_expanded,
             )
         )
+        if (
+            is_expanded
+            and child.is_dir()
+            and not child.is_symlink()
+        ):
+            sublist = _render_dir_listing(
+                child,
+                sandbox,
+                expanded=expanded,
+                include_hidden=include_hidden,
+                include_external=include_external,
+                depth=depth + 1,
+            )
+            rows.append(
+                html.Li(sublist, className="shell-sidebar-children")
+            )
         if not classify_this:
             truncated = True
     if truncated:
@@ -193,14 +277,29 @@ def _build_row(
     *,
     include_external: bool,
     classify_this: bool = True,
+    is_expanded: bool = False,
 ) -> html.Li:
-    """One sidebar tree row with badges + (optional) external-symlink mark."""
-    rel_path = str(child.relative_to(sandbox.root))
+    """One sidebar tree row with badges + (optional) external-symlink mark.
+
+    Expanded directories render with an open-folder icon (📂) so the user
+    can see at a glance which folders are showing their children. The
+    closed/expanded state lives in :data:`SHELL_SIDEBAR_EXPANDED_STORE`
+    and is mutated by the entry-click callback in
+    :mod:`._callbacks`.
+    """
+    try:
+        rel_path = str(child.relative_to(sandbox.root))
+    except ValueError:
+        rel_path = child.name
     is_external = (
         child.is_symlink()
         and include_external
         and not sandbox.contains(child)
     )
+
+    def _dir_icon() -> str:
+        return "📂" if is_expanded else "📁"
+
     if is_external:
         # Spec: external symlinks render as disabled; never classify
         # (would read content outside the sandbox).
@@ -216,12 +315,12 @@ def _build_row(
         # Beyond the classify cap — render the row without badges so the
         # sidebar still surfaces the entry without paying for the stat.
         badges = []
-        icon = "📁" if child.is_dir() else "📄"
+        icon = _dir_icon() if child.is_dir() else "📄"
         cls = "shell-sidebar-row shell-sidebar-row-uncl"
     else:
         caps = classify(child)
         badges = build_badges(caps)
-        icon = "📁" if child.is_dir() else "📄"
+        icon = _dir_icon() if child.is_dir() else "📄"
         cls = "shell-sidebar-row"
 
     return html.Li(

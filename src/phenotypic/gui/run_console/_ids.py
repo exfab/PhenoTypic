@@ -161,6 +161,29 @@ RC_DROPDOWN_LOAD_PRESET = "rc-dropdown-load-preset"
 
 
 # ---------------------------------------------------------------------------
+# Sidebar hand-off banner — consumes ``SHELL_SIDEBAR_SELECTION_STORE``.
+# ---------------------------------------------------------------------------
+
+#: Banner container; hidden when no sidebar selection is active.
+RC_HANDOFF_BANNER = "rc-handoff-banner"
+
+#: Label inside the banner — shows the selected sandbox-relative path.
+RC_HANDOFF_LABEL = "rc-handoff-label"
+
+#: "Set as pipeline" button (enabled when selection looks like a JSON).
+RC_HANDOFF_USE_PIPELINE = "rc-handoff-use-pipeline"
+
+#: "Set as input dir" button (enabled when selection is a directory).
+RC_HANDOFF_USE_INPUT = "rc-handoff-use-input"
+
+#: "Set as output dir" button (enabled when selection is a directory).
+RC_HANDOFF_USE_OUTPUT = "rc-handoff-use-output"
+
+#: Dismiss button — clears ``SHELL_SIDEBAR_SELECTION_STORE``.
+RC_HANDOFF_DISMISS = "rc-handoff-dismiss"
+
+
+# ---------------------------------------------------------------------------
 # Toast + intervals
 # ---------------------------------------------------------------------------
 
@@ -262,6 +285,12 @@ __all__ = [
     "RC_BTN_CANCEL",
     "RC_BTN_SAVE_PRESET",
     "RC_INPUT_PRESET_NAME",
+    "RC_HANDOFF_BANNER",
+    "RC_HANDOFF_LABEL",
+    "RC_HANDOFF_USE_PIPELINE",
+    "RC_HANDOFF_USE_INPUT",
+    "RC_HANDOFF_USE_OUTPUT",
+    "RC_HANDOFF_DISMISS",
     "RC_DROPDOWN_LOAD_PRESET",
     "RC_TOAST",
     "RC_INTERVAL_LOG",

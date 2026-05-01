@@ -34,12 +34,12 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 
 | Feature           | Element                            | Expected behaviour                                                          | Status     | Test layer  | Test ref                                                                   |
 | ----------------- | ---------------------------------- | --------------------------------------------------------------------------- | ---------- | ----------- | -------------------------------------------------------------------------- |
-| Lazy tree expand  | Folder twisty                      | _v1 limitation: tree renders root-level only; folder buttons are no-ops_   | 🔭 planned | e2e         | tests/e2e/gui/test_sidebar_classifier_badges.py::test_lazy_expand          |
+| Lazy tree expand  | Folder twisty                      | One-level expansion per click; second click collapses; icon swaps 📁↔📂   | ✅ shipping | e2e         | tests/e2e/gui/test_lazy_expand_handoff.py::test_lazy_expand_reveals_children |
 | Capability badges | Per-row badge (img/cfg/out)        | Reflects `_classifier.classify(path)` output                                | ✅ shipping | e2e         | tests/e2e/gui/test_sidebar.py::test_image_dir_carries_image_count_badge    |
 | Hidden toggle     | "Show hidden" checkbox             | Toggles dotfile visibility; persists via store                              | ✅ shipping | e2e         | tests/e2e/gui/test_sidebar.py::test_hidden_toggle_changes_state            |
 | Symlink toggle    | "Show external symlinks" checkbox  | Off by default; reveals out-of-root symlinks when on                        | ✅ shipping | e2e         | tests/e2e/gui/test_sidebar.py::test_symlink_toggle_changes_state           |
 | Refresh button    | Refresh icon                       | Re-runs sidebar tree query, busts classifier cache                          | ✅ shipping | integration | tests/integration/gui/test_lifecycle.py::test_refresh_callback_flushes_cache |
-| Hand-off store    | "↩ from sidebar" button            | _v1 limitation: store mounted but no consumer callback; button not yet rendered_ | 🔭 planned | e2e         | tests/e2e/gui/test_hub_navigation.py::test_sidebar_handoff                 |
+| Hand-off store    | "↩ from sidebar" button            | Click an entry; run console banner offers `Set as pipeline / input dir / output dir` (contextual)  | ✅ shipping | e2e         | tests/e2e/gui/test_lazy_expand_handoff.py::test_handoff_use_input_writes_to_input_store |
 
 ## Home page
 

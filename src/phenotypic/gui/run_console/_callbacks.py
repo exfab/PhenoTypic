@@ -1377,7 +1377,135 @@ def register_callbacks(
         return _local_run_active(runner, registry)
 
     # ----------------------------------------------------------------------
-    # 14. Diagnostic placeholder so the html import isn't unused.
+    # 14. Sidebar hand-off banner — consume SHELL_SIDEBAR_SELECTION_STORE.
+    # ----------------------------------------------------------------------
+
+    from phenotypic.gui.shell._ids import SHELL_SIDEBAR_SELECTION_STORE
+
+    @app.callback(
+        Output(ids.RC_HANDOFF_BANNER, "style"),
+        Output(ids.RC_HANDOFF_LABEL, "children"),
+        Output(ids.RC_HANDOFF_USE_PIPELINE, "disabled"),
+        Output(ids.RC_HANDOFF_USE_INPUT, "disabled"),
+        Output(ids.RC_HANDOFF_USE_OUTPUT, "disabled"),
+        Input(SHELL_SIDEBAR_SELECTION_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    def populate_handoff_banner(
+        selection: Optional[dict[str, Any]],
+    ) -> Tuple[Any, ...]:
+        """Reflect the sidebar selection in the hand-off banner.
+
+        Buttons are enabled/disabled based on the selection's
+        capabilities:
+
+        * **Set as pipeline** — enabled when the path looks like a JSON
+          (``has_pipeline_json`` capability OR a ``.json`` extension).
+        * **Set as input dir** — enabled for any directory.
+        * **Set as output dir** — enabled for any directory (a CLI
+          output dir or a fresh path the user typed).
+
+        The banner hides itself when the selection is empty.
+        """
+        hidden_style = {"display": "none"}
+        if not selection or not isinstance(selection, dict):
+            return hidden_style, "(none)", True, True, True
+        path = selection.get("path") or ""
+        if not path:
+            return hidden_style, "(none)", True, True, True
+
+        caps = selection.get("capabilities") or {}
+        is_dir = bool(selection.get("is_dir"))
+        path_lower = path.lower()
+        looks_like_json = (
+            caps.get("has_pipeline_json", False)
+            or path_lower.endswith(".json")
+        )
+
+        return (
+            {"display": "flex"},
+            path,
+            not looks_like_json,
+            not is_dir,
+            not is_dir,
+        )
+
+    @app.callback(
+        Output(ids.RC_STORE_PIPELINE_PATH, "data", allow_duplicate=True),
+        Output(ids.RC_STORE_INPUT_DIR, "data", allow_duplicate=True),
+        Output(ids.RC_STORE_OUTPUT_DIR, "data", allow_duplicate=True),
+        Output(ids.RC_TOAST, "is_open", allow_duplicate=True),
+        Output(ids.RC_TOAST, "children", allow_duplicate=True),
+        Output(ids.RC_TOAST, "icon", allow_duplicate=True),
+        Output(ids.RC_TOAST, "header", allow_duplicate=True),
+        Output(SHELL_SIDEBAR_SELECTION_STORE, "data", allow_duplicate=True),
+        Input(ids.RC_HANDOFF_USE_PIPELINE, "n_clicks"),
+        Input(ids.RC_HANDOFF_USE_INPUT, "n_clicks"),
+        Input(ids.RC_HANDOFF_USE_OUTPUT, "n_clicks"),
+        Input(ids.RC_HANDOFF_DISMISS, "n_clicks"),
+        State(SHELL_SIDEBAR_SELECTION_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    def click_handoff_button(
+        _pipe: Optional[int],
+        _input: Optional[int],
+        _output: Optional[int],
+        _dismiss: Optional[int],
+        selection: Optional[dict[str, Any]],
+    ) -> Tuple[Any, ...]:
+        """Route the sidebar selection into the form's per-field stores.
+
+        ``ctx.triggered_id`` distinguishes which button fired. Each button
+        writes to one of the three RC stores and clears the selection
+        store so the banner closes.
+        """
+        triggered = ctx.triggered_id
+        if triggered is None:
+            return (no_update,) * 8
+
+        if triggered == ids.RC_HANDOFF_DISMISS:
+            return (
+                no_update, no_update, no_update,
+                False, no_update, no_update, no_update,
+                None,
+            )
+
+        path = (selection or {}).get("path") if selection else None
+        abs_path = (selection or {}).get("abs_path") if selection else None
+        if not path:
+            return (
+                no_update, no_update, no_update,
+                *_toast("No sidebar selection", ok=False),
+                no_update,
+            )
+
+        # The form stores carry absolute paths so the CLI gets a fully-
+        # resolved argv tail; fall back to the rel path if the chrome
+        # didn't stamp the absolute one.
+        target = abs_path or path
+
+        if triggered == ids.RC_HANDOFF_USE_PIPELINE:
+            return (
+                target, no_update, no_update,
+                *_toast(f"Set as pipeline: {path}", ok=True),
+                None,
+            )
+        if triggered == ids.RC_HANDOFF_USE_INPUT:
+            return (
+                no_update, target, no_update,
+                *_toast(f"Set as input dir: {path}", ok=True),
+                None,
+            )
+        if triggered == ids.RC_HANDOFF_USE_OUTPUT:
+            return (
+                no_update, no_update, target,
+                *_toast(f"Set as output dir: {path}", ok=True),
+                None,
+            )
+        return (no_update,) * 8
+
+    # ----------------------------------------------------------------------
+    # 15. Diagnostic placeholder so the html import isn't unused.
     # ----------------------------------------------------------------------
 
     _ = html  # type: ignore[assignment]
