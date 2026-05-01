@@ -27,26 +27,30 @@ __all__ = ["FONT_TOKENS_CSS", "inject_design_tokens"]
 # Alternatives -- uncomment one block (and comment the active one above)
 # to switch the GUI font. All are also Google Fonts.
 #
-_GOOGLE_FONT_FAMILY = "Mate SC"
-_GOOGLE_FONT_URL = (
-    "https://fonts.googleapis.com/css2?family=Mate+SC&display=swap"
-)
+# _GOOGLE_FONT_FAMILY = "Mate SC"
+# _GOOGLE_FONT_URL = (
+#     "https://fonts.googleapis.com/css2?family=Mate+SC&display=swap"
+# )
 #
 # _GOOGLE_FONT_FAMILY = "Roboto"
 # _GOOGLE_FONT_URL = (
 #     "https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap"
 # )
 #
-# Note: "Google Sans" is a Google brand font and is NOT served publicly
-# via fonts.googleapis.com -- the import will silently fail to fetch
-# the file and the system fallback stack below will render instead. If
-# the goal is the modern Material look, "Roboto" or "Open Sans" (also
-# from Google Fonts) are the publicly-available substitutes.
-# _GOOGLE_FONT_FAMILY = "Google Sans"
+# Note: "Google Sans" and "Google Sans Flex" are Google brand fonts and
+# are NOT served publicly via fonts.googleapis.com -- the import will
+# silently fail and the system fallback stack below will render instead.
+# For the modern Material look, "Roboto" or "Open Sans" are the
+# publicly-available substitutes from Google Fonts.
+_GOOGLE_FONT_FAMILY = "Google Sans"
+_GOOGLE_FONT_URL = (
+    "https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap"
+)
+#
+# _GOOGLE_FONT_FAMILY = "Google Sans Flex"
 # _GOOGLE_FONT_URL = (
-#     "https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap"
+#     "https://fonts.googleapis.com/css2?family=Google+Sans+Flex&display=swap"
 # )
-
 
 # Cross-platform fallbacks: kick in if the Google Font is blocked,
 # slow to load, or (in the Google Sans case) not actually served. The
@@ -61,7 +65,6 @@ _FALLBACK_MONO = (
     'ui-monospace, "SFMono-Regular", Menlo, Consolas, '
     '"Liberation Mono", "Courier New", monospace'
 )
-
 
 FONT_TOKENS_CSS = f"""\
 @import url("{_GOOGLE_FONT_URL}");
