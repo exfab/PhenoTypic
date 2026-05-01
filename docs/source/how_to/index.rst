@@ -40,6 +40,7 @@ Task-oriented recipes that solve a specific problem. Each guide is standalone
    pages/cli_batch_processing
    pages/slurm_pipelines
    pages/parameter_sweeps
+   pages/gui_hub
    pages/serialize_pipelines
    pages/hdf5_storage
    pages/generate_reports

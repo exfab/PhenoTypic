@@ -118,7 +118,7 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 
 | Feature                            | Element                            | Expected behaviour                                                       | Status     | Test layer | Test ref     |
 | ---------------------------------- | ---------------------------------- | ------------------------------------------------------------------------ | ---------- | ---------- | ------------ |
-| User guide                         | `docs/source/user_guide/gui.rst`   | Walks through hub home, sandbox, run modes, iframe, release, SSH-tunnel  | 🔭 planned | manual     | n/a (manual) |
+| User guide                         | `docs/source/how_to/pages/gui_hub.md` | Walks through hub home, sandbox, run modes, iframe, release, SSH-tunnel  | ✅ shipping | manual     | n/a (manual) |
 | README "Launch the GUI"            | README.md section                  | One-screen quick-start                                                   | ✅ shipping | manual     | n/a (manual) |
-| `phenotypic gui` non-support note  | gui.rst                            | Explicitly states the no-hyphen subcommand is unsupported                | 🔭 planned | manual     | n/a (manual) |
+| `phenotypic gui` non-support note  | gui_hub.md                         | Explicitly states the no-hyphen subcommand is unsupported                | ✅ shipping | manual     | n/a (manual) |
 | CLAUDE.md update                   | Quick Start section                | Mentions `python -m phenotypic.gui` and `phenotypic-gui`                 | ✅ shipping | manual     | n/a (manual) |
