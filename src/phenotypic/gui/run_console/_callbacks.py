@@ -1464,9 +1464,13 @@ def register_callbacks(
             return (no_update,) * 8
 
         if triggered == ids.RC_HANDOFF_DISMISS:
+            # ``no_update`` for the four toast outputs so an unrelated
+            # toast (e.g. a still-visible "Saved preset" confirmation)
+            # is not torn down as a side-effect of dismissing the
+            # hand-off banner.
             return (
                 no_update, no_update, no_update,
-                False, no_update, no_update, no_update,
+                no_update, no_update, no_update, no_update,
                 None,
             )
 

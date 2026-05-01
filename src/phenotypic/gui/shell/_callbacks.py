@@ -128,7 +128,13 @@ def register_chrome_callbacks(
 
     @app.callback(
         Output(SHELL_SIDEBAR_EXPANDED_STORE, "data"),
-        Output(SHELL_SIDEBAR_SELECTION_STORE, "data"),
+        # ``allow_duplicate=True`` is required because the run console's
+        # hand-off-button callback also writes ``SHELL_SIDEBAR_SELECTION_STORE``
+        # (clearing it on Dismiss / route). Dash requires every writer to
+        # opt in explicitly; otherwise registration silently drops one of
+        # the callbacks under permissive Dash versions and raises under
+        # strict ones.
+        Output(SHELL_SIDEBAR_SELECTION_STORE, "data", allow_duplicate=True),
         Input({"type": "shell-sidebar-entry", "path": ALL}, "n_clicks"),
         State(SHELL_SIDEBAR_EXPANDED_STORE, "data"),
         prevent_initial_call=True,
@@ -149,10 +155,11 @@ def register_chrome_callbacks(
           toggled in ``SHELL_SIDEBAR_EXPANDED_STORE``. The tree-render
           callback (below) watches this store and re-paints the listing.
 
-        ``ctx.triggered_id`` distinguishes the pattern-matching click;
-        ``ctx.triggered[0]['value']`` filters out the spurious initial
-        fire that Dash emits when ``allow_duplicate=True`` is in play
-        (no real click happened, ``value`` is the default ``0``/``None``).
+        ``ctx.triggered_id`` resolves the pattern-matching click. The
+        ``ctx.triggered`` list may contain entries with ``value=0`` from
+        newly-mounted buttons whose ``n_clicks`` was just initialised; we
+        require *some* entry in that list to carry a truthy value before
+        treating the call as a real click.
         """
         triggered = ctx.triggered_id
         if (
@@ -160,7 +167,11 @@ def register_chrome_callbacks(
             or triggered.get("type") != "shell-sidebar-entry"
         ):
             return (no_update, no_update)
-        if not ctx.triggered or not ctx.triggered[0].get("value"):
+        # Defensive against rapid double-clicks across multiple entries:
+        # ``ctx.triggered`` is a list, ``triggered[0]`` is not necessarily
+        # the entry the user actually clicked. Accept the call as long as
+        # at least one entry in the batch has a real (>0) ``n_clicks``.
+        if not any(t.get("value") for t in (ctx.triggered or [])):
             return (no_update, no_update)
 
         rel = triggered.get("path") or ""
