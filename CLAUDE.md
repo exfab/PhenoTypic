@@ -33,6 +33,29 @@
 - Note: `phenotypic gui` (no hyphen, as a subcommand of the existing CLI) is NOT
   supported. Use `phenotypic-gui` or `python -m phenotypic.gui`.
 
+#### Adding GUI features
+
+Two ledgers track the GUI surface; both are CI-gated:
+
+- **`src/phenotypic/gui/FEATURES.md`** — every individual user-visible
+  affordance (button, badge, store, callback, route). The `gui-e2e`
+  workflow rejects any PR that touches `src/phenotypic/gui/` without
+  modifying `FEATURES.md`. Pre-commit also validates `Test ref` on
+  `✅ shipping` rows.
+- **`src/phenotypic/gui/WORKFLOWS.md`** — every end-to-end user flow
+  worth a tutorial page. Adding a row here REQUIRES adding a matching
+  `_capture_<id>` function in `scripts/capture_gui_tutorial_screenshots.py`
+  and a walkthrough page under `docs/source/how_to/pages/gui_walkthrough/`.
+  The `gui-docs` workflow runs `scripts/check_workflows_md.py` (also
+  available as a pre-commit hook) to enforce the round-trip.
+
+Run `uv run python scripts/capture_gui_tutorial_screenshots.py` after
+any visible chrome change and commit the refreshed PNGs alongside the
+source change. The `gui-docs` CI job regenerates them on Ubuntu and
+uploads as a build artifact for spot-checking, but cross-platform
+font rendering means committed PNGs should come from a developer
+workstation, not CI.
+
 ---
 
 ## Architecture
