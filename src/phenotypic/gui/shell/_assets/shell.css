@@ -1,3 +1,296 @@
-/* Phase 3 placeholder — shell chrome styling lands in Phase 3.
- * See GUI_SPEC_V1.md section 4 (Shell chrome + lifecycle).
+/* PhenoTypic GUI shell chrome styling.
+ *
+ * Scoped to the .shell-* class namespace so it does not collide with the
+ * builder's or viewer's CSS once the apps are mounted side-by-side. See
+ * GUI_SPEC_V1.md section 4.
  */
+
+.shell-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ----- Top bar ---------------------------------------------------------- */
+
+.shell-top-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  background: #1f2937;
+  color: #f3f4f6;
+  border-bottom: 1px solid #111827;
+  z-index: 1090; /* above Bootstrap modal backdrop (1080) */
+}
+
+.shell-top-bar-left,
+.shell-top-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.shell-top-bar-left {
+  flex: 0 0 auto;
+}
+
+.shell-top-bar-right {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.shell-tab-nav {
+  display: flex;
+  gap: 0.25rem;
+  flex: 1 1 auto;
+  justify-content: center;
+}
+
+.shell-title {
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+}
+
+.shell-root-label {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 0.85rem;
+  color: #9ca3af;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shell-tab {
+  color: #d1d5db;
+  text-decoration: none;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  font-weight: 500;
+}
+
+.shell-tab:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.shell-tab-active {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+.shell-rss-readout {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
+
+.shell-help-button {
+  font-weight: 700;
+}
+
+/* ----- Body (sidebar + main pane) -------------------------------------- */
+
+.shell-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.shell-sidebar {
+  width: 280px;
+  flex: 0 0 280px;
+  background: #f9fafb;
+  border-right: 1px solid #e5e7eb;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.shell-sidebar-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 0.5rem;
+}
+
+.shell-sidebar-toggle .form-check-label {
+  font-size: 0.85rem;
+}
+
+.shell-sidebar-tree {
+  font-size: 0.9rem;
+}
+
+.shell-sidebar-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.shell-sidebar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.shell-sidebar-row:hover {
+  background: #e5e7eb;
+}
+
+.shell-sidebar-row-external {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.shell-sidebar-icon {
+  font-size: 1rem;
+}
+
+.shell-sidebar-name {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shell-sidebar-badges {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.shell-sidebar-empty {
+  padding: 0.5rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* ----- Capability badges ---------------------------------------------- */
+
+.shell-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.25rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.shell-badge-img {
+  background: #dbeafe;
+  color: #1e3a8a;
+}
+
+.shell-badge-cfg {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.shell-badge-out {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.shell-badge-perm {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.shell-badge-external {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+/* ----- Main pane ------------------------------------------------------- */
+
+.shell-main-pane {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 1rem;
+  background: #ffffff;
+}
+
+/* ----- Home page ------------------------------------------------------- */
+
+.shell-home {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.shell-home-card {
+  margin-top: 1rem;
+}
+
+.shell-home-root {
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.shell-home-summary {
+  margin-top: 1rem;
+}
+
+.shell-summary-card {
+  text-align: center;
+}
+
+.shell-summary-num {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.shell-summary-lbl {
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+.shell-summary-img {
+  border-color: #93c5fd;
+}
+
+.shell-summary-out {
+  border-color: #6ee7b7;
+}
+
+.shell-summary-cfg {
+  border-color: #fcd34d;
+}
+
+.shell-home-quicklinks {
+  margin-top: 1rem;
+}
+
+.shell-home-tutorials-title {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+/* ----- Help modal pre block ------------------------------------------- */
+
+.shell-help-pre {
+  background: #1f2937;
+  color: #f3f4f6;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.85rem;
+}
+
+/* ----- Release button ------------------------------------------------- */
+
+.shell-release-control {
+  font-size: 0.85rem;
+}
+
+.shell-release-status {
+  font-size: 0.8rem;
+}

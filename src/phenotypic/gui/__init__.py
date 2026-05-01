@@ -67,6 +67,20 @@ def __getattr__(name: str):
 
         return launch_results_viewer
 
+    # Unified GUI shell (Dash hub composer; Phase 3+).
+    if name == "create_gui_app":
+        from .shell import create_app
+
+        return create_app
+    if name == "launch_gui":
+        from .shell import launch_gui
+
+        return launch_gui
+    if name == "SandboxRoot":
+        from .shell import SandboxRoot
+
+        return SandboxRoot
+
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
@@ -82,4 +96,8 @@ __all__ = [
     # Dash CLI-output results viewer
     "create_results_viewer_app",
     "launch_results_viewer",
+    # Unified GUI shell
+    "create_gui_app",
+    "launch_gui",
+    "SandboxRoot",
 ]

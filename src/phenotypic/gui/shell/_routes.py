@@ -102,8 +102,9 @@ def _is_external_symlink(child: Path, sandbox: "SandboxRoot") -> bool:
         return False
     try:
         return not sandbox.contains(child)
-    except OSError:
-        # Broken symlinks — treat as external for safety.
+    except (OSError, RuntimeError):
+        # Broken symlinks AND symlink cycles (``RuntimeError`` from
+        # CPython's ``Path.resolve``). Treat both as external for safety.
         return True
 
 

@@ -176,6 +176,9 @@ class SandboxRoot:
         """
         try:
             target = link.resolve(strict=False)
-        except OSError:
+        except (OSError, RuntimeError):
+            # ``RuntimeError`` is raised by CPython on symlink cycles
+            # (``"Symlink loop from..."``). Treat the link as external so
+            # the caller filters it rather than crashing the render.
             return False
         return self._contains(target)

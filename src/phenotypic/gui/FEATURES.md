@@ -27,7 +27,7 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 | -------------- | ---------------------------------------- | ------------------------------------------------------------------- | ---------- | ----------- | ------------------------------------------------------------------------- |
 | Tab navigation | Top-bar tabs (Home/Builder/Viewer/Run)   | Click navigates to mount; active tab is highlighted                 | 🔭 planned | e2e         | tests/e2e/gui/test_topbar.py::test_tab_active_highlight                   |
 | Sandbox label  | Top-bar root display                     | Shows resolved root path; truncates long paths                      | 🔭 planned | e2e         | tests/e2e/gui/test_topbar.py::test_root_label                             |
-| RSS readout    | Top-bar memory readout                   | Updates on `dcc.Interval` tick using `psutil`                       | 🔭 planned | integration | tests/integration/gui/test_lifecycle.py::test_rss_readout_updates         |
+| RSS readout    | Top-bar memory readout                   | Updates on `dcc.Interval` tick using `psutil`                       | ✅ shipping | integration | tests/integration/gui/test_lifecycle.py::test_rss_readout_returns_string  |
 | Help modal     | "?" button                               | Opens modal with cheatsheet + cloud-deploy non-goal note            | 🔭 planned | e2e         | tests/e2e/gui/test_topbar.py::test_help_modal_opens                       |
 
 ## Sidebar (file browser)
@@ -38,7 +38,7 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 | Capability badges | Per-row badge (img/cfg/out)        | Reflects `_classifier.classify(path)` output                                | 🔭 planned | e2e         | tests/e2e/gui/test_sidebar_classifier_badges.py::test_badges_render        |
 | Hidden toggle     | "Show hidden" checkbox             | Toggles dotfile visibility; persists via store                              | 🔭 planned | integration | tests/integration/gui/test_app.py::test_hidden_toggle                      |
 | Symlink toggle    | "Show external symlinks" checkbox  | Off by default; reveals out-of-root symlinks when on                        | 🔭 planned | integration | tests/integration/gui/test_app.py::test_symlink_toggle                     |
-| Refresh button    | Refresh icon                       | Re-runs sidebar tree query, busts classifier cache                          | 🔭 planned | integration | tests/integration/gui/test_app.py::test_sidebar_refresh                    |
+| Refresh button    | Refresh icon                       | Re-runs sidebar tree query, busts classifier cache                          | ✅ shipping | integration | tests/integration/gui/test_lifecycle.py::test_refresh_callback_flushes_cache |
 | Hand-off store    | "↩ from sidebar" button            | Stamps store; active tab reads it when picking from sidebar                 | 🔭 planned | e2e         | tests/e2e/gui/test_hub_navigation.py::test_sidebar_handoff                 |
 
 ## Home page
@@ -46,7 +46,7 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 | Feature                    | Element              | Expected behaviour                                                | Status     | Test layer  | Test ref                                                            |
 | -------------------------- | -------------------- | ----------------------------------------------------------------- | ---------- | ----------- | ------------------------------------------------------------------- |
 | Welcome card               | Landing pane         | Shows project name + sandbox root + tutorial links                | 🔭 planned | e2e         | tests/e2e/gui/test_topbar.py::test_home_renders                     |
-| Sandbox capability summary | Capability counts    | Shows ``n images / n outputs / n pipelines`` discovered           | 🔭 planned | integration | tests/integration/gui/test_app.py::test_home_capability_summary     |
+| Sandbox capability summary | Capability counts    | Shows ``n images / n outputs / n pipelines`` discovered           | ✅ shipping | integration | tests/integration/gui/test_app.py::test_home_capability_summary_renders |
 
 ## Builder integration
 

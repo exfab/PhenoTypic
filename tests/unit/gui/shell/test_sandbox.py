@@ -240,6 +240,25 @@ def test_list_children_broken_symlink_outside_root_is_filtered(
     assert "link_outside" not in names
 
 
+def test_list_children_handles_symlink_loop(tmp_path: Path) -> None:
+    """Symlink cycle must NOT crash the listing.
+
+    CPython's ``Path.resolve(strict=False)`` raises ``RuntimeError`` (NOT
+    ``OSError``) on cycles. The sandbox swallows both so the sidebar / home
+    page render even when a hostile sandbox contains a circular symlink.
+    """
+    sandbox_dir = tmp_path / "sandbox"
+    sandbox_dir.mkdir()
+    a = sandbox_dir / "a"
+    b = sandbox_dir / "b"
+    a.symlink_to(b)
+    b.symlink_to(a)
+    sandbox = SandboxRoot.from_path(sandbox_dir)
+    # No exception — the looping links are filtered as external.
+    names = {c.name for c in sandbox.list_children()}
+    assert names == set()
+
+
 def test_list_children_hidden_and_external_combination(
     tmp_path: Path,
 ) -> None:

@@ -1,18 +1,255 @@
-"""Shell chrome layout helpers (Phase 3).
+"""Shell chrome layout helpers.
 
-Phase 0 placeholder — implementation lands in Phase 3. See ``GUI_SPEC_V1.md``
-section 4.
+The chrome wrap layer is the single place that knows about both the shell
+(top bar + sidebar + release button) and the wrapped tool (pre-existing
+Dash app). It is BOTH a layout mutator AND a callback registrar:
 
-Per plan:
-    * :func:`build_top_bar` — title, root display, tab nav, RSS readout, help
-      modal trigger.
-    * :func:`build_sidebar` — sandboxed file tree with capability badges.
-    * :func:`wrap_layout_in_chrome` (a.k.a. ``wrap_in_chrome``) — mutates
-      ``app.layout`` AND registers chrome callbacks (RSS interval, sidebar
-      refresh, release-button click) on the specific app instance.
+    * Layout mutation — wraps the tool's existing ``app.layout`` in chrome
+      so tab navigation + sidebar + RSS readout appear above/around it.
+    * Callback registration — every Dash app instance has its own callback
+      dispatch table, so chrome callbacks (RSS interval, sidebar refresh,
+      release-button click) must be registered on each wrapped app
+      separately. This is not a workaround; it's how Dash multi-app
+      composition works.
+
+Phase 3 ships the standalone shell variant: ``create_app(sandbox)`` returns
+a Dash app whose body is the home pane already wrapped in chrome. Phase 5
+generalises this to wrap the builder + viewer + run console mounts via
+``DispatcherMiddleware``.
 """
 from __future__ import annotations
 
-# TODO(Phase 3): build_top_bar, build_sidebar, wrap_layout_in_chrome.
+import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
+from dash import dcc, html
 
-__all__: list[str] = []
+from phenotypic.gui.shell._callbacks import register_chrome_callbacks
+from phenotypic.gui.shell._ids import (
+    SHELL_HELP_BUTTON,
+    SHELL_HELP_MODAL,
+    SHELL_MAIN_PANE,
+    SHELL_ROOT_LABEL,
+    SHELL_RSS_INTERVAL,
+    SHELL_RSS_LABEL,
+    SHELL_TAB_BUILDER,
+    SHELL_TAB_HOME,
+    SHELL_TAB_RUN,
+    SHELL_TAB_VIEWER,
+    SHELL_TOP_BAR,
+)
+from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic.gui.shell._sidebar import build_sidebar
+
+__all__ = ["build_top_bar", "build_help_modal", "wrap_in_chrome"]
+
+
+# ---------------------------------------------------------------------------
+# Top bar
+# ---------------------------------------------------------------------------
+
+#: Tab anchors. Plain ``html.A`` elements so the navigation crosses
+#: WSGI mounts cleanly once Phase 5 wires the sub-apps. In Phase 3
+#: standalone, the non-home anchors point at not-yet-mounted prefixes
+#: and would 404; this is acceptable because Phase 3 is purely a shell-
+#: only milestone.
+_TAB_HREFS = {
+    SHELL_TAB_HOME: "/",
+    SHELL_TAB_BUILDER: "/builder/",
+    SHELL_TAB_VIEWER: "/results/",
+    SHELL_TAB_RUN: "/run/",
+}
+
+_TAB_LABELS = {
+    SHELL_TAB_HOME: "Home",
+    SHELL_TAB_BUILDER: "Builder",
+    SHELL_TAB_VIEWER: "Viewer",
+    SHELL_TAB_RUN: "Run",
+}
+
+
+def build_top_bar(
+    *,
+    active_tab: str,
+    sandbox: SandboxRoot,
+) -> html.Header:
+    """Build the top-bar element shown above every tool's main pane.
+
+    Args:
+        active_tab: One of the ``SHELL_TAB_*`` constants. The matching anchor
+            gets a ``shell-tab-active`` class.
+        sandbox: Sandbox root (echoed in the top-bar label).
+
+    Returns:
+        ``html.Header`` containing the title, root display, tab nav, RSS
+        readout, and help button.
+    """
+    return html.Header(
+        [
+            html.Div(
+                [
+                    html.Strong("phenotypic GUI", className="shell-title"),
+                    html.Span(
+                        f"root: {sandbox.root}",
+                        id=SHELL_ROOT_LABEL,
+                        className="shell-root-label",
+                        title=str(sandbox.root),
+                    ),
+                ],
+                className="shell-top-bar-left",
+            ),
+            html.Nav(
+                [
+                    _build_tab(tab_id, active_tab=active_tab)
+                    for tab_id in (
+                        SHELL_TAB_HOME,
+                        SHELL_TAB_BUILDER,
+                        SHELL_TAB_VIEWER,
+                        SHELL_TAB_RUN,
+                    )
+                ],
+                className="shell-tab-nav",
+            ),
+            html.Div(
+                [
+                    html.Span(
+                        "RSS …",
+                        id=SHELL_RSS_LABEL,
+                        className="shell-rss-readout",
+                    ),
+                    dbc.Button(
+                        "?",
+                        id=SHELL_HELP_BUTTON,
+                        size="sm",
+                        color="secondary",
+                        outline=True,
+                        n_clicks=0,
+                        className="shell-help-button",
+                    ),
+                ],
+                className="shell-top-bar-right",
+            ),
+        ],
+        id=SHELL_TOP_BAR,
+        className="shell-top-bar",
+    )
+
+
+def build_help_modal() -> dbc.Modal:
+    """Help modal triggered by the top-bar ``?`` button.
+
+    Content: SSH-tunnel reminder, classifier-cache nuke command, link to
+    docs, and the v1 cloud-deploy non-goal note (per spec).
+    """
+    return dbc.Modal(
+        [
+            dbc.ModalHeader(dbc.ModalTitle("PhenoTypic GUI — Help")),
+            dbc.ModalBody(
+                [
+                    html.H6("SSH tunnel pattern"),
+                    html.P(
+                        "If the GUI is running on a remote cluster, "
+                        "forward its port to your local machine:"
+                    ),
+                    html.Pre(
+                        "ssh -L 8050:localhost:8050 user@cluster",
+                        className="shell-help-pre",
+                    ),
+                    html.Hr(),
+                    html.H6("Refresh sidebar / clear classifier cache"),
+                    html.P(
+                        "Click the Refresh button in the sidebar to bust "
+                        "the capability classifier's cache. New files dropped "
+                        "into the sandbox after that will be re-classified."
+                    ),
+                    html.Hr(),
+                    html.H6("Cloud deployment"),
+                    html.P(
+                        "v1 of the GUI is single-user, frozen-at-launch — "
+                        "designed for SSH-tunnelled workstation use. "
+                        "Multi-user / cloud deployment is a non-goal for v1.",
+                        className="text-muted",
+                    ),
+                ]
+            ),
+            dbc.ModalFooter(
+                dbc.Button(
+                    "Close",
+                    id={"type": "shell-help-close", "scope": "modal"},
+                    className="ms-auto",
+                    n_clicks=0,
+                )
+            ),
+        ],
+        id=SHELL_HELP_MODAL,
+        is_open=False,
+        size="lg",
+    )
+
+
+# ---------------------------------------------------------------------------
+# wrap_in_chrome
+# ---------------------------------------------------------------------------
+
+def wrap_in_chrome(
+    app,  # type: ignore[no-untyped-def]
+    *,
+    active_tab: str,
+    sandbox: SandboxRoot,
+) -> None:
+    """Wrap ``app.layout`` in the shell chrome and register chrome callbacks.
+
+    Args:
+        app: A :class:`dash.Dash` instance whose layout is fully assigned.
+            ``app.layout`` is mutated in place — caller does not need to
+            reassign it.
+        active_tab: ``SHELL_TAB_*`` constant identifying which tab is
+            highlighted in the top bar (the chrome doesn't navigate;
+            the host calling ``wrap_in_chrome`` knows which mount this is).
+        sandbox: Sandbox root.
+
+    Side effects:
+        * Sets ``app.layout`` to a new ``html.Div`` containing the chrome
+          + the original body.
+        * Registers chrome callbacks on ``app`` (RSS interval, help-modal
+          toggle, sidebar refresh placeholder).
+    """
+    body = app.layout
+
+    app.layout = html.Div(
+        [
+            build_top_bar(active_tab=active_tab, sandbox=sandbox),
+            html.Div(
+                [
+                    build_sidebar(sandbox),
+                    html.Main(
+                        body,
+                        id=SHELL_MAIN_PANE,
+                        className="shell-main-pane",
+                    ),
+                ],
+                className="shell-body",
+            ),
+            build_help_modal(),
+            dcc.Interval(id=SHELL_RSS_INTERVAL, interval=5_000, n_intervals=0),
+        ],
+        className="shell-root",
+    )
+
+    register_chrome_callbacks(app, sandbox)
+
+
+# ---------------------------------------------------------------------------
+# Internals
+# ---------------------------------------------------------------------------
+
+def _build_tab(tab_id: str, *, active_tab: str) -> html.A:
+    href = _TAB_HREFS[tab_id]
+    label = _TAB_LABELS[tab_id]
+    classes = ["shell-tab"]
+    if tab_id == active_tab:
+        classes.append("shell-tab-active")
+    return html.A(
+        label,
+        id=tab_id,
+        href=href,
+        className=" ".join(classes),
+    )
