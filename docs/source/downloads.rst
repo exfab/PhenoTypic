@@ -32,7 +32,7 @@ Downloadable Notebooks
     .. grid-item-card:: Tutorial 1: Your First Plate Image
         :shadow: md
 
-        Welcome to PhenoTypic! In this tutorial, you will load your first agar plate image, compare `Image` and `GridImage`, inspect its basic properties, and explore the **accessor pattern** that gives you different views of the same plate.
+        Welcome to PhenoTypic! In this tutorial, you will load your first agar plate image, understand the difference between the base `Image` and the grid-aware `GridImage` classes, and explore the **accessor pattern** that gives you different views of the same image.
 
         +++
         :download:`Download notebook <tutorials/notebooks/01_your_first_plate_image.ipynb>`
@@ -64,7 +64,7 @@ Downloadable Notebooks
     .. grid-item-card:: Tutorial 5: Working with Detected Grid Plates
         :shadow: md
 
-        After colony detection, a `GridImage` can assign each colony to a well, extract individual wells as subimages, count colonies per grid section, and show detected objects together with the grid overlay.
+        In [Tutorial 1](01_your_first_plate_image.ipynb), you saw that most arrayed colony workflows use `GridImage`: an `Image` with row-and-column plate layout. This tutorial picks up after detection, when that grid layout becomes biologically useful.
 
         +++
         :download:`Download notebook <tutorials/notebooks/05_working_with_grid_plates.ipynb>`
