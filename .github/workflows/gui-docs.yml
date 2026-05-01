@@ -75,6 +75,9 @@ jobs:
           fi
 
       - name: 'Per-PR check: WORKFLOWS.md syntax + dispatch round-trip'
+        # Pure stdlib (argparse / ast / re / pathlib) — no uv required in
+        # this job. The smoke-capture job re-runs the validator under
+        # ``uv run python`` for parity with the rest of that job.
         run: python scripts/check_workflows_md.py -v
 
   smoke-capture:
@@ -119,7 +122,7 @@ jobs:
           git diff --stat docs/source/_static/gui_images/ || true
 
       - name: 'Re-validate WORKFLOWS.md against refreshed PNGs'
-        run: python scripts/check_workflows_md.py -v
+        run: uv run python scripts/check_workflows_md.py -v
 
       - name: Upload regenerated screenshots as artifact
         uses: actions/upload-artifact@v4

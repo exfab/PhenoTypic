@@ -89,9 +89,12 @@ def _scan_capture_script(path: Path) -> tuple[set[str], set[str]]:
 
     ``defined`` is every top-level ``def _capture_*`` in the script;
     ``dispatched`` is every ``_capture_*(...)`` call site found inside
-    one of :data:`DISPATCH_FUNCTIONS`. Calls inside other functions or
-    nested closures aren't counted — workflows must be wired through
-    one of the explicit dispatch entry points.
+    one of :data:`DISPATCH_FUNCTIONS`. ``ast.walk`` recurses into nested
+    statements, so calls inside ``try``/``with``/``if`` blocks under the
+    dispatcher count. Calls made *transitively* through a separate
+    top-level helper do NOT count — workflows must be wired through one
+    of the explicit dispatch entry points so a contributor can audit the
+    surface by reading those two functions alone.
     """
     tree = ast.parse(path.read_text(encoding="utf-8"))
     defined: set[str] = set()
