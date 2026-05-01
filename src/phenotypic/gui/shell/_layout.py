@@ -24,6 +24,7 @@ from pathlib import Path
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
 
+from phenotypic.gui._design import inject_design_tokens
 from phenotypic.gui.shell._callbacks import register_chrome_callbacks
 from phenotypic.gui.shell._ids import (
     SHELL_HELP_BUTTON,
@@ -249,6 +250,7 @@ def wrap_in_chrome(
     # shell stylesheet into the index template here makes the chrome render
     # styled on every mount (including the shell itself, where it duplicates
     # the auto-emitted ``<link>`` — harmless).
+    inject_design_tokens(app)
     _inject_shell_css(app)
 
     app.layout = html.Div(

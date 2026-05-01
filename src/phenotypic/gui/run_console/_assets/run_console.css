@@ -12,7 +12,7 @@
  */
 
 .run-console-root {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   color: #1f2937;
 }
 
@@ -71,7 +71,7 @@
 }
 
 .run-console-picker-value {
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: var(--font-mono, ui-monospace, "SFMono-Regular", Menlo, monospace);
   font-size: 0.85rem;
   color: #4b5563;
   word-break: break-all;
@@ -127,7 +127,7 @@
 
 .run-console-status-banner {
   font-size: 0.85rem;
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: var(--font-mono, ui-monospace, "SFMono-Regular", Menlo, monospace);
   color: #f3f4f6;
   background: #003660;
   padding: 0.4rem 0.75rem;
@@ -182,7 +182,7 @@
 .run-console-log-tail {
   background: transparent;
   color: #d1d5db;
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: var(--font-mono, ui-monospace, "SFMono-Regular", Menlo, monospace);
   font-size: 0.78rem;
   margin: 0;
   max-height: 280px;
@@ -221,7 +221,7 @@
 }
 
 .run-console-recents-cell-path {
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: var(--font-mono, ui-monospace, "SFMono-Regular", Menlo, monospace);
   font-size: 0.85rem;
   color: #003660;
 }

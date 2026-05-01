@@ -18,6 +18,7 @@ from typing import Optional
 import dash
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 
+from phenotypic.gui._design import inject_design_tokens
 from phenotypic.gui._operation_registry import OperationRegistry
 from phenotypic.gui.builder._callbacks import register_callbacks
 from phenotypic.gui.builder._layout import build_app_layout
@@ -75,6 +76,8 @@ def create_app(
         requests_pathname_prefix=url_prefix,
         routes_pathname_prefix="/",
     )
+
+    inject_design_tokens(app)
 
     app.layout = build_app_layout(state, registry, image_root, url_prefix=url_prefix)
 

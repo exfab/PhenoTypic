@@ -11,8 +11,10 @@
  *   -- 8pt spacing grid, navy-tinted shadows, generous radii
  */
 
-/* Google Fonts -- DM Sans + DM Serif Display + DM Mono */
-@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Serif+Display&display=swap");
+/* Font tokens (--font-display / --font-body / --font-mono) and the
+ * Google Fonts @import are injected at runtime by gui/_design.py so a
+ * single Python constant controls the GUI typeface. Don't redeclare
+ * --font-* here -- update _design.py instead. */
 
 /* ===========================================================================
  * Design tokens
@@ -41,10 +43,9 @@
     --oi-yellow:    #F0E442;
     --oi-grey:      #BBBBBB;
 
-    /* Typography */
-    --font-display: 'DM Serif Display', Georgia, serif;
-    --font-body:    'DM Sans', system-ui, sans-serif;
-    --font-mono:    'DM Mono', 'Courier New', monospace;
+    /* Typography -- --font-display / --font-body / --font-mono are
+       injected by gui/_design.py (single source of truth for the GUI
+       typeface). */
 
     --text-xs:   0.6875rem;
     --text-sm:   0.8125rem;

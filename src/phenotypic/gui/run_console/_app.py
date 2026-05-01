@@ -24,6 +24,7 @@ from pathlib import Path
 import dash
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 
+from phenotypic.gui._design import inject_design_tokens
 from phenotypic.gui.run_console._callbacks import register_callbacks
 from phenotypic.gui.run_console._layout import build_run_console_layout
 from phenotypic.gui.run_console._runner import LocalRunner
@@ -81,6 +82,7 @@ def create_app(
         requests_pathname_prefix=url_prefix,
         routes_pathname_prefix="/",
     )
+    inject_design_tokens(app)
     app.layout = build_run_console_layout(sandbox, registry=registry, runner=runner)
     app.server.config["pheno_url_prefix"] = url_prefix
     app.server.config["pheno_sandbox_root"] = str(sandbox.root)

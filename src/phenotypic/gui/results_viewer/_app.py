@@ -35,6 +35,7 @@ from typing import Optional
 import dash
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 
+from phenotypic.gui._design import inject_design_tokens
 from phenotypic.gui.results_viewer import _tile_routes
 from phenotypic.gui.results_viewer._callbacks import register_callbacks
 from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
@@ -138,6 +139,8 @@ def create_app(
     # Inject window.__phenotypicAppPrefix so results_viewer.js can build
     # mount-aware URLs for DZI tiles and OSD assets.
     app.index_string = _index_string_with_prefix(url_prefix)
+
+    inject_design_tokens(app)
 
     app.server.config["pheno_url_prefix"] = url_prefix
 
