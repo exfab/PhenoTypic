@@ -47,10 +47,14 @@ __all__ = ["build_top_bar", "build_help_modal", "wrap_in_chrome"]
 # ---------------------------------------------------------------------------
 
 #: Tab anchors. Plain ``html.A`` elements so the navigation crosses
-#: WSGI mounts cleanly once Phase 5 wires the sub-apps. In Phase 3
-#: standalone, the non-home anchors point at not-yet-mounted prefixes
-#: and would 404; this is acceptable because Phase 3 is purely a shell-
-#: only milestone.
+#: WSGI mounts cleanly once Phase 5 wires the sub-apps.
+#:
+#: TODO(reverse-proxy): these are absolute paths starting with ``/``;
+#: that's correct when the hub is served at the URL root (the v1 SSH-
+#: tunnel deployment). If a future deployment puts the hub behind a
+#: reverse proxy with a prefix (e.g. ``/phenotypic/``), thread that
+#: prefix through ``wrap_in_chrome`` and prepend it here. Tracked
+#: against the cloud-deploy hook in ``shell/_sandbox.py``.
 _TAB_HREFS = {
     SHELL_TAB_HOME: "/",
     SHELL_TAB_BUILDER: "/builder/",

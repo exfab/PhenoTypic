@@ -28,27 +28,25 @@ def create_app(
     image_root: Optional[Path] = None,
     *,
     registry: Optional[OperationRegistry] = None,
+    url_prefix: str = "/",
 ) -> dash.Dash:
     """Build a Dash application instance for the pipeline builder.
 
-    Constructs (or reuses) an :class:`OperationRegistry`, builds an empty
-    :class:`BuilderState`, instantiates a :class:`dash.Dash` with Bootstrap
-    styling, sets ``app.layout`` from :func:`build_app_layout`, and stashes
-    *image_root* and *registry* on ``app.server.config`` so Phase 3 callbacks
-    can retrieve them via ``flask.current_app``.
-
     Args:
         image_root: Optional server-side directory used as the root of the
-            directory-tree picker. ``None`` disables the tree (the user can
-            still type a path or fall back to the synthetic plate).
+            directory-tree picker.
         registry: Pre-populated :class:`OperationRegistry` to share across
             requests. When ``None``, a fresh registry is constructed and
             :meth:`OperationRegistry.discover` is called immediately so the
             palette renders on the first paint.
+        url_prefix: Mount-point prefix passed to :class:`dash.Dash` as
+            both ``requests_pathname_prefix`` and ``routes_pathname_prefix``.
+            Defaults to ``"/"`` so the standalone launcher works unchanged.
+            The hub composer passes ``"/builder/"``.
 
     Returns:
         A configured :class:`dash.Dash` instance whose ``app.run(...)`` is
-        the responsibility of the caller (typically the Phase-4 CLI).
+        the responsibility of the caller.
 
     Examples:
         >>> from phenotypic.gui.builder._app import create_app
@@ -63,20 +61,26 @@ def create_app(
 
     state = BuilderState()
 
+    # Dash split: ``requests_pathname_prefix`` is the prefix browsers see
+    # (URL construction); ``routes_pathname_prefix`` is what Dash matches
+    # against incoming PATH_INFO. When the hub mounts this app via
+    # ``DispatcherMiddleware`` the dispatcher strips the mount prefix
+    # before forwarding, so Dash must route at ``/``. Standalone (default
+    # ``url_prefix == "/"``) collapses to identical prefixes.
     app = dash.Dash(
         __name__,
         external_stylesheets=[dbc.themes.BOOTSTRAP],
         suppress_callback_exceptions=True,
         title="PhenoTypic Pipeline Builder",
+        requests_pathname_prefix=url_prefix,
+        routes_pathname_prefix="/",
     )
 
-    app.layout = build_app_layout(state, registry, image_root)
+    app.layout = build_app_layout(state, registry, image_root, url_prefix=url_prefix)
 
-    # Stash dependencies on the underlying Flask server so Phase 3 callbacks
-    # can fetch them via ``flask.current_app.config[...]`` without rebuilding
-    # the registry per request.
     app.server.config["pheno_image_root"] = image_root
     app.server.config["pheno_registry"] = registry
+    app.server.config["pheno_url_prefix"] = url_prefix
 
     register_callbacks(app)
 

@@ -1,61 +1,125 @@
-"""Shell Dash factory.
+"""Shell Dash factory + DispatcherMiddleware composer.
 
-Phase 3 ships the standalone shell variant: ``create_app(sandbox)`` returns
-a single :class:`dash.Dash` app whose body is the home page wrapped in
-chrome, with the Phase 2 Flask blueprints (``/sandbox/api/*`` and
-``/runs/*``) registered on its server. No sub-app mounting yet — that's
-Phase 5, which will add the ``DispatcherMiddleware`` composer + viewer
-``ToolSession`` + per-app ``wrap_in_chrome`` passes.
+Phase 5 ships the unified hub: ``create_app(sandbox)`` returns a
+:class:`dash.Dash` whose ``server.wsgi_app`` is wrapped in a
+:class:`werkzeug.middleware.dispatcher.DispatcherMiddleware`. The
+dispatcher routes:
 
-The factory pins ``assets_folder`` to the package's ``_assets/`` directory
-so the shell's CSS works regardless of CWD.
+    * ``/builder/...``  → builder Dash factory (eager — small).
+    * ``/results/...``  → :class:`_ViewerProxy` over a viewer
+      :class:`ToolSession` (lazy — viewer is heavy).
+    * ``/run/...``      → run-console Dash factory (eager — small,
+      Phase 5 placeholder; Phase 6 fills in the form/iframe/log/recents).
+    * everything else   → the shell's Flask server. Flask blueprints
+      (``/sandbox/api/*``, ``/runs/*``) are registered on that server
+      so they answer regardless of which sub-app is active.
+
+The viewer is wrapped in a :class:`ToolSession` because it loads heavy
+parquet tables on every build; the session lets the user release+rebuild
+to reclaim object-graph memory between explorations. Each Dash app gets
+its chrome wrapped via :func:`wrap_in_chrome` so the top-bar tabs and
+sidebar appear identically across mounts.
+
+Standalone shell mode (Phase 3 backwards-compat): the same
+``create_app(sandbox)`` is used by Phase 3 tests; the dispatcher's
+fallback is the shell Flask, so every Phase 3 endpoint (``/``,
+``/_dash-layout``, ``/sandbox/api/*``, ``/runs/*``) keeps working.
+The sub-app mounts simply add new routable prefixes.
 """
 from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable
 
 import dash
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import html
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
 from phenotypic.gui.shell._home import build_home_layout
-from phenotypic.gui.shell._ids import SHELL_TAB_HOME
+from phenotypic.gui.shell._ids import (
+    SHELL_TAB_BUILDER,
+    SHELL_TAB_HOME,
+    SHELL_TAB_RUN,
+    SHELL_TAB_VIEWER,
+)
 from phenotypic.gui.shell._layout import wrap_in_chrome
 from phenotypic.gui.shell._routes import register_sandbox_api
 from phenotypic.gui.shell._runs_blueprint import register as register_runs
 from phenotypic.gui.shell._sandbox import SandboxRoot
-from phenotypic.gui.shell._session import ToolSession
+from phenotypic.gui.shell._session import ToolSession, start_idle_release_thread
 
 if TYPE_CHECKING:
     pass
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["create_app"]
+__all__ = ["create_app", "compose_hub"]
 
 
-def create_app(
+# Default 15 minutes of inactivity before the viewer session is released.
+# Mirrors the spec's recommendation; tests pass an explicit override.
+_DEFAULT_IDLE_RELEASE_SECONDS = 15 * 60
+
+
+# ---------------------------------------------------------------------------
+# _ViewerProxy — per-request resolution of the viewer's WSGI app
+# ---------------------------------------------------------------------------
+
+class _ViewerProxy:
+    """WSGI callable that resolves the viewer's app per request.
+
+    The dispatcher's mount point is fixed at composition time, but the
+    underlying Dash instance changes whenever the :class:`ToolSession`
+    rebuilds (release + first ``get`` after release). Going through a
+    proxy keeps the dispatcher's mount stable while the wrapped state
+    floats: each request asks the session for the current Dash app and
+    forwards the WSGI tuple to its Flask ``wsgi_app``.
+
+    ``ToolSession.get()`` is itself thread-safe and updates
+    ``_last_access`` so a steady stream of requests prevents the idle
+    daemon from releasing the viewer mid-session.
+    """
+
+    def __init__(self, session: "ToolSession[dash.Dash]") -> None:
+        self._session = session
+
+    def __call__(
+        self,
+        environ: dict[str, Any],
+        start_response: Callable[..., Any],
+    ) -> Any:
+        app = self._session.get()
+        return app.server.wsgi_app(environ, start_response)
+
+
+# ---------------------------------------------------------------------------
+# Shell-only Dash builder (used as the dispatcher's default fallback app)
+# ---------------------------------------------------------------------------
+
+def _build_shell_dash_app(
     sandbox: SandboxRoot,
     *,
     url_prefix: str = "/",
-    viewer_session: "ToolSession[object] | None" = None,
+    viewer_session: "ToolSession[Any] | None" = None,
 ) -> dash.Dash:
-    """Build the shell Dash app.
+    """Build the shell's home Dash (chrome + home pane + Flask blueprints).
+
+    The returned Dash app is the dispatcher's default fallback in the
+    composed hub: any path that doesn't start with ``/builder``,
+    ``/results``, or ``/run`` reaches its Flask server, which carries
+    the ``/sandbox/api/*`` and ``/runs/*`` blueprints alongside the
+    home Dash routes.
 
     Args:
-        sandbox: Frozen-at-launch sandbox root. Echoed in the top-bar label;
-            used by the JSON API + ``/runs/`` blueprints.
-        url_prefix: Phase 5 mounts the shell at ``/`` and the sub-apps at
-            ``/builder/``, ``/results/``, ``/run/``. The Phase 3 standalone
-            launch keeps the default ``"/"``.
-        viewer_session: Optional :class:`ToolSession` whose ``touch()`` is
-            called by the JSON API + runs blueprints. Phase 5 wires the
-            real viewer session; Phase 3 standalone tests pass ``None``.
-
-    Returns:
-        Configured :class:`dash.Dash` app. ``app.run()`` starts the server.
+        sandbox: Frozen-at-launch sandbox root.
+        url_prefix: Mount prefix. Hub uses ``"/"`` (the shell IS the
+            fallback, so it serves the root); standalone same.
+        viewer_session: Optional :class:`ToolSession` for the viewer.
+            The Phase 2 blueprints call ``viewer_session.touch()``
+            on each request so iframe-driven dashboard polls keep
+            the viewer alive even when no Dash callback fires.
     """
     assets_folder = str(Path(__file__).parent / "_assets")
 
@@ -68,23 +132,175 @@ def create_app(
         requests_pathname_prefix=url_prefix,
         routes_pathname_prefix=url_prefix,
     )
-
-    # Body BEFORE chrome: the home pane wrapped in a top-level html.Div so
-    # ``wrap_in_chrome`` has a single root to splice.
     app.layout = html.Div(build_home_layout(sandbox), className="shell-page")
-
-    # Chrome wrap: top bar + sidebar + RSS interval + help modal +
-    # registers chrome callbacks on this Dash app.
     wrap_in_chrome(app, active_tab=SHELL_TAB_HOME, sandbox=sandbox)
 
-    # Flask blueprints: register on the SAME Flask server so they answer
-    # regardless of which Dash sub-app is active in Phase 5.
     register_sandbox_api(app.server, sandbox, viewer_session=viewer_session)
     register_runs(app.server, sandbox, viewer_session=viewer_session)
-
-    logger.debug(
-        "Shell Dash app built: sandbox=%s url_prefix=%s",
-        sandbox.root,
-        url_prefix,
-    )
     return app
+
+
+# ---------------------------------------------------------------------------
+# Composer — the full hub
+# ---------------------------------------------------------------------------
+
+def compose_hub(
+    sandbox: SandboxRoot,
+    *,
+    idle_release_seconds: float = _DEFAULT_IDLE_RELEASE_SECONDS,
+    start_idle_thread: bool = True,
+) -> tuple[dash.Dash, ToolSession[dash.Dash]]:
+    """Build the shell + builder + viewer-session + run console; mount via DispatcherMiddleware.
+
+    Returns:
+        Tuple of ``(shell_app, viewer_session)``. The shell Dash's
+        ``server.wsgi_app`` has been replaced with a
+        :class:`DispatcherMiddleware` so HTTP requests through any of
+        ``/``, ``/builder/...``, ``/results/...``, ``/run/...``,
+        ``/sandbox/api/...``, ``/runs/...`` resolve correctly.
+
+    Args:
+        sandbox: Frozen-at-launch sandbox root.
+        idle_release_seconds: How long the viewer session may go without
+            a ``get`` or ``touch`` before the daemon releases it. The
+            default (15 minutes) matches the spec.
+        start_idle_thread: When ``True`` (default), spawn the daemon
+            thread that releases idle sessions. Tests pass ``False``
+            so they don't leak background threads.
+    """
+    # Local imports to keep boot-time cycles minimal.
+    from phenotypic.gui import builder, results_viewer, run_console
+
+    # 1. Viewer session (lazy — heavy parquet load deferred to first GET).
+    def _build_viewer() -> dash.Dash:
+        viewer_app = results_viewer.create_app(
+            output_root=None, url_prefix="/results/"
+        )
+        wrap_in_chrome(viewer_app, active_tab=SHELL_TAB_VIEWER, sandbox=sandbox)
+        return viewer_app
+
+    def _teardown_viewer(viewer_app: dash.Dash) -> None:
+        # Intentionally a no-op: the released ``viewer_app`` is dropped
+        # by ``ToolSession.release()`` and reaches GC once all in-flight
+        # requests through ``_ViewerProxy`` finish. Eagerly popping
+        # ``filtered_state`` / ``output_root`` from ``app.server.config``
+        # would race in-flight callbacks reading those keys (a Phase-6
+        # callback issuing ``current_app.config["filtered_state"]`` could
+        # see ``KeyError``). Letting GC reclaim the heavy state via the
+        # config-dict-of-the-released-app is one cycle slower but
+        # race-free; Phase 6 can add an in-flight ref counter if eager
+        # reclamation becomes a hard requirement.
+        del viewer_app  # pragma: no cover - intentional no-op
+
+    viewer_session: ToolSession[dash.Dash] = ToolSession(
+        "viewer",
+        build=_build_viewer,
+        teardown=_teardown_viewer,
+    )
+
+    # 2. Shell Dash (registers the API + runs blueprints with the
+    #    viewer-session touch hook wired in).
+    shell_app = _build_shell_dash_app(sandbox, viewer_session=viewer_session)
+
+    # 3. Builder Dash (eager — single-process registry build).
+    builder_app = builder.create_app(
+        image_root=sandbox.root, url_prefix="/builder/"
+    )
+    wrap_in_chrome(builder_app, active_tab=SHELL_TAB_BUILDER, sandbox=sandbox)
+
+    # 4. Run console Dash (eager — Phase 5 placeholder; Phase 6 swaps in
+    #    the form / log tail / Recent Runs panel).
+    run_app = run_console.create_app(sandbox, url_prefix="/run/")
+    wrap_in_chrome(run_app, active_tab=SHELL_TAB_RUN, sandbox=sandbox)
+
+    # 5. Compose at the WSGI layer. The dispatcher receives the shell's
+    #    Flask app as its default; any path not matching a mount prefix
+    #    falls through to it (which carries the API + runs blueprints).
+    viewer_proxy = _ViewerProxy(viewer_session)
+    # ``wsgi_app`` is the standard Flask seam for WSGI middleware
+    # injection (this is the same recipe Werkzeug docs recommend).
+    shell_app.server.wsgi_app = DispatcherMiddleware(  # type: ignore[method-assign]
+        shell_app.server.wsgi_app,
+        {
+            "/builder": builder_app.server,
+            "/results": viewer_proxy,
+            "/run": run_app.server,
+        },
+    )
+
+    logger.info(
+        "GUI hub composed: sandbox=%s mounts=/builder, /results, /run",
+        sandbox.root,
+    )
+
+    if start_idle_thread:
+        start_idle_release_thread(
+            [viewer_session],  # type: ignore[list-item]
+            idle_release_seconds=idle_release_seconds,
+        )
+
+    return shell_app, viewer_session
+
+
+def create_app(
+    sandbox: SandboxRoot,
+    *,
+    url_prefix: str = "/",
+    viewer_session: "ToolSession[Any] | None" = None,
+    idle_release_seconds: float = _DEFAULT_IDLE_RELEASE_SECONDS,
+    start_idle_thread: bool | None = None,
+) -> dash.Dash:
+    """Build the unified GUI hub Dash app.
+
+    Phase 5 default: composes the full hub (shell + builder + viewer
+    via :class:`ToolSession` + run console) and returns the shell's
+    Dash app with its ``server.wsgi_app`` replaced by a
+    :class:`DispatcherMiddleware`. Tests can hit any HTTP route through
+    ``app.server.test_client()`` (which goes through ``wsgi_app``).
+
+    Backwards-compat for Phase 3 tests: passing ``viewer_session``
+    explicitly opts out of full composition — the call returns just
+    the shell Dash app with the API + runs blueprints registered
+    against the supplied session. Phase 3 lifecycle tests rely on this
+    to inject a stub session and assert ``touch()`` is called.
+
+    Args:
+        sandbox: Frozen-at-launch sandbox root.
+        url_prefix: Reserved for future composer nesting. Hub keeps
+            it at ``"/"`` since the shell Dash is itself the dispatcher's
+            fallback. Standalone shell launches accept any value.
+        viewer_session: Phase 3 escape hatch — pass to test the shell
+            in isolation against a specific session. When set,
+            ``create_app`` returns just the shell Dash without composing
+            the sub-apps. ``None`` (default) triggers the full hub
+            composition.
+        idle_release_seconds: Forwarded to :func:`compose_hub`.
+        start_idle_thread: Forwarded to :func:`compose_hub`. When
+            ``None`` (default) the daemon is started under production
+            launch but skipped under pytest (``PYTEST_CURRENT_TEST``
+            in env). Tests that want the daemon explicitly should
+            pass ``True``.
+
+    Returns:
+        Configured :class:`dash.Dash` instance. ``app.run()`` (or
+        Werkzeug ``run_simple``) starts the unified server.
+    """
+    if viewer_session is not None:
+        # Phase 3 backwards-compat: test path injects a stub session
+        # and stops at the shell Dash (no sub-app composition).
+        return _build_shell_dash_app(
+            sandbox, url_prefix=url_prefix, viewer_session=viewer_session
+        )
+
+    if start_idle_thread is None:
+        # Don't leak daemon threads in pytest unless the test asks.
+        import os
+
+        start_idle_thread = "PYTEST_CURRENT_TEST" not in os.environ
+
+    shell_app, _viewer_session = compose_hub(
+        sandbox,
+        idle_release_seconds=idle_release_seconds,
+        start_idle_thread=start_idle_thread,
+    )
+    return shell_app

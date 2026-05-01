@@ -952,6 +952,8 @@ def build_app_layout(
     state: BuilderState,
     registry: "OperationRegistry",
     image_root: Optional[Path],
+    *,
+    url_prefix: str = "/",
 ) -> html.Div:
     """Compose the top-level page layout.
 
@@ -1196,7 +1198,7 @@ def build_app_layout(
     header = html.Div(
         [
             html.Img(
-                src="/assets/pheno_logo.png",
+                src=f"{url_prefix}assets/pheno_logo.png",
                 alt="PhenoTypic",
                 className="pheno-app-header__logo",
             ),

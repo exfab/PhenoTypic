@@ -372,6 +372,49 @@ def build_app_layout(
     )
 
 
+def build_empty_state_layout() -> Component:
+    """Compose a placeholder layout when no ``OutputRoot`` is available.
+
+    The hub mounts the viewer with ``output_root=None`` so the page is
+    reachable before the user has chosen an output directory. This layout
+    explains the situation and points at the sidebar's file picker — the
+    rebuild path is owned by :class:`ToolSession`, which calls the factory
+    again with a real ``OutputRoot`` once one is selected.
+
+    Returns:
+        A :class:`dash.html.Div` that renders a friendly message + tip.
+    """
+    return html.Div(
+        [
+            html.Div(
+                [
+                    html.H2(
+                        "No output selected",
+                        className="results-viewer-empty-title",
+                    ),
+                    html.P(
+                        "Pick a CLI output directory in the sidebar to "
+                        "load the viewer. The viewer rebuilds in place "
+                        "when you select one.",
+                        className="results-viewer-empty-body",
+                    ),
+                ],
+                className="results-viewer-empty-card",
+            ),
+        ],
+        id="results-viewer-empty-state",
+        className="results-viewer-empty",
+        style={
+            "display": "flex",
+            "alignItems": "center",
+            "justifyContent": "center",
+            "minHeight": "calc(100vh - 7rem)",
+            "background": _BG,
+            "padding": "2rem",
+        },
+    )
+
+
 def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
     """Register layout-owned callbacks.
 

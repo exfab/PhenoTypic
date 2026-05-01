@@ -10,16 +10,27 @@ stashed on ``app.server.config``, the layout assembled by
 all callbacks registered via
 :func:`~phenotypic.gui.results_viewer._callbacks.register_callbacks`.
 
-The package's ``_assets`` directory (which ships the vendored
-OpenSeadragon JS plus viewer CSS/JS) is registered explicitly via
-``assets_folder="_assets"`` so Dash picks it up regardless of the user's
-current working directory at launch time.
+Phase 5 additions:
+    * Optional ``output_root`` — when ``None`` the factory returns a
+      Dash app whose layout is :func:`._layout.build_empty_state_layout`
+      and which has NO blueprints, NO callbacks, and NO ``filtered_state``
+      on ``app.server.config``. The hub uses this path to reach the
+      ``/results/`` page before the user has selected a CLI output.
+    * ``url_prefix`` — Mount-point prefix passed to ``dash.Dash`` as
+      both ``requests_pathname_prefix`` and ``routes_pathname_prefix``,
+      and stashed on ``app.server.config["pheno_url_prefix"]`` so
+      callbacks (notably the colony-grid crop URLs) can construct
+      hub-aware URLs at request time.
+    * ``window.__phenotypicAppPrefix`` — injected via
+      ``app.index_string`` so ``results_viewer.js`` can build DZI tile
+      URLs that include the mount prefix.
 """
 
 from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Optional
 
 import dash
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
@@ -27,41 +38,87 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from phenotypic.gui.results_viewer import _tile_routes
 from phenotypic.gui.results_viewer._callbacks import register_callbacks
 from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
-from phenotypic.gui.results_viewer._layout import build_app_layout
+from phenotypic.gui.results_viewer._layout import (
+    build_app_layout,
+    build_empty_state_layout,
+)
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer.colony_view import _crop_routes as colony_crop_routes
 
 logger = logging.getLogger(__name__)
 
 
-def create_app(output_root: OutputRoot) -> dash.Dash:
-    """Build a Dash application instance for the results viewer.
+def _index_string_with_prefix(url_prefix: str) -> str:
+    """Return a Dash ``index_string`` template that injects the URL prefix.
 
-    Constructs a :class:`dash.Dash` with Bootstrap styling, points the
-    asset loader at the in-package ``_assets`` directory (so vendored
-    OpenSeadragon and viewer CSS are auto-served), stashes
-    *output_root* on ``app.server.config["output_root"]`` for later
-    callback access, mounts the DZI tile-serving blueprint via
-    :func:`phenotypic.gui.results_viewer._tile_routes.register`, loads
-    the on-disk curation state into a
-    :class:`~phenotypic.gui.results_viewer._filtered_state.FilteredMeasurements`
-    and stashes it on ``app.server.config["filtered_state"]``, mounts
-    the colony-crop blueprint via
-    :func:`phenotypic.gui.results_viewer.colony_view._crop_routes.register`,
-    assembles the layout via
-    :func:`phenotypic.gui.results_viewer._layout.build_app_layout`,
-    and finally hooks every per-module + clientside callback through
-    :func:`phenotypic.gui.results_viewer._callbacks.register_callbacks`.
+    The injected ``<script>`` defines ``window.__phenotypicAppPrefix`` so
+    ``results_viewer.js`` can build hub-aware URLs for DZI tiles and the
+    vendored OpenSeadragon assets.
+
+    ``url_prefix`` is escaped before embedding inside the JS string
+    literal:
+
+        * ``\\`` -> ``\\\\`` and ``"`` -> ``\\"`` keep the JS string
+          well-formed.
+        * ``</`` -> ``<\\/`` prevents a stray ``</script>`` from
+          terminating the inline script tag (forward-slash escapes are
+          legal in JS string literals).
+
+    In practice only the hub composer sets the prefix and the values are
+    static literals (``"/"``, ``"/results/"``); the escaping is defence
+    in depth against future callers passing user-controlled values.
+    """
+    safe_prefix = (
+        url_prefix.replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("</", "<\\/")
+    )
+    return (
+        "<!DOCTYPE html>\n"
+        "<html>\n"
+        "    <head>\n"
+        "        {%metas%}\n"
+        "        <title>{%title%}</title>\n"
+        "        {%favicon%}\n"
+        "        {%css%}\n"
+        f'        <script>window.__phenotypicAppPrefix = "{safe_prefix}";</script>\n'
+        "    </head>\n"
+        "    <body>\n"
+        "        {%app_entry%}\n"
+        "        <footer>\n"
+        "            {%config%}\n"
+        "            {%scripts%}\n"
+        "            {%renderer%}\n"
+        "        </footer>\n"
+        "    </body>\n"
+        "</html>"
+    )
+
+
+def create_app(
+    output_root: Optional[OutputRoot] = None,
+    *,
+    url_prefix: str = "/",
+) -> dash.Dash:
+    """Build a Dash application instance for the results viewer.
 
     Args:
         output_root: Validated, read-only handle on a CLI output
             directory (see
             :meth:`phenotypic.gui.results_viewer._output_root.OutputRoot.discover`).
+            ``None`` triggers the empty-state pathway: the factory skips
+            blueprint registration, ``FilteredMeasurements.load``, and
+            callback registration; ``app.layout`` is the empty-state
+            placeholder.
+        url_prefix: Mount-point prefix. Defaults to ``"/"`` (standalone
+            launcher); the hub composer passes ``"/results/"``. Set as
+            ``requests_pathname_prefix``/``routes_pathname_prefix`` on
+            the Dash constructor and stashed on
+            ``app.server.config["pheno_url_prefix"]``.
 
     Returns:
         A configured :class:`dash.Dash` instance whose ``app.run(...)``
-        is the responsibility of the caller (typically
-        ``__main__.py``).
+        is the responsibility of the caller.
     """
     app = dash.Dash(
         __name__,
@@ -71,12 +128,27 @@ def create_app(output_root: OutputRoot) -> dash.Dash:
         # Pin to the in-package directory so the assets ship correctly
         # regardless of the user's CWD at launch.
         assets_folder=str(Path(__file__).parent / "_assets"),
+        # See builder/_app.py for the rationale: when mounted under
+        # the hub's DispatcherMiddleware the dispatcher strips the
+        # mount prefix from PATH_INFO, so Dash must route at "/".
+        requests_pathname_prefix=url_prefix,
+        routes_pathname_prefix="/",
     )
 
-    # Stash the output root on the underlying Flask server so future
-    # callbacks (and the tile blueprint) can fetch it via
-    # ``flask.current_app.config["output_root"]`` without re-discovering
-    # the directory layout per request.
+    # Inject window.__phenotypicAppPrefix so results_viewer.js can build
+    # mount-aware URLs for DZI tiles and OSD assets.
+    app.index_string = _index_string_with_prefix(url_prefix)
+
+    app.server.config["pheno_url_prefix"] = url_prefix
+
+    if output_root is None:
+        app.layout = build_empty_state_layout()
+        logger.debug(
+            "Results viewer built in empty-state mode (url_prefix=%s)",
+            url_prefix,
+        )
+        return app
+
     app.server.config["output_root"] = output_root
 
     _tile_routes.register(app, output_root)

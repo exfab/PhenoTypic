@@ -31,6 +31,15 @@
 (function () {
     "use strict";
 
+    // ``window.__phenotypicAppPrefix`` is injected by the Dash factory
+    // (see results_viewer/_app.py::_index_string_with_prefix). It carries
+    // the mount-point prefix when the app is hosted under the unified
+    // GUI hub (``/results/``); falls back to ``/`` for standalone.
+    const appPrefix = (typeof window.__phenotypicAppPrefix === "string"
+        && window.__phenotypicAppPrefix.length > 0)
+        ? window.__phenotypicAppPrefix
+        : "/";
+
     function loadOpenSeadragon() {
         return new Promise(function (resolve, reject) {
             // If something already loaded OSD before us, just resolve.
@@ -39,7 +48,7 @@
                 return;
             }
             const cdn = "https://cdn.jsdelivr.net/npm/openseadragon@5/build/openseadragon/openseadragon.min.js";
-            const local = "/assets/openseadragon/openseadragon.min.js";
+            const local = appPrefix + "assets/openseadragon/openseadragon.min.js";
             const tag = document.createElement("script");
             tag.src = cdn;
             tag.async = true;
@@ -78,6 +87,10 @@
     "use strict";
     const ns = window.__phenotypicResultsViewer = window.__phenotypicResultsViewer || {};
     ns.viewers = ns.viewers || new Map();   // divId -> OpenSeadragon.Viewer
+    const appPrefix = (typeof window.__phenotypicAppPrefix === "string"
+        && window.__phenotypicAppPrefix.length > 0)
+        ? window.__phenotypicAppPrefix
+        : "/";
 
     /**
      * Create (or recreate) an OpenSeadragon viewer in the element with the
@@ -110,7 +123,7 @@
         }
         const viewer = window.OpenSeadragon({
             element: el,
-            prefixUrl: "/assets/openseadragon/images/",
+            prefixUrl: appPrefix + "assets/openseadragon/images/",
             tileSources: dziUrl,
             showNavigator: false,
             showRotationControl: false,
@@ -277,7 +290,7 @@
                 ns.disposeViewer(s.id);
                 return;
             }
-            const dziUrl = "/tiles/" + encodeURIComponent(s.dataset) +
+            const dziUrl = appPrefix + "tiles/" + encodeURIComponent(s.dataset) +
                            "/" + encodeURIComponent(s.stem) + ".dzi";
             ns.mountViewer(s.id, dziUrl);
         });

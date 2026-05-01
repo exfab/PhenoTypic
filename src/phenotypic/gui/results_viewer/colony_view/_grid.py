@@ -30,6 +30,7 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 import polars as pl
 from dash import html
 from dash.development.base_component import Component
+from flask import current_app, has_app_context
 
 from phenotypic.gui.results_viewer._ids import (
     colony_cell_count_badge_id,
@@ -61,6 +62,19 @@ _MEASUREMENT_PREFIXES: tuple[str, ...] = (
 #: Per-object identifier alias — sourced from :mod:`._filtered_state` so
 #: the curation key columns and the colony grid stay in sync.
 _OBJECT_LABEL_COL = KEY_OBJECT_LABEL
+
+
+def _url_prefix() -> str:
+    """Return the active app's mount-point prefix.
+
+    Read from ``flask.current_app.config["pheno_url_prefix"]`` when a
+    request context is active. Falls back to ``"/"`` for the standalone
+    case (or when called outside a request, e.g. unit tests building a
+    grid without spinning up a Flask app).
+    """
+    if has_app_context():
+        return current_app.config.get("pheno_url_prefix", "/")
+    return "/"
 
 #: Sort buckets — Metadata_ first, then Grid_, then everything else.
 _METADATA_PREFIX = "Metadata_"
@@ -302,7 +316,8 @@ def _build_cell(
         classes.append("is-removed")
 
     if has_overlay:
-        crop_url = f"/crops/{dataset}/{image_file}/{label}.png?size={max_size}"
+        prefix = _url_prefix()
+        crop_url = f"{prefix}crops/{dataset}/{image_file}/{label}.png?size={max_size}"
         crop_node: Component = html.Img(
             src=crop_url,
             className="colony-cell-img",
@@ -437,9 +452,10 @@ def _build_stack_popover(
     ``N=k`` badge button and toggles open on click.
     """
     rows: list[Component] = []
+    prefix = _url_prefix()
     for image_file, dataset, label in members:
         is_removed = (image_file, label) in removed_keys
-        crop_url = f"/crops/{dataset}/{image_file}/{label}.png?size={crop_size}"
+        crop_url = f"{prefix}crops/{dataset}/{image_file}/{label}.png?size={crop_size}"
         rows.append(
             html.Div(
                 [

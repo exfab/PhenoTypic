@@ -52,17 +52,17 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 
 | Feature              | Element                                | Expected behaviour                                                     | Status     | Test layer  | Test ref                                                          |
 | -------------------- | -------------------------------------- | ---------------------------------------------------------------------- | ---------- | ----------- | ----------------------------------------------------------------- |
-| URL prefix support   | `create_app(url_prefix=...)` kwarg     | Dash constructed with `requests_pathname_prefix=url_prefix`            | 🔭 planned | unit        | tests/unit/gui/shell/test_factory_url_prefix.py::test_builder_prefix |
-| Mounted under /builder/ | Shell mount                         | Reachable at `/builder/`; assets resolve under prefix                  | 🔭 planned | integration | tests/integration/gui/test_smoke_shell.py::test_builder_mount     |
+| URL prefix support   | `create_app(url_prefix=...)` kwarg     | Dash constructed with `requests_pathname_prefix=url_prefix`            | ✅ shipping | integration | tests/integration/gui/test_smoke_shell.py::test_builder_logo_uses_prefix |
+| Mounted under /builder/ | Shell mount                         | Reachable at `/builder/`; assets resolve under prefix                  | ✅ shipping | integration | tests/integration/gui/test_smoke_shell.py::test_builder_mount_routes |
 | Standalone parity    | `python -m phenotypic.gui.builder`     | Continues to work with default `url_prefix="/"`                        | 🔭 planned | manual      | n/a (manual)                                                      |
 
 ## Results Viewer integration
 
 | Feature                  | Element                              | Expected behaviour                                                              | Status     | Test layer  | Test ref                                                                |
 | ------------------------ | ------------------------------------ | ------------------------------------------------------------------------------- | ---------- | ----------- | ----------------------------------------------------------------------- |
-| URL prefix support       | `create_app(url_prefix=...)` kwarg   | Dash constructed with `requests_pathname_prefix=url_prefix`                     | 🔭 planned | unit        | tests/unit/gui/shell/test_factory_url_prefix.py::test_viewer_prefix     |
-| Optional output_root     | `create_app(output_root=None)`       | Skips tile/colony/measurements load; renders empty state                        | 🔭 planned | integration | tests/integration/gui/test_smoke_shell.py::test_viewer_empty_state      |
-| Mounted via _ViewerProxy | `/results/` route                    | Per-request resolves `session.get().server`; survives release+rebuild           | 🔭 planned | integration | tests/integration/gui/test_lifecycle.py::test_viewer_proxy_rebuild      |
+| URL prefix support       | `create_app(url_prefix=...)` kwarg   | Dash constructed with `requests_pathname_prefix=url_prefix`                     | ✅ shipping | integration | tests/integration/gui/test_smoke_shell.py::test_results_assets_are_prefix_aware |
+| Optional output_root     | `create_app(output_root=None)`       | Skips tile/colony/measurements load; renders empty state                        | ✅ shipping | integration | tests/integration/gui/test_smoke_shell.py::test_results_layout_is_empty_state |
+| Mounted via _ViewerProxy | `/results/` route                    | Per-request resolves `session.get().server`; survives release+rebuild           | ✅ shipping | integration | tests/integration/gui/test_viewer_session.py::test_release_rebuilds_on_next_request |
 | Release button           | "Release loaded data"                | Drops in-memory state; subsequent access re-loads from disk (RSS may stay high) | 🔭 planned | integration | tests/integration/gui/test_lifecycle.py::test_release_drops_state       |
 | Idle auto-release        | Daemon thread                        | Calls `release()` after `idle_seconds > N`                                      | 🔭 planned | integration | tests/integration/gui/test_lifecycle.py::test_idle_release_fires        |
 
