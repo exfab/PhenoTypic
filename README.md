@@ -133,6 +133,10 @@ loopback-only — pair with SSH port forwarding for remote workstations:
 ssh -L 8050:localhost:8050 user@cluster
 ```
 
+Open `http://localhost:8050/` in your browser. The
+[GUI hub guide](docs/source/how_to/pages/gui_hub.md) walks through the file
+browser, builder, run console, and results viewer.
+
 Note: `phenotypic gui` (no hyphen, as a subcommand) is **not supported**. Use
 `phenotypic-gui` or `python -m phenotypic.gui`.
 
