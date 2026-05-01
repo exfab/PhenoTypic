@@ -21,6 +21,18 @@
   SLURM, resume)
 - `uv run python -m phenotypic.sweep` — parameter sweeps across pipeline variants
 
+### GUI hub
+
+- `uv run phenotypic-gui --root ./images --port 8050` — unified hub: builder +
+  results viewer + run console mounted under one URL via Werkzeug
+  `DispatcherMiddleware`. SSH-tunnel from a workstation:
+  `ssh -L 8050:localhost:8050 user@cluster`.
+- `uv run python -m phenotypic.gui --root ./images` — equivalent module entry.
+- Standalone tools still work: `python -m phenotypic.gui.builder`,
+  `python -m phenotypic.gui.results_viewer`, `python -m phenotypic.gui.run_console`.
+- Note: `phenotypic gui` (no hyphen, as a subcommand of the existing CLI) is NOT
+  supported. Use `phenotypic-gui` or `python -m phenotypic.gui`.
+
 ---
 
 ## Architecture

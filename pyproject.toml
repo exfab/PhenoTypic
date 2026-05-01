@@ -103,6 +103,7 @@ torch = [
 
 [project.scripts]
 phenotypic = "phenotypic.phenotypicCLI:phenotypic_cli"
+phenotypic-gui = "phenotypic.gui.shell._launcher:main"
 
 [dependency-groups]
 dev = [

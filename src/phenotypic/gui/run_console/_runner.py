@@ -93,6 +93,12 @@ class LocalRunner:
     """
 
     _atexit_registered: bool = False
+    # TODO(perf): every ``LocalRunner()`` appends itself to this list and
+    # never removes itself. In production exactly one runner exists per
+    # process so the list stays bounded, but pytest fixtures that build
+    # many run-console apps will accumulate instances and retain their
+    # ``_handles`` dicts. If/when a long-running test suite exhibits the
+    # leak, switch to ``weakref.WeakSet``. Bounded enough today.
     _instances: list["LocalRunner"] = []
     _atexit_lock = threading.Lock()
 

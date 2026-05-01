@@ -74,15 +74,15 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 | Input picker         | Modal browser          | Opens sandboxed dir picker; selects image dir                                        | 🔭 planned | e2e         | tests/e2e/gui/test_run_local_e2e.py::test_pick_input                           |
 | Output picker        | Modal browser          | Defaults to `output_<timestamp>` adjacent to input                                   | 🔭 planned | e2e         | tests/e2e/gui/test_run_local_e2e.py::test_pick_output                          |
 | Mode toggle          | Local / SLURM radio    | Switches advanced sections + log/iframe behaviour                                    | 🔭 planned | e2e         | tests/e2e/gui/test_run_local_e2e.py::test_mode_toggle                          |
-| Dry-run checkbox     | Inline                 | `--dry-run` flag added to subprocess args                                            | 🔭 planned | unit        | tests/unit/gui/run_console/test_callbacks.py::test_dry_run_flag                |
-| Resume checkbox      | Inline                 | `--resume` flag added to subprocess args                                             | 🔭 planned | unit        | tests/unit/gui/run_console/test_callbacks.py::test_resume_flag                 |
+| Dry-run checkbox     | Inline                 | `--dry-run` flag added to subprocess args                                            | ✅ shipping | unit        | tests/unit/gui/run_console/test_state.py::test_to_argv_includes_dry_run_flag   |
+| Resume checkbox      | Inline                 | `--resume` flag added to subprocess args                                             | ✅ shipping | unit        | tests/unit/gui/run_console/test_state.py::test_to_argv_includes_resume_flag    |
 | Run (Local)          | Run button             | Spawns Popen, polls dashboard.html, sets iframe src                                  | 🔭 planned | e2e         | tests/e2e/gui/test_run_local_e2e.py::test_run_local                            |
-| Run (SLURM)          | Run button             | Submits via `_cli_slurm_submission`; reads job-id from `progress/job_metadata.json`  | 🔭 planned | unit        | tests/unit/gui/run_console/test_slurm.py::test_slurm_job_id_from_metadata      |
-| Cancel               | Cancel button          | LocalRunner SIGTERMs; SIGKILL after 10s                                              | 🔭 planned | unit        | tests/unit/gui/run_console/test_runner.py::test_stop_sigterm_then_sigkill      |
+| Run (SLURM)          | Run button             | Submits via `_cli_slurm_submission`; reads job-id from `progress/job_metadata.json`  | ✅ shipping | unit        | tests/unit/gui/run_console/test_slurm.py::test_submit_slurm_returns_array_job_id |
+| Cancel               | Cancel button          | LocalRunner SIGTERMs; SIGKILL after 10s                                              | ✅ shipping | unit        | tests/unit/gui/run_console/test_runner.py::test_stop_sigterm_then_sigkill      |
 | Validate (dry-run)   | Validate button        | Runs with `--dry-run`; logs only; no iframe                                          | 🔭 planned | e2e         | tests/e2e/gui/test_run_local_e2e.py::test_validate_no_iframe                   |
 | Save preset          | Save preset button     | Writes form to `<root>/.phenotypic-gui/presets/<name>.json`                          | 🔭 planned | unit        | tests/unit/gui/run_console/test_callbacks.py::test_save_preset                 |
-| Log tail             | Log panel              | Streams Popen stdout via `dcc.Interval`; deque ring-buffered                         | 🔭 planned | unit        | tests/unit/gui/run_console/test_runner.py::test_log_tail_streams               |
-| Recent Runs list     | Side panel             | Rehydrated from sandbox scan; row click re-points iframe                             | 🔭 planned | integration | tests/integration/gui/test_recent_runs_rehydrate.py::test_rehydrate            |
+| Log tail             | Log panel              | Streams Popen stdout via `dcc.Interval`; deque ring-buffered                         | ✅ shipping | unit        | tests/unit/gui/run_console/test_runner.py::test_ring_buffer_drops_oldest_under_flood |
+| Recent Runs list     | Side panel             | Rehydrated from sandbox scan; row click re-points iframe                             | ✅ shipping | integration | tests/integration/gui/test_recent_runs_rehydrate.py::test_scan_rehydrates_supplied_registry |
 | Max-local-runs cap   | Run button disabled    | `--max-local-runs` (default 1) gates new local runs                                  | 🔭 planned | unit        | tests/unit/gui/run_console/test_callbacks.py::test_max_local_runs_cap          |
 
 ## CLI dashboard iframe integration
@@ -109,16 +109,16 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 
 | Feature                                | Element                | Expected behaviour                                                              | Status     | Test layer  | Test ref                                                                |
 | -------------------------------------- | ---------------------- | ------------------------------------------------------------------------------- | ---------- | ----------- | ----------------------------------------------------------------------- |
-| `python -m phenotypic.gui`             | Module entry           | Argparse `--root`/`--port`/...; calls `launch_gui`                              | 🔭 planned | integration | tests/integration/gui/test_console_script.py::test_module_entry         |
-| `phenotypic-gui` console script        | `[project.scripts]`    | Same launcher; `--help` + `--root` work                                         | 🔭 planned | integration | tests/integration/gui/test_console_script.py::test_console_script       |
+| `python -m phenotypic.gui`             | Module entry           | Argparse `--root`/`--port`/...; calls `launch_gui`                              | ✅ shipping | integration | tests/integration/gui/test_console_script.py::test_phenotypic_gui_help_succeeds |
+| `phenotypic-gui` console script        | `[project.scripts]`    | Same launcher; `--help` + `--root` work                                         | ✅ shipping | integration | tests/integration/gui/test_console_script.py::test_phenotypic_gui_help_succeeds |
 | Standalone `python -m ....run_console` | Standalone parity      | Boots Run console only at `url_prefix="/"`                                      | 🔭 planned | manual      | n/a (manual)                                                            |
-| Existing CLI parity                    | `phenotypic pipeline.json input/ --dry-run` | Untouched; no click refactor                                       | 🔭 planned | unit        | tests/unit/cli/test_cli_invocation.py::test_existing_invocation_unchanged |
+| Existing CLI parity                    | `phenotypic pipeline.json input/ --dry-run` | Untouched; no click refactor                                       | ✅ shipping | integration | tests/integration/gui/test_console_script.py::test_phenotypic_cli_still_works |
 
 ## Documentation
 
 | Feature                            | Element                            | Expected behaviour                                                       | Status     | Test layer | Test ref     |
 | ---------------------------------- | ---------------------------------- | ------------------------------------------------------------------------ | ---------- | ---------- | ------------ |
 | User guide                         | `docs/source/user_guide/gui.rst`   | Walks through hub home, sandbox, run modes, iframe, release, SSH-tunnel  | 🔭 planned | manual     | n/a (manual) |
-| README "Launch the GUI"            | README.md section                  | One-screen quick-start                                                   | 🔭 planned | manual     | n/a (manual) |
+| README "Launch the GUI"            | README.md section                  | One-screen quick-start                                                   | ✅ shipping | manual     | n/a (manual) |
 | `phenotypic gui` non-support note  | gui.rst                            | Explicitly states the no-hyphen subcommand is unsupported                | 🔭 planned | manual     | n/a (manual) |
-| CLAUDE.md update                   | Quick Start section                | Mentions `python -m phenotypic.gui` and `phenotypic-gui`                 | 🔭 planned | manual     | n/a (manual) |
+| CLAUDE.md update                   | Quick Start section                | Mentions `python -m phenotypic.gui` and `phenotypic-gui`                 | ✅ shipping | manual     | n/a (manual) |

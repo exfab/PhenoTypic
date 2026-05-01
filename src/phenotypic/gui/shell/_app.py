@@ -208,10 +208,30 @@ def compose_hub(
     )
     wrap_in_chrome(builder_app, active_tab=SHELL_TAB_BUILDER, sandbox=sandbox)
 
-    # 4. Run console Dash (eager — Phase 5 placeholder; Phase 6 swaps in
-    #    the form / log tail / Recent Runs panel).
-    run_app = run_console.create_app(sandbox, url_prefix="/run/")
+    # 4. Run console Dash (eager). Build the process-wide runner +
+    #    registry HERE so the shell's ``/runs/`` blueprint, the Recent
+    #    Runs panel, and the run-console callbacks all share the same
+    #    state. Rehydrate the registry from disk so historical runs are
+    #    visible immediately without waiting for a refresh.
+    from phenotypic.gui.run_console._runner import LocalRunner
+    from phenotypic.gui.shell._runs_registry import RunRegistry
+
+    registry = RunRegistry()
+    registry.rehydrate_from_sandbox(sandbox)
+    runner = LocalRunner()
+
+    run_app = run_console.create_app(
+        sandbox,
+        url_prefix="/run/",
+        registry=registry,
+        runner=runner,
+    )
     wrap_in_chrome(run_app, active_tab=SHELL_TAB_RUN, sandbox=sandbox)
+    # Stash on the shell server too so any future cross-tool callback
+    # (e.g. the sidebar's "open in run console" hand-off) can reach the
+    # same singletons.
+    shell_app.server.config["pheno_runner"] = runner
+    shell_app.server.config["pheno_registry"] = registry
 
     # 5. Compose at the WSGI layer. The dispatcher receives the shell's
     #    Flask app as its default; any path not matching a mount prefix

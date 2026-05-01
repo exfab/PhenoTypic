@@ -1,12 +1,20 @@
-"""Run console Dash factory.
+"""Run console Dash factory (Phase 6).
 
-Phase 5 ships a minimal placeholder factory whose job is to boot a
-mountable Dash app under ``/run/`` so the unified hub can route to it.
-The full Run console UI (form pickers, log tail, Recent Runs panel,
-local + SLURM submit, dashboard iframe) lands in Phase 6.
+The Run console mounts under ``/run/`` in the unified hub. This factory
+builds the page (form + iframe panel + log tail + Recent Runs) and
+registers every callback the form needs.
 
-Signature mirrors builder + results_viewer: ``create_app(sandbox, *,
-url_prefix="/")``.
+The factory expects a process-wide :class:`LocalRunner` and
+:class:`RunRegistry` to be passed in — both must be shared with the
+shell's ``/runs/`` blueprint (so the Recent Runs panel sees the same
+records the boot-time rehydrate populated). The shell composer creates
+these singletons in :func:`phenotypic.gui.shell._app.compose_hub` and
+forwards them.
+
+Standalone debugging via ``python -m phenotypic.gui.run_console`` still
+works: when ``registry`` / ``runner`` are ``None``, the factory builds
+fresh local instances. They will not be visible to the shell, but a
+single-tool invocation does not need cross-tool state sharing.
 """
 from __future__ import annotations
 
@@ -15,8 +23,11 @@ from pathlib import Path
 
 import dash
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
-from dash import html
 
+from phenotypic.gui.run_console._callbacks import register_callbacks
+from phenotypic.gui.run_console._layout import build_run_console_layout
+from phenotypic.gui.run_console._runner import LocalRunner
+from phenotypic.gui.shell._runs_registry import RunRegistry
 from phenotypic.gui.shell._sandbox import SandboxRoot
 
 logger = logging.getLogger(__name__)
@@ -24,64 +35,40 @@ logger = logging.getLogger(__name__)
 __all__ = ["create_app"]
 
 
-def _build_placeholder_layout(sandbox: SandboxRoot) -> html.Div:
-    """Render a holding-page that signals the Run console is reachable.
-
-    Phase 6 replaces the body with the real form + iframe + Recent Runs
-    panel. Until then, the user lands here when they click the Run tab.
-    """
-    return html.Div(
-        [
-            html.Div(
-                [
-                    html.H2(
-                        "Run console",
-                        className="run-console-empty-title",
-                    ),
-                    html.P(
-                        "Phase 6 will fill this view with the pipeline form, "
-                        "the live log tail, and the Recent Runs panel. The "
-                        "route is mountable now so the hub can wire it in.",
-                        className="run-console-empty-body",
-                    ),
-                    html.P(
-                        f"Sandbox: {sandbox.root}",
-                        className="run-console-empty-meta",
-                        style={"fontFamily": "monospace", "fontSize": "0.85rem"},
-                    ),
-                ],
-                className="run-console-empty-card",
-            ),
-        ],
-        id="run-console-root",
-        style={
-            "display": "flex",
-            "alignItems": "center",
-            "justifyContent": "center",
-            "minHeight": "calc(100vh - 7rem)",
-            "padding": "2rem",
-        },
-    )
-
-
 def create_app(
     sandbox: SandboxRoot,
     *,
     url_prefix: str = "/",
+    registry: RunRegistry | None = None,
+    runner: LocalRunner | None = None,
 ) -> dash.Dash:
     """Build the Run console Dash app.
 
     Args:
-        sandbox: Frozen-at-launch sandbox root. Phase 6 callbacks will
-            use this to constrain the file pickers; the Phase 5
-            placeholder only echoes the path.
+        sandbox: Frozen-at-launch sandbox root. Constrains the file
+            pickers + drives Recent Runs scan.
         url_prefix: Mount-point prefix. Defaults to ``"/"`` (standalone
             launcher); the hub composer passes ``"/run/"``.
+        registry: Process-wide :class:`RunRegistry`. When ``None`` (the
+            standalone case) a fresh local registry is built and the
+            sandbox is scanned to seed Recent Runs.
+        runner: Process-wide :class:`LocalRunner`. When ``None`` a
+            fresh local runner is built. Production callers should
+            ALWAYS pass a shared runner so a navigation-away does not
+            kill in-flight subprocesses (the hub keeps the runner alive
+            even when the Run console UI is released).
 
     Returns:
         A configured :class:`dash.Dash` instance ready to mount under
         ``url_prefix`` or run standalone via ``app.run(...)``.
     """
+    if registry is None:
+        registry = RunRegistry()
+        registry.rehydrate_from_sandbox(sandbox)
+
+    if runner is None:
+        runner = LocalRunner()
+
     assets_folder = str(Path(__file__).parent / "_assets")
 
     app = dash.Dash(
@@ -94,12 +81,18 @@ def create_app(
         requests_pathname_prefix=url_prefix,
         routes_pathname_prefix="/",
     )
-    app.layout = _build_placeholder_layout(sandbox)
+    app.layout = build_run_console_layout(sandbox, registry=registry, runner=runner)
     app.server.config["pheno_url_prefix"] = url_prefix
     app.server.config["pheno_sandbox_root"] = str(sandbox.root)
+    # Stream A reads the runner here (per its integration note) rather
+    # than threading it through every callback closure.
+    app.server.config["pheno_runner"] = runner
+    app.server.config["pheno_registry"] = registry
+
+    register_callbacks(app, sandbox, registry=registry, runner=runner)
 
     logger.debug(
-        "Run console placeholder built: sandbox=%s url_prefix=%s",
+        "Run console built: sandbox=%s url_prefix=%s",
         sandbox.root,
         url_prefix,
     )
