@@ -15,7 +15,10 @@
  *   - 8pt spacing grid, navy-tinted shadows
  */
 
-@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Serif+Display&display=swap");
+/* Font tokens (--font-display / --font-body / --font-mono) and the
+ * Google Fonts @import are injected at runtime by gui/_design.py so a
+ * single Python constant controls the GUI typeface. Don't redeclare
+ * --font-* here -- update _design.py instead. */
 
 /* ===========================================================================
  * Design tokens (mirrors builder/assets/builder.css; consolidating these
@@ -45,10 +48,9 @@
   --oi-yellow:    #F0E442;
   --oi-grey:      #BBBBBB;
 
-  /* Typography */
-  --font-display: 'DM Serif Display', Georgia, serif;
-  --font-body:    'DM Sans', system-ui, sans-serif;
-  --font-mono:    'DM Mono', 'Courier New', monospace;
+  /* Typography -- --font-display / --font-body / --font-mono are
+     injected by gui/_design.py (single source of truth for the GUI
+     typeface). */
 
   --text-xs:   0.6875rem;   /* 11px */
   --text-sm:   0.8125rem;   /* 13px */
@@ -256,7 +258,10 @@
   background: var(--color-bg);
   border-right: 1px solid var(--color-border);
   overflow-y: auto;
-  overflow-x: hidden;
+  /* Allow horizontal scroll when entry names are longer than the rail —
+   * combined with ``min-width: max-content`` on the list, long names
+   * scroll into view rather than getting truncated. */
+  overflow-x: auto;
   padding: var(--sp-3);
   transition:
     width 200ms var(--ease-out),
@@ -301,6 +306,22 @@
   list-style: none;
   padding: 0;
   margin: 0;
+  /* Let the list grow with its longest row so the horizontal scroll on
+   * ``.shell-sidebar`` engages when names are long, while short rows
+   * still fill the rail (``min-width: 100%``) so hover backgrounds line
+   * up edge-to-edge. */
+  min-width: 100%;
+  width: max-content;
+}
+
+/* Indent expanded children one step per nesting level. The
+ * ``shell-sidebar-children`` <li> wraps each nested <ul>; padding-left
+ * compounds naturally with depth, and the left border draws a faint
+ * tree-guide line. */
+.shell-sidebar-children {
+  padding-left: var(--sp-4);
+  margin-left: var(--sp-2);
+  border-left: 1px solid var(--color-rule);
 }
 
 .shell-sidebar-row {
@@ -337,8 +358,8 @@
 
 .shell-sidebar-name {
   flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Don't wrap or truncate — long names extend the row's content width
+   * and the parent ``.shell-sidebar`` scrolls horizontally. */
   white-space: nowrap;
 }
 
