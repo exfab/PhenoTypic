@@ -426,11 +426,13 @@ def _capture_pick_points(context, base_url: str) -> None:
     page.wait_for_timeout(500)
 
     # 1) Palette with PICK badge.
-    # Make sure both Detector + Refiner accordion sections are open so the
-    # PICK-badged ops are visible in a single shot. Builder.css renders the
-    # accordion with `always_open=True`, but the *active* item is the first
-    # one only — clicking the headers opens the rest.
-    for header_text in ("Detector", "Refiner"):
+    # Open every Operations accordion section so the PICK-badged ops are
+    # visible in a single shot AND so subsequent _add_op clicks can reach
+    # ops in any category (Bootstrap collapsed items have ``display:
+    # none``, so Playwright considers them invisible). Builder.css renders
+    # the accordion with ``always_open=True``, but the *active* item is the
+    # first one only — clicking the headers opens the rest.
+    for header_text in ("Corrector", "Detector", "Enhancer", "Refiner"):
         header = page.locator(
             f'button.accordion-button:has-text("{header_text}")'
         ).first

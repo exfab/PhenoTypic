@@ -140,6 +140,12 @@ code, pre, .text-monospace, .font-monospace {
     color: var(--color-muted);
     margin-top: 2px;
 }
+/* Pipeline I/O slot: right-aligned in the header flex row via auto margin. */
+.pheno-app-header__io {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+}
 
 /* ===========================================================================
  * Cards & surfaces
@@ -164,19 +170,24 @@ code, pre, .text-monospace, .font-monospace {
     margin-bottom: var(--sp-3);
 }
 
-/* Breadcrumb area */
+/* Breadcrumb area -- 16px on a soft gray pill so it reads as navigation,
+ * not body text. ``inline-flex`` (set in the layout className via
+ * ``d-inline-flex``) shrink-wraps the pill to its contents. */
 .pheno-breadcrumb {
     font-family: var(--font-mono);
-    font-size: var(--text-xs);
+    font-size: 1rem;
     color: var(--color-muted);
     letter-spacing: 0.04em;
+    background: rgba(220, 226, 235, 0.85);
+    padding: 0.35rem 0.75rem;
+    border-radius: 0.5rem;
 }
 .pheno-breadcrumb .btn-link {
     color: var(--color-blue);
     text-decoration: none;
     padding: 0 var(--sp-1);
     font-family: var(--font-mono);
-    font-size: var(--text-xs);
+    font-size: 1rem;
 }
 .pheno-breadcrumb .btn-link:hover {
     text-decoration: underline;
@@ -185,6 +196,7 @@ code, pre, .text-monospace, .font-monospace {
 .pheno-breadcrumb .fw-bold {
     color: var(--color-heading);
     font-weight: 600;
+    font-size: 1rem;
 }
 
 /* ===========================================================================

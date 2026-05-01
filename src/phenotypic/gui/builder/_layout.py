@@ -441,10 +441,25 @@ def build_canvas_section(
         size="sm",
     )
 
+    # Destructive action sits next to the zoom group (not inside it) so the
+    # red outline reads as separate from the neutral pan/zoom controls.
+    delete_btn = dbc.Button(
+        "Delete selected",
+        id=ids.BTN_DELETE_NODE,
+        color="danger",
+        outline=True,
+        size="sm",
+        n_clicks=0,
+        title="Remove the selected node from the pipeline",
+    )
+
     header = html.Div(
         [
             html.H6("Canvas", className="mb-0"),
-            controls,
+            html.Div(
+                [controls, delete_btn],
+                className="d-flex align-items-center gap-2",
+            ),
         ],
         className="d-flex justify-content-between align-items-center mb-2",
     )
@@ -711,7 +726,7 @@ def build_breadcrumb(state: BuilderState) -> html.Nav:
     return html.Nav(
         children,
         id=ids.BREADCRUMB_CONTAINER,
-        className="pheno-breadcrumb d-flex align-items-center mb-2 small",
+        className="pheno-breadcrumb d-inline-flex align-items-center mb-2",
     )
 
 
@@ -720,100 +735,13 @@ def build_breadcrumb(state: BuilderState) -> html.Nav:
 # ---------------------------------------------------------------------------
 
 
-def _action_card(title: str, buttons: List[Any]) -> dbc.Card:
-    """Build a small card with a title and a single ``ButtonGroup`` row.
-
-    Used for the Pipeline I/O and Structure cards in the right column of the
-    body row — both have identical chrome (small heading, bordered card,
-    full-width button group) so they share a builder.
-    """
-
-    return dbc.Card(
-        dbc.CardBody(
-            [
-                html.H6(title, className="mb-2"),
-                dbc.ButtonGroup(buttons, className="w-100", size="sm"),
-            ],
-            className="py-2",
-        ),
-        className="mb-2",
-    )
-
-
-def _pipeline_io_card() -> dbc.Card:
-    """Build the "Pipeline I/O" card with Save and Load buttons.
-
-    Renders a small :class:`dbc.ButtonGroup` containing two outline buttons
-    that each open a modal file browser defined in :mod:`._modal_browser`:
-
-    * **Save** (:data:`ids.BTN_SAVE`) — opens :func:`~_modal_browser.save_pipeline_modal`,
-      a folder browser where the user navigates to a target directory and
-      enters a filename before confirming the write.
-    * **Load** (:data:`ids.BTN_LOAD`) — opens :func:`~_modal_browser.load_picker_modal`,
-      a two-stage chooser offering either a JSON file browser (for pipelines
-      previously saved with ``ImagePipeline.to_json()``) or a prefab list
-      (built-in pipelines from :mod:`phenotypic.prefab`).
-
-    The card lives above the inspector in the right column of the builder
-    layout, assembled by :func:`build_app_layout`.
-
-    Returns:
-        A :class:`dbc.Card` containing the labelled button group, with
-        ``className="mb-2"`` for spacing.
-    """
-
-    return _action_card(
-        "Pipeline I/O",
-        [
-            dbc.Button(
-                "Save",
-                id=ids.BTN_SAVE,
-                color="primary",
-                outline=True,
-                n_clicks=0,
-            ),
-            dbc.Button(
-                "Load",
-                id=ids.BTN_LOAD,
-                color="primary",
-                outline=True,
-                n_clicks=0,
-            ),
-        ],
-    )
-
-
-def _structure_card() -> dbc.Card:
-    """+ Pipeline / Delete buttons. Lives above the inspector in the right column."""
-
-    return _action_card(
-        "Structure",
-        [
-            dbc.Button(
-                "+ Pipeline",
-                id=ids.BTN_NEW_PIPELINE_NODE,
-                color="info",
-                outline=True,
-                n_clicks=0,
-            ),
-            dbc.Button(
-                "Delete selected",
-                id=ids.BTN_DELETE_NODE,
-                color="danger",
-                outline=True,
-                n_clicks=0,
-            ),
-        ],
-    )
-
-
 def build_footer(image_root: Optional[Path]) -> dbc.Card:
     """Render the footer row with image-source, grid override, and run-preview controls.
 
-    Pipeline I/O (Save/Load) and Structure (+ Pipeline / Delete) have their
-    own cards above the inspector in the right column — see
-    :func:`_pipeline_io_card` and :func:`_structure_card`. This footer card
-    handles the image-selection and execution surface.
+    Pipeline I/O (Save/Load) lives in the title bar header next to the logo;
+    ``+ Pipeline`` and ``Delete selected`` live with the Operations palette
+    and canvas-control toolbar respectively. This footer card handles the
+    image-selection and execution surface.
 
     Layout (left to right inside the card body):
 
@@ -1029,9 +957,31 @@ def build_app_layout(
             className="pheno-palette-section",
         )
 
+    # ``+ Pipeline`` adds a nested ImagePipeline node — conceptually a
+    # palette item, but kept as a sticky button above the Operations
+    # accordion so it's never hidden by a collapsed section.
+    new_pipeline_btn = dbc.Button(
+        "+ Pipeline",
+        id=ids.BTN_NEW_PIPELINE_NODE,
+        color="primary",
+        outline=True,
+        size="sm",
+        n_clicks=0,
+        className="w-100 mb-2",
+        title="Add a nested ImagePipeline container to the chain",
+    )
+    operations_section = html.Div(
+        [
+            html.H6("Operations", className="mb-2"),
+            new_pipeline_btn,
+            build_palette(registry),
+        ],
+        className="pheno-palette-section",
+    )
+
     palette_inner = html.Div(
         [
-            _palette_section("Operations", build_palette(registry)),
+            operations_section,
             _palette_section("Measurements", build_measure_palette(registry)),
             _palette_section(
                 "Post-measurements", build_post_palette(registry)
@@ -1075,31 +1025,19 @@ def build_app_layout(
     )
 
     # Right portion of the body is itself a 50 / 50 vertical split:
-    #   Top half  = Canvas (md=8 of 9) + Pipeline I/O & Structure (md=4 of 9)
-    #   Bottom half = Inspector (full width — spans both columns)
+    #   Top half    = Canvas (full width — Pipeline I/O moved to the title bar,
+    #                 Delete + Pipeline relocated to the canvas / palette)
+    #   Bottom half = Inspector (full width)
     # The two halves both use ``flex: 1 1 0`` so the split is exact regardless
     # of content size; ``min-height: 0`` lets each half shrink without the
     # inspector content forcing growth.
-    top_half = dbc.Row(
-        [
-            dbc.Col(
-                build_canvas_section(state.root, state.selected_node_id),
-                md=8,
-                className="d-flex flex-column",
-                style={"minHeight": 0},
-            ),
-            dbc.Col(
-                [_pipeline_io_card(), _structure_card()],
-                md=4,
-                className="border-start ps-3",
-            ),
-        ],
-        className="g-3",
+    top_half = html.Div(
+        build_canvas_section(state.root, state.selected_node_id),
         style={
             "flex": "1 1 0",
             "minHeight": 0,
-            "marginLeft": 0,
-            "marginRight": 0,
+            "display": "flex",
+            "flexDirection": "column",
         },
     )
 
@@ -1208,6 +1146,35 @@ def build_app_layout(
         ]
     )
 
+    # Pipeline I/O lives on the header right edge (right-aligned via
+    # ``.pheno-app-header__io { margin-left: auto }``). Save and Load were
+    # previously a vertical card in the right column; flattened here so the
+    # canvas can take the freed width.
+    pipeline_io = html.Div(
+        dbc.ButtonGroup(
+            [
+                dbc.Button(
+                    "Save",
+                    id=ids.BTN_SAVE,
+                    color="primary",
+                    outline=True,
+                    size="sm",
+                    n_clicks=0,
+                ),
+                dbc.Button(
+                    "Load",
+                    id=ids.BTN_LOAD,
+                    color="primary",
+                    outline=True,
+                    size="sm",
+                    n_clicks=0,
+                ),
+            ],
+            size="sm",
+        ),
+        className="pheno-app-header__io",
+    )
+
     header = html.Div(
         [
             html.Img(
@@ -1227,6 +1194,7 @@ def build_app_layout(
                     ),
                 ],
             ),
+            pipeline_io,
         ],
         className="pheno-app-header",
     )
