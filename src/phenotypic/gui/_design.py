@@ -25,7 +25,7 @@ __all__ = ["FONT_TOKENS_CSS", "inject_design_tokens"]
 # )
 
 # Alternatives -- uncomment one block (and comment the active one above)
-# to switch the GUI font. Both are also Google Fonts.
+# to switch the GUI font. All are also Google Fonts.
 #
 _GOOGLE_FONT_FAMILY = "Mate SC"
 _GOOGLE_FONT_URL = (
@@ -36,15 +36,40 @@ _GOOGLE_FONT_URL = (
 # _GOOGLE_FONT_URL = (
 #     "https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap"
 # )
+#
+# Note: "Google Sans" is a Google brand font and is NOT served publicly
+# via fonts.googleapis.com -- the import will silently fail to fetch
+# the file and the system fallback stack below will render instead. If
+# the goal is the modern Material look, "Roboto" or "Open Sans" (also
+# from Google Fonts) are the publicly-available substitutes.
+# _GOOGLE_FONT_FAMILY = "Google Sans"
+# _GOOGLE_FONT_URL = (
+#     "https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap"
+# )
+
+
+# Cross-platform fallbacks: kick in if the Google Font is blocked,
+# slow to load, or (in the Google Sans case) not actually served. The
+# stacks cover macOS / iOS, Windows, Linux, and Android in turn before
+# bottoming out on the generic CSS family.
+_FALLBACK_DISPLAY = 'Georgia, "Times New Roman", Times, serif'
+_FALLBACK_BODY = (
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, '
+    '"Helvetica Neue", Arial, sans-serif'
+)
+_FALLBACK_MONO = (
+    'ui-monospace, "SFMono-Regular", Menlo, Consolas, '
+    '"Liberation Mono", "Courier New", monospace'
+)
 
 
 FONT_TOKENS_CSS = f"""\
 @import url("{_GOOGLE_FONT_URL}");
 
 :root {{
-  --font-display: '{_GOOGLE_FONT_FAMILY}', Georgia, serif;
-  --font-body:    '{_GOOGLE_FONT_FAMILY}', system-ui, sans-serif;
-  --font-mono:    '{_GOOGLE_FONT_FAMILY}', 'Courier New', monospace;
+  --font-display: '{_GOOGLE_FONT_FAMILY}', {_FALLBACK_DISPLAY};
+  --font-body:    '{_GOOGLE_FONT_FAMILY}', {_FALLBACK_BODY};
+  --font-mono:    '{_GOOGLE_FONT_FAMILY}', {_FALLBACK_MONO};
 }}
 """
 
