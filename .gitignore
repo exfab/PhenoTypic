@@ -51,6 +51,7 @@ scratch/
 .run/
 *.zip
 tmp/
+/*.png
 
 # Backup files
 **/*.$*.bkp
