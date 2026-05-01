@@ -65,9 +65,9 @@ class PanelAccessor(ImageAccessorBase):
             raise AttributeError(f"'{type(self).__name__}' has no attribute '{name}'")
 
         # Auto-initialize Panel extension in Jupyter
-        from phenotypic.gui._global_session import _ensure_panel_initialized
+        from phenotypic.tools_.panel_ import ensure_panel_extension
 
-        _ensure_panel_initialized()
+        ensure_panel_extension()
         try:
             dashboard_cls = get_dashboard(name)
         except ValueError:
