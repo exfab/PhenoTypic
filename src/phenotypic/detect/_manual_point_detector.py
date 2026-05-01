@@ -9,9 +9,10 @@ if TYPE_CHECKING:
 
 from phenotypic.abc_ import ObjectDetector
 from phenotypic.tools_.mixin._footprint_mixin import FootprintMixin
+from phenotypic.tools_.mixin._point_picker_mixin import PointPickerMixin
 
 
-class ManualPointDetector(ObjectDetector, FootprintMixin):
+class ManualPointDetector(ObjectDetector, PointPickerMixin, FootprintMixin):
     """Detect objects by stamping footprint masks at user-specified coordinates.
 
     Place a morphological footprint at each explicitly provided ``(y, x)``
@@ -79,31 +80,6 @@ class ManualPointDetector(ObjectDetector, FootprintMixin):
         self.centers = centers
         self.shape = shape
         self.width = width
-
-    def __setattr__(self, name: str, value: object) -> None:
-        if name == "centers" and value is not None:
-            value = np.asarray(value)
-        super().__setattr__(name, value)
-
-    def napari(self, image: Image) -> ManualPointDetector:
-        """Interactively pick colony center coordinates using a napari viewer.
-
-        Opens a blocking napari viewer displaying the plate image layers.
-        Click points to mark colony centers, then click **Confirm** in
-        the dock widget. The picked coordinates are stored in *centers*.
-
-        Args:
-            image: The Image to display for coordinate selection.
-
-        Returns:
-            ManualPointDetector: Self, for method chaining.
-        """
-        from phenotypic.tools_.napari_ import PointPickerWidget
-
-        points = PointPickerWidget(max_points=None).run(image)
-        if len(points) > 0:
-            self.centers = points
-        return self
 
     def _operate(self, image: Image) -> Image:  # type: ignore[override]
         h, w = image.shape[:2]

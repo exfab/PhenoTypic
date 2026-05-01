@@ -22,6 +22,7 @@ the images aligned with the implementation.
 | [Run Locally](04_run_local.md) | Submit a local subprocess run and tail the dashboard. |
 | [Run on SLURM](05_run_slurm.md) | Fill in SLURM resources and ship a submission to a cluster. |
 | [View Results](06_view_results.md) | Open the results viewer against a finished CLI output. |
+| [Pick points](07_pick_points.md) | Curate detected colonies manually with the in-builder point picker. |
 
 ## Prerequisites
 
@@ -43,4 +44,5 @@ hub, see the [GUI hub guide](../gui_hub.md). This walkthrough is the
 04_run_local
 05_run_slurm
 06_view_results
+07_pick_points
 ```

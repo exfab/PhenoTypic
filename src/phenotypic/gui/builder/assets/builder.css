@@ -43,6 +43,9 @@
     --oi-yellow:    #F0E442;
     --oi-grey:      #BBBBBB;
 
+    /* Semantic accents -- interactive ops (point-picker mixin) */
+    --color-interactive: var(--oi-purple);
+
     /* Typography -- --font-display / --font-body / --font-mono are
        injected by gui/_design.py (single source of truth for the GUI
        typeface). */
@@ -502,4 +505,53 @@ code, pre, .text-monospace, .font-monospace {
     padding: 0.2rem 0.55rem;
     border-radius: 9999px;
     border: 1px solid;
+}
+
+/* ===========================================================================
+ * Point-picker capability accent (palette buttons + PICK badge)
+ * ========================================================================= */
+.builder-op-pickable {
+    border-left: 3px solid var(--color-interactive);
+}
+
+.shell-badge-pickable {
+    color: #6e3a5d;
+    background: rgba(204, 121, 167, 0.15);
+}
+.shell-badge-pickable::before {
+    background: var(--color-interactive);
+}
+
+/* ---------------------------------------------------------------------------
+ * Point-picker modal — OSD click markers + lazy-load aria-busy spinner.
+ * The host div is sized in `_point_picker.py` (height: 70vh, dark bg). These
+ * rules style the per-click red dot and the "Loading…" overlay shown while
+ * the DZI manifest is being generated server-side.
+ * ------------------------------------------------------------------------- */
+.point-picker-osd {
+    position: relative;
+}
+
+.point-picker-marker {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(220, 38, 38, 0.85);
+    border: 2px solid white;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+}
+
+#picker-osd[aria-busy="true"]::after {
+    content: "Loading…";
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    background: rgba(0, 0, 0, 0.5);
+    font-family: var(--font-sans, sans-serif);
+    pointer-events: none;
+    z-index: 5;
 }

@@ -940,6 +940,115 @@ def register_callbacks(app: dash.Dash) -> None:
             )
 
     # ----------------------------------------------------------------------
+    # 2b. Point-picker store fan-in
+    # ----------------------------------------------------------------------
+    #
+    # The picker widget writes its list-of-(y, x) payload into a hidden
+    # ``dcc.Store`` whose pattern-matching id carries the owning node-id in
+    # the ``prefix`` field. The payload is already structured (no scalar /
+    # text coercion needed) so we side-step the main fan-in and dispatch
+    # ``edit_param`` directly.
+
+    @app.callback(
+        Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
+        Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
+        Output("canvas-cytoscape-wrapper", "children", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "header", allow_duplicate=True),
+        Input(
+            {"type": ids.PICKER_PARAM_STORE_TYPE, "prefix": ALL, "name": ALL},
+            "data",
+        ),
+        State(
+            {"type": ids.PICKER_PARAM_STORE_TYPE, "prefix": ALL, "name": ALL},
+            "id",
+        ),
+        State(ids.STORE_BUILDER_STATE, "data"),
+        prevent_initial_call=True,
+    )
+    def fan_in_picker_store(  # noqa: PLR0913
+        store_payloads: List[Any],
+        store_ids: List[Dict[str, Any]],
+        state_data: Dict[str, Any],
+    ) -> Tuple[Any, ...]:
+        """Write a picker store's list-of-pairs into the matching node's params."""
+
+        noop = (no_update,) * 8
+
+        if state_data is None or ctx.triggered_id is None:
+            return noop
+        triggered = ctx.triggered_id
+        if not isinstance(triggered, dict):
+            return noop
+        if triggered.get("type") != ids.PICKER_PARAM_STORE_TYPE:
+            return noop
+
+        prefix = triggered.get("prefix")
+        name = triggered.get("name")
+        if not prefix or not name:
+            return noop
+
+        # Find the payload that matches the triggered store id. ``zip`` over
+        # the parallel id/value lists keeps the lookup independent of the
+        # ``ALL`` order Dash chose at registration time.
+        raw: Any = None
+        for component_id, val in zip(store_ids, store_payloads):
+            if (
+                component_id.get("prefix") == prefix
+                and component_id.get("name") == name
+            ):
+                raw = val
+                break
+
+        if raw is None:
+            raw = []
+
+        try:
+            new_state_dict = _dispatch_state_update(
+                state_data,
+                "edit_param",
+                {
+                    "node_id": prefix,
+                    "name": name,
+                    "value": raw,
+                    "omit": False,
+                },
+            )
+            # Short-circuit when nothing actually changed — Confirm with no
+            # edits, modal-open re-seed, etc. — so we don't pay for a full
+            # graph re-render. Cheaper than walking the nested-scope tree
+            # by hand to find the target node's params.
+            if new_state_dict == state_data:
+                return noop
+            new_state = state_from_json(new_state_dict)
+            breadcrumb, canvas, inspector = _render_views(new_state)
+            return (
+                new_state_dict,
+                breadcrumb,
+                canvas,
+                inspector,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("fan_in_picker_store failed")
+            return (
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                True,
+                _format_exception(exc),
+                "danger",
+                "Update failed",
+            )
+
+    # ----------------------------------------------------------------------
     # 3. Run preview
     # ----------------------------------------------------------------------
 
@@ -1796,6 +1905,84 @@ def register_callbacks(app: dash.Dash) -> None:
         "const z = cy.zoom() / 1.25;"
         " const c = {x: cy.width() / 2, y: cy.height() / 2};"
         " cy.zoom({level: z, renderedPosition: c});",
+    )
+
+    # ----------------------------------------------------------------------
+    # 9. Point picker — clientside lifecycle callbacks
+    # ----------------------------------------------------------------------
+    # The Python callbacks in ``_point_picker.py`` own modal open / close,
+    # staged-store mutation, and the Confirm fan-out. The OSD viewer itself
+    # is a clientside concern (heavy WebGL canvas; round-tripping every
+    # click through Dash would be wasteful). Three callbacks bridge the
+    # two layers:
+    #
+    #   A. Mount / remount the OSD viewer when ``PICKER_DZI_URL_STORE``
+    #      changes (modal open or channel toggle).
+    #   B. Redraw the marker overlay when ``PICKER_STAGED_STORE`` changes
+    #      (clicks, undo, clear, or modal-open seed).
+    #   C. Dispose the viewer when the modal closes — frees WebGL context.
+    #
+    # All three write to the same hidden ``picker-osd-mount-trigger`` store
+    # so each callback has a real Output without polluting the modal's
+    # state stores. The trigger store's value is never read.
+
+    app.clientside_callback(
+        """
+        function(dziUrl, stagedPoints) {
+            const ns = window.__phenotypicBuilderPointPicker;
+            if (!ns || !ns.mountViewer) {
+                return window.dash_clientside.no_update;
+            }
+            if (!dziUrl) {
+                if (ns.disposeViewer) ns.disposeViewer();
+                return window.dash_clientside.no_update;
+            }
+            // Defer one frame so the modal body has rendered the host div
+            // when the callback fires immediately after the modal opens.
+            requestAnimationFrame(function () {
+                ns.mountViewer("picker-osd", dziUrl, stagedPoints || []);
+            });
+            return Date.now();
+        }
+        """,
+        Output(ids.PICKER_OSD_MOUNT_TRIGGER, "data", allow_duplicate=True),
+        Input(ids.PICKER_DZI_URL_STORE, "data"),
+        State(ids.PICKER_STAGED_STORE, "data"),
+        prevent_initial_call=True,
+    )
+
+    app.clientside_callback(
+        """
+        function(stagedPoints) {
+            const ns = window.__phenotypicBuilderPointPicker;
+            if (!ns || !ns.redrawOverlay) {
+                return window.dash_clientside.no_update;
+            }
+            ns.redrawOverlay(stagedPoints || []);
+            return Date.now();
+        }
+        """,
+        Output(ids.PICKER_OSD_MOUNT_TRIGGER, "data", allow_duplicate=True),
+        Input(ids.PICKER_STAGED_STORE, "data"),
+        prevent_initial_call=True,
+    )
+
+    app.clientside_callback(
+        """
+        function(isOpen) {
+            const ns = window.__phenotypicBuilderPointPicker;
+            if (!ns || !ns.disposeViewer) {
+                return window.dash_clientside.no_update;
+            }
+            if (!isOpen) {
+                ns.disposeViewer();
+            }
+            return Date.now();
+        }
+        """,
+        Output(ids.PICKER_OSD_MOUNT_TRIGGER, "data", allow_duplicate=True),
+        Input(ids.MODAL_POINT_PICKER, "is_open"),
+        prevent_initial_call=True,
     )
 
 

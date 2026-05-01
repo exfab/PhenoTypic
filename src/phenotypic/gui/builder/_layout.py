@@ -34,6 +34,7 @@ from phenotypic.gui.builder._modal_browser import (
     save_pipeline_modal,
 )
 from phenotypic.gui.builder._param_form import param_form
+from phenotypic.gui.builder._point_picker import build_point_picker_modal
 from phenotypic.gui.builder._state import (
     PIPELINE_CLASS_NAME,
     BuilderScope,
@@ -180,15 +181,26 @@ def _palette_for_categories(
         buttons: List[Any] = []
         for op_info in ops:
             stage = _safe_stage(op_info.name)
+            button_children: List[Any] = [html.Span(op_info.name)]
+            button_class = "text-start w-100 mb-1"
+            if op_info.is_point_pickable:
+                button_children.append(
+                    dbc.Badge(
+                        "PICK",
+                        className="shell-badge shell-badge-pickable ms-2",
+                        pill=True,
+                    )
+                )
+                button_class = f"{button_class} builder-op-pickable"
             buttons.append(
                 dbc.Button(
-                    op_info.name,
+                    button_children,
                     id=ids.palette_button_id(op_info.name),
                     color=_STAGE_BUTTON_OUTLINE_COLOR.get(stage, "primary"),
                     outline=True,
                     size="sm",
                     n_clicks=0,
-                    className="text-start w-100 mb-1",
+                    className=button_class,
                 )
             )
 
@@ -1192,6 +1204,7 @@ def build_app_layout(
             save_pipeline_modal(image_root),
             load_picker_modal(image_root),
             load_image_modal(image_root),
+            build_point_picker_modal(),
         ]
     )
 

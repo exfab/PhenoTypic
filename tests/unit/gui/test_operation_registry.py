@@ -155,3 +155,48 @@ class TestOperationRegistry:
         info = registry.get("GaussianBlur")
         assert "phenotypic" in info.module
         assert "enhance" in info.module
+
+
+class TestPointPickerMarker:
+    """Operations that mix in ``PointPickerMixin`` are flagged in the registry.
+
+    The Dash builder uses these flags to swap a free-form text input for an
+    interactive point picker on the matching parameter.
+    """
+
+    @pytest.fixture
+    def registry(self):
+        reg = OperationRegistry()
+        reg.discover()
+        return reg
+
+    def test_point_picker_marker_propagates(self, registry):
+        """ManualPointDetector and ManualSelector advertise the mixin marker."""
+        det = registry.get("ManualPointDetector")
+        assert det is not None
+        assert det.is_point_pickable is True
+        assert det.point_picker_param == "centers"
+
+        sel = registry.get("ManualSelector")
+        assert sel is not None
+        assert sel.is_point_pickable is True
+        assert sel.point_picker_param == "centers"
+
+    def test_non_pickable_ops_have_falsy_marker(self, registry):
+        """Operations without the mixin do not gain a stray pickable flag."""
+        otsu = registry.get("OtsuDetector")
+        assert otsu is not None
+        assert otsu.is_point_pickable is False
+        assert otsu.point_picker_param is None
+
+        blur = registry.get("GaussianBlur")
+        assert blur is not None
+        assert blur.is_point_pickable is False
+        assert blur.point_picker_param is None
+
+    def test_threshold_based_manual_detector_is_not_pickable(self, registry):
+        """ManualDetector takes a scalar threshold, not points — not flagged."""
+        man = registry.get("ManualDetector")
+        assert man is not None
+        assert man.is_point_pickable is False
+        assert man.point_picker_param is None

@@ -188,6 +188,54 @@ DIR_ENTRY_TYPE_SAVE = "dir-entry-save"
 
 
 # ---------------------------------------------------------------------------
+# Point picker modal
+# ---------------------------------------------------------------------------
+
+#: Container id for the point-picker dbc.Modal.
+MODAL_POINT_PICKER = "modal-point-picker"
+
+#: Mount point for the OpenSeadragon viewer inside the modal body.
+PICKER_OSD_DIV = "picker-osd"
+
+#: Inline help line under the channel radio.
+PICKER_CHANNEL_HELP = "picker-channel-help"
+
+#: Channel toggle (RGB vs predecessor intermediate).
+PICKER_CHANNEL_RADIO = "picker-channel-radio"
+
+#: Stores used by the modal. PICKER_STAGED_STORE holds the in-flight list of
+#: ``[y, x]`` picks; PICKER_TARGET_STORE remembers which node.param the modal
+#: writes back to on Confirm; PICKER_DZI_URL_STORE drives the OSD mount;
+#: PICKER_CHANNEL_AVAIL_STORE flips the intermediate radio off when the
+#: predecessor's preview hasn't been cached yet.
+PICKER_STAGED_STORE = "picker-staged-store"
+PICKER_TARGET_STORE = "picker-target-store"
+PICKER_DZI_URL_STORE = "picker-dzi-url-store"
+PICKER_CHANNEL_AVAIL_STORE = "picker-channel-avail-store"
+
+#: Write-only sink for the clientside mount/redraw/dispose callbacks. Holds
+#: a monotonic timestamp; nothing downstream reads it.
+PICKER_OSD_MOUNT_TRIGGER = "picker-osd-mount-trigger"
+
+#: Count label inside the modal body ("3 points").
+PICKER_COUNT_LABEL = "picker-count-label"
+
+#: Modal action buttons.
+BTN_PICKER_CLEAR = "btn-picker-clear"
+BTN_PICKER_UNDO = "btn-picker-undo"
+BTN_PICKER_CANCEL = "btn-picker-cancel"
+BTN_PICKER_CONFIRM = "btn-picker-confirm"
+
+#: Pattern-match ``type`` keys for the per-node picker components emitted
+#: by :func:`phenotypic.gui.builder._param_form._picker_widget`. Both layout
+#: (``_param_form``) and callbacks (``_callbacks``, ``_point_picker``) match
+#: against these strings; one source of truth avoids typo drift.
+PICKER_PARAM_STORE_TYPE = "param-point-picker-store"
+PICKER_PARAM_BTN_TYPE = "param-point-picker-btn"
+PICKER_PARAM_COUNT_TYPE = "param-point-picker-count"
+
+
+# ---------------------------------------------------------------------------
 # Inputs
 # ---------------------------------------------------------------------------
 
@@ -320,6 +368,23 @@ __all__ = [
     "DIR_ENTRY_TYPE_IMAGE",
     "DIR_ENTRY_TYPE_JSON",
     "DIR_ENTRY_TYPE_SAVE",
+    "MODAL_POINT_PICKER",
+    "PICKER_OSD_DIV",
+    "PICKER_CHANNEL_HELP",
+    "PICKER_CHANNEL_RADIO",
+    "PICKER_STAGED_STORE",
+    "PICKER_TARGET_STORE",
+    "PICKER_DZI_URL_STORE",
+    "PICKER_CHANNEL_AVAIL_STORE",
+    "PICKER_OSD_MOUNT_TRIGGER",
+    "PICKER_COUNT_LABEL",
+    "BTN_PICKER_CLEAR",
+    "BTN_PICKER_UNDO",
+    "BTN_PICKER_CANCEL",
+    "BTN_PICKER_CONFIRM",
+    "PICKER_PARAM_STORE_TYPE",
+    "PICKER_PARAM_BTN_TYPE",
+    "PICKER_PARAM_COUNT_TYPE",
     "INPUT_SAVE_PATH",
     "INPUT_LOAD_PATH",
     "INPUT_NROWS",

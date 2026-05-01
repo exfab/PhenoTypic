@@ -249,6 +249,7 @@ def capture_workflow_screenshots(base_url: str, headed: bool = False) -> None:
             _capture_run_local(context, base_url)
             _capture_run_slurm(context, base_url)
             _capture_view_results(context, base_url)
+            _capture_pick_points(context, base_url)
         finally:
             browser.close()
 
@@ -394,6 +395,203 @@ def _capture_view_results(context, base_url: str) -> None:
     print("[shot] workflow=view_results (empty state via hub)")
     page = _new_page(context, base_url, "/results/")
     _save(page, "view_results", "01_viewer_empty.png")
+    page.close()
+
+
+def _capture_pick_points(context, base_url: str) -> None:
+    """Drive the in-builder point-picker workflow and capture eight PNGs.
+
+    The shots demonstrate the manual-curation flow described in
+    ``docs/source/how_to/pages/gui_walkthrough/07_pick_points.md``:
+
+    1. Palette with the PICK badge visible on the two pickable ops.
+    2. Canvas with ``GaussianBlur → OtsuDetector → ManualSelector``.
+    3. Inspector param form for ``ManualSelector`` (count = "0 points").
+    4. Picker modal open on the original RGB plate.
+    5. Picker modal toggled to the predecessor's intermediate.
+    6. RGB plate after staging three picks via ``set_props``.
+    7. Param form outside the modal showing ``"3 points"`` after Confirm.
+    8. Inspector preview after re-running preview (curated objmap).
+
+    The helper does NOT issue real OSD canvas clicks — the synthetic
+    plate's pixel coordinates are embedded directly into
+    ``picker-staged-store`` via ``window.dash_clientside.set_props`` so
+    the screenshots are deterministic regardless of viewport / DPR.
+    """
+    print("[shot] workflow=pick_points")
+    page = _new_page(context, base_url, "/builder/")
+
+    # Wait for the palette to populate.
+    page.wait_for_selector("#palette", timeout=15_000)
+    page.wait_for_timeout(500)
+
+    # 1) Palette with PICK badge.
+    # Make sure both Detector + Refiner accordion sections are open so the
+    # PICK-badged ops are visible in a single shot. Builder.css renders the
+    # accordion with `always_open=True`, but the *active* item is the first
+    # one only — clicking the headers opens the rest.
+    for header_text in ("Detector", "Refiner"):
+        header = page.locator(
+            f'button.accordion-button:has-text("{header_text}")'
+        ).first
+        if header.count() > 0:
+            try:
+                cls = header.get_attribute("class") or ""
+                if "collapsed" in cls:
+                    header.click()
+                    page.wait_for_timeout(250)
+            except Exception:  # pragma: no cover - best-effort
+                pass
+    page.wait_for_timeout(300)
+    _save(page, "pick_points", "01_palette_with_badge.png")
+
+    # 2) Pipeline with GaussianBlur → OtsuDetector → ManualSelector.
+    # Each palette button is a pattern-matching id of the form
+    # {"type": "palette-add", "class_name": "<name>"}; Dash hashes the dict
+    # to a JSON string when it renders the DOM, so the selector below
+    # matches the rendered id substring.
+    def _add_op(class_name: str) -> None:
+        sel = (
+            f'button[id*="\\"type\\":\\"palette-add\\""]'
+            f'[id*="\\"class_name\\":\\"{class_name}\\""]'
+        )
+        page.click(sel)
+        page.wait_for_timeout(400)
+
+    for cls in ("GaussianBlur", "OtsuDetector", "ManualSelector"):
+        _add_op(cls)
+    page.wait_for_timeout(600)
+    _save(page, "pick_points", "02_pipeline_with_selector.png")
+
+    # 3) Inspector param form for ManualSelector. Click the node on the
+    # canvas so the inspector opens against it. Cytoscape renders nodes as
+    # SVG groups; the simplest reliable handle is the node label
+    # rendered inside Cytoscape — but Cytoscape uses a canvas backend
+    # without per-node DOM nodes, so we trigger selection programmatically
+    # via the cy instance.
+    page.evaluate(
+        """
+        () => {
+            const cy = window.cy || (window._cy_instances && window._cy_instances[0]);
+            if (!cy) return;
+            const nodes = cy.nodes(`[label *= "ManualSelector"], [class_name = "ManualSelector"]`);
+            if (nodes.length > 0) {
+                cy.elements().unselect();
+                nodes[0].select();
+            }
+        }
+        """
+    )
+    page.wait_for_timeout(800)
+    _save(page, "pick_points", "03_param_form.png")
+
+    # Run preview once so OtsuDetector caches its intermediate. The
+    # picker modal needs the predecessor cache to enable the
+    # "Input to this op" radio option.
+    preview_btn = page.locator("#btn-run-preview")
+    if preview_btn.count() > 0:
+        preview_btn.click()
+        page.wait_for_timeout(2500)
+
+    # 4) Open the picker modal. The picker button is rendered with a
+    # pattern-matching id of the form
+    # {"type": "param-point-picker-btn", "prefix": <node_id>, "name": "centers"}.
+    picker_btn_sel = (
+        'button[id*="\\"type\\":\\"param-point-picker-btn\\""]'
+    )
+    page.click(picker_btn_sel)
+    # Wait for OSD canvas + the modal to settle (aria-busy flips off when
+    # the tile pyramid finishes rendering the first level).
+    page.wait_for_selector(
+        '[data-testid="point-picker-osd-canvas"]', timeout=15_000
+    )
+    osd = page.locator('[data-testid="point-picker-osd-canvas"]')
+    try:
+        osd.wait_for(state="visible", timeout=10_000)
+    except Exception:  # pragma: no cover - best-effort
+        pass
+    # Wait for aria-busy to flip false on the parent or a short fallback.
+    try:
+        page.wait_for_function(
+            """
+            () => {
+                const el = document.querySelector('[data-testid="point-picker-osd-canvas"]');
+                if (!el) return false;
+                const busy = el.getAttribute('aria-busy');
+                return busy === null || busy === 'false';
+            }
+            """,
+            timeout=10_000,
+        )
+    except Exception:  # pragma: no cover - best-effort
+        page.wait_for_timeout(1500)
+    page.wait_for_timeout(800)
+    _save(page, "pick_points", "04_modal_rgb.png")
+
+    # 5) Toggle the channel radio to "Input to this op".
+    intermediate_label = page.locator(
+        'label:has-text("Input to this op")'
+    ).first
+    if intermediate_label.count() > 0:
+        intermediate_label.click()
+        # First toggle dumps + tiles the intermediate PNG; allow time.
+        page.wait_for_timeout(2000)
+        try:
+            page.wait_for_function(
+                """
+                () => {
+                    const el = document.querySelector('[data-testid="point-picker-osd-canvas"]');
+                    if (!el) return false;
+                    const busy = el.getAttribute('aria-busy');
+                    return busy === null || busy === 'false';
+                }
+                """,
+                timeout=10_000,
+            )
+        except Exception:  # pragma: no cover - best-effort
+            page.wait_for_timeout(1500)
+        page.wait_for_timeout(500)
+    _save(page, "pick_points", "05_modal_intermediate.png")
+
+    # Toggle back to RGB before staging the points so the final shot
+    # shows red markers on the RGB plate (more visually intuitive).
+    rgb_label = page.locator('label:has-text("Original RGB")').first
+    if rgb_label.count() > 0:
+        rgb_label.click()
+        page.wait_for_timeout(800)
+
+    # 6) Push three test points into the staged store. Coordinates target
+    # well-separated colonies on the synthetic 8x12 plate (1024x1536).
+    # The clientside redraw subscribes to picker-staged-store changes and
+    # paints red OSD overlay markers.
+    page.evaluate(
+        """
+        () => {
+            const points = [[160, 240], [400, 700], [720, 1180]];
+            window.dash_clientside.set_props(
+                'picker-staged-store', {data: points}
+            );
+        }
+        """
+    )
+    page.wait_for_timeout(800)
+    _save(page, "pick_points", "06_three_picks.png")
+
+    # 7) Confirm and capture the param form's count label.
+    confirm_btn = page.locator("#btn-picker-confirm")
+    if confirm_btn.count() > 0:
+        confirm_btn.click()
+        # Modal closes; param form re-renders with the new count.
+        page.wait_for_timeout(1000)
+    _save(page, "pick_points", "07_param_form_after_confirm.png")
+
+    # 8) Re-run preview against the curated pipeline and snapshot the
+    # inspector's preview pane.
+    if preview_btn.count() > 0:
+        preview_btn.click()
+        page.wait_for_timeout(2500)
+    _save(page, "pick_points", "08_preview_after_curation.png")
+
     page.close()
 
 

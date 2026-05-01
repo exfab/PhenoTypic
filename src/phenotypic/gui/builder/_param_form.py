@@ -12,10 +12,13 @@ import collections.abc as abc
 import enum
 import inspect
 import typing
-from typing import TYPE_CHECKING, Any, get_args, get_origin
+from typing import TYPE_CHECKING, Any, Optional, get_args, get_origin
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
-from dash import html
+import numpy as np
+from dash import dcc, html
+
+from phenotypic.gui.builder import _ids as ids
 
 if TYPE_CHECKING:
     from phenotypic.gui._operation_registry import OperationInfo, ParamInfo
@@ -253,6 +256,12 @@ def serialize_param_for_widget(value: Any, p: "ParamInfo") -> Any:
     if isinstance(value, enum.Enum):
         return value.value
 
+    if isinstance(value, np.ndarray):
+        # Picker-style ndarrays (N x 2) round-trip via ``.tolist()`` so the
+        # downstream list/tuple branch can render them. Scalar callers don't
+        # reach this path (operations store ndarrays only for picker params).
+        value = value.tolist()
+
     if isinstance(value, (list, tuple)):
         return ", ".join(_format_token(v) for v in value)
 
@@ -282,6 +291,7 @@ def _widget_for_param(
     *,
     current_value: Any,
     form_id_prefix: str,
+    point_picker_param: Optional[str] = None,
 ) -> Any:
     """Build the primary input widget for a single parameter.
 
@@ -290,11 +300,25 @@ def _widget_for_param(
         current_value: Existing value to populate the widget with.
         form_id_prefix: Prefix added to every generated component id so multiple
             forms can coexist on the same page without id collisions.
+        point_picker_param: If set, the named parameter of the owning operation
+            that should render as the point-picker widget (button + count +
+            hidden ``dcc.Store``) instead of the default text input. Comes from
+            :attr:`OperationInfo.point_picker_param`.
 
     Returns:
         A Dash component (typically a ``dbc.Input`` / ``dbc.Switch`` /
         ``dbc.Select`` / ``dbc.Button``).
     """
+    # Picker swap takes precedence over every other dispatch branch — the
+    # owning operation declares the parameter as point-pickable, and the
+    # default text-input would lose the (y, x) structure.
+    if point_picker_param is not None and p.name == point_picker_param:
+        return _picker_widget(
+            form_id_prefix=form_id_prefix,
+            name=p.name,
+            current_value=current_value,
+        )
+
     inner = _unwrap_optional(p.type_hint)
     initial = (
         serialize_param_for_widget(current_value, p)
@@ -380,6 +404,89 @@ def _widget_for_param(
     )
 
 
+def _initial_picker_data(current_value: Any) -> list[list[float]]:
+    """Normalise ``current_value`` into a JSON-safe ``[[y, x], …]`` list.
+
+    Accepts ``None``, an N×2 ``numpy.ndarray``, or any sequence of
+    length-2 pairs. Returns ``[]`` for empty / unrecognised input so the
+    backing :class:`dcc.Store` always carries a serialisable payload.
+    """
+    if current_value is None:
+        return []
+    try:
+        arr = np.asarray(current_value)
+    except (TypeError, ValueError):
+        return []
+    if arr.size == 0 or arr.ndim != 2 or arr.shape[1] != 2:
+        return []
+    return arr.tolist()
+
+
+def _picker_widget(
+    *,
+    form_id_prefix: str,
+    name: str,
+    current_value: Any,
+) -> Any:
+    """Build the point-picker widget for a ``PointPickerMixin`` parameter.
+
+    Returns a ``html.Div`` containing three components:
+
+    * ``dcc.Store`` (``type=PICKER_PARAM_STORE_TYPE``) holding the
+      JSON-safe list of ``(y, x)`` pairs. The picker fan-in callback in
+      :mod:`._callbacks` reads this store's ``data`` directly —
+      bypassing :func:`parse_widget_value` because the payload is
+      already structured — and writes it into the owning node's
+      ``params``.
+    * ``dbc.Button`` (``type=PICKER_PARAM_BTN_TYPE``) that opens the
+      modal picker (modal wiring lives in :mod:`._point_picker`).
+    * ``html.Span`` (``type=PICKER_PARAM_COUNT_TYPE``) displaying the
+      current point count.
+
+    Args:
+        form_id_prefix: Form id prefix (typically the owning node's id) so
+            multiple forms can coexist without id collisions.
+        name: Name of the picker-bound parameter (e.g. ``"centers"``).
+        current_value: Existing parameter value to seed the store with.
+            Accepts ``None``, ``list``, ``tuple``, or ``numpy.ndarray``.
+    """
+    initial_list = _initial_picker_data(current_value)
+    return html.Div(
+        [
+            dcc.Store(
+                id={
+                    "type": ids.PICKER_PARAM_STORE_TYPE,
+                    "prefix": form_id_prefix,
+                    "name": name,
+                },
+                data=initial_list,
+            ),
+            dbc.Button(
+                "Pick on image…",
+                id={
+                    "type": ids.PICKER_PARAM_BTN_TYPE,
+                    "prefix": form_id_prefix,
+                    "name": name,
+                },
+                color="primary",
+                outline=True,
+                size="sm",
+                n_clicks=0,
+            ),
+            html.Span(
+                f"{len(initial_list)} points",
+                id={
+                    "type": ids.PICKER_PARAM_COUNT_TYPE,
+                    "prefix": form_id_prefix,
+                    "name": name,
+                },
+                className="ms-2 text-muted small",
+            ),
+        ],
+        className="d-flex align-items-center",
+    )
+
+
 def _optional_toggle(p: "ParamInfo", *, form_id_prefix: str) -> Any:
     """Build the "Use default" toggle shown beside Optional widgets.
 
@@ -412,6 +519,7 @@ def _param_row(
     *,
     current_values: dict[str, Any],
     form_id_prefix: str,
+    point_picker_param: Optional[str] = None,
 ) -> Any:
     """Render one parameter as a labelled ``dbc.Row``.
 
@@ -419,11 +527,15 @@ def _param_row(
         p: :class:`ParamInfo` to render.
         current_values: Mapping of parameter-name → current value (may be empty).
         form_id_prefix: Prefix forwarded to every component id in the row.
+        point_picker_param: Optional name of the parameter that should swap
+            in the point-picker widget; threaded through to
+            :func:`_widget_for_param`.
     """
     widget = _widget_for_param(
         p,
         current_value=current_values.get(p.name),
         form_id_prefix=form_id_prefix,
+        point_picker_param=point_picker_param,
     )
 
     label_children: list[Any] = [p.name]
@@ -495,6 +607,7 @@ def param_form(
         >>> isinstance(form.children, list)
         True
     """
+    point_picker_param = op_info.point_picker_param
     rows: list[Any] = []
     for p in op_info.parameters.values():
         rows.append(
@@ -502,6 +615,7 @@ def param_form(
                 p,
                 current_values=current_values,
                 form_id_prefix=form_id_prefix,
+                point_picker_param=point_picker_param,
             )
         )
     return dbc.Form(rows)

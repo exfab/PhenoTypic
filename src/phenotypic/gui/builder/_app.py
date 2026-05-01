@@ -22,6 +22,10 @@ from phenotypic.gui._design import inject_design_tokens
 from phenotypic.gui._operation_registry import OperationRegistry
 from phenotypic.gui.builder._callbacks import register_callbacks
 from phenotypic.gui.builder._layout import build_app_layout
+from phenotypic.gui.builder._point_picker import (
+    register_point_picker_callbacks,
+    register_point_picker_routes,
+)
 from phenotypic.gui.builder._state import BuilderState
 
 
@@ -86,6 +90,8 @@ def create_app(
     app.server.config["pheno_url_prefix"] = url_prefix
 
     register_callbacks(app)
+    register_point_picker_routes(app, image_root)
+    register_point_picker_callbacks(app)
 
     return app
 

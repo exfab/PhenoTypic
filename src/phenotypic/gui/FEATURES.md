@@ -56,6 +56,19 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 | Mounted under /builder/ | Shell mount                         | Reachable at `/builder/`; assets resolve under prefix                  | ✅ shipping | integration | tests/integration/gui/test_smoke_shell.py::test_builder_mount_routes |
 | Standalone parity    | `python -m phenotypic.gui.builder`     | Continues to work with default `url_prefix="/"`                        | ✅ shipping | manual      | n/a (manual)                                                      |
 
+## Builder point picker
+
+| Feature              | Element                                  | Expected behaviour                                                                                       | Status     | Test layer  | Test ref                                                                                          |
+| -------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------- | ----------- | ------------------------------------------------------------------------------------------------- |
+| Mixin marker         | `PointPickerMixin`                       | `OperationInfo.is_point_pickable` true for ManualPointDetector + ManualSelector, false elsewhere         | ✅ shipping | unit        | tests/unit/gui/test_operation_registry.py::TestPointPickerMarker::test_point_picker_marker_propagates |
+| Pickable badge       | Palette buttons                          | "PICK" badge + left-border accent on `ManualPointDetector` and `ManualSelector`                          | ✅ shipping | integration | tests/gui/builder/test_point_picker_palette.py::test_badge_renders_for_pickable_ops               |
+| Picker widget        | Param form for `centers`                 | Renders Pick button + count label + hidden store; default list/tuple/str input for `centers` suppressed  | ✅ shipping | integration | tests/gui/builder/test_point_picker_param_form.py::test_picker_widget_replaces_input_for_manual_point_detector |
+| Tile blueprint       | `/builder/tiles/<sid>/<src>.dzi`         | 200 + valid DZI XML for `rgb` / `intermediate`; rejects bad source / unsafe sid / missing PNG            | ✅ shipping | integration | tests/gui/builder/test_tile_blueprint.py::test_dzi_manifest_served                                |
+| Modal open + pick    | Picker button → modal → set staged store | Modal opens; OSD canvas mounts; pushing three points yields a count of 3                                 | ✅ shipping | e2e         | tests/e2e/gui/test_point_picker_modal.py::test_pick_three_points_updates_count                    |
+| Channel toggle       | RGB / Input radio                        | Toggling between channels does not lose staged points (image-coords reanchor)                            | ✅ shipping | e2e         | tests/e2e/gui/test_point_picker_modal.py::test_channel_toggle_preserves_points                    |
+| Confirm round trip   | Confirm button                           | Modal closes; param-form count label outside the modal reflects the picks                                | ✅ shipping | e2e         | tests/e2e/gui/test_point_picker_modal.py::test_confirm_writes_centers_to_node                     |
+| Picker JS surface    | `assets/point_picker.js`                 | Exposes `mountViewer` / `redrawOverlay` / `disposeViewer` under `window.__phenotypicBuilderPointPicker`  | ✅ shipping | integration | tests/gui/builder/test_point_picker_js_loads.py::test_point_picker_js_exists                      |
+
 ## Results Viewer integration
 
 | Feature                  | Element                              | Expected behaviour                                                              | Status     | Test layer  | Test ref                                                                |
@@ -122,3 +135,4 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 | README "Launch the GUI"            | README.md section                  | One-screen quick-start                                                   | ✅ shipping | manual     | n/a (manual) |
 | `phenotypic gui` non-support note  | gui_hub.md                         | Explicitly states the no-hyphen subcommand is unsupported                | ✅ shipping | manual     | n/a (manual) |
 | CLAUDE.md update                   | Quick Start section                | Mentions `python -m phenotypic.gui` and `phenotypic-gui`                 | ✅ shipping | manual     | n/a (manual) |
+| Point-picker walkthrough           | docs/source/how_to/pages/gui_walkthrough/07_pick_points.md | Manual-curation tutorial with screenshots; linked from gui_walkthrough/index.md  | ✅ shipping | manual     | n/a (manual) |
