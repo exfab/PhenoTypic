@@ -25,19 +25,19 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 
 | Feature        | Element                                  | Expected behaviour                                                  | Status     | Test layer  | Test ref                                                                  |
 | -------------- | ---------------------------------------- | ------------------------------------------------------------------- | ---------- | ----------- | ------------------------------------------------------------------------- |
-| Tab navigation | Top-bar tabs (Home/Builder/Viewer/Run)   | Click navigates to mount; active tab is highlighted                 | 🔭 planned | e2e         | tests/e2e/gui/test_topbar.py::test_tab_active_highlight                   |
-| Sandbox label  | Top-bar root display                     | Shows resolved root path; truncates long paths                      | 🔭 planned | e2e         | tests/e2e/gui/test_topbar.py::test_root_label                             |
+| Tab navigation | Top-bar tabs (Home/Builder/Viewer/Run)   | Click navigates to mount; active tab is highlighted                 | ✅ shipping | e2e         | tests/e2e/gui/test_topbar_nav.py::test_tab_navigation_active_class_tracks |
+| Sandbox label  | Top-bar root display                     | Shows resolved root path; truncates long paths                      | ✅ shipping | e2e         | tests/e2e/gui/test_topbar_nav.py::test_sandbox_label_renders_root         |
 | RSS readout    | Top-bar memory readout                   | Updates on `dcc.Interval` tick using `psutil`                       | ✅ shipping | integration | tests/integration/gui/test_lifecycle.py::test_rss_readout_returns_string  |
-| Help modal     | "?" button                               | Opens modal with cheatsheet + cloud-deploy non-goal note            | 🔭 planned | e2e         | tests/e2e/gui/test_topbar.py::test_help_modal_opens                       |
+| Help modal     | "?" button                               | Opens modal with cheatsheet + cloud-deploy non-goal note            | ✅ shipping | e2e         | tests/e2e/gui/test_topbar_nav.py::test_help_modal_opens_and_contains_copy |
 
 ## Sidebar (file browser)
 
 | Feature           | Element                            | Expected behaviour                                                          | Status     | Test layer  | Test ref                                                                   |
 | ----------------- | ---------------------------------- | --------------------------------------------------------------------------- | ---------- | ----------- | -------------------------------------------------------------------------- |
 | Lazy tree expand  | Folder twisty                      | One-level expansion per click                                               | 🔭 planned | e2e         | tests/e2e/gui/test_sidebar_classifier_badges.py::test_lazy_expand          |
-| Capability badges | Per-row badge (img/cfg/out)        | Reflects `_classifier.classify(path)` output                                | 🔭 planned | e2e         | tests/e2e/gui/test_sidebar_classifier_badges.py::test_badges_render        |
-| Hidden toggle     | "Show hidden" checkbox             | Toggles dotfile visibility; persists via store                              | 🔭 planned | integration | tests/integration/gui/test_app.py::test_hidden_toggle                      |
-| Symlink toggle    | "Show external symlinks" checkbox  | Off by default; reveals out-of-root symlinks when on                        | 🔭 planned | integration | tests/integration/gui/test_app.py::test_symlink_toggle                     |
+| Capability badges | Per-row badge (img/cfg/out)        | Reflects `_classifier.classify(path)` output                                | ✅ shipping | e2e         | tests/e2e/gui/test_sidebar.py::test_image_dir_carries_image_count_badge    |
+| Hidden toggle     | "Show hidden" checkbox             | Toggles dotfile visibility; persists via store                              | ✅ shipping | e2e         | tests/e2e/gui/test_sidebar.py::test_hidden_toggle_changes_state            |
+| Symlink toggle    | "Show external symlinks" checkbox  | Off by default; reveals out-of-root symlinks when on                        | ✅ shipping | e2e         | tests/e2e/gui/test_sidebar.py::test_symlink_toggle_changes_state           |
 | Refresh button    | Refresh icon                       | Re-runs sidebar tree query, busts classifier cache                          | ✅ shipping | integration | tests/integration/gui/test_lifecycle.py::test_refresh_callback_flushes_cache |
 | Hand-off store    | "↩ from sidebar" button            | Stamps store; active tab reads it when picking from sidebar                 | 🔭 planned | e2e         | tests/e2e/gui/test_hub_navigation.py::test_sidebar_handoff                 |
 
@@ -45,7 +45,7 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 
 | Feature                    | Element              | Expected behaviour                                                | Status     | Test layer  | Test ref                                                            |
 | -------------------------- | -------------------- | ----------------------------------------------------------------- | ---------- | ----------- | ------------------------------------------------------------------- |
-| Welcome card               | Landing pane         | Shows project name + sandbox root + tutorial links                | 🔭 planned | e2e         | tests/e2e/gui/test_topbar.py::test_home_renders                     |
+| Welcome card               | Landing pane         | Shows project name + sandbox root + tutorial links                | ✅ shipping | e2e         | tests/e2e/gui/test_topbar_nav.py::test_home_loads_with_chrome       |
 | Sandbox capability summary | Capability counts    | Shows ``n images / n outputs / n pipelines`` discovered           | ✅ shipping | integration | tests/integration/gui/test_app.py::test_home_capability_summary_renders |
 
 ## Builder integration
@@ -70,7 +70,7 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 
 | Feature              | Element                | Expected behaviour                                                                   | Status     | Test layer  | Test ref                                                                       |
 | -------------------- | ---------------------- | ------------------------------------------------------------------------------------ | ---------- | ----------- | ------------------------------------------------------------------------------ |
-| Pipeline picker      | Modal browser          | Opens sandboxed dir picker; selects pipeline.json                                    | 🔭 planned | e2e         | tests/e2e/gui/test_run_local_e2e.py::test_pick_pipeline                        |
+| Pipeline picker      | Modal browser          | Opens sandboxed dir picker; selects pipeline.json                                    | ✅ shipping | e2e         | tests/e2e/gui/test_run_console.py::test_pipeline_picker_modal_opens            |
 | Input picker         | Modal browser          | Opens sandboxed dir picker; selects image dir                                        | 🔭 planned | e2e         | tests/e2e/gui/test_run_local_e2e.py::test_pick_input                           |
 | Output picker        | Modal browser          | Defaults to `output_<timestamp>` adjacent to input                                   | 🔭 planned | e2e         | tests/e2e/gui/test_run_local_e2e.py::test_pick_output                          |
 | Mode toggle          | Local / SLURM radio    | Switches advanced sections + log/iframe behaviour                                    | 🔭 planned | e2e         | tests/e2e/gui/test_run_local_e2e.py::test_mode_toggle                          |
@@ -82,14 +82,14 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 | Validate (dry-run)   | Validate button        | Runs with `--dry-run`; logs only; no iframe                                          | 🔭 planned | e2e         | tests/e2e/gui/test_run_local_e2e.py::test_validate_no_iframe                   |
 | Save preset          | Save preset button     | Writes form to `<root>/.phenotypic-gui/presets/<name>.json`                          | 🔭 planned | unit        | tests/unit/gui/run_console/test_callbacks.py::test_save_preset                 |
 | Log tail             | Log panel              | Streams Popen stdout via `dcc.Interval`; deque ring-buffered                         | ✅ shipping | unit        | tests/unit/gui/run_console/test_runner.py::test_ring_buffer_drops_oldest_under_flood |
-| Recent Runs list     | Side panel             | Rehydrated from sandbox scan; row click re-points iframe                             | ✅ shipping | integration | tests/integration/gui/test_recent_runs_rehydrate.py::test_scan_rehydrates_supplied_registry |
+| Recent Runs list     | Side panel             | Rehydrated from sandbox scan; row click re-points iframe                             | ✅ shipping | e2e         | tests/e2e/gui/test_run_console.py::test_recent_runs_row_click_sets_iframe_src |
 | Max-local-runs cap   | Run button disabled    | `--max-local-runs` (default 1) gates new local runs                                  | 🔭 planned | unit        | tests/unit/gui/run_console/test_callbacks.py::test_max_local_runs_cap          |
 
 ## CLI dashboard iframe integration
 
 | Feature                          | Element                          | Expected behaviour                                                              | Status     | Test layer  | Test ref                                                                  |
 | -------------------------------- | -------------------------------- | ------------------------------------------------------------------------------- | ---------- | ----------- | ------------------------------------------------------------------------- |
-| `dashboard.html` iframe          | Run console main pane            | Iframes `/runs/<rel>/dashboard.html` for in-progress runs                       | 🔭 planned | e2e         | tests/e2e/gui/test_run_local_e2e.py::test_dashboard_iframe                |
+| `dashboard.html` iframe          | Run console main pane            | Iframes `/runs/<rel>/dashboard.html` for in-progress runs                       | ✅ shipping | e2e         | tests/e2e/gui/test_iframe_postmessage.py::test_iframe_loads_runs_blueprint_url |
 | postMessage (dashboard → parent) | JS in `_cli/_dashboard/_generator.py` | Guarded by `window.parent !== window`; standalone path silent              | ✅ shipping | integration | tests/integration/gui/test_postmessage_listener.py::test_postshell_event_guarded_by_parent_check |
 
 ## Cross-cutting infrastructure
