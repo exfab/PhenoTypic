@@ -39,8 +39,11 @@ _DASHBOARD_FILENAME = "dashboard.html"
 _IMAGE_COUNT_CAP = 1000
 
 # Pipeline-json peek constants. Cheap and good-enough heuristic.
+# Match either ``"pipe_cfgs"`` (what ``ImagePipeline.to_json`` writes today)
+# or the legacy ``"operations"`` key so older pipelines exported before the
+# rename still light up the ``cfg`` badge.
 _PIPELINE_JSON_PEEK_BYTES = 4096
-_PIPELINE_JSON_MARKER = b'"operations"'
+_PIPELINE_JSON_MARKERS: tuple[bytes, ...] = (b'"pipe_cfgs"', b'"operations"')
 
 
 @dataclass(frozen=True)
@@ -226,12 +229,13 @@ def _classify_dir(path: Path) -> Capabilities:
 def _peek_for_pipeline_marker(path: Path) -> bool:
     """Cheap heuristic for "is this a PhenoTypic pipeline JSON?".
 
-    Reads the first 4 KB and checks for a literal ``"operations"`` byte
-    sequence — what :meth:`ImagePipeline.to_json` writes at the top level.
+    Reads the first 4 KB and checks for either the current
+    ``"pipe_cfgs"`` key (what :meth:`ImagePipeline.to_json` writes) or the
+    legacy ``"operations"`` key.
     """
     try:
         with path.open("rb") as f:
             head = f.read(_PIPELINE_JSON_PEEK_BYTES)
     except (PermissionError, OSError):
         return False
-    return _PIPELINE_JSON_MARKER in head
+    return any(marker in head for marker in _PIPELINE_JSON_MARKERS)

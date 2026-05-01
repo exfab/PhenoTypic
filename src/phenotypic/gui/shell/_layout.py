@@ -19,6 +19,8 @@ generalises this to wrap the builder + viewer + run console mounts via
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
 
@@ -40,6 +42,18 @@ from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.shell._sidebar import build_sidebar
 
 __all__ = ["build_top_bar", "build_help_modal", "wrap_in_chrome"]
+
+
+# Shell chrome CSS lives in ``shell/_assets/shell.css``. Dash auto-emits a
+# ``<link>`` to it from the shell app's ``<head>``, but sub-apps mounted under
+# DispatcherMiddleware (``/builder/``, ``/results/``, ``/run/``) don't share
+# the shell's assets folder, so their pages don't load the chrome CSS. To
+# avoid path/dispatcher gymnastics, read shell.css once at import time and
+# inline it into every chrome-wrapped layout below. The bytes are tiny
+# (~6 KB) so the duplication is cheap.
+_SHELL_CSS = (Path(__file__).parent / "_assets" / "shell.css").read_text(
+    encoding="utf-8"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -218,6 +232,14 @@ def wrap_in_chrome(
     """
     body = app.layout
 
+    # Inject the shell chrome CSS into the page's ``<head>``. Sub-apps mounted
+    # under DispatcherMiddleware don't share the shell's assets folder, so
+    # Dash's auto-discovery only finds their own CSS files. Splicing the
+    # shell stylesheet into the index template here makes the chrome render
+    # styled on every mount (including the shell itself, where it duplicates
+    # the auto-emitted ``<link>`` — harmless).
+    _inject_shell_css(app)
+
     app.layout = html.Div(
         [
             build_top_bar(active_tab=active_tab, sandbox=sandbox),
@@ -239,6 +261,32 @@ def wrap_in_chrome(
     )
 
     register_chrome_callbacks(app, sandbox)
+
+
+def _inject_shell_css(app) -> None:  # type: ignore[no-untyped-def]
+    """Splice shell.css into ``app.index_string`` (idempotent).
+
+    Called from :func:`wrap_in_chrome`. We modify the index template
+    rather than emitting a ``<link>`` because (a) Dash strips most
+    layout-level head elements and (b) routing an absolute ``href``
+    cleanly across DispatcherMiddleware mounts requires more plumbing
+    than the inline CSS bytes are worth.
+    """
+    marker = "<!-- phenotypic-shell-css -->"
+    if marker in app.index_string:
+        return
+    style_block = f"{marker}\n<style>\n{_SHELL_CSS}\n</style>"
+    # Dash's default template ends the head with ``{%css%}`` immediately
+    # before ``</head>``. Insert just after ``{%css%}`` so any sub-app
+    # CSS still loads before our overrides (we want chrome styles to win).
+    if "{%css%}" in app.index_string:
+        app.index_string = app.index_string.replace(
+            "{%css%}", "{%css%}\n" + style_block, 1
+        )
+    else:  # pragma: no cover - defensive: custom templates without {%css%}
+        app.index_string = app.index_string.replace(
+            "</head>", style_block + "\n</head>", 1
+        )
 
 
 # ---------------------------------------------------------------------------
