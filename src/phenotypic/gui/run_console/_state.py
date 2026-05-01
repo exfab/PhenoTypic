@@ -158,7 +158,7 @@ def run_state_from_json(payload: dict[str, Any]) -> RunConsoleState:
 
     slurm_raw = payload.get("slurm_args") or {}
     slurm_args: dict[str, Any] = (
-        _slurm_args_from_json(slurm_raw) if isinstance(slurm_raw, dict) else {}
+        _slurm_args_to_json(slurm_raw) if isinstance(slurm_raw, dict) else {}
     )
 
     return RunConsoleState(
@@ -216,19 +216,6 @@ def _slurm_args_to_json(slurm_args: dict[str, Any]) -> dict[str, Any]:
         else:
             out[key] = value
     return out
-
-
-def _slurm_args_from_json(payload: dict[str, Any]) -> dict[str, Any]:
-    """Rehydrate a ``slurm_args`` dict, normalising ``extra``.
-
-    Args:
-        payload: Raw dict from JSON.
-
-    Returns:
-        Cleaned dict with ``extra`` keyed by strings.
-    """
-
-    return _slurm_args_to_json(payload)
 
 
 # ---------------------------------------------------------------------------

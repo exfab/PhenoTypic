@@ -39,10 +39,10 @@ import time
 import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 
 import dash
-from dash import ALL, Input, Output, State, ctx, html, no_update
+from dash import ALL, Input, Output, State, ctx, no_update
 
 from phenotypic.gui.run_console import _ids as ids
 from phenotypic.gui.run_console._directory_picker import (
@@ -387,76 +387,34 @@ def register_callbacks(
     """
 
     # ----------------------------------------------------------------------
-    # 1. Picker buttons → open modals
+    # 1. Picker buttons → open / cancel modals
     # ----------------------------------------------------------------------
+    # Each picker button (Pipeline / Input / Output) opens its modal; each
+    # Cancel button closes it. The wiring is mechanical — register the six
+    # callbacks in a loop so the per-modal IDs read top-to-bottom.
 
-    @app.callback(
-        Output(ids.RC_MODAL_PIPELINE, "is_open", allow_duplicate=True),
-        Input(ids.RC_BTN_PICK_PIPELINE, "n_clicks"),
-        prevent_initial_call=True,
-    )
-    def open_pipeline_modal(n_clicks: Optional[int]) -> Any:
-        """Open the pipeline-JSON picker modal."""
-        if not n_clicks:
-            return no_update
-        return True
+    _modal_buttons: list[tuple[str, str, str]] = [
+        (ids.RC_MODAL_PIPELINE, ids.RC_BTN_PICK_PIPELINE, ids.RC_BTN_PIPELINE_CANCEL),
+        (ids.RC_MODAL_INPUT, ids.RC_BTN_PICK_INPUT, ids.RC_BTN_INPUT_CANCEL),
+        (ids.RC_MODAL_OUTPUT, ids.RC_BTN_PICK_OUTPUT, ids.RC_BTN_OUTPUT_CANCEL),
+    ]
 
-    @app.callback(
-        Output(ids.RC_MODAL_INPUT, "is_open", allow_duplicate=True),
-        Input(ids.RC_BTN_PICK_INPUT, "n_clicks"),
-        prevent_initial_call=True,
-    )
-    def open_input_modal(n_clicks: Optional[int]) -> Any:
-        """Open the input-directory picker modal."""
-        if not n_clicks:
-            return no_update
-        return True
+    def _register_modal_toggle(modal_id: str, button_id: str, *, open_value: bool) -> None:
+        """Register an open/close callback for a single picker button."""
 
-    @app.callback(
-        Output(ids.RC_MODAL_OUTPUT, "is_open", allow_duplicate=True),
-        Input(ids.RC_BTN_PICK_OUTPUT, "n_clicks"),
-        prevent_initial_call=True,
-    )
-    def open_output_modal(n_clicks: Optional[int]) -> Any:
-        """Open the output-directory picker modal."""
-        if not n_clicks:
-            return no_update
-        return True
+        @app.callback(
+            Output(modal_id, "is_open", allow_duplicate=True),
+            Input(button_id, "n_clicks"),
+            prevent_initial_call=True,
+        )
+        def _toggle_modal(n_clicks: Optional[int]) -> Any:
+            if not n_clicks:
+                return no_update
+            return open_value
 
-    # Cancel buttons close the matching modal.
-
-    @app.callback(
-        Output(ids.RC_MODAL_PIPELINE, "is_open", allow_duplicate=True),
-        Input(ids.RC_BTN_PIPELINE_CANCEL, "n_clicks"),
-        prevent_initial_call=True,
-    )
-    def cancel_pipeline_modal(n_clicks: Optional[int]) -> Any:
-        """Close the pipeline picker modal."""
-        if not n_clicks:
-            return no_update
-        return False
-
-    @app.callback(
-        Output(ids.RC_MODAL_INPUT, "is_open", allow_duplicate=True),
-        Input(ids.RC_BTN_INPUT_CANCEL, "n_clicks"),
-        prevent_initial_call=True,
-    )
-    def cancel_input_modal(n_clicks: Optional[int]) -> Any:
-        """Close the input picker modal."""
-        if not n_clicks:
-            return no_update
-        return False
-
-    @app.callback(
-        Output(ids.RC_MODAL_OUTPUT, "is_open", allow_duplicate=True),
-        Input(ids.RC_BTN_OUTPUT_CANCEL, "n_clicks"),
-        prevent_initial_call=True,
-    )
-    def cancel_output_modal(n_clicks: Optional[int]) -> Any:
-        """Close the output picker modal."""
-        if not n_clicks:
-            return no_update
-        return False
+    for modal_id, open_btn_id, cancel_btn_id in _modal_buttons:
+        _register_modal_toggle(modal_id, open_btn_id, open_value=True)
+        _register_modal_toggle(modal_id, cancel_btn_id, open_value=False)
 
     # ----------------------------------------------------------------------
     # 2. Pipeline-tree navigation + file confirm
@@ -514,15 +472,27 @@ def register_callbacks(
             )
         return (no_update,) * 7
 
-    @app.callback(
-        Output(ids.RC_MODAL_PIPELINE_BODY, "children"),
-        Input(ids.RC_STORE_BROWSE_DIR_PIPELINE, "data"),
-        prevent_initial_call=True,
+    def _register_tree_renderer(
+        body_id: str,
+        store_id: str,
+        renderer: Callable[[SandboxRoot, Optional[Path]], Any],
+    ) -> None:
+        """Register a body-rerender callback for one picker tree."""
+
+        @app.callback(
+            Output(body_id, "children"),
+            Input(store_id, "data"),
+            prevent_initial_call=True,
+        )
+        def _render_body(dir_value: Optional[str]) -> Any:
+            current = Path(dir_value) if dir_value else None
+            return renderer(sandbox, current)
+
+    _register_tree_renderer(
+        ids.RC_MODAL_PIPELINE_BODY,
+        ids.RC_STORE_BROWSE_DIR_PIPELINE,
+        render_pipeline_tree,
     )
-    def render_pipeline_body(dir_value: Optional[str]) -> Any:
-        """Re-render the pipeline tree on browse-dir change."""
-        current = Path(dir_value) if dir_value else None
-        return render_pipeline_tree(sandbox, current)
 
     # ----------------------------------------------------------------------
     # 3. Input-tree navigation + confirm
@@ -550,15 +520,11 @@ def register_callbacks(
         _, path_str = match
         return path_str
 
-    @app.callback(
-        Output(ids.RC_MODAL_INPUT_BODY, "children"),
-        Input(ids.RC_STORE_BROWSE_DIR_INPUT, "data"),
-        prevent_initial_call=True,
+    _register_tree_renderer(
+        ids.RC_MODAL_INPUT_BODY,
+        ids.RC_STORE_BROWSE_DIR_INPUT,
+        render_input_tree,
     )
-    def render_input_body(dir_value: Optional[str]) -> Any:
-        """Re-render the input tree on browse-dir change."""
-        current = Path(dir_value) if dir_value else None
-        return render_input_tree(sandbox, current)
 
     @app.callback(
         Output(ids.RC_STORE_INPUT_DIR, "data", allow_duplicate=True),
@@ -642,15 +608,11 @@ def register_callbacks(
         _, path_str = match
         return path_str, path_str
 
-    @app.callback(
-        Output(ids.RC_MODAL_OUTPUT_BODY, "children"),
-        Input(ids.RC_STORE_BROWSE_DIR_OUTPUT, "data"),
-        prevent_initial_call=True,
+    _register_tree_renderer(
+        ids.RC_MODAL_OUTPUT_BODY,
+        ids.RC_STORE_BROWSE_DIR_OUTPUT,
+        render_output_dir_tree,
     )
-    def render_output_body(dir_value: Optional[str]) -> Any:
-        """Re-render the output tree on browse-dir change."""
-        current = Path(dir_value) if dir_value else None
-        return render_output_dir_tree(sandbox, current)
 
     @app.callback(
         Output(ids.RC_STORE_OUTPUT_DIR, "data", allow_duplicate=True),
@@ -698,58 +660,44 @@ def register_callbacks(
     # ----------------------------------------------------------------------
     # 5. Picker labels (mirror selected paths to display)
     # ----------------------------------------------------------------------
+    # Each picker store mirrors its sandbox-relative display string into the
+    # adjacent label.
 
-    @app.callback(
-        Output(ids.RC_LABEL_PIPELINE, "children"),
-        Input(ids.RC_STORE_PIPELINE_PATH, "data"),
-    )
-    def update_pipeline_label(path_str: Optional[str]) -> str:
-        """Mirror the selected pipeline path next to the picker button."""
-        return _shorten_path(path_str, sandbox)
+    def _register_picker_label(label_id: str, store_id: str) -> None:
+        """Register a label-mirroring callback for one picker store."""
 
-    @app.callback(
-        Output(ids.RC_LABEL_INPUT, "children"),
-        Input(ids.RC_STORE_INPUT_DIR, "data"),
-    )
-    def update_input_label(path_str: Optional[str]) -> str:
-        """Mirror the selected input directory next to the picker button."""
-        return _shorten_path(path_str, sandbox)
+        @app.callback(
+            Output(label_id, "children"),
+            Input(store_id, "data"),
+        )
+        def _update_label(path_str: Optional[str]) -> str:
+            return _shorten_path(path_str, sandbox)
 
-    @app.callback(
-        Output(ids.RC_LABEL_OUTPUT, "children"),
-        Input(ids.RC_STORE_OUTPUT_DIR, "data"),
-    )
-    def update_output_label(path_str: Optional[str]) -> str:
-        """Mirror the selected output directory next to the picker button."""
-        return _shorten_path(path_str, sandbox)
+    _register_picker_label(ids.RC_LABEL_PIPELINE, ids.RC_STORE_PIPELINE_PATH)
+    _register_picker_label(ids.RC_LABEL_INPUT, ids.RC_STORE_INPUT_DIR)
+    _register_picker_label(ids.RC_LABEL_OUTPUT, ids.RC_STORE_OUTPUT_DIR)
 
     # ----------------------------------------------------------------------
     # 6. Advanced + SLURM collapses
     # ----------------------------------------------------------------------
+    # Each toggle button flips its collapse open/closed.
 
-    @app.callback(
-        Output(ids.RC_COLLAPSE_ADVANCED, "is_open"),
-        Input(ids.RC_BTN_TOGGLE_ADVANCED, "n_clicks"),
-        State(ids.RC_COLLAPSE_ADVANCED, "is_open"),
-        prevent_initial_call=True,
-    )
-    def toggle_advanced(n_clicks: Optional[int], is_open: bool) -> bool:
-        """Flip the Advanced collapse open/closed."""
-        if not n_clicks:
-            return is_open
-        return not is_open
+    def _register_collapse_toggle(collapse_id: str, button_id: str) -> None:
+        """Register an open/closed flip for one collapse button."""
 
-    @app.callback(
-        Output(ids.RC_COLLAPSE_SLURM, "is_open"),
-        Input(ids.RC_BTN_TOGGLE_SLURM, "n_clicks"),
-        State(ids.RC_COLLAPSE_SLURM, "is_open"),
-        prevent_initial_call=True,
-    )
-    def toggle_slurm(n_clicks: Optional[int], is_open: bool) -> bool:
-        """Flip the SLURM-config collapse open/closed."""
-        if not n_clicks:
-            return is_open
-        return not is_open
+        @app.callback(
+            Output(collapse_id, "is_open"),
+            Input(button_id, "n_clicks"),
+            State(collapse_id, "is_open"),
+            prevent_initial_call=True,
+        )
+        def _toggle(n_clicks: Optional[int], is_open: bool) -> bool:
+            if not n_clicks:
+                return is_open
+            return not is_open
+
+    _register_collapse_toggle(ids.RC_COLLAPSE_ADVANCED, ids.RC_BTN_TOGGLE_ADVANCED)
+    _register_collapse_toggle(ids.RC_COLLAPSE_SLURM, ids.RC_BTN_TOGGLE_SLURM)
 
     # ----------------------------------------------------------------------
     # 7. Form-state sync — every input writes back to the form state store.
@@ -1508,8 +1456,3 @@ def register_callbacks(
             )
         return (no_update,) * 8
 
-    # ----------------------------------------------------------------------
-    # 15. Diagnostic placeholder so the html import isn't unused.
-    # ----------------------------------------------------------------------
-
-    _ = html  # type: ignore[assignment]
