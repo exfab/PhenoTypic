@@ -1,0 +1,13 @@
+# Pre-commit hooks for PhenoTypic.
+# Install: ``uv run pre-commit install`` (after ``uv sync --group dev``).
+# Run on all files: ``uv run pre-commit run --all-files``.
+
+repos:
+  - repo: local
+    hooks:
+      - id: features-md-check
+        name: FEATURES.md syntax + Test ref check (✅ shipping rows)
+        entry: python scripts/check_features_md.py
+        language: system
+        files: ^src/phenotypic/gui/FEATURES\.md$
+        pass_filenames: false

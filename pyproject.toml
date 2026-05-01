@@ -120,6 +120,13 @@ dev = [
     "pytest-testmon>=2.2.0",
     "pytest-qt>=4.5.0",
     "pytest-memray>=1.7.0;sys_platform!='win32'",
+    # Phase 0 of GUI hub roll-out (see GUI_SPEC_V1.md). Browser E2E suite is
+    # gated on the ``PLAYWRIGHT=1`` env var locally and on CI path filters.
+    # Playwright skips Windows because upstream wheels are linux+macOS only.
+    "pytest-playwright>=0.5.0;sys_platform!='win32'",
+    "playwright>=1.45.0;sys_platform!='win32'",
+    # FEATURES.md syntax + Test-ref pre-commit hook (see scripts/check_features_md.py).
+    "pre-commit>=3.7.0",
 ]
 docs = [
     "sphinx",
