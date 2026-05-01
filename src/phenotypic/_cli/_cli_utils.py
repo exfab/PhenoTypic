@@ -22,20 +22,64 @@ from __future__ import annotations
 import io
 import json
 import logging
+import os
 import shutil
 import subprocess
 import tarfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Set, Tuple
 
 import click
 
 from ._cli_constants import DEFAULT_GRID_ROWS, DEFAULT_GRID_COLS
 
+if TYPE_CHECKING:
+    import polars as pl
+
 logger = logging.getLogger(__name__)
 
 # Allowed image file extensions for PhenoTypic processing
 ALLOWED_EXTENSIONS: Set[str] = {".png", ".tif", ".tiff", ".jpg", ".jpeg"}
+
+
+def resolve_local_worker_count(n_jobs: int, work_items: int) -> int:
+    """Resolve local worker count with SLURM CPU allocation awareness.
+
+    Args:
+        n_jobs: Requested worker count.  ``-1`` means all allocated
+            CPUs under SLURM, otherwise all host CPUs.  Positive values
+            are honored but capped to the SLURM allocation when one is
+            available.
+        work_items: Number of queued work items.  The resolved worker
+            count never exceeds this value when it is positive.
+
+    Returns:
+        Worker count clamped to at least ``1``.  Invalid or nonpositive
+        ``SLURM_CPUS_PER_TASK`` values are ignored.
+    """
+    if work_items <= 0:
+        return 1
+
+    slurm_cpu_cap: Optional[int] = None
+    slurm_cpus = os.environ.get("SLURM_CPUS_PER_TASK")
+    if slurm_cpus is not None:
+        try:
+            parsed_slurm_cpus = int(slurm_cpus)
+        except ValueError:
+            parsed_slurm_cpus = 0
+        if parsed_slurm_cpus > 0:
+            slurm_cpu_cap = parsed_slurm_cpus
+
+    if n_jobs == -1:
+        workers = slurm_cpu_cap if slurm_cpu_cap is not None else os.cpu_count() or 1
+    elif n_jobs > 0:
+        workers = n_jobs
+        if slurm_cpu_cap is not None:
+            workers = min(workers, slurm_cpu_cap)
+    else:
+        workers = 1
+
+    return min(max(1, workers), work_items)
 
 
 def resolve_grid_shape(

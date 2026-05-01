@@ -131,12 +131,9 @@ import logging
 import shutil
 import sys
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 
 import click
-
-# Set up logger
-logger = logging.getLogger(__name__)
 
 from phenotypic import ImagePipeline
 from phenotypic._core._image_parts.detection_modes import available_modes
@@ -162,7 +159,18 @@ from phenotypic._cli._cli_state_management import (
     validate_resume_compatibility,
 )
 from phenotypic._cli._cli_types import ExecutionConfig
-from phenotypic._cli._cli_utils import normalize_extension, parse_slurm_args
+from phenotypic._cli._cli_utils import (
+    normalize_extension,
+    parse_slurm_args,
+    resolve_local_worker_count,
+)
+from phenotypic._cli._cli_recompile_slurm_scripts import (
+    TASK_FINALIZE,
+    build_recompile_tasks,
+    generate_recompile_slurm_scripts,
+)
+from phenotypic._cli._cli_slurm_config import get_slurm_array_limit
+from phenotypic._cli._cli_slurm_submission import submit_slurm_script_chain
 from phenotypic._cli._cli_validation import (
     validate_execution_config,
     validate_pipeline,
@@ -171,6 +179,9 @@ from phenotypic._cli._cli_constants import (
     MIN_SLURM_TIME_MINUTES,
     MAX_SLURM_TIME_MINUTES,
 )
+
+# Set up logger
+logger = logging.getLogger(__name__)
 
 
 def setup_logging(debug: bool = False):
@@ -551,10 +562,8 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
 )
 @click.option(
     "--no-dataset-column",
-    "include_dataset_column",
+    "no_dataset_column",
     is_flag=True,
-    flag_value=False,
-    default=True,
     help="Exclude 'Metadata_Dataset' column from master_measurements.csv (included by default)",
 )
 @click.option(
@@ -638,7 +647,7 @@ def phenotypic_cli(
     ext: str,
     measure_only: bool,
     overlay_alpha: float,
-    include_dataset_column: bool,
+    no_dataset_column: bool,
     dry_run: bool,
     sample: Optional[int],
     random_seed: Optional[int],
@@ -659,14 +668,78 @@ def phenotypic_cli(
     INPUT_PATH: Image file or directory to process
     """
     try:
+        include_dataset_column = not no_dataset_column
+
+        # Parse SLURM args before the recompile branch so --recompile can
+        # explicitly choose between local and SLURM recompile dispatch.
+        slurm_args_dict = {}
+        if slurm_args:
+            try:
+                slurm_args_dict = _parse_slurm_args(slurm_args)
+            except click.BadParameter as e:
+                click.echo(str(e), err=True)
+                sys.exit(1)
+
+        # Validate SLURM time parameter if present
+        if slurm_args_dict:
+            # Check for deprecated parameters
+            if "time_min" in slurm_args_dict:
+                click.echo(
+                    "Warning: 'time_min' is deprecated. Use 'time' instead.", err=True
+                )
+                # Auto-migrate
+                if "time" not in slurm_args_dict:
+                    slurm_args_dict["time"] = slurm_args_dict.pop("time_min")
+                else:
+                    slurm_args_dict.pop("time_min")
+
+            # Validate time parameter type and range
+            for time_key in ("time", "slurm_time"):
+                if time_key in slurm_args_dict:
+                    time_val = slurm_args_dict[time_key]
+                    if not isinstance(time_val, int):
+                        click.echo(
+                            f"Error: '{time_key}' must be an integer (minutes), "
+                            f"got {type(time_val).__name__}",
+                            err=True,
+                        )
+                        sys.exit(1)
+
+                    # Validate reasonable time range
+                    if time_val < MIN_SLURM_TIME_MINUTES:
+                        click.echo(
+                            f"Error: '{time_key}' must be >= {MIN_SLURM_TIME_MINUTES} minute, got {time_val}",
+                            err=True,
+                        )
+                        sys.exit(1)
+                    elif time_val > MAX_SLURM_TIME_MINUTES:
+                        days = MAX_SLURM_TIME_MINUTES / 1440
+                        click.echo(
+                            f"Warning: '{time_key}' is {time_val} minutes "
+                            f"({time_val / 60:.1f} hours). This exceeds typical cluster limits "
+                            f"({MAX_SLURM_TIME_MINUTES} min / {days:.1f} days).",
+                            err=True,
+                        )
+
         if recompile is not None:
-            _handle_recompile(
-                recompile,
-                metadata_csv,
-                include_dataset_column,
-                overlay_alpha,
-                n_jobs,
-            )
+            if slurm_args_dict and not force_local:
+                _handle_recompile_slurm(
+                    output_dir=recompile,
+                    metadata_csv=metadata_csv,
+                    include_dataset_column=include_dataset_column,
+                    overlay_alpha=overlay_alpha,
+                    checkpoint_interval=checkpoint_interval,
+                    slurm_args=slurm_args_dict,
+                    wait=wait,
+                )
+            else:
+                _handle_recompile(
+                    recompile,
+                    metadata_csv,
+                    include_dataset_column,
+                    overlay_alpha,
+                    n_jobs,
+                )
             sys.exit(0)
 
         # ---- Early validation for --measure (measure_only) -------------
@@ -746,56 +819,6 @@ def phenotypic_cli(
         except click.BadParameter as e:
             click.echo(str(e), err=True)
             sys.exit(1)
-
-        # Parse SLURM args
-        slurm_args_dict = {}
-        if slurm_args:
-            try:
-                slurm_args_dict = _parse_slurm_args(slurm_args)
-            except click.BadParameter as e:
-                click.echo(str(e), err=True)
-                sys.exit(1)
-
-        # Validate SLURM time parameter if present
-        if slurm_args_dict:
-            # Check for deprecated parameters
-            if "time_min" in slurm_args_dict:
-                click.echo(
-                    "Warning: 'time_min' is deprecated. Use 'time' instead.", err=True
-                )
-                # Auto-migrate
-                if "time" not in slurm_args_dict:
-                    slurm_args_dict["time"] = slurm_args_dict.pop("time_min")
-                else:
-                    slurm_args_dict.pop("time_min")
-
-            # Validate time parameter type and range
-            for time_key in ("time", "slurm_time"):
-                if time_key in slurm_args_dict:
-                    time_val = slurm_args_dict[time_key]
-                    if not isinstance(time_val, int):
-                        click.echo(
-                            f"Error: '{time_key}' must be an integer (minutes), "
-                            f"got {type(time_val).__name__}",
-                            err=True,
-                        )
-                        sys.exit(1)
-
-                    # Validate reasonable time range
-                    if time_val < MIN_SLURM_TIME_MINUTES:
-                        click.echo(
-                            f"Error: '{time_key}' must be >= {MIN_SLURM_TIME_MINUTES} minute, got {time_val}",
-                            err=True,
-                        )
-                        sys.exit(1)
-                    elif time_val > MAX_SLURM_TIME_MINUTES:
-                        days = MAX_SLURM_TIME_MINUTES / 1440
-                        click.echo(
-                            f"Warning: '{time_key}' is {time_val} minutes "
-                            f"({time_val / 60:.1f} hours). This exceeds typical cluster limits "
-                            f"({MAX_SLURM_TIME_MINUTES} min / {days:.1f} days).",
-                            err=True,
-                        )
 
         # Validate flags
         if retry_failures and not resume:
@@ -1280,11 +1303,10 @@ def _regenerate_missing_overlays(
         output_dir: Existing output directory.
         overlay_alpha: Alpha for overlay compositing, mirrors the
             ``--overlay-alpha`` flag used by forward runs.
-        n_jobs: Number of worker threads.  ``-1`` means
-            ``os.cpu_count()``.  ``1`` runs in-thread.  Mirrors the
-            ``--n-jobs`` flag used by forward runs.
+        n_jobs: Number of worker threads.  ``-1`` means allocated CPUs
+            under SLURM, otherwise host CPUs.  ``1`` runs in-thread.
+            Mirrors the ``--n-jobs`` flag used by forward runs.
     """
-    import os
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     import h5py
@@ -1330,8 +1352,7 @@ def _regenerate_missing_overlays(
             parents=True, exist_ok=True
         )
 
-    workers = os.cpu_count() or 1 if n_jobs == -1 else max(1, n_jobs)
-    workers = min(workers, len(work))
+    workers = resolve_local_worker_count(n_jobs, len(work))
 
     def _render_one(dataset_name: str, hdf_path: Path) -> None:
         with h5py.File(hdf_path, "r") as fh:
@@ -1382,6 +1403,252 @@ def _regenerate_missing_overlays(
         )
     else:
         console.print("[green]Overlay regeneration complete")
+
+
+def _handle_recompile_slurm(
+    *,
+    output_dir: Path,
+    metadata_csv: Optional[Path],
+    include_dataset_column: bool,
+    overlay_alpha: float,
+    checkpoint_interval: Optional[int],
+    slurm_args: dict[str, Any],
+    wait: bool,
+) -> None:
+    """Submit recompile work as a SLURM array chain.
+
+    Args:
+        output_dir: Existing output directory containing ``results/``.
+        metadata_csv: Optional metadata CSV for the finalizer task.
+        include_dataset_column: Whether measurement aggregation should add
+            ``Metadata_Dataset`` when source files lack it.
+        overlay_alpha: Alpha used when re-rendering missing overlays.
+        checkpoint_interval: Reused as the measurement shard size when
+            positive; otherwise defaults to 500 files per shard.
+        slurm_args: Parsed SLURM key/value arguments.
+        wait: Whether to wait for the finalizer task status.
+    """
+    import json
+    from datetime import datetime
+
+    from rich.console import Console
+
+    from phenotypic._cli._cli_utils import load_job_metadata
+    from phenotypic._cli._dashboard import generate_dashboard
+
+    output_dir = Path(output_dir)
+    progress_dir = output_dir / "progress"
+    progress_dir.mkdir(parents=True, exist_ok=True)
+    console = Console()
+
+    job_meta = load_job_metadata(progress_dir)
+    dataset_names = _discover_recompile_dataset_names(output_dir, job_meta)
+    if not dataset_names:
+        error_exit("No datasets found in output directory", str(output_dir))
+
+    shard_size = (
+        checkpoint_interval
+        if checkpoint_interval is not None and checkpoint_interval > 0
+        else 500
+    )
+    console.print(
+        f"[bold]Submitting SLURM recompile[/bold] for {output_dir} "
+        f"({len(dataset_names)} dataset(s))"
+    )
+
+    tasks = build_recompile_tasks(
+        output_dir=output_dir,
+        dataset_names=dataset_names,
+        include_dataset_column=include_dataset_column,
+        overlay_alpha=overlay_alpha,
+        shard_size=shard_size,
+    )
+    finalizer_task_index: Optional[int] = None
+    if tasks and tasks[-1].get("task_type") == TASK_FINALIZE:
+        finalizer_task_index = len(tasks) - 1
+        tasks[-1]["metadata_csv"] = str(metadata_csv) if metadata_csv else None
+
+    console.print("[cyan]Querying SLURM array limits...[/cyan]")
+    array_limit = get_slurm_array_limit()
+    console.print(f"[green]SLURM array limit: {array_limit}[/green]")
+
+    scripts = generate_recompile_slurm_scripts(
+        tasks=tasks,
+        output_dir=output_dir,
+        slurm_args=slurm_args,
+        array_limit=array_limit,
+    )
+    if not tasks or not scripts or finalizer_task_index is None:
+        console.print(
+            "[yellow]No recompile SLURM tasks/scripts were generated; "
+            "running local recompile instead.[/yellow]"
+        )
+        _handle_recompile(
+            output_dir,
+            metadata_csv,
+            include_dataset_column,
+            overlay_alpha,
+            -1,
+        )
+        return
+
+    submission = submit_slurm_script_chain(
+        flat_chunk_scripts=scripts,
+        output_dir=output_dir,
+        slurm_args=slurm_args,
+        console=console,
+    )
+    flat_scripts = submission.flat_scripts
+    job_ids = submission.job_ids
+
+    recompile_manifest_path = (
+        output_dir / "progress" / "recompile" / "task_manifest.json"
+    )
+    job_metadata = {
+        "start_time": datetime.now().isoformat(timespec="milliseconds"),
+        "execution_mode": "slurm",
+        "datasets": _build_recompile_job_metadata_datasets(
+            output_dir,
+            dataset_names,
+            job_meta,
+        ),
+        "chunk_scripts": [str(script) for script in flat_scripts],
+        "chunk_job_ids": {"0": str(job_ids[0])},
+        "include_dataset_column": include_dataset_column,
+        "metadata_csv": str(metadata_csv) if metadata_csv else None,
+        "input_path": str(output_dir),
+        "recompile": {
+            "task_manifest": str(recompile_manifest_path),
+            "finalizer_task_index": finalizer_task_index,
+        },
+    }
+    metadata_path = progress_dir / "job_metadata.json"
+    metadata_path.write_text(
+        json.dumps(job_metadata, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    console.print(f"[green]Job metadata: {metadata_path}[/green]")
+
+    generate_dashboard(output_dir, execution_mode="slurm")
+    console.print(
+        f"[green]Dashboard: {output_dir / 'dashboard.html'}[/green]"
+    )
+
+    if wait:
+        console.print(
+            "\n[cyan]Waiting for recompile finalizer "
+            f"task {finalizer_task_index}...[/cyan]"
+        )
+        _wait_for_recompile_finalizer_status(output_dir, finalizer_task_index)
+        console.print("[bold green]SLURM recompilation complete[/bold green]")
+    else:
+        click.echo("\nRecompile jobs submitted. Monitor progress with:")
+        click.echo(f"  Open: {output_dir / 'dashboard.html'}")
+        click.echo("  squeue -u $USER --array")
+        click.echo(
+            f"  tail -f {output_dir / 'logs' / 'slurm' / 'recompile'}/*.log"
+        )
+
+
+def _discover_recompile_dataset_names(
+    output_dir: Path,
+    job_meta: Optional[dict[str, Any]],
+) -> list[str]:
+    """Discover datasets using the local recompile precedence."""
+    results_dir = output_dir / "results"
+    dataset_names: list[str] = []
+    if results_dir.is_dir():
+        dataset_names = sorted(
+            d.name
+            for d in results_dir.iterdir()
+            if d.is_dir() and (d / "measurements").is_dir()
+        )
+
+    if not dataset_names and job_meta:
+        dataset_names = sorted((job_meta.get("datasets", {}) or {}).keys())
+
+    return dataset_names
+
+
+def _build_recompile_job_metadata_datasets(
+    output_dir: Path,
+    dataset_names: list[str],
+    job_meta: Optional[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Build the normal nested ``job_metadata["datasets"]`` shape."""
+    previous_datasets = (job_meta or {}).get("datasets", {}) or {}
+    datasets: dict[str, dict[str, Any]] = {}
+    for dataset_name in dataset_names:
+        images = _recompile_dataset_image_names(output_dir, dataset_name)
+        if not images:
+            previous = previous_datasets.get(dataset_name, {})
+            if isinstance(previous, dict):
+                previous_images = previous.get("images", [])
+                if isinstance(previous_images, list):
+                    images = [str(image) for image in previous_images]
+        datasets[dataset_name] = {"total": len(images), "images": images}
+    return datasets
+
+
+def _recompile_dataset_image_names(output_dir: Path, dataset_name: str) -> list[str]:
+    """Infer image names from per-image measurement Parquets or HDFs."""
+    dataset_dir = output_dir / "results" / dataset_name
+    meas_dir = dataset_dir / "measurements"
+    if meas_dir.is_dir():
+        parquet_stems = sorted(
+            path.stem
+            for path in meas_dir.glob("*.parquet")
+            if not path.name.startswith("_")
+        )
+        if parquet_stems:
+            return parquet_stems
+
+    hdf_dir = dataset_dir / "hdf"
+    if hdf_dir.is_dir():
+        hdf_stems = sorted(path.stem for path in hdf_dir.glob("*.h5"))
+        if hdf_stems:
+            return hdf_stems
+
+    return []
+
+
+def _wait_for_recompile_finalizer_status(
+    output_dir: Path,
+    finalizer_task_index: int,
+    poll_interval: float = 10.0,
+    timeout: Optional[float] = None,
+) -> None:
+    """Wait until the recompile finalizer status is completed or failed."""
+    import json
+    import time
+
+    status_path = (
+        output_dir
+        / "progress"
+        / "recompile"
+        / "status"
+        / f"task_{finalizer_task_index}.json"
+    )
+    deadline = time.monotonic() + timeout if timeout is not None else None
+    while True:
+        if status_path.exists():
+            try:
+                status = json.loads(status_path.read_text(encoding="utf-8"))
+            except Exception:
+                logger.warning("Failed to read recompile status %s", status_path)
+            else:
+                state = status.get("status")
+                if state == "completed":
+                    return
+                if state == "failed":
+                    error = status.get("error") or "recompile finalizer failed"
+                    raise RuntimeError(str(error))
+
+        if deadline is not None and time.monotonic() >= deadline:
+            raise TimeoutError(
+                f"Timed out waiting for recompile finalizer status: {status_path}"
+            )
+        time.sleep(poll_interval)
 
 
 def _handle_recompile(
@@ -1548,4 +1815,4 @@ def _format_duration(seconds: float) -> str:
 
 
 if __name__ == "__main__":
-    main()
+    phenotypic_cli()
