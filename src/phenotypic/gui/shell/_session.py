@@ -147,6 +147,41 @@ class ToolSession(Generic[T]):
         """True iff the session currently holds built state."""
         return self._state is not None
 
+    def set_build(self, build: Callable[[], T]) -> None:
+        """Replace the build callable and drop any existing state.
+
+        Used by hand-off endpoints (e.g. the viewer's
+        ``/sandbox/api/viewer/output-root``) that need the next ``get`` to
+        construct the heavy state with new arguments. The swap and the
+        release are performed under ``self._lock`` so an in-flight ``get``
+        cannot observe a half-swapped state, and the next ``get`` is
+        guaranteed to call the freshly-installed ``build``.
+
+        ``teardown`` runs outside the lock with the previously-held state,
+        following the same contract as :meth:`release`.
+
+        Args:
+            build: The new zero-argument constructor for the heavy state.
+        """
+        with self._lock:
+            self._build = build
+            stale = self._state
+            self._state = None
+        if stale is not None:
+            try:
+                self._teardown(stale)
+            except Exception:
+                logger.exception(
+                    "ToolSession[%s]: teardown raised during set_build; "
+                    "swap completed anyway",
+                    self.name,
+                )
+            del stale
+            gc.collect()
+            logger.debug(
+                "ToolSession[%s]: build swapped + state released", self.name
+            )
+
     def release(self) -> None:
         """Drop the in-memory state. Idempotent.
 

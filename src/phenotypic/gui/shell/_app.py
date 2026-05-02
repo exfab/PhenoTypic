@@ -103,6 +103,7 @@ def _build_shell_dash_app(
     *,
     url_prefix: str = "/",
     viewer_session: "ToolSession[Any] | None" = None,
+    viewer_state: "dict[str, Any] | None" = None,
 ) -> dash.Dash:
     """Build the shell's home Dash (chrome + home pane + Flask blueprints).
 
@@ -135,7 +136,12 @@ def _build_shell_dash_app(
     app.layout = html.Div(build_home_layout(sandbox), className="shell-page")
     wrap_in_chrome(app, active_tab=SHELL_TAB_HOME, sandbox=sandbox)
 
-    register_sandbox_api(app.server, sandbox, viewer_session=viewer_session)
+    register_sandbox_api(
+        app.server,
+        sandbox,
+        viewer_session=viewer_session,
+        viewer_state=viewer_state,
+    )
     register_runs(app.server, sandbox, viewer_session=viewer_session)
     return app
 
@@ -170,11 +176,20 @@ def compose_hub(
     """
     # Local imports to keep boot-time cycles minimal.
     from phenotypic.gui import builder, results_viewer, run_console
+    from phenotypic.gui.results_viewer._output_root import OutputRoot
+
+    # Mutable handoff slot so the sidebar can hand a CLI output path to the
+    # viewer without changing the ToolSession's build identity. The
+    # ``/sandbox/api/viewer/output-root`` endpoint validates an incoming
+    # path with ``OutputRoot.discover``, stamps the result here, and calls
+    # ``viewer_session.release()``; the next GET to ``/results/`` rebuilds
+    # the viewer with this OutputRoot.
+    viewer_state: dict[str, "OutputRoot | None"] = {"output_root": None}
 
     # 1. Viewer session (lazy — heavy parquet load deferred to first GET).
     def _build_viewer() -> dash.Dash:
         viewer_app = results_viewer.create_app(
-            output_root=None, url_prefix="/results/"
+            output_root=viewer_state["output_root"], url_prefix="/results/"
         )
         wrap_in_chrome(viewer_app, active_tab=SHELL_TAB_VIEWER, sandbox=sandbox)
         return viewer_app
@@ -200,7 +215,11 @@ def compose_hub(
 
     # 2. Shell Dash (registers the API + runs blueprints with the
     #    viewer-session touch hook wired in).
-    shell_app = _build_shell_dash_app(sandbox, viewer_session=viewer_session)
+    shell_app = _build_shell_dash_app(
+        sandbox,
+        viewer_session=viewer_session,
+        viewer_state=viewer_state,
+    )
 
     # 3. Builder Dash (eager — single-process registry build).
     builder_app = builder.create_app(

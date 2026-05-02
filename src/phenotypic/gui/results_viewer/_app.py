@@ -34,9 +34,10 @@ from typing import Optional
 
 import dash
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
+from dash import Input, Output, State
 
 from phenotypic.gui._design import inject_design_tokens
-from phenotypic.gui.results_viewer import _tile_routes
+from phenotypic.gui.results_viewer import _ids as ids, _tile_routes
 from phenotypic.gui.results_viewer._callbacks import register_callbacks
 from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
 from phenotypic.gui.results_viewer._layout import (
@@ -45,6 +46,7 @@ from phenotypic.gui.results_viewer._layout import (
 )
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer.colony_view import _crop_routes as colony_crop_routes
+from phenotypic.gui.shell._ids import SHELL_SIDEBAR_SELECTION_STORE
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +148,7 @@ def create_app(
 
     if output_root is None:
         app.layout = build_empty_state_layout()
+        _register_empty_state_callbacks(app, url_prefix=url_prefix)
         logger.debug(
             "Results viewer built in empty-state mode (url_prefix=%s)",
             url_prefix,
@@ -164,6 +167,94 @@ def create_app(
     register_callbacks(app, output_root)
 
     return app
+
+
+def _register_empty_state_callbacks(app: dash.Dash, *, url_prefix: str) -> None:
+    """Wire the empty-state hand-off banner.
+
+    Two callbacks:
+
+    1. **Mirror selection -> banner.** A serverside callback watches
+       :data:`SHELL_SIDEBAR_SELECTION_STORE` (mounted on this app's
+       chrome wrapper) and toggles the banner's visibility, label, and
+       Open-button ``disabled`` flag based on whether the selection
+       has the ``is_cli_output`` capability.
+
+    2. **Open button -> POST + redirect.** A clientside callback fetches
+       ``/sandbox/api/viewer/output-root`` with the selection's
+       ``abs_path`` (or rel ``path`` as fallback). On success the
+       browser navigates to ``url_prefix`` so :class:`_ViewerProxy`
+       resolves a freshly-built loaded viewer; on 4xx the JSON
+       ``error`` is rendered into the inline error slot.
+    """
+    @app.callback(
+        Output(ids.EMPTY_HANDOFF_BANNER, "style"),
+        Output(ids.EMPTY_HANDOFF_LABEL, "children"),
+        Output(ids.EMPTY_HANDOFF_OPEN_BUTTON, "disabled"),
+        Input(SHELL_SIDEBAR_SELECTION_STORE, "data"),
+    )
+    def _populate_handoff_banner(
+        selection: "dict | None",
+    ) -> "tuple":
+        hidden = {"display": "none"}
+        visible = {
+            "display": "flex",
+            "alignItems": "center",
+            "gap": "0.5rem",
+            "marginTop": "1rem",
+            "padding": "0.5rem 0.75rem",
+            "background": "#fff",
+            "border": "1px solid #1b75bc",
+            "borderRadius": "6px",
+        }
+        if not selection or not isinstance(selection, dict):
+            return hidden, "(none)", True
+        path = selection.get("path") or ""
+        if not path:
+            return hidden, "(none)", True
+        caps = selection.get("capabilities") or {}
+        is_cli_output = bool(caps.get("is_cli_output"))
+        return visible, path, not is_cli_output
+
+    # Clientside POST + navigate. Uses ``window.fetch`` with the prefix
+    # so it works under any DispatcherMiddleware mount. On success the
+    # callback calls ``window.location.assign(prefix)`` directly (forces
+    # a full reload even though the URL is unchanged), which is what
+    # ``_ViewerProxy`` needs to resolve the freshly-built session. On
+    # 4xx the JSON ``error`` is rendered into the inline error slot.
+    app.clientside_callback(
+        """
+        async function(n_clicks, selection) {
+            if (!n_clicks || !selection) {
+                return window.dash_clientside.no_update;
+            }
+            const path = selection.path;
+            if (!path) { return "No sidebar selection."; }
+            try {
+                const resp = await fetch(
+                    "/sandbox/api/viewer/output-root",
+                    {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify({path: path}),
+                    }
+                );
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) {
+                    return (data && data.error) || ("HTTP " + resp.status);
+                }
+                window.location.assign(__PHENO_VIEWER_PREFIX__);
+                return "";
+            } catch (err) {
+                return String(err);
+            }
+        }
+        """.replace("__PHENO_VIEWER_PREFIX__", repr(url_prefix)),
+        Output(ids.EMPTY_HANDOFF_ERROR, "children"),
+        Input(ids.EMPTY_HANDOFF_OPEN_BUTTON, "n_clicks"),
+        State(SHELL_SIDEBAR_SELECTION_STORE, "data"),
+        prevent_initial_call=True,
+    )
 
 
 __all__ = ["create_app"]

@@ -112,6 +112,7 @@ def build_sandbox_api(
     sandbox: "SandboxRoot",
     *,
     viewer_session: "ToolSession[object] | None" = None,
+    viewer_state: "dict[str, Any] | None" = None,
     name: str = "phenotypic_sandbox_api",
     url_prefix: str = "/sandbox/api",
 ) -> Blueprint:
@@ -228,6 +229,62 @@ def build_sandbox_api(
             viewer_session.touch()
         return jsonify(asdict(classify(target)))
 
+    @bp.route("/viewer/output-root", methods=["POST"])
+    def viewer_output_root_endpoint() -> Any:
+        """Hand a CLI output directory to the results viewer.
+
+        Validates ``path`` (rel-path inside the sandbox) by calling
+        :meth:`OutputRoot.discover`, which raises ``FileNotFoundError`` /
+        ``ValueError`` for malformed layouts. On success the resolved
+        ``OutputRoot`` is stamped into the shared ``viewer_state`` slot
+        and the viewer ``ToolSession`` is released so the next GET to
+        ``/results/`` rebuilds against the new root.
+
+        Returns ``{"status": "ok", "abs_path": "<resolved>"}`` on
+        success. Returns ``{"status": "error", "error": "<message>"}``
+        with HTTP 400 for sandbox-escape / unknown-layout / missing-
+        column errors.
+        """
+        if viewer_state is None or viewer_session is None:
+            return (
+                jsonify({"status": "error", "error": "viewer hand-off disabled"}),
+                501,
+            )
+
+        payload = request.get_json(silent=True) or {}
+        rel = payload.get("path", "")
+        if not isinstance(rel, str) or not rel:
+            return (
+                jsonify({"status": "error", "error": "missing 'path'"}),
+                400,
+            )
+        try:
+            target = sandbox.resolve(rel)
+        except ValueError:
+            return (
+                jsonify({"status": "error", "error": "path escapes sandbox"}),
+                400,
+            )
+
+        from phenotypic.gui.results_viewer._output_root import OutputRoot
+
+        try:
+            output_root = OutputRoot.discover(target)
+        except (FileNotFoundError, ValueError) as exc:
+            logger.info(
+                "rejected viewer hand-off for %s: %s", target, exc
+            )
+            return (
+                jsonify({"status": "error", "error": str(exc)}),
+                400,
+            )
+
+        viewer_state["output_root"] = output_root
+        viewer_session.release()
+        viewer_session.touch()
+        logger.info("viewer hand-off accepted: %s", target)
+        return jsonify({"status": "ok", "abs_path": str(target)})
+
     return bp
 
 
@@ -236,9 +293,14 @@ def register_sandbox_api(
     sandbox: "SandboxRoot",
     *,
     viewer_session: "ToolSession[object] | None" = None,
+    viewer_state: "dict[str, Any] | None" = None,
 ) -> Blueprint:
     """Build and register the sandbox-API blueprint on ``server``."""
-    bp = build_sandbox_api(sandbox, viewer_session=viewer_session)
+    bp = build_sandbox_api(
+        sandbox,
+        viewer_session=viewer_session,
+        viewer_state=viewer_state,
+    )
     server.register_blueprint(bp)
     logger.debug(
         "registered /sandbox/api blueprint on Flask app=%s sandbox=%s",

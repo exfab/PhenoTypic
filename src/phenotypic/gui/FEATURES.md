@@ -78,6 +78,7 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 | Mounted via _ViewerProxy | `/results/` route                    | Per-request resolves `session.get().server`; survives release+rebuild           | ✅ shipping | integration | tests/integration/gui/test_viewer_session.py::test_release_rebuilds_on_next_request |
 | Release button           | "Release loaded data"                | Drops in-memory state; subsequent access re-loads from disk (RSS may stay high) | ✅ shipping | integration | tests/integration/gui/test_viewer_session.py::test_release_rebuilds_on_next_request |
 | Idle auto-release        | Daemon thread                        | Calls `release()` after `idle_seconds > N`                                      | ✅ shipping | integration | tests/integration/gui/test_viewer_session.py::test_idle_release_thread_releases_built_session |
+| Sidebar hand-off         | "↩ Open in viewer" empty-state button | Selecting a `is_cli_output` folder enables the banner button; clicking POSTs to `/sandbox/api/viewer/output-root`, which validates via `OutputRoot.discover`, swaps `viewer_state["output_root"]`, releases the session; next page-load mounts the loaded viewer | ✅ shipping | integration | tests/integration/gui/test_viewer_handoff.py::test_post_swaps_output_root_and_rebuilds |
 
 ## Run console
 

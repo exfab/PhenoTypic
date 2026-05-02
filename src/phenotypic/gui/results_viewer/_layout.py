@@ -377,13 +377,62 @@ def build_empty_state_layout() -> Component:
 
     The hub mounts the viewer with ``output_root=None`` so the page is
     reachable before the user has chosen an output directory. This layout
-    explains the situation and points at the sidebar's file picker — the
-    rebuild path is owned by :class:`ToolSession`, which calls the factory
-    again with a real ``OutputRoot`` once one is selected.
+    explains the situation and renders a hand-off banner that consumes
+    :data:`SHELL_SIDEBAR_SELECTION_STORE` from the wrapping shell chrome.
+    Clicking ``Open in viewer`` POSTs the selection to
+    ``/sandbox/api/viewer/output-root``, which validates the layout via
+    :meth:`OutputRoot.discover`, swaps the viewer ``ToolSession`` state,
+    and triggers a hard navigation back to ``/results/`` so the
+    :class:`_ViewerProxy` resolves a freshly-built loaded viewer.
 
     Returns:
-        A :class:`dash.html.Div` that renders a friendly message + tip.
+        A :class:`dash.html.Div` that renders a friendly message, the
+        hand-off banner, and an inline error slot. The successful-POST
+        redirect is performed by the empty-state clientside callback in
+        :mod:`._app` via ``window.location.assign(url_prefix)``.
     """
+    handoff_banner = html.Div(
+        [
+            html.Span(
+                "Selected: ",
+                className="results-viewer-empty-handoff-prefix",
+            ),
+            html.Code(
+                "(none)",
+                id=ids.EMPTY_HANDOFF_LABEL,
+                className="results-viewer-empty-handoff-label",
+            ),
+            dbc.Button(
+                "↩ Open in viewer",
+                id=ids.EMPTY_HANDOFF_OPEN_BUTTON,
+                color="primary",
+                size="sm",
+                disabled=True,
+                className="results-viewer-empty-handoff-open ms-2",
+                n_clicks=0,
+            ),
+        ],
+        id=ids.EMPTY_HANDOFF_BANNER,
+        className="results-viewer-empty-handoff-banner",
+        style={
+            "display": "none",
+            "alignItems": "center",
+            "gap": "0.5rem",
+            "marginTop": "1rem",
+            "padding": "0.5rem 0.75rem",
+            "background": "#fff",
+            "border": f"1px solid {_BLUE}",
+            "borderRadius": "6px",
+        },
+    )
+
+    error_slot = html.Div(
+        "",
+        id=ids.EMPTY_HANDOFF_ERROR,
+        className="results-viewer-empty-handoff-error text-danger small",
+        style={"marginTop": "0.5rem", "minHeight": "1.25rem"},
+    )
+
     return html.Div(
         [
             html.Div(
@@ -393,11 +442,14 @@ def build_empty_state_layout() -> Component:
                         className="results-viewer-empty-title",
                     ),
                     html.P(
-                        "Pick a CLI output directory in the sidebar to "
-                        "load the viewer. The viewer rebuilds in place "
-                        "when you select one.",
+                        "Pick a CLI output directory in the sidebar, "
+                        "then click ↩ Open in viewer to load it. The "
+                        "viewer rebuilds in place once the chosen "
+                        "directory passes layout validation.",
                         className="results-viewer-empty-body",
                     ),
+                    handoff_banner,
+                    error_slot,
                 ],
                 className="results-viewer-empty-card",
             ),

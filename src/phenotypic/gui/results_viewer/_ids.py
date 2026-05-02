@@ -40,6 +40,27 @@ STORE_LOCK_VIEWS = "store-lock-views"
 
 
 # ---------------------------------------------------------------------------
+# Empty-state hand-off (only mounted when ``output_root is None``)
+# ---------------------------------------------------------------------------
+
+#: Container for the empty-state hand-off banner. Visibility toggled by
+#: a callback that mirrors :data:`SHELL_SIDEBAR_SELECTION_STORE`.
+EMPTY_HANDOFF_BANNER = "results-viewer-empty-handoff-banner"
+
+#: Read-only label echoing the rel-path of the currently-selected sidebar
+#: entry (or ``"(none)"`` when nothing is selected).
+EMPTY_HANDOFF_LABEL = "results-viewer-empty-handoff-label"
+
+#: "Open in viewer" button. Disabled when the selection is missing or the
+#: clicked path lacks the ``is_cli_output`` capability.
+EMPTY_HANDOFF_OPEN_BUTTON = "results-viewer-empty-handoff-open"
+
+#: Inline error slot rendered inside the empty-state card when the POST to
+#: ``/sandbox/api/viewer/output-root`` returns 4xx (e.g. layout invalid).
+EMPTY_HANDOFF_ERROR = "results-viewer-empty-handoff-error"
+
+
+# ---------------------------------------------------------------------------
 # Static buttons
 # ---------------------------------------------------------------------------
 

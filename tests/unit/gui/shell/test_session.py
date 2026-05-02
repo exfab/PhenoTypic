@@ -414,3 +414,40 @@ def test_idle_thread_observes_session_list_mutations() -> None:
     finally:
         stop.set()
         thread.join(timeout=2.0)
+
+
+# ---------------------------------------------------------------------------
+# set_build (viewer hand-off)
+# ---------------------------------------------------------------------------
+
+def test_set_build_swaps_build_and_releases_state() -> None:
+    """set_build must drop existing state and install the new build."""
+    teardowns: List[str] = []
+    session: ToolSession[str] = ToolSession(
+        "viewer",
+        build=lambda: "first",
+        teardown=teardowns.append,
+    )
+    assert session.get() == "first"
+
+    session.set_build(lambda: "second")
+    # Existing state was released, including teardown.
+    assert teardowns == ["first"]
+    assert session.is_built() is False
+
+    # Next get uses the new build.
+    assert session.get() == "second"
+    assert session.is_built() is True
+
+
+def test_set_build_with_no_state_is_safe() -> None:
+    """Calling set_build before any get must not invoke teardown."""
+    teardowns: List[str] = []
+    session: ToolSession[str] = ToolSession(
+        "viewer",
+        build=lambda: "first",
+        teardown=teardowns.append,
+    )
+    session.set_build(lambda: "second")
+    assert teardowns == []
+    assert session.get() == "second"
