@@ -53,6 +53,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Need full history so ``git merge-base origin/<base>..HEAD``
+          # resolves on PRs. Mirrors the same setting in the
+          # features-md-gate job in gui-e2e.yml.
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v6
