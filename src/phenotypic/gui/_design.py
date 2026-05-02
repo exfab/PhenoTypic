@@ -32,25 +32,10 @@ __all__ = ["FONT_TOKENS_CSS", "inject_design_tokens"]
 #     "https://fonts.googleapis.com/css2?family=Mate+SC&display=swap"
 # )
 #
-# _GOOGLE_FONT_FAMILY = "Roboto"
-# _GOOGLE_FONT_URL = (
-#     "https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap"
-# )
-#
-# Note: "Google Sans" and "Google Sans Flex" are Google brand fonts and
-# are NOT served publicly via fonts.googleapis.com -- the import will
-# silently fail and the system fallback stack below will render instead.
-# For the modern Material look, "Roboto" or "Open Sans" are the
-# publicly-available substitutes from Google Fonts.
-_GOOGLE_FONT_FAMILY = "Google Sans"
+_GOOGLE_FONT_FAMILY = "Roboto"
 _GOOGLE_FONT_URL = (
-    "https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap"
+    "https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap"
 )
-#
-# _GOOGLE_FONT_FAMILY = "Google Sans Flex"
-# _GOOGLE_FONT_URL = (
-#     "https://fonts.googleapis.com/css2?family=Google+Sans+Flex&display=swap"
-# )
 
 # Cross-platform fallbacks: kick in if the Google Font is blocked,
 # slow to load, or (in the Google Sans case) not actually served. The
