@@ -113,9 +113,15 @@ for remote workstations:
 
    ssh -L 8050:localhost:8050 user@cluster
 
-Then open ``http://localhost:8050/`` in your browser. See the
-:doc:`GUI hub guide <how_to/pages/gui_hub>` for a tour of the file
-browser, pipeline builder, run console, and results viewer.
+Then open ``http://localhost:8050/`` in your browser. If you launch the
+GUI from inside a Slurm allocation (``srun``/``salloc``), the server
+binds to the compute node rather than the login node, and the
+single-hop tunnel above will return ``connect failed: Connection
+refused``. See
+:ref:`Running the GUI on a Slurm compute node <gui-hub-slurm-tunnel>`
+in the GUI hub guide for the two-hop tunnel pattern. That guide also
+covers the file browser, pipeline builder, run console, and results
+viewer.
 
 .. note::
 
