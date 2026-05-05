@@ -168,22 +168,31 @@ def test_permission_denied_returns_403(sandbox: SandboxRoot) -> None:
 # ---------------------------------------------------------------------------
 
 def test_touch_called_on_successful_request(
-    sandbox: SandboxRoot, viewer_session: ToolSession[str]
+    sandbox: SandboxRoot,
+    viewer_session: ToolSession[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    # Spy directly on `touch` instead of inferring from `idle_seconds()`
+    # arithmetic. Clock-derived assertions are flaky on Windows, where
+    # the scheduler tick (~15.6 ms) can swallow the entire request and
+    # collapse pre/post to byte-identical floats.
     (sandbox.root / "x.txt").write_text("hi")
-    viewer_session.get()  # build state so idle_seconds() is non-zero
-    import time
-    time.sleep(0.02)
-    pre = viewer_session.idle_seconds()
-    assert pre > 0.0
+    viewer_session.get()
+
+    calls: list[None] = []
+    real_touch = viewer_session.touch
+
+    def spy() -> None:
+        calls.append(None)
+        real_touch()
+
+    monkeypatch.setattr(viewer_session, "touch", spy)
 
     app = _make_app(sandbox, viewer_session=viewer_session)
     client = app.test_client()
     resp = client.get("/runs/x.txt")
     assert resp.status_code == 200
-
-    post = viewer_session.idle_seconds()
-    assert post < pre
+    assert len(calls) == 1, "blueprint must call viewer_session.touch on 200"
 
 
 def test_touch_not_called_on_rejected_request(
