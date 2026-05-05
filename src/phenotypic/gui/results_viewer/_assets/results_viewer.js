@@ -270,6 +270,10 @@
 (function () {
     "use strict";
     const ns = window.__phenotypicResultsViewer;
+    const appPrefix = (typeof window.__phenotypicAppPrefix === "string"
+        && window.__phenotypicAppPrefix.length > 0)
+        ? window.__phenotypicAppPrefix
+        : "/";
 
     /**
      * Apply a batch of image selections to mounted viewer cards.
