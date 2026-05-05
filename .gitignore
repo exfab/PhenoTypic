@@ -51,6 +51,7 @@ scratch/
 .run/
 *.zip
 tmp/
+/*.png
 
 # Backup files
 **/*.$*.bkp
@@ -61,6 +62,14 @@ tmp/
 .ropeproject/
 .git.backup/
 .playwright-mcp/
+.superpowers
 
 # pytest-testmon database (local only, not for version control)
 .testmondata*
+
+# GUI walkthrough synthetic dataset — regenerated on demand by
+# scripts/capture_gui_tutorial_screenshots.py. The screenshots in the
+# parent gui_images/ directory ARE committed; only the underlying
+# dataset + CLI output (master parquet, dashboard.html, overlays) is
+# excluded because the binary blob is large (~50 MB).
+docs/source/_static/gui_images/_dataset/

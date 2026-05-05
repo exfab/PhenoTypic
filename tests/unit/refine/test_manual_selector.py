@@ -70,6 +70,14 @@ class TestManualSelectorInit:
         sel.centers = None
         assert sel.centers is None
 
+    def test_inherits_point_picker_mixin(self):
+        """ManualSelector mixes in PointPickerMixin and exposes its marker."""
+        from phenotypic.tools_.mixin import PointPickerMixin
+
+        sel = ManualSelector()
+        assert isinstance(sel, PointPickerMixin)
+        assert sel._point_picker_param_name == "centers"
+
 
 # ---- _operate Tests ----
 

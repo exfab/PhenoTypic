@@ -51,6 +51,14 @@ class TestManualPointDetectorInit:
         det.centers = None
         assert det.centers is None
 
+    def test_inherits_point_picker_mixin(self):
+        """ManualPointDetector mixes in PointPickerMixin and exposes its marker."""
+        from phenotypic.tools_.mixin import PointPickerMixin
+
+        det = ManualPointDetector()
+        assert isinstance(det, PointPickerMixin)
+        assert det._point_picker_param_name == "centers"
+
 
 # ---- _operate Tests ----
 

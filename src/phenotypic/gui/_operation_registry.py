@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional, Type, Union, get_args, get_origin
 
 from phenotypic import ImagePipeline
 from phenotypic.abc_ import ImageOperation
+from phenotypic.tools_.mixin import PointPickerMixin
 
 
 @dataclass
@@ -53,6 +54,13 @@ class OperationInfo:
         module: Module path
         docstring: Class docstring
         parameters: Dict mapping parameter names to ParamInfo
+        is_point_pickable: True if the class inherits ``PointPickerMixin`` —
+            its centres parameter can be filled by the GUI's interactive
+            point picker.
+        point_picker_param: Name of the parameter that holds the picked
+            ``(y, x)`` coordinates (lifted from
+            ``cls._point_picker_param_name``). ``None`` when
+            ``is_point_pickable`` is False.
     """
 
     cls: Type[ImageOperation]
@@ -61,6 +69,8 @@ class OperationInfo:
     module: str
     docstring: Optional[str] = None
     parameters: Dict[str, ParamInfo] = field(default_factory=dict)
+    is_point_pickable: bool = False
+    point_picker_param: Optional[str] = None
 
 
 class OperationRegistry:
@@ -161,6 +171,11 @@ class OperationRegistry:
                 and not name.startswith("_")
             ):
                 try:
+                    is_point_pickable = issubclass(obj, PointPickerMixin)
+                    point_picker_param = (
+                        obj._point_picker_param_name if is_point_pickable else None
+                    )
+
                     # Extract operation info
                     op_info = OperationInfo(
                         cls=obj,
@@ -169,6 +184,8 @@ class OperationRegistry:
                         module=obj.__module__,
                         docstring=obj.__doc__,
                         parameters=self._extract_parameters(obj),
+                        is_point_pickable=is_point_pickable,
+                        point_picker_param=point_picker_param,
                     )
 
                     # Register operation

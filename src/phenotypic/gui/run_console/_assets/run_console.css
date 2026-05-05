@@ -1,0 +1,271 @@
+/* Run console styling.
+ *
+ * Color tokens from DESIGN.md (PhenoTypic palette):
+ *   - navy   #003660 — primary headings, banners
+ *   - blue   #1b75bc — interactive accents, hover states
+ *   - gold   #febc11 — emphasized CTA, highlights
+ *
+ * Mirrors the chrome from shell/_assets/shell.css so the Run console
+ * blends into the unified hub when mounted.
+ *
+ * Class namespace: ``run-console-*`` (collision-free with builder + viewer).
+ */
+
+.run-console-root {
+  font-family: var(--font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  color: #1f2937;
+}
+
+.run-console-container {
+  padding: 1rem 1.25rem;
+}
+
+/* ----- Form column ------------------------------------------------------ */
+
+.run-console-form-col-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.run-console-form-col {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.run-console-form-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #003660;
+  margin-bottom: 0.25rem;
+}
+
+/* ----- Pickers ---------------------------------------------------------- */
+
+.run-console-pickers {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.run-console-picker-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.run-console-picker-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #003660;
+}
+
+.run-console-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.run-console-picker-value {
+  font-family: var(--font-mono, ui-monospace, "SFMono-Regular", Menlo, monospace);
+  font-size: 0.85rem;
+  color: #4b5563;
+  word-break: break-all;
+  flex: 1 1 auto;
+}
+
+/* ----- Mode + flags ----------------------------------------------------- */
+
+.run-console-mode-row,
+.run-console-flags-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.run-console-collapse-toggle {
+  text-decoration: none !important;
+  color: #1b75bc !important;
+  padding-left: 0 !important;
+}
+
+.run-console-collapse-toggle:hover {
+  color: #003660 !important;
+}
+
+/* ----- Action buttons --------------------------------------------------- */
+
+.run-console-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* ----- Right column (iframe + log) -------------------------------------- */
+
+.run-console-right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.run-console-iframe-panel {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  min-height: 360px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.run-console-status-banner {
+  font-size: 0.85rem;
+  font-family: var(--font-mono, ui-monospace, "SFMono-Regular", Menlo, monospace);
+  color: #f3f4f6;
+  background: #003660;
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid #1b75bc;
+}
+
+.run-console-iframe-empty {
+  padding: 2rem 1.5rem;
+  text-align: center;
+  color: #4b5563;
+}
+
+.run-console-iframe-empty-title {
+  color: #003660;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.run-console-iframe-empty-body {
+  color: #6b7280;
+  font-size: 0.9rem;
+  max-width: 36rem;
+  margin: 0 auto;
+}
+
+.run-console-iframe {
+  width: 100%;
+  height: 480px;
+  border: none;
+  background: #ffffff;
+}
+
+/* ----- Log tail --------------------------------------------------------- */
+
+.run-console-log-section {
+  background: #1f2937;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.run-console-log-header {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #febc11;
+  text-transform: uppercase;
+}
+
+.run-console-log-tail {
+  background: transparent;
+  color: #d1d5db;
+  font-family: var(--font-mono, ui-monospace, "SFMono-Regular", Menlo, monospace);
+  font-size: 0.78rem;
+  margin: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ----- Recent Runs ------------------------------------------------------ */
+
+.run-console-recents {
+  margin-top: 1.25rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+
+.run-console-recents-header {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #003660;
+  margin-bottom: 0.5rem;
+}
+
+.run-console-recents-table {
+  margin: 0;
+}
+
+.run-console-recents-row {
+  cursor: pointer;
+}
+
+.run-console-recents-row:hover {
+  background: #eef4fb;
+}
+
+.run-console-recents-cell-path {
+  font-family: var(--font-mono, ui-monospace, "SFMono-Regular", Menlo, monospace);
+  font-size: 0.85rem;
+  color: #003660;
+}
+
+.run-console-recents-cell-mode {
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.run-console-recents-cell-dash {
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.run-console-recents-empty {
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+  padding: 1rem;
+}
+
+.run-console-recents-status {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.run-console-recents-status-running {
+  color: #1b75bc;
+}
+
+.run-console-recents-status-complete {
+  color: #047857;
+}
+
+.run-console-recents-status-failed {
+  color: #b91c1c;
+}
+
+.run-console-recents-status-cancelled {
+  color: #b45309;
+}
+
+.run-console-recents-status-unknown {
+  color: #6b7280;
+}

@@ -1,0 +1,22 @@
+# Pre-commit hooks for PhenoTypic.
+# Install: ``uv run pre-commit install`` (after ``uv sync --group dev``).
+# Run on all files: ``uv run pre-commit run --all-files``.
+
+repos:
+  - repo: local
+    hooks:
+      - id: features-md-check
+        name: FEATURES.md syntax + Test ref check (✅ shipping rows)
+        entry: python scripts/check_features_md.py
+        language: system
+        files: ^src/phenotypic/gui/FEATURES\.md$
+        pass_filenames: false
+
+      - id: workflows-md-check
+        name: WORKFLOWS.md ↔ capture script round-trip
+        entry: python scripts/check_workflows_md.py
+        language: system
+        # Re-run when the registry, the capture script, or the validator
+        # itself changes — any of those three can break the invariants.
+        files: ^(src/phenotypic/gui/WORKFLOWS\.md|scripts/capture_gui_tutorial_screenshots\.py|scripts/check_workflows_md\.py)$
+        pass_filenames: false

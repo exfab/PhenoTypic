@@ -33,12 +33,9 @@ from ._cli_types import (
 )
 from ._cli_output_manager import OutputManager
 from ._cli_process_single import process_single_image_core
-from phenotypic.tools_.slurm import (
-    get_slurm_array_limit,
-    generate_dispatcher_chain,
-    submit_drip_feed_start,
-)
+from phenotypic.tools_.slurm import get_slurm_array_limit
 from ._cli_slurm_array_scripts import generate_all_array_job_scripts
+from ._cli_slurm_submission import submit_slurm_script_chain
 from ._cli_update_state import append_event, append_completion_event, aggregate_state_from_events
 from ._cli_failure_tracker import append_failure, read_failures
 from ._dashboard import build_manifest, generate_dashboard
@@ -253,7 +250,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 read_kwargs["detect_mode"] = self.config.detect_mode
 
             # Process
-            success = process_single_image_core(
+            process_single_image_core(
                 pipeline_path=self.config.pipeline_json,
                 image_path=image_path,
                 output_dir=output_dir,
@@ -625,46 +622,14 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         for dataset in datasets:
             flat_scripts.extend(all_scripts.get(dataset.name, []))
 
-        # Generate dispatcher chain (drip-feed submission)
-        log_dir = output_dir / "logs" / "slurm"
-        dispatcher_scripts = generate_dispatcher_chain(
-            chunk_scripts=flat_scripts,
+        submission = submit_slurm_script_chain(
+            flat_chunk_scripts=flat_scripts,
             output_dir=output_dir,
             slurm_args=self.config.slurm_args,
-            log_dir=log_dir,
+            console=console,
         )
-
-        if not flat_scripts:
-            raise RuntimeError(
-                "No array job scripts were generated. "
-                "Check that datasets contain images."
-            )
-
-        # Submit first chunk + first dispatcher only
-        console.print("[bold cyan]Submitting jobs to SLURM...[/bold cyan]")
-
-        job_ids, warning = submit_drip_feed_start(
-            chunk_scripts=flat_scripts,
-            dispatcher_scripts=dispatcher_scripts,
-        )
-
-        console.print(f"  Chunk 0: [green]Job {job_ids[0]}[/green]")
-        if len(job_ids) > 1:
-            console.print(
-                f"  Dispatcher 1: [green]Job {job_ids[1]}[/green] "
-                f"(depends on {job_ids[0]})"
-            )
-            console.print(
-                f"  Remaining {len(flat_scripts) - 1} chunk(s) will be "
-                f"auto-submitted as each completes"
-            )
-        if warning:
-            console.print(f"  [yellow]Warning: {warning}[/yellow]")
-
-        console.print(
-            f"[green]Submitted {len(job_ids)} initial job(s) "
-            f"(drip-feed dispatcher)[/green]\n"
-        )
+        job_ids = submission.job_ids
+        flat_scripts = submission.flat_scripts
 
         # ── Progress dashboard setup ──────────────────────────────────
         progress_dir = output_dir / "progress"

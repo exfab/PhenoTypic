@@ -56,7 +56,7 @@
     border-radius: 12px;
     border: 1px solid #1b75bc;
     background: #f5f7fa;
-    font-family: "DM Sans", sans-serif;
+    font-family: var(--font-body, "DM Sans", sans-serif);
     font-size: 12px;
 }
 
@@ -80,7 +80,7 @@
 }
 
 .results-viewer-header .pipeline-chip {
-    font-family: "DM Mono", monospace;
+    font-family: var(--font-mono, "DM Mono", monospace);
     color: #febc11;
 }
 
@@ -153,7 +153,7 @@
             #e8eaf0 10px, #e8eaf0 20px
         );
     color: #8892a4;
-    font-family: "DM Mono", monospace;
+    font-family: var(--font-mono, "DM Mono", monospace);
     font-size: 0.7rem;
     display: flex;
     align-items: center;
@@ -243,7 +243,7 @@
     border: none;
     border-radius: 0 0 6px 6px;
     color: #003660;
-    font-family: "DM Mono", monospace;
+    font-family: var(--font-mono, "DM Mono", monospace);
     font-size: 0.65rem;
     font-weight: 600;
     line-height: 1;

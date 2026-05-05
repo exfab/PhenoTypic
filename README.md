@@ -112,6 +112,34 @@ use it, some metadata from raw
 files may not be able to be imported. Read more
 here: https://pypi.org/project/PyExifTool/#pyexiftool-dependencies
 
+# Launch the GUI
+
+The unified GUI hub bundles the pipeline builder, results viewer, and run console
+under one URL. Two equivalent entry points:
+
+```bash
+# Console script (preferred)
+uv run phenotypic-gui --root ./images --port 8050
+
+# Module entry (works in environments without the console script on PATH)
+uv run python -m phenotypic.gui --root ./images --port 8050
+```
+
+`--root` freezes the sandbox the GUI's file browser is allowed to see (defaults to
+the current working directory). `--host 127.0.0.1` (the default) keeps the server
+loopback-only — pair with SSH port forwarding for remote workstations:
+
+```bash
+ssh -L 8050:localhost:8050 user@cluster
+```
+
+Open `http://localhost:8050/` in your browser. The
+[GUI hub guide](docs/source/how_to/pages/gui_hub.md) walks through the file
+browser, builder, run console, and results viewer.
+
+Note: `phenotypic gui` (no hyphen, as a subcommand) is **not supported**. Use
+`phenotypic-gui` or `python -m phenotypic.gui`.
+
 # Module Overview
 
 | Module                  | Description                                                                                                                |

@@ -9,9 +9,10 @@ if TYPE_CHECKING:
 
 from phenotypic.abc_ import ObjectRefiner
 from phenotypic.tools_.mixin._footprint_mixin import FootprintMixin
+from phenotypic.tools_.mixin._point_picker_mixin import PointPickerMixin
 
 
-class ManualSelector(ObjectRefiner, FootprintMixin):
+class ManualSelector(ObjectRefiner, PointPickerMixin, FootprintMixin):
     """Keep only objects whose footprints overlap user-specified coordinates.
 
     Filter an existing ``objmap``/``objmask`` by stamping a morphological
@@ -132,42 +133,6 @@ class ManualSelector(ObjectRefiner, FootprintMixin):
         self.centers = centers
         self.shape = shape
         self.width = width
-
-    def __setattr__(self, name: str, value: object) -> None:
-        if name == "centers" and value is not None:
-            value = np.asarray(value)
-        super().__setattr__(name, value)
-
-    def napari(self, image: Image) -> ManualSelector:
-        """Interactively pick the colonies to keep using a napari viewer.
-
-        Opens a blocking napari viewer displaying the plate image layers.
-        Click points on the colonies you want to retain, then click
-        **Confirm** in the dock widget. The picked coordinates are stored
-        in *centers*; apply the selector afterwards to drop the
-        non-selected objects.
-
-        Note:
-            The underlying :class:`PointPickerWidget` shows ``rgb``,
-            ``gray``, and ``detect_mat`` layers, but **not** the existing
-            ``objmap``. Preview detections with ``image.objmap.show()``
-            before calling this method so you know what is available to
-            pick.
-
-        Args:
-            image: The Image to display for coordinate selection. It
-                should already have an ``objmap`` from a previous
-                detector.
-
-        Returns:
-            ManualSelector: Self, for method chaining.
-        """
-        from phenotypic.tools_.napari_ import PointPickerWidget
-
-        points = PointPickerWidget(max_points=None).run(image)
-        if len(points) > 0:
-            self.centers = points
-        return self
 
     def _operate(self, image: Image) -> Image:  # type: ignore[override]
         if self.centers is None or len(self.centers) == 0:

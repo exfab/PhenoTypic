@@ -21,6 +21,41 @@
   SLURM, resume)
 - `uv run python -m phenotypic.sweep` — parameter sweeps across pipeline variants
 
+### GUI hub
+
+- `uv run phenotypic-gui --root ./images --port 8050` — unified hub: builder +
+  results viewer + run console mounted under one URL via Werkzeug
+  `DispatcherMiddleware`. SSH-tunnel from a workstation:
+  `ssh -L 8050:localhost:8050 user@cluster`.
+- `uv run python -m phenotypic.gui --root ./images` — equivalent module entry.
+- Standalone tools still work: `python -m phenotypic.gui.builder`,
+  `python -m phenotypic.gui.results_viewer`, `python -m phenotypic.gui.run_console`.
+- Note: `phenotypic gui` (no hyphen, as a subcommand of the existing CLI) is NOT
+  supported. Use `phenotypic-gui` or `python -m phenotypic.gui`.
+
+#### Adding GUI features
+
+Two ledgers track the GUI surface; both are CI-gated:
+
+- **`src/phenotypic/gui/FEATURES.md`** — every individual user-visible
+  affordance (button, badge, store, callback, route). The `gui-e2e`
+  workflow rejects any PR that touches `src/phenotypic/gui/` without
+  modifying `FEATURES.md`. Pre-commit also validates `Test ref` on
+  `✅ shipping` rows.
+- **`src/phenotypic/gui/WORKFLOWS.md`** — every end-to-end user flow
+  worth a tutorial page. Adding a row here REQUIRES adding a matching
+  `_capture_<id>` function in `scripts/capture_gui_tutorial_screenshots.py`
+  and a walkthrough page under `docs/source/how_to/pages/gui_walkthrough/`.
+  The `gui-docs` workflow runs `scripts/check_workflows_md.py` (also
+  available as a pre-commit hook) to enforce the round-trip.
+
+Run `uv run python scripts/capture_gui_tutorial_screenshots.py` after
+any visible chrome change and commit the refreshed PNGs alongside the
+source change. The `gui-docs` CI job regenerates them on Ubuntu and
+uploads as a build artifact for spot-checking, but cross-platform
+font rendering means committed PNGs should come from a developer
+workstation, not CI.
+
 ---
 
 ## Architecture
@@ -85,7 +120,7 @@ operations copy data; avoid unnecessary intermediate allocations.
 - [tools_/CLAUDE.md](src/phenotypic/tools_/CLAUDE.md) — mixins, utilities
 - [settings_/CLAUDE.md](src/phenotypic/settings_/CLAUDE.md) — global config
 - [enhance/CLAUDE.md](src/phenotypic/enhance/CLAUDE.md) — enhancer conventions
-- [FRONTEND_STYLE_GUIDE.md](DESIGN.md) — dashboard & plot style guide
+- [DESIGN.md](DESIGN.md) — dashboard & plot style guide
 - `src/phenotypic/post/`, `src/phenotypic/analysis/` — no sub-CLAUDE.md
 
 ## Key Files

@@ -12,8 +12,6 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="SLURM not available on Windows")
-
 from phenotypic._cli._cli_slurm_config import (
     get_slurm_array_limit,
     get_slurm_max_submit_jobs,
@@ -25,6 +23,8 @@ from phenotypic._cli._cli_slurm_array_scripts import (
     generate_all_array_job_scripts,
 )
 from phenotypic._cli._cli_types import Dataset, ExecutionConfig
+
+pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="SLURM not available on Windows")
 
 
 class TestSLURMArrayLimitParsing:
@@ -458,3 +458,79 @@ class TestSLURMSubmissionErrors:
         """Test that zero array limit raises error."""
         with pytest.raises(ValueError, match="array_limit must be positive"):
             calculate_optimal_array_chunks(100, 0)
+
+
+class TestSLURMScriptChainSubmission:
+    """Tests for shared SLURM script chain submission plumbing."""
+
+    def test_submit_slurm_script_chain_raises_for_empty_scripts(self, tmp_path):
+        """Empty script lists fail before dispatcher generation."""
+        from phenotypic._cli._cli_slurm_submission import submit_slurm_script_chain
+
+        console = MagicMock()
+
+        with patch(
+            "phenotypic._cli._cli_slurm_submission.generate_dispatcher_chain"
+        ) as mock_generate_dispatcher_chain:
+            with pytest.raises(RuntimeError, match="No array job scripts"):
+                submit_slurm_script_chain(
+                    flat_chunk_scripts=[],
+                    output_dir=tmp_path / "output",
+                    slurm_args={},
+                    console=console,
+                )
+
+        mock_generate_dispatcher_chain.assert_not_called()
+
+    def test_submit_slurm_script_chain_preserves_script_order_and_submits(
+        self, tmp_path
+    ):
+        """Dispatcher generation and submission receive scripts in input order."""
+        from phenotypic._cli._cli_slurm_submission import submit_slurm_script_chain
+
+        output_dir = tmp_path / "output"
+        slurm_args = {"slurm_partition": "short", "mem_gb": 16}
+        chunk_scripts = [
+            output_dir / "slurm_scripts" / "dataset_a_chunk0.sh",
+            output_dir / "slurm_scripts" / "dataset_b_chunk0.sh",
+        ]
+        dispatcher_scripts = [output_dir / "slurm_scripts" / "dispatch_1.sh"]
+        console = MagicMock()
+
+        with patch(
+            "phenotypic._cli._cli_slurm_submission.generate_dispatcher_chain",
+            return_value=dispatcher_scripts,
+        ) as mock_generate_dispatcher_chain, patch(
+            "phenotypic._cli._cli_slurm_submission.submit_drip_feed_start",
+            return_value=(["123", "124"], None),
+        ) as mock_submit_drip_feed_start:
+            result = submit_slurm_script_chain(
+                flat_chunk_scripts=chunk_scripts,
+                output_dir=output_dir,
+                slurm_args=slurm_args,
+                console=console,
+            )
+
+        mock_generate_dispatcher_chain.assert_called_once_with(
+            chunk_scripts=chunk_scripts,
+            output_dir=output_dir,
+            slurm_args=slurm_args,
+            log_dir=output_dir / "logs" / "slurm",
+        )
+        mock_submit_drip_feed_start.assert_called_once_with(
+            chunk_scripts=chunk_scripts,
+            dispatcher_scripts=dispatcher_scripts,
+        )
+        assert result.job_ids == ["123", "124"]
+        assert result.warning is None
+        assert result.flat_scripts == chunk_scripts
+        assert result.dispatcher_scripts == dispatcher_scripts
+
+        console.print.assert_any_call("[bold cyan]Submitting jobs to SLURM...[/bold cyan]")
+        console.print.assert_any_call("  Chunk 0: [green]Job 123[/green]")
+        console.print.assert_any_call(
+            "  Dispatcher 1: [green]Job 124[/green] (depends on 123)"
+        )
+        console.print.assert_any_call(
+            "  Remaining 1 chunk(s) will be auto-submitted as each completes"
+        )

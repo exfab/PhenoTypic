@@ -12,5 +12,4 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   phenotypic.gui.components
    phenotypic.gui.sweep

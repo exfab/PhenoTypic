@@ -1020,6 +1020,29 @@ def _build_js(execution_mode: str, plugins: list | None = None) -> str:
     const REFRESH_MS = 10000;
     let fetchErrors = 0;
 
+    // ── Parent-frame messaging (PhenoTypic GUI shell) ──────────
+    // The unified GUI iframes this dashboard at /runs/<rel>/dashboard.html.
+    // When iframed (window.parent !== window), post a small JSON message
+    // on key events so the parent shell can update its run-status badges
+    // without re-fetching the manifest itself. When opened standalone
+    // (file://, double-click), the guard keeps this path silent so we
+    // don't spam ``console`` with cross-origin warnings.
+    function postShellEvent(kind, payload) {{
+      try {{
+        if (window.parent === window) return;
+        window.parent.postMessage(
+          {{
+            source: 'phenotypic-dashboard',
+            kind: kind,
+            payload: payload || null,
+          }},
+          '*'  // origin filtering is applied at the receiver
+        );
+      }} catch (_) {{
+        // Cross-origin lockdown / other failure; silent.
+      }}
+    }}
+
     // ── Helpers ────────────────────────────────────────────────
     function esc(s) {{
       const d = document.createElement('div');
@@ -1369,9 +1392,23 @@ def _build_js(execution_mode: str, plugins: list | None = None) -> str:
         document.getElementById('last-updated').textContent =
           'Updated ' + new Date().toLocaleTimeString();
 
+        // Tell the parent shell about the latest manifest snapshot. The
+        // shell can use this to live-update badges in the Recent Runs
+        // panel without re-fetching the manifest itself.
+        postShellEvent('manifest', {{
+          completed: data.completed,
+          failed: data.failed,
+          total: data.total_images,
+          is_complete: !!data.is_complete,
+          last_updated: data.last_updated,
+        }});
+
         if (data.is_complete) {{
           stopRefresh();
           showComplete();
+          postShellEvent('complete', {{
+            failed: data.failed,
+          }});
         }}
       }} catch(e) {{
         fetchErrors++;
