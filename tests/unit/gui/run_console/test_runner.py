@@ -184,16 +184,16 @@ def test_ring_buffer_drops_oldest_under_flood(
         output_dir=tmp_path,
     )
     handle.process.wait(timeout=15.0)
-    # Wait for the tee thread to drain the pipe (process.wait() returns
-    # when the subprocess exits, but the tee thread may still be reading
-    # the trailing buffered bytes).
-    assert _wait_until(
-        lambda: handle.buffer.maxlen is not None
-        and len(runner.snapshot_log("flood")) >= handle.buffer.maxlen,
-        timeout=5.0,
-    )
+    # process.wait() only signals subprocess exit; the OS pipe may still
+    # hold buffered bytes the tee thread has yet to read. Joining the tee
+    # thread is the canonical "fully drained" signal — using a buffer-len
+    # predicate races because the deque hits maxlen as soon as line 4999
+    # arrives, while lines 5000-5999 are still queued in the pipe.
+    assert handle.tee_thread is not None
+    handle.tee_thread.join(timeout=5.0)
+    assert not handle.tee_thread.is_alive()
     snap = runner.snapshot_log("flood")
-    assert len(snap) <= 5000
+    assert handle.buffer.maxlen == 5000
     assert len(snap) == 5000  # exactly bounded by maxlen
     # Most recent line is preserved.
     assert any("5999" in line for line in snap[-3:])

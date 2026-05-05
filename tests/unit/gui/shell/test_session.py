@@ -264,7 +264,15 @@ def test_idle_thread_skips_unbuilt_sessions() -> None:
 
 
 def test_idle_thread_respects_touch() -> None:
-    """``touch`` must keep the session alive past the idle threshold."""
+    """``touch`` must keep the session alive past the idle threshold.
+
+    Margins are picked for noisy CI: ``idle_release_seconds`` is
+    10× the inter-touch sleep so a single slow ``time.sleep`` (we have
+    seen 50 ms+ overshoots on macOS-14 runners under load) cannot
+    exceed the threshold and trigger a spurious release. The total
+    touch window comfortably outlasts the threshold, proving touch
+    actually resets the clock.
+    """
     session: ToolSession[str] = ToolSession("t", build=lambda: "state")
     session.get()
 
@@ -272,15 +280,15 @@ def test_idle_thread_respects_touch() -> None:
     sessions: list[ToolSession[object]] = [session]  # type: ignore[list-item]
     thread = start_idle_release_thread(
         sessions,
-        idle_release_seconds=0.05,
-        poll_interval_seconds=0.01,
+        idle_release_seconds=0.5,
+        poll_interval_seconds=0.02,
         stop_event=stop,
     )
     try:
-        # Touch repeatedly for longer than the idle threshold.
+        # Touch repeatedly for longer than the idle threshold (0.5s).
         for _ in range(15):
             session.touch()
-            time.sleep(0.01)
+            time.sleep(0.05)
         # Session should still be built — touch kept resetting the clock.
         assert session.is_built() is True
     finally:

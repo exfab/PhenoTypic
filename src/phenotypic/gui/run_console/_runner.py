@@ -82,6 +82,11 @@ class LocalRunHandle:
     stdout_log_path: Path
     buffer: "deque[str]" = field(default_factory=lambda: deque(maxlen=_LOG_BUFFER_MAXLEN))
     buffer_lock: threading.Lock = field(default_factory=threading.Lock)
+    #: Daemon thread teeing ``process.stdout`` into ``buffer`` and disk.
+    #: Exposed so callers (and tests) can ``join()`` and know the pipe is
+    #: fully drained — ``process.wait()`` only signals subprocess exit; the
+    #: OS pipe may still hold buffered bytes the tee thread has yet to read.
+    tee_thread: threading.Thread | None = None
 
 
 class LocalRunner:
@@ -190,6 +195,7 @@ class LocalRunner:
             name=f"{_TEE_THREAD_NAME_PREFIX}{run_id}",
             daemon=True,
         )
+        handle.tee_thread = thread
         thread.start()
         logger.debug("LocalRunner.start: run_id=%s pid=%d", run_id, process.pid)
         return handle
