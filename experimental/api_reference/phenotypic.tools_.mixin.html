@@ -497,7 +497,11 @@ to ImageOperation subclasses and other PhenoTypic components.</p>
 - FootprintMixin: Generate morphological footprints (structuring elements)
 - GridInferenceMixin: Infer grid structure from binary masks using peak detection
 - LazyWidgetMixin: Generate interactive Jupyter widgets for parameter tuning
-- ClipControlMixin: Control output clipping behavior in composite operations</p>
+- ClipControlMixin: Control output clipping behavior in composite operations
+- PointPickerMixin: Marker + shared plumbing for operations that take user-picked</p>
+<blockquote>
+<div><p><code class="docutils literal notranslate"><span class="pre">(y,</span> <span class="pre">x)</span></code> coordinates as a primary parameter</p>
+</div></blockquote>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.tools_.mixin.ClipControlMixin">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.mixin.</span></span><span class="sig-name descname"><span class="pre">ClipControlMixin</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/mixin/_clip_control_mixin.html#ClipControlMixin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.mixin.ClipControlMixin" title="Link to this definition">#</a></dt>
@@ -620,6 +624,74 @@ visualization controls will be added to the widget.</p></li>
 
 </dd></dl>
 
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.tools_.mixin.PointPickerMixin">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.mixin.</span></span><span class="sig-name descname"><span class="pre">PointPickerMixin</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/mixin/_point_picker_mixin.html#PointPickerMixin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.mixin.PointPickerMixin" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Shared plumbing for operations parameterised by user-picked <code class="docutils literal notranslate"><span class="pre">(y,</span> <span class="pre">x)</span></code> points.</p>
+<p>Operations that take a list of point coordinates as a primary parameter
+(currently <a class="reference internal" href="phenotypic.detect.html#phenotypic.detect.ManualPointDetector" title="phenotypic.detect.ManualPointDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">ManualPointDetector</span></code></a> and
+<a class="reference internal" href="phenotypic.refine.html#phenotypic.refine.ManualSelector" title="phenotypic.refine.ManualSelector"><code class="xref py py-class docutils literal notranslate"><span class="pre">ManualSelector</span></code></a>) inherit from this mixin to
+pick up three things at once:</p>
+<ul class="simple">
+<li><p><strong>Coordinate coercion.</strong> <code class="docutils literal notranslate"><span class="pre">__setattr__</span></code> converts list/tuple input
+assigned to the centres parameter into a NumPy array, so downstream
+<code class="docutils literal notranslate"><span class="pre">_operate</span></code> code can treat it uniformly. <code class="docutils literal notranslate"><span class="pre">None</span></code> passes through
+unchanged so that “no points yet” remains a valid state.</p></li>
+<li><p><strong>A blocking napari picker.</strong> <a class="reference internal" href="#phenotypic.tools_.mixin.PointPickerMixin.napari" title="phenotypic.tools_.mixin.PointPickerMixin.napari"><code class="xref py py-meth docutils literal notranslate"><span class="pre">napari()</span></code></a> opens a desktop
+<a class="reference internal" href="phenotypic.tools_.napari_.html#phenotypic.tools_.napari_.PointPickerWidget" title="phenotypic.tools_.napari_.PointPickerWidget"><code class="xref py py-class docutils literal notranslate"><span class="pre">PointPickerWidget</span></code></a> and writes the
+confirmed picks back to the operation. Closing the viewer without
+confirming is a no-op (existing centres are preserved).</p></li>
+<li><p><strong>A GUI introspection hook.</strong> The <code class="docutils literal notranslate"><span class="pre">_point_picker_param_name</span></code> class
+attribute tells the Dash builder which <code class="docutils literal notranslate"><span class="pre">__init__</span></code> parameter to
+replace with an interactive picker button instead of a free-form text
+input.</p></li>
+</ul>
+<p>Subclasses that store coordinates under a name other than <code class="docutils literal notranslate"><span class="pre">&quot;centers&quot;</span></code>
+can override <a class="reference internal" href="#phenotypic.tools_.mixin.PointPickerMixin._point_picker_param_name" title="phenotypic.tools_.mixin.PointPickerMixin._point_picker_param_name"><code class="xref py py-attr docutils literal notranslate"><span class="pre">_point_picker_param_name</span></code></a>; both <code class="docutils literal notranslate"><span class="pre">__setattr__</span></code> and
+<a class="reference internal" href="#phenotypic.tools_.mixin.PointPickerMixin.napari" title="phenotypic.tools_.mixin.PointPickerMixin.napari"><code class="xref py py-meth docutils literal notranslate"><span class="pre">napari()</span></code></a> use that attribute.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools_.mixin.PointPickerMixin._point_picker_param_name">
+<span class="sig-name descname"><span class="pre">_point_picker_param_name</span></span><a class="headerlink" href="#phenotypic.tools_.mixin.PointPickerMixin._point_picker_param_name" title="Link to this definition">#</a></dt>
+<dd><p>Name of the <code class="docutils literal notranslate"><span class="pre">__init__</span></code> parameter holding
+the picked <code class="docutils literal notranslate"><span class="pre">(y,</span> <span class="pre">x)</span></code> coordinates. Defaults to <code class="docutils literal notranslate"><span class="pre">&quot;centers&quot;</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ClassVar[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.mixin.PointPickerMixin.napari">
+<span class="sig-name descname"><span class="pre">napari</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">_T</span></span></span><a class="reference internal" href="../_modules/phenotypic/tools_/mixin/_point_picker_mixin.html#PointPickerMixin.napari"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.mixin.PointPickerMixin.napari" title="Link to this definition">#</a></dt>
+<dd><p>Interactively pick coordinates using a napari viewer.</p>
+<p>Opens a blocking napari viewer displaying the plate image layers.
+Click points on the image, then click <strong>Confirm</strong> in the dock
+widget. The picked coordinates are stored in the attribute named by
+<a class="reference internal" href="#phenotypic.tools_.mixin.PointPickerMixin._point_picker_param_name" title="phenotypic.tools_.mixin.PointPickerMixin._point_picker_param_name"><code class="xref py py-attr docutils literal notranslate"><span class="pre">_point_picker_param_name</span></code></a>. If the viewer is closed without
+confirming any points, existing coordinates are preserved.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<em>Image</em>) – The Image to display for coordinate selection.</p></li>
+<li><p><strong>self</strong> (<em>_T</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The mixin-bearing instance, for method chaining.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If napari is not installed.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>_T</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 
 
@@ -654,6 +726,11 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.mixin.LazyWidgetMixin"><code class="docutils literal notranslate"><span class="pre">LazyWidgetMixin</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.mixin.LazyWidgetMixin.__getstate__"><code class="docutils literal notranslate"><span class="pre">LazyWidgetMixin.__getstate__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.mixin.LazyWidgetMixin.widget"><code class="docutils literal notranslate"><span class="pre">LazyWidgetMixin.widget()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.mixin.PointPickerMixin"><code class="docutils literal notranslate"><span class="pre">PointPickerMixin</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.mixin.PointPickerMixin._point_picker_param_name"><code class="docutils literal notranslate"><span class="pre">PointPickerMixin._point_picker_param_name</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.mixin.PointPickerMixin.napari"><code class="docutils literal notranslate"><span class="pre">PointPickerMixin.napari()</span></code></a></li>
 </ul>
 </li>
 </ul>

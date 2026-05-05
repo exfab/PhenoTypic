@@ -505,33 +505,28 @@ the server. Mirrors what <code class="docutils literal notranslate"><span class=
 </ul>
 <dl class="py function">
 <dt class="sig sig-object py" id="phenotypic.gui.results_viewer.create_app">
-<span class="sig-prename descclassname"><span class="pre">phenotypic.gui.results_viewer.</span></span><span class="sig-name descname"><span class="pre">create_app</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">OutputRoot</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dash</span></span></span><a class="reference internal" href="../_modules/phenotypic/gui/results_viewer/_app.html#create_app"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.gui.results_viewer.create_app" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">phenotypic.gui.results_viewer.</span></span><span class="sig-name descname"><span class="pre">create_app</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">OutputRoot</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">url_prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'/'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dash</span></span></span><a class="reference internal" href="../_modules/phenotypic/gui/results_viewer/_app.html#create_app"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.gui.results_viewer.create_app" title="Link to this definition">#</a></dt>
 <dd><p>Build a Dash application instance for the results viewer.</p>
-<p>Constructs a <code class="xref py py-class docutils literal notranslate"><span class="pre">dash.Dash</span></code> with Bootstrap styling, points the
-asset loader at the in-package <code class="docutils literal notranslate"><span class="pre">_assets</span></code> directory (so vendored
-OpenSeadragon and viewer CSS are auto-served), stashes
-<em>output_root</em> on <code class="docutils literal notranslate"><span class="pre">app.server.config[&quot;output_root&quot;]</span></code> for later
-callback access, mounts the DZI tile-serving blueprint via
-<code class="xref py py-func docutils literal notranslate"><span class="pre">phenotypic.gui.results_viewer._tile_routes.register()</span></code>, loads
-the on-disk curation state into a
-<code class="xref py py-class docutils literal notranslate"><span class="pre">FilteredMeasurements</span></code>
-and stashes it on <code class="docutils literal notranslate"><span class="pre">app.server.config[&quot;filtered_state&quot;]</span></code>, mounts
-the colony-crop blueprint via
-<code class="xref py py-func docutils literal notranslate"><span class="pre">phenotypic.gui.results_viewer.colony_view._crop_routes.register()</span></code>,
-assembles the layout via
-<code class="xref py py-func docutils literal notranslate"><span class="pre">phenotypic.gui.results_viewer._layout.build_app_layout()</span></code>,
-and finally hooks every per-module + clientside callback through
-<code class="xref py py-func docutils literal notranslate"><span class="pre">phenotypic.gui.results_viewer._callbacks.register_callbacks()</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>output_root</strong> (<em>OutputRoot</em>) – Validated, read-only handle on a CLI output
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>output_root</strong> (<em>OutputRoot</em><em> | </em><em>None</em>) – Validated, read-only handle on a CLI output
 directory (see
-<code class="xref py py-meth docutils literal notranslate"><span class="pre">phenotypic.gui.results_viewer._output_root.OutputRoot.discover()</span></code>).</p>
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">phenotypic.gui.results_viewer._output_root.OutputRoot.discover()</span></code>).
+<code class="docutils literal notranslate"><span class="pre">None</span></code> triggers the empty-state pathway: the factory skips
+blueprint registration, <code class="docutils literal notranslate"><span class="pre">FilteredMeasurements.load</span></code>, and
+callback registration; <code class="docutils literal notranslate"><span class="pre">app.layout</span></code> is the empty-state
+placeholder.</p></li>
+<li><p><strong>url_prefix</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Mount-point prefix. Defaults to <code class="docutils literal notranslate"><span class="pre">&quot;/&quot;</span></code> (standalone
+launcher); the hub composer passes <code class="docutils literal notranslate"><span class="pre">&quot;/results/&quot;</span></code>. Set as
+<code class="docutils literal notranslate"><span class="pre">requests_pathname_prefix</span></code>/<code class="docutils literal notranslate"><span class="pre">routes_pathname_prefix</span></code> on
+the Dash constructor and stashed on
+<code class="docutils literal notranslate"><span class="pre">app.server.config[&quot;pheno_url_prefix&quot;]</span></code>.</p></li>
+</ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A configured <code class="xref py py-class docutils literal notranslate"><span class="pre">dash.Dash</span></code> instance whose <code class="docutils literal notranslate"><span class="pre">app.run(...)</span></code>
-is the responsibility of the caller (typically
-<code class="docutils literal notranslate"><span class="pre">__main__.py</span></code>).</p>
+is the responsibility of the caller.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><em>Dash</em></p>

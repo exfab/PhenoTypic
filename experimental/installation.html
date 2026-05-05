@@ -573,6 +573,35 @@ uv<span class="w"> </span>sync<span class="w"> </span>--group<span class="w"> </
 </pre></div>
 </div>
 </section>
+<section id="launching-the-gui">
+<h2>Launching the GUI<a class="headerlink" href="#launching-the-gui" title="Link to this heading">#</a></h2>
+<p>The unified GUI hub bundles the pipeline builder, results viewer, and
+run console under one URL. Two equivalent entry points:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Console script (preferred)</span>
+uv<span class="w"> </span>run<span class="w"> </span>phenotypic-gui<span class="w"> </span>--root<span class="w"> </span>./images<span class="w"> </span>--port<span class="w"> </span><span class="m">8050</span>
+
+<span class="c1"># Module entry (works in environments without the console script on PATH)</span>
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.gui<span class="w"> </span>--root<span class="w"> </span>./images<span class="w"> </span>--port<span class="w"> </span><span class="m">8050</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">--root</span></code> freezes the sandbox the GUI’s file browser is allowed to see
+(defaults to the current working directory). <code class="docutils literal notranslate"><span class="pre">--host</span> <span class="pre">127.0.0.1</span></code> (the
+default) keeps the server loopback-only — pair with SSH port forwarding
+for remote workstations:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ssh<span class="w"> </span>-L<span class="w"> </span><span class="m">8050</span>:localhost:8050<span class="w"> </span>user@cluster
+</pre></div>
+</div>
+<p>Then open <code class="docutils literal notranslate"><span class="pre">http://localhost:8050/</span></code> in your browser. See the
+<a class="reference internal" href="how_to/pages/gui_hub.html"><span class="doc">GUI hub guide</span></a> for a tour of the file
+browser, pipeline builder, run console, and results viewer.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">phenotypic</span> <span class="pre">gui</span></code> (no hyphen, as a subcommand) is <strong>not supported</strong>.
+Use <code class="docutils literal notranslate"><span class="pre">phenotypic-gui</span></code> or <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.gui</span></code>. The existing
+<code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> CLI uses positional arguments that conflict with any
+subcommand named <code class="docutils literal notranslate"><span class="pre">gui</span></code>.</p>
+</div>
+</section>
 </section>
 
 
@@ -612,6 +641,7 @@ uv<span class="w"> </span>sync<span class="w"> </span>--group<span class="w"> </
 </li>
 <li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#development-installation">Development Installation</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#verification">Verification</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#launching-the-gui">Launching the GUI</a></li>
 </ul>
 </li>
 </ul>

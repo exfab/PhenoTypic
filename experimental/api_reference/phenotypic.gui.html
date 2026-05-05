@@ -490,57 +490,31 @@
                   
   <section id="module-phenotypic.gui">
 <span id="phenotypic-gui-package"></span><h1>phenotypic.gui package<a class="headerlink" href="#module-phenotypic.gui" title="Link to this heading">#</a></h1>
-<p>PhenoTypic GUI components for interactive pipeline building.</p>
-<p>This module provides Panel-based interactive interfaces for building and testing
-ImagePipelines in Jupyter notebooks.</p>
-<dl class="simple">
-<dt>Requires optional dependencies:</dt><dd><p>pip install phenotypic[gui]</p>
-</dd>
-<dt>or with uv:</dt><dd><p>uv sync –extra gui</p>
-</dd>
-</dl>
-<p>Components:
-- PipelineBuilder: Main GUI for building pipelines interactively
-- InstanceManager: Workspace manager for saving/loading pipelines
-- OperationRegistry: Metadata registry for discovering operations</p>
-<p>Global session management (like napari):
-- get_global_manager(): Get or create global InstanceManager
-- reset_global_manager(): Reset with new workspace</p>
-<div class="admonition-examples admonition">
-<p class="admonition-title">Examples</p>
-<p>Basic usage (no pn.extension() needed in Jupyter):</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui</span><span class="w"> </span><span class="kn">import</span> <span class="n">PipelineBuilder</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_synth_yeast_plate</span>
-<span class="gp">&gt;&gt;&gt;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">image</span> <span class="o">=</span> <span class="n">load_synth_yeast_plate</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">builder</span> <span class="o">=</span> <span class="n">PipelineBuilder</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">)</span>  <span class="c1"># Auto-uses global manager</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">builder</span><span class="o">.</span><span class="n">panel</span><span class="p">()</span>  <span class="c1"># Auto-initializes Panel in Jupyter</span>
-</pre></div>
-</div>
-<p>Manual manager (advanced):</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui</span><span class="w"> </span><span class="kn">import</span> <span class="n">PipelineBuilder</span><span class="p">,</span> <span class="n">InstanceManager</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">manager</span> <span class="o">=</span> <span class="n">InstanceManager</span><span class="p">(</span><span class="n">workspace</span><span class="o">=</span><span class="s2">&quot;./my_pipelines&quot;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">builder</span> <span class="o">=</span> <span class="n">PipelineBuilder</span><span class="p">(</span><span class="n">manager</span><span class="o">=</span><span class="n">manager</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">builder</span><span class="o">.</span><span class="n">panel</span><span class="p">()</span>
-</pre></div>
-</div>
-</div>
+<p>PhenoTypic GUI components.</p>
+<p>This package provides interactive interfaces for building and visualising
+ImagePipelines.  Components are lazy-loaded so that optional dependencies
+(Panel, napari, Dash) are only imported when actually used.</p>
+<section id="sub-packages">
+<h2>Sub-packages<a class="headerlink" href="#sub-packages" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">gui.builder</span></code>        — Dash node-graph pipeline builder</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gui.results_viewer</span></code> — Dash CLI-output results viewer</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gui.sweep</span></code>          — napari parameter-sweep viewer</p></li>
+</ul>
+</section>
+<section id="utilities">
+<h2>Utilities<a class="headerlink" href="#utilities" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">OperationRegistry</span></code>  — discovers operations and extracts parameter metadata</p></li>
+</ul>
+</section>
 <dl class="py function">
 <dt class="sig sig-object py" id="phenotypic.gui.__getattr__">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.gui.</span></span><span class="sig-name descname"><span class="pre">__getattr__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/gui.html#__getattr__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.gui.__getattr__" title="Link to this definition">#</a></dt>
 <dd><p>Lazy import with helpful error message for missing dependencies.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Attribute name to import</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Requested module/class</p>
-</dd>
-<dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If GUI dependencies not installed</p></li>
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.14)"><strong>AttributeError</strong></a> – If attribute doesn’t exist</p></li>
-</ul>
+<dd class="field-odd"><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p>
 </dd>
 </dl>
 </dd></dl>
@@ -549,10 +523,6 @@ ImagePipelines in Jupyter notebooks.</p>
 <h2>Subpackages<a class="headerlink" href="#subpackages" title="Link to this heading">#</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="phenotypic.gui.components.html">phenotypic.gui.components package</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.gui.components.html#phenotypic.gui.components.__getattr__"><code class="docutils literal notranslate"><span class="pre">__getattr__()</span></code></a></li>
-</ul>
-</li>
 <li class="toctree-l1"><a class="reference internal" href="phenotypic.gui.sweep.html">phenotypic.gui.sweep package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.IntermediateStep"><code class="docutils literal notranslate"><span class="pre">IntermediateStep</span></code></a><ul>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.gui.sweep.html#phenotypic.gui.sweep.IntermediateStep.h5_path"><code class="docutils literal notranslate"><span class="pre">IntermediateStep.h5_path</span></code></a></li>
@@ -632,6 +602,8 @@ ImagePipelines in Jupyter notebooks.</p>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sub-packages">Sub-packages</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#utilities">Utilities</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.gui.__getattr__"><code class="docutils literal notranslate"><span class="pre">__getattr__()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#subpackages">Subpackages</a></li>
 </ul>

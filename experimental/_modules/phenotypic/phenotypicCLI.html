@@ -620,12 +620,9 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">click</span>
-
-<span class="c1"># Set up logger</span>
-<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image_parts.detection_modes</span><span class="w"> </span><span class="kn">import</span> <span class="n">available_modes</span>
@@ -651,7 +648,18 @@
     <span class="n">validate_resume_compatibility</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._cli_types</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExecutionConfig</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._cli_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">normalize_extension</span><span class="p">,</span> <span class="n">parse_slurm_args</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._cli_utils</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">normalize_extension</span><span class="p">,</span>
+    <span class="n">parse_slurm_args</span><span class="p">,</span>
+    <span class="n">resolve_local_worker_count</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._cli_recompile_slurm_scripts</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">TASK_FINALIZE</span><span class="p">,</span>
+    <span class="n">build_recompile_tasks</span><span class="p">,</span>
+    <span class="n">generate_recompile_slurm_scripts</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._cli_slurm_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_slurm_array_limit</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._cli_slurm_submission</span><span class="w"> </span><span class="kn">import</span> <span class="n">submit_slurm_script_chain</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._cli_validation</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">validate_execution_config</span><span class="p">,</span>
     <span class="n">validate_pipeline</span><span class="p">,</span>
@@ -660,6 +668,9 @@
     <span class="n">MIN_SLURM_TIME_MINUTES</span><span class="p">,</span>
     <span class="n">MAX_SLURM_TIME_MINUTES</span><span class="p">,</span>
 <span class="p">)</span>
+
+<span class="c1"># Set up logger</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="setup_logging">
@@ -1046,10 +1057,8 @@
 <span class="p">)</span>
 <span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
     <span class="s2">&quot;--no-dataset-column&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;include_dataset_column&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;no_dataset_column&quot;</span><span class="p">,</span>
     <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-    <span class="n">flag_value</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-    <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Exclude &#39;Metadata_Dataset&#39; column from master_measurements.csv (included by default)&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
@@ -1133,7 +1142,7 @@
     <span class="n">ext</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">measure_only</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="n">overlay_alpha</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-    <span class="n">include_dataset_column</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">no_dataset_column</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="n">dry_run</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="n">sample</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
     <span class="n">random_seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
@@ -1154,14 +1163,78 @@
 <span class="sd">    INPUT_PATH: Image file or directory to process</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">try</span><span class="p">:</span>
+        <span class="n">include_dataset_column</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">no_dataset_column</span>
+
+        <span class="c1"># Parse SLURM args before the recompile branch so --recompile can</span>
+        <span class="c1"># explicitly choose between local and SLURM recompile dispatch.</span>
+        <span class="n">slurm_args_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">slurm_args</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">slurm_args_dict</span> <span class="o">=</span> <span class="n">_parse_slurm_args</span><span class="p">(</span><span class="n">slurm_args</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">click</span><span class="o">.</span><span class="n">BadParameter</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Validate SLURM time parameter if present</span>
+        <span class="k">if</span> <span class="n">slurm_args_dict</span><span class="p">:</span>
+            <span class="c1"># Check for deprecated parameters</span>
+            <span class="k">if</span> <span class="s2">&quot;time_min&quot;</span> <span class="ow">in</span> <span class="n">slurm_args_dict</span><span class="p">:</span>
+                <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
+                    <span class="s2">&quot;Warning: &#39;time_min&#39; is deprecated. Use &#39;time&#39; instead.&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span>
+                <span class="p">)</span>
+                <span class="c1"># Auto-migrate</span>
+                <span class="k">if</span> <span class="s2">&quot;time&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">slurm_args_dict</span><span class="p">:</span>
+                    <span class="n">slurm_args_dict</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">slurm_args_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;time_min&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">slurm_args_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;time_min&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Validate time parameter type and range</span>
+            <span class="k">for</span> <span class="n">time_key</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="s2">&quot;slurm_time&quot;</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">time_key</span> <span class="ow">in</span> <span class="n">slurm_args_dict</span><span class="p">:</span>
+                    <span class="n">time_val</span> <span class="o">=</span> <span class="n">slurm_args_dict</span><span class="p">[</span><span class="n">time_key</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">time_val</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                        <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;Error: &#39;</span><span class="si">{</span><span class="n">time_key</span><span class="si">}</span><span class="s2">&#39; must be an integer (minutes), &quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">time_val</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                            <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="p">)</span>
+                        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+                    <span class="c1"># Validate reasonable time range</span>
+                    <span class="k">if</span> <span class="n">time_val</span> <span class="o">&lt;</span> <span class="n">MIN_SLURM_TIME_MINUTES</span><span class="p">:</span>
+                        <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;Error: &#39;</span><span class="si">{</span><span class="n">time_key</span><span class="si">}</span><span class="s2">&#39; must be &gt;= </span><span class="si">{</span><span class="n">MIN_SLURM_TIME_MINUTES</span><span class="si">}</span><span class="s2"> minute, got </span><span class="si">{</span><span class="n">time_val</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                            <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="p">)</span>
+                        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="n">time_val</span> <span class="o">&gt;</span> <span class="n">MAX_SLURM_TIME_MINUTES</span><span class="p">:</span>
+                        <span class="n">days</span> <span class="o">=</span> <span class="n">MAX_SLURM_TIME_MINUTES</span> <span class="o">/</span> <span class="mi">1440</span>
+                        <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;Warning: &#39;</span><span class="si">{</span><span class="n">time_key</span><span class="si">}</span><span class="s2">&#39; is </span><span class="si">{</span><span class="n">time_val</span><span class="si">}</span><span class="s2"> minutes &quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">time_val</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">60</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> hours). This exceeds typical cluster limits &quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">MAX_SLURM_TIME_MINUTES</span><span class="si">}</span><span class="s2"> min / </span><span class="si">{</span><span class="n">days</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> days).&quot;</span><span class="p">,</span>
+                            <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="p">)</span>
+
         <span class="k">if</span> <span class="n">recompile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">_handle_recompile</span><span class="p">(</span>
-                <span class="n">recompile</span><span class="p">,</span>
-                <span class="n">metadata_csv</span><span class="p">,</span>
-                <span class="n">include_dataset_column</span><span class="p">,</span>
-                <span class="n">overlay_alpha</span><span class="p">,</span>
-                <span class="n">n_jobs</span><span class="p">,</span>
-            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">slurm_args_dict</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">force_local</span><span class="p">:</span>
+                <span class="n">_handle_recompile_slurm</span><span class="p">(</span>
+                    <span class="n">output_dir</span><span class="o">=</span><span class="n">recompile</span><span class="p">,</span>
+                    <span class="n">metadata_csv</span><span class="o">=</span><span class="n">metadata_csv</span><span class="p">,</span>
+                    <span class="n">include_dataset_column</span><span class="o">=</span><span class="n">include_dataset_column</span><span class="p">,</span>
+                    <span class="n">overlay_alpha</span><span class="o">=</span><span class="n">overlay_alpha</span><span class="p">,</span>
+                    <span class="n">checkpoint_interval</span><span class="o">=</span><span class="n">checkpoint_interval</span><span class="p">,</span>
+                    <span class="n">slurm_args</span><span class="o">=</span><span class="n">slurm_args_dict</span><span class="p">,</span>
+                    <span class="n">wait</span><span class="o">=</span><span class="n">wait</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">_handle_recompile</span><span class="p">(</span>
+                    <span class="n">recompile</span><span class="p">,</span>
+                    <span class="n">metadata_csv</span><span class="p">,</span>
+                    <span class="n">include_dataset_column</span><span class="p">,</span>
+                    <span class="n">overlay_alpha</span><span class="p">,</span>
+                    <span class="n">n_jobs</span><span class="p">,</span>
+                <span class="p">)</span>
             <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
 
         <span class="c1"># ---- Early validation for --measure (measure_only) -------------</span>
@@ -1241,56 +1314,6 @@
         <span class="k">except</span> <span class="n">click</span><span class="o">.</span><span class="n">BadParameter</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-
-        <span class="c1"># Parse SLURM args</span>
-        <span class="n">slurm_args_dict</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="k">if</span> <span class="n">slurm_args</span><span class="p">:</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">slurm_args_dict</span> <span class="o">=</span> <span class="n">_parse_slurm_args</span><span class="p">(</span><span class="n">slurm_args</span><span class="p">)</span>
-            <span class="k">except</span> <span class="n">click</span><span class="o">.</span><span class="n">BadParameter</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-                <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-
-        <span class="c1"># Validate SLURM time parameter if present</span>
-        <span class="k">if</span> <span class="n">slurm_args_dict</span><span class="p">:</span>
-            <span class="c1"># Check for deprecated parameters</span>
-            <span class="k">if</span> <span class="s2">&quot;time_min&quot;</span> <span class="ow">in</span> <span class="n">slurm_args_dict</span><span class="p">:</span>
-                <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
-                    <span class="s2">&quot;Warning: &#39;time_min&#39; is deprecated. Use &#39;time&#39; instead.&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span>
-                <span class="p">)</span>
-                <span class="c1"># Auto-migrate</span>
-                <span class="k">if</span> <span class="s2">&quot;time&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">slurm_args_dict</span><span class="p">:</span>
-                    <span class="n">slurm_args_dict</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">slurm_args_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;time_min&quot;</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">slurm_args_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;time_min&quot;</span><span class="p">)</span>
-
-            <span class="c1"># Validate time parameter type and range</span>
-            <span class="k">for</span> <span class="n">time_key</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="s2">&quot;slurm_time&quot;</span><span class="p">):</span>
-                <span class="k">if</span> <span class="n">time_key</span> <span class="ow">in</span> <span class="n">slurm_args_dict</span><span class="p">:</span>
-                    <span class="n">time_val</span> <span class="o">=</span> <span class="n">slurm_args_dict</span><span class="p">[</span><span class="n">time_key</span><span class="p">]</span>
-                    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">time_val</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-                        <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
-                            <span class="sa">f</span><span class="s2">&quot;Error: &#39;</span><span class="si">{</span><span class="n">time_key</span><span class="si">}</span><span class="s2">&#39; must be an integer (minutes), &quot;</span>
-                            <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">time_val</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-                            <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                        <span class="p">)</span>
-                        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-
-                    <span class="c1"># Validate reasonable time range</span>
-                    <span class="k">if</span> <span class="n">time_val</span> <span class="o">&lt;</span> <span class="n">MIN_SLURM_TIME_MINUTES</span><span class="p">:</span>
-                        <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
-                            <span class="sa">f</span><span class="s2">&quot;Error: &#39;</span><span class="si">{</span><span class="n">time_key</span><span class="si">}</span><span class="s2">&#39; must be &gt;= </span><span class="si">{</span><span class="n">MIN_SLURM_TIME_MINUTES</span><span class="si">}</span><span class="s2"> minute, got </span><span class="si">{</span><span class="n">time_val</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-                            <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                        <span class="p">)</span>
-                        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-                    <span class="k">elif</span> <span class="n">time_val</span> <span class="o">&gt;</span> <span class="n">MAX_SLURM_TIME_MINUTES</span><span class="p">:</span>
-                        <span class="n">days</span> <span class="o">=</span> <span class="n">MAX_SLURM_TIME_MINUTES</span> <span class="o">/</span> <span class="mi">1440</span>
-                        <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
-                            <span class="sa">f</span><span class="s2">&quot;Warning: &#39;</span><span class="si">{</span><span class="n">time_key</span><span class="si">}</span><span class="s2">&#39; is </span><span class="si">{</span><span class="n">time_val</span><span class="si">}</span><span class="s2"> minutes &quot;</span>
-                            <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">time_val</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">60</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> hours). This exceeds typical cluster limits &quot;</span>
-                            <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">MAX_SLURM_TIME_MINUTES</span><span class="si">}</span><span class="s2"> min / </span><span class="si">{</span><span class="n">days</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> days).&quot;</span><span class="p">,</span>
-                            <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                        <span class="p">)</span>
 
         <span class="c1"># Validate flags</span>
         <span class="k">if</span> <span class="n">retry_failures</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">resume</span><span class="p">:</span>
@@ -1775,11 +1798,10 @@
 <span class="sd">        output_dir: Existing output directory.</span>
 <span class="sd">        overlay_alpha: Alpha for overlay compositing, mirrors the</span>
 <span class="sd">            ``--overlay-alpha`` flag used by forward runs.</span>
-<span class="sd">        n_jobs: Number of worker threads.  ``-1`` means</span>
-<span class="sd">            ``os.cpu_count()``.  ``1`` runs in-thread.  Mirrors the</span>
-<span class="sd">            ``--n-jobs`` flag used by forward runs.</span>
+<span class="sd">        n_jobs: Number of worker threads.  ``-1`` means allocated CPUs</span>
+<span class="sd">            under SLURM, otherwise host CPUs.  ``1`` runs in-thread.</span>
+<span class="sd">            Mirrors the ``--n-jobs`` flag used by forward runs.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">concurrent.futures</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThreadPoolExecutor</span><span class="p">,</span> <span class="n">as_completed</span>
 
     <span class="kn">import</span><span class="w"> </span><span class="nn">h5py</span>
@@ -1825,8 +1847,7 @@
             <span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span>
         <span class="p">)</span>
 
-    <span class="n">workers</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span> <span class="ow">or</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">n_jobs</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="k">else</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_jobs</span><span class="p">)</span>
-    <span class="n">workers</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">workers</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">work</span><span class="p">))</span>
+    <span class="n">workers</span> <span class="o">=</span> <span class="n">resolve_local_worker_count</span><span class="p">(</span><span class="n">n_jobs</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">work</span><span class="p">))</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_render_one</span><span class="p">(</span><span class="n">dataset_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hdf_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">hdf_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
@@ -1877,6 +1898,252 @@
         <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;[green]Overlay regeneration complete&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_handle_recompile_slurm</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">metadata_csv</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span>
+    <span class="n">include_dataset_column</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">overlay_alpha</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">checkpoint_interval</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+    <span class="n">slurm_args</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">wait</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Submit recompile work as a SLURM array chain.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: Existing output directory containing ``results/``.</span>
+<span class="sd">        metadata_csv: Optional metadata CSV for the finalizer task.</span>
+<span class="sd">        include_dataset_column: Whether measurement aggregation should add</span>
+<span class="sd">            ``Metadata_Dataset`` when source files lack it.</span>
+<span class="sd">        overlay_alpha: Alpha used when re-rendering missing overlays.</span>
+<span class="sd">        checkpoint_interval: Reused as the measurement shard size when</span>
+<span class="sd">            positive; otherwise defaults to 500 files per shard.</span>
+<span class="sd">        slurm_args: Parsed SLURM key/value arguments.</span>
+<span class="sd">        wait: Whether to wait for the finalizer task status.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+
+    <span class="kn">from</span><span class="w"> </span><span class="nn">rich.console</span><span class="w"> </span><span class="kn">import</span> <span class="n">Console</span>
+
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._cli_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_job_metadata</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._dashboard</span><span class="w"> </span><span class="kn">import</span> <span class="n">generate_dashboard</span>
+
+    <span class="n">output_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="n">progress_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;progress&quot;</span>
+    <span class="n">progress_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">console</span> <span class="o">=</span> <span class="n">Console</span><span class="p">()</span>
+
+    <span class="n">job_meta</span> <span class="o">=</span> <span class="n">load_job_metadata</span><span class="p">(</span><span class="n">progress_dir</span><span class="p">)</span>
+    <span class="n">dataset_names</span> <span class="o">=</span> <span class="n">_discover_recompile_dataset_names</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">job_meta</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">dataset_names</span><span class="p">:</span>
+        <span class="n">error_exit</span><span class="p">(</span><span class="s2">&quot;No datasets found in output directory&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">output_dir</span><span class="p">))</span>
+
+    <span class="n">shard_size</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">checkpoint_interval</span>
+        <span class="k">if</span> <span class="n">checkpoint_interval</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">checkpoint_interval</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="k">else</span> <span class="mi">500</span>
+    <span class="p">)</span>
+    <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;[bold]Submitting SLURM recompile[/bold] for </span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2"> &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset_names</span><span class="p">)</span><span class="si">}</span><span class="s2"> dataset(s))&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">tasks</span> <span class="o">=</span> <span class="n">build_recompile_tasks</span><span class="p">(</span>
+        <span class="n">output_dir</span><span class="o">=</span><span class="n">output_dir</span><span class="p">,</span>
+        <span class="n">dataset_names</span><span class="o">=</span><span class="n">dataset_names</span><span class="p">,</span>
+        <span class="n">include_dataset_column</span><span class="o">=</span><span class="n">include_dataset_column</span><span class="p">,</span>
+        <span class="n">overlay_alpha</span><span class="o">=</span><span class="n">overlay_alpha</span><span class="p">,</span>
+        <span class="n">shard_size</span><span class="o">=</span><span class="n">shard_size</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">finalizer_task_index</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">tasks</span> <span class="ow">and</span> <span class="n">tasks</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;task_type&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">TASK_FINALIZE</span><span class="p">:</span>
+        <span class="n">finalizer_task_index</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tasks</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">tasks</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;metadata_csv&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">metadata_csv</span><span class="p">)</span> <span class="k">if</span> <span class="n">metadata_csv</span> <span class="k">else</span> <span class="kc">None</span>
+
+    <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;[cyan]Querying SLURM array limits...[/cyan]&quot;</span><span class="p">)</span>
+    <span class="n">array_limit</span> <span class="o">=</span> <span class="n">get_slurm_array_limit</span><span class="p">()</span>
+    <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[green]SLURM array limit: </span><span class="si">{</span><span class="n">array_limit</span><span class="si">}</span><span class="s2">[/green]&quot;</span><span class="p">)</span>
+
+    <span class="n">scripts</span> <span class="o">=</span> <span class="n">generate_recompile_slurm_scripts</span><span class="p">(</span>
+        <span class="n">tasks</span><span class="o">=</span><span class="n">tasks</span><span class="p">,</span>
+        <span class="n">output_dir</span><span class="o">=</span><span class="n">output_dir</span><span class="p">,</span>
+        <span class="n">slurm_args</span><span class="o">=</span><span class="n">slurm_args</span><span class="p">,</span>
+        <span class="n">array_limit</span><span class="o">=</span><span class="n">array_limit</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">tasks</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">scripts</span> <span class="ow">or</span> <span class="n">finalizer_task_index</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="s2">&quot;[yellow]No recompile SLURM tasks/scripts were generated; &quot;</span>
+            <span class="s2">&quot;running local recompile instead.[/yellow]&quot;</span>
+        <span class="p">)</span>
+        <span class="n">_handle_recompile</span><span class="p">(</span>
+            <span class="n">output_dir</span><span class="p">,</span>
+            <span class="n">metadata_csv</span><span class="p">,</span>
+            <span class="n">include_dataset_column</span><span class="p">,</span>
+            <span class="n">overlay_alpha</span><span class="p">,</span>
+            <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">submission</span> <span class="o">=</span> <span class="n">submit_slurm_script_chain</span><span class="p">(</span>
+        <span class="n">flat_chunk_scripts</span><span class="o">=</span><span class="n">scripts</span><span class="p">,</span>
+        <span class="n">output_dir</span><span class="o">=</span><span class="n">output_dir</span><span class="p">,</span>
+        <span class="n">slurm_args</span><span class="o">=</span><span class="n">slurm_args</span><span class="p">,</span>
+        <span class="n">console</span><span class="o">=</span><span class="n">console</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">flat_scripts</span> <span class="o">=</span> <span class="n">submission</span><span class="o">.</span><span class="n">flat_scripts</span>
+    <span class="n">job_ids</span> <span class="o">=</span> <span class="n">submission</span><span class="o">.</span><span class="n">job_ids</span>
+
+    <span class="n">recompile_manifest_path</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;progress&quot;</span> <span class="o">/</span> <span class="s2">&quot;recompile&quot;</span> <span class="o">/</span> <span class="s2">&quot;task_manifest.json&quot;</span>
+    <span class="p">)</span>
+    <span class="n">job_metadata</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;start_time&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(</span><span class="n">timespec</span><span class="o">=</span><span class="s2">&quot;milliseconds&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;execution_mode&quot;</span><span class="p">:</span> <span class="s2">&quot;slurm&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;datasets&quot;</span><span class="p">:</span> <span class="n">_build_recompile_job_metadata_datasets</span><span class="p">(</span>
+            <span class="n">output_dir</span><span class="p">,</span>
+            <span class="n">dataset_names</span><span class="p">,</span>
+            <span class="n">job_meta</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="s2">&quot;chunk_scripts&quot;</span><span class="p">:</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">script</span><span class="p">)</span> <span class="k">for</span> <span class="n">script</span> <span class="ow">in</span> <span class="n">flat_scripts</span><span class="p">],</span>
+        <span class="s2">&quot;chunk_job_ids&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;0&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">job_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">])},</span>
+        <span class="s2">&quot;include_dataset_column&quot;</span><span class="p">:</span> <span class="n">include_dataset_column</span><span class="p">,</span>
+        <span class="s2">&quot;metadata_csv&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">metadata_csv</span><span class="p">)</span> <span class="k">if</span> <span class="n">metadata_csv</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">&quot;input_path&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">output_dir</span><span class="p">),</span>
+        <span class="s2">&quot;recompile&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;task_manifest&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">recompile_manifest_path</span><span class="p">),</span>
+            <span class="s2">&quot;finalizer_task_index&quot;</span><span class="p">:</span> <span class="n">finalizer_task_index</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">}</span>
+    <span class="n">metadata_path</span> <span class="o">=</span> <span class="n">progress_dir</span> <span class="o">/</span> <span class="s2">&quot;job_metadata.json&quot;</span>
+    <span class="n">metadata_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span>
+        <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">job_metadata</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[green]Job metadata: </span><span class="si">{</span><span class="n">metadata_path</span><span class="si">}</span><span class="s2">[/green]&quot;</span><span class="p">)</span>
+
+    <span class="n">generate_dashboard</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">execution_mode</span><span class="o">=</span><span class="s2">&quot;slurm&quot;</span><span class="p">)</span>
+    <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;[green]Dashboard: </span><span class="si">{</span><span class="n">output_dir</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="s1">&#39;dashboard.html&#39;</span><span class="si">}</span><span class="s2">[/green]&quot;</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">wait</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">[cyan]Waiting for recompile finalizer &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;task </span><span class="si">{</span><span class="n">finalizer_task_index</span><span class="si">}</span><span class="s2">...[/cyan]&quot;</span>
+        <span class="p">)</span>
+        <span class="n">_wait_for_recompile_finalizer_status</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">finalizer_task_index</span><span class="p">)</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;[bold green]SLURM recompilation complete[/bold green]&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Recompile jobs submitted. Monitor progress with:&quot;</span><span class="p">)</span>
+        <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Open: </span><span class="si">{</span><span class="n">output_dir</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="s1">&#39;dashboard.html&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;  squeue -u $USER --array&quot;</span><span class="p">)</span>
+        <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;  tail -f </span><span class="si">{</span><span class="n">output_dir</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="s1">&#39;logs&#39;</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="s1">&#39;slurm&#39;</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="s1">&#39;recompile&#39;</span><span class="si">}</span><span class="s2">/*.log&quot;</span>
+        <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_discover_recompile_dataset_names</span><span class="p">(</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">job_meta</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Discover datasets using the local recompile precedence.&quot;&quot;&quot;</span>
+    <span class="n">results_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;results&quot;</span>
+    <span class="n">dataset_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">results_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+        <span class="n">dataset_names</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
+            <span class="n">d</span><span class="o">.</span><span class="n">name</span>
+            <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">results_dir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">d</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="ow">and</span> <span class="p">(</span><span class="n">d</span> <span class="o">/</span> <span class="s2">&quot;measurements&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">dataset_names</span> <span class="ow">and</span> <span class="n">job_meta</span><span class="p">:</span>
+        <span class="n">dataset_names</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">((</span><span class="n">job_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;datasets&quot;</span><span class="p">,</span> <span class="p">{})</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+    <span class="k">return</span> <span class="n">dataset_names</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_build_recompile_job_metadata_datasets</span><span class="p">(</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">dataset_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">job_meta</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the normal nested ``job_metadata[&quot;datasets&quot;]`` shape.&quot;&quot;&quot;</span>
+    <span class="n">previous_datasets</span> <span class="o">=</span> <span class="p">(</span><span class="n">job_meta</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;datasets&quot;</span><span class="p">,</span> <span class="p">{})</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">datasets</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">dataset_name</span> <span class="ow">in</span> <span class="n">dataset_names</span><span class="p">:</span>
+        <span class="n">images</span> <span class="o">=</span> <span class="n">_recompile_dataset_image_names</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">dataset_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">images</span><span class="p">:</span>
+            <span class="n">previous</span> <span class="o">=</span> <span class="n">previous_datasets</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">dataset_name</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">previous</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="n">previous_images</span> <span class="o">=</span> <span class="n">previous</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;images&quot;</span><span class="p">,</span> <span class="p">[])</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">previous_images</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                    <span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">image</span><span class="p">)</span> <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">previous_images</span><span class="p">]</span>
+        <span class="n">datasets</span><span class="p">[</span><span class="n">dataset_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;total&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">images</span><span class="p">),</span> <span class="s2">&quot;images&quot;</span><span class="p">:</span> <span class="n">images</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">datasets</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_recompile_dataset_image_names</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">dataset_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Infer image names from per-image measurement Parquets or HDFs.&quot;&quot;&quot;</span>
+    <span class="n">dataset_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;results&quot;</span> <span class="o">/</span> <span class="n">dataset_name</span>
+    <span class="n">meas_dir</span> <span class="o">=</span> <span class="n">dataset_dir</span> <span class="o">/</span> <span class="s2">&quot;measurements&quot;</span>
+    <span class="k">if</span> <span class="n">meas_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+        <span class="n">parquet_stems</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
+            <span class="n">path</span><span class="o">.</span><span class="n">stem</span>
+            <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">meas_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;*.parquet&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">parquet_stems</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">parquet_stems</span>
+
+    <span class="n">hdf_dir</span> <span class="o">=</span> <span class="n">dataset_dir</span> <span class="o">/</span> <span class="s2">&quot;hdf&quot;</span>
+    <span class="k">if</span> <span class="n">hdf_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+        <span class="n">hdf_stems</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">stem</span> <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">hdf_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;*.h5&quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">hdf_stems</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">hdf_stems</span>
+
+    <span class="k">return</span> <span class="p">[]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_wait_for_recompile_finalizer_status</span><span class="p">(</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">finalizer_task_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">poll_interval</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10.0</span><span class="p">,</span>
+    <span class="n">timeout</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Wait until the recompile finalizer status is completed or failed.&quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+    <span class="n">status_path</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">output_dir</span>
+        <span class="o">/</span> <span class="s2">&quot;progress&quot;</span>
+        <span class="o">/</span> <span class="s2">&quot;recompile&quot;</span>
+        <span class="o">/</span> <span class="s2">&quot;status&quot;</span>
+        <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;task_</span><span class="si">{</span><span class="n">finalizer_task_index</span><span class="si">}</span><span class="s2">.json&quot;</span>
+    <span class="p">)</span>
+    <span class="n">deadline</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">+</span> <span class="n">timeout</span> <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">status_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">status</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">status_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Failed to read recompile status </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">status_path</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">state</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">state</span> <span class="o">==</span> <span class="s2">&quot;completed&quot;</span><span class="p">:</span>
+                    <span class="k">return</span>
+                <span class="k">if</span> <span class="n">state</span> <span class="o">==</span> <span class="s2">&quot;failed&quot;</span><span class="p">:</span>
+                    <span class="n">error</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;error&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;recompile finalizer failed&quot;</span>
+                    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">error</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">deadline</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="n">deadline</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TimeoutError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Timed out waiting for recompile finalizer status: </span><span class="si">{</span><span class="n">status_path</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">poll_interval</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_handle_recompile</span><span class="p">(</span>
@@ -2043,7 +2310,7 @@
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-    <span class="n">main</span><span class="p">()</span>
+    <span class="n">phenotypic_cli</span><span class="p">()</span>
 </pre></div>
 
                 </article>

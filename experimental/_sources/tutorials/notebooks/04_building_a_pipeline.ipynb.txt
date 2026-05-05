@@ -274,8 +274,8 @@
     "\n",
     "---\n",
     "\n",
-    "**Next up:** [Tutorial 5: Working with Grid Plates](05_working_with_grid_plates.ipynb) --\n",
-    "learn how grid plates let you analyze individual wells in an arrayed format."
+    "**Next up:** [Tutorial 5: Working with Detected Grid Plates](05_working_with_grid_plates.ipynb) --\n",
+    "learn how detected colonies can be assigned back to wells in an arrayed format."
    ]
   }
  ],

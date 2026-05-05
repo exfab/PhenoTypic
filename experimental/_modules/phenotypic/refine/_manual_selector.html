@@ -498,11 +498,12 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectRefiner</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.mixin._footprint_mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">FootprintMixin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.mixin._point_picker_mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">PointPickerMixin</span>
 
 
 <div class="viewcode-block" id="ManualSelector">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.ManualSelector">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">ManualSelector</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">,</span> <span class="n">FootprintMixin</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ManualSelector</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">,</span> <span class="n">PointPickerMixin</span><span class="p">,</span> <span class="n">FootprintMixin</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Keep only objects whose footprints overlap user-specified coordinates.</span>
 
 <span class="sd">    Filter an existing ``objmap``/``objmask`` by stamping a morphological</span>
@@ -623,45 +624,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">centers</span> <span class="o">=</span> <span class="n">centers</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="n">shape</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">=</span> <span class="n">width</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;centers&quot;</span> <span class="ow">and</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-
-<div class="viewcode-block" id="ManualSelector.napari">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.refine.html#phenotypic.refine.ManualSelector.napari">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">napari</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ManualSelector</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Interactively pick the colonies to keep using a napari viewer.</span>
-
-<span class="sd">        Opens a blocking napari viewer displaying the plate image layers.</span>
-<span class="sd">        Click points on the colonies you want to retain, then click</span>
-<span class="sd">        **Confirm** in the dock widget. The picked coordinates are stored</span>
-<span class="sd">        in *centers*; apply the selector afterwards to drop the</span>
-<span class="sd">        non-selected objects.</span>
-
-<span class="sd">        Note:</span>
-<span class="sd">            The underlying :class:`PointPickerWidget` shows ``rgb``,</span>
-<span class="sd">            ``gray``, and ``detect_mat`` layers, but **not** the existing</span>
-<span class="sd">            ``objmap``. Preview detections with ``image.objmap.show()``</span>
-<span class="sd">            before calling this method so you know what is available to</span>
-<span class="sd">            pick.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            image: The Image to display for coordinate selection. It</span>
-<span class="sd">                should already have an ``objmap`` from a previous</span>
-<span class="sd">                detector.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            ManualSelector: Self, for method chaining.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.napari_</span><span class="w"> </span><span class="kn">import</span> <span class="n">PointPickerWidget</span>
-
-        <span class="n">points</span> <span class="o">=</span> <span class="n">PointPickerWidget</span><span class="p">(</span><span class="n">max_points</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">points</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">centers</span> <span class="o">=</span> <span class="n">points</span>
-        <span class="k">return</span> <span class="bp">self</span></div>
-
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>  <span class="c1"># type: ignore[override]</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">centers</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">centers</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>

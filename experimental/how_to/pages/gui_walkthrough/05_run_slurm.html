@@ -6,8 +6,9 @@
 
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>phenotypic.gui.components &#8212; PhenoTypic</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Run on SLURM &#8212; PhenoTypic</title>
   
   
   
@@ -51,7 +52,7 @@
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
-    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/gui/components';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'how_to/pages/gui_walkthrough/05_run_slurm';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
@@ -59,9 +60,11 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
-    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/gui/components.html" />
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/how_to/pages/gui_walkthrough/05_run_slurm.html" />
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="View Results" href="06_view_results.html" />
+    <link rel="prev" title="Run Locally" href="04_run_local.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="0.14.0b5" />
@@ -160,8 +163,8 @@
 </li>
 
 
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../../how_to/index.html">
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../../index.html">
     How-To Guides
   </a>
 </li>
@@ -290,6 +293,10 @@
   
 
   
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
 </div>
 
     </header>
@@ -300,10 +307,8 @@
       
       
       
-        
-      
       <dialog id="pst-primary-sidebar-modal"></dialog>
-      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
         
 
   
@@ -332,8 +337,8 @@
 </li>
 
 
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../../how_to/index.html">
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../../index.html">
     How-To Guides
   </a>
 </li>
@@ -431,6 +436,58 @@
     
   </div>
   
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Correction &amp; Preprocessing</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../notebooks/correct_grid_rotation.html">How To: Correct Grid Rotation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notebooks/enhance_low_contrast.html">How To: Enhance Low-Contrast Images</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notebooks/crop_and_pad.html">How To: Crop and Pad Images for Batch Consistency</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notebooks/denoise_low_light.html">How To: Denoise Low-Light Images</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Detection &amp; Refinement</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../notebooks/choose_detection_algorithm.html">How To: Choose a Detection Algorithm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notebooks/refine_noisy_boundaries.html">How To: Refine Noisy Detection Boundaries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notebooks/manual_grid_detection.html">How To: Manual Grid Detection When Automatic Fails</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notebooks/combine_detectors.html">How To: Combine Detectors with CompositeDetector</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notebooks/merge_fragmented_detections.html">How To: Merge Fragmented Detections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gpu_detection_setup.html">GPU-Accelerated Colony Detection</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Measurement &amp; Analysis</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../notebooks/measure_colony_size_intensity.html">How To: Measure Colony Size and Intensity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notebooks/correct_edge_effects.html">How To: Correct Edge Effects in Plate Assays</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notebooks/fit_logistic_growth.html">How To: Fit Logistic Growth Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notebooks/assess_image_quality.html">How To: Assess Image Quality Before Pipeline Design</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">CLI &amp; Infrastructure</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../cli_batch_processing.html">CLI Batch Processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../slurm_pipelines.html">SLURM Pipelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../parameter_sweeps.html">Parameter Sweeps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gui_hub.html">GUI hub</a></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">GUI Walkthrough</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="01_setup.html">Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_file_explorer.html">File Explorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_build_pipeline.html">Build a Pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_run_local.html">Run Locally</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Run on SLURM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_view_results.html">View Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_pick_points.html">Pick Points</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../serialize_pipelines.html">Serialize and Share Pipelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../hdf5_storage.html">Store Results in HDF5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../generate_reports.html">Generate HTML Processing Reports</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
   
   <div class="sidebar-primary-items__end sidebar-primary__section">
       <div class="sidebar-primary-item">
@@ -467,12 +524,12 @@
       </a>
     </li>
     
-    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">How-To Guides</a></li>
     
     
-    <li class="breadcrumb-item"><a href="../gui.html" class="nav-link">phenotypic.gui</a></li>
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">GUI Walkthrough</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.gui.components</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Run on SLURM</span></li>
   </ul>
 </nav>
 </div>
@@ -489,52 +546,91 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <h1>Source code for phenotypic.gui.components</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Reusable GUI components for PhenoTypic.</span>
+  <section class="tex2jax_ignore mathjax_ignore" id="run-on-slurm">
+<h1>Run on SLURM<a class="headerlink" href="#run-on-slurm" title="Link to this heading">#</a></h1>
+<p>The same Run console form submits to SLURM when you toggle <code class="docutils literal notranslate"><span class="pre">Mode</span></code> from
+<code class="docutils literal notranslate"><span class="pre">Local</span></code> to <code class="docutils literal notranslate"><span class="pre">SLURM</span></code>. The hub shells out to the existing
+<code class="docutils literal notranslate"><span class="pre">phenotypic._cli._cli_slurm_submission</span></code> pathway — the same code path used
+by <code class="docutils literal notranslate"><span class="pre">phenotypic</span> <span class="pre">pipeline.json</span> <span class="pre">input/</span> <span class="pre">-o</span> <span class="pre">output/</span> <span class="pre">--slurm</span> <span class="pre">partition=general</span> <span class="pre">--slurm</span> <span class="pre">time=04:00:00</span></code>.</p>
+<section id="switch-to-slurm-mode">
+<h2>Switch to SLURM mode<a class="headerlink" href="#switch-to-slurm-mode" title="Link to this heading">#</a></h2>
+<p>Click the <code class="docutils literal notranslate"><span class="pre">SLURM</span></code> radio in the form. The <code class="docutils literal notranslate"><span class="pre">SLURM</span> <span class="pre">config</span></code> collapse opens
+with the typed common fields:</p>
+<p><img alt="Run console with SLURM mode selected." src="../../../_images/01_slurm_mode.png" /></p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Field</p></th>
+<th class="head"><p>Maps to</p></th>
+<th class="head"><p>Notes</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Partition</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--slurm</span> <span class="pre">partition=…</span></code></p></td>
+<td><p>Required. Use the partition your cluster admin assigned.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Time</span> <span class="pre">(HH:MM:SS)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--slurm</span> <span class="pre">time=…</span></code></p></td>
+<td><p>SLURM walltime cap.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Memory</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--slurm</span> <span class="pre">mem=…</span></code></p></td>
+<td><p>Per-node memory (e.g. <code class="docutils literal notranslate"><span class="pre">16G</span></code>, <code class="docutils literal notranslate"><span class="pre">64G</span></code>).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CPUs</span> <span class="pre">/</span> <span class="pre">task</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--slurm</span> <span class="pre">cpus_per_task=…</span></code></p></td>
+<td><p>Maps to <code class="docutils literal notranslate"><span class="pre">--cpus-per-task</span></code> in <code class="docutils literal notranslate"><span class="pre">sbatch</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GPUs</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--slurm</span> <span class="pre">gpus=…</span></code></p></td>
+<td><p>Set to 0 unless your pipeline needs a GPU detector.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Extra</span> <span class="pre">SLURM</span> <span class="pre">(one</span> <span class="pre">key=value</span> <span class="pre">per</span> <span class="pre">line)</span></code></p></td>
+<td><p>repeated <code class="docutils literal notranslate"><span class="pre">--slurm</span> <span class="pre">key=value</span></code></p></td>
+<td><p>Free-form pass-through for anything not in the common fields (<code class="docutils literal notranslate"><span class="pre">account</span></code>, <code class="docutils literal notranslate"><span class="pre">qos</span></code>, <code class="docutils literal notranslate"><span class="pre">mail-user</span></code>, etc.). The example screenshot uses <code class="docutils literal notranslate"><span class="pre">account=lab</span></code> and <code class="docutils literal notranslate"><span class="pre">qos=normal</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="submit">
+<h2>Submit<a class="headerlink" href="#submit" title="Link to this heading">#</a></h2>
+<p>Clicking <code class="docutils literal notranslate"><span class="pre">Run</span></code> while SLURM mode is active does <strong>not</strong> spawn a local
+subprocess. Instead it hands the form values to a background thread that
+calls <code class="docutils literal notranslate"><span class="pre">phenotypic</span> <span class="pre">…</span> <span class="pre">--slurm</span> <span class="pre">key=value</span> <span class="pre">…</span></code> against your SLURM cluster.
+The hub waits for the submission to finish (typically &lt;1 s for small
+arrays), then registers the returned array primary job id with the run
+registry. The Recent Runs panel surfaces the row as
+<code class="docutils literal notranslate"><span class="pre">Mode:</span> <span class="pre">slurm-&lt;job-id&gt;</span></code> with status pulled from the manifest as the array
+chunks finish.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This page captures the form <strong>filled out</strong>, not a successful submission.
+Submitting requires <code class="docutils literal notranslate"><span class="pre">sbatch</span></code> on <code class="docutils literal notranslate"><span class="pre">PATH</span></code> and a real SLURM cluster — neither
+exists on the workstation that captured these screenshots. To verify your
+form values translate to the right CLI invocation, switch back to
+<code class="docutils literal notranslate"><span class="pre">Local</span></code> mode and click <code class="docutils literal notranslate"><span class="pre">Validate</span> <span class="pre">(dry-run)</span></code>: the dry-run prints the argv
+the hub would pass to <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code>. Once you’re satisfied, switch back
+to <code class="docutils literal notranslate"><span class="pre">SLURM</span></code> and click <code class="docutils literal notranslate"><span class="pre">Run</span></code>.</p>
+</div>
+</section>
+<section id="what-slurm-submission-writes">
+<h2>What SLURM submission writes<a class="headerlink" href="#what-slurm-submission-writes" title="Link to this heading">#</a></h2>
+<p>A successful submission writes:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;output_dir&gt;/progress/job_metadata.json</span></code> with the array primary job id
+and per-chunk job ids. The hub reads this file to surface the
+<code class="docutils literal notranslate"><span class="pre">slurm-&lt;id&gt;</span></code> row in Recent Runs — it does <strong>not</strong> parse Rich-formatted
+stdout (locale and terminal-width fragile).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;output_dir&gt;/dashboard.html</span></code> (written by the CLI submission flow), so
+the iframe panel can point at the dashboard before any chunk completes.</p></li>
+</ul>
+<p>For deeper SLURM operational detail (chunk sizing, recompile-on-resume,
+per-chunk cgroups), see <a class="reference internal" href="../slurm_pipelines.html"><span class="std std-doc">SLURM Pipelines</span></a>.</p>
+<p>Next: <a class="reference internal" href="06_view_results.html"><span class="std std-doc">View Results</span></a>.</p>
+</section>
+</section>
 
-<span class="sd">This module provides modular Panel components that can be composed</span>
-<span class="sd">for different UIs (PipelineBuilder, SweepExecutor, etc.).</span>
-<span class="sd">&quot;&quot;&quot;</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
-
-<span class="c1"># Components will be imported as needed (lazy imports to avoid Panel dependency)</span>
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="s2">&quot;ParamEditor&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;OperationCard&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;EmbeddedPipelineEditor&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;AddOperationMenu&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;PreviewPanel&quot;</span><span class="p">,</span>
-<span class="p">]</span>
-
-
-<div class="viewcode-block" id="__getattr__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.gui.components.html#phenotypic.gui.components.__getattr__">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="fm">__getattr__</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Lazy import components to avoid Panel dependency at module level.&quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;ParamEditor&quot;</span><span class="p">:</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">._param_editor</span><span class="w"> </span><span class="kn">import</span> <span class="n">ParamEditor</span>
-
-        <span class="k">return</span> <span class="n">ParamEditor</span>
-    <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;OperationCard&quot;</span><span class="p">:</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">._operation_card</span><span class="w"> </span><span class="kn">import</span> <span class="n">OperationCard</span>
-
-        <span class="k">return</span> <span class="n">OperationCard</span>
-    <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;EmbeddedPipelineEditor&quot;</span><span class="p">:</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">._embedded_pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">EmbeddedPipelineEditor</span>
-
-        <span class="k">return</span> <span class="n">EmbeddedPipelineEditor</span>
-    <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;AddOperationMenu&quot;</span><span class="p">:</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">._add_operation_menu</span><span class="w"> </span><span class="kn">import</span> <span class="n">AddOperationMenu</span>
-
-        <span class="k">return</span> <span class="n">AddOperationMenu</span>
-    <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;PreviewPanel&quot;</span><span class="p">:</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">._preview_panel</span><span class="w"> </span><span class="kn">import</span> <span class="n">PreviewPanel</span>
-
-        <span class="k">return</span> <span class="n">PreviewPanel</span>
-    <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;module </span><span class="si">{</span><span class="vm">__name__</span><span class="si">!r}</span><span class="s2"> has no attribute </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span></div>
-
-</pre></div>
 
                 </article>
               
@@ -545,6 +641,35 @@
             </div>
             
             
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#switch-to-slurm-mode">Switch to SLURM mode</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#submit">Submit</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-slurm-submission-writes">What SLURM submission writes</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/how_to/pages/gui_walkthrough/05_run_slurm.md.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
               
             
           </div>

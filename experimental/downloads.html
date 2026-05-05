@@ -537,7 +537,7 @@ SLURM Job Chain Manager for Image Processing</div>
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
 Tutorial 1: Your First Plate Image</div>
-<p class="sd-card-text">Welcome to PhenoTypic! In this tutorial, you will load your first agar plate image, display it interactively, inspect its basic properties, and explore the <strong>accessor pattern</strong> that gives you different views of the same plate.</p>
+<p class="sd-card-text">Welcome to PhenoTypic! In this tutorial, you will load your first agar plate image, understand the difference between the base <cite>Image</cite> and the grid-aware <cite>GridImage</cite> classes, and explore the <strong>accessor pattern</strong> that gives you different views of the same image.</p>
 </div>
 <div class="sd-card-footer docutils">
 <p class="sd-card-text"><a class="reference download internal" download="" href="_downloads/213294157cca34f37e5264d7a7cdf2a4/01_your_first_plate_image.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">notebook</span></code></a></p>
@@ -584,8 +584,8 @@ Tutorial 4: Building a Pipeline</div>
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-md docutils">
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
-Tutorial 5: Working with Grid Plates</div>
-<p class="sd-card-text">So far we have worked with <cite>GridImage</cite> objects without paying much attention to the <em>grid</em> part. In this tutorial you will learn what makes a <cite>GridImage</cite> special — it knows the row-and-column layout of your plate, so you can inspect individual wells, count colonies per grid section, and visualize the grid structure.</p>
+Tutorial 5: Working with Detected Grid Plates</div>
+<p class="sd-card-text">In [Tutorial 1](01_your_first_plate_image.ipynb), you saw that most arrayed colony workflows use <cite>GridImage</cite>: an <cite>Image</cite> with row-and-column plate layout. This tutorial picks up after detection, when that grid layout becomes biologically useful.</p>
 </div>
 <div class="sd-card-footer docutils">
 <p class="sd-card-text"><a class="reference download internal" download="" href="_downloads/7b9da7c412b210044121a6407f5ee7bc/05_working_with_grid_plates.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">notebook</span></code></a></p>
