@@ -25,20 +25,8 @@ class TestFilamentousFungiDetector:
         assert result.objmask[:].sum() > 0
         assert result.objmap[:].max() > 0
 
-    def test_objmask_objmap_consistency(self, synth_plate):
-        """Test that objmask and objmap are consistent after detection."""
-        image = synth_plate.copy()
-
-        detector = FilamentousFungiDetector(
-                inoculum_detector=OtsuDetector(),
-        )
-        result = detector.apply(image)
-
-        objmask = result.objmask[:]
-        objmap = result.objmap[:]
-
-        # All non-zero pixels in objmap should be True in objmask
-        assert np.all((objmap > 0) == objmask)
+    # objmask/objmap consistency is now covered by the smoke contract
+    # tests/smoke/test_operation.py::test_detector_objmap_objmask_consistency
 
     def test_no_centers_detected_raises(self, synth_plate):
         """Test that error is raised when inoculum_detector finds nothing."""
@@ -75,36 +63,8 @@ class TestFilamentousFungiDetector:
                     inoculum_detector="not_a_detector",
             )
 
-    def test_inplace_false_preserves_original(self, synth_plate):
-        """Test that inplace=False preserves original image."""
-        image = synth_plate.copy()
-        original_rgb = image.rgb[:].copy()
-
-        detector = FilamentousFungiDetector(
-                inoculum_detector=OtsuDetector(),
-        )
-        result = detector.apply(image, inplace=False)
-
-        # Original should be unchanged
-        np.testing.assert_array_equal(image.rgb[:], original_rgb)
-        # Result should be different image object
-        assert result is not image
-        # Result should have detection
-        assert result.objmap[:].max() > 0
-
-    def test_inplace_true_modifies_original(self, synth_plate):
-        """Test that inplace=True modifies the original image."""
-        image = synth_plate.copy()
-
-        detector = FilamentousFungiDetector(
-                inoculum_detector=OtsuDetector(),
-        )
-        result = detector.apply(image, inplace=True)
-
-        # Should return same image object
-        assert result is image
-        # Should have detection
-        assert image.objmap[:].max() > 0
+    # inplace=True/False semantics are now covered by the smoke contract
+    # tests/smoke/test_operation.py::test_inplace_contract
 
     def test_with_imagepipeline_center_detector(self, synth_plate):
         """Test that ImagePipeline works as inoculum_detector."""
@@ -242,17 +202,5 @@ class TestFilamentousFungiDetector:
 
         # If we get here without memory errors, test passes
 
-    def test_reproducibility(self, synth_plate):
-        """Test that same input produces same output."""
-        image = synth_plate.copy()
-
-        detector = FilamentousFungiDetector(
-                inoculum_detector=OtsuDetector(ignore_zeros=True),
-        )
-
-        result1 = detector.apply(image.copy())
-        result2 = detector.apply(image.copy())
-
-        # Same input should produce identical output
-        np.testing.assert_array_equal(result1.objmap[:], result2.objmap[:])
-        np.testing.assert_array_equal(result1.objmask[:], result2.objmask[:])
+    # Reproducibility for default-args is now covered by the smoke contract
+    # tests/smoke/test_operation.py::test_operation

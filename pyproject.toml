@@ -149,8 +149,13 @@ docs = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests/unit", "tests/smoke", "tests/integration"]
-addopts = "--verbose --capture=no"
-markers = ["smoke: basic operation test"]
+# Default lane excludes -m slow so PR-time runs stay fast. CI nightly job
+# should run `pytest -m slow` (or `-m "smoke or slow"`) for full coverage.
+addopts = "--verbose --capture=no -m 'not slow'"
+markers = [
+    "smoke: basic operation test",
+    "slow: heavy parametrize sweep, excluded from PR runs by default",
+]
 filterwarnings = [
     "ignore::SyntaxWarning:mahotas",
 ]

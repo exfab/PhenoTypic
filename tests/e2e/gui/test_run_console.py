@@ -12,6 +12,7 @@ Confirms:
 """
 from __future__ import annotations
 
+import pytest
 from playwright.sync_api import Page, expect
 
 
@@ -23,42 +24,25 @@ def test_run_console_form_has_pickers(page: Page, hub_url: str) -> None:
     expect(page.locator("#rc-btn-pick-output")).to_be_visible()
 
 
-def test_pipeline_picker_modal_opens(page: Page, hub_url: str) -> None:
+@pytest.mark.parametrize("btn_id,modal_id", [
+    ("#rc-btn-pick-pipeline", "#rc-modal-pipeline"),
+    ("#rc-btn-pick-input",    "#rc-modal-input"),
+    ("#rc-btn-pick-output",   "#rc-modal-output"),
+])
+def test_picker_modal_opens(
+    page: Page, hub_url: str, btn_id: str, modal_id: str,
+) -> None:
+    """Each picker button opens its corresponding dbc.Modal."""
     page.goto(hub_url + "/run/")
-    page.wait_for_selector("#rc-btn-pick-pipeline")
-    page.click("#rc-btn-pick-pipeline")
+    page.wait_for_selector(btn_id)
+    page.click(btn_id)
     # dbc.Modal becomes visible (display !== none) when ``is_open`` flips.
     page.wait_for_function(
-        "() => {"
-        "  const m = document.getElementById('rc-modal-pipeline');"
+        "(modalId) => {"
+        "  const m = document.querySelector(modalId);"
         "  return m && getComputedStyle(m).display !== 'none';"
         "}",
-        timeout=5_000,
-    )
-
-
-def test_input_picker_modal_opens(page: Page, hub_url: str) -> None:
-    page.goto(hub_url + "/run/")
-    page.wait_for_selector("#rc-btn-pick-input")
-    page.click("#rc-btn-pick-input")
-    page.wait_for_function(
-        "() => {"
-        "  const m = document.getElementById('rc-modal-input');"
-        "  return m && getComputedStyle(m).display !== 'none';"
-        "}",
-        timeout=5_000,
-    )
-
-
-def test_output_picker_modal_opens(page: Page, hub_url: str) -> None:
-    page.goto(hub_url + "/run/")
-    page.wait_for_selector("#rc-btn-pick-output")
-    page.click("#rc-btn-pick-output")
-    page.wait_for_function(
-        "() => {"
-        "  const m = document.getElementById('rc-modal-output');"
-        "  return m && getComputedStyle(m).display !== 'none';"
-        "}",
+        arg=modal_id,
         timeout=5_000,
     )
 
@@ -91,29 +75,9 @@ def test_validate_button_is_present_and_enabled(page: Page, hub_url: str) -> Non
     expect(page.locator("#rc-btn-validate")).to_be_enabled()
 
 
-def test_save_preset_writes_file(
-    page: Page, hub_url: str, fake_sandbox,
-) -> None:
-    """Clicking Save preset with a name writes ``<sandbox>/.phenotypic-gui/presets/<name>.json``.
-
-    The form state is empty here; that's fine — the preset just round-trips
-    whatever the form's `RC_STORE_FORM_STATE` currently holds (default
-    ``RunConsoleState`` round-tripped to JSON).
-    """
-    page.goto(hub_url + "/run/")
-    page.wait_for_selector("#rc-input-preset-name")
-    page.fill("#rc-input-preset-name", "smoke_preset")
-    page.click("#rc-btn-save-preset")
-    # The save callback returns a toast; wait for any toast text.
-    page.wait_for_function(
-        "() => {"
-        "  const t = document.getElementById('rc-toast');"
-        "  return t && (t.textContent || '').toLowerCase().includes('saved');"
-        "}",
-        timeout=5_000,
-    )
-    target = fake_sandbox / ".phenotypic-gui" / "presets" / "smoke_preset.json"
-    assert target.is_file()
+# Moved to test_save_preset.py — that test mutates fake_sandbox so it needs
+# function-scoped fixture overrides; the rest of this file shares the
+# module-scoped fake_sandbox/live_server from conftest.py.
 
 
 def test_recent_runs_rehydrates_cli_output_example(

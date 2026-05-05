@@ -13,8 +13,15 @@ from phenotypic.detect import RoundPeaksDetector
 from ..resources.TestHelper import timeit
 
 
+@pytest.mark.slow
 class TestRoundPeaksDetectorPeakDetection:
-    """Test peak detection parameter effects on detection quality."""
+    """Test peak detection parameter effects on detection quality.
+
+    Marked ``slow`` because every test runs a full RoundPeaksDetector on
+    ``plate_12hr_grid_image``. Default-config coverage lives in the smoke
+    contract (``tests/smoke/test_operation.py``) and the grid-inference
+    suite (``test_grid_inference_mixin.py``).
+    """
 
     @timeit
     @pytest.mark.parametrize(

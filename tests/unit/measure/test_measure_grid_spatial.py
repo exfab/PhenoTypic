@@ -5,7 +5,6 @@ import pandas as pd
 import numpy as np
 
 from phenotypic import GridImage
-from phenotypic.data import load_synth_yeast_plate
 from phenotypic.grid import ManualGridFinder
 from phenotypic.measure import MeasureGridSpatial
 from phenotypic.tools_.constants_ import OBJECT
@@ -53,10 +52,14 @@ def _make_synthetic_grid_image(
 class TestMeasureGridSpatial:
     """Tests for MeasureGridSpatial measurement operation."""
 
-    @pytest.fixture(scope="class")
-    def sample_image(self):
-        """Load synthetic yeast plate image for testing."""
-        return load_synth_yeast_plate()
+    @pytest.fixture
+    def sample_image(self, synth_plate):
+        """Reuse session-scoped synth_plate from tests/unit/conftest.py.
+
+        Tests below either read sample_image directly or do .copy() before
+        mutating, so sharing a single instance is safe.
+        """
+        return synth_plate
 
     @pytest.fixture
     def measurer(self):
@@ -344,8 +347,9 @@ class TestMeasureGridSpatialIntegration:
     """Integration tests for MeasureGridSpatial with real data patterns."""
 
     @pytest.fixture
-    def sample_image(self):
-        return load_synth_yeast_plate()
+    def sample_image(self, synth_plate):
+        # Reuse session-scoped synth_plate from tests/unit/conftest.py.
+        return synth_plate
 
     def test_reciprocal_neighbors(self, sample_image):
         """For single-object cells, A's right neighbor B implies B's left
