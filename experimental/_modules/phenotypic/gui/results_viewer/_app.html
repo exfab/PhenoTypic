@@ -528,7 +528,14 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">dash_bootstrap_components</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dbc</span>  <span class="c1"># type: ignore[import-untyped]</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dash</span><span class="w"> </span><span class="kn">import</span> <span class="n">Input</span><span class="p">,</span> <span class="n">Output</span><span class="p">,</span> <span class="n">State</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._design</span><span class="w"> </span><span class="kn">import</span> <span class="n">inject_design_tokens</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">CFG_FILTERED_STATE</span><span class="p">,</span>
+    <span class="n">CFG_OUTPUT_ROOT</span><span class="p">,</span>
+    <span class="n">CFG_URL_PREFIX</span><span class="p">,</span>
+    <span class="n">MOUNT_HOME</span><span class="p">,</span>
+    <span class="n">TITLE_VIEWER</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._design</span><span class="w"> </span><span class="kn">import</span> <span class="n">COLOR_BLUE</span><span class="p">,</span> <span class="n">COLOR_SURFACE</span><span class="p">,</span> <span class="n">inject_design_tokens</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.results_viewer</span><span class="w"> </span><span class="kn">import</span> <span class="n">_ids</span> <span class="k">as</span> <span class="n">ids</span><span class="p">,</span> <span class="n">_tile_routes</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.results_viewer._callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_callbacks</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.results_viewer._filtered_state</span><span class="w"> </span><span class="kn">import</span> <span class="n">FilteredMeasurements</span>
@@ -595,7 +602,7 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">create_app</span><span class="p">(</span>
     <span class="n">output_root</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">OutputRoot</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
-    <span class="n">url_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;/&quot;</span><span class="p">,</span>
+    <span class="n">url_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">MOUNT_HOME</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a Dash application instance for the results viewer.</span>
 
@@ -621,7 +628,7 @@
         <span class="vm">__name__</span><span class="p">,</span>
         <span class="n">external_stylesheets</span><span class="o">=</span><span class="p">[</span><span class="n">dbc</span><span class="o">.</span><span class="n">themes</span><span class="o">.</span><span class="n">BOOTSTRAP</span><span class="p">],</span>
         <span class="n">suppress_callback_exceptions</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-        <span class="n">title</span><span class="o">=</span><span class="s2">&quot;PhenoTypic Results Viewer&quot;</span><span class="p">,</span>
+        <span class="n">title</span><span class="o">=</span><span class="n">TITLE_VIEWER</span><span class="p">,</span>
         <span class="c1"># Pin to the in-package directory so the assets ship correctly</span>
         <span class="c1"># regardless of the user&#39;s CWD at launch.</span>
         <span class="n">assets_folder</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;_assets&quot;</span><span class="p">),</span>
@@ -629,7 +636,7 @@
         <span class="c1"># the hub&#39;s DispatcherMiddleware the dispatcher strips the</span>
         <span class="c1"># mount prefix from PATH_INFO, so Dash must route at &quot;/&quot;.</span>
         <span class="n">requests_pathname_prefix</span><span class="o">=</span><span class="n">url_prefix</span><span class="p">,</span>
-        <span class="n">routes_pathname_prefix</span><span class="o">=</span><span class="s2">&quot;/&quot;</span><span class="p">,</span>
+        <span class="n">routes_pathname_prefix</span><span class="o">=</span><span class="n">MOUNT_HOME</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="c1"># Inject window.__phenotypicAppPrefix so results_viewer.js can build</span>
@@ -638,7 +645,7 @@
 
     <span class="n">inject_design_tokens</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 
-    <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;pheno_url_prefix&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">url_prefix</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">CFG_URL_PREFIX</span><span class="p">]</span> <span class="o">=</span> <span class="n">url_prefix</span>
 
     <span class="k">if</span> <span class="n">output_root</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">app</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">build_empty_state_layout</span><span class="p">()</span>
@@ -649,12 +656,12 @@
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">app</span>
 
-    <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;output_root&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">output_root</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">CFG_OUTPUT_ROOT</span><span class="p">]</span> <span class="o">=</span> <span class="n">output_root</span>
 
     <span class="n">_tile_routes</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">output_root</span><span class="p">)</span>
 
     <span class="n">filtered_state</span> <span class="o">=</span> <span class="n">FilteredMeasurements</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">output_root</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="n">output_root</span><span class="o">.</span><span class="n">master_df</span><span class="p">)</span>
-    <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;filtered_state&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filtered_state</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">CFG_FILTERED_STATE</span><span class="p">]</span> <span class="o">=</span> <span class="n">filtered_state</span>
     <span class="n">colony_crop_routes</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">output_root</span><span class="p">)</span>
 
     <span class="n">app</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">build_app_layout</span><span class="p">(</span><span class="n">output_root</span><span class="p">,</span> <span class="n">filtered_state</span><span class="p">)</span>
@@ -698,8 +705,8 @@
             <span class="s2">&quot;gap&quot;</span><span class="p">:</span> <span class="s2">&quot;0.5rem&quot;</span><span class="p">,</span>
             <span class="s2">&quot;marginTop&quot;</span><span class="p">:</span> <span class="s2">&quot;1rem&quot;</span><span class="p">,</span>
             <span class="s2">&quot;padding&quot;</span><span class="p">:</span> <span class="s2">&quot;0.5rem 0.75rem&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;background&quot;</span><span class="p">:</span> <span class="s2">&quot;#fff&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;border&quot;</span><span class="p">:</span> <span class="s2">&quot;1px solid #1b75bc&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;background&quot;</span><span class="p">:</span> <span class="n">COLOR_SURFACE</span><span class="p">,</span>
+            <span class="s2">&quot;border&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;1px solid </span><span class="si">{</span><span class="n">COLOR_BLUE</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
             <span class="s2">&quot;borderRadius&quot;</span><span class="p">:</span> <span class="s2">&quot;6px&quot;</span><span class="p">,</span>
         <span class="p">}</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">selection</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">selection</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>

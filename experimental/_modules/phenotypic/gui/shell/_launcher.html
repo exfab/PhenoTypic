@@ -506,6 +506,10 @@
 <span class="sd">directory; we catch :class:`ValueError`/``FileNotFoundError``/etc. from</span>
 <span class="sd">:meth:`SandboxRoot.from_path` and surface a clean error rather than a</span>
 <span class="sd">stack trace.</span>
+
+<span class="sd">CLI defaults (host, port, debug flag) and the logging format come from</span>
+<span class="sd">:mod:`phenotypic.gui._config` so they stay in lock-step with the</span>
+<span class="sd">standalone debug launchers.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -515,6 +519,15 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">DEFAULT_HOST</span><span class="p">,</span>
+    <span class="n">DEFAULT_PORT</span><span class="p">,</span>
+    <span class="n">SSH_TUNNEL_HINT</span><span class="p">,</span>
+    <span class="n">TITLE_HUB</span><span class="p">,</span>
+    <span class="n">add_launcher_args</span><span class="p">,</span>
+    <span class="n">configure_launcher_logging</span><span class="p">,</span>
+    <span class="n">print_launcher_banner</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._app</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_app</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._sandbox</span><span class="w"> </span><span class="kn">import</span> <span class="n">SandboxRoot</span>
 
@@ -527,8 +540,8 @@
 <a class="viewcode-back" href="../../../../api_reference/phenotypic.gui.shell.html#phenotypic.gui.shell.launch_gui">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">launch_gui</span><span class="p">(</span>
     <span class="n">root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">(),</span>
-    <span class="n">host</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;127.0.0.1&quot;</span><span class="p">,</span>
-    <span class="n">port</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8050</span><span class="p">,</span>
+    <span class="n">host</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_HOST</span><span class="p">,</span>
+    <span class="n">port</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">DEFAULT_PORT</span><span class="p">,</span>
     <span class="n">debug</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Boot the unified PhenoTypic GUI shell.</span>
@@ -537,11 +550,11 @@
 <span class="sd">        root: Sandbox root. Strings accepted for ergonomics. Resolved to an</span>
 <span class="sd">            absolute :class:`pathlib.Path` and frozen for the lifetime of</span>
 <span class="sd">            the process. Defaults to the current working directory.</span>
-<span class="sd">        host: Interface to bind. ``127.0.0.1`` (default) keeps the server</span>
+<span class="sd">        host: Interface to bind. :data:`DEFAULT_HOST` keeps the server</span>
 <span class="sd">            loopback-only — pair with SSH port forwarding for remote</span>
 <span class="sd">            access. ``0.0.0.0`` exposes it on the network (not recommended</span>
 <span class="sd">            without authentication; cloud mode is a non-goal in v1).</span>
-<span class="sd">        port: TCP port. Defaults to ``8050``.</span>
+<span class="sd">        port: TCP port. Defaults to :data:`DEFAULT_PORT`.</span>
 <span class="sd">        debug: Run Dash in debug mode (auto-reload + verbose tracebacks).</span>
 <span class="sd">            Defaults to ``False``.</span>
 
@@ -552,20 +565,11 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">sandbox</span> <span class="o">=</span> <span class="n">SandboxRoot</span><span class="o">.</span><span class="n">from_path</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
     <span class="n">app</span> <span class="o">=</span> <span class="n">create_app</span><span class="p">(</span><span class="n">sandbox</span><span class="p">)</span>
-    <span class="n">_print_banner</span><span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">.</span><span class="n">root</span><span class="p">)</span>
+    <span class="n">print_launcher_banner</span><span class="p">(</span>
+        <span class="n">title</span><span class="o">=</span><span class="n">TITLE_HUB</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="n">sandbox</span><span class="o">.</span><span class="n">root</span>
+    <span class="p">)</span>
     <span class="n">app</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="n">debug</span><span class="p">)</span></div>
 
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">_print_banner</span><span class="p">(</span><span class="n">host</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">root</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Print a one-shot startup banner with SSH-tunnel + cache-nuke hints.&quot;&quot;&quot;</span>
-    <span class="nb">print</span><span class="p">()</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;PhenoTypic GUI&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  root  : </span><span class="si">{</span><span class="n">root</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  url   : http://</span><span class="si">{</span><span class="n">host</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">/&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">()</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SSH tunnel from local: ssh -L </span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">:localhost:</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2"> &lt;cluster&gt;&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">()</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_build_parser</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">:</span>
@@ -574,8 +578,7 @@
         <span class="n">description</span><span class="o">=</span><span class="p">(</span>
             <span class="s2">&quot;Launch the unified PhenoTypic GUI hub (pipeline builder, &quot;</span>
             <span class="s2">&quot;results viewer, and run console under one URL). &quot;</span>
-            <span class="s2">&quot;Reach the UI by SSH-tunnelling the chosen port &quot;</span>
-            <span class="s2">&quot;(`ssh -L 8050:localhost:8050 user@cluster`).&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Reach the UI by SSH-tunnelling the chosen port (`</span><span class="si">{</span><span class="n">SSH_TUNNEL_HINT</span><span class="si">}</span><span class="s2">`).&quot;</span>
         <span class="p">),</span>
     <span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
@@ -587,27 +590,7 @@
             <span class="s2">&quot;directory. Defaults to the current working directory.&quot;</span>
         <span class="p">),</span>
     <span class="p">)</span>
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--host&quot;</span><span class="p">,</span>
-        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
-        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;127.0.0.1&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">&quot;Interface to bind. Default 127.0.0.1 keeps the server &quot;</span>
-            <span class="s2">&quot;loopback-only — pair with SSH port forwarding for remote &quot;</span>
-            <span class="s2">&quot;access.&quot;</span>
-        <span class="p">),</span>
-    <span class="p">)</span>
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--port&quot;</span><span class="p">,</span>
-        <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
-        <span class="n">default</span><span class="o">=</span><span class="mi">8050</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;TCP port. Default 8050.&quot;</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--debug&quot;</span><span class="p">,</span>
-        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Run Dash in debug mode.&quot;</span><span class="p">,</span>
-    <span class="p">)</span>
+    <span class="n">add_launcher_args</span><span class="p">(</span><span class="n">parser</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">parser</span>
 
 
@@ -620,10 +603,7 @@
 <span class="sd">        Process exit code (0 = clean shutdown, non-zero = startup failure).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">args</span> <span class="o">=</span> <span class="n">_build_parser</span><span class="p">()</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">argv</span><span class="p">)</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
-        <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">debug</span> <span class="k">else</span> <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
-        <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%(asctime)s</span><span class="s2"> </span><span class="si">%(levelname)s</span><span class="s2"> </span><span class="si">%(name)s</span><span class="s2"> </span><span class="si">%(message)s</span><span class="s2">&quot;</span><span class="p">,</span>
-    <span class="p">)</span>
+    <span class="n">configure_launcher_logging</span><span class="p">(</span><span class="n">debug</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">debug</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">launch_gui</span><span class="p">(</span>
             <span class="n">root</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">root</span><span class="p">,</span>

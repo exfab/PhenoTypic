@@ -529,6 +529,16 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">dash</span><span class="w"> </span><span class="kn">import</span> <span class="n">html</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">werkzeug.middleware.dispatcher</span><span class="w"> </span><span class="kn">import</span> <span class="n">DispatcherMiddleware</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">CFG_RUN_REGISTRY</span><span class="p">,</span>
+    <span class="n">CFG_RUNNER</span><span class="p">,</span>
+    <span class="n">DEFAULT_IDLE_RELEASE_SECONDS</span><span class="p">,</span>
+    <span class="n">MOUNT_BUILDER</span><span class="p">,</span>
+    <span class="n">MOUNT_HOME</span><span class="p">,</span>
+    <span class="n">MOUNT_RUN</span><span class="p">,</span>
+    <span class="n">MOUNT_VIEWER</span><span class="p">,</span>
+    <span class="n">TITLE_HUB</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._home</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_home_layout</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._ids</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">SHELL_TAB_BUILDER</span><span class="p">,</span>
@@ -548,11 +558,6 @@
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;create_app&quot;</span><span class="p">,</span> <span class="s2">&quot;compose_hub&quot;</span><span class="p">]</span>
-
-
-<span class="c1"># Default 15 minutes of inactivity before the viewer session is released.</span>
-<span class="c1"># Mirrors the spec&#39;s recommendation; tests pass an explicit override.</span>
-<span class="n">_DEFAULT_IDLE_RELEASE_SECONDS</span> <span class="o">=</span> <span class="mi">15</span> <span class="o">*</span> <span class="mi">60</span>
 
 
 <span class="c1"># ---------------------------------------------------------------------------</span>
@@ -593,7 +598,7 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">_build_shell_dash_app</span><span class="p">(</span>
     <span class="n">sandbox</span><span class="p">:</span> <span class="n">SandboxRoot</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
-    <span class="n">url_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;/&quot;</span><span class="p">,</span>
+    <span class="n">url_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">MOUNT_HOME</span><span class="p">,</span>
     <span class="n">viewer_session</span><span class="p">:</span> <span class="s2">&quot;ToolSession[Any] | None&quot;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">viewer_state</span><span class="p">:</span> <span class="s2">&quot;dict[str, Any] | None&quot;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">:</span>
@@ -621,7 +626,7 @@
         <span class="n">external_stylesheets</span><span class="o">=</span><span class="p">[</span><span class="n">dbc</span><span class="o">.</span><span class="n">themes</span><span class="o">.</span><span class="n">BOOTSTRAP</span><span class="p">],</span>
         <span class="n">suppress_callback_exceptions</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">assets_folder</span><span class="o">=</span><span class="n">assets_folder</span><span class="p">,</span>
-        <span class="n">title</span><span class="o">=</span><span class="s2">&quot;PhenoTypic GUI&quot;</span><span class="p">,</span>
+        <span class="n">title</span><span class="o">=</span><span class="n">TITLE_HUB</span><span class="p">,</span>
         <span class="n">requests_pathname_prefix</span><span class="o">=</span><span class="n">url_prefix</span><span class="p">,</span>
         <span class="n">routes_pathname_prefix</span><span class="o">=</span><span class="n">url_prefix</span><span class="p">,</span>
     <span class="p">)</span>
@@ -645,7 +650,7 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">compose_hub</span><span class="p">(</span>
     <span class="n">sandbox</span><span class="p">:</span> <span class="n">SandboxRoot</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
-    <span class="n">idle_release_seconds</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">_DEFAULT_IDLE_RELEASE_SECONDS</span><span class="p">,</span>
+    <span class="n">idle_release_seconds</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_IDLE_RELEASE_SECONDS</span><span class="p">,</span>
     <span class="n">start_idle_thread</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">,</span> <span class="n">ToolSession</span><span class="p">[</span><span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the shell + builder + viewer-session + run console; mount via DispatcherMiddleware.</span>
@@ -681,7 +686,7 @@
     <span class="c1"># 1. Viewer session (lazy — heavy parquet load deferred to first GET).</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_build_viewer</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">:</span>
         <span class="n">viewer_app</span> <span class="o">=</span> <span class="n">results_viewer</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span>
-            <span class="n">output_root</span><span class="o">=</span><span class="n">viewer_state</span><span class="p">[</span><span class="s2">&quot;output_root&quot;</span><span class="p">],</span> <span class="n">url_prefix</span><span class="o">=</span><span class="s2">&quot;/results/&quot;</span>
+            <span class="n">output_root</span><span class="o">=</span><span class="n">viewer_state</span><span class="p">[</span><span class="s2">&quot;output_root&quot;</span><span class="p">],</span> <span class="n">url_prefix</span><span class="o">=</span><span class="n">MOUNT_VIEWER</span>
         <span class="p">)</span>
         <span class="n">wrap_in_chrome</span><span class="p">(</span><span class="n">viewer_app</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_VIEWER</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">viewer_app</span>
@@ -715,7 +720,7 @@
 
     <span class="c1"># 3. Builder Dash (eager — single-process registry build).</span>
     <span class="n">builder_app</span> <span class="o">=</span> <span class="n">builder</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span>
-        <span class="n">image_root</span><span class="o">=</span><span class="n">sandbox</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="n">url_prefix</span><span class="o">=</span><span class="s2">&quot;/builder/&quot;</span>
+        <span class="n">image_root</span><span class="o">=</span><span class="n">sandbox</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="n">url_prefix</span><span class="o">=</span><span class="n">MOUNT_BUILDER</span>
     <span class="p">)</span>
     <span class="n">wrap_in_chrome</span><span class="p">(</span><span class="n">builder_app</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_BUILDER</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">)</span>
 
@@ -733,7 +738,7 @@
 
     <span class="n">run_app</span> <span class="o">=</span> <span class="n">run_console</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span>
         <span class="n">sandbox</span><span class="p">,</span>
-        <span class="n">url_prefix</span><span class="o">=</span><span class="s2">&quot;/run/&quot;</span><span class="p">,</span>
+        <span class="n">url_prefix</span><span class="o">=</span><span class="n">MOUNT_RUN</span><span class="p">,</span>
         <span class="n">registry</span><span class="o">=</span><span class="n">registry</span><span class="p">,</span>
         <span class="n">runner</span><span class="o">=</span><span class="n">runner</span><span class="p">,</span>
     <span class="p">)</span>
@@ -741,8 +746,8 @@
     <span class="c1"># Stash on the shell server too so any future cross-tool callback</span>
     <span class="c1"># (e.g. the sidebar&#39;s &quot;open in run console&quot; hand-off) can reach the</span>
     <span class="c1"># same singletons.</span>
-    <span class="n">shell_app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;pheno_runner&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">runner</span>
-    <span class="n">shell_app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;pheno_registry&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">registry</span>
+    <span class="n">shell_app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">CFG_RUNNER</span><span class="p">]</span> <span class="o">=</span> <span class="n">runner</span>
+    <span class="n">shell_app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">CFG_RUN_REGISTRY</span><span class="p">]</span> <span class="o">=</span> <span class="n">registry</span>
 
     <span class="c1"># 5. Compose at the WSGI layer. The dispatcher receives the shell&#39;s</span>
     <span class="c1">#    Flask app as its default; any path not matching a mount prefix</span>
@@ -750,18 +755,24 @@
     <span class="n">viewer_proxy</span> <span class="o">=</span> <span class="n">_ViewerProxy</span><span class="p">(</span><span class="n">viewer_session</span><span class="p">)</span>
     <span class="c1"># ``wsgi_app`` is the standard Flask seam for WSGI middleware</span>
     <span class="c1"># injection (this is the same recipe Werkzeug docs recommend).</span>
+    <span class="c1"># DispatcherMiddleware mount keys are prefixes WITHOUT the trailing &quot;/&quot;</span>
+    <span class="c1"># (e.g. &quot;/builder&quot;, not &quot;/builder/&quot;). Strip the trailing slash from</span>
+    <span class="c1"># the MOUNT_* constants by index.</span>
     <span class="n">shell_app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">wsgi_app</span> <span class="o">=</span> <span class="n">DispatcherMiddleware</span><span class="p">(</span>  <span class="c1"># type: ignore[method-assign]</span>
         <span class="n">shell_app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">wsgi_app</span><span class="p">,</span>
         <span class="p">{</span>
-            <span class="s2">&quot;/builder&quot;</span><span class="p">:</span> <span class="n">builder_app</span><span class="o">.</span><span class="n">server</span><span class="p">,</span>
-            <span class="s2">&quot;/results&quot;</span><span class="p">:</span> <span class="n">viewer_proxy</span><span class="p">,</span>
-            <span class="s2">&quot;/run&quot;</span><span class="p">:</span> <span class="n">run_app</span><span class="o">.</span><span class="n">server</span><span class="p">,</span>
+            <span class="n">MOUNT_BUILDER</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">):</span> <span class="n">builder_app</span><span class="o">.</span><span class="n">server</span><span class="p">,</span>
+            <span class="n">MOUNT_VIEWER</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">):</span> <span class="n">viewer_proxy</span><span class="p">,</span>
+            <span class="n">MOUNT_RUN</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">):</span> <span class="n">run_app</span><span class="o">.</span><span class="n">server</span><span class="p">,</span>
         <span class="p">},</span>
     <span class="p">)</span>
 
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-        <span class="s2">&quot;GUI hub composed: sandbox=</span><span class="si">%s</span><span class="s2"> mounts=/builder, /results, /run&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;GUI hub composed: sandbox=</span><span class="si">%s</span><span class="s2"> mounts=</span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
         <span class="n">sandbox</span><span class="o">.</span><span class="n">root</span><span class="p">,</span>
+        <span class="n">MOUNT_BUILDER</span><span class="p">,</span>
+        <span class="n">MOUNT_VIEWER</span><span class="p">,</span>
+        <span class="n">MOUNT_RUN</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">start_idle_thread</span><span class="p">:</span>
@@ -778,9 +789,9 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">create_app</span><span class="p">(</span>
     <span class="n">sandbox</span><span class="p">:</span> <span class="n">SandboxRoot</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
-    <span class="n">url_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;/&quot;</span><span class="p">,</span>
+    <span class="n">url_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">MOUNT_HOME</span><span class="p">,</span>
     <span class="n">viewer_session</span><span class="p">:</span> <span class="s2">&quot;ToolSession[Any] | None&quot;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">idle_release_seconds</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">_DEFAULT_IDLE_RELEASE_SECONDS</span><span class="p">,</span>
+    <span class="n">idle_release_seconds</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_IDLE_RELEASE_SECONDS</span><span class="p">,</span>
     <span class="n">start_idle_thread</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the unified GUI hub Dash app.</span>
