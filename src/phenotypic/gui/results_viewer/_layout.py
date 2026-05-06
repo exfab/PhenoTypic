@@ -31,6 +31,15 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import Input, Output, dcc, html
 from dash.development.base_component import Component
 
+from phenotypic.gui._config import SSH_TUNNEL_HINT
+from phenotypic.gui._design import (
+    COLOR_BG,
+    COLOR_BLUE,
+    COLOR_GOLD,
+    COLOR_MUTED,
+    COLOR_NAVY,
+    COLOR_SURFACE,
+)
 from phenotypic.gui.results_viewer import _filter_panel, _ids as ids, colony_view
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer.colony_view import _layout as _colony_layout  # noqa: F401
@@ -42,13 +51,14 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Style tokens (mirrors DESIGN.md / FRONTEND_STYLE_GUIDE.md)
+# Style tokens -- aliases of phenotypic.gui._design constants kept for
+# call-site readability; never override the underlying hex values.
 # ---------------------------------------------------------------------------
 
-_NAVY = "#003660"
-_BLUE = "#1b75bc"
-_GOLD = "#febc11"
-_BG = "#f5f7fa"
+_NAVY = COLOR_NAVY
+_BLUE = COLOR_BLUE
+_GOLD = COLOR_GOLD
+_BG = COLOR_BG
 
 
 # ---------------------------------------------------------------------------
@@ -73,7 +83,7 @@ def _build_header(output_root: OutputRoot) -> Component:
             html.Span(
                 "Pipeline:",
                 className="me-1",
-                style={"color": "#8892a4"},
+                style={"color": COLOR_MUTED},
             ),
             html.Span(
                 pipeline_label,
@@ -88,7 +98,7 @@ def _build_header(output_root: OutputRoot) -> Component:
             "padding": "0.25rem 0.6rem",
             "border": f"1px solid {_BLUE}33",
             "borderRadius": "9999px",
-            "background": "#ffffff",
+            "background": COLOR_SURFACE,
         },
     )
 
@@ -131,7 +141,7 @@ def _build_header(output_root: OutputRoot) -> Component:
         [top_row, subtitle],
         className="results-viewer-header px-3 py-2",
         style={
-            "background": "#ffffff",
+            "background": COLOR_SURFACE,
             "borderBottom": f"1px solid {_BLUE}22",
         },
     )
@@ -184,9 +194,9 @@ def _build_startup_banner(output_root: OutputRoot) -> Component:
                 style={"color": _NAVY},
             ),
             html.Span(
-                "Forward this port over SSH with "
-                "`ssh -L 8050:localhost:8050 cluster` and open the URL in a "
-                "local browser. Stale tiles? Nuke the DZI cache with: ",
+                f"Forward this port over SSH with `{SSH_TUNNEL_HINT}` and "
+                "open the URL in a local browser. Stale tiles? Nuke the "
+                "DZI cache with: ",
             ),
             html.Code(
                 f"rm -rf {cache_dir}",
@@ -420,7 +430,7 @@ def build_empty_state_layout() -> Component:
             "gap": "0.5rem",
             "marginTop": "1rem",
             "padding": "0.5rem 0.75rem",
-            "background": "#fff",
+            "background": COLOR_SURFACE,
             "border": f"1px solid {_BLUE}",
             "borderRadius": "6px",
         },

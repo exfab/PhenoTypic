@@ -24,6 +24,15 @@ from pathlib import Path
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
 
+from phenotypic.gui._config import (
+    MOUNT_BUILDER,
+    MOUNT_HOME,
+    MOUNT_RUN,
+    MOUNT_VIEWER,
+    RSS_INTERVAL_MS,
+    SSH_TUNNEL_HINT,
+    TITLE_HUB,
+)
 from phenotypic.gui._design import inject_design_tokens
 from phenotypic.gui.shell._callbacks import register_chrome_callbacks
 from phenotypic.gui.shell._ids import (
@@ -73,10 +82,10 @@ _SHELL_CSS = (Path(__file__).parent / "_assets" / "shell.css").read_text(
 #: prefix through ``wrap_in_chrome`` and prepend it here. Tracked
 #: against the cloud-deploy hook in ``shell/_sandbox.py``.
 _TAB_HREFS = {
-    SHELL_TAB_HOME: "/",
-    SHELL_TAB_BUILDER: "/builder/",
-    SHELL_TAB_VIEWER: "/results/",
-    SHELL_TAB_RUN: "/run/",
+    SHELL_TAB_HOME: MOUNT_HOME,
+    SHELL_TAB_BUILDER: MOUNT_BUILDER,
+    SHELL_TAB_VIEWER: MOUNT_VIEWER,
+    SHELL_TAB_RUN: MOUNT_RUN,
 }
 
 _TAB_LABELS = {
@@ -116,7 +125,7 @@ def build_top_bar(
                         title="Toggle file explorer",
                         className="shell-sidebar-collapse-button",
                     ),
-                    html.Strong("PhenoTypic GUI", className="shell-title"),
+                    html.Strong(TITLE_HUB, className="shell-title"),
                     html.Span(
                         f"root: {sandbox.root}",
                         id=SHELL_ROOT_LABEL,
@@ -171,7 +180,7 @@ def build_help_modal() -> dbc.Modal:
     """
     return dbc.Modal(
         [
-            dbc.ModalHeader(dbc.ModalTitle("PhenoTypic GUI — Help")),
+            dbc.ModalHeader(dbc.ModalTitle(f"{TITLE_HUB} — Help")),
             dbc.ModalBody(
                 [
                     html.H6("SSH tunnel pattern"),
@@ -180,7 +189,7 @@ def build_help_modal() -> dbc.Modal:
                         "forward its port to your local machine:"
                     ),
                     html.Pre(
-                        "ssh -L 8050:localhost:8050 user@cluster",
+                        SSH_TUNNEL_HINT,
                         className="shell-help-pre",
                     ),
                     html.Hr(),
@@ -268,7 +277,7 @@ def wrap_in_chrome(
                 className="shell-body",
             ),
             build_help_modal(),
-            dcc.Interval(id=SHELL_RSS_INTERVAL, interval=5_000, n_intervals=0),
+            dcc.Interval(id=SHELL_RSS_INTERVAL, interval=RSS_INTERVAL_MS, n_intervals=0),
             # Persists across mounts: each Dash instance reads the same
             # localStorage key and the clientside callback toggles the
             # ``shell-sidebar-collapsed`` class on the outer ``.shell-root``.

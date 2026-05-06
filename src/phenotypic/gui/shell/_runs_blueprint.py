@@ -38,6 +38,8 @@ from typing import TYPE_CHECKING
 
 from flask import Blueprint, Response, abort, send_from_directory
 
+from phenotypic.gui._config import RUNS_BLUEPRINT_PREFIX
+
 if TYPE_CHECKING:
     from flask import Flask
 
@@ -54,7 +56,7 @@ def build_runs_blueprint(
     *,
     viewer_session: "ToolSession[object] | None" = None,
     name: str = "phenotypic_runs",
-    url_prefix: str = "/runs",
+    url_prefix: str = RUNS_BLUEPRINT_PREFIX,
 ) -> Blueprint:
     """Build a ``/runs/<rel>/<path:file>`` blueprint.
 

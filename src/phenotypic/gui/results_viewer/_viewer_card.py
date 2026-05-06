@@ -49,6 +49,8 @@ from dash import (
     no_update,
 )
 
+from phenotypic.gui._config import CFG_FILTERED_STATE
+from phenotypic.gui._design import COLOR_MUTED, COLOR_NAVY
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
 from phenotypic.gui.results_viewer._filtered_state import (
     FilteredMeasurements,
@@ -296,8 +298,8 @@ def layout(idx: str, output_root: OutputRoot) -> Any:
             "fontWeight": "500",
             "textTransform": "uppercase",
             "letterSpacing": "0.08em",
-            "color": "#8892a4",
-            "borderBottom": "2px solid #003660",
+            "color": COLOR_MUTED,
+            "borderBottom": f"2px solid {COLOR_NAVY}",
         },
         # Tint rows whose Status cell reads "Removed" with a soft red
         # background plus a darker text color (DESIGN.md token
@@ -622,7 +624,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
     # tests / harnesses that don't seed the config still register
     # callbacks (the toggle becomes a no-op in that case).
     filtered_state: FilteredMeasurements | None = app.server.config.get(
-        "filtered_state"
+        CFG_FILTERED_STATE
     )
 
     # Diff the incoming card-id list against the previously-rendered

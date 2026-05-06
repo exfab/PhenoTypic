@@ -53,6 +53,7 @@ import logging
 import dash
 from dash import ALL, Input, Output
 
+from phenotypic.gui._config import CFG_FILTERED_STATE
 from phenotypic.gui.results_viewer import (
     _filter_panel,
     _ids as ids,
@@ -85,7 +86,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
             by closure to every per-module callback that needs to slice
             ``master_df`` or resolve overlay paths.
     """
-    filtered_state: FilteredMeasurements = app.server.config["filtered_state"]
+    filtered_state: FilteredMeasurements = app.server.config[CFG_FILTERED_STATE]
     _layout.register_callbacks(app, output_root)
     _filter_panel.register_callbacks(app, output_root, filtered_state)
     _viewer_card.register_callbacks(app, output_root)

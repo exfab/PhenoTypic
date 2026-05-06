@@ -51,6 +51,7 @@ from typing import TYPE_CHECKING, Any
 
 from flask import Blueprint, abort, jsonify, request
 
+from phenotypic.gui._config import SANDBOX_API_PREFIX
 from phenotypic.gui.shell._classifier import Capabilities, classify
 
 if TYPE_CHECKING:
@@ -114,7 +115,7 @@ def build_sandbox_api(
     viewer_session: "ToolSession[object] | None" = None,
     viewer_state: "dict[str, Any] | None" = None,
     name: str = "phenotypic_sandbox_api",
-    url_prefix: str = "/sandbox/api",
+    url_prefix: str = SANDBOX_API_PREFIX,
 ) -> Blueprint:
     """Build the ``/sandbox/api/*`` blueprint.
 

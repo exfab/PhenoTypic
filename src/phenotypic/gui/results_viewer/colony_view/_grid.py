@@ -32,6 +32,8 @@ from dash import html
 from dash.development.base_component import Component
 from flask import current_app, has_app_context
 
+from phenotypic.gui._config import CFG_URL_PREFIX, MOUNT_HOME
+from phenotypic.gui._design import COLOR_NAVY
 from phenotypic.gui.results_viewer._ids import (
     colony_cell_count_badge_id,
     colony_cell_remove_btn_id,
@@ -73,8 +75,8 @@ def _url_prefix() -> str:
     grid without spinning up a Flask app).
     """
     if has_app_context():
-        return current_app.config.get("pheno_url_prefix", "/")
-    return "/"
+        return current_app.config.get(CFG_URL_PREFIX, MOUNT_HOME)
+    return MOUNT_HOME
 
 #: Sort buckets — Metadata_ first, then Grid_, then everything else.
 _METADATA_PREFIX = "Metadata_"
@@ -265,7 +267,7 @@ def _build_axis_label(value: object, *, axis: str) -> Component:
         style={
             "fontFamily": "'DM Mono', monospace",
             "fontSize": "0.75rem",
-            "color": "#003660",
+            "color": COLOR_NAVY,
             "textAlign": "center",
             "alignSelf": "center",
             "padding": "0.25rem",
@@ -483,7 +485,7 @@ def _build_stack_popover(
                         style={
                             "fontFamily": "'DM Mono', monospace",
                             "fontSize": "0.65rem",
-                            "color": "#003660",
+                            "color": COLOR_NAVY,
                             "textAlign": "center",
                             "marginTop": "0.15rem",
                         },

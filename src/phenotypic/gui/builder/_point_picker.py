@@ -36,6 +36,11 @@ from flask import Blueprint, Response, send_from_directory
 from PIL import Image as PILImage
 from werkzeug.utils import secure_filename
 
+from phenotypic.gui._config import (
+    CFG_IMAGE_ROOT,
+    SANDBOX_BUILDER_TILES_SUBDIR,
+    SANDBOX_GUI_DIRNAME,
+)
 from phenotypic.gui.builder import _ids as ids
 from phenotypic.gui.builder._image_renderer import _normalize_to_uint8
 from phenotypic.gui.builder._session import get_cache
@@ -107,7 +112,7 @@ def _builder_cache_root(image_root: Optional[Path]) -> Path:
         Absolute path to the cache root (created if missing).
     """
     if image_root is not None:
-        root = Path(image_root) / ".phenotypic-gui" / "builder_tiles"
+        root = Path(image_root) / SANDBOX_GUI_DIRNAME / SANDBOX_BUILDER_TILES_SUBDIR
     else:
         root = Path(tempfile.gettempdir()) / "phenotypic_builder_tiles"
     root.mkdir(parents=True, exist_ok=True)
@@ -894,7 +899,7 @@ def _resolve_image_root(app: dash.Dash) -> Optional[Path]:
         The configured ``Path`` or ``None`` if absent.
     """
     try:
-        root = app.server.config.get("pheno_image_root")
+        root = app.server.config.get(CFG_IMAGE_ROOT)
     except Exception:  # noqa: BLE001
         return None
     if root is None:

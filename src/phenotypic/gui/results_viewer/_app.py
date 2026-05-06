@@ -36,7 +36,14 @@ import dash
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import Input, Output, State
 
-from phenotypic.gui._design import inject_design_tokens
+from phenotypic.gui._config import (
+    CFG_FILTERED_STATE,
+    CFG_OUTPUT_ROOT,
+    CFG_URL_PREFIX,
+    MOUNT_HOME,
+    TITLE_VIEWER,
+)
+from phenotypic.gui._design import COLOR_BLUE, COLOR_SURFACE, inject_design_tokens
 from phenotypic.gui.results_viewer import _ids as ids, _tile_routes
 from phenotypic.gui.results_viewer._callbacks import register_callbacks
 from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
@@ -101,7 +108,7 @@ def _index_string_with_prefix(url_prefix: str) -> str:
 def create_app(
     output_root: Optional[OutputRoot] = None,
     *,
-    url_prefix: str = "/",
+    url_prefix: str = MOUNT_HOME,
 ) -> dash.Dash:
     """Build a Dash application instance for the results viewer.
 
@@ -127,7 +134,7 @@ def create_app(
         __name__,
         external_stylesheets=[dbc.themes.BOOTSTRAP],
         suppress_callback_exceptions=True,
-        title="PhenoTypic Results Viewer",
+        title=TITLE_VIEWER,
         # Pin to the in-package directory so the assets ship correctly
         # regardless of the user's CWD at launch.
         assets_folder=str(Path(__file__).parent / "_assets"),
@@ -135,7 +142,7 @@ def create_app(
         # the hub's DispatcherMiddleware the dispatcher strips the
         # mount prefix from PATH_INFO, so Dash must route at "/".
         requests_pathname_prefix=url_prefix,
-        routes_pathname_prefix="/",
+        routes_pathname_prefix=MOUNT_HOME,
     )
 
     # Inject window.__phenotypicAppPrefix so results_viewer.js can build
@@ -144,7 +151,7 @@ def create_app(
 
     inject_design_tokens(app)
 
-    app.server.config["pheno_url_prefix"] = url_prefix
+    app.server.config[CFG_URL_PREFIX] = url_prefix
 
     if output_root is None:
         app.layout = build_empty_state_layout()
@@ -155,12 +162,12 @@ def create_app(
         )
         return app
 
-    app.server.config["output_root"] = output_root
+    app.server.config[CFG_OUTPUT_ROOT] = output_root
 
     _tile_routes.register(app, output_root)
 
     filtered_state = FilteredMeasurements.load(output_root.root, output_root.master_df)
-    app.server.config["filtered_state"] = filtered_state
+    app.server.config[CFG_FILTERED_STATE] = filtered_state
     colony_crop_routes.register(app, output_root)
 
     app.layout = build_app_layout(output_root, filtered_state)
@@ -203,8 +210,8 @@ def _register_empty_state_callbacks(app: dash.Dash, *, url_prefix: str) -> None:
             "gap": "0.5rem",
             "marginTop": "1rem",
             "padding": "0.5rem 0.75rem",
-            "background": "#fff",
-            "border": "1px solid #1b75bc",
+            "background": COLOR_SURFACE,
+            "border": f"1px solid {COLOR_BLUE}",
             "borderRadius": "6px",
         }
         if not selection or not isinstance(selection, dict):

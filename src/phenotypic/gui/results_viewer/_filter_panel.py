@@ -33,6 +33,12 @@ import polars as pl
 from dash import ALL, Input, Output, State, dcc, html, no_update
 from dash.development.base_component import Component
 
+from phenotypic.gui._design import (
+    COLOR_BLUE,
+    COLOR_NAVY,
+    COLOR_SURFACE,
+    OI_VERMILION,
+)
 from phenotypic.gui.results_viewer import _ids as ids
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
 from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
@@ -89,7 +95,7 @@ def layout(output_root: OutputRoot) -> Component:
             html.H6(
                 "Filter",
                 className="mb-0",
-                style={"color": "#003660"},
+                style={"color": COLOR_NAVY},
             ),
             html.Span(
                 "0 images match",
@@ -127,7 +133,7 @@ def layout(output_root: OutputRoot) -> Component:
             className="py-2",
         ),
         className="filter-panel",
-        style={"backgroundColor": "#ffffff"},
+        style={"backgroundColor": COLOR_SURFACE},
     )
 
 
@@ -207,11 +213,11 @@ def _render_chip(label: str, *, matched: bool) -> Component:
     if matched:
         bg = "rgba(27,117,188,0.08)"
         border = "rgba(27,117,188,0.20)"
-        color = "#1b75bc"
+        color = COLOR_BLUE
     else:
         bg = "rgba(213,94,0,0.08)"
         border = "rgba(213,94,0,0.20)"
-        color = "#D55E00"
+        color = OI_VERMILION
     return html.Span(
         label,
         className="me-1 mb-1 d-inline-block",
