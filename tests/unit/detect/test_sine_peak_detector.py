@@ -113,8 +113,15 @@ class TestSinePeakDetectorSinusoidalCorrelation:
         assert result_high.num_objects > 0
 
 
+@pytest.mark.slow
 class TestSinePeakDetectorParameterEffects:
-    """Test parameter effects on detection."""
+    """Test parameter effects on detection.
+
+    Marked ``slow`` because every test runs a full SinePeakDetector against
+    ``plate_12hr_grid_image``. Fast-lane coverage of basic detection lives
+    in ``TestSinePeakDetectorBasic``; the smoke contract in
+    ``tests/smoke/test_operation.py`` exercises the default config.
+    """
 
     @timeit
     @pytest.mark.parametrize(

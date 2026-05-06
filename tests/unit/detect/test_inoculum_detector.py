@@ -264,24 +264,8 @@ class TestInoculumDetectorSerialization:
         np.testing.assert_array_equal(result1.objmask[:], result2.objmask[:])
 
 
-# ---------------------------------------------------------------------------
-# Reproducibility
-# ---------------------------------------------------------------------------
-
-
-class TestInoculumDetectorReproducibility:
-    """Deterministic output for identical inputs."""
-
-    def test_deterministic(self):
-        image1 = _make_test_image()
-        image2 = _make_test_image()
-
-        det = InoculumDetector(enable_gmm=False, **_FAST_PARAMS)
-
-        result1 = det.apply(image1, inplace=False)
-        result2 = det.apply(image2, inplace=False)
-
-        np.testing.assert_array_equal(result1.objmask[:], result2.objmask[:])
+# Reproducibility for default-args is now covered by the smoke contract
+# tests/smoke/test_operation.py::test_operation
 
 
 # ---------------------------------------------------------------------------

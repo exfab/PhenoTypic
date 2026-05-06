@@ -6,16 +6,24 @@ in ``.github/workflows/gui-e2e.yml``).
 
 Fixtures shipped:
 
-* :func:`fake_sandbox` — temp directory pre-populated with one image
-  directory and one CLI output (master parquet + ``results/`` +
-  ``dashboard.html`` + ``progress/manifest.json``) so the file browser
-  has something interesting to render and the Recent Runs panel
-  rehydrates a row.
-* :func:`live_server` — spawns ``phenotypic-gui --root <fake_sandbox>``
-  on an OS-assigned ephemeral port via a child process. Yields the
-  base URL; teardown SIGTERMs the child.
+* :func:`fake_sandbox` (module-scoped) — temp directory pre-populated
+  with one image directory and one CLI output (master parquet +
+  ``results/`` + ``dashboard.html`` + ``progress/manifest.json``) so
+  the file browser has something interesting to render and the Recent
+  Runs panel rehydrates a row. Module scope so all tests in a single
+  test module share one sandbox build (~0.5–1s saved per test).
+* :func:`live_server` (module-scoped) — spawns ``phenotypic-gui --root
+  <fake_sandbox>`` on an OS-assigned ephemeral port via a child
+  process. Yields the base URL; teardown SIGTERMs the child. Module
+  scope so all tests in a single test module share one Werkzeug boot
+  (~5–15s saved per test).
 * :func:`hub_url` — string alias for ``live_server`` for tests that
   only need the URL.
+
+For tests that mutate the sandbox (e.g. writing a preset file under
+``<sandbox>/.phenotypic-gui/``), declare local function-scoped
+overrides via ``_build_sandbox`` and ``_start_live_server`` — see
+``test_save_preset.py`` for the canonical pattern.
 
 The pytest-playwright plugin contributes ``page`` (a fresh browser
 page per test) and ``browser_context`` automatically.
@@ -41,7 +49,7 @@ if os.environ.get("PLAYWRIGHT") != "1":
 
 
 # ---------------------------------------------------------------------------
-# Sandbox fixture
+# Sandbox helpers + fixture
 # ---------------------------------------------------------------------------
 
 def _write_sample_dashboard(output_dir: Path) -> None:
@@ -52,25 +60,32 @@ def _write_sample_dashboard(output_dir: Path) -> None:
     generate_dashboard(output_dir, execution_mode="local")
 
 
-@pytest.fixture()
-def fake_sandbox(tmp_path: Path) -> Path:
-    """Build a tmp sandbox the GUI hub can browse + iframe.
+def _build_sandbox(parent_dir: Path) -> Path:
+    """Populate a sandbox directory with the standard E2E layout.
+
+    Public to test modules that need a function-scoped override of
+    :func:`fake_sandbox` (e.g. when a test mutates ``<sandbox>/.phenotypic-gui/``
+    and needs isolation). Pass a unique parent (e.g. ``tmp_path``) per call.
 
     Layout::
 
-        tmp_path/
-            plate1/
-                image.tif
-            results/
-                CliOutputExample/
-                    master_measurements.parquet
-                    results/
-                        Run_0/
-                    dashboard.html
-                    progress/
-                        manifest.json
+        parent_dir/
+            sandbox/
+                plate1/
+                    image.tif
+                results/
+                    CliOutputExample/
+                        master_measurements.parquet
+                        results/
+                            Run_0/
+                        dashboard.html
+                        progress/
+                            manifest.json
+
+    Returns:
+        Path to the populated ``sandbox`` directory.
     """
-    sandbox = tmp_path / "sandbox"
+    sandbox = parent_dir / "sandbox"
     sandbox.mkdir()
 
     # Image dir — populates the sandbox capability summary's "Image dirs" count.
@@ -100,6 +115,17 @@ def fake_sandbox(tmp_path: Path) -> Path:
     _write_sample_dashboard(output_dir)
 
     return sandbox
+
+
+@pytest.fixture(scope="module")
+def fake_sandbox(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Module-scoped sandbox shared across all tests in a module.
+
+    Use a function-scoped override (see ``test_save_preset.py``) for tests
+    that mutate the sandbox.
+    """
+    parent = tmp_path_factory.mktemp("e2e_sandbox")
+    return _build_sandbox(parent)
 
 
 # ---------------------------------------------------------------------------
@@ -134,17 +160,13 @@ def _wait_for_http_200(url: str, *, timeout: float = 20.0) -> None:
     )
 
 
-@pytest.fixture()
-def live_server(fake_sandbox: Path) -> Iterator[str]:
-    """Spawn ``phenotypic-gui`` against ``fake_sandbox`` on an ephemeral port.
+def _start_live_server(sandbox: Path) -> Iterator[str]:
+    """Generator that spawns ``phenotypic-gui`` against ``sandbox`` and yields
+    the base URL. SIGTERMs the child on teardown; SIGKILLs after 5s.
 
-    The child inherits the current ``uv``/``.venv`` environment via
-    ``sys.executable``. A SIGTERM is sent during teardown; if the child
-    still hasn't exited within 5s we escalate to SIGKILL so test cleanup
-    cannot be blocked by a stuck Werkzeug server.
-
-    Yields:
-        The base URL (``http://127.0.0.1:<port>``). No trailing slash.
+    Public so a test module that overrides :func:`fake_sandbox` with a
+    function-scoped variant can also override :func:`live_server` and reuse
+    the same boot logic.
     """
     port = _free_port()
     cmd = [
@@ -152,7 +174,7 @@ def live_server(fake_sandbox: Path) -> Iterator[str]:
         "-m",
         "phenotypic.gui",
         "--root",
-        str(fake_sandbox),
+        str(sandbox),
         "--port",
         str(port),
         "--host",
@@ -177,7 +199,17 @@ def live_server(fake_sandbox: Path) -> Iterator[str]:
             proc.wait(timeout=5.0)
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
+def live_server(fake_sandbox: Path) -> Iterator[str]:
+    """Module-scoped Werkzeug live server backed by :func:`fake_sandbox`.
+
+    Boots once per test module. ~5–15s of Werkzeug start-up amortized
+    across every test in the file.
+    """
+    yield from _start_live_server(fake_sandbox)
+
+
+@pytest.fixture(scope="module")
 def hub_url(live_server: str) -> str:
     """Convenience alias when a test only needs the base URL string."""
     return live_server

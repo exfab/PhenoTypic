@@ -62,21 +62,8 @@ class TestCompositeDetector:
         assert result.objmask[:].sum() >= 0
         assert result.objmap[:].max() >= 0
 
-    def test_objmask_objmap_consistency(self, synth_plate):
-        """Test that objmask and objmap are consistent."""
-        image = synth_plate.copy()
-
-        composite = CompositeDetector(
-                detectors=[OtsuDetector(), CannyDetector(sigma=2)],
-                mode='union'
-        )
-        result = composite.apply(image)
-
-        objmask = result.objmask[:]
-        objmap = result.objmap[:]
-
-        # All non-zero pixels in objmap should be True in objmask
-        assert np.all((objmap > 0) == objmask)
+    # objmask/objmap consistency is now covered by the smoke contract
+    # tests/smoke/test_operation.py::test_detector_objmap_objmask_consistency
 
     def test_single_detector(self, synth_plate):
         """Test that single detector in CompositeDetector works."""
@@ -209,38 +196,8 @@ class TestCompositeDetector:
         # Permissive should detect more or equal objects
         assert permissive_result.objmap[:].max() >= conservative_result.objmap[:].max()
 
-    def test_inplace_false_preserves_original(self, synth_plate):
-        """Test that inplace=False preserves original image."""
-        image = synth_plate.copy()
-        original_objmask = image.objmask[:]
-
-        composite = CompositeDetector(
-                detectors=[OtsuDetector()],
-                mode='union'
-        )
-        result = composite.apply(image, inplace=False)
-
-        # Original should be unchanged
-        np.testing.assert_array_equal(image.objmask[:], original_objmask)
-
-        # Result should have new detection
-        assert result.objmap[:].max() > 0
-
-    def test_inplace_true_modifies_original(self, synth_plate):
-        """Test that inplace=True modifies original image."""
-        image = synth_plate.copy()
-
-        composite = CompositeDetector(
-                detectors=[OtsuDetector()],
-                mode='union'
-        )
-        result = composite.apply(image, inplace=True)
-
-        # Should return same object
-        assert result is image
-
-        # Original should be modified
-        assert image.objmap[:].max() > 0
+    # inplace=True/False semantics are now covered by the smoke contract
+    # tests/smoke/test_operation.py::test_inplace_contract
 
     def test_json_serialization_structure(self):
         """Test the JSON structure for nested operations."""

@@ -105,8 +105,15 @@ class TestRefinerBasicsShared:
         np.testing.assert_array_equal(refined.detect_mat[:], original_detect_mat)
 
 
+@pytest.mark.slow
 class TestRefinerEdgeCasesShared:
-    """Shared edge case tests."""
+    """Shared edge case tests.
+
+    Marked ``slow`` because each case runs a full detector + refiner pipeline
+    against ``synth_plate_detected``. Core refiner invariants (mask
+    consistency, inplace, protected data, basic alignment) stay in fast lane
+    via ``TestRefinerBasicsShared``.
+    """
 
     @pytest.mark.parametrize("RefinerClass", REFINERS)
     def test_no_objects_detected(self, RefinerClass):
@@ -156,8 +163,15 @@ class TestRefinerEdgeCasesShared:
         assert cells_with_objects_after <= cells_with_objects_before
 
 
+@pytest.mark.slow
 class TestRefinerPipelineShared:
-    """Shared pipeline integration tests."""
+    """Shared pipeline integration tests.
+
+    Marked ``slow`` because each case builds and runs a multi-stage
+    ImagePipeline. The smoke contract already verifies that each refiner
+    integrates cleanly with default config; this class adds chained
+    pipeline + multi-refiner sequences worth running on the slow lane.
+    """
 
     @pytest.mark.parametrize("RefinerClass", REFINERS)
     def test_pipeline_integration(self, RefinerClass, synth_plate):
@@ -197,8 +211,14 @@ class TestRefinerPipelineShared:
         )
 
 
+@pytest.mark.slow
 class TestRefinerLabelingShared:
-    """Shared labeling consistency tests."""
+    """Shared labeling consistency tests.
+
+    Marked ``slow`` because each case runs a full refiner against
+    ``synth_plate_detected``. Core refinement contracts live in
+    ``TestRefinerBasicsShared``.
+    """
 
     @pytest.mark.parametrize("RefinerClass", REFINERS)
     def test_contiguous_labels(self, RefinerClass, synth_plate_detected):
@@ -249,6 +269,7 @@ class TestRefinerSelectionModeShared:
         refiner = RefinerClass()
         assert refiner.selection_mode == "dominant"
 
+    @pytest.mark.slow
     @pytest.mark.parametrize("RefinerClass", REFINERS)
     def test_centered_mode_produces_results(self, RefinerClass, synth_plate_detected):
         """Centered mode produces valid refinement results."""
@@ -259,6 +280,7 @@ class TestRefinerSelectionModeShared:
 
         assert refined.objmap[:].max() > 0
 
+    @pytest.mark.slow
     @pytest.mark.parametrize("RefinerClass", REFINERS)
     def test_regularized_mode_produces_results(self, RefinerClass, synth_plate_detected):
         """Regularized mode produces valid refinement results."""

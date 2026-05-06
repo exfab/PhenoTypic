@@ -1,10 +1,8 @@
 """Tests for MeasureBounds measurement operation."""
 
 import numpy as np
-import pandas as pd
 import pytest
 
-from phenotypic.data import load_synth_yeast_plate
 from phenotypic.measure import MeasureBounds
 from phenotypic.tools_.constants_ import OBJECT
 from phenotypic.tools_.measurement_info import BBOX
@@ -13,9 +11,11 @@ from phenotypic.tools_.measurement_info import BBOX
 class TestMeasureBounds:
     """Tests for MeasureBounds measurement operation."""
 
-    @pytest.fixture(scope="class")
-    def sample_image(self):
-        return load_synth_yeast_plate()
+    @pytest.fixture
+    def sample_image(self, synth_plate):
+        # Reuse session-scoped synth_plate from tests/unit/conftest.py.
+        # Tests that mutate the image do so via .copy() first.
+        return synth_plate
 
     @pytest.fixture
     def measurer(self):

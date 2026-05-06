@@ -11,6 +11,7 @@ Confirms:
 """
 from __future__ import annotations
 
+import pytest
 from playwright.sync_api import Page, expect
 
 
@@ -30,22 +31,20 @@ def test_image_dir_carries_image_count_badge(page: Page, hub_url: str) -> None:
     assert "img (1)" in text
 
 
-def test_hidden_toggle_changes_state(page: Page, hub_url: str) -> None:
+@pytest.mark.parametrize("toggle_selector", [
+    "#shell-sidebar-hidden-toggle input",
+    "#shell-sidebar-symlink-toggle input",
+])
+def test_sidebar_toggle_changes_state(
+    page: Page, hub_url: str, toggle_selector: str,
+) -> None:
+    """Hidden-files and symlink toggles both flip from unchecked to checked
+    on click."""
     page.goto(hub_url + "/")
-    sel = "#shell-sidebar-hidden-toggle input"
-    page.wait_for_selector(sel)
-    expect(page.locator(sel)).not_to_be_checked()
-    page.click(sel)
-    expect(page.locator(sel)).to_be_checked()
-
-
-def test_symlink_toggle_changes_state(page: Page, hub_url: str) -> None:
-    page.goto(hub_url + "/")
-    sel = "#shell-sidebar-symlink-toggle input"
-    page.wait_for_selector(sel)
-    expect(page.locator(sel)).not_to_be_checked()
-    page.click(sel)
-    expect(page.locator(sel)).to_be_checked()
+    page.wait_for_selector(toggle_selector)
+    expect(page.locator(toggle_selector)).not_to_be_checked()
+    page.click(toggle_selector)
+    expect(page.locator(toggle_selector)).to_be_checked()
 
 
 def test_refresh_button_does_not_throw(page: Page, hub_url: str) -> None:

@@ -52,20 +52,8 @@ class TestMadHysteresisDetectorBasic:
         mask = result.objmask[:]
         assert mask.shape == image.detect_mat[:].shape
 
-    def test_inplace_false_preserves_original(self):
-        """inplace=False should not modify the original image."""
-        image = _make_response_image()
-        result = MadHysteresisDetector().apply(image, inplace=False)
-
-        assert result is not image
-
-    def test_inplace_true_modifies_original(self):
-        """inplace=True should modify the original image."""
-        image = _make_response_image()
-        result = MadHysteresisDetector().apply(image, inplace=True)
-
-        assert result is image
-        assert result.objmask[:].any()
+    # inplace=True/False semantics are now covered by the smoke contract
+    # tests/smoke/test_operation.py::test_inplace_contract
 
 
 class TestMadHysteresisDetectorParameterEffects:
@@ -161,19 +149,8 @@ class TestMadHysteresisDetectorEdgeCases:
         assert not result.objmask[:].any(), "All-zero image should produce empty mask"
 
 
-class TestMadHysteresisDetectorReproducibility:
-    """Determinism and reproducibility."""
-
-    def test_deterministic_output(self):
-        """Same input should produce identical output across runs."""
-        image1 = _make_response_image(seed=99)
-        image2 = _make_response_image(seed=99)
-        detector = MadHysteresisDetector(k_high=5.0, k_low=2.5, min_size=20)
-
-        result1 = detector.apply(image1, inplace=False)
-        result2 = detector.apply(image2, inplace=False)
-
-        np.testing.assert_array_equal(result1.objmask[:], result2.objmask[:])
+# Reproducibility for default-args is now covered by the smoke contract
+# tests/smoke/test_operation.py::test_operation
 
 
 class TestMadHysteresisDetectorIntegration:
