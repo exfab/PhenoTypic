@@ -56,6 +56,13 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 | Mounted under /builder/ | Shell mount                         | Reachable at `/builder/`; assets resolve under prefix                  | ✅ shipping | integration | tests/integration/gui/test_smoke_shell.py::test_builder_mount_routes |
 | Standalone parity    | `python -m phenotypic.gui.builder`     | Continues to work with default `url_prefix="/"`                        | ✅ shipping | manual      | n/a (manual)                                                      |
 
+## Builder pipeline editor
+
+| Feature                    | Element                    | Expected behaviour                                                                      | Status     | Test layer  | Test ref                                                                                          |
+| -------------------------- | -------------------------- | --------------------------------------------------------------------------------------- | ---------- | ----------- | ------------------------------------------------------------------------------------------------- |
+| Breadcrumb update payload  | Breadcrumb nav             | Callback updates replace the existing nav's children without nesting another breadcrumb | ✅ shipping | integration | tests/gui/builder/test_callbacks.py::test_render_views_returns_breadcrumb_children_not_nested_nav |
+| Optional numeric params    | Parameter form number input | PEP 604 optional numeric operation parameters render as number inputs and parse as numbers | ✅ shipping | integration | tests/gui/builder/test_point_picker_param_form.py::test_pep604_optional_int_param_uses_numeric_widget_and_parser |
+
 ## Builder point picker
 
 | Feature              | Element                                  | Expected behaviour                                                                                       | Status     | Test layer  | Test ref                                                                                          |

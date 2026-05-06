@@ -9,6 +9,7 @@ No Panel/GUI dependencies - uses only stdlib and existing phenotypic dependencie
 from __future__ import annotations
 
 import inspect
+import types
 import typing
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Type, Union, get_args, get_origin
@@ -16,6 +17,12 @@ from typing import Any, Dict, List, Optional, Type, Union, get_args, get_origin
 from phenotypic import ImagePipeline
 from phenotypic.abc_ import ImageOperation
 from phenotypic.tools_.mixin import PointPickerMixin
+
+
+def _is_union_origin(origin: Any) -> bool:
+    """Return ``True`` for both ``typing.Union`` and PEP 604 unions."""
+
+    return origin is Union or origin is types.UnionType
 
 
 @dataclass
@@ -350,7 +357,7 @@ class OperationRegistry:
         is_optional = False
 
         origin = get_origin(hint)
-        if origin is Union:
+        if _is_union_origin(origin):
             args = get_args(hint)
             is_optional = type(None) in args
             for arg in args:

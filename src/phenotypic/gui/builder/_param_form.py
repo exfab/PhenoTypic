@@ -11,6 +11,7 @@ from __future__ import annotations
 import collections.abc as abc
 import enum
 import inspect
+import types
 import typing
 from typing import TYPE_CHECKING, Any, Optional, get_args, get_origin
 
@@ -40,11 +41,9 @@ def _unwrap_optional(hint: Any) -> Any:
         the hint is not Optional.
     """
     origin = get_origin(hint)
-    if origin is typing.Union:
+    if origin in (typing.Union, types.UnionType):
         non_none = [a for a in get_args(hint) if a is not type(None)]
         if len(non_none) == 1:
-            return non_none[0]
-        if len(non_none) > 1:
             return non_none[0]
     return hint
 
