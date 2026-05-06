@@ -1,0 +1,196 @@
+name: run-pytest-full
+# Nightly + post-merge full lane. Runs the cross-platform matrix and includes
+# slow-marked tests, which are excluded from the PR lane in run-pytest.yml.
+#
+# Triggers:
+#   * schedule (07:00 UTC nightly)         — catch flakes and time-sensitive regressions
+#   * push: branches: [main] (post-merge)  — gated by check-freshness skip guard
+#   * workflow_dispatch                    — manual full run on any ref
+#
+# Matrix:
+#   * Linux x Python {3.10, 3.11, 3.12}
+#   * macOS-14 x Python 3.12 (public repo only)
+#   * Windows-latest x Python 3.12
+#
+# Run command override:
+#   ``-o "addopts=--verbose --capture=no"`` overrides the
+#   ``addopts = "--verbose --capture=no -m 'not slow'"`` default in
+#   pyproject.toml so slow tests are collected and run.
+#
+# No --testmon: the nightly lane is a clean full run; testmon's "skip
+# unchanged" semantics are useless when we want to run everything.
+
+on:
+  schedule:
+    - cron: '0 7 * * *'      # 07:00 UTC nightly
+  push:
+    branches: [main]          # post-merge full-matrix verification
+  workflow_dispatch:
+
+# Never cancel a running nightly: a fresh push that arrives mid-run shouldn't
+# abort the in-flight slow-test sweep. Both runs will complete on their own.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  check-freshness:
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.set-output.outputs.skip }}
+    steps:
+      - name: Check for successful manual full-lane run on this SHA
+        if: github.event_name == 'push'
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const headSha = context.sha;
+
+            // Look for a successful workflow_dispatch run of THIS workflow
+            // on the merged SHA. If one exists (developer pre-flighted the
+            // full matrix before merging), skip the post-merge run.
+            const { data: runs } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: '.github/workflows/run-pytest-full.yml',
+              event: 'workflow_dispatch',
+              head_sha: headSha,
+              status: 'success',
+              per_page: 1,
+            });
+
+            if (runs.workflow_runs.length > 0) {
+              const manualRun = runs.workflow_runs[0];
+              core.setOutput('skip', 'true');
+              core.info(`Skipping full lane: workflow_dispatch run #${manualRun.id} already covered ${headSha}`);
+              return;
+            }
+
+            core.setOutput('skip', 'false');
+
+      - name: Set output
+        id: set-output
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            echo "skip=${{ steps.check.outputs.skip }}" >> $GITHUB_OUTPUT
+          else
+            # schedule + workflow_dispatch always run
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+  tests-linux-full:
+    needs: check-freshness
+    if: needs.check-freshness.outputs.skip != 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: "3.10"
+          - os: ubuntu-latest
+            python-version: "3.11"
+          - os: ubuntu-latest
+            python-version: "3.12"
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y exiftool
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: |
+          uv lock
+          uv sync --group dev --all-extras
+
+      - name: Run tests (full, slow included)
+        run: |
+          source .venv/bin/activate
+          pytest -n auto -o "addopts=--verbose --capture=no" --durations=20
+
+  tests-macos-full:
+    needs: check-freshness
+    if: needs.check-freshness.outputs.skip != 'true' && github.event.repository.visibility == 'public'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            python-version: "3.12"
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: |
+          uv lock
+          uv sync --group dev --all-extras
+
+      - name: Run tests (full, slow included)
+        run: |
+          source .venv/bin/activate
+          pytest -n auto -o "addopts=--verbose --capture=no" --durations=20
+
+  tests-windows-full:
+    needs: check-freshness
+    if: needs.check-freshness.outputs.skip != 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            python-version: "3.12"
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: |
+          uv lock
+          uv sync --group dev --all-extras
+
+      - name: Run tests (full, slow included)
+        run: |
+          .venv\Scripts\activate
+          pytest -n auto -o "addopts=--verbose --capture=no" --durations=20
+        shell: pwsh

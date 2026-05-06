@@ -19,6 +19,11 @@ from phenotypic import Image, GridImage
 from phenotypic.grid import AutoGridFinder
 from phenotypic.tools_.constants_ import GAMMA_ENCODINGS
 
+# Module-level slow marker: full HDF5 schema and back-compat matrix. The
+# companion binary-roundtrip suite in tests/unit/core/ stays on the fast lane
+# as the smoke check; this file moves to the nightly + post-merge full lane.
+pytestmark = pytest.mark.slow
+
 
 # ---------------------------------------------------------------------------
 # Helpers
