@@ -14,6 +14,10 @@ The launcher refuses to boot if ``--root`` does not exist or is not a
 directory; we catch :class:`ValueError`/``FileNotFoundError``/etc. from
 :meth:`SandboxRoot.from_path` and surface a clean error rather than a
 stack trace.
+
+CLI defaults (host, port, debug flag) and the logging format come from
+:mod:`phenotypic.gui._config` so they stay in lock-step with the
+standalone debug launchers.
 """
 from __future__ import annotations
 
@@ -23,6 +27,15 @@ import sys
 from pathlib import Path
 from typing import Optional, Sequence
 
+from phenotypic.gui._config import (
+    DEFAULT_HOST,
+    DEFAULT_PORT,
+    SSH_TUNNEL_HINT,
+    TITLE_HUB,
+    add_launcher_args,
+    configure_launcher_logging,
+    print_launcher_banner,
+)
 from phenotypic.gui.shell._app import create_app
 from phenotypic.gui.shell._sandbox import SandboxRoot
 
@@ -33,8 +46,8 @@ __all__ = ["launch_gui", "main"]
 
 def launch_gui(
     root: Path | str = Path.cwd(),
-    host: str = "127.0.0.1",
-    port: int = 8050,
+    host: str = DEFAULT_HOST,
+    port: int = DEFAULT_PORT,
     debug: bool = False,
 ) -> None:
     """Boot the unified PhenoTypic GUI shell.
@@ -43,11 +56,11 @@ def launch_gui(
         root: Sandbox root. Strings accepted for ergonomics. Resolved to an
             absolute :class:`pathlib.Path` and frozen for the lifetime of
             the process. Defaults to the current working directory.
-        host: Interface to bind. ``127.0.0.1`` (default) keeps the server
+        host: Interface to bind. :data:`DEFAULT_HOST` keeps the server
             loopback-only — pair with SSH port forwarding for remote
             access. ``0.0.0.0`` exposes it on the network (not recommended
             without authentication; cloud mode is a non-goal in v1).
-        port: TCP port. Defaults to ``8050``.
+        port: TCP port. Defaults to :data:`DEFAULT_PORT`.
         debug: Run Dash in debug mode (auto-reload + verbose tracebacks).
             Defaults to ``False``.
 
@@ -58,19 +71,10 @@ def launch_gui(
     """
     sandbox = SandboxRoot.from_path(root)
     app = create_app(sandbox)
-    _print_banner(host, port, sandbox.root)
+    print_launcher_banner(
+        title=TITLE_HUB, host=host, port=port, root=sandbox.root
+    )
     app.run(host=host, port=port, debug=debug)
-
-
-def _print_banner(host: str, port: int, root: Path) -> None:
-    """Print a one-shot startup banner with SSH-tunnel + cache-nuke hints."""
-    print()
-    print("PhenoTypic GUI")
-    print(f"  root  : {root}")
-    print(f"  url   : http://{host}:{port}/")
-    print()
-    print(f"  SSH tunnel from local: ssh -L {port}:localhost:{port} <cluster>")
-    print()
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -79,8 +83,7 @@ def _build_parser() -> argparse.ArgumentParser:
         description=(
             "Launch the unified PhenoTypic GUI hub (pipeline builder, "
             "results viewer, and run console under one URL). "
-            "Reach the UI by SSH-tunnelling the chosen port "
-            "(`ssh -L 8050:localhost:8050 user@cluster`)."
+            f"Reach the UI by SSH-tunnelling the chosen port (`{SSH_TUNNEL_HINT}`)."
         ),
     )
     parser.add_argument(
@@ -92,27 +95,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "directory. Defaults to the current working directory."
         ),
     )
-    parser.add_argument(
-        "--host",
-        type=str,
-        default="127.0.0.1",
-        help=(
-            "Interface to bind. Default 127.0.0.1 keeps the server "
-            "loopback-only — pair with SSH port forwarding for remote "
-            "access."
-        ),
-    )
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=8050,
-        help="TCP port. Default 8050.",
-    )
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Run Dash in debug mode.",
-    )
+    add_launcher_args(parser)
     return parser
 
 
@@ -123,10 +106,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         Process exit code (0 = clean shutdown, non-zero = startup failure).
     """
     args = _build_parser().parse_args(argv)
-    logging.basicConfig(
-        level=logging.DEBUG if args.debug else logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    )
+    configure_launcher_logging(debug=args.debug)
     try:
         launch_gui(
             root=args.root,

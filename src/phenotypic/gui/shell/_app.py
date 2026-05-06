@@ -37,6 +37,16 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import html
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
+from phenotypic.gui._config import (
+    CFG_RUN_REGISTRY,
+    CFG_RUNNER,
+    DEFAULT_IDLE_RELEASE_SECONDS,
+    MOUNT_BUILDER,
+    MOUNT_HOME,
+    MOUNT_RUN,
+    MOUNT_VIEWER,
+    TITLE_HUB,
+)
 from phenotypic.gui.shell._home import build_home_layout
 from phenotypic.gui.shell._ids import (
     SHELL_TAB_BUILDER,
@@ -56,11 +66,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 __all__ = ["create_app", "compose_hub"]
-
-
-# Default 15 minutes of inactivity before the viewer session is released.
-# Mirrors the spec's recommendation; tests pass an explicit override.
-_DEFAULT_IDLE_RELEASE_SECONDS = 15 * 60
 
 
 # ---------------------------------------------------------------------------
@@ -101,7 +106,7 @@ class _ViewerProxy:
 def _build_shell_dash_app(
     sandbox: SandboxRoot,
     *,
-    url_prefix: str = "/",
+    url_prefix: str = MOUNT_HOME,
     viewer_session: "ToolSession[Any] | None" = None,
     viewer_state: "dict[str, Any] | None" = None,
 ) -> dash.Dash:
@@ -129,7 +134,7 @@ def _build_shell_dash_app(
         external_stylesheets=[dbc.themes.BOOTSTRAP],
         suppress_callback_exceptions=True,
         assets_folder=assets_folder,
-        title="PhenoTypic GUI",
+        title=TITLE_HUB,
         requests_pathname_prefix=url_prefix,
         routes_pathname_prefix=url_prefix,
     )
@@ -153,7 +158,7 @@ def _build_shell_dash_app(
 def compose_hub(
     sandbox: SandboxRoot,
     *,
-    idle_release_seconds: float = _DEFAULT_IDLE_RELEASE_SECONDS,
+    idle_release_seconds: float = DEFAULT_IDLE_RELEASE_SECONDS,
     start_idle_thread: bool = True,
 ) -> tuple[dash.Dash, ToolSession[dash.Dash]]:
     """Build the shell + builder + viewer-session + run console; mount via DispatcherMiddleware.
@@ -189,7 +194,7 @@ def compose_hub(
     # 1. Viewer session (lazy — heavy parquet load deferred to first GET).
     def _build_viewer() -> dash.Dash:
         viewer_app = results_viewer.create_app(
-            output_root=viewer_state["output_root"], url_prefix="/results/"
+            output_root=viewer_state["output_root"], url_prefix=MOUNT_VIEWER
         )
         wrap_in_chrome(viewer_app, active_tab=SHELL_TAB_VIEWER, sandbox=sandbox)
         return viewer_app
@@ -223,7 +228,7 @@ def compose_hub(
 
     # 3. Builder Dash (eager — single-process registry build).
     builder_app = builder.create_app(
-        image_root=sandbox.root, url_prefix="/builder/"
+        image_root=sandbox.root, url_prefix=MOUNT_BUILDER
     )
     wrap_in_chrome(builder_app, active_tab=SHELL_TAB_BUILDER, sandbox=sandbox)
 
@@ -241,7 +246,7 @@ def compose_hub(
 
     run_app = run_console.create_app(
         sandbox,
-        url_prefix="/run/",
+        url_prefix=MOUNT_RUN,
         registry=registry,
         runner=runner,
     )
@@ -249,8 +254,8 @@ def compose_hub(
     # Stash on the shell server too so any future cross-tool callback
     # (e.g. the sidebar's "open in run console" hand-off) can reach the
     # same singletons.
-    shell_app.server.config["pheno_runner"] = runner
-    shell_app.server.config["pheno_registry"] = registry
+    shell_app.server.config[CFG_RUNNER] = runner
+    shell_app.server.config[CFG_RUN_REGISTRY] = registry
 
     # 5. Compose at the WSGI layer. The dispatcher receives the shell's
     #    Flask app as its default; any path not matching a mount prefix
@@ -258,18 +263,24 @@ def compose_hub(
     viewer_proxy = _ViewerProxy(viewer_session)
     # ``wsgi_app`` is the standard Flask seam for WSGI middleware
     # injection (this is the same recipe Werkzeug docs recommend).
+    # DispatcherMiddleware mount keys are prefixes WITHOUT the trailing "/"
+    # (e.g. "/builder", not "/builder/"). Strip the trailing slash from
+    # the MOUNT_* constants by index.
     shell_app.server.wsgi_app = DispatcherMiddleware(  # type: ignore[method-assign]
         shell_app.server.wsgi_app,
         {
-            "/builder": builder_app.server,
-            "/results": viewer_proxy,
-            "/run": run_app.server,
+            MOUNT_BUILDER.rstrip("/"): builder_app.server,
+            MOUNT_VIEWER.rstrip("/"): viewer_proxy,
+            MOUNT_RUN.rstrip("/"): run_app.server,
         },
     )
 
     logger.info(
-        "GUI hub composed: sandbox=%s mounts=/builder, /results, /run",
+        "GUI hub composed: sandbox=%s mounts=%s, %s, %s",
         sandbox.root,
+        MOUNT_BUILDER,
+        MOUNT_VIEWER,
+        MOUNT_RUN,
     )
 
     if start_idle_thread:
@@ -284,9 +295,9 @@ def compose_hub(
 def create_app(
     sandbox: SandboxRoot,
     *,
-    url_prefix: str = "/",
+    url_prefix: str = MOUNT_HOME,
     viewer_session: "ToolSession[Any] | None" = None,
-    idle_release_seconds: float = _DEFAULT_IDLE_RELEASE_SECONDS,
+    idle_release_seconds: float = DEFAULT_IDLE_RELEASE_SECONDS,
     start_idle_thread: bool | None = None,
 ) -> dash.Dash:
     """Build the unified GUI hub Dash app.

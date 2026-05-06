@@ -32,6 +32,16 @@ import logging
 from pathlib import Path
 from typing import Optional, Sequence
 
+from phenotypic.gui._config import (
+    DEFAULT_HOST,
+    DEFAULT_PORT,
+    SSH_TUNNEL_HINT,
+    TITLE_VIEWER,
+    VIEWER_CACHE_DIRNAME,
+    add_launcher_args,
+    configure_launcher_logging,
+    print_launcher_banner,
+)
 from phenotypic.gui.results_viewer._app import create_app
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 
@@ -40,8 +50,8 @@ logger = logging.getLogger(__name__)
 
 def launch_results_viewer(
     output_root: Path | str = Path.cwd(),
-    host: str = "127.0.0.1",
-    port: int = 8050,
+    host: str = DEFAULT_HOST,
+    port: int = DEFAULT_PORT,
     debug: bool = False,
 ) -> None:
     """Boot the Dash results viewer against an output root.
@@ -59,10 +69,10 @@ def launch_results_viewer(
             are accepted for ergonomics; both are resolved to an
             absolute :class:`pathlib.Path`. Defaults to the current
             working directory.
-        host: Interface to bind. ``127.0.0.1`` (default) keeps the
-            server loopback-only -- pair with SSH port forwarding for
-            remote access. ``0.0.0.0`` exposes the app on the network.
-        port: TCP port to bind. Defaults to ``8050``.
+        host: Interface to bind. :data:`DEFAULT_HOST` keeps the server
+            loopback-only -- pair with SSH port forwarding for remote
+            access. ``0.0.0.0`` exposes the app on the network.
+        port: TCP port to bind. Defaults to :data:`DEFAULT_PORT`.
         debug: Run Dash in debug mode (auto-reload + verbose
             tracebacks). Defaults to ``False``.
 
@@ -76,28 +86,15 @@ def launch_results_viewer(
     root = Path(output_root).resolve()
     output = OutputRoot.discover(root)
     app = create_app(output)
-    _print_banner(host, port, root)
+    cache_dir = root / VIEWER_CACHE_DIRNAME
+    print_launcher_banner(
+        title=TITLE_VIEWER,
+        host=host,
+        port=port,
+        root=root,
+        extra_lines=(f"Clear tile cache    : rm -rf {cache_dir}",),
+    )
     app.run(host=host, port=port, debug=debug)
-
-
-def _print_banner(host: str, port: int, root: Path) -> None:
-    """Print a friendly startup banner with SSH-tunnel + cache-nuke hints.
-
-    Args:
-        host: Bound interface (echoed back to the user).
-        port: Bound TCP port.
-        root: Resolved output root, surfaced verbatim so the user can
-            confirm they pointed the viewer at the right directory.
-    """
-    cache_dir = root / ".viewer_cache"
-    print()
-    print("PhenoTypic Results Viewer")
-    print(f"  output: {root}")
-    print(f"  url   : http://{host}:{port}/")
-    print()
-    print(f"  SSH tunnel from local: ssh -L {port}:localhost:{port} <cluster>")
-    print(f"  Clear tile cache    : rm -rf {cache_dir}")
-    print()
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -114,8 +111,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "Launch the PhenoTypic results viewer (Dash + OpenSeadragon) "
             "over a CLI output directory. Browse, filter, and pixel-zoom "
             "per-image overlays produced by `python -m phenotypic`. "
-            "Reach the UI by SSH-tunneling the chosen port "
-            "(`ssh -L 8050:localhost:8050 user@cluster`)."
+            f"Reach the UI by SSH-tunneling the chosen port (`{SSH_TUNNEL_HINT}`)."
         ),
     )
     parser.add_argument(
@@ -128,28 +124,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "Defaults to the current working directory."
         ),
     )
-    parser.add_argument(
-        "--host",
-        type=str,
-        default="127.0.0.1",
-        help=(
-            "Interface to bind. Default 127.0.0.1 keeps the server "
-            "loopback-only -- pair with SSH port forwarding for remote "
-            "access. Use 0.0.0.0 to expose on the network (not "
-            "recommended without authentication)."
-        ),
-    )
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=8050,
-        help="TCP port to bind. Default 8050.",
-    )
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Run Dash in debug mode (auto-reload, verbose tracebacks).",
-    )
+    add_launcher_args(parser)
     return parser
 
 
@@ -161,10 +136,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
             default) lets argparse read from ``sys.argv[1:]``.
     """
     args = _build_parser().parse_args(argv)
-    logging.basicConfig(
-        level=logging.DEBUG if args.debug else logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    )
+    configure_launcher_logging(debug=args.debug)
     launch_results_viewer(
         output_root=args.output_root,
         host=args.host,

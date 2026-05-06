@@ -49,6 +49,7 @@ import dash
 from dash import ALL, Input, Output, State, ctx, html, no_update
 from flask import current_app
 
+from phenotypic.gui._config import CFG_IMAGE_ROOT, CFG_OPERATION_REGISTRY
 from phenotypic.gui.builder import _ids as ids
 from phenotypic.gui.builder._directory_browser import (
     IMAGE_EXTS,
@@ -570,7 +571,7 @@ def _format_exception(exc: BaseException) -> str:
 def _registry() -> Any:
     """Return the registry stashed on ``app.server.config`` by ``create_app``."""
 
-    return current_app.config.get("pheno_registry")
+    return current_app.config.get(CFG_OPERATION_REGISTRY)
 
 
 def _image_root() -> Optional[Any]:
@@ -580,7 +581,7 @@ def _image_root() -> Optional[Any]:
     consult it to seed their browse-dir stores.
     """
 
-    return current_app.config.get("pheno_image_root")
+    return current_app.config.get(CFG_IMAGE_ROOT)
 
 
 def _render_tree_body(

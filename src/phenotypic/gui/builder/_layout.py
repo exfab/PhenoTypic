@@ -27,6 +27,7 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 import dash_cytoscape as cyto  # type: ignore[import-untyped]
 from dash import dcc, html
 
+from phenotypic.gui._design import COLOR_BLUE, COLOR_BORDER, COLOR_MUTED, COLOR_NAVY
 from phenotypic.gui.builder import _ids as ids
 from phenotypic.gui.builder._modal_browser import (
     load_image_modal,
@@ -286,7 +287,7 @@ def _canvas_stylesheet() -> List[dict]:
                 "text-valign": "center",
                 "text-halign": "center",
                 "background-color": "data(bg)",
-                "border-color": "#dde3ed",
+                "border-color": COLOR_BORDER,
                 "border-width": 1,
                 "padding": "12px",
                 "font-family": "DM Mono, Courier New, monospace",
@@ -295,13 +296,13 @@ def _canvas_stylesheet() -> List[dict]:
                 "width": "label",
                 "height": 40,
                 "min-width": 80,
-                "color": "#003660",
+                "color": COLOR_NAVY,
             },
         },
         {
             "selector": "node.selected",
             "style": {
-                "border-color": "#1b75bc",
+                "border-color": COLOR_BLUE,
                 "border-width": 3,
             },
         },
@@ -310,8 +311,8 @@ def _canvas_stylesheet() -> List[dict]:
             "style": {
                 "curve-style": "bezier",
                 "target-arrow-shape": "triangle",
-                "target-arrow-color": "#8892a4",
-                "line-color": "#8892a4",
+                "target-arrow-color": COLOR_MUTED,
+                "line-color": COLOR_MUTED,
                 "width": 1.5,
             },
         },

@@ -44,6 +44,11 @@ from typing import Any, Callable, List, Optional, Tuple
 import dash
 from dash import ALL, Input, Output, State, ctx, no_update
 
+from phenotypic.gui._config import (
+    SANDBOX_GUI_DIRNAME,
+    SANDBOX_PRESETS_SUBDIR,
+    THREAD_NAME_PREFIX,
+)
 from phenotypic.gui.run_console import _ids as ids
 from phenotypic.gui.run_console._directory_picker import (
     ensure_output_dir,
@@ -258,7 +263,7 @@ def _form_inputs_to_state(
 
 def _presets_dir(sandbox: SandboxRoot) -> Path:
     """Return ``<sandbox>/.phenotypic-gui/presets``, creating it if needed."""
-    path = sandbox.root / ".phenotypic-gui" / "presets"
+    path = sandbox.root / SANDBOX_GUI_DIRNAME / SANDBOX_PRESETS_SUBDIR
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -309,7 +314,7 @@ def _local_run_active(runner: LocalRunner, registry: RunRegistry) -> bool:
 # is 1 and SLURM submissions queue serially in practice.
 _SLURM_EXECUTOR: ThreadPoolExecutor = ThreadPoolExecutor(
     max_workers=2,
-    thread_name_prefix="phenotypic-gui-slurm",
+    thread_name_prefix=f"{THREAD_NAME_PREFIX}-slurm",
 )
 _PENDING_SLURM: dict[str, Future[Any]] = {}
 _PENDING_SLURM_LOCK = threading.Lock()

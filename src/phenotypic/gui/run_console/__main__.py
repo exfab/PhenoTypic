@@ -13,6 +13,14 @@ import sys
 from pathlib import Path
 from typing import Optional, Sequence
 
+from phenotypic.gui._config import (
+    DEFAULT_HOST,
+    DEFAULT_PORT,
+    TITLE_RUN,
+    add_launcher_args,
+    configure_launcher_logging,
+    print_launcher_banner,
+)
 from phenotypic.gui.run_console._app import create_app
 from phenotypic.gui.shell._sandbox import SandboxRoot
 
@@ -21,14 +29,16 @@ logger = logging.getLogger(__name__)
 
 def launch_run_console(
     root: Path | str = Path.cwd(),
-    host: str = "127.0.0.1",
-    port: int = 8050,
+    host: str = DEFAULT_HOST,
+    port: int = DEFAULT_PORT,
     debug: bool = False,
 ) -> None:
     """Boot the standalone Run console."""
     sandbox = SandboxRoot.from_path(root)
     app = create_app(sandbox)
-    print(f"PhenoTypic Run console — http://{host}:{port}/  (sandbox: {sandbox.root})")
+    print_launcher_banner(
+        title=TITLE_RUN, host=host, port=port, root=sandbox.root
+    )
     app.run(host=host, port=port, debug=debug)
 
 
@@ -38,14 +48,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         description="Run the standalone Run console for debugging.",
     )
     parser.add_argument("--root", type=Path, default=Path.cwd())
-    parser.add_argument("--host", type=str, default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8050)
-    parser.add_argument("--debug", action="store_true")
+    add_launcher_args(parser)
     args = parser.parse_args(argv)
-    logging.basicConfig(
-        level=logging.DEBUG if args.debug else logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    )
+    configure_launcher_logging(debug=args.debug)
     try:
         launch_run_console(
             root=args.root, host=args.host, port=args.port, debug=args.debug

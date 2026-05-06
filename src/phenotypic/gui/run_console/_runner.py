@@ -35,6 +35,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, Iterable
 
+from phenotypic.gui._config import RUN_LOG_DIRNAME
+
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -160,7 +162,7 @@ class LocalRunner:
             self._handles[run_id] = None  # type: ignore[assignment]
 
         try:
-            log_dir = output_dir / ".gui_log"
+            log_dir = output_dir / RUN_LOG_DIRNAME
             log_dir.mkdir(parents=True, exist_ok=True)
             log_path = log_dir / "stdout.log"
 

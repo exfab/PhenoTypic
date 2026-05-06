@@ -120,6 +120,7 @@ operations copy data; avoid unnecessary intermediate allocations.
 - [tools_/CLAUDE.md](src/phenotypic/tools_/CLAUDE.md) — mixins, utilities
 - [settings_/CLAUDE.md](src/phenotypic/settings_/CLAUDE.md) — global config
 - [enhance/CLAUDE.md](src/phenotypic/enhance/CLAUDE.md) — enhancer conventions
+- [gui/CLAUDE.md](src/phenotypic/gui/CLAUDE.md) — GUI sub-apps, shared `_config.py` constants, `_design.py` tokens
 - [DESIGN.md](DESIGN.md) — dashboard & plot style guide
 - `src/phenotypic/post/`, `src/phenotypic/analysis/` — no sub-CLAUDE.md
 

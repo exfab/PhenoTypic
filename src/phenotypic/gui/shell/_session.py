@@ -39,6 +39,8 @@ import threading
 import time
 from typing import Callable, Generic, TypeVar
 
+from phenotypic.gui._config import THREAD_NAME_PREFIX
+
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -289,7 +291,7 @@ def start_idle_release_thread(
 
     thread = threading.Thread(
         target=_loop,
-        name="phenotypic-gui-idle-release",
+        name=f"{THREAD_NAME_PREFIX}-idle-release",
         daemon=True,
     )
     thread.start()

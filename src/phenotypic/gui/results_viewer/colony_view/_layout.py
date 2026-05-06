@@ -24,6 +24,7 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
 from dash.development.base_component import Component
 
+from phenotypic.gui._design import COLOR_BG, COLOR_BLUE, COLOR_NAVY, COLOR_SURFACE
 from phenotypic.gui.results_viewer import _ids as ids
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 
@@ -34,9 +35,9 @@ logger = logging.getLogger(__name__)
 # Style tokens (mirrors DESIGN.md / FRONTEND_STYLE_GUIDE.md)
 # ---------------------------------------------------------------------------
 
-_NAVY = "#003660"
-_BLUE = "#1b75bc"
-_BG = "#f5f7fa"
+_NAVY = COLOR_NAVY
+_BLUE = COLOR_BLUE
+_BG = COLOR_BG
 
 
 # ---------------------------------------------------------------------------
@@ -150,7 +151,7 @@ def _build_toolbar() -> Component:
             "gap": "1rem",
             "padding": "0.75rem 1rem",
             "borderBottom": f"1px solid {_BLUE}22",
-            "background": "#ffffff",
+            "background": COLOR_SURFACE,
         },
     )
 

@@ -11,73 +11,21 @@
  *   -- 8pt spacing grid, navy-tinted shadows, generous radii
  */
 
-/* Font tokens (--font-display / --font-body / --font-mono) and the
- * Google Fonts @import are injected at runtime by gui/_design.py so a
- * single Python constant controls the GUI typeface. Don't redeclare
- * --font-* here -- update _design.py instead. */
-
-/* ===========================================================================
- * Design tokens
- * ========================================================================= */
+/* All shared design tokens (--font-*, --color-*, --oi-*, --text-*,
+ * --sp-*, --radius-*, --shadow-*, --ease-*, --transition) are injected
+ * at runtime by `phenotypic.gui._design.inject_design_tokens` so a
+ * single Python module controls the entire GUI palette. Do NOT
+ * redeclare them here -- edit `gui/_design.py` instead.
+ *
+ * Builder-specific overrides live below: a semantic accent for the
+ * point-picker mixin and an extra heading size used only by builder
+ * canvas titles. */
 :root {
-    /* Primary palette -- UI only */
-    --color-navy:    #003660;
-    --color-blue:    #1b75bc;
-    --color-gold:    #febc11;
-    --color-white:   #ffffff;
-    --color-bg:      #f5f7fa;
-    --color-surface: #ffffff;
-    --color-border:  #dde3ed;
-    --color-rule:    #e8ecf2;
-    --color-muted:   #8892a4;
-    --color-body:    #2e3a4e;
-    --color-heading: #003660;
-
-    /* Data palette -- Okabe-Ito (charts only) */
-    --oi-orange:    #E69F00;
-    --oi-sky:       #56B4E9;
-    --oi-green:     #009E73;
-    --oi-vermilion: #D55E00;
-    --oi-blue:      #0072B2;
-    --oi-purple:    #CC79A7;
-    --oi-yellow:    #F0E442;
-    --oi-grey:      #BBBBBB;
-
     /* Semantic accents -- interactive ops (point-picker mixin) */
     --color-interactive: var(--oi-purple);
 
-    /* Typography -- --font-display / --font-body / --font-mono are
-       injected by gui/_design.py (single source of truth for the GUI
-       typeface). */
-
-    --text-xs:   0.6875rem;
-    --text-sm:   0.8125rem;
-    --text-base: 0.9375rem;
-    --text-md:   1.0625rem;
-    --text-lg:   1.25rem;
-    --text-xl:   1.5rem;
+    /* Builder-only heading size; shared scale stops at --text-xl. */
     --text-2xl:  1.875rem;
-
-    /* Spacing (8pt grid) */
-    --sp-1:  0.25rem;
-    --sp-2:  0.5rem;
-    --sp-3:  0.75rem;
-    --sp-4:  1rem;
-    --sp-5:  1.25rem;
-    --sp-6:  1.5rem;
-    --sp-8:  2rem;
-
-    --radius-sm: 3px;
-    --radius:    6px;
-    --radius-md: 10px;
-    --radius-lg: 16px;
-
-    --shadow-sm: 0 1px 3px rgba(0,54,96,0.07), 0 1px 2px rgba(0,54,96,0.04);
-    --shadow:    0 4px 12px rgba(0,54,96,0.08), 0 1px 3px rgba(0,54,96,0.05);
-    --shadow-md: 0 8px 24px rgba(0,54,96,0.10), 0 2px 6px rgba(0,54,96,0.06);
-
-    --ease-out:   cubic-bezier(0.22, 1, 0.36, 1);
-    --transition: 180ms var(--ease-out);
 }
 
 /* ===========================================================================

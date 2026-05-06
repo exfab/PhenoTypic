@@ -3,7 +3,7 @@
 Boots a Dash server hosting an interactive node-graph editor for
 constructing :class:`phenotypic.ImagePipeline` objects. Designed to run on
 an HPCC head node and be reached from a workstation via SSH port
-forwarding (``ssh -L 8050:localhost:8050 user@hpcc``).
+forwarding (see :data:`phenotypic.gui._config.SSH_TUNNEL_HINT`).
 
 Examples:
     Default port + bind to all interfaces (so an SSH tunnel to a
@@ -22,9 +22,14 @@ Examples:
 from __future__ import annotations
 
 import argparse
-import logging
 from pathlib import Path
 from typing import Optional, Sequence
+
+from phenotypic.gui._config import (
+    SSH_TUNNEL_HINT,
+    add_launcher_args,
+    configure_launcher_logging,
+)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -33,26 +38,10 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="python -m phenotypic.gui.builder",
         description=(
             "Launch the Dash + dash-cytoscape ImagePipeline builder. "
-            "Reach the UI by SSH-tunneling the chosen port "
-            "('ssh -L 8050:localhost:8050 user@hpcc')."
+            f"Reach the UI by SSH-tunneling the chosen port ('{SSH_TUNNEL_HINT}')."
         ),
     )
-    parser.add_argument(
-        "--host",
-        default="127.0.0.1",
-        help=(
-            "Interface to bind. Default 127.0.0.1 keeps the server "
-            "loopback-only — pair with SSH port forwarding for remote "
-            "access. Use 0.0.0.0 to expose on the network (not "
-            "recommended without authentication)."
-        ),
-    )
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=8050,
-        help="TCP port to bind. Default 8050.",
-    )
+    add_launcher_args(parser)
     parser.add_argument(
         "--image-root",
         type=Path,
@@ -62,11 +51,6 @@ def _build_parser() -> argparse.ArgumentParser:
             "the tree (the user can still type a path or use the "
             "synthetic plate fallback)."
         ),
-    )
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Run Dash in debug mode (auto-reload, verbose tracebacks).",
     )
     return parser
 
@@ -80,10 +64,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     """
     args = _build_parser().parse_args(argv)
 
-    logging.basicConfig(
-        level=logging.DEBUG if args.debug else logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    )
+    configure_launcher_logging(debug=args.debug)
 
     if args.image_root is not None and not args.image_root.is_dir():
         raise SystemExit(

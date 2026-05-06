@@ -18,6 +18,13 @@ from typing import Optional
 import dash
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 
+from phenotypic.gui._config import (
+    CFG_IMAGE_ROOT,
+    CFG_OPERATION_REGISTRY,
+    CFG_URL_PREFIX,
+    MOUNT_HOME,
+    TITLE_BUILDER,
+)
 from phenotypic.gui._design import inject_design_tokens
 from phenotypic.gui._operation_registry import OperationRegistry
 from phenotypic.gui.builder._callbacks import register_callbacks
@@ -33,7 +40,7 @@ def create_app(
     image_root: Optional[Path] = None,
     *,
     registry: Optional[OperationRegistry] = None,
-    url_prefix: str = "/",
+    url_prefix: str = MOUNT_HOME,
 ) -> dash.Dash:
     """Build a Dash application instance for the pipeline builder.
 
@@ -76,18 +83,18 @@ def create_app(
         __name__,
         external_stylesheets=[dbc.themes.BOOTSTRAP],
         suppress_callback_exceptions=True,
-        title="PhenoTypic Pipeline Builder",
+        title=TITLE_BUILDER,
         requests_pathname_prefix=url_prefix,
-        routes_pathname_prefix="/",
+        routes_pathname_prefix=MOUNT_HOME,
     )
 
     inject_design_tokens(app)
 
     app.layout = build_app_layout(state, registry, image_root, url_prefix=url_prefix)
 
-    app.server.config["pheno_image_root"] = image_root
-    app.server.config["pheno_registry"] = registry
-    app.server.config["pheno_url_prefix"] = url_prefix
+    app.server.config[CFG_IMAGE_ROOT] = image_root
+    app.server.config[CFG_OPERATION_REGISTRY] = registry
+    app.server.config[CFG_URL_PREFIX] = url_prefix
 
     register_callbacks(app)
     register_point_picker_routes(app, image_root)
