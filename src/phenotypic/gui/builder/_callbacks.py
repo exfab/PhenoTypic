@@ -58,7 +58,11 @@ from phenotypic.gui.builder._directory_browser import (
     directory_tree,
     find_synthetic_plate_path,
 )
-from phenotypic.gui.builder._image_renderer import dataframe_to_table, to_data_uri
+from phenotypic.gui.builder._image_renderer import (
+    bytes_to_data_uri,
+    dataframe_to_table,
+    render_node_preview,
+)
 from phenotypic.gui.builder._layout import (
     build_breadcrumb,
     build_canvas,
@@ -69,7 +73,7 @@ from phenotypic.gui.builder._modal_browser import (
     render_load_picker_body,
 )
 from phenotypic.gui.builder._param_form import parse_widget_value
-from phenotypic.gui.builder._session import get_cache
+from phenotypic.gui.builder._session import PreviewRenderError, get_cache
 from phenotypic.gui.builder._state import (
     PIPELINE_CLASS_NAME,
     BuilderState,
@@ -1100,37 +1104,7 @@ def register_callbacks(app: dash.Dash) -> None:
             cache.set_image(session_id, image, str(image_path) if image_path else None)
 
             result = pipeline.apply_with_intermediates(image)
-
-            # Map intermediate keys ("GaussianBlur", "GaussianBlur_2", ...) back
-            # to BuilderState node-ids by walking ops in declaration order.
-            ops_nodes: List[StepNode] = [
-                n
-                for n in state.root.nodes
-                if n.class_name == PIPELINE_CLASS_NAME
-                or stage_of(n.class_name) == "ops"
-            ]
-            for op_key, node in zip(pipeline.get_ops().keys(), ops_nodes):
-                inter = result.intermediates.get(op_key)
-                if inter is not None:
-                    cache.set_intermediate(session_id, node.node_id, inter)
-
-            # Run measurements if any are configured.  Their output is a single
-            # DataFrame; attach it to every measurement / post node so the
-            # inspector can show it for whichever the user selects.  measure()
-            # needs the *processed* image (objmap populated by the detector
-            # chain), not the raw input.
-            if pipeline.get_meas() or pipeline.get_post():
-                try:
-                    df = pipeline.measure(result.image)
-                    meas_nodes = [
-                        n
-                        for n in state.root.nodes
-                        if stage_of(n.class_name) in {"meas", "post"}
-                    ]
-                    for node in meas_nodes:
-                        cache.set_intermediate(session_id, node.node_id, df)
-                except Exception as meas_exc:  # noqa: BLE001
-                    logger.warning("measure() failed: %s", meas_exc)
+            _bake_preview_cache(state, pipeline, result, session_id, cache)
 
             duration = time.time() - t0
             keys = cache.known_intermediate_keys(session_id)
@@ -1217,6 +1191,13 @@ def register_callbacks(app: dash.Dash) -> None:
                 className="text-muted",
             )
 
+        # Sentinel: render failed during preview run — surface the message.
+        if isinstance(cached, PreviewRenderError):
+            return html.Div(
+                f"(Could not render preview: {cached.message})",
+                className="text-warning",
+            )
+
         # DataFrame preview for measurement / post nodes.
         try:
             import pandas as pd  # type: ignore[import-untyped]
@@ -1226,15 +1207,21 @@ def register_callbacks(app: dash.Dash) -> None:
         if pd is not None and isinstance(cached, pd.DataFrame):
             return dataframe_to_table(cached)
 
-        channel = _preview_channel_for(node.class_name)
-        try:
-            uri = to_data_uri(cached, channel=channel)  # type: ignore[arg-type]
-        except Exception as exc:  # noqa: BLE001
-            return html.Div(
-                f"(Could not render preview: {_format_exception(exc)})",
-                className="text-warning",
+        # Pre-baked PNG bytes — wrap and ship. The cache contract stores
+        # `bytes` (not bytearray); the union check is only for type narrowing.
+        if isinstance(cached, bytes):
+            return html.Img(
+                src=bytes_to_data_uri(cached),
+                style={"maxWidth": "100%"},
             )
-        return html.Img(src=uri, style={"maxWidth": "100%"})
+
+        # Unreachable under the current cache contract; defensive log.
+        logger.warning(  # pragma: no cover
+            "Unexpected cache payload type %s for node %s",
+            type(cached).__name__,
+            state.selected_node_id,
+        )
+        return no_update  # pragma: no cover
 
     # ----------------------------------------------------------------------
     # 5. Save modal — open / close / confirm / dir-nav / body re-render
@@ -1995,6 +1982,77 @@ def register_callbacks(app: dash.Dash) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _bake_preview_cache(
+    state: "BuilderState",
+    pipeline: Any,
+    result: Any,
+    session_id: str,
+    cache: Any,
+) -> None:
+    """Render every intermediate to PNG bytes (or DataFrame) into *cache*.
+
+    Pulled out of ``run_preview`` so the cache contract — bytes for ops,
+    DataFrame for meas/post, ``PreviewRenderError`` on render failure — can
+    be exercised end-to-end without booting a Dash server.
+
+    Args:
+        state: The deserialised :class:`BuilderState` driving the preview.
+        pipeline: The compiled :class:`ImagePipeline`.
+        result: The :class:`IntermediateResult` returned by
+            :meth:`ImagePipeline.apply_with_intermediates`.
+        session_id: Per-tab uuid keying the cache.
+        cache: The :class:`IntermediatesCache` to populate.
+    """
+
+    # Map intermediate keys ("GaussianBlur", "GaussianBlur_2", ...) back to
+    # BuilderState node-ids by walking ops in declaration order.
+    ops_nodes: List[StepNode] = [
+        n
+        for n in state.root.nodes
+        if n.class_name == PIPELINE_CLASS_NAME
+        or stage_of(n.class_name) == "ops"
+    ]
+    # Pre-bake one PNG per ops intermediate so the inspector never has to
+    # re-encode the source Image on selection. Source Images go out of scope
+    # at the end of the loop body — only the bytes are retained in the cache.
+    for op_key, node in zip(pipeline.get_ops().keys(), ops_nodes):
+        inter = result.intermediates.get(op_key)
+        if inter is None:
+            continue
+        try:
+            png = render_node_preview(inter, node.class_name)
+        except Exception as render_exc:  # noqa: BLE001
+            logger.warning(
+                "Preview render failed for %s (%s): %s",
+                node.class_name, node.node_id, render_exc,
+            )
+            cache.set_intermediate(
+                session_id,
+                node.node_id,
+                PreviewRenderError(_format_exception(render_exc)),
+            )
+            continue
+        cache.set_intermediate(session_id, node.node_id, png)
+
+    # Run measurements if any are configured. Their output is a single
+    # DataFrame; attach it to every measurement / post node so the inspector
+    # can show it for whichever the user selects. measure() needs the
+    # *processed* image (objmap populated by the detector chain), not the
+    # raw input.
+    if pipeline.get_meas() or pipeline.get_post():
+        try:
+            df = pipeline.measure(result.image)
+            meas_nodes = [
+                n
+                for n in state.root.nodes
+                if stage_of(n.class_name) in {"meas", "post"}
+            ]
+            for node in meas_nodes:
+                cache.set_intermediate(session_id, node.node_id, df)
+        except Exception as meas_exc:  # noqa: BLE001
+            logger.warning("measure() failed: %s", meas_exc)
+
+
 def _load_preview_image(
     image_path: Optional[str],
     uses_grid: bool,
@@ -2024,35 +2082,6 @@ def _load_preview_image(
             ncols=int(ncols) if ncols else 12,
         )
     return Image.imread(p)
-
-
-def _preview_channel_for(class_name: str) -> str:
-    """Pick the image channel best showing *class_name*'s output.
-
-    Enhancers act on ``detect_mat``; detectors/refiners populate the object
-    map; everything else (correctors, nested pipelines, unknown classes,
-    measurement nodes that fell through here) defaults to RGB.
-    """
-
-    try:
-        stage = stage_of(class_name)
-    except KeyError:
-        return "rgb"
-    if stage != "ops":
-        return "rgb"
-    try:
-        from phenotypic.gui._operation_registry import get_registry
-
-        info = get_registry().get(class_name)
-    except Exception:  # noqa: BLE001
-        return "rgb"
-    if info is None:
-        return "rgb"
-    if info.category == "Enhancer":
-        return "detect_mat"
-    if info.category in {"Detector", "Refiner"}:
-        return "objmap"
-    return "rgb"
 
 
 def _pipeline_uses_grid(pipeline: Any, grid_op_cls: type) -> bool:

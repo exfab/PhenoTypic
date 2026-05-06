@@ -3,11 +3,16 @@
 The pipeline-builder inspector pane embeds previews via plain ``<img src=...>``
 tags rather than streaming endpoints — base64-encoded PNGs avoid spinning up a
 per-session asset route. Channels supported: ``rgb``, ``gray``, ``detect_mat``,
-and ``objmap``.
+and ``objmap``. Detector / refiner nodes get a separate overlay renderer that
+alpha-blends the objmap onto the post-op detect_mat
+(:func:`to_overlay_png_bytes`).
 
 Large source arrays are downscaled with ``cv2.resize(INTER_AREA)`` *before*
 encoding so a 4000×6000 uint16 plate doesn't pay PIL's slow per-pixel thumbnail
 cost.
+
+The builder pre-bakes one PNG per intermediate at preview-run time so the
+inspector never re-encodes on selection (see :func:`render_node_preview`).
 """
 
 from __future__ import annotations
@@ -21,9 +26,13 @@ import numpy as np
 from dash import dash_table
 from PIL import Image as PILImage
 
+from phenotypic.gui._operation_registry import get_registry
+from phenotypic.gui.builder._state import stage_of
+
 if TYPE_CHECKING:  # pragma: no cover - import only used for type hints
     import pandas as pd  # type: ignore[import-untyped]
     import phenotypic
+    from phenotypic.gui._operation_registry import OperationInfo
 
 
 ChannelName = Literal["rgb", "gray", "detect_mat", "objmap"]
@@ -147,9 +156,9 @@ def _label_map_to_rgb(arr: np.ndarray) -> np.ndarray:
         return np.clip(rgb * 255.0, 0, 255).astype(np.uint8)
     except Exception:
         try:
-            import matplotlib.cm as cm
+            import matplotlib
 
-            cmap = cm.get_cmap("tab20", 20)
+            cmap = matplotlib.colormaps["tab20"]
             idx = (arr.astype(np.int64) % 20).astype(np.int64)
             rgba = cmap(idx)
             rgba[arr == 0] = (0.0, 0.0, 0.0, 1.0)
@@ -193,17 +202,26 @@ def _channel_to_rgb_uint8(arr: np.ndarray, channel: ChannelName) -> np.ndarray:
 # ---------------------------------------------------------------------------
 
 
-def to_data_uri(
+def _encode_png(rgb_uint8: np.ndarray) -> bytes:
+    """PIL-encode an ``(H, W, 3)`` uint8 array as PNG bytes."""
+
+    pil = PILImage.fromarray(rgb_uint8, mode="RGB")
+    buf = io.BytesIO()
+    pil.save(buf, format="PNG", optimize=False)
+    return buf.getvalue()
+
+
+def to_png_bytes(
     image: "phenotypic.Image",
     channel: ChannelName = "rgb",
     *,
     max_dim: int = 512,
-) -> str:
-    """Render an :class:`Image` channel as a base64 PNG data URI.
+) -> bytes:
+    """Render an :class:`Image` channel as raw PNG bytes (no base64 wrap).
 
     The image is downscaled with ``cv2.resize(INTER_AREA)`` before PNG encoding
-    so multi-megapixel raw scans encode in a fraction of a second. The output
-    is suitable for direct use as the ``src`` of an HTML ``<img>`` element.
+    so multi-megapixel raw scans encode in a fraction of a second. Use
+    :func:`bytes_to_data_uri` to wrap the result for an HTML ``<img>`` ``src``.
 
     Args:
         image: PhenoTypic :class:`Image` (or :class:`GridImage`) instance.
@@ -213,10 +231,57 @@ def to_data_uri(
             in pixels. Defaults to ``512``.
 
     Returns:
-        A string of the form ``"data:image/png;base64,<...>"``.
+        Raw PNG-encoded bytes (starting with the ``\\x89PNG`` magic).
 
     Raises:
         ValueError: If ``channel`` is not one of the supported names.
+
+    Examples:
+        >>> from phenotypic.data._synthetic_data import load_synth_yeast_plate
+        >>> img = load_synth_yeast_plate()
+        >>> blob = to_png_bytes(img, channel="rgb")
+        >>> blob[:8] == b"\\x89PNG\\r\\n\\x1a\\n"
+        True
+    """
+    arr = _read_channel(image, channel)
+    arr = _downscale(arr, max_dim=max_dim)
+    rgb_uint8 = _channel_to_rgb_uint8(arr, channel)
+    return _encode_png(rgb_uint8)
+
+
+def bytes_to_data_uri(blob: bytes) -> str:
+    """Wrap raw PNG bytes as a ``data:image/png;base64,...`` URI string.
+
+    Args:
+        blob: Raw PNG-encoded bytes.
+
+    Returns:
+        A URI suitable for direct use as the ``src`` of an HTML ``<img>``
+        element.
+    """
+    encoded = base64.b64encode(bytes(blob)).decode("ascii")
+    return f"data:image/png;base64,{encoded}"
+
+
+def to_data_uri(
+    image: "phenotypic.Image",
+    channel: ChannelName = "rgb",
+    *,
+    max_dim: int = 512,
+) -> str:
+    """Render an :class:`Image` channel as a base64 PNG data URI.
+
+    Thin wrapper over :func:`to_png_bytes` + :func:`bytes_to_data_uri`. Kept
+    for callers that want one-shot rendering; the builder cache pre-bakes
+    raw bytes via :func:`to_png_bytes` directly.
+
+    Args:
+        image: PhenoTypic :class:`Image` (or :class:`GridImage`) instance.
+        channel: One of ``"rgb"``, ``"gray"``, ``"detect_mat"``, ``"objmap"``.
+        max_dim: Maximum length of the longer spatial side, in pixels.
+
+    Returns:
+        A string of the form ``"data:image/png;base64,<...>"``.
 
     Examples:
         >>> from phenotypic.data._synthetic_data import load_synth_yeast_plate
@@ -225,15 +290,137 @@ def to_data_uri(
         >>> uri.startswith("data:image/png;base64,")
         True
     """
-    arr = _read_channel(image, channel)
-    arr = _downscale(arr, max_dim=max_dim)
-    rgb_uint8 = _channel_to_rgb_uint8(arr, channel)
+    return bytes_to_data_uri(to_png_bytes(image, channel, max_dim=max_dim))
 
-    pil = PILImage.fromarray(rgb_uint8, mode="RGB")
-    buf = io.BytesIO()
-    pil.save(buf, format="PNG", optimize=False)
-    encoded = base64.b64encode(buf.getvalue()).decode("ascii")
-    return f"data:image/png;base64,{encoded}"
+
+def to_overlay_png_bytes(
+    image: "phenotypic.Image",
+    *,
+    max_dim: int = 512,
+    alpha: float = 0.4,
+) -> bytes:
+    """Composite the objmap (alpha-blended) over the post-op detect_mat.
+
+    Used for detector / refiner intermediates so the inspector shows
+    *which colonies were segmented at this step* against the same grayscale
+    background the detector saw. Falls back to a plain
+    :func:`_label_map_to_rgb` colormap on the objmap when ``scikit-image``
+    isn't importable, matching the existing fallback in
+    :func:`_label_map_to_rgb` itself.
+
+    Args:
+        image: PhenoTypic :class:`Image` whose ``detect_mat`` and ``objmap``
+            accessors should both be valid (post-detector / post-refiner).
+        max_dim: Maximum length of the longer spatial side after resizing.
+        alpha: Label-overlay opacity in ``[0, 1]``. Higher = more colored.
+
+    Returns:
+        Raw PNG bytes encoding an ``(H, W, 3)`` uint8 overlay.
+    """
+    detect = _read_channel(image, "detect_mat")
+    objmap = _read_channel(image, "objmap")
+
+    detect = _downscale(detect, max_dim=max_dim)
+    objmap = _downscale(objmap, max_dim=max_dim)
+
+    base_u8 = _normalize_to_uint8(detect)
+    if base_u8.ndim == 3:
+        base_u8 = base_u8[..., :3]
+    else:
+        base_u8 = np.stack([base_u8] * 3, axis=-1)
+
+    try:
+        from skimage.color import label2rgb
+
+        rgb = label2rgb(
+            objmap,
+            image=base_u8,
+            bg_label=0,
+            alpha=float(alpha),
+            image_alpha=1.0,
+            kind="overlay",
+        )
+        rgb_u8 = np.clip(rgb * 255.0, 0, 255).astype(np.uint8)
+    except Exception:
+        rgb_u8 = _label_map_to_rgb(objmap)
+
+    return _encode_png(rgb_u8)
+
+
+# ---------------------------------------------------------------------------
+# Per-stage dispatcher
+# ---------------------------------------------------------------------------
+
+
+def _registry_info_for(class_name: str) -> "OperationInfo | None":
+    """Return the :class:`OperationInfo` for *class_name*, or ``None``."""
+
+    try:
+        return get_registry().get(class_name)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _channel_for_class(
+    class_name: str, info: "OperationInfo | None"
+) -> ChannelName:
+    """Pick the channel best showing *class_name*'s output (non-overlay).
+
+    Fallback channel selector for stages that don't get the overlay renderer
+    (correctors, nested pipelines, unknown classes, measurement nodes that
+    fell through here). ``info`` is passed in so callers don't pay the
+    registry lookup twice.
+    """
+
+    try:
+        stage = stage_of(class_name)
+    except KeyError:
+        return "rgb"
+    if stage != "ops" or info is None:
+        return "rgb"
+    if info.category == "Enhancer":
+        return "detect_mat"
+    if info.category in {"Detector", "Refiner"}:
+        # Safety-net channel for the case where the overlay renderer raises
+        # and the caller falls back to a single-channel render.
+        return "objmap"
+    return "rgb"
+
+
+def render_node_preview(
+    image: "phenotypic.Image",
+    class_name: str,
+    *,
+    max_dim: int = 512,
+) -> bytes:
+    """Render the node-appropriate PNG for a pipeline intermediate.
+
+    Per-stage rule (matches the GUI's "show what this op did" intent):
+
+    * Enhancers → :func:`to_png_bytes` on ``detect_mat``.
+    * Detectors / Refiners → :func:`to_overlay_png_bytes` (objmap on
+      detect_mat).
+    * Correctors / nested ``Pipeline`` / unknown → :func:`to_png_bytes` on
+      ``rgb``.
+
+    Pre-baked once at preview-run time and cached as bytes; the inspector
+    only base64-wraps for display.
+
+    Args:
+        image: Post-op intermediate :class:`Image`.
+        class_name: Operation class name from ``StepNode.class_name``.
+        max_dim: Maximum length of the longer spatial side after resizing.
+
+    Returns:
+        Raw PNG bytes.
+    """
+
+    info = _registry_info_for(class_name)
+    if info is not None and info.category in {"Detector", "Refiner"}:
+        return to_overlay_png_bytes(image, max_dim=max_dim)
+
+    channel = _channel_for_class(class_name, info)
+    return to_png_bytes(image, channel, max_dim=max_dim)
 
 
 def dataframe_to_table(
@@ -285,4 +472,11 @@ def dataframe_to_table(
     return dash_table.DataTable(**kwargs)  # type: ignore[attr-defined]
 
 
-__all__ = ["to_data_uri", "dataframe_to_table"]
+__all__ = [
+    "to_data_uri",
+    "to_png_bytes",
+    "bytes_to_data_uri",
+    "to_overlay_png_bytes",
+    "render_node_preview",
+    "dataframe_to_table",
+]

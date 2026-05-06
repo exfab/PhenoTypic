@@ -226,3 +226,31 @@ badge contrast variants and prohibited combinations.
 - **`inject_design_tokens` is idempotent** — both the sub-app `_app.py`
   factories AND `wrap_in_chrome` call it; only the first call inserts
   the `<style>` block (marker comment de-dupes).
+
+---
+
+## Builder preview cache
+
+The builder's `Run preview` does NOT cache full `Image` instances. Each
+intermediate is rendered to a PNG **at preview-run time** by
+`render_node_preview` (see `builder/_image_renderer.py`) and the resulting
+bytes — together with measurement DataFrames and `PreviewRenderError`
+sentinels — are what live in `IntermediatesCache` (`builder/_session.py`).
+The inspector base64-wraps the bytes for `<img src=…>` and is otherwise
+a no-op on selection.
+
+- **Per-stage rule** (encoded inside `render_node_preview`):
+  - Enhancer → PNG of `detect_mat`.
+  - Detector / Refiner → overlay PNG (`label2rgb` of `objmap` over
+    `detect_mat`, scikit-image-fallback to a tab20 colormap).
+  - Corrector / nested `ImagePipeline` / unknown → PNG of `rgb`.
+- **Why**: pre-baking collapses worst-case resident memory from ~1–2 GB
+  (full Images per node × bounded sessions) to ~10–15 MB of PNG bytes,
+  and makes inspector node-switching effectively free.
+- **Render failures don't kill the preview** — they're caught per-node
+  and stored as `PreviewRenderError(message)` so the inspector can
+  surface the error inline while the rest of the run-preview output
+  remains valid.
+- **Testable seam**: `_callbacks._bake_preview_cache(state, pipeline,
+  result, session_id, cache)` is the unit the integration tests target;
+  `run_preview` itself is a thin Dash-callback adapter around it.

@@ -1,10 +1,10 @@
-"""Per-session in-memory caches for images and pipeline intermediates.
+"""Per-session in-memory caches for images and pre-baked previews.
 
 The Dash builder needs server-side storage for two things that are too big or
 too type-rich to round-trip through ``dcc.Store`` JSON:
 
 - The currently loaded :class:`phenotypic.Image` (or :class:`GridImage`).
-- The map of ``node_id -> intermediate`` produced by
+- The map of ``node_id -> rendered preview`` produced after
   :meth:`ImagePipeline.apply_with_intermediates`.
 
 Both live in a single :class:`IntermediatesCache` keyed by a per-tab uuid that
@@ -12,6 +12,18 @@ the front end persists in a ``dcc.Store(storage_type='session')``. The cache
 is bounded — at most ``max_sessions`` distinct sessions, with eviction in
 FIFO order on the session-id list, and at most ``max_per_session``
 intermediates per session (LRU on the inner dict).
+
+**Cached preview payload contract** — each intermediate slot holds one of:
+
+- :class:`bytes` — raw PNG bytes pre-baked by ``render_node_preview`` (one
+  per ops node).
+- :class:`pandas.DataFrame` — the measurement / post-measurement output table.
+- :class:`PreviewRenderError` — sentinel describing a failed render so the
+  inspector can surface the message inline.
+
+This is a hard departure from the pre-pre-bake design which stored full
+``Image`` / ``GridImage`` instances. Dropping the source images after
+rendering shrinks worst-case resident memory by ~100×.
 
 Concurrency is handled with a single ``threading.Lock``. This is a deliberate
 single-process design — the SSH-tunneled HPCC use case does not require
@@ -24,10 +36,32 @@ from __future__ import annotations
 import threading
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Optional, Union
 
 if TYPE_CHECKING:  # pragma: no cover - type-only imports
+    import pandas as pd  # type: ignore[import-untyped]
+
     from phenotypic import Image
+
+
+@dataclass(frozen=True)
+class PreviewRenderError:
+    """Sentinel marking an intermediate slot whose render failed.
+
+    Stored in :class:`IntermediatesCache` in place of PNG bytes when
+    ``render_node_preview`` raises during a preview run, so the inspector
+    can show the message inline without crashing the whole preview.
+
+    Attributes:
+        message: Human-readable rendering failure (typically the formatted
+            exception). Surfaced verbatim in the inspector's warning div.
+    """
+
+    message: str
+
+
+CachedPreview = Union[bytes, "pd.DataFrame", PreviewRenderError]
+"""Anything :meth:`IntermediatesCache.set_intermediate` may store."""
 
 
 @dataclass
@@ -39,8 +73,10 @@ class SessionData:
             :class:`GridImage`); ``None`` when nothing is loaded yet.
         image_path: Path string from which ``image`` was loaded (informational).
             ``None`` when ``image`` came from the synthetic plate fallback.
-        intermediates: ``node_id -> Image | DataFrame`` map of per-step
-            intermediates produced by the most recent preview run. Eviction
+        intermediates: ``node_id -> CachedPreview`` map of per-step
+            pre-baked previews. Each value is :class:`bytes` (PNG) for ops
+            nodes, a :class:`pandas.DataFrame` for measurement / post nodes,
+            or :class:`PreviewRenderError` when rendering failed. Eviction
             order is LRU (oldest accessed first). Maintained as an
             :class:`OrderedDict` so :meth:`set_intermediate` can move accessed
             keys to the end without copying.
@@ -48,7 +84,9 @@ class SessionData:
 
     image: Optional["Image"] = None
     image_path: Optional[str] = None
-    intermediates: "OrderedDict[str, Any]" = field(default_factory=OrderedDict)
+    intermediates: "OrderedDict[str, CachedPreview]" = field(
+        default_factory=OrderedDict
+    )
 
 
 class IntermediatesCache:
@@ -153,16 +191,19 @@ class IntermediatesCache:
             if image is None:
                 data.intermediates.clear()
 
-    def set_intermediate(self, session_id: str, node_id: str, value: Any) -> None:
-        """Store *value* as the intermediate for *node_id*.
+    def set_intermediate(
+        self, session_id: str, node_id: str, value: CachedPreview
+    ) -> None:
+        """Store *value* as the pre-baked preview for *node_id*.
 
         If *node_id* already exists, it's moved to the most-recently-used end.
 
         Args:
             session_id: Per-tab uuid.
             node_id: ``StepNode.node_id`` produced by ``_state``.
-            value: An :class:`Image` (or :class:`pd.DataFrame` for measurement
-                / post-measurement steps).
+            value: PNG :class:`bytes` (ops node), :class:`pandas.DataFrame`
+                (measurement / post node), or :class:`PreviewRenderError`
+                (rendering failure marker).
         """
 
         with self._lock:
@@ -172,7 +213,9 @@ class IntermediatesCache:
             data.intermediates[node_id] = value
             self._evict_oldest_intermediates(data)
 
-    def get_intermediate(self, session_id: str, node_id: str) -> Any:
+    def get_intermediate(
+        self, session_id: str, node_id: str
+    ) -> Optional[CachedPreview]:
         """Return the cached intermediate for *node_id*, or ``None``.
 
         Touches the LRU order so frequently-viewed nodes survive eviction.
@@ -249,4 +292,10 @@ def get_cache() -> IntermediatesCache:
         return _GLOBAL_CACHE
 
 
-__all__ = ["SessionData", "IntermediatesCache", "get_cache"]
+__all__ = [
+    "SessionData",
+    "IntermediatesCache",
+    "PreviewRenderError",
+    "CachedPreview",
+    "get_cache",
+]
