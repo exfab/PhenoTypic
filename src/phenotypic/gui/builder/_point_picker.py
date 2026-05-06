@@ -547,6 +547,48 @@ def _stage_png_for_session(
     return ok
 
 
+def _stage_intermediate_png_bytes(
+    session_id: str,
+    image_root: Optional[Path],
+    png_bytes: bytes,
+) -> bool:
+    """Write a pre-baked intermediate PNG into the per-session cache.
+
+    The builder's preview run encodes each ops node's intermediate to a
+    PNG once via ``render_node_preview`` (see ``builder/_image_renderer.py``);
+    the bytes live in :class:`IntermediatesCache`. The picker re-uses that
+    pre-baked output verbatim — no re-encoding — so the per-stage render
+    rule (overlay for detector/refiner, detect_mat for enhancer, rgb for
+    corrector) survives into the modal's DZI source.
+
+    Skips the write when the same bytes object was already staged for this
+    session — keeps the DZI tile pyramid valid across modal-open round-trips.
+    """
+    if not _safe_session_id(session_id):
+        return False
+    cache_dir = _session_cache_dir(image_root, session_id)
+    png_path = _channel_png_path(cache_dir, "intermediate")
+
+    cache_key = (session_id, "intermediate")
+    if (
+        png_path.exists()
+        and _LAST_DUMPED.get(cache_key) == id(png_bytes)
+    ):
+        return True
+
+    try:
+        png_path.parent.mkdir(parents=True, exist_ok=True)
+        png_path.write_bytes(png_bytes)
+    except Exception:
+        logger.exception(
+            "Failed to stage intermediate PNG for session %s", session_id
+        )
+        return False
+
+    _LAST_DUMPED[cache_key] = id(png_bytes)
+    return True
+
+
 def _dzi_url(session_id: str, source: str) -> str:
     """Build the DZI manifest URL the JS layer should mount.
 
@@ -658,10 +700,10 @@ def register_point_picker_callbacks(app: dash.Dash) -> None:
                 session_id, "rgb", sandbox_root, image
             )
             if predecessor_id is not None:
-                pred_image = cache.get_intermediate(session_id, predecessor_id)
-                if pred_image is not None and hasattr(pred_image, "rgb"):
-                    intermediate_ok = _stage_png_for_session(
-                        session_id, "intermediate", sandbox_root, pred_image
+                pred_value = cache.get_intermediate(session_id, predecessor_id)
+                if isinstance(pred_value, (bytes, bytearray)):
+                    intermediate_ok = _stage_intermediate_png_bytes(
+                        session_id, sandbox_root, bytes(pred_value)
                     )
 
         # Build the initial DZI URL (default: rgb). If rgb couldn't be
@@ -737,15 +779,14 @@ def register_point_picker_callbacks(app: dash.Dash) -> None:
                     state_data, target_node
                 )
                 if predecessor_id is not None:
-                    pred_image = get_cache().get_intermediate(
+                    pred_value = get_cache().get_intermediate(
                         session_id, predecessor_id
                     )
-                    if pred_image is not None:
-                        avail_out["intermediate"] = _stage_png_for_session(
+                    if isinstance(pred_value, (bytes, bytearray)):
+                        avail_out["intermediate"] = _stage_intermediate_png_bytes(
                             session_id,
-                            "intermediate",
                             _resolve_image_root(app),
-                            pred_image,
+                            bytes(pred_value),
                         )
 
         return (_dzi_url(session_id, value), avail_out)
