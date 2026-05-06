@@ -7,7 +7,11 @@ mutation surface in milliseconds.
 
 from __future__ import annotations
 
+from dash import html
+
+from phenotypic.gui._operation_registry import OperationRegistry
 from phenotypic.gui.builder._callbacks import _dispatch_state_update
+from phenotypic.gui.builder._app import create_app
 from phenotypic.gui.builder._state import (
     BuilderScope,
     BuilderState,
@@ -29,6 +33,58 @@ def _seed_state() -> dict:
         ),
     )
     return state_to_json(state)
+
+
+def test_render_views_returns_breadcrumb_children_not_nested_nav() -> None:
+    """Callback payload must update ``breadcrumb.children``, not nest another nav."""
+
+    from phenotypic.gui.builder._callbacks import _render_views
+
+    registry = OperationRegistry()
+    registry.discover()
+    app = create_app(registry=registry)
+    state = BuilderState()
+
+    with app.server.app_context():
+        breadcrumb_children, _canvas, _inspector = _render_views(state)
+
+    assert isinstance(breadcrumb_children, list)
+    assert not any(isinstance(child, html.Nav) for child in breadcrumb_children)
+
+
+def test_render_views_drilled_in_breadcrumb_returns_button_children() -> None:
+    """Drilled-in state must render ancestor buttons + separator inline, not nest a nav."""
+
+    from phenotypic.gui.builder._callbacks import _render_views
+
+    registry = OperationRegistry()
+    registry.discover()
+    app = create_app(registry=registry)
+
+    state = BuilderState(
+        root=BuilderScope(
+            nodes=[
+                StepNode(
+                    node_id="pipe1",
+                    class_name="ImagePipeline",
+                    label="Subpipeline",
+                    nested=BuilderScope(
+                        nodes=[StepNode(node_id="aaa", class_name="GaussianBlur")],
+                        name="Subpipeline",
+                    ),
+                ),
+            ],
+        ),
+        breadcrumb=[{"node_id": "pipe1", "param": None}],
+    )
+
+    with app.server.app_context():
+        breadcrumb_children, _canvas, _inspector = _render_views(state)
+
+    assert isinstance(breadcrumb_children, list)
+    assert not any(isinstance(child, html.Nav) for child in breadcrumb_children)
+    # Two-segment path → ancestor button + " / " separator + active span (3 children).
+    assert len(breadcrumb_children) >= 3
 
 
 def test_add_node_appends_and_selects() -> None:

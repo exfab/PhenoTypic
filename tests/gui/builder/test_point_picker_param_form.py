@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import dash_bootstrap_components as dbc
-from dash import dcc, html
 
-from phenotypic.gui._operation_registry import OperationRegistry
-from phenotypic.gui.builder._param_form import param_form
+from phenotypic.gui._operation_registry import OperationRegistry, ParamInfo
+from phenotypic.gui.builder._param_form import param_form, parse_widget_value
 
 
 def _walk(node):
@@ -32,6 +30,15 @@ def _id_types_in_form(form):
             if isinstance(t, str):
                 types.add(t)
     return types
+
+
+def _ids_in_form(form):
+    ids = []
+    for node in _walk(form):
+        nid = getattr(node, "id", None)
+        if isinstance(nid, dict):
+            ids.append(nid)
+    return ids
 
 
 def test_picker_widget_replaces_input_for_manual_point_detector():
@@ -112,3 +119,42 @@ def test_picker_store_handles_numpy_initial():
             assert list(node.data[0]) == [1.5, 2.5]
             return
     raise AssertionError("picker store not found in form")
+
+
+def test_pep604_optional_int_param_uses_numeric_widget_and_parser():
+    """``int | None`` operation params must not fall back to text handling."""
+
+    reg = OperationRegistry()
+    reg.discover()
+    info = reg.get("ImageCropper")
+
+    assert info is not None
+    left = info.parameters["left"]
+    assert left.is_optional is True
+
+    form = param_form(info, current_values={}, form_id_prefix="crop")
+    left_ids = [
+        nid
+        for nid in _ids_in_form(form)
+        if nid.get("prefix") == "crop" and nid.get("name") == "left"
+    ]
+
+    assert {"type": "param-num", "prefix": "crop", "name": "left"} in left_ids
+    assert {"type": "param-str", "prefix": "crop", "name": "left"} not in left_ids
+    assert parse_widget_value("12", left) == 12
+
+
+def test_parse_widget_value_coerces_pep604_optional_float():
+    """PEP 604 optional floats share the same coercion path as Optional[float]."""
+
+    param = ParamInfo(
+        name="sigma",
+        type_hint=float | None,
+        default=None,
+        has_default=True,
+        is_operation=False,
+        is_pipeline=False,
+        is_optional=True,
+    )
+
+    assert parse_widget_value("2.5", param) == 2.5

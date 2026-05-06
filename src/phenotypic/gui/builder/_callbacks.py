@@ -618,7 +618,10 @@ def _render_views(state: BuilderState) -> Tuple[Any, Any, Any]:
         state: Live :class:`BuilderState` object.
 
     Returns:
-        Tuple of ``(breadcrumb, canvas, inspector)`` Dash component subtrees.
+        Tuple of ``(breadcrumb_children, canvas, inspector)`` Dash component
+        subtrees. The breadcrumb callback target is the existing nav's
+        ``children`` property, so returning a full nav here would nest the
+        breadcrumb inside itself on every update.
     """
 
     registry = _registry()
@@ -633,7 +636,7 @@ def _render_views(state: BuilderState) -> Tuple[Any, Any, Any]:
 
     canvas = build_canvas(scope, state.selected_node_id)
     inspector = build_inspector(state, registry)
-    breadcrumb = build_breadcrumb(state)
+    breadcrumb = build_breadcrumb(state).children
     return breadcrumb, canvas, inspector
 
 
