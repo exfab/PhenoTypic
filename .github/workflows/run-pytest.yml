@@ -1,15 +1,22 @@
 name: run-pytest
+# Fast PR lane. Goal: ~10-15 min wall-clock for PR-time signal.
+#
+# Matrix: Linux x Python {3.10 (floor), 3.12 (ceiling)}. Windows, macOS, and
+# Python 3.11 move to the nightly + post-merge full lane in
+# ``run-pytest-full.yml``. Slow tests are excluded by default via
+# ``addopts = "-m 'not slow'"`` in pyproject.toml.
+#
 # Testmon caching strategy:
-# pytest-testmon records which source files each test depends on (stored in .testmondata, a SQLite file).
-# On PR runs, we restore the .testmondata cache built from main so testmon only runs tests whose
-# dependencies changed in the PR. On pushes to main (after merge), we run with --testmon to update
-# the baseline cache for future PRs. On cache miss (first run, or dependency change), testmon runs
-# everything -- this is expected, not an error. Limitation: testmon tracks Python source only, not
-# config files, data fixtures, or environment variables.
+# pytest-testmon records which source files each test depends on (stored in
+# .testmondata, a SQLite file). On PR runs, we restore the .testmondata cache
+# built from main so testmon only runs tests whose dependencies changed in the
+# PR. The full lane runs without testmon to keep the nightly cache fresh and
+# to avoid skipping any tests on a clean run. On cache miss (first run, or
+# dependency change), testmon runs everything -- this is expected, not an
+# error. Limitation: testmon tracks Python source only, not config files, data
+# fixtures, or environment variables.
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main, dev]
   workflow_dispatch:
@@ -79,11 +86,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Ubuntu: test Python 3.10, 3.11, 3.12
+          # Ubuntu: floor (3.10) + ceiling (3.12). Python 3.11 moves to the
+          # nightly + post-merge full lane in run-pytest-full.yml.
           - os: ubuntu-latest
             python-version: "3.10"
-          - os: ubuntu-latest
-            python-version: "3.11"
           - os: ubuntu-latest
             python-version: "3.12"
 
@@ -124,106 +130,10 @@ jobs:
         run: |
           source .venv/bin/activate
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            pytest -n auto  # Full parallel run
+            pytest -n auto  # Full parallel run, addopts still excludes -m slow
           else
-            pytest --testmon  # Selective: PR (skip unchanged) or push-to-main (update baseline)
+            pytest --testmon  # Selective: PR (skip unchanged dependencies)
           fi
 
-  tests-windows:
-    needs: check-manual-run
-    # Run Windows tests unless a successful manual run exists
-    if: needs.check-manual-run.outputs.skip != 'true'
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # Windows: only Python 3.12
-          - os: windows-latest
-            python-version: "3.12"
-
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v8.1.0
-        with:
-          version: "latest"
-
-      - name: Install dependencies
-        run: |
-          uv lock
-          uv sync --group dev --all-extras
-
-      - name: Cache testmon data
-        uses: actions/cache@v5
-        with:
-          path: .testmondata
-          key: testmon-${{ runner.os }}-py${{ matrix.python-version }}-${{ github.ref_name }}-${{ hashFiles('uv.lock') }}-${{ github.sha }}
-          restore-keys: |
-            testmon-${{ runner.os }}-py${{ matrix.python-version }}-main-${{ hashFiles('uv.lock') }}-
-            testmon-${{ runner.os }}-py${{ matrix.python-version }}-main-
-
-      - name: Run tests
-        run: |
-          .venv\Scripts\activate
-          if ($env:GITHUB_EVENT_NAME -eq "workflow_dispatch") {
-            pytest -n auto  # Full parallel run
-          } else {
-            pytest --testmon  # Selective: PR (skip unchanged) or push-to-main (update baseline)
-          }
-        shell: pwsh
-
-  tests-macos:
-    needs: check-manual-run
-    # Run macOS tests only when the repository is public and no successful manual run exists
-    if: needs.check-manual-run.outputs.skip != 'true' && github.event.repository.visibility == 'public'
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # macOS: only Python 3.12
-          - os: macos-14
-            python-version: "3.12"
-
-    runs-on: ${{matrix.os}}
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v8.1.0
-        with:
-          version: "latest"
-
-      - name: Install dependencies
-        run: |
-          uv lock
-          uv sync --group dev --all-extras
-
-      - name: Cache testmon data
-        uses: actions/cache@v5
-        with:
-          path: .testmondata
-          key: testmon-${{ runner.os }}-py${{ matrix.python-version }}-${{ github.ref_name }}-${{ hashFiles('uv.lock') }}-${{ github.sha }}
-          restore-keys: |
-            testmon-${{ runner.os }}-py${{ matrix.python-version }}-main-${{ hashFiles('uv.lock') }}-
-            testmon-${{ runner.os }}-py${{ matrix.python-version }}-main-
-
-      - name: Run tests
-        run: |
-          source .venv/bin/activate
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            pytest -n auto  # Full parallel run
-          else
-            pytest --testmon  # Selective: PR (skip unchanged) or push-to-main (update baseline)
-          fi
+  # tests-windows and tests-macos moved to .github/workflows/run-pytest-full.yml
+  # which runs nightly + on push to main + on workflow_dispatch.

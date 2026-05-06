@@ -9,9 +9,15 @@ from phenotypic._core._image_parts.panel_accessor._diagnostics_dashboard import 
     PANEL_AVAILABLE,
 )
 
-pytestmark = pytest.mark.skipif(
-    not PANEL_AVAILABLE, reason="Panel/param not installed"
-)
+# Module-level markers:
+# - skipif: dashboard requires Panel/param, optional dependency
+# - slow: full Panel/Bokeh dashboard rendering on a real plate is heavy and
+#   the dashboard rarely changes per PR; runs on the nightly + post-merge full
+#   lane only.
+pytestmark = [
+    pytest.mark.skipif(not PANEL_AVAILABLE, reason="Panel/param not installed"),
+    pytest.mark.slow,
+]
 
 if PANEL_AVAILABLE:
     import panel as pn
