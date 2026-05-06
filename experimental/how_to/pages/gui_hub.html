@@ -719,12 +719,57 @@ to any live subprocesses before the process exits.</p>
 <h2>SSH-tunnel pattern<a class="headerlink" href="#ssh-tunnel-pattern" title="Link to this heading">#</a></h2>
 <p>When the hub runs on an HPC cluster, forward the port to your workstation in a
 separate terminal before opening the browser:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ssh<span class="w"> </span>-L<span class="w"> </span><span class="m">8050</span>:localhost:8050<span class="w"> </span>user@cluster
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ssh<span class="w"> </span>-L<span class="w"> </span><span class="m">8050</span>:localhost:8050<span class="w"> </span>&lt;user&gt;@&lt;cluster&gt;
 </pre></div>
 </div>
 <p>Then open <code class="docutils literal notranslate"><span class="pre">http://localhost:8050/</span></code> locally. The default <code class="docutils literal notranslate"><span class="pre">--host</span> <span class="pre">127.0.0.1</span></code>
 binding means the server only accepts connections from <code class="docutils literal notranslate"><span class="pre">localhost</span></code>, so the
 tunnel is the only path in from outside the cluster.</p>
+<section id="running-the-gui-on-a-slurm-compute-node">
+<span id="gui-hub-slurm-tunnel"></span><h3>Running the GUI on a Slurm compute node<a class="headerlink" href="#running-the-gui-on-a-slurm-compute-node" title="Link to this heading">#</a></h3>
+<p>If you launch the GUI from inside a <code class="docutils literal notranslate"><span class="pre">srun</span></code> / <code class="docutils literal notranslate"><span class="pre">salloc</span></code> allocation, the server is
+bound to <code class="docutils literal notranslate"><span class="pre">localhost</span></code> on the <strong>compute node</strong>, not on the login node you SSH’d
+into. A single-hop tunnel to the login node will return
+<code class="docutils literal notranslate"><span class="pre">channel</span> <span class="pre">N:</span> <span class="pre">open</span> <span class="pre">failed:</span> <span class="pre">connect</span> <span class="pre">failed:</span> <span class="pre">Connection</span> <span class="pre">refused</span></code> because nothing is
+listening on the login node’s port. You need a two-hop tunnel.</p>
+<p>Pick the compute node hostname (visible in your shell prompt after the
+allocation lands, e.g. <code class="docutils literal notranslate"><span class="pre">&lt;user&gt;&#64;gpu12:~$</span></code>) and use one of the following:</p>
+<p><strong>Option 1 — <code class="docutils literal notranslate"><span class="pre">ProxyJump</span></code> from your workstation (simplest, single command):</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ssh<span class="w"> </span>-J<span class="w"> </span>&lt;user&gt;@&lt;cluster&gt;<span class="w"> </span>-L<span class="w"> </span><span class="m">8050</span>:localhost:8050<span class="w"> </span>&lt;user&gt;@&lt;compute-node&gt;
+</pre></div>
+</div>
+<p>This requires that the login node can SSH to the compute node without an
+extra password; that is the default on most Slurm clusters while you have an
+active allocation.</p>
+<p><strong>Option 2 — Nested SSH (works even if direct SSH to the compute node is
+blocked, as long as the login node permits forwarding):</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ssh<span class="w"> </span>-L<span class="w"> </span><span class="m">8050</span>:localhost:8050<span class="w"> </span>&lt;user&gt;@&lt;cluster&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>ssh<span class="w"> </span>-L<span class="w"> </span><span class="m">8050</span>:localhost:8050<span class="w"> </span>-N<span class="w"> </span>&lt;compute-node&gt;
+</pre></div>
+</div>
+<p><strong>Option 3 — Two terminals (useful when you want to keep the allocation shell
+interactive):</strong></p>
+<ol class="arabic">
+<li><p>Terminal A — start the GUI on the compute node:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ssh<span class="w"> </span>&lt;user&gt;@&lt;cluster&gt;
+srun<span class="w"> </span>-A<span class="w"> </span>&lt;account&gt;<span class="w"> </span>-p<span class="w"> </span>&lt;partition&gt;<span class="w"> </span>-t<span class="w"> </span><span class="m">4</span>:00:00<span class="w"> </span>--pty<span class="w"> </span>-c<span class="w"> </span><span class="m">8</span><span class="w"> </span>--mem<span class="o">=</span>32g<span class="w"> </span>bash<span class="w"> </span>-l
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.gui<span class="w"> </span>--root<span class="w"> </span>&lt;project-dir&gt;<span class="w"> </span>--port<span class="w"> </span><span class="m">8050</span>
+</pre></div>
+</div>
+</li>
+<li><p>Terminal B — open the two-hop tunnel from your workstation:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ssh<span class="w"> </span>-J<span class="w"> </span>&lt;user&gt;@&lt;cluster&gt;<span class="w"> </span>-L<span class="w"> </span><span class="m">8050</span>:localhost:8050<span class="w"> </span>-N<span class="w"> </span>&lt;user&gt;@&lt;compute-node&gt;
+</pre></div>
+</div>
+</li>
+</ol>
+<p>In all three options, open <code class="docutils literal notranslate"><span class="pre">http://localhost:8050/</span></code> on your workstation once
+the GUI logs <code class="docutils literal notranslate"><span class="pre">Dash</span> <span class="pre">is</span> <span class="pre">running</span> <span class="pre">on</span> <span class="pre">http://127.0.0.1:8050/</span></code>.</p>
+<p>To confirm the diagnosis if a tunnel keeps failing: from the <strong>login node</strong>,
+run <code class="docutils literal notranslate"><span class="pre">curl</span> <span class="pre">http://localhost:8050/</span></code>. It will fail (the GUI is on the compute
+node). From the <strong>compute node</strong>, the same <code class="docutils literal notranslate"><span class="pre">curl</span></code> succeeds. That mismatch is
+the symptom that you need a two-hop tunnel rather than a single-hop one.</p>
+</section>
 </section>
 <section id="cloud-deployment">
 <h2>Cloud deployment<a class="headerlink" href="#cloud-deployment" title="Link to this heading">#</a></h2>
@@ -787,7 +832,10 @@ the hub launcher.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#log-tail-and-iframe-dashboard">Log tail and iframe dashboard</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ssh-tunnel-pattern">SSH-tunnel pattern</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ssh-tunnel-pattern">SSH-tunnel pattern</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#running-the-gui-on-a-slurm-compute-node">Running the GUI on a Slurm compute node</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cloud-deployment">Cloud deployment</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#standalone-tools">Standalone tools</a></li>
 </ul>

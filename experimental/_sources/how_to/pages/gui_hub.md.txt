@@ -139,12 +139,67 @@ When the hub runs on an HPC cluster, forward the port to your workstation in a
 separate terminal before opening the browser:
 
 ```bash
-ssh -L 8050:localhost:8050 user@cluster
+ssh -L 8050:localhost:8050 <user>@<cluster>
 ```
 
 Then open `http://localhost:8050/` locally. The default `--host 127.0.0.1`
 binding means the server only accepts connections from `localhost`, so the
 tunnel is the only path in from outside the cluster.
+
+(gui-hub-slurm-tunnel)=
+### Running the GUI on a Slurm compute node
+
+If you launch the GUI from inside a `srun` / `salloc` allocation, the server is
+bound to `localhost` on the **compute node**, not on the login node you SSH'd
+into. A single-hop tunnel to the login node will return
+`channel N: open failed: connect failed: Connection refused` because nothing is
+listening on the login node's port. You need a two-hop tunnel.
+
+Pick the compute node hostname (visible in your shell prompt after the
+allocation lands, e.g. `<user>@gpu12:~$`) and use one of the following:
+
+**Option 1 — `ProxyJump` from your workstation (simplest, single command):**
+
+```bash
+ssh -J <user>@<cluster> -L 8050:localhost:8050 <user>@<compute-node>
+```
+
+This requires that the login node can SSH to the compute node without an
+extra password; that is the default on most Slurm clusters while you have an
+active allocation.
+
+**Option 2 — Nested SSH (works even if direct SSH to the compute node is
+blocked, as long as the login node permits forwarding):**
+
+```bash
+ssh -L 8050:localhost:8050 <user>@<cluster> \
+    ssh -L 8050:localhost:8050 -N <compute-node>
+```
+
+**Option 3 — Two terminals (useful when you want to keep the allocation shell
+interactive):**
+
+1. Terminal A — start the GUI on the compute node:
+
+   ```bash
+   ssh <user>@<cluster>
+   srun -A <account> -p <partition> -t 4:00:00 --pty -c 8 --mem=32g bash -l
+   uv run python -m phenotypic.gui --root <project-dir> --port 8050
+   ```
+
+2. Terminal B — open the two-hop tunnel from your workstation:
+
+   ```bash
+   ssh -J <user>@<cluster> -L 8050:localhost:8050 -N <user>@<compute-node>
+   ```
+
+In all three options, open `http://localhost:8050/` on your workstation once
+the GUI logs `Dash is running on http://127.0.0.1:8050/`.
+
+To confirm the diagnosis if a tunnel keeps failing: from the **login node**,
+run `curl http://localhost:8050/`. It will fail (the GUI is on the compute
+node). From the **compute node**, the same `curl` succeeds. That mismatch is
+the symptom that you need a two-hop tunnel rather than a single-hop one.
 
 ## Cloud deployment
 

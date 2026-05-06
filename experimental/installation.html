@@ -591,9 +591,15 @@ for remote workstations:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ssh<span class="w"> </span>-L<span class="w"> </span><span class="m">8050</span>:localhost:8050<span class="w"> </span>user@cluster
 </pre></div>
 </div>
-<p>Then open <code class="docutils literal notranslate"><span class="pre">http://localhost:8050/</span></code> in your browser. See the
-<a class="reference internal" href="how_to/pages/gui_hub.html"><span class="doc">GUI hub guide</span></a> for a tour of the file
-browser, pipeline builder, run console, and results viewer.</p>
+<p>Then open <code class="docutils literal notranslate"><span class="pre">http://localhost:8050/</span></code> in your browser. If you launch the
+GUI from inside a Slurm allocation (<code class="docutils literal notranslate"><span class="pre">srun</span></code>/<code class="docutils literal notranslate"><span class="pre">salloc</span></code>), the server
+binds to the compute node rather than the login node, and the
+single-hop tunnel above will return <code class="docutils literal notranslate"><span class="pre">connect</span> <span class="pre">failed:</span> <span class="pre">Connection</span>
+<span class="pre">refused</span></code>. See
+<a class="reference internal" href="how_to/pages/gui_hub.html#gui-hub-slurm-tunnel"><span class="std std-ref">Running the GUI on a Slurm compute node</span></a>
+in the GUI hub guide for the two-hop tunnel pattern. That guide also
+covers the file browser, pipeline builder, run console, and results
+viewer.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p><code class="docutils literal notranslate"><span class="pre">phenotypic</span> <span class="pre">gui</span></code> (no hyphen, as a subcommand) is <strong>not supported</strong>.
