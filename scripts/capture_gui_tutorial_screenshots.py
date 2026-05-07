@@ -250,6 +250,7 @@ def capture_workflow_screenshots(base_url: str, headed: bool = False) -> None:
             _capture_run_slurm(context, base_url)
             _capture_view_results(context, base_url)
             _capture_pick_points(context, base_url)
+            _capture_analysis(context, base_url)
         finally:
             browser.close()
 
@@ -594,6 +595,21 @@ def _capture_pick_points(context, base_url: str) -> None:
         page.wait_for_timeout(2500)
     _save(page, "pick_points", "08_preview_after_curation.png")
 
+    page.close()
+
+
+def _capture_analysis(context, base_url: str) -> None:
+    """Capture the analysis sub-app at ``/analysis/``.
+
+    The hub-mounted analysis sub-app renders an empty-state placeholder
+    until the user selects a CLI output via the sidebar (analysis sub-app
+    rebuild-on-select wiring is deferred to a follow-up). Capture the
+    empty state here; the loaded-state screenshots can be added once the
+    sidebar hand-off lands.
+    """
+    print("[shot] workflow=analysis (empty state via hub)")
+    page = _new_page(context, base_url, "/analysis/")
+    _save(page, "analysis", "01_analysis_empty.png")
     page.close()
 
 

@@ -21,16 +21,17 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
+from phenotypic.gui._config import MASTER_MEASUREMENTS_PARQUET
 from phenotypic.gui.builder._directory_browser import IMAGE_EXTS
 
 __all__ = ["Capabilities", "classify", "invalidate_cache"]
 
 
-# Markers that identify a CLI-output directory. Kept in lockstep with
-# ``results_viewer/_output_root.py``; if those constants change there, update
-# here too. We don't import the private symbols from that module to avoid a
-# circular dependency between the shell and the viewer.
-_MASTER_MEASUREMENTS_FILENAME = "master_measurements.parquet"
+# Markers that identify a CLI-output directory. The master parquet name is
+# centralised in ``gui/_config.py`` so the shell classifier and the results
+# viewer's ``_output_root`` stay in lockstep without either importing the
+# other (which would re-introduce the historical circular dependency).
+_MASTER_MEASUREMENTS_FILENAME = MASTER_MEASUREMENTS_PARQUET
 _RESULTS_DIRNAME = "results"
 _DASHBOARD_FILENAME = "dashboard.html"
 

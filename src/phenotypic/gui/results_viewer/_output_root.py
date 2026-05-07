@@ -17,11 +17,14 @@ from pathlib import Path
 
 import polars as pl
 
-from phenotypic.gui._config import VIEWER_CACHE_DIRNAME
+from phenotypic.gui._config import (
+    MASTER_MEASUREMENTS_PARQUET,
+    VIEWER_CACHE_DIRNAME,
+)
 
 logger = logging.getLogger(__name__)
 
-_MASTER_FILENAME = "master_measurements.parquet"
+_MASTER_FILENAME = MASTER_MEASUREMENTS_PARQUET
 _RESULTS_DIRNAME = "results"
 _OVERLAYS_DIRNAME = "overlays"
 _MEASUREMENTS_DIRNAME = "measurements"

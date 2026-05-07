@@ -405,7 +405,7 @@ class ModelFitter(SetAnalyzer, ABC):
             criteria: Dict[str, Union[Any, List[Any]]] | None = None,
             figsize=(6, 4),
             cmap: str | None = "tab20",
-            legend: bool = True,
+            legend: bool | str = True,
             ax: plt.Axes | None = None,
             **kwargs,
     ) -> Tuple[plt.Figure, plt.Axes]:
@@ -419,8 +419,13 @@ class ModelFitter(SetAnalyzer, ABC):
             figsize: Matplotlib figure size. Used only when ``ax`` is None.
             cmap: Matplotlib colormap name, a single color string, or
                 ``None`` for matplotlib's default color cycle.
-            legend: Whether to render a legend (auto-removed if larger
-                than the axes).
+            legend: Controls legend rendering. ``True`` (default) renders
+                the legend with one entry per ``groupby`` combination,
+                labeled by the first ``groupby`` column. ``False``
+                hides the legend. A string must be one of
+                ``self.groupby``; groups sharing a value in that column
+                share both color and a single legend entry. The legend
+                is auto-removed if it is larger than the axes.
             ax: Existing axes to draw into. A new figure is created when
                 omitted.
             **kwargs: Styling overrides — ``dpi``, ``facecolor``,
@@ -431,6 +436,12 @@ class ModelFitter(SetAnalyzer, ABC):
         Returns:
             A ``(Figure, Axes)`` pair.
         """
+        hue = legend if isinstance(legend, str) else None
+        show_legend = legend is not False
+        if hue is not None and hue not in self.groupby:
+            raise ValueError(
+                    f"legend={hue!r} must be one of self.groupby={self.groupby}"
+            )
         fig_kwargs = {
             k: v for k, v in kwargs.items() if k in ("dpi", "facecolor", "edgecolor")
         }
@@ -468,27 +479,63 @@ class ModelFitter(SetAnalyzer, ABC):
         timepoints = pd.Series(measurements.loc[:, self.time_label].unique())
         t, _ = self._time_axis(timepoints, tmax)
 
+        hue_idx = self.groupby.index(hue) if hue is not None else None
+
+        def _hue_value(k):
+            return k[hue_idx] if isinstance(k, tuple) else k
+
+        if hue is not None:
+            unique_hues: list = []
+            _seen: set = set()
+            for k in model_groups:
+                v = _hue_value(k)
+                if v not in _seen:
+                    _seen.add(v)
+                    unique_hues.append(v)
+            n_colors = max(len(unique_hues), 1)
+        else:
+            n_colors = max(len(model_groups), 1)
+
         if cmap is not None:
             try:
                 cmap_obj = (
                     matplotlib.colormaps[cmap] if isinstance(cmap, str) else cmap
                 )
-                color_iter = itertools.cycle(
-                        cmap_obj(
-                                np.linspace(
-                                        start=0, stop=1, num=len(model_groups),
-                                        endpoint=False
-                                )
-                        )
-                )
+                color_palette = list(cmap_obj(
+                        np.linspace(start=0, stop=1, num=n_colors, endpoint=False)
+                ))
             except (ValueError, AttributeError):
-                color_iter = itertools.cycle([cmap])
+                color_palette = [cmap]
         else:
-            color_iter = itertools.cycle([None] * len(model_groups))
+            color_palette = [None] * n_colors
+
+        if hue is not None:
+            hue_color = {
+                h: color_palette[i % len(color_palette)]
+                for i, h in enumerate(unique_hues)
+            }
+            color_iter = None
+            legend_seen: set = set()
+        else:
+            hue_color = None
+            color_iter = itertools.cycle(color_palette)
+            legend_seen = set()
 
         for model_key, model_group in model_groups.items():
             curr_meas = meas_groups[model_key]
-            curr_color = next(color_iter)
+            if hue is not None:
+                assert hue_color is not None
+                h_val = _hue_value(model_key)
+                curr_color = hue_color[h_val]
+                if h_val in legend_seen:
+                    label = "_nolegend_"
+                else:
+                    legend_seen.add(h_val)
+                    label = str(h_val)
+            else:
+                assert color_iter is not None
+                curr_color = next(color_iter)
+                label = kwargs.get("label", f"{model_key[0]}")
             row = model_group.iloc[0]
             y_pred = self.model_func(t=t, **self._predict_kwargs(row))
 
@@ -512,7 +559,7 @@ class ModelFitter(SetAnalyzer, ABC):
                 "fmt"       : "o",
                 "elinewidth": elinewidth,
                 "capsize"   : capsize,
-                "label"     : kwargs.get("label", f"{model_key[0]}"),
+                "label"     : label,
             }
             if curr_color is not None:
                 errorbar_kwargs["color"] = curr_color
@@ -521,7 +568,7 @@ class ModelFitter(SetAnalyzer, ABC):
                 errorbar_kwargs["markersize"] = marker_size
             ax.errorbar(**errorbar_kwargs)
 
-        if legend:
+        if show_legend:
             legend_kwargs: Dict[str, Any] = {"loc": legend_loc}
             if legend_fontsize is not None:
                 legend_kwargs["fontsize"] = legend_fontsize
@@ -548,7 +595,7 @@ class ModelFitter(SetAnalyzer, ABC):
             criteria: Dict[str, Union[Any, List[Any]]] | None = None,
             figsize=(6, 4),
             cmap: str | None = "tab20",
-            legend: bool = True,
+            legend: bool | str = True,
             **kwargs,
     ) -> "go.Figure":
         """Interactive Plotly version of :meth:`show`.
@@ -557,9 +604,24 @@ class ModelFitter(SetAnalyzer, ABC):
         can expose whichever fitted parameters and metrics are most
         meaningful for their model.
 
+        Args:
+            legend: Controls legend rendering. ``True`` (default) renders
+                the legend with one entry per ``groupby`` combination
+                (joined with ``", "``). ``False`` hides the legend. A
+                string must be one of ``self.groupby``; groups sharing
+                a value in that column share both color and a single
+                legend entry.
+
         Raises:
             ImportError: If ``plotly`` is not installed.
         """
+        hue = legend if isinstance(legend, str) else None
+        show_legend = legend is not False
+        if hue is not None and hue not in self.groupby:
+            raise ValueError(
+                    f"legend={hue!r} must be one of self.groupby={self.groupby}"
+            )
+
         from phenotypic.tools_._plotly_helpers import _require_plotly
 
         _require_plotly()
@@ -593,34 +655,74 @@ class ModelFitter(SetAnalyzer, ABC):
             "#003660", "#E69F00", "#56B4E9",
             "#009E73", "#0072B2", "#CC79A7",
         ]
+
+        hue_idx = self.groupby.index(hue) if hue is not None else None
+
+        def _hue_value(k):
+            return k[hue_idx] if isinstance(k, tuple) else k
+
+        if hue is not None:
+            unique_hues: list = []
+            _seen: set = set()
+            for k in model_groups:
+                v = _hue_value(k)
+                if v not in _seen:
+                    _seen.add(v)
+                    unique_hues.append(v)
+            n_colors = max(len(unique_hues), 1)
+        else:
+            n_colors = max(len(model_groups), 1)
+
         if cmap is not None:
             try:
                 cmap_obj = matplotlib.colormaps[cmap]
                 colors = [
                     f"rgb({int(c[0] * 255)},{int(c[1] * 255)},{int(c[2] * 255)})"
                     for c in cmap_obj(
-                            np.linspace(0, 1, max(len(model_groups), 1), endpoint=False)
+                            np.linspace(0, 1, n_colors, endpoint=False)
                     )
                 ]
-                color_iter = itertools.cycle(colors)
+                color_palette: list = colors
             except (ValueError, KeyError):
-                color_iter = itertools.cycle([cmap])
+                color_palette = [cmap]
         else:
-            color_iter = itertools.cycle(_OKABE_ITO)
+            color_palette = list(_OKABE_ITO)
+
+        if hue is not None:
+            hue_color = {
+                h: color_palette[i % len(color_palette)]
+                for i, h in enumerate(unique_hues)
+            }
+            color_iter = None
+        else:
+            hue_color = None
+            color_iter = itertools.cycle(color_palette)
+
+        legend_seen: set = set()
 
         fig = go.Figure()
 
         for model_key, model_group in model_groups.items():
             curr_meas = meas_groups[model_key]
-            curr_color = next(color_iter)
             row = model_group.iloc[0]
 
             y_pred = self.model_func(t=t, **self._predict_kwargs(row))
 
-            if isinstance(model_key, tuple):
-                label = ", ".join(str(k) for k in model_key)
+            if hue is not None:
+                assert hue_color is not None
+                h_val = _hue_value(model_key)
+                curr_color = hue_color[h_val]
+                label = str(h_val)
             else:
-                label = str(model_key)
+                assert color_iter is not None
+                curr_color = next(color_iter)
+                if isinstance(model_key, tuple):
+                    label = ", ".join(str(k) for k in model_key)
+                else:
+                    label = str(model_key)
+
+            show_legend_entry = label not in legend_seen
+            legend_seen.add(label)
 
             hover_extra = self._format_hover(row)
 
@@ -631,6 +733,7 @@ class ModelFitter(SetAnalyzer, ABC):
                     name=label,
                     line=dict(color=curr_color, width=2),
                     legendgroup=label,
+                    showlegend=show_legend_entry,
                     hovertemplate=(
                         "<b>%{fullData.name}</b><br>"
                         "Time: %{x:.1f}<br>"
@@ -735,7 +838,7 @@ class ModelFitter(SetAnalyzer, ABC):
                 ),
                 plot_bgcolor="#ffffff",
                 paper_bgcolor="#f5f7fa",
-                showlegend=legend,
+                showlegend=show_legend,
                 legend=dict(
                         font=dict(
                                 family="DM Sans, system-ui, sans-serif",

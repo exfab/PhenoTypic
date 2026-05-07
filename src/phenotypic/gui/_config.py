@@ -36,6 +36,7 @@ __all__ = [
     "MOUNT_BUILDER",
     "MOUNT_VIEWER",
     "MOUNT_RUN",
+    "MOUNT_ANALYSIS",
     "SANDBOX_API_PREFIX",
     "RUNS_BLUEPRINT_PREFIX",
     # Flask app.server.config keys
@@ -47,12 +48,20 @@ __all__ = [
     "CFG_SANDBOX_ROOT",
     "CFG_OUTPUT_ROOT",
     "CFG_FILTERED_STATE",
+    "CFG_RECIPE_STATE",
     # Sandbox subdirectories
     "SANDBOX_GUI_DIRNAME",
     "SANDBOX_PRESETS_SUBDIR",
     "SANDBOX_BUILDER_TILES_SUBDIR",
     "RUN_LOG_DIRNAME",
     "VIEWER_CACHE_DIRNAME",
+    # Output filenames (CLI ↔ GUI shared layout)
+    "MASTER_MEASUREMENTS_PARQUET",
+    "MEASUREMENTS_CSV",
+    "MEASUREMENTS_PARQUET",
+    "ANALYSIS_CSV",
+    "ANALYSIS_PARQUET",
+    "PIPELINE_JSON",
     # Tunables
     "DEFAULT_IDLE_RELEASE_SECONDS",
     "RSS_INTERVAL_MS",
@@ -61,6 +70,7 @@ __all__ = [
     "TITLE_BUILDER",
     "TITLE_VIEWER",
     "TITLE_RUN",
+    "TITLE_ANALYSIS",
     "SSH_TUNNEL_HINT",
     # Thread name prefix
     "THREAD_NAME_PREFIX",
@@ -86,6 +96,7 @@ MOUNT_HOME: str = "/"
 MOUNT_BUILDER: str = "/builder/"
 MOUNT_VIEWER: str = "/results/"
 MOUNT_RUN: str = "/run/"
+MOUNT_ANALYSIS: str = "/analysis/"
 
 #: Flask blueprint prefix for the sandbox JSON API (sidebar tree, capability
 #: probe, viewer hand-off, etc.). Mounted on the shell's Flask server in
@@ -139,6 +150,12 @@ CFG_OUTPUT_ROOT: str = "output_root"
 #: :class:`FilteredMeasurements` for the loaded results viewer.
 CFG_FILTERED_STATE: str = "filtered_state"
 
+#: ``app.server.config`` key holding the analysis sub-app's
+#: :class:`~phenotypic.gui.analysis._recipe_state.RecipeState` —
+#: a wrapper around the canonical ``<output>/pipeline.json`` that
+#: provides atomic save + mtime-staleness detection.
+CFG_RECIPE_STATE: str = "recipe_state"
+
 # ---------------------------------------------------------------------------
 # Sandbox subdirectories
 # ---------------------------------------------------------------------------
@@ -164,6 +181,44 @@ RUN_LOG_DIRNAME: str = ".gui_log"
 VIEWER_CACHE_DIRNAME: str = ".viewer_cache"
 
 # ---------------------------------------------------------------------------
+# Output filenames (CLI ↔ GUI shared layout)
+# ---------------------------------------------------------------------------
+
+#: Aggregate parquet emitted by the CLI finalizer
+#: (:func:`phenotypic._cli._cli_output_manager.aggregate_measurements`).
+#: Read-only from the GUI's perspective — the results viewer treats this
+#: as the immutable source of truth.
+MASTER_MEASUREMENTS_PARQUET: str = "master_measurements.parquet"
+
+#: Editable curated CSV mirror seeded by the CLI as a copy of
+#: ``master_measurements.csv``. The results viewer rewrites this file in
+#: place when the user removes/restores colonies. Re-running the CLI
+#: (forward, ``--measure``, ``--recompile``) overwrites it with a fresh
+#: full copy, intentionally wiping prior curation.
+MEASUREMENTS_CSV: str = "measurements.csv"
+
+#: Editable curated parquet companion to :data:`MEASUREMENTS_CSV`. The
+#: parquet is the GUI's source of truth at boot (CSV is the human-readable
+#: mirror); both are written atomically together.
+MEASUREMENTS_PARQUET: str = "measurements.parquet"
+
+#: Output filename of the model-fit summary written by the CLI when the
+#: pipeline has a ``model`` configured (and re-emitted by the analysis
+#: GUI's "Run analysis" button). Human-readable mirror of
+#: :data:`ANALYSIS_PARQUET`.
+ANALYSIS_CSV: str = "analysis.csv"
+
+#: Parquet companion of :data:`ANALYSIS_CSV` — primary downstream
+#: artifact since it preserves dtypes the CSV cannot.
+ANALYSIS_PARQUET: str = "analysis.parquet"
+
+#: Canonical pipeline-spec filename written into the output root by the
+#: CLI (and rewritten by the analysis GUI on every recipe edit). Captures
+#: operations, measurements, post, filters, and model — i.e. the whole
+#: reproducibility surface.
+PIPELINE_JSON: str = "pipeline.json"
+
+# ---------------------------------------------------------------------------
 # Tunables
 # ---------------------------------------------------------------------------
 
@@ -184,6 +239,7 @@ TITLE_HUB: str = "PhenoTypic GUI"
 TITLE_BUILDER: str = "PhenoTypic Pipeline Builder"
 TITLE_VIEWER: str = "PhenoTypic Results Viewer"
 TITLE_RUN: str = "PhenoTypic Run Console"
+TITLE_ANALYSIS: str = "PhenoTypic Analysis"
 
 #: One-line SSH-tunnel hint reused by every launcher banner, argparse
 #: epilogue, and help-modal body. Constructed from :data:`DEFAULT_PORT`

@@ -3,11 +3,12 @@
 This module backs the viewer's "remove colony" feature. The pipeline writes
 ``master_measurements.parquet`` once and never touches it again; users curate
 that frame by marking ``(Metadata_ImageFile, ObjectLabel)`` keys as removed.
-The curated view is mirrored to two sibling files in the output root:
+The curated view is mirrored to two sibling files in the output root, both
+seeded by the CLI as a fresh full copy of the master:
 
-- ``<root>/filtered_measurements.parquet`` — source of truth for the curated
-  frame, used to restore state across viewer sessions.
-- ``<root>/filtered_measurements.csv`` — human-readable mirror so users can
+- ``<root>/measurements.parquet`` — source of truth for the curated frame,
+  used to restore state across viewer sessions.
+- ``<root>/measurements.csv`` — human-readable mirror so users can
   hand-inspect or share the curated subset without booting polars.
 
 The :class:`FilteredMeasurements` dataclass holds the in-memory removal set,
@@ -17,6 +18,12 @@ re-entrant lock so concurrent Dash callbacks cannot interleave reads and
 writes — and so a future caller that wraps an external mutation in
 ``with state._lock:`` cannot deadlock against the lock-acquiring
 :meth:`save`.
+
+Re-running the CLI (forward, ``--measure``, ``--recompile``) overwrites the
+on-disk seed with a fresh copy of the master, intentionally wiping prior
+GUI curation. ``filtered_measurements.{csv,parquet}`` files left on disk
+by older versions are inert — no code in this module references them, so
+they sit untouched until the user removes them by hand.
 """
 
 from __future__ import annotations
@@ -29,6 +36,8 @@ from pathlib import Path
 from typing import Callable, Iterable
 
 import polars as pl
+
+from phenotypic.gui._config import MEASUREMENTS_CSV, MEASUREMENTS_PARQUET
 
 logger = logging.getLogger(__name__)
 
@@ -130,9 +139,9 @@ class FilteredMeasurements:
         root: Output root directory (the parent that holds
             ``master_measurements.parquet``).
         parquet_path: Destination for the curated parquet mirror,
-            conventionally ``<root>/filtered_measurements.parquet``.
+            conventionally ``<root>/measurements.parquet``.
         csv_path: Destination for the curated CSV mirror, conventionally
-            ``<root>/filtered_measurements.csv``.
+            ``<root>/measurements.csv``.
         removed_keys: Set of removed ``(image_file, object_label)`` tuples.
             Mutating this set directly bypasses the lock and the on-disk
             mirrors — prefer the public mutators.
@@ -152,14 +161,22 @@ class FilteredMeasurements:
     removed_keys: set[tuple[str, int]]
     _master_df: pl.DataFrame = field(repr=False)
     _lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
+    #: Nanosecond mtime of :attr:`parquet_path` as last observed by this
+    #: instance — set by :meth:`load` and refreshed after each successful
+    #: :meth:`_save_locked`. ``None`` means the seed has never existed
+    #: from this instance's perspective. Used to detect external rewrites
+    #: (CLI ``--measure`` / ``--recompile`` against a directory whose
+    #: viewer session is still open) so we don't clobber a freshly seeded
+    #: master with stale curation derived from an older ``_master_df``.
+    _seed_mtime_ns: int | None = field(default=None, repr=False)
 
     @classmethod
     def load(cls, root: Path, master_df: pl.DataFrame) -> "FilteredMeasurements":
         """Build a :class:`FilteredMeasurements` from disk state.
 
-        Reads ``<root>/filtered_measurements.parquet`` if present and
-        computes :attr:`removed_keys` as the master keys minus the curated
-        keys. Keys that appear in the curated parquet but not in the master
+        Reads ``<root>/measurements.parquet`` if present and computes
+        :attr:`removed_keys` as the master keys minus the curated keys.
+        Keys that appear in the curated parquet but not in the master
         frame are logged at WARNING and dropped — this happens when the
         master parquet has been re-run with a different set of objects.
 
@@ -185,8 +202,8 @@ class FilteredMeasurements:
                 friendly message rather than letting polars' own
                 ``ColumnNotFoundError`` bubble up at viewer-boot time.
         """
-        parquet_path = root / "filtered_measurements.parquet"
-        csv_path = root / "filtered_measurements.csv"
+        parquet_path = root / MEASUREMENTS_PARQUET
+        csv_path = root / MEASUREMENTS_CSV
 
         # Validate up front so a bad master surfaces at boot, not on the
         # first user click.
@@ -199,6 +216,7 @@ class FilteredMeasurements:
                 csv_path=csv_path,
                 removed_keys=set(),
                 _master_df=master_df,
+                _seed_mtime_ns=None,
             )
 
         filtered_df = pl.read_parquet(parquet_path)
@@ -221,6 +239,7 @@ class FilteredMeasurements:
             csv_path=csv_path,
             removed_keys=removed_keys,
             _master_df=master_df,
+            _seed_mtime_ns=parquet_path.stat().st_mtime_ns,
         )
 
     # ------------------------------------------------------------------ #
@@ -444,10 +463,12 @@ class FilteredMeasurements:
         support.
 
         If :attr:`removed_keys` is empty **and** neither mirror exists yet,
-        this is a no-op — empty curation files are not created until the
-        user actually removes something. If the mirrors already exist (the
-        user removed and then restored everything), the full master frame
-        is written so the on-disk view stays in parity with what the
+        this is a no-op — empty curation files are not created here. (In
+        normal use the CLI seeds both mirrors with a fresh full copy of
+        the master, so this branch only fires for GUI sessions opened
+        against a directory the CLI has not seeded — e.g., test fixtures
+        or hand-built layouts.) Once the mirrors exist, every mutation
+        rewrites them so the on-disk view stays in parity with what the
         viewer shows.
 
         Args:
@@ -467,6 +488,14 @@ class FilteredMeasurements:
     def _save_locked(self, master_df: pl.DataFrame | None = None) -> None:
         """Write both mirrors, assuming :attr:`_lock` is already held.
 
+        Refuses to write (logging at WARNING) when the on-disk parquet's
+        mtime no longer matches :attr:`_seed_mtime_ns` — that means
+        something else (typically a CLI ``--measure`` / ``--recompile``
+        re-run) has rewritten the seed since this instance was loaded,
+        and our cached :attr:`_master_df` may no longer match disk. The
+        viewer must :meth:`load` again (the session's release path
+        already does this on next access) before further mutations.
+
         Args:
             master_df: Optional override; defaults to the cached
                 :attr:`_master_df` reference captured at :meth:`load` time.
@@ -476,6 +505,19 @@ class FilteredMeasurements:
             # Never been curated; don't create empty mirror files.
             return
 
+        if self.parquet_path.exists() and self._seed_mtime_ns is not None:
+            current_mtime = self.parquet_path.stat().st_mtime_ns
+            if current_mtime != self._seed_mtime_ns:
+                logger.warning(
+                    "Refusing to overwrite curation parquet at %s — the "
+                    "file's mtime changed since this viewer session "
+                    "loaded it (likely a CLI --measure / --recompile "
+                    "re-run). Release and reopen the viewer to pick up "
+                    "the fresh master before curating again.",
+                    self.parquet_path,
+                )
+                return
+
         filtered = self.filtered_df(df)
 
         parquet_tmp = self.parquet_path.with_suffix(self.parquet_path.suffix + ".tmp")
@@ -483,6 +525,7 @@ class FilteredMeasurements:
 
         filtered.write_parquet(parquet_tmp)
         os.replace(parquet_tmp, self.parquet_path)
+        self._seed_mtime_ns = self.parquet_path.stat().st_mtime_ns
 
         try:
             filtered.write_csv(csv_tmp)

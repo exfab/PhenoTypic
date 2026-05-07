@@ -1,0 +1,109 @@
+/* Analysis sub-app — scoped styles. Design tokens from _design.py. */
+
+.analysis-page {
+    font-family: var(--font-body, system-ui, sans-serif);
+    color: var(--color-body, #222);
+    background: var(--color-bg, #fafafa);
+}
+
+.analysis-output-header {
+    font-size: 0.9rem;
+}
+
+.analysis-pipeline-header {
+    font-size: 0.95rem;
+}
+
+.analysis-pipeline-summary {
+    font-style: italic;
+}
+
+.analysis-recompile-banner {
+    font-size: 0.85rem;
+}
+
+.analysis-stale-banner {
+    background: #fdecea;
+    border-left: 4px solid #c62828;
+    padding: 0.5rem 1rem;
+    margin: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+/* Section accordions */
+.analysis-post-section,
+.analysis-filter-section,
+.analysis-model-section {
+    transition: var(--transition, all 150ms);
+}
+
+.analysis-post-section:hover,
+.analysis-filter-section:hover {
+    box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.05));
+}
+
+.analysis-section-remove:hover {
+    color: #c62828;
+}
+
+/* Post preview table */
+.analysis-post-preview-table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.analysis-post-preview-table th,
+.analysis-post-preview-table td {
+    border: 1px solid #ddd;
+    padding: 0.25rem 0.5rem;
+    text-align: left;
+}
+
+.analysis-post-preview-table th {
+    background: var(--color-surface, #f5f5f5);
+}
+
+.analysis-post-col {
+    font-family: var(--font-mono, monospace);
+    font-weight: 600;
+}
+
+.analysis-post-preview-empty {
+    color: #888;
+    font-style: italic;
+    margin-top: 0.5rem;
+}
+
+/* Plot previews */
+.analysis-section-plot {
+    margin-top: 0.5rem;
+}
+
+/* Errors */
+.analysis-error-card {
+    background: #fdecea;
+    border: 1px solid #ef9a9a;
+    border-radius: 4px;
+    padding: 0.5rem 0.75rem;
+    margin-top: 0.5rem;
+    color: #b71c1c;
+    font-size: 0.85rem;
+}
+
+.analysis-error-pre {
+    margin: 0.25rem 0 0 0;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.8rem;
+    white-space: pre-wrap;
+}
+
+/* Run console */
+.analysis-run-console {
+    box-shadow: var(--shadow-md, 0 -2px 8px rgba(0, 0, 0, 0.05));
+}
+
+.analysis-run-status {
+    font-size: 0.9rem;
+}

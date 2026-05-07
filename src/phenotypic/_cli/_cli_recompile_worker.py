@@ -334,13 +334,29 @@ def _write_master_outputs_from_shards(
                 exc,
             )
 
-    _atomic_write(output_dir / "master_measurements.csv", master_df.write_csv)
-    _atomic_write(
-        output_dir / "master_measurements.parquet",
-        lambda p: master_df.write_parquet(
-            p, compression="zstd", compression_level=3
-        ),
-    )
+    try:
+        _atomic_write(output_dir / "master_measurements.csv", master_df.write_csv)
+    except Exception:
+        logger.error("Failed to save master CSV during recompile finalize")
+        raise
+    try:
+        _atomic_write(
+            output_dir / "master_measurements.parquet",
+            lambda p: master_df.write_parquet(
+                p, compression="zstd", compression_level=3
+            ),
+        )
+    except Exception:
+        logger.warning(
+            "Failed to save master Parquet during recompile finalize "
+            "(CSV was saved)"
+        )
+
+    # ``--recompile`` is one of the paths the user expects to refresh the
+    # curation seed alongside the master, so seed measurements here too.
+    from ._cli_output_manager import _seed_measurements
+
+    _seed_measurements(output_dir, master_df)
 
     return master_df
 
@@ -364,6 +380,14 @@ def _run_post_master_steps(
     if merged_df is not None:
         pipeline = _load_pipeline_from_output_dir(output_dir)
         if pipeline is not None:
+            # Re-emit analysis from the freshly recompiled master so a
+            # ``--recompile`` run refreshes ``analysis.{csv,parquet}`` in
+            # lock-step with ``measurements.{csv,parquet}``. No-op when
+            # the pipeline has no model configured.
+            from ._cli_output_manager import _emit_analysis_outputs
+
+            _emit_analysis_outputs(output_dir, merged_df, pipeline)
+
             try:
                 split_master_by_feature(merged_df, output_dir, pipeline)
             except Exception:

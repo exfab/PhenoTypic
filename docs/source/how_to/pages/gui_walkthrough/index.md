@@ -23,6 +23,7 @@ the images aligned with the implementation.
 | [Run on SLURM](05_run_slurm.md) | Fill in SLURM resources and ship a submission to a cluster. |
 | [View Results](06_view_results.md) | Open the results viewer against a finished CLI output. |
 | [Pick points](07_pick_points.md) | Curate detected colonies manually with the in-builder point picker. |
+| [Analysis](08_analysis.md) | Compose `phenotypic.analysis` filters + endpoint model and emit `analysis.{csv,parquet}`. |
 
 ## Prerequisites
 
@@ -45,4 +46,5 @@ hub, see the [GUI hub guide](../gui_hub.md). This walkthrough is the
 05_run_slurm
 06_view_results
 07_pick_points
+08_analysis
 ```

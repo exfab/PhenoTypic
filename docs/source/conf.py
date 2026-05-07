@@ -60,7 +60,7 @@ author = "Alexander Nguyen"
 
 # Variables
 github_url = "https://github.com/Wheeldon-Lab/PhenoScope#"
-LIGHT_LOGO_PATH = "./_static/assets/400x150/gradient_logo_exfab.svg"
+LIGHT_LOGO_PATH = "./_static/assets/400x150/light_logo_exfab.svg"
 DARK_LOGO_PATH = "./_static/assets/400x150/gradient_logo_exfab.svg"
 
 # Try to get the version from PhenoTypic, but use a default if not available
@@ -103,10 +103,10 @@ autosummary_generate = True
 autosummary_ignore_module_all = False
 
 autodoc_default_options = {
-    "members": True,  # Document class members
-    "undoc-members": True,  # Include undocumented members
-    "private-members": False,  # Include private members (e.g., `_method`)
-    "show-inheritance": True,  # Show class inheritance in docs
+    "members"          : True,  # Document class members
+    "undoc-members"    : True,  # Include undocumented members
+    "private-members"  : False,  # Include private members (e.g., `_method`)
+    "show-inheritance" : True,  # Show class inheritance in docs
     "inherited-members": True,  # Include inherited members
     # 'member-order'     : 'bysource',
 }
@@ -118,10 +118,10 @@ autodoc_member_order = "groupwise"
 # Map type abbreviations used in code to their full module paths
 autodoc_type_aliases = {
     "pd.DataFrame": "pandas.DataFrame",
-    "pd.Series": "pandas.Series",
-    "np.ndarray": "numpy.ndarray",
-    "plt.Axes": "matplotlib.axes.Axes",
-    "plt.Figure": "matplotlib.figure.Figure",
+    "pd.Series"   : "pandas.Series",
+    "np.ndarray"  : "numpy.ndarray",
+    "plt.Axes"    : "matplotlib.axes.Axes",
+    "plt.Figure"  : "matplotlib.figure.Figure",
 }
 
 templates_path = ["_templates", sphinx_autosummary_accessors.templates_path]
@@ -186,29 +186,30 @@ if html_theme == "pydata_sphinx_theme":
     html_title = "PhenoTypic"
     html_logo = LIGHT_LOGO_PATH
     html_theme_options = {
-        "logo": {
-            "alt_text": "PhenoTypic",
-            "link": "index",
+        "logo"                       : {
+            "alt_text"   : "PhenoTypic",
+            "link"       : "index",
             "image_light": LIGHT_LOGO_PATH,
-            "image_dark": DARK_LOGO_PATH,
+            "image_dark" : DARK_LOGO_PATH,
         },
-        "icon_links": [
+        "icon_links"                 : [
             {
                 "name": "GitHub",
-                "url": github_url,
+                "url" : github_url,
                 "icon": "fa-brands fa-github",
             }
         ],
-        "use_edit_page_button": False,
-        "show_toc_level": 3,
-        "navigation_with_keys": True,
-        "show_prev_next": False,
-        "navbar_end": ["version-switcher", "theme-switcher", "navbar-icon-links"],
-        "switcher": {
-            "json_url": f"{DOCS_BASE_URL}/versions.json",
+        "use_edit_page_button"       : False,
+        "show_toc_level"             : 3,
+        "navigation_with_keys"       : True,
+        "show_prev_next"             : False,
+        "navbar_end"                 : ["version-switcher", "theme-switcher",
+                                        "navbar-icon-links"],
+        "switcher"                   : {
+            "json_url"     : f"{DOCS_BASE_URL}/versions.json",
             "version_match": VERSION_MATCH,
         },
-        "check_switcher": False,
+        "check_switcher"             : False,
         "show_version_warning_banner": True,
     }
     html_baseurl = f"{DOCS_BASE_URL}/{DOCS_VERSION}/"
@@ -229,28 +230,28 @@ napoleon_use_rtype = True
 # Type aliases for cleaner documentation
 python_type_aliases = {
     "matplotlib.axes._axes.Axes": "matplotlib.axes.Axes",
-    "matplotlib.figure.Figure": "matplotlib.figure.Figure",
+    "matplotlib.figure.Figure"  : "matplotlib.figure.Figure",
     # Common abbreviations
-    "np.ndarray": "numpy.ndarray",
-    "pd.DataFrame": "pandas.DataFrame",
-    "pd.Series": "pandas.Series",
-    "plt.Axes": "matplotlib.axes.Axes",
-    "plt.Figure": "matplotlib.figure.Figure",
+    "np.ndarray"                : "numpy.ndarray",
+    "pd.DataFrame"              : "pandas.DataFrame",
+    "pd.Series"                 : "pandas.Series",
+    "plt.Axes"                  : "matplotlib.axes.Axes",
+    "plt.Figure"                : "matplotlib.figure.Figure",
     # Type hint aliases
-    "optional": "typing.Optional",
-    "Optional": "typing.Optional",
+    "optional"                  : "typing.Optional",
+    "Optional"                  : "typing.Optional",
 }
 
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3", None),
-    "numpy": ("https://numpy.org/doc/stable/", None),
-    "pandas": ("https://pandas.pydata.org/docs/", None),
-    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
-    "sklearn": ("https://scikit-learn.org/stable/", None),
-    "skimage": ("https://scikit-image.org/docs/stable/", None),
-    "h5py": ("https://docs.h5py.org/en/stable/", None),
-    "plotly": ("https://plotly.com/python-api-reference/", None),
-    "colour": ("https://colour.readthedocs.io/en/latest/", None),
+    "python"    : ("https://docs.python.org/3", None),
+    "numpy"     : ("https://numpy.org/doc/stable/", None),
+    "pandas"    : ("https://pandas.pydata.org/docs/", None),
+    "scipy"     : ("https://docs.scipy.org/doc/scipy/", None),
+    "sklearn"   : ("https://scikit-learn.org/stable/", None),
+    "skimage"   : ("https://scikit-image.org/docs/stable/", None),
+    "h5py"      : ("https://docs.h5py.org/en/stable/", None),
+    "plotly"    : ("https://plotly.com/python-api-reference/", None),
+    "colour"    : ("https://colour.readthedocs.io/en/latest/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
 }
 
@@ -291,7 +292,7 @@ def generate_downloadables_rst(app):
     # Check if directory exists
     if not os.path.exists(downloadables_dir):
         print(
-            f"Warning: {downloadables_dir} does not exist. Skipping downloadables generation."
+                f"Warning: {downloadables_dir} does not exist. Skipping downloadables generation."
         )
         return
 
@@ -300,7 +301,7 @@ def generate_downloadables_rst(app):
     content.append("=========")
     content.append("")
     content.append(
-        "This page contains downloadable scripts, notebooks, and utilities for PhenoTypic."
+            "This page contains downloadable scripts, notebooks, and utilities for PhenoTypic."
     )
     content.append("")
     content.append(".. grid:: 1 1 2 2")
@@ -410,7 +411,7 @@ def generate_downloadables_rst(app):
 
             # Build a short description from the remaining lines in the same cell
             desc_lines = []
-            for line in lines[title_line_index + 1 :]:
+            for line in lines[title_line_index + 1:]:
                 stripped = line.strip()
                 if not stripped:
                     if desc_lines:
@@ -451,9 +452,9 @@ def generate_downloadables_rst(app):
                 # Title
                 # =====
                 if (
-                    len(lines) > 1
-                    and len(lines[1].strip()) >= len(first_line)
-                    and set(lines[1].strip()) == {"="}
+                        len(lines) > 1
+                        and len(lines[1].strip()) >= len(first_line)
+                        and set(lines[1].strip()) == {"="}
                 ):
                     title = first_line
                     # Description starts after the header

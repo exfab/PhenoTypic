@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import json
 import importlib
 from pathlib import Path
@@ -7,6 +8,7 @@ from typing import Dict, Union, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
+    from phenotypic.analysis.abc_ import ModelFitter, SetAnalyzer
 
 import pandas as pd
 import warnings
@@ -92,6 +94,12 @@ class SerializablePipeline(NapariPipelineViewer):
             "pipe_cfgs": self._serialize_operations(self._ops),
             "meas"     : self._serialize_operations(self._meas),
             "post"     : self._serialize_operations(self._post),
+            "filters"  : self._serialize_analyzers(self._filters),
+            "model"    : (
+                self._serialize_analyzer(self._model)
+                if self._model is not None
+                else None
+            ),
         }
 
         # Omit when unset so legacy JSONs round-trip unchanged.
@@ -167,6 +175,20 @@ class SerializablePipeline(NapariPipelineViewer):
         ops = cls._deserialize_operations(config.get("pipe_cfgs", {}))
         meas = cls._deserialize_operations(config.get("meas", {}))
         post = cls._deserialize_operations(config.get("post", {}))
+        # Analysis chain — filters/model default to empty/None for backward compat
+        from phenotypic.analysis.abc_._model_fitter import ModelFitter
+
+        filters = cls._deserialize_analyzers(config.get("filters", {}) or {})
+        model_data = config.get("model")
+        model: Optional[ModelFitter] = None
+        if model_data:
+            candidate = cls._deserialize_analyzer(model_data)
+            if not isinstance(candidate, ModelFitter):
+                raise TypeError(
+                    f"pipeline 'model' must deserialize to a ModelFitter, "
+                    f"got {type(candidate).__name__}"
+                )
+            model = candidate
         name = config.get("name", None)
         desc = config.get("desc", None)
         reset = config.get("reset", False)  # Default False for backwards compatibility
@@ -185,7 +207,8 @@ class SerializablePipeline(NapariPipelineViewer):
             )
 
         # Create and return new pipeline instance
-        return cls(ops=ops, meas=meas, post=post, benchmark=benchmark, verbose=verbose,
+        return cls(ops=ops, meas=meas, post=post, filters=filters, model=model,
+                   benchmark=benchmark, verbose=verbose,
                    name=name, desc=desc, reset=reset, nrows=nrows, ncols=ncols)
 
     @staticmethod
@@ -658,3 +681,122 @@ class SerializablePipeline(NapariPipelineViewer):
                 continue
 
         return None
+
+    # ------------------------------------------------------------------ #
+    # Analysis chain serialization (filters / model)
+    # ------------------------------------------------------------------ #
+    #
+    # Analyzer subclasses (``SetAnalyzer``, ``ModelFitter``) take required
+    # constructor arguments — ``on``, ``groupby``, plus subclass-specific
+    # parameters — so they cannot be reconstructed via the empty-constructor
+    # + setattr pattern used for ``ImageOperation`` / ``MeasureFeatures``
+    # entries above. Instead we introspect ``cls.__init__`` and reconstruct
+    # via ``cls(**kwargs)``. The base ``SetAnalyzer.__init__`` stores
+    # ``num_workers`` as ``self.n_jobs`` for legacy reasons, and
+    # ``LogGrowthModel.__init__`` happens to spell its arg ``n_jobs`` while
+    # other subclasses spell it ``num_workers`` — the alias map below makes
+    # both shapes round-trip cleanly.
+
+    _ANALYZER_INIT_ALIASES: Dict[str, str] = {
+        # ``__dict__`` key -> constructor arg name candidates (in order of
+        # preference). Used when an attribute is stored under a different
+        # name than its constructor parameter.
+        "n_jobs": "num_workers",
+    }
+
+    @staticmethod
+    def _serialize_analyzer(
+            analyzer: Union["SetAnalyzer", "ModelFitter"],
+    ) -> Dict[str, object]:
+        """Serialize one analyzer instance to a ``{class, params}`` dict.
+
+        Walks ``analyzer.__dict__``, keeps JSON-serializable primitives, and
+        skips private/internal attributes and pandas DataFrames.
+        """
+        params: Dict[str, object] = {}
+        for key, value in analyzer.__dict__.items():
+            if key.startswith("_"):
+                continue
+            if isinstance(value, pd.DataFrame):
+                continue
+            try:
+                json.dumps(value)
+            except (TypeError, ValueError):
+                continue
+            params[key] = value
+        return {
+            "class" : analyzer.__class__.__name__,
+            "params": params,
+        }
+
+    @staticmethod
+    def _serialize_analyzers(
+            analyzers: Dict[str, Union["SetAnalyzer", "ModelFitter"]],
+    ) -> Dict[str, Dict[str, object]]:
+        """Serialize a name-keyed dict of analyzers (the filter chain)."""
+        return {
+            name: SerializablePipeline._serialize_analyzer(analyzer)
+            for name, analyzer in analyzers.items()
+        }
+
+    @classmethod
+    def _deserialize_analyzer(
+            cls, serialized: Dict[str, object],
+    ) -> Union["SetAnalyzer", "ModelFitter"]:
+        """Reconstruct one analyzer instance from a ``{class, params}`` dict.
+
+        Introspects the target class's constructor signature, picks matching
+        keys from ``params``, applies known aliases (e.g. ``n_jobs`` ->
+        ``num_workers``), then constructs via ``cls(**kwargs)``. Any leftover
+        keys are restored via ``setattr`` so internal attributes (e.g. fitted
+        results that were JSON-serializable) survive the round-trip.
+        """
+        class_name = serialized["class"]
+        if not isinstance(class_name, str):
+            raise TypeError(
+                f"analyzer 'class' must be a str, got {type(class_name).__name__}"
+            )
+
+        op_class = cls._find_class_in_phenotypic(class_name)
+        if op_class is None:
+            raise AttributeError(
+                f"Class '{class_name}' not found in phenotypic namespace. "
+                f"Make sure it's properly exported from phenotypic.analysis."
+            )
+
+        params = serialized.get("params", {}) or {}
+        if not isinstance(params, dict):
+            raise TypeError(
+                f"analyzer 'params' must be a dict, got {type(params).__name__}"
+            )
+
+        sig = inspect.signature(op_class.__init__)
+        accepted = {
+            name for name in sig.parameters if name != "self"
+        }
+
+        kwargs: Dict[str, object] = {}
+        leftover: Dict[str, object] = {}
+        for key, value in params.items():
+            if key in accepted:
+                kwargs[key] = value
+            elif key in cls._ANALYZER_INIT_ALIASES \
+                    and cls._ANALYZER_INIT_ALIASES[key] in accepted:
+                kwargs[cls._ANALYZER_INIT_ALIASES[key]] = value
+            else:
+                leftover[key] = value
+
+        instance = op_class(**kwargs)
+        for key, value in leftover.items():
+            setattr(instance, key, value)
+        return instance
+
+    @classmethod
+    def _deserialize_analyzers(
+            cls, serialized: Dict[str, Dict[str, object]],
+    ) -> Dict[str, Union["SetAnalyzer", "ModelFitter"]]:
+        """Reconstruct a name-keyed dict of analyzers (the filter chain)."""
+        return {
+            name: cls._deserialize_analyzer(entry)
+            for name, entry in serialized.items()
+        }

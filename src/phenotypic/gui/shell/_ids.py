@@ -48,6 +48,7 @@ SHELL_TAB_HOME = "shell-tab-home"
 SHELL_TAB_BUILDER = "shell-tab-builder"
 SHELL_TAB_VIEWER = "shell-tab-viewer"
 SHELL_TAB_RUN = "shell-tab-run"
+SHELL_TAB_ANALYSIS = "shell-tab-analysis"
 
 # ---------------------------------------------------------------------------
 # Sidebar
@@ -149,6 +150,7 @@ __all__ = [
     "SHELL_TAB_BUILDER",
     "SHELL_TAB_VIEWER",
     "SHELL_TAB_RUN",
+    "SHELL_TAB_ANALYSIS",
     "SHELL_SIDEBAR",
     "SHELL_SIDEBAR_TREE",
     "SHELL_SIDEBAR_REFRESH",

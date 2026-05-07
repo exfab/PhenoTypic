@@ -95,6 +95,11 @@ output_folder/
 +-- dashboard.html                # Live processing dashboard
 +-- analysis.html                 # Analysis & visualization
 +-- master_measurements.csv       # Aggregated measurements (all datasets)
++-- measurements.csv              # Editable copy used by the GUI results viewer (refreshed on every run)
++-- measurements.parquet          # Parquet companion of measurements.csv
++-- pipeline.json                 # Reproducibility spec (operations + filters + model)
++-- analysis.csv                  # Model-fit output (only when pipeline has a `model` configured)
++-- analysis.parquet              # Parquet companion of analysis.csv
 +-- processing_state.json         # Resume/state tracking
 +-- processing_report.html        # HTML summary report
 +-- logs/                         # Execution logs

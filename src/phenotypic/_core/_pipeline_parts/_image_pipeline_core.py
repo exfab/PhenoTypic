@@ -14,9 +14,10 @@ if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
     from phenotypic._core._image import Image
     from phenotypic._core._image_pipeline import ImagePipeline
+    from phenotypic.analysis.abc_ import ModelFitter, SetAnalyzer
 
 import pandas as pd
-from typing import Dict, List
+from typing import Dict, List, Tuple
 import inspect
 import time
 import sys
@@ -101,6 +102,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             ops: List[ImageOperation | ImagePipeline] | Dict[str, ImageOperation | ImagePipeline] | None = None,
             meas: List[MeasureFeatures] | Dict[str, MeasureFeatures] | None = None,
             post: List[PostMeasurement] | Dict[str, PostMeasurement] | None = None,
+            filters: List[SetAnalyzer] | Dict[str, SetAnalyzer] | None = None,
+            model: Optional[ModelFitter] = None,
             benchmark: bool = False,
             verbose: bool = False,
             name: Optional[str] = None,
@@ -133,6 +136,17 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             reset: Default reset behavior for the apply() method. When True, the image
                 will be reset before applying operations. Can be overridden per-call
                 in apply() and apply_and_measure(). Defaults to False.
+            filters: A list or dict of :class:`~phenotypic.analysis.abc_.SetAnalyzer`
+                instances forming the analysis filter chain. Each filter's
+                ``analyze(df) -> df`` is called in order on the aggregate measurements
+                frame inside :meth:`analyze`. Defaults to no filters.
+            model: An optional :class:`~phenotypic.analysis.abc_.ModelFitter` instance
+                (the chain's terminal endpoint). When set, :meth:`analyze` runs the
+                filter chain and then ``model.analyze(...)`` to produce a fit summary
+                (one row per group). When ``None`` the pipeline has no analysis
+                endpoint and :meth:`analyze` raises ``ValueError``. The CLI uses the
+                presence of ``model`` as the auto-emit trigger for
+                ``analysis.{parquet,csv}``.
             nrows: Optional soft preset for the grid row count. When set together with
                 ``ncols``, ``measure()`` auto-injects an ``AutoGridFinder(nrows, ncols)``
                 at the front of the measurement run order if no ``GridFinder`` step is
@@ -152,6 +166,14 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         self._post: Dict[str, PostMeasurement] = {}
         if post is not None:
             self.set_post(post)
+
+        self._filters: Dict[str, "SetAnalyzer"] = {}
+        if filters is not None:
+            self.set_filters(filters)
+
+        self._model: Optional["ModelFitter"] = None
+        if model is not None:
+            self.set_model(model)
 
         # Store benchmark, verbose, and reset flags
         self._benchmark = benchmark
@@ -325,6 +347,147 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 names to ``PostMeasurement`` instances.
         """
         return dict(self._post)
+
+    def set_filters(
+            self, filters: List["SetAnalyzer"] | Dict[str, "SetAnalyzer"]
+    ) -> None:
+        """Set the analysis filter chain.
+
+        Args:
+            filters: A list or dictionary of :class:`SetAnalyzer` instances. If a
+                list, class names (deduplicated by suffix) are used as keys.
+
+        Raises:
+            TypeError: If ``filters`` is neither a list nor a dictionary.
+        """
+        from phenotypic.analysis.abc_._set_analyzer import SetAnalyzer
+
+        if isinstance(filters, list):
+            filter_names = [
+                x.__class__.__name__
+                for x in filters
+                if isinstance(x, SetAnalyzer)
+            ]
+            filter_names = self.__make_unique(filter_names)
+            self._filters = {
+                filter_names[i]: filters[i] for i in range(len(filters))
+            }
+        elif isinstance(filters, dict):
+            self._filters = filters
+        else:
+            raise TypeError("filters must be a list or dictionary")
+
+    def get_filters(self) -> Dict[str, "SetAnalyzer"]:
+        """Get a copy of the analysis filter chain.
+
+        Returns a shallow copy to prevent accidental mutation of internal state.
+
+        Returns:
+            Dict[str, SetAnalyzer]: Ordered dict mapping filter names to
+                :class:`SetAnalyzer` instances. Empty when no filters configured.
+        """
+        return dict(self._filters)
+
+    def set_model(self, model: Optional["ModelFitter"]) -> None:
+        """Set the analysis endpoint model.
+
+        Only one model can be configured per pipeline; assigning a new value
+        replaces any prior model. Pass ``None`` to clear.
+
+        Args:
+            model: A :class:`ModelFitter` instance, or ``None`` to clear.
+
+        Raises:
+            TypeError: If ``model`` is not a :class:`ModelFitter` instance and
+                not ``None``.
+        """
+        if model is None:
+            self._model = None
+            return
+
+        from phenotypic.analysis.abc_._model_fitter import ModelFitter
+
+        if not isinstance(model, ModelFitter):
+            raise TypeError(
+                f"model must be a ModelFitter instance or None, got "
+                f"{type(model).__name__}"
+            )
+        self._model = model
+
+    def get_model(self) -> Optional["ModelFitter"]:
+        """Get the analysis endpoint model, if configured.
+
+        Returns:
+            Optional[ModelFitter]: The configured :class:`ModelFitter` instance,
+                or ``None`` when no model is set.
+        """
+        return self._model
+
+    def analyze(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Run the analysis chain (filters then model) against an aggregate frame.
+
+        Applies each filter in order — each transforms a DataFrame into another
+        DataFrame — then runs the configured terminal model to produce a fit
+        summary (typically one row per group).
+
+        The expected input is the aggregated, post-measurement DataFrame the CLI
+        seeds into ``measurements.parquet`` (i.e. the master measurements). The
+        per-image post-measurement stage on this pipeline (``self._post``) has
+        already run during :meth:`measure`; ``analyze`` does **not** re-apply
+        post.
+
+        Args:
+            df: The aggregate measurements DataFrame.
+
+        Returns:
+            pd.DataFrame: The model-fit output (one row per group, plus shared
+                :class:`MODEL_METRICS` columns for fit quality).
+
+        Raises:
+            ValueError: If no model is configured. Configure via
+                :meth:`set_model` (or pass ``model=`` at construction).
+        """
+        if self._model is None:
+            raise ValueError(
+                "pipeline has no analysis model configured; assign a "
+                "ModelFitter via set_model() or pass model= at construction"
+            )
+
+        current = df
+        for key, flt in self._filters.items():
+            logger.debug("Running analysis filter: %s", key)
+            current = flt.analyze(current)
+        return self._model.analyze(current)
+
+    def _analyze_steps(
+            self, df: pd.DataFrame
+    ) -> List[Tuple[str, pd.DataFrame]]:
+        """Run the analysis chain step by step, returning per-step outputs.
+
+        Internal helper for the analysis GUI's live preview — exposes the
+        intermediate frame after each filter and the model fit so each section
+        in the stepper can render its own preview without re-running upstream
+        steps from scratch. Not part of the public API; use :meth:`analyze`
+        for end-to-end runs.
+
+        Args:
+            df: The aggregate measurements DataFrame.
+
+        Returns:
+            List[Tuple[str, pd.DataFrame]]: One ``(label, df)`` per step. The
+                label matches the key in :attr:`_filters` for filter steps,
+                and the model class name for the terminal entry. When no
+                model is configured, only filter entries are returned.
+        """
+        steps: List[Tuple[str, pd.DataFrame]] = []
+        current = df
+        for key, flt in self._filters.items():
+            current = flt.analyze(current)
+            steps.append((key, current))
+        if self._model is not None:
+            fit = self._model.analyze(current)
+            steps.append((type(self._model).__name__, fit))
+        return steps
 
     @staticmethod
     def __make_unique(class_names):
