@@ -133,7 +133,7 @@
       
     
     
-    <img src="../../_static/gradient_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
     <img src="../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
   
   
@@ -923,49 +923,64 @@ a prefab pipeline.</p>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></p></td>
 <td><p>This class represents a processing and measurement interface for Image operations and feature extraction.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.apply" title="phenotypic.prefab.FilamentousFungiPipeline.apply"><code class="xref py py-obj docutils literal notranslate"><span class="pre">apply</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.analyze" title="phenotypic.prefab.FilamentousFungiPipeline.analyze"><code class="xref py py-obj docutils literal notranslate"><span class="pre">analyze</span></code></a></p></td>
+<td><p>Run the analysis chain (filters then model) against an aggregate frame.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.apply" title="phenotypic.prefab.FilamentousFungiPipeline.apply"><code class="xref py py-obj docutils literal notranslate"><span class="pre">apply</span></code></a></p></td>
 <td><p>The class provides an interface to process and apply a series of operations on an Image.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.apply_and_measure" title="phenotypic.prefab.FilamentousFungiPipeline.apply_and_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">apply_and_measure</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.apply_and_measure" title="phenotypic.prefab.FilamentousFungiPipeline.apply_and_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">apply_and_measure</span></code></a></p></td>
 <td><p>Applies processing to the given image and measures the results.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.apply_napari" title="phenotypic.prefab.FilamentousFungiPipeline.apply_napari"><code class="xref py py-obj docutils literal notranslate"><span class="pre">apply_napari</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.apply_napari" title="phenotypic.prefab.FilamentousFungiPipeline.apply_napari"><code class="xref py py-obj docutils literal notranslate"><span class="pre">apply_napari</span></code></a></p></td>
 <td><p>Apply the pipeline and progressively add layers to a napari viewer.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.apply_with_intermediates" title="phenotypic.prefab.FilamentousFungiPipeline.apply_with_intermediates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">apply_with_intermediates</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.apply_with_intermediates" title="phenotypic.prefab.FilamentousFungiPipeline.apply_with_intermediates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">apply_with_intermediates</span></code></a></p></td>
 <td><p>Apply the pipeline and capture a snapshot of the image after each operation.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.benchmark_results" title="phenotypic.prefab.FilamentousFungiPipeline.benchmark_results"><code class="xref py py-obj docutils literal notranslate"><span class="pre">benchmark_results</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.benchmark_results" title="phenotypic.prefab.FilamentousFungiPipeline.benchmark_results"><code class="xref py py-obj docutils literal notranslate"><span class="pre">benchmark_results</span></code></a></p></td>
 <td><p>Return execution times and memory usage for operations and measurements.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.from_json" title="phenotypic.prefab.FilamentousFungiPipeline.from_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_json</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.from_json" title="phenotypic.prefab.FilamentousFungiPipeline.from_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_json</span></code></a></p></td>
 <td><p>Deserialize a PrefabPipeline from JSON.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.get_filters" title="phenotypic.prefab.FilamentousFungiPipeline.get_filters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_filters</span></code></a></p></td>
+<td><p>Get a copy of the analysis filter chain.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.get_meas" title="phenotypic.prefab.FilamentousFungiPipeline.get_meas"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_meas</span></code></a></p></td>
 <td><p>Get a copy of the measurements dictionary.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.get_ops" title="phenotypic.prefab.FilamentousFungiPipeline.get_ops"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_ops</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.get_model" title="phenotypic.prefab.FilamentousFungiPipeline.get_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_model</span></code></a></p></td>
+<td><p>Get the analysis endpoint model, if configured.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.get_ops" title="phenotypic.prefab.FilamentousFungiPipeline.get_ops"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_ops</span></code></a></p></td>
 <td><p>Get a copy of the operations dictionary.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.get_post" title="phenotypic.prefab.FilamentousFungiPipeline.get_post"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_post</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.get_post" title="phenotypic.prefab.FilamentousFungiPipeline.get_post"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_post</span></code></a></p></td>
 <td><p>Get a copy of the post-measurement transforms dictionary.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.measure" title="phenotypic.prefab.FilamentousFungiPipeline.measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measure</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.measure" title="phenotypic.prefab.FilamentousFungiPipeline.measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measure</span></code></a></p></td>
 <td><p>Measures properties of a given image and optionally includes metadata.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.set_filters" title="phenotypic.prefab.FilamentousFungiPipeline.set_filters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_filters</span></code></a></p></td>
+<td><p>Set the analysis filter chain.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.set_meas" title="phenotypic.prefab.FilamentousFungiPipeline.set_meas"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_meas</span></code></a></p></td>
 <td><p>Sets the measurements to be used for further computation.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.set_ops" title="phenotypic.prefab.FilamentousFungiPipeline.set_ops"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_ops</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.set_model" title="phenotypic.prefab.FilamentousFungiPipeline.set_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_model</span></code></a></p></td>
+<td><p>Set the analysis endpoint model.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.set_ops" title="phenotypic.prefab.FilamentousFungiPipeline.set_ops"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_ops</span></code></a></p></td>
 <td><p>Sets the operations to be performed.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.set_post" title="phenotypic.prefab.FilamentousFungiPipeline.set_post"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_post</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.set_post" title="phenotypic.prefab.FilamentousFungiPipeline.set_post"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_post</span></code></a></p></td>
 <td><p>Set the post-measurement transforms.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.to_json" title="phenotypic.prefab.FilamentousFungiPipeline.to_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_json</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.to_json" title="phenotypic.prefab.FilamentousFungiPipeline.to_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_json</span></code></a></p></td>
 <td><p>Serialize the pipeline configuration to JSON format.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.widget" title="phenotypic.prefab.FilamentousFungiPipeline.widget"><code class="xref py py-obj docutils literal notranslate"><span class="pre">widget</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.widget" title="phenotypic.prefab.FilamentousFungiPipeline.widget"><code class="xref py py-obj docutils literal notranslate"><span class="pre">widget</span></code></a></p></td>
 <td><p>Return (and optionally display) the root widget.</p></td>
 </tr>
 </tbody>
@@ -1021,6 +1036,39 @@ name, description, and the lists of operations and measurements.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">analyze</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.2)"><span class="pre">pandas.DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.2)"><span class="pre">pandas.DataFrame</span></a></span></span></dt>
+<dd><p>Run the analysis chain (filters then model) against an aggregate frame.</p>
+<p>Applies each filter in order — each transforms a DataFrame into another
+DataFrame — then runs the configured terminal model to produce a fit
+summary (typically one row per group).</p>
+<p>The expected input is the aggregated, post-measurement DataFrame the CLI
+seeds into <code class="docutils literal notranslate"><span class="pre">measurements.parquet</span></code> (i.e. the master measurements). The
+per-image post-measurement stage on this pipeline (<code class="docutils literal notranslate"><span class="pre">self._post</span></code>) has
+already run during <a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.measure" title="phenotypic.prefab.FilamentousFungiPipeline.measure"><code class="xref py py-meth docutils literal notranslate"><span class="pre">measure()</span></code></a>; <code class="docutils literal notranslate"><span class="pre">analyze</span></code> does <strong>not</strong> re-apply
+post.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>df</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.2)"><em>pandas.DataFrame</em></a>) – The aggregate measurements DataFrame.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The model-fit output (one row per group, plus shared</dt><dd><p><code class="xref py py-class docutils literal notranslate"><span class="pre">MODEL_METRICS</span></code> columns for fit quality).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If no model is configured. Configure via
+    <a class="reference internal" href="../phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline.set_model" title="phenotypic.prefab.FilamentousFungiPipeline.set_model"><code class="xref py py-meth docutils literal notranslate"><span class="pre">set_model()</span></code></a> (or pass <code class="docutils literal notranslate"><span class="pre">model=</span></code> at construction).</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1206,6 +1254,25 @@ configuration.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_filters</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'SetAnalyzer'</span></span><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>Get a copy of the analysis filter chain.</p>
+<p>Returns a shallow copy to prevent accidental mutation of internal state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>Ordered dict mapping filter names to</dt><dd><p><code class="xref py py-class docutils literal notranslate"><span class="pre">SetAnalyzer</span></code> instances. Empty when no filters configured.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference internal" href="../phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.SetAnalyzer" title="phenotypic.analysis.abc_.SetAnalyzer">SetAnalyzer</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">get_meas</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasureFeatures" title="phenotypic.abc_._measure_features.MeasureFeatures"><span class="pre">MeasureFeatures</span></a><span class="p"><span class="pre">]</span></span></span></span></dt>
 <dd><p>Get a copy of the measurements dictionary.</p>
 <p>Returns a shallow copy to prevent accidental mutation of internal state.</p>
@@ -1219,6 +1286,24 @@ configuration.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasureFeatures" title="phenotypic.abc_.MeasureFeatures">MeasureFeatures</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_model</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="s"><span class="pre">'ModelFitter'</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span></dt>
+<dd><p>Get the analysis endpoint model, if configured.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>The configured <code class="xref py py-class docutils literal notranslate"><span class="pre">ModelFitter</span></code> instance,</dt><dd><p>or <code class="docutils literal notranslate"><span class="pre">None</span></code> when no model is set.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Optional[<a class="reference internal" href="../phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.ModelFitter" title="phenotypic.analysis.abc_.ModelFitter">ModelFitter</a>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1309,6 +1394,24 @@ the measurements. Defaults to True.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">set_filters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'SetAnalyzer'</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'SetAnalyzer'</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span></dt>
+<dd><p>Set the analysis filter chain.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filters</strong> (<em>List</em><em>[</em><em>'SetAnalyzer'</em><em>] </em><em>| </em><em>Dict</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>'SetAnalyzer'</em><em>]</em>) – A list or dictionary of <code class="xref py py-class docutils literal notranslate"><span class="pre">SetAnalyzer</span></code> instances. If a
+list, class names (deduplicated by suffix) are used as keys.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">filters</span></code> is neither a list nor a dictionary.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">set_meas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measurements</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasureFeatures" title="phenotypic.abc_._measure_features.MeasureFeatures"><span class="pre">MeasureFeatures</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasureFeatures" title="phenotypic.abc_._measure_features.MeasureFeatures"><span class="pre">MeasureFeatures</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span></dt>
 <dd><p>Sets the measurements to be used for further computation. The input can be either
 a list of <cite>MeasureFeatures</cite> objects or a dictionary with string keys and <cite>MeasureFeatures</cite>
@@ -1325,6 +1428,26 @@ keys are predefined strings and values are <cite>MeasureFeatures</cite> objects.
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If the <cite>measurements</cite> argument is neither a list nor a dictionary.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">set_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="s"><span class="pre">'ModelFitter'</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span></dt>
+<dd><p>Set the analysis endpoint model.</p>
+<p>Only one model can be configured per pipeline; assigning a new value
+replaces any prior model. Pass <code class="docutils literal notranslate"><span class="pre">None</span></code> to clear.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>model</strong> (<em>Optional</em><em>[</em><em>'ModelFitter'</em><em>]</em>) – A <code class="xref py py-class docutils literal notranslate"><span class="pre">ModelFitter</span></code> instance, or <code class="docutils literal notranslate"><span class="pre">None</span></code> to clear.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">model</span></code> is not a <code class="xref py py-class docutils literal notranslate"><span class="pre">ModelFitter</span></code> instance and
+    not <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
 </dd>
 </dl>
 </dd></dl>

@@ -130,7 +130,7 @@
       
     
     
-    <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
     <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
   
   
@@ -533,6 +533,7 @@
     <span class="n">CFG_RUN_REGISTRY</span><span class="p">,</span>
     <span class="n">CFG_RUNNER</span><span class="p">,</span>
     <span class="n">DEFAULT_IDLE_RELEASE_SECONDS</span><span class="p">,</span>
+    <span class="n">MOUNT_ANALYSIS</span><span class="p">,</span>
     <span class="n">MOUNT_BUILDER</span><span class="p">,</span>
     <span class="n">MOUNT_HOME</span><span class="p">,</span>
     <span class="n">MOUNT_RUN</span><span class="p">,</span>
@@ -541,6 +542,7 @@
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._home</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_home_layout</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._ids</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">SHELL_TAB_ANALYSIS</span><span class="p">,</span>
     <span class="n">SHELL_TAB_BUILDER</span><span class="p">,</span>
     <span class="n">SHELL_TAB_HOME</span><span class="p">,</span>
     <span class="n">SHELL_TAB_RUN</span><span class="p">,</span>
@@ -672,7 +674,7 @@
 <span class="sd">            so they don&#39;t leak background threads.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Local imports to keep boot-time cycles minimal.</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui</span><span class="w"> </span><span class="kn">import</span> <span class="n">builder</span><span class="p">,</span> <span class="n">results_viewer</span><span class="p">,</span> <span class="n">run_console</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui</span><span class="w"> </span><span class="kn">import</span> <span class="n">analysis</span><span class="p">,</span> <span class="n">builder</span><span class="p">,</span> <span class="n">results_viewer</span><span class="p">,</span> <span class="n">run_console</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.results_viewer._output_root</span><span class="w"> </span><span class="kn">import</span> <span class="n">OutputRoot</span>
 
     <span class="c1"># Mutable handoff slot so the sidebar can hand a CLI output path to the</span>
@@ -743,6 +745,16 @@
         <span class="n">runner</span><span class="o">=</span><span class="n">runner</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">wrap_in_chrome</span><span class="p">(</span><span class="n">run_app</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_RUN</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">)</span>
+
+    <span class="c1"># 4b. Analysis sub-app (lazy via the same viewer_state output_root,</span>
+    <span class="c1">#     since it needs a CLI output dir to do anything useful). The</span>
+    <span class="c1">#     simple eager build mirrors the empty-state pattern: when no</span>
+    <span class="c1">#     output_root is bound we render the placeholder layout.</span>
+    <span class="n">analysis_app</span> <span class="o">=</span> <span class="n">analysis</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span>
+        <span class="n">output_root</span><span class="o">=</span><span class="n">viewer_state</span><span class="p">[</span><span class="s2">&quot;output_root&quot;</span><span class="p">],</span>
+        <span class="n">url_prefix</span><span class="o">=</span><span class="n">MOUNT_ANALYSIS</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">wrap_in_chrome</span><span class="p">(</span><span class="n">analysis_app</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_ANALYSIS</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">)</span>
     <span class="c1"># Stash on the shell server too so any future cross-tool callback</span>
     <span class="c1"># (e.g. the sidebar&#39;s &quot;open in run console&quot; hand-off) can reach the</span>
     <span class="c1"># same singletons.</span>
@@ -764,15 +776,17 @@
             <span class="n">MOUNT_BUILDER</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">):</span> <span class="n">builder_app</span><span class="o">.</span><span class="n">server</span><span class="p">,</span>
             <span class="n">MOUNT_VIEWER</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">):</span> <span class="n">viewer_proxy</span><span class="p">,</span>
             <span class="n">MOUNT_RUN</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">):</span> <span class="n">run_app</span><span class="o">.</span><span class="n">server</span><span class="p">,</span>
+            <span class="n">MOUNT_ANALYSIS</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">):</span> <span class="n">analysis_app</span><span class="o">.</span><span class="n">server</span><span class="p">,</span>
         <span class="p">},</span>
     <span class="p">)</span>
 
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-        <span class="s2">&quot;GUI hub composed: sandbox=</span><span class="si">%s</span><span class="s2"> mounts=</span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;GUI hub composed: sandbox=</span><span class="si">%s</span><span class="s2"> mounts=</span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
         <span class="n">sandbox</span><span class="o">.</span><span class="n">root</span><span class="p">,</span>
         <span class="n">MOUNT_BUILDER</span><span class="p">,</span>
         <span class="n">MOUNT_VIEWER</span><span class="p">,</span>
         <span class="n">MOUNT_RUN</span><span class="p">,</span>
+        <span class="n">MOUNT_ANALYSIS</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">start_idle_thread</span><span class="p">:</span>

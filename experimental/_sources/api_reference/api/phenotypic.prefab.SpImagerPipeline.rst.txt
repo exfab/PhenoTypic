@@ -18,17 +18,22 @@ phenotypic.prefab.SpImagerPipeline
       :nosignatures:
    
       ~SpImagerPipeline.__init__
+      ~SpImagerPipeline.analyze
       ~SpImagerPipeline.apply
       ~SpImagerPipeline.apply_and_measure
       ~SpImagerPipeline.apply_napari
       ~SpImagerPipeline.apply_with_intermediates
       ~SpImagerPipeline.benchmark_results
       ~SpImagerPipeline.from_json
+      ~SpImagerPipeline.get_filters
       ~SpImagerPipeline.get_meas
+      ~SpImagerPipeline.get_model
       ~SpImagerPipeline.get_ops
       ~SpImagerPipeline.get_post
       ~SpImagerPipeline.measure
+      ~SpImagerPipeline.set_filters
       ~SpImagerPipeline.set_meas
+      ~SpImagerPipeline.set_model
       ~SpImagerPipeline.set_ops
       ~SpImagerPipeline.set_post
       ~SpImagerPipeline.to_json

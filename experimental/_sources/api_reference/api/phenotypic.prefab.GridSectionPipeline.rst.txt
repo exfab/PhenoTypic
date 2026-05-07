@@ -18,17 +18,22 @@ phenotypic.prefab.GridSectionPipeline
       :nosignatures:
    
       ~GridSectionPipeline.__init__
+      ~GridSectionPipeline.analyze
       ~GridSectionPipeline.apply
       ~GridSectionPipeline.apply_and_measure
       ~GridSectionPipeline.apply_napari
       ~GridSectionPipeline.apply_with_intermediates
       ~GridSectionPipeline.benchmark_results
       ~GridSectionPipeline.from_json
+      ~GridSectionPipeline.get_filters
       ~GridSectionPipeline.get_meas
+      ~GridSectionPipeline.get_model
       ~GridSectionPipeline.get_ops
       ~GridSectionPipeline.get_post
       ~GridSectionPipeline.measure
+      ~GridSectionPipeline.set_filters
       ~GridSectionPipeline.set_meas
+      ~GridSectionPipeline.set_model
       ~GridSectionPipeline.set_ops
       ~GridSectionPipeline.set_post
       ~GridSectionPipeline.to_json
