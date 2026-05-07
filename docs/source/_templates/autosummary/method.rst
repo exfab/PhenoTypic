@@ -3,4 +3,3 @@
 .. currentmodule:: {{ module }}
 
 .. automethod:: {{ objname }}
-   :no-index:

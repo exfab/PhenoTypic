@@ -3,4 +3,3 @@
 .. currentmodule:: {{ module }}
 
 .. autoexception:: {{ objname }}
-   :no-index:
