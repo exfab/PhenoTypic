@@ -70,7 +70,8 @@ class OperationInfo:
             ``is_point_pickable`` is False.
     """
 
-    cls: Type[ImageOperation]
+    cls: Type[Any]  # ``ImageOperation`` for ops/measure/post; ``SetAnalyzer`` /
+    # ``ModelFitter`` for analysis-category records.
     name: str
     category: str
     module: str
@@ -122,7 +123,10 @@ class OperationRegistry:
         """Discover all available operations from phenotypic modules.
 
         Scans phenotypic.enhance, phenotypic.detect, phenotypic.refine, etc.
-        for ImageOperation subclasses and extracts their metadata.
+        for ImageOperation subclasses and extracts their metadata. Also
+        scans :mod:`phenotypic.analysis` for ``SetAnalyzer`` / ``ModelFitter``
+        subclasses so the analysis sub-app's section forms can read param
+        metadata from the same registry the builder uses.
         """
         # Import operation modules
         import phenotypic.enhance as enhance_module
@@ -132,6 +136,7 @@ class OperationRegistry:
         import phenotypic.measure as measure_module
         import phenotypic.grid as grid_module
         import phenotypic.post as post_module
+        import phenotypic.analysis as analysis_module
 
         from phenotypic.abc_ import (
             ImageEnhancer,
@@ -156,6 +161,45 @@ class OperationRegistry:
 
         for module, category, base_class in module_category_map:
             self._discover_from_module(module, category, base_class)
+
+        # Analysis classes use the SetAnalyzer / ModelFitter hierarchy and
+        # are not ``ImageOperation`` subclasses; walk them separately so the
+        # analysis sub-app's section dropdowns can populate from the same
+        # registry the builder uses.
+        self._discover_analyzers(analysis_module)
+
+    def _discover_analyzers(self, module: Any) -> None:
+        """Walk an analysis module and register filters + models.
+
+        ``ModelFitter`` extends ``SetAnalyzer``; subclasses of the former
+        become category ``"Model"`` and subclasses of the latter (excluding
+        ``ModelFitter`` lineage) become category ``"Filter"``. Analyzers do
+        NOT extend ``ImageOperation`` so they bypass
+        :meth:`_discover_from_module`'s ``base_class`` constraint.
+        """
+        from phenotypic.analysis.abc_ import ModelFitter, SetAnalyzer
+
+        for name, obj in inspect.getmembers(module, inspect.isclass):
+            if name.startswith("_"):
+                continue
+            if not issubclass(obj, SetAnalyzer) or obj in (SetAnalyzer, ModelFitter):
+                continue
+            category = "Model" if issubclass(obj, ModelFitter) else "Filter"
+            try:
+                op_info = OperationInfo(
+                    cls=obj,
+                    name=name,
+                    category=category,
+                    module=obj.__module__,
+                    docstring=obj.__doc__,
+                    parameters=self._extract_parameters(obj),
+                    is_point_pickable=False,
+                    point_picker_param=None,
+                )
+                self._operations[name] = op_info
+                self._categories.setdefault(category, []).append(op_info)
+            except Exception as e:  # noqa: BLE001
+                print(f"Warning: Could not register analyzer {name}: {e}")
 
     def _discover_from_module(
         self,

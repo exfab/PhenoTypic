@@ -12,19 +12,21 @@ The page is a vertical stepper:
 """
 from __future__ import annotations
 
+import functools
 from typing import TYPE_CHECKING, Any
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
 
 from phenotypic.gui._design import (
-    COLOR_BODY,
     COLOR_GOLD,
     COLOR_MUTED,
     COLOR_NAVY,
     COLOR_SURFACE,
     COLOR_WHITE,
 )
+from phenotypic.gui._operation_registry import OperationRegistry
+from phenotypic.gui._param_forms import param_form
 from phenotypic.gui.analysis import _ids as ids
 
 if TYPE_CHECKING:
@@ -75,14 +77,73 @@ def build_app_layout(
 def build_empty_state_layout() -> html.Div:
     """Layout shown when the hub mounts ``/analysis/`` without an output root.
 
-    Mirrors the results viewer's empty-state pattern.
+    Mirrors the results viewer's empty-state hand-off banner: the user
+    picks a CLI output entry in the sidebar, the banner fills in with
+    the selection, and clicking ↩ Open in analysis POSTs to the shared
+    ``/sandbox/api/viewer/output-root`` endpoint, which releases both
+    the viewer and the analysis ToolSession so the next request to
+    ``/analysis/`` rebuilds against the bound output root.
     """
+    handoff_banner = html.Div(
+        [
+            html.Span(
+                "Selected: ",
+                className="analysis-empty-handoff-prefix",
+            ),
+            html.Code(
+                "(none)",
+                id=ids.EMPTY_HANDOFF_LABEL,
+                className="analysis-empty-handoff-label",
+            ),
+            dbc.Button(
+                "↩ Open in analysis",
+                id=ids.EMPTY_HANDOFF_OPEN_BUTTON,
+                color="primary",
+                size="sm",
+                disabled=True,
+                className="analysis-empty-handoff-open ms-2",
+                n_clicks=0,
+            ),
+        ],
+        id=ids.EMPTY_HANDOFF_BANNER,
+        className="analysis-empty-handoff-banner",
+        style={
+            "display": "none",
+            "alignItems": "center",
+            "gap": "0.5rem",
+            "marginTop": "1rem",
+            "padding": "0.5rem 0.75rem",
+            "background": COLOR_SURFACE,
+            "border": "1px solid #1b75bc",
+            "borderRadius": "6px",
+        },
+    )
+
+    error_slot = html.Div(
+        "",
+        id=ids.EMPTY_HANDOFF_ERROR,
+        className="analysis-empty-handoff-error text-danger small",
+        style={"marginTop": "0.5rem", "minHeight": "1.25rem"},
+    )
+
     return html.Div(
         [
-            html.H2("Analysis sub-app", style={"color": COLOR_NAVY}),
-            html.P(
-                "Select a CLI output directory in the sidebar to start "
-                "composing an analysis chain over its curated measurements.",
+            html.Div(
+                [
+                    html.H2(
+                        "No output selected",
+                        style={"color": COLOR_NAVY},
+                    ),
+                    html.P(
+                        "Pick a CLI output directory in the sidebar, "
+                        "then click ↩ Open in analysis to bind it. The "
+                        "binding is shared with the results viewer — "
+                        "both tools rebuild against the chosen output "
+                        "in lock-step.",
+                    ),
+                    handoff_banner,
+                    error_slot,
+                ],
             ),
         ],
         id=ids.ANALYSIS_PAGE,
@@ -235,8 +296,16 @@ def build_section_stack(
     stack_id: str,
     kind: "ids.SectionKind",
     recipe: "RecipeState",
+    registry: OperationRegistry | None = None,
 ) -> list:
-    """Build the list of section cards inside a stack."""
+    """Build the list of section cards inside a stack.
+
+    Each card now hosts a fully editable :func:`param_form` rendered
+    against the section's analyzer instance. Widget ids are scoped via
+    ``form_id_prefix=f"analysis-{kind}-{index}"`` so the analysis-side
+    pattern-matching callback can map any param edit back to the correct
+    section without colliding with the builder's prefixes.
+    """
     pipeline = recipe.pipeline
     items: list[tuple[str, Any]]
     if kind == "post":
@@ -244,13 +313,22 @@ def build_section_stack(
     elif kind == "filter":
         items = list(pipeline.get_filters().items())
     else:
-        # ``kind`` is a Literal type so mypy catches typos at call sites,
-        # but keep the runtime guard for pattern-matching IDs (where the
-        # kind comes back as a dict value from the client).
         return []
+
+    if registry is None:
+        registry = _shared_registry()
 
     cards: list = []
     for index, (name, instance) in enumerate(items):
+        info = registry.get(type(instance).__name__)
+        body = (
+            _section_form(info, instance, kind=kind, index=index)
+            if info is not None
+            else html.Em(
+                f"No registry info for {type(instance).__name__}",
+                style={"color": COLOR_MUTED},
+            )
+        )
         cards.append(
             html.Div(
                 [
@@ -275,9 +353,8 @@ def build_section_stack(
                         className=f"analysis-{kind}-section-header",
                     ),
                     html.Div(
-                        _format_params(instance),
+                        body,
                         className=f"analysis-{kind}-section-params",
-                        style={"fontSize": "0.85rem", "color": COLOR_BODY},
                     ),
                 ],
                 id=ids.post_section_id(index)
@@ -294,6 +371,25 @@ def build_section_stack(
             )
         )
     return cards
+
+
+@functools.cache
+def _shared_registry() -> OperationRegistry:
+    """Module-singleton registry — discovery is expensive and idempotent."""
+    reg = OperationRegistry()
+    reg.discover()
+    return reg
+
+
+def _section_form(info, instance, *, kind: str, index: int):
+    """Render a ``param_form`` for a section's analyzer instance."""
+    return param_form(
+        info,
+        current_values={
+            k: v for k, v in vars(instance).items() if not k.startswith("_")
+        },
+        form_id_prefix=f"analysis-{kind}-{index}",
+    )
 
 
 def _build_model_panel(recipe: "RecipeState") -> html.Div:
@@ -334,13 +430,26 @@ def _build_model_panel(recipe: "RecipeState") -> html.Div:
 
 
 def _build_model_section(model: object) -> html.Div:
+    registry = _shared_registry()
+    info = registry.get(type(model).__name__)
+    body: Any
+    if info is not None:
+        body = param_form(
+            info,
+            current_values={
+                k: v for k, v in vars(model).items() if not k.startswith("_")
+            },
+            form_id_prefix="analysis-model-0",
+        )
+    else:
+        body = html.Em(
+            f"No registry info for {type(model).__name__}",
+            style={"color": COLOR_MUTED},
+        )
     return html.Div(
         [
             html.Strong(type(model).__name__),
-            html.Div(
-                _format_params(model),
-                style={"fontSize": "0.85rem", "color": COLOR_BODY},
-            ),
+            html.Div(body),
         ],
         style={
             "border": f"1px solid {COLOR_NAVY}",
@@ -384,14 +493,3 @@ def _build_run_console(recipe: "RecipeState") -> html.Div:
     )
 
 
-def _format_params(instance: object) -> str:
-    """Compact one-line repr of an analyzer's public params."""
-    parts: list[str] = []
-    for key, value in vars(instance).items():
-        if key.startswith("_"):
-            continue
-        try:
-            parts.append(f"{key}={value!r}")
-        except Exception:
-            parts.append(f"{key}=<…>")
-    return ", ".join(parts) or "(no parameters)"

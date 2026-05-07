@@ -74,8 +74,8 @@ __all__ = ["create_app", "compose_hub"]
 # _ViewerProxy — per-request resolution of the viewer's WSGI app
 # ---------------------------------------------------------------------------
 
-class _ViewerProxy:
-    """WSGI callable that resolves the viewer's app per request.
+class _SessionProxy:
+    """WSGI callable that resolves a tool's Dash app per request.
 
     The dispatcher's mount point is fixed at composition time, but the
     underlying Dash instance changes whenever the :class:`ToolSession`
@@ -86,7 +86,7 @@ class _ViewerProxy:
 
     ``ToolSession.get()`` is itself thread-safe and updates
     ``_last_access`` so a steady stream of requests prevents the idle
-    daemon from releasing the viewer mid-session.
+    daemon from releasing the tool mid-session.
     """
 
     def __init__(self, session: "ToolSession[dash.Dash]") -> None:
@@ -101,6 +101,12 @@ class _ViewerProxy:
         return app.server.wsgi_app(environ, start_response)
 
 
+# Back-compat alias — the analysis sub-app reuses the same proxy machinery,
+# so the historical ``_ViewerProxy`` name now points at the generic class.
+_ViewerProxy = _SessionProxy
+_AnalysisProxy = _SessionProxy
+
+
 # ---------------------------------------------------------------------------
 # Shell-only Dash builder (used as the dispatcher's default fallback app)
 # ---------------------------------------------------------------------------
@@ -111,6 +117,7 @@ def _build_shell_dash_app(
     url_prefix: str = MOUNT_HOME,
     viewer_session: "ToolSession[Any] | None" = None,
     viewer_state: "dict[str, Any] | None" = None,
+    extra_release_sessions: "tuple[ToolSession[Any], ...] | None" = None,
 ) -> dash.Dash:
     """Build the shell's home Dash (chrome + home pane + Flask blueprints).
 
@@ -148,6 +155,7 @@ def _build_shell_dash_app(
         sandbox,
         viewer_session=viewer_session,
         viewer_state=viewer_state,
+        extra_release_sessions=extra_release_sessions,
     )
     register_runs(app.server, sandbox, viewer_session=viewer_session)
     return app
@@ -220,12 +228,37 @@ def compose_hub(
         teardown=_teardown_viewer,
     )
 
+    # 1b. Analysis session built up front so the bind endpoint in step 2
+    #     can release it alongside the viewer when the sidebar hands off
+    #     a CLI output. The session's build closure reads
+    #     ``viewer_state["output_root"]`` lazily, so the order between
+    #     this and the analysis layout factory doesn't matter.
+    def _build_analysis() -> dash.Dash:
+        analysis_app = analysis.create_app(
+            output_root=viewer_state["output_root"],
+            url_prefix=MOUNT_ANALYSIS,
+        )
+        wrap_in_chrome(
+            analysis_app, active_tab=SHELL_TAB_ANALYSIS, sandbox=sandbox
+        )
+        return analysis_app
+
+    def _teardown_analysis(_app: dash.Dash) -> None:
+        del _app  # pragma: no cover
+
+    analysis_session: ToolSession[dash.Dash] = ToolSession(
+        "analysis",
+        build=_build_analysis,
+        teardown=_teardown_analysis,
+    )
+
     # 2. Shell Dash (registers the API + runs blueprints with the
-    #    viewer-session touch hook wired in).
+    #    viewer-session touch hook + analysis-session release hook).
     shell_app = _build_shell_dash_app(
         sandbox,
         viewer_session=viewer_session,
         viewer_state=viewer_state,
+        extra_release_sessions=(analysis_session,),
     )
 
     # 3. Builder Dash (eager — single-process registry build).
@@ -254,15 +287,6 @@ def compose_hub(
     )
     wrap_in_chrome(run_app, active_tab=SHELL_TAB_RUN, sandbox=sandbox)
 
-    # 4b. Analysis sub-app (lazy via the same viewer_state output_root,
-    #     since it needs a CLI output dir to do anything useful). The
-    #     simple eager build mirrors the empty-state pattern: when no
-    #     output_root is bound we render the placeholder layout.
-    analysis_app = analysis.create_app(
-        output_root=viewer_state["output_root"],
-        url_prefix=MOUNT_ANALYSIS,
-    )
-    wrap_in_chrome(analysis_app, active_tab=SHELL_TAB_ANALYSIS, sandbox=sandbox)
     # Stash on the shell server too so any future cross-tool callback
     # (e.g. the sidebar's "open in run console" hand-off) can reach the
     # same singletons.
@@ -273,6 +297,7 @@ def compose_hub(
     #    Flask app as its default; any path not matching a mount prefix
     #    falls through to it (which carries the API + runs blueprints).
     viewer_proxy = _ViewerProxy(viewer_session)
+    analysis_proxy = _AnalysisProxy(analysis_session)
     # ``wsgi_app`` is the standard Flask seam for WSGI middleware
     # injection (this is the same recipe Werkzeug docs recommend).
     # DispatcherMiddleware mount keys are prefixes WITHOUT the trailing "/"
@@ -284,7 +309,7 @@ def compose_hub(
             MOUNT_BUILDER.rstrip("/"): builder_app.server,
             MOUNT_VIEWER.rstrip("/"): viewer_proxy,
             MOUNT_RUN.rstrip("/"): run_app.server,
-            MOUNT_ANALYSIS.rstrip("/"): analysis_app.server,
+            MOUNT_ANALYSIS.rstrip("/"): analysis_proxy,
         },
     )
 
@@ -299,7 +324,7 @@ def compose_hub(
 
     if start_idle_thread:
         start_idle_release_thread(
-            [viewer_session],  # type: ignore[list-item]
+            [viewer_session, analysis_session],  # type: ignore[list-item]
             idle_release_seconds=idle_release_seconds,
         )
 

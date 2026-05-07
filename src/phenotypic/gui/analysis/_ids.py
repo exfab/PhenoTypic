@@ -85,6 +85,18 @@ ANALYSIS_RUN_SPINNER = "analysis-run-spinner"
 #: round-tripping disk on every dropdown change.
 ANALYSIS_PIPELINE_STORE = "analysis-pipeline-store"
 
+# ---------------------------------------------------------------------------
+# Empty-state hand-off (mirrors the results-viewer pattern). The bind
+# endpoint is shared with the viewer; clicking either tool's "Open"
+# button releases both ToolSessions and rebuilds them against the new
+# ``viewer_state["output_root"]``.
+# ---------------------------------------------------------------------------
+
+EMPTY_HANDOFF_BANNER = "analysis-empty-handoff-banner"
+EMPTY_HANDOFF_LABEL = "analysis-empty-handoff-label"
+EMPTY_HANDOFF_OPEN_BUTTON = "analysis-empty-handoff-open-button"
+EMPTY_HANDOFF_ERROR = "analysis-empty-handoff-error"
+
 
 def post_section_id(index: int) -> dict[str, str | int]:
     """Pattern-matching ID for one post section in the stack."""
@@ -121,6 +133,10 @@ __all__ = [
     "ANALYSIS_RUN_STATUS",
     "ANALYSIS_RUN_SPINNER",
     "ANALYSIS_PIPELINE_STORE",
+    "EMPTY_HANDOFF_BANNER",
+    "EMPTY_HANDOFF_LABEL",
+    "EMPTY_HANDOFF_OPEN_BUTTON",
+    "EMPTY_HANDOFF_ERROR",
     "post_section_id",
     "filter_section_id",
     "section_remove_button_id",

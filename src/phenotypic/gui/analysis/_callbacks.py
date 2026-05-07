@@ -209,6 +209,56 @@ def register_callbacks(app: "dash.Dash") -> None:
             recipe.last_json,
         )
 
+    # ----- Per-section param edit ----- #
+    # One mega fan-in callback over every param-* widget kind (mirrors the
+    # builder's pattern). Only triggers whose ``prefix`` starts with
+    # ``"analysis-"`` are routed; other prefixes (e.g. the builder's
+    # node-uuid prefixes that may share the same widget types) fall
+    # through as no-ops.
+    @app.callback(
+        Output(ids.ANALYSIS_POST_STACK, "children", allow_duplicate=True),
+        Output(ids.ANALYSIS_FILTER_STACK, "children", allow_duplicate=True),
+        Output(ids.ANALYSIS_MODEL_SECTION, "children", allow_duplicate=True),
+        Output(ids.ANALYSIS_PIPELINE_HEADER, "children", allow_duplicate=True),
+        Output(ids.ANALYSIS_PIPELINE_STORE, "data", allow_duplicate=True),
+        Input({"type": "param-bool", "prefix": ALL, "name": ALL}, "value"),
+        Input({"type": "param-num", "prefix": ALL, "name": ALL}, "value"),
+        Input({"type": "param-str", "prefix": ALL, "name": ALL}, "value"),
+        Input({"type": "param-enum", "prefix": ALL, "name": ALL}, "value"),
+        Input({"type": "param-list", "prefix": ALL, "name": ALL}, "value"),
+        Input({"type": "param-tuple", "prefix": ALL, "name": ALL}, "value"),
+        Input({"type": "param-multi-tag", "prefix": ALL, "name": ALL}, "value"),
+        Input({"type": "param-multi-value", "prefix": ALL, "name": ALL}, "value"),
+        prevent_initial_call=True,
+    )
+    def _on_param_edit(*_values: Any):
+        ctx = callback_context
+        if not ctx.triggered_id or not isinstance(ctx.triggered_id, dict):
+            return no_update, no_update, no_update, no_update, no_update
+        prefix = ctx.triggered_id.get("prefix", "")
+        if not isinstance(prefix, str) or not prefix.startswith("analysis-"):
+            return no_update, no_update, no_update, no_update, no_update
+
+        recipe = server.config[CFG_RECIPE_STATE]
+        if not _apply_param_edit(recipe, ctx):
+            return no_update, no_update, no_update, no_update, no_update
+
+        from phenotypic.gui.analysis._layout import _build_model_section
+
+        model = recipe.pipeline.get_model()
+        model_section = (
+            _build_model_section(model)
+            if model is not None
+            else html.Span("No model configured.", style={"color": COLOR_MUTED})
+        )
+        return (
+            build_section_stack(ids.ANALYSIS_POST_STACK, "post", recipe),
+            build_section_stack(ids.ANALYSIS_FILTER_STACK, "filter", recipe),
+            model_section,
+            _pipeline_summary(recipe),
+            recipe.last_json,
+        )
+
     @app.callback(
         Output(ids.ANALYSIS_RUN_STATUS, "children"),
         Input(ids.ANALYSIS_RUN_BUTTON, "n_clicks"),
@@ -224,6 +274,140 @@ def register_callbacks(app: "dash.Dash") -> None:
                 "No model configured.", style={"color": "#c00"}
             )
         return _run_inline(recipe, Path(output_root.root))
+
+
+def _apply_param_edit(recipe: Any, ctx: Any) -> bool:
+    """Resolve a triggered param widget back into a recipe mutation.
+
+    Decodes ``ctx.triggered_id["prefix"]`` (``"analysis-{kind}-{index}"``)
+    to find the section being edited, builds a new analyzer instance with
+    the updated kwarg, and persists via :meth:`RecipeState.save`.
+
+    For multi-union widgets the tag and value live in two separate
+    components; we read both via ``ctx.inputs`` and pack them as a tuple
+    that :func:`parse_widget_value` understands.
+
+    Returns:
+        ``True`` if the edit was applied and saved; ``False`` if the
+        prefix was malformed, the section didn't exist, or the
+        substitution failed.
+    """
+    from phenotypic.gui._operation_registry import OperationRegistry
+    from phenotypic.gui._param_forms import parse_widget_value
+
+    triggered = ctx.triggered_id
+    prefix = triggered.get("prefix", "")
+    name = triggered.get("name")
+    widget_type = triggered.get("type")
+    if not isinstance(prefix, str) or not isinstance(name, str):
+        return False
+
+    # ``analysis-{kind}-{index}``
+    parts = prefix.split("-", 2)
+    if len(parts) != 3 or parts[0] != "analysis":
+        return False
+    kind = parts[1]
+    try:
+        index = int(parts[2])
+    except ValueError:
+        return False
+
+    pipeline = recipe.pipeline
+    if kind == "post":
+        items = list(pipeline.get_post().items())
+    elif kind == "filter":
+        items = list(pipeline.get_filters().items())
+    elif kind == "model":
+        model = pipeline.get_model()
+        if model is None:
+            return False
+        items = [(type(model).__name__, model)]
+        index = 0
+    else:
+        return False
+
+    if not (0 <= index < len(items)):
+        return False
+    section_key, current_instance = items[index]
+
+    # Look up param metadata.
+    registry = OperationRegistry()
+    registry.discover()
+    info = registry.get(type(current_instance).__name__)
+    if info is None:
+        return False
+    p = info.parameters.get(name)
+    if p is None:
+        return False
+
+    # Read the raw widget value(s) from ctx.inputs. Multi-union spreads its
+    # state across two components — combine them so parse_widget_value can
+    # dispatch on the (tag, value) tuple.
+    if widget_type in ("param-multi-tag", "param-multi-value"):
+        tag_key = f'{{"name":"{name}","prefix":"{prefix}","type":"param-multi-tag"}}.value'
+        val_key = f'{{"name":"{name}","prefix":"{prefix}","type":"param-multi-value"}}.value'
+        tag = ctx.inputs.get(tag_key)
+        val = ctx.inputs.get(val_key)
+        raw: Any = (tag, val)
+    else:
+        raw = ctx.triggered[0]["value"] if ctx.triggered else None
+
+    coerced = parse_widget_value(raw, p)
+
+    new_kwargs = {
+        k: v for k, v in vars(current_instance).items() if not k.startswith("_")
+    }
+    new_kwargs[name] = coerced
+
+    # Build a new instance from the current params + the updated one.
+    sig = _filter_kwargs_to_signature(type(current_instance), new_kwargs)
+    try:
+        new_instance = type(current_instance)(**sig)
+    except Exception:  # noqa: BLE001
+        logger.warning(
+            "Could not rebuild %s with new param %s=%r",
+            type(current_instance).__name__,
+            name,
+            coerced,
+            exc_info=True,
+        )
+        return False
+
+    if kind == "post":
+        post_dict = pipeline.get_post()
+        post_dict[section_key] = new_instance
+        pipeline.set_post(post_dict)
+    elif kind == "filter":
+        filters_dict = pipeline.get_filters()
+        filters_dict[section_key] = new_instance
+        pipeline.set_filters(filters_dict)
+    else:  # model
+        pipeline.set_model(new_instance)
+
+    recipe.save()
+    return True
+
+
+def _filter_kwargs_to_signature(cls: type, kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Return only ``kwargs`` entries that ``cls.__init__`` accepts.
+
+    Mirrors the alias handling in
+    :class:`phenotypic._core._pipeline_parts._serializable_pipeline.SerializablePipeline`
+    — SetAnalyzer subclasses store ``num_workers`` as ``self.n_jobs``.
+    """
+    import inspect
+
+    sig = inspect.signature(cls.__init__)
+    accepted = {p for p in sig.parameters if p != "self"}
+    aliases = {"n_jobs": "num_workers"}
+
+    out: dict[str, Any] = {}
+    for k, v in kwargs.items():
+        if k in accepted:
+            out[k] = v
+        elif k in aliases and aliases[k] in accepted:
+            out[aliases[k]] = v
+    return out
 
 
 def _run_inline(recipe: Any, output_dir: Path) -> Any:

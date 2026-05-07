@@ -114,6 +114,7 @@ def build_sandbox_api(
     *,
     viewer_session: "ToolSession[object] | None" = None,
     viewer_state: "dict[str, Any] | None" = None,
+    extra_release_sessions: "tuple[ToolSession[object], ...] | None" = None,
     name: str = "phenotypic_sandbox_api",
     url_prefix: str = SANDBOX_API_PREFIX,
 ) -> Blueprint:
@@ -126,6 +127,11 @@ def build_sandbox_api(
         viewer_session: Optional :class:`ToolSession` whose ``touch()`` is
             called on every successful request (sidebar polling counts as
             user activity).
+        extra_release_sessions: Additional sessions to ``release()``
+            alongside ``viewer_session`` when a viewer hand-off succeeds.
+            The analysis sub-app's session goes here so a single bind
+            mutates ``viewer_state`` and rebuilds both tools in lock-step
+            (per the locked "shared output_root" decision).
         name: Blueprint name. Defaults to ``"phenotypic_sandbox_api"``.
         url_prefix: Defaults to ``"/sandbox/api"``.
 
@@ -283,6 +289,10 @@ def build_sandbox_api(
         viewer_state["output_root"] = output_root
         viewer_session.release()
         viewer_session.touch()
+        if extra_release_sessions:
+            for sess in extra_release_sessions:
+                sess.release()
+                sess.touch()
         logger.info("viewer hand-off accepted: %s", target)
         return jsonify({"status": "ok", "abs_path": str(target)})
 
@@ -295,12 +305,14 @@ def register_sandbox_api(
     *,
     viewer_session: "ToolSession[object] | None" = None,
     viewer_state: "dict[str, Any] | None" = None,
+    extra_release_sessions: "tuple[ToolSession[object], ...] | None" = None,
 ) -> Blueprint:
     """Build and register the sandbox-API blueprint on ``server``."""
     bp = build_sandbox_api(
         sandbox,
         viewer_session=viewer_session,
         viewer_state=viewer_state,
+        extra_release_sessions=extra_release_sessions,
     )
     server.register_blueprint(bp)
     logger.debug(

@@ -26,7 +26,10 @@ from phenotypic.gui._config import (
     MOUNT_HOME,
     TITLE_ANALYSIS,
 )
-from phenotypic.gui._design import inject_design_tokens
+from dash import Input, Output, State
+
+from phenotypic.gui._design import COLOR_SURFACE, inject_design_tokens
+from phenotypic.gui.analysis import _ids as analysis_ids
 from phenotypic.gui.analysis._callbacks import register_callbacks
 from phenotypic.gui.analysis._layout import (
     build_app_layout,
@@ -34,6 +37,7 @@ from phenotypic.gui.analysis._layout import (
 )
 from phenotypic.gui.analysis._recipe_state import RecipeState
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.shell._ids import SHELL_SIDEBAR_SELECTION_STORE
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +84,7 @@ def create_app(
 
     if output_root is None:
         app.layout = build_empty_state_layout()
+        _register_empty_state_callbacks(app, url_prefix=url_prefix)
         return app
 
     recipe = RecipeState.load(Path(output_root.root))
@@ -95,6 +100,79 @@ def create_app(
         recipe.pipeline.name,
     )
     return app
+
+
+def _register_empty_state_callbacks(app: dash.Dash, *, url_prefix: str) -> None:
+    """Wire the hand-off banner: selection store -> banner; click -> bind.
+
+    Mirrors the results-viewer empty-state pattern. The clientside
+    callback POSTs to the shared ``/sandbox/api/viewer/output-root``
+    endpoint, which releases both viewer + analysis ToolSessions and
+    rebuilds them against the new ``viewer_state["output_root"]``. On
+    success the page navigates to ``url_prefix`` so the dispatcher
+    proxy resolves a freshly-built loaded analysis app.
+    """
+
+    @app.callback(
+        Output(analysis_ids.EMPTY_HANDOFF_BANNER, "style"),
+        Output(analysis_ids.EMPTY_HANDOFF_LABEL, "children"),
+        Output(analysis_ids.EMPTY_HANDOFF_OPEN_BUTTON, "disabled"),
+        Input(SHELL_SIDEBAR_SELECTION_STORE, "data"),
+    )
+    def _populate_handoff_banner(selection):
+        hidden = {"display": "none"}
+        visible = {
+            "display": "flex",
+            "alignItems": "center",
+            "gap": "0.5rem",
+            "marginTop": "1rem",
+            "padding": "0.5rem 0.75rem",
+            "background": COLOR_SURFACE,
+            "border": "1px solid #1b75bc",
+            "borderRadius": "6px",
+        }
+        if not selection or not isinstance(selection, dict):
+            return hidden, "(none)", True
+        path = selection.get("path") or ""
+        if not path:
+            return hidden, "(none)", True
+        caps = selection.get("capabilities") or {}
+        is_cli_output = bool(caps.get("is_cli_output"))
+        return visible, path, not is_cli_output
+
+    app.clientside_callback(
+        """
+        async function(n_clicks, selection) {
+            if (!n_clicks || !selection) {
+                return window.dash_clientside.no_update;
+            }
+            const path = selection.path;
+            if (!path) { return "No sidebar selection."; }
+            try {
+                const resp = await fetch(
+                    "/sandbox/api/viewer/output-root",
+                    {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify({path: path}),
+                    }
+                );
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) {
+                    return (data && data.error) || ("HTTP " + resp.status);
+                }
+                window.location.assign(__PHENO_ANALYSIS_PREFIX__);
+                return "";
+            } catch (err) {
+                return String(err);
+            }
+        }
+        """.replace("__PHENO_ANALYSIS_PREFIX__", repr(url_prefix)),
+        Output(analysis_ids.EMPTY_HANDOFF_ERROR, "children"),
+        Input(analysis_ids.EMPTY_HANDOFF_OPEN_BUTTON, "n_clicks"),
+        State(SHELL_SIDEBAR_SELECTION_STORE, "data"),
+        prevent_initial_call=True,
+    )
 
 
 __all__ = ["create_app"]

@@ -69,6 +69,30 @@ PIPELINE_DOC = {
         "MeasureSize": {"class": "MeasureSize", "params": {}},
     },
     "post": {},
+    # The analysis sub-app's tutorial walkthrough renders better when the
+    # synthetic CLI run produces a real ``analysis.parquet`` to demo the
+    # populated state. ``EdgeCorrector`` correction needs at least one
+    # interior + one edge colony per group to compute a threshold, and
+    # ``LogGrowthModel`` fits expect ``Metadata_Time``-keyed measurements
+    # — neither holds for the single-timepoint synthetic dataset, so the
+    # filter/model are configured here primarily as recipe metadata; the
+    # CLI's ``_emit_analysis_outputs`` swallows the resulting fit failure
+    # at WARNING and the master output is unaffected.
+    "filters": {
+        "TukeyOutlierRemover": {
+            "class": "TukeyOutlierRemover",
+            "params": {"on": "Shape_Area", "groupby": ["Metadata_StrainID"], "k": 3.0},
+        },
+    },
+    "model": {
+        "class": "LogGrowthModel",
+        "params": {
+            "on": "Shape_Area",
+            "groupby": ["Metadata_StrainID"],
+            "time_label": "Metadata_RunDate",
+            "n_jobs": 1,
+        },
+    },
     "nrows": 8,
     "ncols": 12,
 }
@@ -124,7 +148,7 @@ def build_tutorial_dataset(force: bool = False) -> None:
     print(f"[dataset]   wrote metadata.csv ({len(METADATA_ROWS) - 1} rows)")
 
     PIPELINE_JSON.write_text(json.dumps(PIPELINE_DOC, indent=2), encoding="utf-8")
-    print(f"[dataset]   wrote pipeline.json")
+    print("[dataset]   wrote pipeline.json")
 
 
 def run_cli_once() -> None:
@@ -599,18 +623,103 @@ def _capture_pick_points(context, base_url: str) -> None:
 
 
 def _capture_analysis(context, base_url: str) -> None:
-    """Capture the analysis sub-app at ``/analysis/``.
+    """Capture the analysis sub-app's empty-state hand-off banner.
 
-    The hub-mounted analysis sub-app renders an empty-state placeholder
-    until the user selects a CLI output via the sidebar (analysis sub-app
-    rebuild-on-select wiring is deferred to a follow-up). Capture the
-    empty state here; the loaded-state screenshots can be added once the
-    sidebar hand-off lands.
+    The hub-mounted analysis sub-app renders the empty-state placeholder
+    until the user clicks a CLI output in the sidebar. The hand-off
+    banner picks up the selection and exposes the "↩ Open in analysis"
+    button. Loaded-state screenshots come from
+    :func:`capture_standalone_analysis_screenshots` because they need
+    a bound ``output_root`` and the unified hub does not preconfigure
+    the sidebar selection at startup.
     """
     print("[shot] workflow=analysis (empty state via hub)")
     page = _new_page(context, base_url, "/analysis/")
     _save(page, "analysis", "01_analysis_empty.png")
     page.close()
+
+
+def capture_standalone_analysis_screenshots(headed: bool = False) -> None:
+    """Boot ``python -m phenotypic.gui.analysis --root <real>`` and capture.
+
+    Mirrors :func:`capture_standalone_viewer_screenshots`: spawns the
+    standalone analysis launcher against the synthetic CLI output dir,
+    drives a headless Chromium through the loaded-state UX (pipeline
+    header + section param forms + run console), and writes the PNGs
+    into ``docs/source/_static/gui_images/analysis/``. Required so the
+    WORKFLOWS row can flip from ``🔭 planned`` to ``✅ shipping`` once
+    a developer regenerates the screenshots on their workstation.
+    """
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:  # pragma: no cover
+        return
+
+    print("[shot] workflow=analysis (loaded state via standalone)")
+    port = _free_port()
+    cmd = [
+        sys.executable,
+        "-m",
+        "phenotypic.gui.analysis",
+        "--root",
+        str(OUTPUT_DIR),
+        "--port",
+        str(port),
+        "--host",
+        "127.0.0.1",
+    ]
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    base_url = f"http://127.0.0.1:{port}"
+
+    try:
+        # Wait for the standalone server to come up.
+        deadline = time.time() + 20.0
+        while time.time() < deadline:
+            try:
+                with urllib.request.urlopen(base_url + "/", timeout=1.0) as r:
+                    if 200 <= r.status < 300:
+                        break
+            except Exception:
+                time.sleep(0.2)
+        else:
+            print("[shot] standalone analysis did not respond — skipping")
+            return
+
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=not headed)
+            try:
+                context = browser.new_context(viewport=VIEWPORT)
+                page = _new_page(context, base_url, "/")
+                _save(page, "analysis", "02_pipeline_loaded.png")
+
+                # Scroll a filter section into view if one exists.
+                section = page.locator(".analysis-filter-section").first
+                if section.count() > 0:
+                    section.scroll_into_view_if_needed()
+                    page.wait_for_timeout(300)
+                    _save(page, "analysis", "03_filter_section_with_form.png")
+
+                # Click Run to capture the post-run status line.
+                run_btn = page.locator("#analysis-run-button")
+                if run_btn.count() > 0 and not run_btn.is_disabled():
+                    run_btn.click()
+                    page.wait_for_timeout(2000)
+                    _save(page, "analysis", "04_after_run.png")
+
+                page.close()
+            finally:
+                browser.close()
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5.0)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=5.0)
 
 
 def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
@@ -735,6 +844,7 @@ def main(argv: list[str] | None = None) -> int:
         shutdown_gui(proc)
 
     capture_standalone_viewer_screenshots(headed=args.headed)
+    capture_standalone_analysis_screenshots(headed=args.headed)
 
     print("[done] all screenshots written to docs/source/_static/gui_images/")
     return 0

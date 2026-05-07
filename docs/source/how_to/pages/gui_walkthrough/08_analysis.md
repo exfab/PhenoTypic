@@ -23,13 +23,17 @@ Open the `Analysis` tab in the hub:
 ![Analysis tab in empty state.](../../../_static/gui_images/analysis/01_analysis_empty.png)
 
 Like the Viewer, the hub-mounted Analysis sub-app starts empty. Pick a
-CLI output directory in the sidebar to bind the page to a
-`pipeline.json`. Until the rebuild-on-select wiring lands, the
-recommended path is the standalone launcher:
+CLI output directory in the sidebar — the hand-off banner picks up your
+selection and shows the resolved path. Click **↩ Open in analysis** to
+bind. The bind endpoint is shared with the Results Viewer, so picking
+an output here also binds the viewer to the same directory.
 
-```bash
-uv run python -m phenotypic.gui.analysis \
-    --root <path-to-cli-output> --port 8051
+```{note}
+The standalone launcher is still useful for headless workflows or
+long-running fits where you don't need the rest of the hub:
+
+    uv run python -m phenotypic.gui.analysis \
+        --root <path-to-cli-output> --port 8051
 ```
 
 ## What you can do
@@ -46,6 +50,12 @@ uv run python -m phenotypic.gui.analysis \
 - **Pick the endpoint model**: `LogGrowthModel` or `LinearSoftplusModel`.
   Only one model can be configured at a time; selecting `(no model)`
   clears it and disables the run button.
+- **Tune params inline**: every section card hosts an editable form
+  generated from the analyzer's constructor signature. Bools become
+  switches, numerics become number inputs, `Literal[...]` becomes a
+  dropdown, and multi-type unions (e.g. `LinearSoftplusModel.s0_prior`)
+  render as a small type-tag dropdown plus an adaptive value input.
+  Edits save to `<output>/pipeline.json` automatically.
 - **Run analysis**: click `Run analysis`. The sub-app reads
   `<output>/measurements.parquet` (the curated mirror), runs the chain
   via `pipeline.analyze(...)`, and writes `<output>/analysis.csv` and
