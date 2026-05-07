@@ -252,7 +252,7 @@ def serialize_param_for_widget(value: Any, p: "ParamInfo") -> Any:
     return value
 
 
-def _multi_union_tag_for(value: Any, hint: Any) -> str:
+def _multi_union_tag_for(value: Any) -> str:
     """Pick the matching tag for a multi-union value's existing storage."""
     if value is None:
         return "none"
@@ -303,7 +303,7 @@ def _multi_union_widget(
     if str in branches:
         options.append({"label": "string", "value": "string"})
 
-    tag = _multi_union_tag_for(current_value, p.type_hint)
+    tag = _multi_union_tag_for(current_value)
     value_text = (
         ""
         if current_value is None or isinstance(current_value, bool)
@@ -553,7 +553,6 @@ def param_form(
 
 
 __all__ = [
-    "MULTI_UNION_TAGS",
     "param_form",
     "parse_list_value",
     "parse_widget_value",

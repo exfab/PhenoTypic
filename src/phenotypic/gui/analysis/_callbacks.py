@@ -240,21 +240,34 @@ def register_callbacks(app: "dash.Dash") -> None:
             return no_update, no_update, no_update, no_update, no_update
 
         recipe = server.config[CFG_RECIPE_STATE]
-        if not _apply_param_edit(recipe, ctx):
+        applied, kind = _apply_param_edit(recipe, ctx)
+        if not applied:
             return no_update, no_update, no_update, no_update, no_update
 
-        from phenotypic.gui.analysis._layout import _build_model_section
+        # Only rebuild the touched stack — the other two are unchanged
+        # so we send ``no_update`` and avoid wasted Dash component diffs.
+        post_out = no_update
+        filter_out = no_update
+        model_out: Any = no_update
+        if kind == "post":
+            post_out = build_section_stack(ids.ANALYSIS_POST_STACK, "post", recipe)
+        elif kind == "filter":
+            filter_out = build_section_stack(
+                ids.ANALYSIS_FILTER_STACK, "filter", recipe
+            )
+        elif kind == "model":
+            from phenotypic.gui.analysis._layout import _build_model_section
 
-        model = recipe.pipeline.get_model()
-        model_section = (
-            _build_model_section(model)
-            if model is not None
-            else html.Span("No model configured.", style={"color": COLOR_MUTED})
-        )
+            model = recipe.pipeline.get_model()
+            model_out = (
+                _build_model_section(model)
+                if model is not None
+                else html.Span("No model configured.", style={"color": COLOR_MUTED})
+            )
         return (
-            build_section_stack(ids.ANALYSIS_POST_STACK, "post", recipe),
-            build_section_stack(ids.ANALYSIS_FILTER_STACK, "filter", recipe),
-            model_section,
+            post_out,
+            filter_out,
+            model_out,
             _pipeline_summary(recipe),
             recipe.last_json,
         )
@@ -276,7 +289,7 @@ def register_callbacks(app: "dash.Dash") -> None:
         return _run_inline(recipe, Path(output_root.root))
 
 
-def _apply_param_edit(recipe: Any, ctx: Any) -> bool:
+def _apply_param_edit(recipe: Any, ctx: Any) -> tuple[bool, str | None]:
     """Resolve a triggered param widget back into a recipe mutation.
 
     Decodes ``ctx.triggered_id["prefix"]`` (``"analysis-{kind}-{index}"``)
@@ -288,11 +301,12 @@ def _apply_param_edit(recipe: Any, ctx: Any) -> bool:
     that :func:`parse_widget_value` understands.
 
     Returns:
-        ``True`` if the edit was applied and saved; ``False`` if the
-        prefix was malformed, the section didn't exist, or the
-        substitution failed.
+        ``(applied, kind)`` where ``applied`` is ``True`` only when the
+        edit was saved. ``kind`` is the section kind that changed
+        (``"post"`` / ``"filter"`` / ``"model"``) so the caller can
+        rebuild only the touched stack; ``None`` when nothing applied.
     """
-    from phenotypic.gui._operation_registry import OperationRegistry
+    from phenotypic.gui._operation_registry import get_registry
     from phenotypic.gui._param_forms import parse_widget_value
 
     triggered = ctx.triggered_id
@@ -300,55 +314,52 @@ def _apply_param_edit(recipe: Any, ctx: Any) -> bool:
     name = triggered.get("name")
     widget_type = triggered.get("type")
     if not isinstance(prefix, str) or not isinstance(name, str):
-        return False
+        return False, None
 
     # ``analysis-{kind}-{index}``
     parts = prefix.split("-", 2)
     if len(parts) != 3 or parts[0] != "analysis":
-        return False
+        return False, None
     kind = parts[1]
     try:
         index = int(parts[2])
     except ValueError:
-        return False
+        return False, None
 
     pipeline = recipe.pipeline
     if kind == "post":
-        items = list(pipeline.get_post().items())
+        section_dict = pipeline.get_post()
+        items = list(section_dict.items())
     elif kind == "filter":
-        items = list(pipeline.get_filters().items())
+        section_dict = pipeline.get_filters()
+        items = list(section_dict.items())
     elif kind == "model":
         model = pipeline.get_model()
         if model is None:
-            return False
+            return False, None
+        section_dict = None
         items = [(type(model).__name__, model)]
         index = 0
     else:
-        return False
+        return False, None
 
     if not (0 <= index < len(items)):
-        return False
+        return False, None
     section_key, current_instance = items[index]
 
-    # Look up param metadata.
-    registry = OperationRegistry()
-    registry.discover()
-    info = registry.get(type(current_instance).__name__)
+    info = get_registry().get(type(current_instance).__name__)
     if info is None:
-        return False
+        return False, None
     p = info.parameters.get(name)
     if p is None:
-        return False
+        return False, None
 
-    # Read the raw widget value(s) from ctx.inputs. Multi-union spreads its
-    # state across two components — combine them so parse_widget_value can
-    # dispatch on the (tag, value) tuple.
+    # Multi-union spreads state across two components — combine them so
+    # ``parse_widget_value`` can dispatch on the ``(tag, value)`` tuple.
     if widget_type in ("param-multi-tag", "param-multi-value"):
         tag_key = f'{{"name":"{name}","prefix":"{prefix}","type":"param-multi-tag"}}.value'
         val_key = f'{{"name":"{name}","prefix":"{prefix}","type":"param-multi-value"}}.value'
-        tag = ctx.inputs.get(tag_key)
-        val = ctx.inputs.get(val_key)
-        raw: Any = (tag, val)
+        raw: Any = (ctx.inputs.get(tag_key), ctx.inputs.get(val_key))
     else:
         raw = ctx.triggered[0]["value"] if ctx.triggered else None
 
@@ -359,7 +370,6 @@ def _apply_param_edit(recipe: Any, ctx: Any) -> bool:
     }
     new_kwargs[name] = coerced
 
-    # Build a new instance from the current params + the updated one.
     sig = _filter_kwargs_to_signature(type(current_instance), new_kwargs)
     try:
         new_instance = type(current_instance)(**sig)
@@ -371,35 +381,37 @@ def _apply_param_edit(recipe: Any, ctx: Any) -> bool:
             coerced,
             exc_info=True,
         )
-        return False
+        return False, None
 
     if kind == "post":
-        post_dict = pipeline.get_post()
-        post_dict[section_key] = new_instance
-        pipeline.set_post(post_dict)
+        section_dict[section_key] = new_instance  # type: ignore[index]
+        pipeline.set_post(section_dict)  # type: ignore[arg-type]
     elif kind == "filter":
-        filters_dict = pipeline.get_filters()
-        filters_dict[section_key] = new_instance
-        pipeline.set_filters(filters_dict)
-    else:  # model
+        section_dict[section_key] = new_instance  # type: ignore[index]
+        pipeline.set_filters(section_dict)  # type: ignore[arg-type]
+    else:
         pipeline.set_model(new_instance)
 
     recipe.save()
-    return True
+    return True, kind
 
 
 def _filter_kwargs_to_signature(cls: type, kwargs: dict[str, Any]) -> dict[str, Any]:
     """Return only ``kwargs`` entries that ``cls.__init__`` accepts.
 
-    Mirrors the alias handling in
-    :class:`phenotypic._core._pipeline_parts._serializable_pipeline.SerializablePipeline`
-    — SetAnalyzer subclasses store ``num_workers`` as ``self.n_jobs``.
+    Reuses :data:`SerializablePipeline._ANALYZER_INIT_ALIASES` so the
+    GUI's per-edit reconstruction follows the same name-mapping
+    (``n_jobs`` -> ``num_workers``) the JSON deserializer uses.
     """
     import inspect
 
+    from phenotypic._core._pipeline_parts._serializable_pipeline import (
+        SerializablePipeline,
+    )
+
     sig = inspect.signature(cls.__init__)
     accepted = {p for p in sig.parameters if p != "self"}
-    aliases = {"n_jobs": "num_workers"}
+    aliases = SerializablePipeline._ANALYZER_INIT_ALIASES
 
     out: dict[str, Any] = {}
     for k, v in kwargs.items():

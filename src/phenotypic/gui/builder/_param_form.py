@@ -22,7 +22,7 @@ from phenotypic.gui._param_forms import (
     parse_widget_value,
     serialize_param_for_widget,
 )
-from phenotypic.gui._param_forms import param_form as _shared_param_form
+from phenotypic.gui._param_forms import param_form as _shared_param_form  # noqa: F401  - re-export
 from phenotypic.gui.builder import _ids as ids
 
 

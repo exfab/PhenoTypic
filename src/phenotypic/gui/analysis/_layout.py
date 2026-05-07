@@ -12,20 +12,20 @@ The page is a vertical stepper:
 """
 from __future__ import annotations
 
-import functools
 from typing import TYPE_CHECKING, Any
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
 
 from phenotypic.gui._design import (
+    COLOR_BLUE,
     COLOR_GOLD,
     COLOR_MUTED,
     COLOR_NAVY,
     COLOR_SURFACE,
     COLOR_WHITE,
 )
-from phenotypic.gui._operation_registry import OperationRegistry
+from phenotypic.gui._operation_registry import OperationRegistry, get_registry
 from phenotypic.gui._param_forms import param_form
 from phenotypic.gui.analysis import _ids as ids
 
@@ -114,7 +114,7 @@ def build_empty_state_layout() -> html.Div:
             "marginTop": "1rem",
             "padding": "0.5rem 0.75rem",
             "background": COLOR_SURFACE,
-            "border": "1px solid #1b75bc",
+            "border": f"1px solid {COLOR_BLUE}",
             "borderRadius": "6px",
         },
     )
@@ -316,7 +316,7 @@ def build_section_stack(
         return []
 
     if registry is None:
-        registry = _shared_registry()
+        registry = get_registry()
 
     cards: list = []
     for index, (name, instance) in enumerate(items):
@@ -373,14 +373,6 @@ def build_section_stack(
     return cards
 
 
-@functools.cache
-def _shared_registry() -> OperationRegistry:
-    """Module-singleton registry — discovery is expensive and idempotent."""
-    reg = OperationRegistry()
-    reg.discover()
-    return reg
-
-
 def _section_form(info, instance, *, kind: str, index: int):
     """Render a ``param_form`` for a section's analyzer instance."""
     return param_form(
@@ -430,17 +422,10 @@ def _build_model_panel(recipe: "RecipeState") -> html.Div:
 
 
 def _build_model_section(model: object) -> html.Div:
-    registry = _shared_registry()
-    info = registry.get(type(model).__name__)
+    info = get_registry().get(type(model).__name__)
     body: Any
     if info is not None:
-        body = param_form(
-            info,
-            current_values={
-                k: v for k, v in vars(model).items() if not k.startswith("_")
-            },
-            form_id_prefix="analysis-model-0",
-        )
+        body = _section_form(info, model, kind="model", index=0)
     else:
         body = html.Em(
             f"No registry info for {type(model).__name__}",
