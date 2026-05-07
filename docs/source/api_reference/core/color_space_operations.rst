@@ -4,6 +4,7 @@ Color Space Operations
 .. currentmodule:: phenotypic
 
 .. autoproperty:: Image.color
+   :no-index:
 
 The ``color`` property provides unified access to multiple color space representations
 through the ColorAccessor interface. This groups together device-dependent (HSV) and

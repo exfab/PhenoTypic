@@ -130,7 +130,6 @@ templates_path = ["_templates", sphinx_autosummary_accessors.templates_path]
 suppress_warnings = [
     "toc.not_readable",  # Suppress warnings about documents not in toctree
     "autosectionlabel.*",  # Suppress duplicate label warnings
-    "autodoc.duplicate_object",  # Suppress duplicate object warnings
     "ref.class",  # Suppress unresolvable class reference warnings (external types)
 ]
 
