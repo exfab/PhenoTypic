@@ -323,7 +323,11 @@ def test_idle_thread_does_not_release_during_active_get() -> None:
     On the buggy code, the daemon polled hundreds of times while ``slow_build``
     sat in ``Event.wait``, eventually taking the lock and tearing down the
     state the moment the build finished — so ``is_built()`` is False after
-    the getter returned.
+    the getter returned. ``idle_release_seconds`` is set well above the
+    build duration so under the *correct* code the daemon's post-get poll
+    deterministically skips (idle ≈ 50 ms ≪ 0.5 s); under the buggy code
+    ``last_access`` would still be ``0.0`` so ``idle_seconds`` resolves to
+    wall-clock-since-process-start, far exceeding 0.5 s, and release fires.
     """
     proceed = threading.Event()
     teardowns: List[str] = []
@@ -340,8 +344,8 @@ def test_idle_thread_does_not_release_during_active_get() -> None:
     sessions: list[ToolSession[object]] = [session]  # type: ignore[list-item]
     thread = start_idle_release_thread(
         sessions,
-        idle_release_seconds=0.0,
-        poll_interval_seconds=0.001,
+        idle_release_seconds=0.5,
+        poll_interval_seconds=0.01,
         stop_event=stop,
     )
     try:
@@ -358,9 +362,10 @@ def test_idle_thread_does_not_release_during_active_get() -> None:
         getter.join(timeout=2.0)
 
         # Right after get() returns, the session must still hold the state
-        # the caller just received. ``release()`` may run on a *later* poll
-        # (idle_seconds=0, so we expect that), but the immediate post-get
-        # invariant is what protects callers from racing rebuilds.
+        # the caller just received. With idle_release_seconds=0.5 and a build
+        # of ~50 ms, the daemon's next poll sees idle ≈ 0.05 < 0.5 and
+        # legitimately skips — so any teardown observed here can only come
+        # from the ordering race the fix prevents.
         assert getter_result == ["state"]
         assert teardowns == [], (
             "daemon released a session whose build had just completed; "
