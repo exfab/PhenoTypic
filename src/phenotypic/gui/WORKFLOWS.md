@@ -40,7 +40,7 @@ without a matching defined+dispatched `_capture_<id>` (or a
 | run_slurm      | Run on SLURM         | SLURM mode toggle, advanced + SLURM config, sbatch handoff guidance.       | `_capture_run_slurm`      | `gui_walkthrough/05_run_slurm.md`        | ✅ shipping |
 | view_results   | View results         | Empty-state hub mount + populated standalone viewer + measurement table.   | `_capture_view_results`   | `gui_walkthrough/06_view_results.md`     | ✅ shipping |
 | pick_points    | Manual point picker  | Pickable badge, picker modal, RGB / Input channel toggle, confirm round trip. | `_capture_pick_points`    | `gui_walkthrough/07_pick_points.md`      | ✅ shipping |
-| analysis       | Analysis sub-app     | `/analysis/` mount, pipeline header, post / filter / model section authoring, run button emitting `analysis.{csv,parquet}`. | `_capture_analysis` | `gui_walkthrough/08_analysis.md` | 🔭 planned |
+| analysis       | Analysis sub-app     | `/analysis/` mount, pipeline header, post / filter / model section authoring, run button emitting `analysis.{csv,parquet}`. | `_capture_analysis` | `gui_walkthrough/08_analysis.md` | ✅ shipping |
 
 > **`view_results` note.** The empty-state screenshot
 > (`view_results/01_viewer_empty.png`) is captured by

@@ -694,21 +694,35 @@ def capture_standalone_analysis_screenshots(headed: bool = False) -> None:
             try:
                 context = browser.new_context(viewport=VIEWPORT)
                 page = _new_page(context, base_url, "/")
+                # 02: full-page hero shot — pipeline header + post + filter
+                # stacks visible at the top.
+                page.evaluate("window.scrollTo(0, 0)")
+                page.wait_for_timeout(150)
                 _save(page, "analysis", "02_pipeline_loaded.png")
 
-                # Scroll a filter section into view if one exists.
+                # 03: element-only screenshot of a filter section's param
+                # form. Avoids re-capturing the same visible viewport — the
+                # bounding box clips the screenshot to just the section card.
+                target_dir = ASSETS_ROOT / "analysis"
                 section = page.locator(".analysis-filter-section").first
                 if section.count() > 0:
-                    section.scroll_into_view_if_needed()
-                    page.wait_for_timeout(300)
-                    _save(page, "analysis", "03_filter_section_with_form.png")
+                    section.screenshot(
+                        path=str(target_dir / "03_filter_section_with_form.png"),
+                    )
+                    print("[shot]   analysis/03_filter_section_with_form.png")
 
-                # Click Run to capture the post-run status line.
-                run_btn = page.locator("#analysis-run-button")
-                if run_btn.count() > 0 and not run_btn.is_disabled():
-                    run_btn.click()
-                    page.wait_for_timeout(2000)
-                    _save(page, "analysis", "04_after_run.png")
+                # 04: scroll to the model section + run console so the
+                # tutorial shows the "configured and ready" state with the
+                # Run button enabled. We deliberately don't click Run —
+                # the synthetic single-timepoint dataset cannot fit a real
+                # ``LogGrowthModel``, so a screenshotted post-Run state
+                # would document a fit failure rather than the success
+                # path most users hit on real time-course data.
+                model_section = page.locator("#analysis-model-section")
+                if model_section.count() > 0:
+                    model_section.scroll_into_view_if_needed()
+                    page.wait_for_timeout(300)
+                _save(page, "analysis", "04_model_section.png")
 
                 page.close()
             finally:
