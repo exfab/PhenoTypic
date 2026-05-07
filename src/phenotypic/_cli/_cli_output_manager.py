@@ -260,12 +260,27 @@ def _load_pipeline_from_output_dir(
 ) -> Optional["ImagePipeline"]:
     """Recover the pipeline used for a run from the files left in *output_dir*.
 
-    The main CLI copies the pipeline JSON next to its outputs and writes
-    ``processing_state.json`` recording the original source path. This
-    helper reads that state file to learn the pipeline filename, then
-    loads the in-tree copy at ``output_dir / <pipeline>.json``. Returns
-    ``None`` on any failure so callers can skip the split step cleanly.
+    Prefers the canonical ``<output>/pipeline.json`` written by
+    :func:`_persist_pipeline_to_output_dir` during aggregate finalize.
+    Falls back to the legacy lookup via ``processing_state.json`` ->
+    ``output_dir / <original-name>.json`` so older outputs created before
+    this branch keep working. Returns ``None`` on any failure so callers
+    can skip downstream steps cleanly.
     """
+    from phenotypic._core._image_pipeline import ImagePipeline
+
+    canonical = output_dir / "pipeline.json"
+    if canonical.exists():
+        try:
+            return ImagePipeline.from_json(canonical)
+        except Exception:
+            logger.warning(
+                "Could not load canonical pipeline.json from %s",
+                output_dir,
+                exc_info=True,
+            )
+            # Fall through to legacy lookup.
+
     state_path = output_dir / "processing_state.json"
     if not state_path.exists():
         return None
@@ -277,8 +292,6 @@ def _load_pipeline_from_output_dir(
         candidate = output_dir / Path(original).name
         if not candidate.exists():
             return None
-        from phenotypic._core._image_pipeline import ImagePipeline
-
         return ImagePipeline.from_json(candidate)
     except Exception:
         logger.warning(
@@ -287,6 +300,149 @@ def _load_pipeline_from_output_dir(
             exc_info=True,
         )
         return None
+
+
+def _persist_pipeline_to_output_dir(
+    output_dir: Path,
+    pipeline: "ImagePipeline",
+) -> Optional[Path]:
+    """Atomically write a copy of *pipeline*'s JSON to ``<output>/pipeline.json``.
+
+    The canonical pipeline JSON is the source of truth for analysis recipes
+    and reproducibility — it captures filters/model alongside the
+    operations/measurements/post chain. The analysis GUI reads from and
+    writes back to this file; the CLI seeds it on every aggregate so the
+    file always reflects the most recent run.
+
+    Args:
+        output_dir: Output root directory (the parent that holds
+            ``master_measurements.parquet``).
+        pipeline: The pipeline whose configuration to persist.
+
+    Returns:
+        Path to the written ``pipeline.json``, or ``None`` if the write
+        failed. Failure is logged at WARNING; the caller does not need to
+        handle the exception.
+    """
+    target = output_dir / "pipeline.json"
+
+    def _write(p: str) -> None:
+        Path(p).write_text(pipeline.to_json() or "")
+
+    try:
+        _atomic_write(target, _write)
+        return target
+    except Exception:
+        logger.warning(
+            "Failed to persist canonical pipeline.json to %s",
+            output_dir,
+            exc_info=True,
+        )
+        return None
+
+
+def _emit_analysis_outputs(
+    output_dir: Path,
+    master_df: "pl.DataFrame",
+    pipeline: "ImagePipeline",
+) -> Optional[tuple[Path, int]]:
+    """Run ``pipeline.analyze`` and atomic-write ``analysis.{csv,parquet}``.
+
+    No-op when the pipeline has no model configured (``pipeline.get_model()``
+    returns ``None``); the auto-emit trigger is the presence of an analysis
+    endpoint in the pipeline JSON, not a CLI flag. Failure is non-fatal —
+    the master/measurement outputs are not affected.
+
+    Args:
+        output_dir: Output root directory.
+        master_df: Aggregated master measurements (polars). At CLI runtime
+            this is identical to the freshly seeded
+            ``measurements.parquet``, so the GUI and CLI share one
+            conceptual analysis input.
+        pipeline: Pipeline whose ``model`` (and optional ``filters``)
+            define the analysis chain.
+
+    Returns:
+        ``(analysis_parquet_path, row_count)`` on success — the GUI's
+        run console reads the row count without re-decoding the parquet.
+        ``None`` when no model is configured or the analysis raised;
+        failure is logged at WARNING.
+    """
+    if pipeline.get_model() is None:
+        logger.debug(
+            "Pipeline has no analysis model configured; skipping "
+            "analysis.{csv,parquet}",
+        )
+        return None
+
+    try:
+        fit_pd = pipeline.analyze(master_df.to_pandas())
+        fit_pl = pl.from_pandas(fit_pd)
+    except Exception:
+        logger.warning(
+            "Analysis chain raised; master measurements still written",
+            exc_info=True,
+        )
+        return None
+
+    csv_path = output_dir / "analysis.csv"
+    pq_path = output_dir / "analysis.parquet"
+
+    try:
+        _atomic_write(csv_path, fit_pl.write_csv)
+    except Exception:
+        logger.warning("Failed to write analysis.csv")
+        return None
+
+    try:
+        _atomic_write(
+            pq_path,
+            lambda p: fit_pl.write_parquet(
+                p, compression="zstd", compression_level=3
+            ),
+        )
+    except Exception:
+        logger.warning(
+            "Failed to write analysis.parquet (analysis.csv was written)"
+        )
+        return None
+
+    logger.info(
+        "Wrote analysis (%d rows x %d cols) to %s",
+        fit_pl.height,
+        fit_pl.width,
+        pq_path.name,
+    )
+    return pq_path, fit_pl.height
+
+
+def _seed_measurements(output_dir: Path, master_df: "pl.DataFrame") -> None:
+    """Atomically write ``measurements.{csv,parquet}`` as a fresh master copy.
+
+    The GUI's results viewer mutates these mirrors in place when users curate
+    colonies; re-runs of the CLI (forward, ``--measure``, ``--recompile``)
+    intentionally reset them by calling this helper after the master is
+    written. Failures of either write are logged at WARNING and do not raise
+    — the master output is preserved as the authoritative source.
+    """
+    from phenotypic.gui._config import MEASUREMENTS_CSV, MEASUREMENTS_PARQUET
+
+    try:
+        _atomic_write(output_dir / MEASUREMENTS_CSV, master_df.write_csv)
+    except Exception:
+        logger.warning("Failed to seed measurements.csv (master was saved)")
+
+    try:
+        _atomic_write(
+            output_dir / MEASUREMENTS_PARQUET,
+            lambda p: master_df.write_parquet(
+                p, compression="zstd", compression_level=3
+            ),
+        )
+    except Exception:
+        logger.warning(
+            "Failed to seed measurements.parquet (master was saved)"
+        )
 
 
 def split_master_by_feature(
@@ -497,6 +653,8 @@ def aggregate_measurements(
     except Exception:
         logger.warning("Failed to save master Parquet (CSV was saved)")
 
+    _seed_measurements(output_dir, master_df)
+
     logger.info(
         "Aggregated %d rows x %d cols into %s",
         master_df.height,
@@ -512,6 +670,12 @@ def aggregate_measurements(
             output_dir,
         )
     else:
+        # Persist canonical pipeline.json and run the analysis chain when
+        # configured. Both are non-fatal — split + master/measurements
+        # outputs remain authoritative regardless of analysis success.
+        _persist_pipeline_to_output_dir(output_dir, resolved_pipeline)
+        _emit_analysis_outputs(output_dir, master_df, resolved_pipeline)
+
         try:
             split_master_by_feature(master_df, output_dir, resolved_pipeline)
         except Exception:

@@ -256,6 +256,24 @@ class TestAggregateMeasurementsAutoResolve:
         assert master_path == output_dir / "master_measurements.csv"
         assert master_path.exists()
 
+        # The CLI also seeds an editable measurements.{csv,parquet}
+        # copy that the GUI results viewer mutates in place.
+        seed_csv = output_dir / "measurements.csv"
+        seed_parquet = output_dir / "measurements.parquet"
+        assert seed_csv.exists()
+        assert seed_parquet.exists()
+
+        master_df = pl.read_csv(master_path)
+        master_pq = pl.read_parquet(output_dir / "master_measurements.parquet")
+        seed_df = pl.read_csv(seed_csv)
+        seed_pq_df = pl.read_parquet(seed_parquet)
+        # CSV round-trip: shapes + columns match (CSV always re-encodes
+        # numerics; full equals on the polars CSV reader can be lossy).
+        assert seed_df.shape == master_df.shape
+        assert seed_df.columns == master_df.columns
+        # Parquet round-trip: full row-by-row equality with the master.
+        assert seed_pq_df.equals(master_pq)
+
         split_dir = output_dir / "measurements_by_feature"
         assert split_dir.is_dir()
         size_csv = split_dir / "MeasureSize.csv"

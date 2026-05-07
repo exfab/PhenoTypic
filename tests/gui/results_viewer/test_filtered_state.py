@@ -55,6 +55,66 @@ def test_load_with_no_existing_file_is_empty_and_no_writes(tmp_path: Path) -> No
     assert not state.csv_path.exists()
 
 
+def test_load_with_seed_equal_to_master_yields_empty_removals(tmp_path: Path) -> None:
+    """The CLI-seeded initial state (parquet present, equal to master) is empty curation.
+
+    The CLI writes ``measurements.parquet`` as a fresh full copy of the
+    master on every run. The viewer must treat that as "no curation",
+    not as "everything removed". Locks the contract so a future refactor
+    can't conflate "file exists" with "user has curated".
+    """
+    master = _make_master(tmp_path)
+
+    # Simulate the CLI-seeded state: parquet present, identical to master.
+    master.write_parquet(tmp_path / "measurements.parquet")
+
+    state = FilteredMeasurements.load(tmp_path, master)
+
+    assert state.removed_keys == set()
+    # Seed mtime is captured at load so subsequent saves can detect an
+    # external rewrite (e.g. a CLI re-run while the viewer is open).
+    assert state._seed_mtime_ns is not None
+
+
+def test_save_refuses_when_seed_was_externally_rewritten(tmp_path: Path) -> None:
+    """A CLI re-run under a live viewer must not be clobbered by stale curation.
+
+    Reproduces the failure mode where:
+      1. User opens the viewer (load captures master_v1 + seed mtime T1).
+      2. CLI ``--recompile`` rewrites measurements.parquet to master_v2 (mtime T2).
+      3. User clicks "remove" — without the guard, the viewer would write
+         a filtered copy of master_v1 over master_v2, regressing disk to
+         the old schema.
+    The guard makes step 3 a no-op (with a WARNING) until the viewer reloads.
+    """
+    import time
+
+    master = _make_master(tmp_path)
+    master.write_parquet(tmp_path / "measurements.parquet")
+
+    state = FilteredMeasurements.load(tmp_path, master)
+
+    # Simulate an external rewrite: a fresh CLI run dumps a new master
+    # with a different mtime. We force a distinct mtime by sleeping past
+    # the filesystem's resolution; this is robust on every platform we
+    # support.
+    time.sleep(0.01)
+    new_master = master.with_columns(pl.lit(99.0).alias("Bbox_CenterRR"))
+    new_master.write_parquet(tmp_path / "measurements.parquet")
+
+    on_disk_before = pl.read_parquet(tmp_path / "measurements.parquet")
+
+    # The viewer (still holding stale _master_df) tries to remove a colony.
+    state.remove("img-001", 2)
+
+    # Disk is unchanged — the guard refused to overwrite the freshly
+    # seeded master with a stale-derived subset.
+    on_disk_after = pl.read_parquet(tmp_path / "measurements.parquet")
+    assert on_disk_after.equals(on_disk_before)
+    # In-memory removal still recorded; reload will reconcile.
+    assert ("img-001", 2) in state.removed_keys
+
+
 def test_remove_then_load_round_trip(tmp_path: Path) -> None:
     """A remove+restart cycle recovers the curated state from disk."""
     master = _make_master(tmp_path)
@@ -163,7 +223,7 @@ def test_stale_tmp_file_does_not_pollute_state(tmp_path: Path) -> None:
 
     # Plant a stale .tmp file that claims something was removed; no
     # final parquet exists yet, so load must treat removed_keys as empty.
-    tmp_parquet = tmp_path / "filtered_measurements.parquet.tmp"
+    tmp_parquet = tmp_path / "measurements.parquet.tmp"
     master.head(2).write_parquet(tmp_parquet)
     assert tmp_parquet.exists()
 
@@ -188,7 +248,7 @@ def test_load_warns_on_unknown_keys_in_existing_file(
             }
         )
     )
-    bad.write_parquet(tmp_path / "filtered_measurements.parquet")
+    bad.write_parquet(tmp_path / "measurements.parquet")
 
     with caplog.at_level("WARNING"):
         state = FilteredMeasurements.load(tmp_path, master)

@@ -235,7 +235,7 @@ class MeasurementInfo(str, Enum):
                 The returned string is ready to be embedded in Sphinx documentation files
                 or appended to docstrings.
         """
-        title = title or cls.__name__
+        title = title or cls.category()
         left, right = header
         lines = [
             f".. list-table:: Category: **{title}**",

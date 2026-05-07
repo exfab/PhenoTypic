@@ -552,12 +552,19 @@ def test_finalizer_writes_master_outputs_and_rebuilds_dashboard(
     assert result.exit_code == 0, result.output
     assert (output_dir / "master_measurements.csv").exists()
     assert (output_dir / "master_measurements.parquet").exists()
+    # Recompile finalizer also seeds the GUI's editable measurements copy.
+    assert (output_dir / "measurements.csv").exists()
+    assert (output_dir / "measurements.parquet").exists()
     assert pl.read_csv(output_dir / "master_measurements.csv")[
         "Size_Area"
     ].to_list() == [
         1,
         2,
     ]
+    assert (
+        pl.read_csv(output_dir / "measurements.csv")["Size_Area"].to_list()
+        == [1, 2]
+    )
     mock_plugins.assert_called_once()
     mock_manifest.assert_called_once()
     mock_dashboard.assert_called_once_with(output_dir, execution_mode="local")

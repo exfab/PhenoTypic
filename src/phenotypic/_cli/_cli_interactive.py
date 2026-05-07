@@ -123,6 +123,9 @@ def _display_output_structure(config: ExecutionConfig, datasets: List[Dataset], 
     click.echo("    ├── processing_events.log")
     click.echo("    ├── processing_report.html")
     click.echo("    ├── master_measurements.csv")
+    click.echo("    ├── measurements.csv  (editable copy for GUI; refreshed on every run)")
+    click.echo("    ├── pipeline.json  (reproducibility spec — read by the analysis GUI)")
+    click.echo("    ├── analysis.csv   (model fit; written when pipeline has a `model` configured)")
     click.echo("    └── ... (other results)")
 
 

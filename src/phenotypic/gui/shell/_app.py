@@ -41,6 +41,7 @@ from phenotypic.gui._config import (
     CFG_RUN_REGISTRY,
     CFG_RUNNER,
     DEFAULT_IDLE_RELEASE_SECONDS,
+    MOUNT_ANALYSIS,
     MOUNT_BUILDER,
     MOUNT_HOME,
     MOUNT_RUN,
@@ -49,6 +50,7 @@ from phenotypic.gui._config import (
 )
 from phenotypic.gui.shell._home import build_home_layout
 from phenotypic.gui.shell._ids import (
+    SHELL_TAB_ANALYSIS,
     SHELL_TAB_BUILDER,
     SHELL_TAB_HOME,
     SHELL_TAB_RUN,
@@ -180,7 +182,7 @@ def compose_hub(
             so they don't leak background threads.
     """
     # Local imports to keep boot-time cycles minimal.
-    from phenotypic.gui import builder, results_viewer, run_console
+    from phenotypic.gui import analysis, builder, results_viewer, run_console
     from phenotypic.gui.results_viewer._output_root import OutputRoot
 
     # Mutable handoff slot so the sidebar can hand a CLI output path to the
@@ -251,6 +253,16 @@ def compose_hub(
         runner=runner,
     )
     wrap_in_chrome(run_app, active_tab=SHELL_TAB_RUN, sandbox=sandbox)
+
+    # 4b. Analysis sub-app (lazy via the same viewer_state output_root,
+    #     since it needs a CLI output dir to do anything useful). The
+    #     simple eager build mirrors the empty-state pattern: when no
+    #     output_root is bound we render the placeholder layout.
+    analysis_app = analysis.create_app(
+        output_root=viewer_state["output_root"],
+        url_prefix=MOUNT_ANALYSIS,
+    )
+    wrap_in_chrome(analysis_app, active_tab=SHELL_TAB_ANALYSIS, sandbox=sandbox)
     # Stash on the shell server too so any future cross-tool callback
     # (e.g. the sidebar's "open in run console" hand-off) can reach the
     # same singletons.
@@ -272,15 +284,17 @@ def compose_hub(
             MOUNT_BUILDER.rstrip("/"): builder_app.server,
             MOUNT_VIEWER.rstrip("/"): viewer_proxy,
             MOUNT_RUN.rstrip("/"): run_app.server,
+            MOUNT_ANALYSIS.rstrip("/"): analysis_app.server,
         },
     )
 
     logger.info(
-        "GUI hub composed: sandbox=%s mounts=%s, %s, %s",
+        "GUI hub composed: sandbox=%s mounts=%s, %s, %s, %s",
         sandbox.root,
         MOUNT_BUILDER,
         MOUNT_VIEWER,
         MOUNT_RUN,
+        MOUNT_ANALYSIS,
     )
 
     if start_idle_thread:
