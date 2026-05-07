@@ -131,17 +131,20 @@ class TestPrintLauncherBanner:
     def test_banner_contains_title_url_and_tunnel_hint(self, capsys) -> None:
         from pathlib import Path
 
+        root = Path("/tmp/sandbox")
         _config.print_launcher_banner(
             title=_config.TITLE_HUB,
             host=_config.DEFAULT_HOST,
             port=_config.DEFAULT_PORT,
-            root=Path("/tmp/sandbox"),
+            root=root,
         )
         out = capsys.readouterr().out
         assert _config.TITLE_HUB in out
         assert "http://127.0.0.1:8050/" in out
         assert "ssh -L 8050:localhost:8050" in out
-        assert "/tmp/sandbox" in out
+        # ``Path.__str__`` is platform-native (``/tmp/sandbox`` on POSIX,
+        # ``\tmp\sandbox`` on Windows) and the banner echoes it verbatim.
+        assert str(root) in out
 
     def test_extra_lines_appear_indented(self, capsys) -> None:
         from pathlib import Path
