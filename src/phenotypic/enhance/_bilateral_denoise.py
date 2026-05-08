@@ -1,16 +1,17 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from skimage.restoration import denoise_bilateral
 
-from ..abc_ import ImageEnhancer
+from ..abc_ import ImageDenoiser
+from ..tools_.mixin import _GATSupportMixin
 
 
-class BilateralDenoise(ImageEnhancer):
+class BilateralDenoise(_GATSupportMixin, ImageDenoiser):
     """Denoise ``detect_mat`` with edge-preserving bilateral filtering.
 
     Averages pixel values based on both spatial proximity and intensity
@@ -26,19 +27,24 @@ class BilateralDenoise(ImageEnhancer):
             (0.02--0.05) preserve subtle boundaries; medium values
             (0.05--0.15) balance denoising and edge preservation; large
             values (0.2--0.5) smooth aggressively. ``None`` (default)
-            auto-estimates from image statistics.
+            auto-estimates from image statistics. Retargeted to 1.0 when
+            ``use_gat=True``.
         sigma_spatial: Spatial distance weighting in pixels. Small values
             (1--5) apply local denoising; medium values (10--20) smooth
             regionally; large values (30--50) smooth wide areas. Keep
-            below the minimum colony diameter. Default: 15.
+            below the minimum colony diameter. Default: 15. Not affected
+            by GAT (purely spatial parameter).
         win_size: Window size for filter computation. ``None`` (default)
             auto-calculates from ``sigma_spatial``.
         mode: Boundary handling. Accepted values: ``'constant'``,
             ``'edge'``, ``'symmetric'``, ``'reflect'``, ``'wrap'``.
             Default: ``'constant'``.
         cval: Fill value when ``mode='constant'``. Default: 0.
-        clip: Clip output to [0, 1]. Default: ``True``. Set to ``False``
-            when using with variance-stabilizing transforms (e.g., GAT).
+        clip: Clip output to [0, 1]. Default: ``True``. Automatically
+            deferred when ``use_gat=True``.
+        use_gat: Wrap denoising in the Generalized Anscombe Transform.
+            Default: ``False``.
+        gat_gain, gat_mu, gat_read_sigma, gat_scale_factor: GAT parameters.
 
     Returns:
         Image: Input image with ``detect_mat`` smoothed by bilateral
@@ -66,6 +72,9 @@ class BilateralDenoise(ImageEnhancer):
         denoising strategies on low-light plate images.
     """
 
+    _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"sigma_color": 1.0}
+    _GAT_DEFER_ATTRS: ClassVar[tuple[str, ...]] = ("clip",)
+
     def __init__(
             self,
             sigma_color: float | None = None,
@@ -75,41 +84,23 @@ class BilateralDenoise(ImageEnhancer):
             mode: str = "constant",
             cval: float = 0,
             clip: bool = True,
+            **kwargs,
     ):
         """
         Parameters:
-            sigma_color (float | None): Standard deviation for grayvalue/color similarity.
-                Controls how permissive the filter is when averaging nearby pixels. Small
-                values (0.02–0.05 for float images) enforce strict color matching,
-                preserving edges but leaving more noise. Medium values (0.05–0.15)
-                provide balanced denoising and edge preservation—recommended for most
-                fungal colony imaging. Large values (0.2–0.5) aggressively average
-                across brightness ranges, risking boundary blur. If None (default),
-                automatically estimated from the standard deviation of the image.
-                For uint8 images (0–255), scale values proportionally: 0.05 float
-                corresponds roughly to 13 in uint8 scale. Recommended: leave as None
-                for automatic estimation, or set to 0.08–0.12 for typical colony plates.
-            sigma_spatial (float): Standard deviation for spatial distance in pixels.
-                Controls the extent of the neighborhood influencing each pixel. Small
-                values (1–5) apply highly local denoising, preserving fine texture.
-                Medium values (10–20) smooth regionally without over-smoothing—suitable
-                for general use. Large values (30–50) smooth broad areas, helpful for
-                correcting illumination variations but risking loss of small colonies
-                or merging of adjacent growth. Recommended: 15 for balanced results;
-                adjust based on colony size (keep smaller than minimum colony diameter).
-            win_size (int | None): Window size for bilateral filter computation. If None
-                (default), automatically calculated as max(5, 2 * ceil(3 * sigma_spatial) + 1).
-                Generally safe to leave as None; adjust only if you have specific
-                performance or memory constraints.
-            mode (str): How to handle image boundaries. Options: 'constant' (default,
-                pad with cval), 'edge' (replicate edge), 'symmetric', 'reflect', 'wrap'.
-                'constant' with cval=0 works well for agar plate backgrounds (black edges).
-                'reflect' mirrors edges, useful for non-border regions.
-            cval (float): Constant fill value for boundaries when mode='constant'. Default
-                is 0 (black), appropriate for agar backgrounds.
-            clip (bool): Whether to clip output to [0, 1] range. Default True. Set to
-                False when using with variance-stabilizing transforms (e.g., GAT) that
-                require preserving the original scale of transformed data.
+            sigma_color (float | None): Standard deviation for grayvalue
+                similarity. None (default) auto-estimates. Retargeted to 1.0
+                when ``use_gat=True``.
+            sigma_spatial (float): Standard deviation for spatial distance
+                in pixels. Default: 15.
+            win_size (int | None): Window size for bilateral filter
+                computation. None (default) auto-calculates.
+            mode (str): Boundary handling. 'constant' (default), 'edge',
+                'symmetric', 'reflect', 'wrap'.
+            cval (float): Fill value for 'constant' mode. Default: 0.
+            clip (bool): Whether to clip output to [0, 1] range. Default
+                True. Automatically deferred when ``use_gat=True``.
+            **kwargs: Forwarded to :class:`_GATSupportMixin`.
         """
         if sigma_spatial <= 0:
             raise ValueError("sigma_spatial must be > 0")
@@ -123,6 +114,7 @@ class BilateralDenoise(ImageEnhancer):
                     f'"wrap"; got {mode!r}'
             )
 
+        super().__init__(**kwargs)
         self.sigma_color = sigma_color
         self.sigma_spatial = float(sigma_spatial)
         self.win_size = win_size
@@ -131,7 +123,11 @@ class BilateralDenoise(ImageEnhancer):
         self.clip = clip
 
     def _operate(self, image: Image) -> Image:
-        """Apply bilateral denoising to reduce noise while preserving colony edges in the detection matrix channel."""
+        """Apply bilateral denoising to reduce noise while preserving colony edges."""
+        self._gat_apply(image, "detect_mat", self._denoise_detect_mat)
+        return image
+
+    def _denoise_detect_mat(self, image: Image) -> None:
         # denoise_bilateral may require a writable array, so create a copy
         result = denoise_bilateral(
                 image=image.detect_mat[:].copy(),
@@ -145,4 +141,3 @@ class BilateralDenoise(ImageEnhancer):
         if self.clip:
             result = result.clip(0.0, 1.0)
         image.detect_mat[:] = result
-        return image

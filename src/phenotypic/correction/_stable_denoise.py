@@ -10,8 +10,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from ..abc_ import ImageCorrector
-from ..enhance._anscombe_forward import AnscombeForward
-from ..enhance._anscombe_inverse import AnscombeInverse
+from ..enhance._anscombe import gat_forward, gat_inverse
 
 
 class StableDenoise(ImageCorrector):
@@ -157,9 +156,7 @@ class StableDenoise(ImageCorrector):
         counts = channel * scale_factor
 
         # Forward GAT: stabilize Poisson-Gaussian variance
-        stabilized = AnscombeForward._generalized_anscombe(
-                counts, self.mu, self.sigma, self.gain
-        )
+        stabilized = gat_forward(counts, self.mu, self.sigma, self.gain)
 
         # BM3D denoise in GAT domain (sigma_psd=1.0 is theoretically correct)
         profile = bm3d.BM3DProfile()
@@ -173,9 +170,7 @@ class StableDenoise(ImageCorrector):
         )
 
         # Inverse GAT: recover counts
-        recovered = AnscombeInverse._inverse_generalized_anscombe(
-                denoised, self.mu, self.sigma, self.gain
-        )
+        recovered = gat_inverse(denoised, self.mu, self.sigma, self.gain)
 
         # counts -> [0,1], clip
         return (recovered / scale_factor).clip(0.0, 1.0)
