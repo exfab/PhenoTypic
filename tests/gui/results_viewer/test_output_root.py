@@ -70,6 +70,40 @@ def test_discover_succeeds_on_well_formed_root(tmp_path: Path) -> None:
     assert out.cache_dir == tmp_path.resolve() / ".viewer_cache" / "dzi"
 
 
+def test_discover_prefers_post_applied_mirror_over_master(tmp_path: Path) -> None:
+    """When ``measurements.parquet`` exists, viewer reads it (post-applied)."""
+    _make_minimal_output(tmp_path)
+
+    # Seed a post-applied mirror that differs from master (extra "post_tag"
+    # column simulates what _seed_measurements writes after post runs).
+    mirror_df = pl.DataFrame(
+        {
+            "Metadata_Dataset": ["d1", "d1"],
+            "Metadata_ImageFile": ["a", "b"],
+            "Metadata_Strain": ["s1", "s2"],
+            "Size_Area": [100.0, 200.0],
+            "post_tag": ["tagged", "tagged"],
+        }
+    )
+    mirror_df.write_parquet(tmp_path / "measurements.parquet")
+
+    out = OutputRoot.discover(tmp_path)
+    assert "post_tag" in out.master_df.columns
+    assert out.master_df["post_tag"].to_list() == ["tagged", "tagged"]
+
+
+def test_discover_falls_back_to_master_when_mirror_absent(tmp_path: Path) -> None:
+    """Mid-run / legacy outputs without ``measurements.parquet`` use master."""
+    df = _make_minimal_output(tmp_path)
+    # No measurements.parquet — only master.
+    assert not (tmp_path / "measurements.parquet").exists()
+
+    out = OutputRoot.discover(tmp_path)
+    # Display frame falls back to the clean master.
+    assert out.master_df.height == df.height
+    assert "post_tag" not in out.master_df.columns
+
+
 def test_discover_missing_master_raises(tmp_path: Path) -> None:
     """No ``master_measurements.parquet`` raises ``FileNotFoundError``."""
 

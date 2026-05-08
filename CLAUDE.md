@@ -45,7 +45,7 @@ Two ledgers track the GUI surface; both are CI-gated:
 - **`src/phenotypic/gui/WORKFLOWS.md`** — every end-to-end user flow
   worth a tutorial page. Adding a row here REQUIRES adding a matching
   `_capture_<id>` function in `scripts/capture_gui_tutorial_screenshots.py`
-  and a walkthrough page under `docs/source/how_to/pages/gui_walkthrough/`.
+  and a walkthrough page under `docs/source/tutorials/gui/`.
   The `gui-docs` workflow runs `scripts/check_workflows_md.py` (also
   available as a pre-commit hook) to enforce the round-trip.
 
@@ -145,3 +145,22 @@ operations copy data; avoid unnecessary intermediate allocations.
   `LogGrowthModel.analyze(df)` — not `.fit()` or `.correct()`.
 - **`num_objects` is on `Image`**, not on the `objmap` accessor: use
   `image.num_objects`.
+- **Master vs. mirror outputs:** `master_measurements.{csv,parquet}` is a
+  **clean, pre-post archive** of what per-image runs measured;
+  `measurements.{csv,parquet}` is the **post-applied mirror** the GUI
+  viewer reads/curates. Per-image parquets in `results/<ds>/measurements/`
+  are also clean — the CLI calls `pipeline.measure(image, apply_post=False)`
+  on the per-image path. Post is applied once at the end of aggregation
+  against the merged master.
+- **Always finalize via `finalize_post_master_outputs`:** any code path
+  that writes `master_measurements.{csv,parquet}` must immediately call
+  `phenotypic._cli._cli_output_manager.finalize_post_master_outputs(
+  output_dir, master_df, pipeline)` so the post-applied mirror, the
+  persisted `pipeline.json`, the analysis output, and the per-feature
+  splits stay in lock-step. Never call `_seed_measurements`,
+  `_emit_analysis_outputs`, or `split_master_by_feature` ad-hoc — they
+  are the helper's internals. The forward CLI (`aggregate_measurements`)
+  and the `--recompile` worker (`_run_post_master_steps`) are the two
+  current callers; new aggregators (e.g. a future re-import path)
+  should follow suit. The GUI run console subprocesses
+  `python -m phenotypic`, so it inherits this contract automatically.

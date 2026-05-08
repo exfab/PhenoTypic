@@ -32,7 +32,11 @@ from phenotypic._cli._cli_execution_strategies import (
 from phenotypic._cli._cli_interactive import (
     get_sample_datasets,
 )
-from phenotypic._cli._cli_output_manager import OutputManager, aggregate_measurements
+from phenotypic._cli._cli_output_manager import (
+    OutputManager,
+    aggregate_measurements,
+    finalize_post_master_outputs,
+)
 from phenotypic._cli._cli_report_generator import HTMLReportGenerator
 from phenotypic._cli._cli_state_management import (
     create_initial_state,
@@ -1844,3 +1848,135 @@ class TestAggregateMeasurements:
         master = pd.read_csv(result)
         assert len(master) == 3
         assert "Metadata_Dataset" in master.columns
+
+    def test_aggregate_measurements_post_seeds_post_applied_mirror(self, temp_output_dir):
+        """Pipeline post ops are applied to measurements.{csv,parquet} only.
+
+        master_measurements.{csv,parquet} stay post-free (a clean archive of
+        what per-image runs measured), while the seeded measurements.* mirror
+        — what the GUI viewer reads — receives the post-applied frame.
+        """
+        import pandas as pd
+
+        from phenotypic import ImagePipeline
+        from phenotypic.abc_._post_measurement import PostMeasurement
+
+        class AddPostColumn(PostMeasurement):
+            def _operate(self, df):
+                df = df.copy()
+                df["post_marker"] = "applied"
+                return df
+
+        self._create_measurement_csvs(temp_output_dir, {
+            "ds1": [
+                ("img_001", pd.DataFrame({"area": [10, 20]})),
+                ("img_002", pd.DataFrame({"area": [30]})),
+            ],
+        })
+
+        pipeline = ImagePipeline(post=[AddPostColumn()])
+
+        result = aggregate_measurements(
+            output_dir=temp_output_dir,
+            dataset_names=["ds1"],
+            include_dataset_column=True,
+            pipeline=pipeline,
+        )
+
+        assert result is not None
+
+        master = pd.read_csv(temp_output_dir / "master_measurements.csv")
+        mirror = pd.read_csv(temp_output_dir / "measurements.csv")
+
+        # Master is clean — post column is absent.
+        assert "post_marker" not in master.columns
+        # Seeded mirror is post-applied — post column is present everywhere.
+        assert "post_marker" in mirror.columns
+        assert (mirror["post_marker"] == "applied").all()
+        # Same number of rows in both.
+        assert len(master) == len(mirror) == 3
+
+    def test_finalize_post_master_outputs_seeds_post_applied_mirror(
+        self, temp_output_dir
+    ):
+        """The unified post-master finalize helper seeds the post-applied frame.
+
+        Both ``aggregate_measurements`` and the recompile worker now go
+        through this helper, so this test pins the contract once: master_df
+        is left untouched (clean), measurements.{csv,parquet} get the
+        post-applied frame.
+        """
+        import polars as pl
+
+        from phenotypic import ImagePipeline
+        from phenotypic.abc_._post_measurement import PostMeasurement
+
+        class TagPost(PostMeasurement):
+            def _operate(self, df):
+                df = df.copy()
+                df["post_tag"] = "tagged"
+                return df
+
+        master_df = pl.DataFrame({"area": [10, 20, 30]})
+
+        # Pre-write the master files so the helper's invariants match
+        # what the real callers produce.
+        (temp_output_dir / "master_measurements.csv").write_text(
+            master_df.write_csv()
+        )
+        master_df.write_parquet(
+            temp_output_dir / "master_measurements.parquet",
+            compression="zstd",
+            compression_level=3,
+        )
+
+        finalize_post_master_outputs(
+            temp_output_dir, master_df, ImagePipeline(post=[TagPost()])
+        )
+
+        mirror = pl.read_parquet(temp_output_dir / "measurements.parquet")
+        assert "post_tag" in mirror.columns
+        assert mirror["post_tag"].to_list() == ["tagged", "tagged", "tagged"]
+
+    def test_finalize_post_master_outputs_no_pipeline_skips_pipeline_steps(
+        self, temp_output_dir
+    ):
+        """``pipeline=None`` still seeds the (clean) mirror; analysis is skipped."""
+        import polars as pl
+
+        master_df = pl.DataFrame({"area": [1, 2]})
+
+        finalize_post_master_outputs(temp_output_dir, master_df, None)
+
+        mirror = pl.read_parquet(temp_output_dir / "measurements.parquet")
+        # Mirror equals master when there's no pipeline to apply post.
+        assert mirror.equals(master_df)
+        # Pipeline-conditional artifacts are absent.
+        assert not (temp_output_dir / "analysis.parquet").exists()
+        assert not (temp_output_dir / "pipeline.json").exists()
+
+    def test_aggregate_measurements_no_post_master_and_mirror_identical(
+        self, temp_output_dir
+    ):
+        """With no post ops, measurements.* mirrors master_measurements.* exactly."""
+        import pandas as pd
+
+        from phenotypic import ImagePipeline
+
+        self._create_measurement_csvs(temp_output_dir, {
+            "ds1": [
+                ("img_001", pd.DataFrame({"area": [10, 20]})),
+            ],
+        })
+
+        result = aggregate_measurements(
+            output_dir=temp_output_dir,
+            dataset_names=["ds1"],
+            include_dataset_column=True,
+            pipeline=ImagePipeline(),
+        )
+
+        assert result is not None
+        master = pd.read_csv(temp_output_dir / "master_measurements.csv")
+        mirror = pd.read_csv(temp_output_dir / "measurements.csv")
+        pd.testing.assert_frame_equal(master, mirror)

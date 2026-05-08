@@ -430,11 +430,14 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         DataFrame — then runs the configured terminal model to produce a fit
         summary (typically one row per group).
 
-        The expected input is the aggregated, post-measurement DataFrame the CLI
-        seeds into ``measurements.parquet`` (i.e. the master measurements). The
-        per-image post-measurement stage on this pipeline (``self._post``) has
-        already run during :meth:`measure`; ``analyze`` does **not** re-apply
-        post.
+        The expected input is the post-applied, aggregated DataFrame the CLI
+        seeds into ``measurements.parquet``. ``analyze`` does **not** apply
+        post itself: by default :meth:`measure` runs ``self._post`` before
+        returning, and the CLI applies post explicitly to a copy of the
+        aggregated master before invoking ``analyze``. Callers passing
+        ``apply_post=False`` to :meth:`measure` are responsible for applying
+        post (or accepting that filters/model see pre-post data) before
+        calling ``analyze``.
 
         Args:
             df: The aggregate measurements DataFrame.
@@ -745,7 +748,12 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         self._run_operations(img, on_op_complete=_capture)
         return IntermediateResult(image=img, intermediates=intermediates)
 
-    def measure(self, image: Image, include_metadata=True) -> pd.DataFrame:
+    def measure(
+            self,
+            image: Image,
+            include_metadata: bool = True,
+            apply_post: bool = True,
+    ) -> pd.DataFrame:
         """
         Measures properties of a given image and optionally includes metadata. The method performs
         measurements using a set of predefined measurement operations. If benchmarking is enabled,
@@ -758,6 +766,11 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 the `info` method and optionally a `grid` or `objects` attribute.
             include_metadata (bool, optional): Indicates whether metadata should be included in
                 the measurements. Defaults to True.
+            apply_post (bool, optional): Whether to apply the configured
+                :class:`PostMeasurement` operations to the merged frame before
+                returning. Defaults to True. Pass ``False`` to obtain the
+                pre-post merged DataFrame — useful when the caller (e.g. the
+                CLI) wants to persist a clean copy and apply post separately.
 
         Returns:
             pd.DataFrame: A DataFrame containing the results of all performed measurements combined
@@ -878,9 +891,10 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         df = self._merge_on_object_labels(measurements)
 
         # Apply post-measurement transforms
-        for key, post_op in self._post.items():
-            logger.debug("Running post-measurement transform: %s", key)
-            df = post_op.apply(df)
+        if apply_post:
+            for key, post_op in self._post.items():
+                logger.debug("Running post-measurement transform: %s", key)
+                df = post_op.apply(df)
 
         return df
 
@@ -925,6 +939,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             inplace: bool = False,
             reset: Optional[bool] = None,
             include_metadata: bool = True,
+            apply_post: bool = True,
     ) -> pd.DataFrame:
         """
         Applies processing to the given image and measures the results.
@@ -943,13 +958,20 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 reset setting. If explicitly set, overrides the pipeline setting.
             include_metadata (bool): Whether to include metadata in the
                 measurement results. Default is True.
+            apply_post (bool): Forwarded to :meth:`measure`. When ``False``,
+                the returned DataFrame skips :class:`PostMeasurement` ops.
+                Defaults to True.
 
         Returns:
             pd.DataFrame: A DataFrame containing measurement data for the
             processed image.
         """
         img = self.apply(image=image, inplace=inplace, reset=reset)
-        return self.measure(image=img, include_metadata=include_metadata)
+        return self.measure(
+            image=img,
+            include_metadata=include_metadata,
+            apply_post=apply_post,
+        )
 
     def benchmark_results(self) -> pd.DataFrame:
         """Return execution times and memory usage for operations and measurements.

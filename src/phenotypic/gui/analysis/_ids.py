@@ -35,7 +35,8 @@ ANALYSIS_OUTPUT_HEADER = "analysis-output-header"
 ANALYSIS_PIPELINE_HEADER = "analysis-pipeline-header"
 
 #: Banner shown above the post stack, reminding users that post edits
-#: require a CLI re-run to land in ``master_measurements.parquet``.
+#: require a CLI re-run to land in ``measurements.parquet`` (the
+#: post-applied mirror; ``master_measurements.parquet`` stays clean).
 ANALYSIS_RECOMPILE_BANNER = "analysis-recompile-banner"
 
 #: Banner shown when the on-disk ``pipeline.json`` mtime no longer
