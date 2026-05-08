@@ -302,6 +302,16 @@ def test_pipeline_summary_is_none_when_missing_or_malformed(
     )
     assert OutputRoot.discover(tmp_path).pipeline_summary is None
 
+    # Case 3: parsed JSON dict with no ``name`` or ``class_name`` field → None.
+    # Regression: previously returned the literal string ``"pipeline.json"``
+    # via the new PIPELINE_JSON constant during the io_constants extraction
+    # refactor (the agent substituted the constant where the original code
+    # likely had ``return None``). Caught by opus review of PR #78.
+    (tmp_path / "pipeline.json").write_text(
+        json.dumps({"version": "1.0"}), encoding="utf-8"
+    )
+    assert OutputRoot.discover(tmp_path).pipeline_summary is None
+
 
 def test_cache_dir_is_created_on_discover(tmp_path: Path) -> None:
     """``cache_dir`` exists as a real directory after ``discover``."""

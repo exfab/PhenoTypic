@@ -67,13 +67,19 @@ class RunRecord:
     Attributes:
         run_id: Stable identifier within this process. Local runs use the
             output-dir relative path; SLURM runs use ``slurm-<job_id>``.
-        mode: ``"local"``, ``"slurm"``, or ``"unknown"``.
+        mode: One of :data:`RunMode` — ``"local"``, ``"slurm"``,
+            ``"validate"``, or ``"unknown"``. ``"validate"`` is injected
+            by the run console's pre-flight pipeline-validation flow
+            (`_callbacks._validate_pipeline`).
         output_dir: Absolute path to the run's output directory (where
             ``progress/manifest.json`` lives). Stored as :class:`Path`.
         rel_path: ``output_dir.relative_to(sandbox.root)`` as a string —
             cached so the UI does not re-compute it on every render.
-        status: Current status — ``"running"``, ``"complete"``,
-            ``"failed"``, ``"cancelled"``, or ``"unknown"``.
+        status: Current status — one of :data:`RunStatus` — ``"running"``,
+            ``"submitting"``, ``"complete"``, ``"failed"``, ``"cancelled"``,
+            or ``"unknown"``. ``"submitting"`` is the transient state for
+            SLURM runs between sbatch dispatch and the first chunk's
+            sentinel update.
         pid: Subprocess PID for local runs (``None`` for SLURM and
             rehydrated historical runs).
         slurm_job_id: SLURM array job ID for SLURM runs (``None``
