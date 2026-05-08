@@ -343,7 +343,7 @@ def _persist_pipeline_to_output_dir(
 
 def _emit_analysis_outputs(
     output_dir: Path,
-    master_df: "pl.DataFrame",
+    df: "pl.DataFrame",
     pipeline: "ImagePipeline",
 ) -> Optional[tuple[Path, int]]:
     """Run ``pipeline.analyze`` and atomic-write ``analysis.{csv,parquet}``.
@@ -355,10 +355,12 @@ def _emit_analysis_outputs(
 
     Args:
         output_dir: Output root directory.
-        master_df: Aggregated master measurements (polars). At CLI runtime
-            this is identical to the freshly seeded
-            ``measurements.parquet``, so the GUI and CLI share one
-            conceptual analysis input.
+        df: The frame to analyze (polars). The CLI passes the
+            post-applied frame seeded into ``measurements.parquet`` here
+            via :func:`finalize_post_master_outputs`, not the clean
+            ``master_measurements.parquet`` archive — callers wiring up
+            new entry points are responsible for applying post (if any)
+            before calling this.
         pipeline: Pipeline whose ``model`` (and optional ``filters``)
             define the analysis chain.
 
@@ -376,7 +378,7 @@ def _emit_analysis_outputs(
         return None
 
     try:
-        fit_pd = pipeline.analyze(master_df.to_pandas())
+        fit_pd = pipeline.analyze(df.to_pandas())
         fit_pl = pl.from_pandas(fit_pd)
     except Exception:
         logger.warning(
@@ -416,6 +418,44 @@ def _emit_analysis_outputs(
     return pq_path, fit_pl.height
 
 
+def _apply_post_to_master(
+    master_df: "pl.DataFrame",
+    pipeline: Optional["ImagePipeline"],
+) -> "pl.DataFrame":
+    """Run ``pipeline._post`` over a copy of *master_df* and return the result.
+
+    The CLI keeps ``master_measurements.{csv,parquet}`` as a clean, post-free
+    archive (because per-image runs now use ``apply_post=False``). This helper
+    applies any configured :class:`PostMeasurement` ops to a pandas copy of
+    the aggregated master so the post-applied frame can be written into
+    ``measurements.{csv,parquet}`` and fed to :meth:`ImagePipeline.analyze`.
+
+    No-op cases — returns *master_df* unchanged:
+        * *pipeline* is ``None`` (could not be recovered for the SLURM sentinel).
+        * The pipeline has no post ops configured.
+        * Any post op raises (logged at WARNING; the master remains authoritative).
+    """
+    if pipeline is None:
+        return master_df
+    post_ops = pipeline.get_post()
+    if not post_ops:
+        return master_df
+
+    try:
+        df_pd = master_df.to_pandas()
+        for key, post_op in post_ops.items():
+            logger.debug("Running post-measurement transform on master: %s", key)
+            df_pd = post_op.apply(df_pd)
+        return pl.from_pandas(df_pd)
+    except Exception:
+        logger.warning(
+            "Post-measurement transform raised during aggregation; "
+            "seeding clean master into measurements.{csv,parquet} instead",
+            exc_info=True,
+        )
+        return master_df
+
+
 def _seed_measurements(output_dir: Path, master_df: "pl.DataFrame") -> None:
     """Atomically write ``measurements.{csv,parquet}`` as a fresh master copy.
 
@@ -443,6 +483,83 @@ def _seed_measurements(output_dir: Path, master_df: "pl.DataFrame") -> None:
         logger.warning(
             "Failed to seed measurements.parquet (master was saved)"
         )
+
+
+def finalize_post_master_outputs(
+    output_dir: Path,
+    master_df: "pl.DataFrame",
+    pipeline: Optional["ImagePipeline"],
+) -> "pl.DataFrame":
+    """Run every CLI side effect that follows a freshly written master file.
+
+    This is the single canonical entry point for the work that happens after
+    ``master_measurements.{csv,parquet}`` lands on disk. Every code path that
+    writes the master — :func:`aggregate_measurements`, the recompile
+    sentinel, future re-aggregators — should call this so the post-applied
+    ``measurements.{csv,parquet}`` mirror, the persisted ``pipeline.json``,
+    the analysis output, and the per-feature splits stay in lock-step.
+
+    The order is:
+
+    1. Apply ``pipeline._post`` to a copy of *master_df* via
+       :func:`_apply_post_to_master`. The resulting ``post_df`` is what the
+       GUI viewer/curation layer reads from ``measurements.{csv,parquet}``.
+       When *pipeline* is ``None`` or has no post ops, ``post_df`` is the
+       clean master unchanged.
+    2. :func:`_seed_measurements` writes the post-applied frame.
+    3. When *pipeline* is provided: persist ``pipeline.json``, run
+       :func:`_emit_analysis_outputs` against ``post_df`` (so analysis sees
+       post-applied data), and split the post-applied frame into
+       per-feature spreadsheets so users see post-derived columns
+       (e.g. ``Metadata_Strain`` from ``ExpandMetadata``) in
+       ``measurements_by_feature/<feature>.{csv,parquet}``.
+
+    Failures inside split or analysis are logged at WARNING and never raise;
+    the master files remain authoritative regardless of what happens here.
+
+    Args:
+        output_dir: Output root that already contains
+            ``master_measurements.{csv,parquet}``.
+        master_df: The clean (post-free) aggregated master.
+        pipeline: Recovered pipeline, or ``None`` when it can't be
+            located (the SLURM sentinel may run before any pipeline.json
+            is persisted).
+
+    Returns:
+        The post-applied frame. Callers that run additional side effects
+        downstream (e.g. analysis-plugin dispatch in the recompile
+        worker) should pass this to those steps so plugins see the same
+        post-applied data the GUI viewer and analysis chain see, rather
+        than the clean master. Equal to *master_df* when no post ops
+        are configured.
+    """
+    post_df = _apply_post_to_master(master_df, pipeline)
+    _seed_measurements(output_dir, post_df)
+
+    if pipeline is None:
+        logger.warning(
+            "Pipeline not available — skipping per-feature split, analysis, "
+            "and pipeline.json persistence (master files still written to %s)",
+            output_dir,
+        )
+        return post_df
+
+    _persist_pipeline_to_output_dir(output_dir, pipeline)
+    _emit_analysis_outputs(output_dir, post_df, pipeline)
+
+    try:
+        # Splits operate on the post-applied frame so per-feature
+        # spreadsheets match what the GUI viewer reads from
+        # measurements.{csv,parquet}. The clean master_measurements.*
+        # remains the archival source of truth.
+        split_master_by_feature(post_df, output_dir, pipeline)
+    except Exception:
+        logger.warning(
+            "Per-feature measurement split failed (master files still written)",
+            exc_info=True,
+        )
+
+    return post_df
 
 
 def split_master_by_feature(
@@ -573,11 +690,20 @@ def aggregate_measurements(
         measurements were found.
 
     Side effects:
-        When a pipeline is available, also writes per-feature
-        sub-spreadsheets (CSV + Parquet) into
-        ``output_dir/measurements_by_feature/`` — one file per
-        :class:`MeasureFeatures` in ``pipeline._meas``. Split failures
-        never change the return value.
+        Delegates the post-master work to
+        :func:`finalize_post_master_outputs`, which always seeds
+        ``measurements.{csv,parquet}`` and — when a pipeline is
+        available — persists ``pipeline.json``, runs the analysis chain
+        into ``analysis.{csv,parquet}``, and writes per-feature
+        sub-spreadsheets into ``output_dir/measurements_by_feature/``
+        (one file per :class:`MeasureFeatures` in ``pipeline._meas``).
+
+        ``master_measurements.{csv,parquet}`` are intentionally a clean
+        (pre-post) archive of what the per-image runs measured, while
+        ``measurements.{csv,parquet}`` carry the post-applied frame that
+        the GUI viewer reads/curates. The two diverge whenever the
+        pipeline has any :class:`PostMeasurement` op configured. Split
+        and analysis failures never change the return value.
     """
     results_dir = output_dir / "results"
 
@@ -653,8 +779,6 @@ def aggregate_measurements(
     except Exception:
         logger.warning("Failed to save master Parquet (CSV was saved)")
 
-    _seed_measurements(output_dir, master_df)
-
     logger.info(
         "Aggregated %d rows x %d cols into %s",
         master_df.height,
@@ -663,26 +787,7 @@ def aggregate_measurements(
     )
 
     resolved_pipeline = pipeline if pipeline is not None else _load_pipeline_from_output_dir(output_dir)
-    if resolved_pipeline is None:
-        logger.warning(
-            "Pipeline not available — skipping per-feature split "
-            "(master files still written to %s)",
-            output_dir,
-        )
-    else:
-        # Persist canonical pipeline.json and run the analysis chain when
-        # configured. Both are non-fatal — split + master/measurements
-        # outputs remain authoritative regardless of analysis success.
-        _persist_pipeline_to_output_dir(output_dir, resolved_pipeline)
-        _emit_analysis_outputs(output_dir, master_df, resolved_pipeline)
-
-        try:
-            split_master_by_feature(master_df, output_dir, resolved_pipeline)
-        except Exception:
-            logger.warning(
-                "Per-feature measurement split failed (master files still written)",
-                exc_info=True,
-            )
+    finalize_post_master_outputs(output_dir, master_df, resolved_pipeline)
 
     return master_csv_path
 

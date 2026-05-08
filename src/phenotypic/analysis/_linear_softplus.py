@@ -7,6 +7,7 @@ import pandas as pd
 
 from phenotypic.analysis.abc_ import ModelFitter
 from phenotypic.analysis.abc_._model_fitter import LossKind
+from phenotypic.tools_ import ColumnRef, ColumnRefList
 from phenotypic.tools_.measurement_info import (
     LINEAR_SOFTPLUS_MODEL,
     MODEL_METRICS,
@@ -382,9 +383,9 @@ class LinearSoftplusModel(ModelFitter):
 
     def __init__(
             self,
-            on: str,
-            groupby: List[str],
-            time_label: str = "Metadata_Time",
+            on: ColumnRef,
+            groupby: ColumnRefList,
+            time_label: ColumnRef = "Metadata_Time",
             agg_func: Callable | str | list | dict | None = "mean",
             *,
             smax: float | None = None,

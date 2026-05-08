@@ -542,6 +542,43 @@ def colony_cell_count_badge_id(image_file: str, label: int) -> Dict[str, str | i
     return {"type": "colony-cell-count-badge", "image_file": image_file, "label": label}
 
 
+def colony_cell_popover_body_id(image_file: str, label: int) -> Dict[str, str | int]:
+    """Build the pattern-matching id for a colony-cell popover body.
+
+    The body is rendered empty at grid build time and populated on first
+    badge click via a ``MATCH`` callback. Defers fetching of every
+    member's crop until the user actually opens the stack.
+
+    Args:
+        image_file: ``Metadata_ImageFile`` for the cell's representative colony.
+        label: ``ObjectLabel`` for the cell's representative colony.
+
+    Returns:
+        Dict of shape
+        ``{"type": "colony-cell-popover-body", "image_file": image_file, "label": label}``.
+    """
+    return {"type": "colony-cell-popover-body", "image_file": image_file, "label": label}
+
+
+def colony_cell_popover_data_id(image_file: str, label: int) -> Dict[str, str | int]:
+    """Build the pattern-matching id for a colony-cell popover's data store.
+
+    Each multi-colony cell carries a co-located ``dcc.Store`` holding the
+    members list and per-grid sizes; the populate-on-click callback reads
+    it as State (matched to the firing badge) so the cell context never
+    has to be re-derived on click.
+
+    Args:
+        image_file: ``Metadata_ImageFile`` for the cell's representative colony.
+        label: ``ObjectLabel`` for the cell's representative colony.
+
+    Returns:
+        Dict of shape
+        ``{"type": "colony-cell-popover-data", "image_file": image_file, "label": label}``.
+    """
+    return {"type": "colony-cell-popover-data", "image_file": image_file, "label": label}
+
+
 def colony_cell_expand_btn_id(image_file: str, label: int) -> Dict[str, str | int]:
     """Build the pattern-matching id for a colony-cell expand-on-click trigger.
 
@@ -619,5 +656,7 @@ __all__ = [
     "colony_cell_id",
     "colony_cell_remove_btn_id",
     "colony_cell_count_badge_id",
+    "colony_cell_popover_body_id",
+    "colony_cell_popover_data_id",
     "colony_cell_expand_btn_id",
 ]

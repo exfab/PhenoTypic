@@ -13,6 +13,7 @@ like plotters and dashboards.
 """
 
 from . import constants_, exceptions_, colourspace, panel_, slurm_, slurm
+from ._column_ref import ColumnRef, ColumnRefList, ColumnSource
 from .funcs_ import timed_execution, is_binary_mask
 from .hdf_ import HDF
 from .mixin import GridInferenceMixin, LazyWidgetMixin, FootprintMixin, ClipControlMixin
@@ -21,6 +22,9 @@ from . import napari_
 
 __all__ = [
     "ClipControlMixin",
+    "ColumnRef",
+    "ColumnRefList",
+    "ColumnSource",
     "FootprintMixin",
     "GridInferenceMixin",
     "HDF",

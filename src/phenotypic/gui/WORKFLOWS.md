@@ -14,7 +14,7 @@ Each row below maps to:
   `capture_workflow_screenshots` or
   `capture_standalone_viewer_screenshots`.
 * A walkthrough page at
-  `docs/source/how_to/pages/gui_walkthrough/<NN>_<id>.md`.
+  `docs/source/tutorials/gui/<NN>_<id>.md`.
 
 The pre-commit hook + `gui-docs` CI workflow run
 `scripts/check_workflows_md.py`, which rejects mismatches: a row here
@@ -33,14 +33,14 @@ without a matching defined+dispatched `_capture_<id>` (or a
 
 | ID             | Title                | Description                                                                | Capture function          | Tutorial page                            | Status     |
 | -------------- | -------------------- | -------------------------------------------------------------------------- | ------------------------- | ---------------------------------------- | ---------- |
-| setup          | Setup & landing      | First-launch home page tour: shell chrome, tab strip, sandbox label.       | `_capture_setup`          | `gui_walkthrough/01_setup.md`            | ✅ shipping |
-| file_explorer  | File explorer        | Sidebar tree, capability badges, hidden + symlink toggles, refresh.        | `_capture_file_explorer`  | `gui_walkthrough/02_file_explorer.md`    | ✅ shipping |
-| build_pipeline | Build a pipeline     | Builder palette, canvas, Save / Load, `+ Pipeline`, breadcrumb, inspector. | `_capture_build_pipeline` | `gui_walkthrough/03_build_pipeline.md`   | ✅ shipping |
-| run_local      | Run locally          | Run console form, pipeline / input / output pickers, validate, run, log.   | `_capture_run_local`      | `gui_walkthrough/04_run_local.md`        | ✅ shipping |
-| run_slurm      | Run on SLURM         | SLURM mode toggle, advanced + SLURM config, sbatch handoff guidance.       | `_capture_run_slurm`      | `gui_walkthrough/05_run_slurm.md`        | ✅ shipping |
-| view_results   | View results         | Empty-state hub mount + populated standalone viewer + measurement table.   | `_capture_view_results`   | `gui_walkthrough/06_view_results.md`     | ✅ shipping |
-| pick_points    | Manual point picker  | Pickable badge, picker modal, RGB / Input channel toggle, confirm round trip. | `_capture_pick_points`    | `gui_walkthrough/07_pick_points.md`      | ✅ shipping |
-| analysis       | Analysis sub-app     | `/analysis/` mount, pipeline header, post / filter / model section authoring, run button emitting `analysis.{csv,parquet}`. | `_capture_analysis` | `gui_walkthrough/08_analysis.md` | 🔭 planned |
+| setup          | Setup & landing      | First-launch home page tour: shell chrome, tab strip, sandbox label.       | `_capture_setup`          | `gui/01_setup.md`            | ✅ shipping |
+| file_explorer  | File explorer        | Sidebar tree, capability badges, hidden + symlink toggles, refresh.        | `_capture_file_explorer`  | `gui/02_file_explorer.md`    | ✅ shipping |
+| build_pipeline | Build a pipeline     | Builder palette, canvas, Save / Load, `+ Pipeline`, breadcrumb, inspector. | `_capture_build_pipeline` | `gui/03_build_pipeline.md`   | ✅ shipping |
+| run_local      | Run locally          | Run console form, pipeline / input / output pickers, validate, run, log.   | `_capture_run_local`      | `gui/04_run_local.md`        | ✅ shipping |
+| run_slurm      | Run on SLURM         | SLURM mode toggle, advanced + SLURM config, sbatch handoff guidance.       | `_capture_run_slurm`      | `gui/05_run_slurm.md`        | ✅ shipping |
+| view_results   | View results         | Empty-state hub mount + populated standalone viewer + measurement table.   | `_capture_view_results`   | `gui/06_view_results.md`     | ✅ shipping |
+| pick_points    | Manual point picker  | Pickable badge, picker modal, RGB / Input channel toggle, confirm round trip. | `_capture_pick_points`    | `gui/07_pick_points.md`      | ✅ shipping |
+| analysis       | Analysis sub-app     | `/analysis/` mount, pipeline header, post / filter / model section authoring, run button emitting `analysis.{csv,parquet}`. | `_capture_analysis` | `gui/08_analysis.md` | ✅ shipping |
 
 > **`view_results` note.** The empty-state screenshot
 > (`view_results/01_viewer_empty.png`) is captured by
@@ -68,8 +68,8 @@ When introducing a new end-to-end user flow:
    `uv run python scripts/capture_gui_tutorial_screenshots.py` — to
    write PNGs into `docs/source/_static/gui_images/<id>/`.
 5. **Add a tutorial page** at
-   `docs/source/how_to/pages/gui_walkthrough/<NN>_<id>.md` and link
-   it from `gui_walkthrough/index.md`. Use the existing pages as a
+   `docs/source/tutorials/gui/<NN>_<id>.md` and link it from
+   `tutorials/gui/index.md`. Use the existing pages as a
    structural template (Google-style intros, MyST `:::{figure}`
    blocks for screenshots).
 6. **Add corresponding rows to [`FEATURES.md`](FEATURES.md)** for any

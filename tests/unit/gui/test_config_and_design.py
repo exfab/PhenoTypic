@@ -186,15 +186,66 @@ class TestDesignTokens:
         assert len(oi) == 8
 
     def test_type_scale_is_monotonic(self) -> None:
-        """The shared type scale (xs..xl) must be increasing in rem."""
+        """The shared type scale (xs..3xl) must be increasing in rem."""
         sizes = [
             _design.TEXT_XS, _design.TEXT_SM, _design.TEXT_BASE,
             _design.TEXT_MD, _design.TEXT_LG, _design.TEXT_XL,
+            _design.TEXT_2XL, _design.TEXT_3XL,
         ]
         floats = [float(s.removesuffix("rem")) for s in sizes]
         assert floats == sorted(floats)
         # Strictly increasing (no duplicates).
         assert len(set(floats)) == len(floats)
+
+    def test_semantic_font_size_aliases_resolve_to_primitives(self) -> None:
+        """Each ``FONT_SIZE_*`` alias must point at one of the ``TEXT_*`` rem
+        primitives. Catches a future rename of a primitive that forgets to
+        update the alias."""
+        primitives = {
+            _design.TEXT_XS, _design.TEXT_SM, _design.TEXT_BASE,
+            _design.TEXT_MD, _design.TEXT_LG, _design.TEXT_XL,
+            _design.TEXT_2XL, _design.TEXT_3XL,
+        }
+        aliases = {
+            "FONT_SIZE_DISPLAY": _design.FONT_SIZE_DISPLAY,
+            "FONT_SIZE_TITLE": _design.FONT_SIZE_TITLE,
+            "FONT_SIZE_HEADER_1": _design.FONT_SIZE_HEADER_1,
+            "FONT_SIZE_HEADER_2": _design.FONT_SIZE_HEADER_2,
+            "FONT_SIZE_BODY_LG": _design.FONT_SIZE_BODY_LG,
+            "FONT_SIZE_BODY": _design.FONT_SIZE_BODY,
+            "FONT_SIZE_LABEL": _design.FONT_SIZE_LABEL,
+            "FONT_SIZE_CAPTION": _design.FONT_SIZE_CAPTION,
+        }
+        for name, value in aliases.items():
+            assert value in primitives, (
+                f"{name}={value!r} must equal one of TEXT_XS..TEXT_3XL"
+            )
+
+    def test_semantic_font_size_aliases_cover_full_scale(self) -> None:
+        """The eight semantic aliases collectively cover all eight rem
+        primitives — no gaps and no two aliases mapping to the same size."""
+        alias_values = {
+            _design.FONT_SIZE_DISPLAY, _design.FONT_SIZE_TITLE,
+            _design.FONT_SIZE_HEADER_1, _design.FONT_SIZE_HEADER_2,
+            _design.FONT_SIZE_BODY_LG, _design.FONT_SIZE_BODY,
+            _design.FONT_SIZE_LABEL, _design.FONT_SIZE_CAPTION,
+        }
+        primitives = {
+            _design.TEXT_XS, _design.TEXT_SM, _design.TEXT_BASE,
+            _design.TEXT_MD, _design.TEXT_LG, _design.TEXT_XL,
+            _design.TEXT_2XL, _design.TEXT_3XL,
+        }
+        assert alias_values == primitives
+
+    def test_font_family_constants_carry_active_google_font(self) -> None:
+        """The Python-side ``FONT_FAMILY_*`` strings must lead with the
+        active Google Font and end with a generic CSS family fallback."""
+        assert _design.FONT_FAMILY_DISPLAY.startswith("'Roboto'")
+        assert _design.FONT_FAMILY_BODY.startswith("'Roboto'")
+        assert _design.FONT_FAMILY_MONO.startswith("'Roboto'")
+        assert _design.FONT_FAMILY_DISPLAY.rstrip().endswith("serif")
+        assert _design.FONT_FAMILY_BODY.rstrip().endswith("sans-serif")
+        assert _design.FONT_FAMILY_MONO.rstrip().endswith("monospace")
 
     def test_spacing_grid_matches_8pt_system(self) -> None:
         """``SPACING_*`` constants line up with the 8 pt grid."""
@@ -229,6 +280,17 @@ class TestInjectDesignTokens:
         assert "--color-navy:" in idx and _design.COLOR_NAVY in idx
         assert "--oi-purple:" in idx and _design.OI_PURPLE in idx
         assert "--text-base:" in idx and _design.TEXT_BASE in idx
+        assert "--text-2xl:" in idx and _design.TEXT_2XL in idx
+        assert "--text-3xl:" in idx and _design.TEXT_3XL in idx
+        # Semantic font-size aliases — preferred call form going forward.
+        assert "--font-size-display:" in idx
+        assert "--font-size-title:" in idx
+        assert "--font-size-header-1:" in idx
+        assert "--font-size-header-2:" in idx
+        assert "--font-size-body-lg:" in idx
+        assert "--font-size-body:" in idx
+        assert "--font-size-label:" in idx
+        assert "--font-size-caption:" in idx
         assert "--sp-3:" in idx and _design.SPACING_3 in idx
         assert "--radius:" in idx and _design.RADIUS in idx
         assert "--shadow-sm:" in idx and _design.SHADOW_SM in idx

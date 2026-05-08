@@ -31,7 +31,8 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import Input, Output, dcc, html
 from dash.development.base_component import Component
 
-from phenotypic.gui._config import SSH_TUNNEL_HINT
+from phenotypic.gui._config import MOUNT_HOME, SSH_TUNNEL_HINT
+from phenotypic.gui._shared import SHARED_LOGO_PATH
 from phenotypic.gui._design import (
     COLOR_BG,
     COLOR_BLUE,
@@ -39,6 +40,7 @@ from phenotypic.gui._design import (
     COLOR_MUTED,
     COLOR_NAVY,
     COLOR_SURFACE,
+    FONT_SIZE_LABEL,
 )
 from phenotypic.gui.results_viewer import _filter_panel, _ids as ids, colony_view
 from phenotypic.gui.results_viewer._output_root import OutputRoot
@@ -66,12 +68,15 @@ _BG = COLOR_BG
 # ---------------------------------------------------------------------------
 
 
-def _build_header(output_root: OutputRoot) -> Component:
+def _build_header(output_root: OutputRoot, *, url_prefix: str = MOUNT_HOME) -> Component:
     """Build the top header bar.
 
     Args:
         output_root: Validated handle on the CLI output directory; the
             pipeline summary and root path are surfaced as info chips.
+        url_prefix: Mount-point prefix used to resolve the dashboard
+            logo URL. Defaults to ``MOUNT_HOME`` ("/") for standalone
+            launches; the hub passes ``MOUNT_VIEWER``.
 
     Returns:
         A header :class:`dash.html.Div` styled as a navy-on-white bar.
@@ -91,10 +96,9 @@ def _build_header(output_root: OutputRoot) -> Component:
                 style={"color": _NAVY, "fontWeight": 500},
             ),
         ],
-        className="me-3",
+        className="me-3 results-viewer-pipeline-chip",
         style={
-            "fontFamily": "'DM Mono', monospace",
-            "fontSize": "0.75rem",
+            "fontSize": FONT_SIZE_LABEL,
             "padding": "0.25rem 0.6rem",
             "border": f"1px solid {_BLUE}33",
             "borderRadius": "9999px",
@@ -109,26 +113,27 @@ def _build_header(output_root: OutputRoot) -> Component:
         className="ms-2 mb-0",
     )
 
+    logo = html.Img(
+        src=f"{url_prefix}{SHARED_LOGO_PATH}",
+        alt="PhenoTypic",
+        className="results-viewer-header__logo",
+    )
+
     title = html.H4(
         "Results Viewer",
-        className="mb-0 me-3",
-        style={
-            "color": _NAVY,
-            "fontFamily": "'DM Serif Display', Georgia, serif",
-        },
+        className="mb-0 me-3 results-viewer-header-title",
+        style={"color": _NAVY},
     )
 
     subtitle = html.Div(
         str(output_root.root),
-        className="text-muted small",
-        style={
-            "fontFamily": "'DM Mono', monospace",
-            "marginTop": "0.1rem",
-        },
+        className="text-muted small results-viewer-header-subtitle",
+        style={"marginTop": "0.1rem"},
     )
 
     top_row = html.Div(
         [
+            logo,
             title,
             pipeline_chip,
             html.Div(style={"flex": "1 1 auto"}),  # spacer
@@ -309,6 +314,8 @@ def _build_stores(filtered_state: "FilteredMeasurements") -> Component:
 def build_app_layout(
     output_root: OutputRoot,
     filtered_state: "FilteredMeasurements",
+    *,
+    url_prefix: str = MOUNT_HOME,
 ) -> Component:
     """Compose the top-level Dash component tree for the results viewer.
 
@@ -326,11 +333,14 @@ def build_app_layout(
         filtered_state: On-disk curation state, used to seed
             :data:`ids.STORE_REMOVED_KEYS` at boot so the colony view
             reflects existing manual curation.
+        url_prefix: Mount-point prefix passed through to
+            :func:`_build_header` so the dashboard logo resolves
+            correctly under both standalone and hub-mounted launches.
 
     Returns:
         A :class:`dash.html.Div` ready to assign to ``app.layout``.
     """
-    header = _build_header(output_root)
+    header = _build_header(output_root, url_prefix=url_prefix)
     banner = _build_startup_banner(output_root)
     sidebar = _filter_panel.layout(output_root)
     cards_column = _build_cards_column()

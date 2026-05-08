@@ -16,7 +16,7 @@ Behaviour:
         - ``docs/source/_static/gui_images/<ID>/`` contains at least
           one ``.png``;
         - the referenced tutorial page exists under
-          ``docs/source/how_to/pages/``.
+          ``docs/source/tutorials/``.
     * Catches orphans: capture functions that no row references.
 
 Usage::
@@ -36,7 +36,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKFLOWS_MD = REPO_ROOT / "src" / "phenotypic" / "gui" / "WORKFLOWS.md"
 CAPTURE_SCRIPT = REPO_ROOT / "scripts" / "capture_gui_tutorial_screenshots.py"
 SCREENSHOTS_ROOT = REPO_ROOT / "docs" / "source" / "_static" / "gui_images"
-TUTORIAL_ROOT = REPO_ROOT / "docs" / "source" / "how_to" / "pages"
+TUTORIAL_ROOT = REPO_ROOT / "docs" / "source" / "tutorials"
 
 STATUS_SHIPPING = "✅ shipping"
 STATUS_IN_PROGRESS = "🚧 in progress"

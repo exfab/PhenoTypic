@@ -137,11 +137,11 @@ threading.Thread(name=f"{THREAD_NAME_PREFIX}-idle-release", ...)
 
 [_design.py](_design.py) is the single source of truth for **all** design
 tokens. `inject_design_tokens(app)` splices a `<style>` block carrying
-`--font-*`, `--color-*`, `--oi-*`, `--text-*`, `--sp-*`, `--radius-*`,
-`--shadow-*`, `--ease-*`, and `--transition` into every Dash app's
-`index_string`. The hub composer's `wrap_in_chrome` calls it on every
-mount, and each sub-app `_app.py` calls it as well — both paths are
-idempotent via a marker comment.
+`--font-*`, `--font-size-*`, `--color-*`, `--oi-*`, `--text-*`,
+`--sp-*`, `--radius-*`, `--shadow-*`, `--ease-*`, and `--transition`
+into every Dash app's `index_string`. The hub composer's
+`wrap_in_chrome` calls it on every mount, and each sub-app `_app.py`
+calls it as well — both paths are idempotent via a marker comment.
 
 ### Using tokens in CSS
 
@@ -161,9 +161,35 @@ idempotent via a marker comment.
 file — `_design.py`'s injection covers all four mounts. Tool-specific
 overrides are fine, but only for values truly unique to that tool. For
 example, [builder/assets/builder.css](builder/assets/builder.css)
-keeps `--color-interactive: var(--oi-purple)` (point-picker mixin) and
-`--text-2xl: 1.875rem` (canvas titles only); both reference shared
-tokens or extend the type scale and never redefine a shared value.
+keeps `--color-interactive: var(--oi-purple)` (point-picker mixin)
+which references shared tokens and never redefines a shared value.
+
+### Semantic typography (`--font-size-*` / `FONT_SIZE_*`)
+
+For `font-size` and `font-family`, use the **semantic aliases** —
+they read at call sites and survive font-stack swaps without churn.
+The raw `--text-*` rem-scale primitives are still injected for
+back-compat but new code should reach for the semantic tier:
+
+| Role        | CSS                       | Python                    |
+| ----------- | ------------------------- | ------------------------- |
+| Display     | `var(--font-size-display)`  | `FONT_SIZE_DISPLAY`     |
+| Title       | `var(--font-size-title)`    | `FONT_SIZE_TITLE`       |
+| Header 1    | `var(--font-size-header-1)` | `FONT_SIZE_HEADER_1`    |
+| Header 2    | `var(--font-size-header-2)` | `FONT_SIZE_HEADER_2`    |
+| Body lead   | `var(--font-size-body-lg)`  | `FONT_SIZE_BODY_LG`     |
+| Body        | `var(--font-size-body)`     | `FONT_SIZE_BODY`        |
+| Label       | `var(--font-size-label)`    | `FONT_SIZE_LABEL`       |
+| Caption     | `var(--font-size-caption)`  | `FONT_SIZE_CAPTION`     |
+
+For font families: CSS uses the existing
+`var(--font-display | --font-body | --font-mono)`; Python inline
+styles and call sites that don't see CSS variables (Cytoscape
+stylesheets, Plotly layouts, `dash_table` `style_cell`) import the
+matching `FONT_FAMILY_DISPLAY` / `FONT_FAMILY_BODY` /
+`FONT_FAMILY_MONO` string constants. Never hardcode a font-family
+literal — the active GUI font is owned by `_design.py` and
+swapping it should never require touching call sites.
 
 ### Using tokens in Python inline styles
 
@@ -199,13 +225,36 @@ badge contrast variants and prohibited combinations.
 2. **If it's an end-to-end flow worth a tutorial**, also update
    [WORKFLOWS.md](WORKFLOWS.md), add `_capture_<id>` in
    `scripts/capture_gui_tutorial_screenshots.py`, and add a walkthrough
-   page under `docs/source/how_to/pages/gui_walkthrough/`. The
+   page under `docs/source/tutorials/gui/`. The
    `gui-docs` CI gate enforces the round-trip.
 3. **Use [_config.py](_config.py)** for any new shared constant.
 4. **Use [_design.py](_design.py)** for any color, type size, radius,
    shadow, or motion value.
 5. **Re-run `uv run python scripts/capture_gui_tutorial_screenshots.py`**
    after any visible chrome change and commit refreshed PNGs.
+
+### Column-aware analyzer params
+
+Filter / model params that name a column in `measurements.parquet`
+should be annotated with `ColumnRef` / `ColumnRefList` from
+`phenotypic.tools_` instead of bare `str` / `list[str]`:
+
+```python
+from phenotypic.tools_ import ColumnRef, ColumnRefList
+
+class MyFilter(SetAnalyzer):
+    def __init__(self, on: ColumnRef, groupby: ColumnRefList): ...
+```
+
+The annotation is purely informational at runtime (`Annotated[str,
+...]` is still a `str`), but the GUI's `OperationRegistry` walks the
+metadata via `typing.get_type_hints(..., include_extras=True)` and
+renders matching params as dropdowns populated from
+`MeasurementSchema.columns_for(...)`. A `ColumnRef | None` union
+renders as a two-button "Column / None" RadioItems toggle so the user
+can switch dtype without losing the dropdown affordance. No GUI
+registry edit is required when adding a new analyzer — the marker
+travels with the signature.
 
 ---
 

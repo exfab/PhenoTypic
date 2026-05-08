@@ -49,6 +49,7 @@ __all__ = [
     "CFG_OUTPUT_ROOT",
     "CFG_FILTERED_STATE",
     "CFG_RECIPE_STATE",
+    "CFG_MEASUREMENT_SCHEMA",
     # Sandbox subdirectories
     "SANDBOX_GUI_DIRNAME",
     "SANDBOX_PRESETS_SUBDIR",
@@ -155,6 +156,14 @@ CFG_FILTERED_STATE: str = "filtered_state"
 #: a wrapper around the canonical ``<output>/pipeline.json`` that
 #: provides atomic save + mtime-staleness detection.
 CFG_RECIPE_STATE: str = "recipe_state"
+
+#: ``app.server.config`` key holding the analysis sub-app's
+#: :class:`~phenotypic.gui.analysis._schema_cache.MeasurementSchema` —
+#: a lazy mtime-keyed cache of column lists from
+#: ``measurements.parquet`` / ``master_measurements.parquet`` (with CSV
+#: fallback). Drives the column-aware dropdowns on filter / model
+#: section forms.
+CFG_MEASUREMENT_SCHEMA: str = "pheno_measurement_schema"
 
 # ---------------------------------------------------------------------------
 # Sandbox subdirectories

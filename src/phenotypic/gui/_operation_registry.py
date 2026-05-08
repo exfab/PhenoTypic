@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional, Type, Union, get_args, get_origin
 
 from phenotypic import ImagePipeline
 from phenotypic.abc_ import ImageOperation
+from phenotypic.tools_._column_ref import _ColumnRefMarker
 from phenotypic.tools_.mixin import PointPickerMixin
 
 
@@ -23,6 +24,26 @@ def _is_union_origin(origin: Any) -> bool:
     """Return ``True`` for both ``typing.Union`` and PEP 604 unions."""
 
     return origin is Union or origin is types.UnionType
+
+
+@dataclass
+class ColumnRefSpec:
+    """GUI-side resolution of a :class:`_ColumnRefMarker` annotation.
+
+    Attributes:
+        source: ``"measurements"`` or ``"master_measurements"`` —
+            tells the GUI which file's schema to draw column names from.
+        multi: ``True`` when the carrier type is a list (renders as
+            multi-select), ``False`` when scalar (single dropdown).
+        with_alt: ``True`` when the column-ref appears inside a Union
+            with at least one non-``None``-only alternate branch
+            (e.g. ``ColumnRef | None``). Drives the two-button dtype
+            toggle in ``_param_forms``.
+    """
+
+    source: str
+    multi: bool
+    with_alt: bool = False
 
 
 @dataclass
@@ -38,6 +59,10 @@ class ParamInfo:
         is_pipeline: True if parameter accepts ImagePipeline
         is_optional: True if Union[..., None] (parameter can be None)
         description: Parameter description from docstring (None if not available)
+        column_ref: Populated when the annotation carries a
+            :class:`~phenotypic.tools_._column_ref._ColumnRefMarker`.
+            Drives the column-aware dropdown widgets in the analysis
+            sub-app's section forms; ``None`` for ordinary params.
     """
 
     name: str
@@ -48,6 +73,7 @@ class ParamInfo:
     is_pipeline: bool
     is_optional: bool
     description: Optional[str] = None
+    column_ref: Optional[ColumnRefSpec] = None
 
 
 @dataclass
@@ -70,7 +96,8 @@ class OperationInfo:
             ``is_point_pickable`` is False.
     """
 
-    cls: Type[ImageOperation]
+    cls: Type[Any]  # ``ImageOperation`` for ops/measure/post; ``SetAnalyzer`` /
+    # ``ModelFitter`` for analysis-category records.
     name: str
     category: str
     module: str
@@ -122,7 +149,10 @@ class OperationRegistry:
         """Discover all available operations from phenotypic modules.
 
         Scans phenotypic.enhance, phenotypic.detect, phenotypic.refine, etc.
-        for ImageOperation subclasses and extracts their metadata.
+        for ImageOperation subclasses and extracts their metadata. Also
+        scans :mod:`phenotypic.analysis` for ``SetAnalyzer`` / ``ModelFitter``
+        subclasses so the analysis sub-app's section forms can read param
+        metadata from the same registry the builder uses.
         """
         # Import operation modules
         import phenotypic.enhance as enhance_module
@@ -132,6 +162,7 @@ class OperationRegistry:
         import phenotypic.measure as measure_module
         import phenotypic.grid as grid_module
         import phenotypic.post as post_module
+        import phenotypic.analysis as analysis_module
 
         from phenotypic.abc_ import (
             ImageEnhancer,
@@ -156,6 +187,45 @@ class OperationRegistry:
 
         for module, category, base_class in module_category_map:
             self._discover_from_module(module, category, base_class)
+
+        # Analysis classes use the SetAnalyzer / ModelFitter hierarchy and
+        # are not ``ImageOperation`` subclasses; walk them separately so the
+        # analysis sub-app's section dropdowns can populate from the same
+        # registry the builder uses.
+        self._discover_analyzers(analysis_module)
+
+    def _discover_analyzers(self, module: Any) -> None:
+        """Walk an analysis module and register filters + models.
+
+        ``ModelFitter`` extends ``SetAnalyzer``; subclasses of the former
+        become category ``"Model"`` and subclasses of the latter (excluding
+        ``ModelFitter`` lineage) become category ``"Filter"``. Analyzers do
+        NOT extend ``ImageOperation`` so they bypass
+        :meth:`_discover_from_module`'s ``base_class`` constraint.
+        """
+        from phenotypic.analysis.abc_ import ModelFitter, SetAnalyzer
+
+        for name, obj in inspect.getmembers(module, inspect.isclass):
+            if name.startswith("_"):
+                continue
+            if not issubclass(obj, SetAnalyzer) or obj in (SetAnalyzer, ModelFitter):
+                continue
+            category = "Model" if issubclass(obj, ModelFitter) else "Filter"
+            try:
+                op_info = OperationInfo(
+                    cls=obj,
+                    name=name,
+                    category=category,
+                    module=obj.__module__,
+                    docstring=obj.__doc__,
+                    parameters=self._extract_parameters(obj),
+                    is_point_pickable=False,
+                    point_picker_param=None,
+                )
+                self._operations[name] = op_info
+                self._categories.setdefault(category, []).append(op_info)
+            except Exception as e:  # noqa: BLE001
+                print(f"Warning: Could not register analyzer {name}: {e}")
 
     def _discover_from_module(
         self,
@@ -301,9 +371,11 @@ class OperationRegistry:
             # If signature extraction fails, return empty dict
             return {}
 
-        # Try to get resolved type hints, fall back to signature annotations
+        # Try to get resolved type hints, fall back to signature annotations.
+        # ``include_extras=True`` preserves ``Annotated[T, ...]`` metadata so
+        # the column-ref marker scan below can pick it up.
         try:
-            hints = typing.get_type_hints(cls.__init__)
+            hints = typing.get_type_hints(cls.__init__, include_extras=True)
         except Exception:
             # Fall back to raw annotations from signature (handles forward refs)
             hints = {
@@ -328,6 +400,8 @@ class OperationRegistry:
             # Detect operation/pipeline types (enhanced for forward refs)
             is_operation, is_pipeline, is_optional = self._detect_operation_types(hint)
 
+            column_ref = _detect_column_ref(hint)
+
             params[name] = ParamInfo(
                 name=name,
                 type_hint=hint,
@@ -337,6 +411,7 @@ class OperationRegistry:
                 is_pipeline=is_pipeline,
                 is_optional=is_optional,
                 description=param_descriptions.get(name),
+                column_ref=column_ref,
             )
 
         return params
@@ -468,6 +543,56 @@ class OperationRegistry:
             raise KeyError(f"Operation '{name}' not found in registry")
 
         return info.cls(**kwargs)
+
+
+def _detect_column_ref(hint: Any) -> Optional[ColumnRefSpec]:
+    """Extract a :class:`ColumnRefSpec` from a (possibly nested) annotation.
+
+    Walks ``Annotated[T, ...]`` directly and recurses into ``Union`` /
+    ``T | None`` branches so ``ColumnRef | None`` is recognised. The
+    ``with_alt`` flag is set whenever the marker is found inside a Union
+    (i.e. there is at least one alternate branch) — that drives the
+    two-button dtype toggle in the GUI param-form.
+
+    First-wins for multi-marker unions: if a Union carries the marker on
+    more than one branch (e.g. a hypothetical
+    ``ColumnRef | ColumnRefList``), the spec returned reflects the first
+    matching branch. Update this rule when (and only when) the GUI
+    grows a renderer for unions of column refs.
+    """
+    spec = _column_ref_from_annotated(hint)
+    if spec is not None:
+        return spec
+
+    if not _is_union_origin(get_origin(hint)):
+        return None
+
+    for branch in get_args(hint):
+        if branch is type(None):
+            continue
+        inner = _column_ref_from_annotated(branch)
+        if inner is not None:
+            return ColumnRefSpec(
+                source=inner.source, multi=inner.multi, with_alt=True
+            )
+    return None
+
+
+def _column_ref_from_annotated(hint: Any) -> Optional[ColumnRefSpec]:
+    """Return a :class:`ColumnRefSpec` if ``hint`` is a marker-bearing Annotated."""
+    marker = next(
+        (
+            m
+            for m in getattr(hint, "__metadata__", ())
+            if isinstance(m, _ColumnRefMarker)
+        ),
+        None,
+    )
+    if marker is None:
+        return None
+    carrier = getattr(hint, "__origin__", None)
+    multi = get_origin(carrier) is list or carrier is list
+    return ColumnRefSpec(source=marker.source, multi=multi)
 
 
 # Global registry instance (lazy initialization)

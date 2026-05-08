@@ -12,8 +12,29 @@
  */
 
 .run-console-root {
-  font-family: var(--font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  font-family: var(--font-body);
   color: #1f2937;
+}
+
+/* ----- Dashboard header (logo + title) ---------------------------------- */
+.run-console-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem 0.5rem;
+  border-bottom: 1px solid var(--color-rule, #e5e7eb);
+}
+
+.run-console-header__logo {
+  /* 2.25× the h4 line-height for prominent dashboard branding. */
+  height: 4.05rem;
+  width: auto;
+  flex-shrink: 0;
+}
+
+.run-console-header__title {
+  font-family: var(--font-display);
+  color: var(--color-heading, #003660);
 }
 
 .run-console-container {
@@ -38,7 +59,7 @@
 }
 
 .run-console-form-label {
-  font-size: 0.85rem;
+  font-size: var(--font-size-label);
   font-weight: 600;
   color: #003660;
   margin-bottom: 0.25rem;
@@ -59,7 +80,7 @@
 }
 
 .run-console-picker-label {
-  font-size: 0.85rem;
+  font-size: var(--font-size-label);
   font-weight: 600;
   color: #003660;
 }
@@ -71,8 +92,8 @@
 }
 
 .run-console-picker-value {
-  font-family: var(--font-mono, ui-monospace, "SFMono-Regular", Menlo, monospace);
-  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-label);
   color: #4b5563;
   word-break: break-all;
   flex: 1 1 auto;
@@ -126,8 +147,8 @@
 }
 
 .run-console-status-banner {
-  font-size: 0.85rem;
-  font-family: var(--font-mono, ui-monospace, "SFMono-Regular", Menlo, monospace);
+  font-size: var(--font-size-label);
+  font-family: var(--font-mono);
   color: #f3f4f6;
   background: #003660;
   padding: 0.4rem 0.75rem;
@@ -148,7 +169,7 @@
 
 .run-console-iframe-empty-body {
   color: #6b7280;
-  font-size: 0.9rem;
+  font-size: var(--font-size-body);
   max-width: 36rem;
   margin: 0 auto;
 }
@@ -172,7 +193,7 @@
 }
 
 .run-console-log-header {
-  font-size: 0.8rem;
+  font-size: var(--font-size-label);
   font-weight: 700;
   letter-spacing: 0.05em;
   color: #febc11;
@@ -182,8 +203,8 @@
 .run-console-log-tail {
   background: transparent;
   color: #d1d5db;
-  font-family: var(--font-mono, ui-monospace, "SFMono-Regular", Menlo, monospace);
-  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-label);
   margin: 0;
   max-height: 280px;
   overflow-y: auto;
@@ -202,7 +223,7 @@
 }
 
 .run-console-recents-header {
-  font-size: 0.95rem;
+  font-size: var(--font-size-body);
   font-weight: 700;
   color: #003660;
   margin-bottom: 0.5rem;
@@ -221,18 +242,18 @@
 }
 
 .run-console-recents-cell-path {
-  font-family: var(--font-mono, ui-monospace, "SFMono-Regular", Menlo, monospace);
-  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-label);
   color: #003660;
 }
 
 .run-console-recents-cell-mode {
-  font-size: 0.85rem;
+  font-size: var(--font-size-label);
   color: #4b5563;
 }
 
 .run-console-recents-cell-dash {
-  font-size: 0.85rem;
+  font-size: var(--font-size-label);
   color: #4b5563;
 }
 
@@ -244,7 +265,7 @@
 }
 
 .run-console-recents-status {
-  font-size: 0.8rem;
+  font-size: var(--font-size-label);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;

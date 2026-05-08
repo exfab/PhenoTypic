@@ -3,9 +3,19 @@
  * -------------------------------------------------------------------------
  * PhenoTypic Results Viewer styles.
  * Tokens follow DESIGN.md: navy #003660, blue #1b75bc, gold #febc11,
- * background #f5f7fa, fonts DM Sans (body) / DM Mono (numeric).
+ * background #f5f7fa. Font stack is injected from gui/_design.py via
+ * var(--font-display | --font-body | --font-mono).
  * -------------------------------------------------------------------------
  */
+
+/* ---------- Header logo ---------- */
+.results-viewer-header__logo {
+    /* 2.25× the h4 line-height for prominent dashboard branding. */
+    height: 4.05rem;
+    width: auto;
+    flex-shrink: 0;
+    margin-right: var(--sp-3, 0.75rem);
+}
 
 /* ---------- Cards container & OSD canvases ---------- */
 /* Vertical stack of viewer cards; padding leaves room for sticky footers. */
@@ -56,8 +66,8 @@
     border-radius: 12px;
     border: 1px solid #1b75bc;
     background: #f5f7fa;
-    font-family: var(--font-body, "DM Sans", sans-serif);
-    font-size: 12px;
+    font-family: var(--font-body);
+    font-size: var(--font-size-label);
 }
 
 /* Unmatched tokens are visually flagged red. */
@@ -80,8 +90,23 @@
 }
 
 .results-viewer-header .pipeline-chip {
-    font-family: var(--font-mono, "DM Mono", monospace);
+    font-family: var(--font-mono);
     color: #febc11;
+}
+
+/* Header chrome: hooks for inline-styled elements in _layout.py.
+ * Each rule binds the element to its semantic font role from the design
+ * tokens so the active GUI font (currently Roboto) flows through. */
+.results-viewer-header-title {
+    font-family: var(--font-display);
+}
+
+.results-viewer-header-subtitle {
+    font-family: var(--font-mono);
+}
+
+.results-viewer-pipeline-chip {
+    font-family: var(--font-mono);
 }
 
 /* ---------- Body two-column layout ---------- */
@@ -153,8 +178,8 @@
             #e8eaf0 10px, #e8eaf0 20px
         );
     color: #8892a4;
-    font-family: var(--font-mono, "DM Mono", monospace);
-    font-size: 0.7rem;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -243,8 +268,8 @@
     border: none;
     border-radius: 0 0 6px 6px;
     color: #003660;
-    font-family: var(--font-mono, "DM Mono", monospace);
-    font-size: 0.65rem;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
     font-weight: 600;
     line-height: 1;
     cursor: pointer;

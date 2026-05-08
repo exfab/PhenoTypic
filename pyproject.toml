@@ -171,6 +171,7 @@ version = { attr = "phenotypic.__version__" }
     "data/*.jpg",
     "data/*.png",
     "_cli/_assets/*.png",
+    "gui/_shared/_static/*.svg",
 ]
 
 [tool.uv]

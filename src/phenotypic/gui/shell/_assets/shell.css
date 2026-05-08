@@ -11,7 +11,8 @@
  *   - Primary palette (navy, blue, gold) for chrome
  *   - Okabe-Ito reserved for data viz only (we use it on capability
  *     badges as small chips, which DESIGN.md explicitly allows)
- *   - DM Serif Display / DM Sans / DM Mono three-font stack
+ *   - Single-family stack injected from gui/_design.py (currently Roboto)
+ *     accessed via var(--font-display | --font-body | --font-mono)
  *   - 8pt spacing grid, navy-tinted shadows
  */
 
@@ -319,7 +320,7 @@
 
 /* ===========================================================================
  * Capability badges (DESIGN.md §05 Badges)
- * Colored dot + uppercase DM Mono text with darkened Okabe-Ito colours
+ * Colored dot + uppercase mono text with darkened Okabe-Ito colours
  * to clear WCAG AA on white surfaces.
  * ========================================================================= */
 
@@ -328,7 +329,7 @@
   align-items: center;
   gap: 4px;
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: var(--font-size-caption);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -436,7 +437,7 @@
 
 .shell-summary-num {
   font-family: var(--font-display);
-  font-size: 2.5rem;
+  font-size: var(--font-size-display);
   font-weight: 400;
   color: var(--color-heading);
   line-height: 1.1;

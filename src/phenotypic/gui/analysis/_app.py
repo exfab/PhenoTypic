@@ -20,20 +20,27 @@ import dash
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 
 from phenotypic.gui._config import (
+    CFG_MEASUREMENT_SCHEMA,
     CFG_OUTPUT_ROOT,
     CFG_RECIPE_STATE,
     CFG_URL_PREFIX,
     MOUNT_HOME,
     TITLE_ANALYSIS,
 )
-from phenotypic.gui._design import inject_design_tokens
+from dash import Input, Output, State
+
+from phenotypic.gui._design import COLOR_BLUE, COLOR_SURFACE, inject_design_tokens
+from phenotypic.gui._shared import register_shared_static
+from phenotypic.gui.analysis import _ids as analysis_ids
 from phenotypic.gui.analysis._callbacks import register_callbacks
 from phenotypic.gui.analysis._layout import (
     build_app_layout,
     build_empty_state_layout,
 )
 from phenotypic.gui.analysis._recipe_state import RecipeState
+from phenotypic.gui.analysis._schema_cache import MeasurementSchema
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.shell._ids import SHELL_SIDEBAR_SELECTION_STORE
 
 logger = logging.getLogger(__name__)
 
@@ -76,17 +83,26 @@ def create_app(
         routes_pathname_prefix=MOUNT_HOME,
     )
     inject_design_tokens(app)
+    register_shared_static(app.server)
     app.server.config[CFG_URL_PREFIX] = url_prefix
 
     if output_root is None:
         app.layout = build_empty_state_layout()
+        _register_empty_state_callbacks(app, url_prefix=url_prefix)
         return app
 
     recipe = RecipeState.load(Path(output_root.root))
+    schema = MeasurementSchema(output_root=Path(output_root.root))
     app.server.config[CFG_OUTPUT_ROOT] = output_root
     app.server.config[CFG_RECIPE_STATE] = recipe
+    app.server.config[CFG_MEASUREMENT_SCHEMA] = schema
 
-    app.layout = build_app_layout(output_root, recipe)
+    app.layout = build_app_layout(
+        output_root,
+        recipe,
+        url_prefix=url_prefix,
+        columns_provider=schema.columns_for,
+    )
     register_callbacks(app)
 
     logger.info(
@@ -95,6 +111,79 @@ def create_app(
         recipe.pipeline.name,
     )
     return app
+
+
+def _register_empty_state_callbacks(app: dash.Dash, *, url_prefix: str) -> None:
+    """Wire the hand-off banner: selection store -> banner; click -> bind.
+
+    Mirrors the results-viewer empty-state pattern. The clientside
+    callback POSTs to the shared ``/sandbox/api/viewer/output-root``
+    endpoint, which releases both viewer + analysis ToolSessions and
+    rebuilds them against the new ``viewer_state["output_root"]``. On
+    success the page navigates to ``url_prefix`` so the dispatcher
+    proxy resolves a freshly-built loaded analysis app.
+    """
+
+    @app.callback(
+        Output(analysis_ids.EMPTY_HANDOFF_BANNER, "style"),
+        Output(analysis_ids.EMPTY_HANDOFF_LABEL, "children"),
+        Output(analysis_ids.EMPTY_HANDOFF_OPEN_BUTTON, "disabled"),
+        Input(SHELL_SIDEBAR_SELECTION_STORE, "data"),
+    )
+    def _populate_handoff_banner(selection):
+        hidden = {"display": "none"}
+        visible = {
+            "display": "flex",
+            "alignItems": "center",
+            "gap": "0.5rem",
+            "marginTop": "1rem",
+            "padding": "0.5rem 0.75rem",
+            "background": COLOR_SURFACE,
+            "border": f"1px solid {COLOR_BLUE}",
+            "borderRadius": "6px",
+        }
+        if not selection or not isinstance(selection, dict):
+            return hidden, "(none)", True
+        path = selection.get("path") or ""
+        if not path:
+            return hidden, "(none)", True
+        caps = selection.get("capabilities") or {}
+        is_cli_output = bool(caps.get("is_cli_output"))
+        return visible, path, not is_cli_output
+
+    app.clientside_callback(
+        """
+        async function(n_clicks, selection) {
+            if (!n_clicks || !selection) {
+                return window.dash_clientside.no_update;
+            }
+            const path = selection.path;
+            if (!path) { return "No sidebar selection."; }
+            try {
+                const resp = await fetch(
+                    "/sandbox/api/viewer/output-root",
+                    {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify({path: path}),
+                    }
+                );
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) {
+                    return (data && data.error) || ("HTTP " + resp.status);
+                }
+                window.location.assign(__PHENO_ANALYSIS_PREFIX__);
+                return "";
+            } catch (err) {
+                return String(err);
+            }
+        }
+        """.replace("__PHENO_ANALYSIS_PREFIX__", repr(url_prefix)),
+        Output(analysis_ids.EMPTY_HANDOFF_ERROR, "children"),
+        Input(analysis_ids.EMPTY_HANDOFF_OPEN_BUTTON, "n_clicks"),
+        State(SHELL_SIDEBAR_SELECTION_STORE, "data"),
+        prevent_initial_call=True,
+    )
 
 
 __all__ = ["create_app"]

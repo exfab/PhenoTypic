@@ -83,3 +83,42 @@ class TestPipelinePostExecution:
         )
         df = pipe.apply_and_measure(sample_image)
         assert "Metadata_Strain" in df.columns
+
+    def test_measure_apply_post_false_skips_post(self, sample_image):
+        """measure(apply_post=False) returns the merged frame before post runs."""
+        sample_image.metadata["Condition"] = "WT_30C"
+        pipe = ImagePipeline(
+            meas=[MeasureShape()],
+            post=[ExpandMetadata(column="Condition", labels=["Strain", "Temp"], delimiter="_")],
+        )
+        df_clean = pipe.measure(sample_image, apply_post=False)
+        df_post = pipe.measure(sample_image)
+
+        # Post added the split columns; the clean frame is missing them.
+        assert "Metadata_Strain" not in df_clean.columns
+        assert "Metadata_Temp" not in df_clean.columns
+        assert "Metadata_Strain" in df_post.columns
+        assert "Metadata_Temp" in df_post.columns
+        # Original Condition column survives in both frames.
+        assert "Metadata_Condition" in df_clean.columns
+
+    def test_apply_and_measure_apply_post_false_skips_post(self, sample_image):
+        """apply_and_measure(apply_post=False) forwards the flag to measure()."""
+        sample_image.metadata["Condition"] = "WT_30C"
+        pipe = ImagePipeline(
+            ops=[OtsuDetector()],
+            meas=[MeasureShape()],
+            post=[ExpandMetadata(column="Condition", labels=["Strain", "Temp"], delimiter="_")],
+        )
+        df = pipe.apply_and_measure(sample_image, apply_post=False)
+        assert "Metadata_Strain" not in df.columns
+
+    def test_measure_apply_post_default_true(self, sample_image):
+        """Default measure() still applies post (no behavior change for callers)."""
+        sample_image.metadata["Condition"] = "WT_30C"
+        pipe = ImagePipeline(
+            meas=[MeasureShape()],
+            post=[ExpandMetadata(column="Condition", labels=["Strain", "Temp"], delimiter="_")],
+        )
+        df = pipe.measure(sample_image)
+        assert "Metadata_Strain" in df.columns

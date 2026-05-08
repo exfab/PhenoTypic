@@ -21,6 +21,7 @@ import polars as pl
 from dash import ALL, Input, Output, State, callback_context, html, no_update
 
 from phenotypic.gui._config import (
+    CFG_MEASUREMENT_SCHEMA,
     CFG_OUTPUT_ROOT,
     CFG_RECIPE_STATE,
     MEASUREMENTS_PARQUET,
@@ -69,8 +70,20 @@ def register_callbacks(app: "dash.Dash") -> None:
     - :data:`CFG_OUTPUT_ROOT` — the validated
       :class:`~phenotypic.gui.results_viewer._output_root.OutputRoot`.
     - :data:`CFG_RECIPE_STATE` — the loaded :class:`RecipeState`.
+    - :data:`CFG_MEASUREMENT_SCHEMA` — the
+      :class:`~phenotypic.gui.analysis._schema_cache.MeasurementSchema`
+      instance whose ``columns_for`` method is plumbed into every
+      ``build_section_stack`` rebuild so column-aware widgets stay in
+      sync with the on-disk measurements file.
     """
     server = app.server
+
+    def _columns_provider(source: str) -> list:
+        """Resolve a ColumnSource to columns from the live schema cache."""
+        schema = server.config.get(CFG_MEASUREMENT_SCHEMA)
+        if schema is None:
+            return []
+        return schema.columns_for(source)
 
     @app.callback(
         Output(ids.ANALYSIS_POST_STACK, "children"),
@@ -91,7 +104,10 @@ def register_callbacks(app: "dash.Dash") -> None:
         recipe.pipeline.set_post(post_dict)
         recipe.save()
         return (
-            build_section_stack(ids.ANALYSIS_POST_STACK, "post", recipe),
+            build_section_stack(
+                ids.ANALYSIS_POST_STACK, "post", recipe,
+                columns_provider=_columns_provider,
+            ),
             _pipeline_summary(recipe),
             recipe.last_json,
         )
@@ -115,7 +131,10 @@ def register_callbacks(app: "dash.Dash") -> None:
         recipe.pipeline.set_filters(filters_dict)
         recipe.save()
         return (
-            build_section_stack(ids.ANALYSIS_FILTER_STACK, "filter", recipe),
+            build_section_stack(
+                ids.ANALYSIS_FILTER_STACK, "filter", recipe,
+                columns_provider=_columns_provider,
+            ),
             _pipeline_summary(recipe),
             recipe.last_json,
         )
@@ -144,7 +163,7 @@ def register_callbacks(app: "dash.Dash") -> None:
         )
         model = recipe.pipeline.get_model()
         section = (
-            _build_model_section(model)
+            _build_model_section(model, columns_provider=_columns_provider)
             if model is not None
             else html.Span("No model configured.", style={"color": COLOR_MUTED})
         )
@@ -203,8 +222,84 @@ def register_callbacks(app: "dash.Dash") -> None:
         recipe.save()
 
         return (
-            build_section_stack(ids.ANALYSIS_POST_STACK, "post", recipe),
-            build_section_stack(ids.ANALYSIS_FILTER_STACK, "filter", recipe),
+            build_section_stack(
+                ids.ANALYSIS_POST_STACK, "post", recipe,
+                columns_provider=_columns_provider,
+            ),
+            build_section_stack(
+                ids.ANALYSIS_FILTER_STACK, "filter", recipe,
+                columns_provider=_columns_provider,
+            ),
+            _pipeline_summary(recipe),
+            recipe.last_json,
+        )
+
+    # ----- Per-section param edit ----- #
+    # One mega fan-in callback over every param-* widget kind (mirrors the
+    # builder's pattern). Only triggers whose ``prefix`` starts with
+    # ``"analysis-"`` are routed; other prefixes (e.g. the builder's
+    # node-uuid prefixes that may share the same widget types) fall
+    # through as no-ops.
+    @app.callback(
+        Output(ids.ANALYSIS_POST_STACK, "children", allow_duplicate=True),
+        Output(ids.ANALYSIS_FILTER_STACK, "children", allow_duplicate=True),
+        Output(ids.ANALYSIS_MODEL_SECTION, "children", allow_duplicate=True),
+        Output(ids.ANALYSIS_PIPELINE_HEADER, "children", allow_duplicate=True),
+        Output(ids.ANALYSIS_PIPELINE_STORE, "data", allow_duplicate=True),
+        Input({"type": "param-bool", "prefix": ALL, "name": ALL}, "value"),
+        Input({"type": "param-num", "prefix": ALL, "name": ALL}, "value"),
+        Input({"type": "param-str", "prefix": ALL, "name": ALL}, "value"),
+        Input({"type": "param-enum", "prefix": ALL, "name": ALL}, "value"),
+        Input({"type": "param-list", "prefix": ALL, "name": ALL}, "value"),
+        Input({"type": "param-tuple", "prefix": ALL, "name": ALL}, "value"),
+        Input({"type": "param-multi-tag", "prefix": ALL, "name": ALL}, "value"),
+        Input({"type": "param-multi-value", "prefix": ALL, "name": ALL}, "value"),
+        Input({"type": "param-column-scalar", "prefix": ALL, "name": ALL}, "value"),
+        Input({"type": "param-column-multi", "prefix": ALL, "name": ALL}, "value"),
+        Input({"type": "param-column-mode", "prefix": ALL, "name": ALL}, "value"),
+        prevent_initial_call=True,
+    )
+    def _on_param_edit(*_values: Any):
+        ctx = callback_context
+        if not ctx.triggered_id or not isinstance(ctx.triggered_id, dict):
+            return no_update, no_update, no_update, no_update, no_update
+        prefix = ctx.triggered_id.get("prefix", "")
+        if not isinstance(prefix, str) or not prefix.startswith("analysis-"):
+            return no_update, no_update, no_update, no_update, no_update
+
+        recipe = server.config[CFG_RECIPE_STATE]
+        applied, kind = _apply_param_edit(recipe, ctx)
+        if not applied:
+            return no_update, no_update, no_update, no_update, no_update
+
+        # Only rebuild the touched stack — the other two are unchanged
+        # so we send ``no_update`` and avoid wasted Dash component diffs.
+        post_out = no_update
+        filter_out = no_update
+        model_out: Any = no_update
+        if kind == "post":
+            post_out = build_section_stack(
+                ids.ANALYSIS_POST_STACK, "post", recipe,
+                columns_provider=_columns_provider,
+            )
+        elif kind == "filter":
+            filter_out = build_section_stack(
+                ids.ANALYSIS_FILTER_STACK, "filter", recipe,
+                columns_provider=_columns_provider,
+            )
+        elif kind == "model":
+            from phenotypic.gui.analysis._layout import _build_model_section
+
+            model = recipe.pipeline.get_model()
+            model_out = (
+                _build_model_section(model, columns_provider=_columns_provider)
+                if model is not None
+                else html.Span("No model configured.", style={"color": COLOR_MUTED})
+            )
+        return (
+            post_out,
+            filter_out,
+            model_out,
             _pipeline_summary(recipe),
             recipe.last_json,
         )
@@ -224,6 +319,166 @@ def register_callbacks(app: "dash.Dash") -> None:
                 "No model configured.", style={"color": "#c00"}
             )
         return _run_inline(recipe, Path(output_root.root))
+
+
+def _apply_param_edit(recipe: Any, ctx: Any) -> tuple[bool, str | None]:
+    """Resolve a triggered param widget back into a recipe mutation.
+
+    Decodes ``ctx.triggered_id["prefix"]`` (``"analysis-{kind}-{index}"``)
+    to find the section being edited, builds a new analyzer instance with
+    the updated kwarg, and persists via :meth:`RecipeState.save`.
+
+    For multi-union widgets the tag and value live in two separate
+    components; we read both via ``ctx.inputs`` and pack them as a tuple
+    that :func:`parse_widget_value` understands.
+
+    Returns:
+        ``(applied, kind)`` where ``applied`` is ``True`` only when the
+        edit was saved. ``kind`` is the section kind that changed
+        (``"post"`` / ``"filter"`` / ``"model"``) so the caller can
+        rebuild only the touched stack; ``None`` when nothing applied.
+    """
+    from phenotypic.gui._operation_registry import get_registry
+    from phenotypic.gui._param_forms import parse_widget_value
+
+    triggered = ctx.triggered_id
+    prefix = triggered.get("prefix", "")
+    name = triggered.get("name")
+    widget_type = triggered.get("type")
+    if not isinstance(prefix, str) or not isinstance(name, str):
+        return False, None
+
+    # ``analysis-{kind}-{index}``
+    parts = prefix.split("-", 2)
+    if len(parts) != 3 or parts[0] != "analysis":
+        return False, None
+    kind = parts[1]
+    try:
+        index = int(parts[2])
+    except ValueError:
+        return False, None
+
+    pipeline = recipe.pipeline
+    if kind == "post":
+        section_dict = pipeline.get_post()
+        items = list(section_dict.items())
+    elif kind == "filter":
+        section_dict = pipeline.get_filters()
+        items = list(section_dict.items())
+    elif kind == "model":
+        model = pipeline.get_model()
+        if model is None:
+            return False, None
+        section_dict = None
+        items = [(type(model).__name__, model)]
+        index = 0
+    else:
+        return False, None
+
+    if not (0 <= index < len(items)):
+        return False, None
+    section_key, current_instance = items[index]
+
+    info = get_registry().get(type(current_instance).__name__)
+    if info is None:
+        return False, None
+    p = info.parameters.get(name)
+    if p is None:
+        return False, None
+
+    # Multi-component widgets (multi-union, column-with-alt) spread state
+    # across two ids; pack both values so ``parse_widget_value`` can
+    # dispatch on the resulting tuple.
+    def _pair(type_a: str, type_b: str) -> tuple[Any, Any]:
+        return (
+            ctx.inputs.get(_pattern_input_key(name, prefix, type_a)),
+            ctx.inputs.get(_pattern_input_key(name, prefix, type_b)),
+        )
+
+    if widget_type in ("param-multi-tag", "param-multi-value"):
+        raw: Any = _pair("param-multi-tag", "param-multi-value")
+    elif (
+        widget_type in ("param-column-scalar", "param-column-mode")
+        and p.column_ref is not None
+        and p.column_ref.with_alt
+    ):
+        # Scalar column-with-alt only. ``param-column-multi`` is
+        # intentionally absent: v1 has no ``ColumnRefList | None`` param,
+        # and ``_column_or_alt_widget`` raises ``NotImplementedError`` for
+        # ``spec.multi=True``. Adding multi+alt requires updating both
+        # sites in lockstep.
+        raw = _pair("param-column-mode", "param-column-scalar")
+    else:
+        raw = ctx.triggered[0]["value"] if ctx.triggered else None
+
+    coerced = parse_widget_value(raw, p)
+
+    new_kwargs = {
+        k: v for k, v in vars(current_instance).items() if not k.startswith("_")
+    }
+    new_kwargs[name] = coerced
+
+    sig = _filter_kwargs_to_signature(type(current_instance), new_kwargs)
+    try:
+        new_instance = type(current_instance)(**sig)
+    except Exception:  # noqa: BLE001
+        logger.warning(
+            "Could not rebuild %s with new param %s=%r",
+            type(current_instance).__name__,
+            name,
+            coerced,
+            exc_info=True,
+        )
+        return False, None
+
+    if kind == "post":
+        section_dict[section_key] = new_instance  # type: ignore[index]
+        pipeline.set_post(section_dict)  # type: ignore[arg-type]
+    elif kind == "filter":
+        section_dict[section_key] = new_instance  # type: ignore[index]
+        pipeline.set_filters(section_dict)  # type: ignore[arg-type]
+    else:
+        pipeline.set_model(new_instance)
+
+    recipe.save()
+    return True, kind
+
+
+def _pattern_input_key(name: str, prefix: str, type_: str) -> str:
+    """Build a ``ctx.inputs`` lookup key for a Dash pattern-matching id.
+
+    Dash serializes pattern-matching ids as JSON objects with keys sorted
+    alphabetically — ``name``, ``prefix``, ``type`` — followed by the
+    ``.value`` property. Centralizing the format keeps the ordering
+    invariant in one place rather than scattered across f-strings.
+    """
+    return f'{{"name":"{name}","prefix":"{prefix}","type":"{type_}"}}.value'
+
+
+def _filter_kwargs_to_signature(cls: type, kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Return only ``kwargs`` entries that ``cls.__init__`` accepts.
+
+    Reuses :data:`SerializablePipeline._ANALYZER_INIT_ALIASES` so the
+    GUI's per-edit reconstruction follows the same name-mapping
+    (``n_jobs`` -> ``num_workers``) the JSON deserializer uses.
+    """
+    import inspect
+
+    from phenotypic._core._pipeline_parts._serializable_pipeline import (
+        SerializablePipeline,
+    )
+
+    sig = inspect.signature(cls.__init__)
+    accepted = {p for p in sig.parameters if p != "self"}
+    aliases = SerializablePipeline._ANALYZER_INIT_ALIASES
+
+    out: dict[str, Any] = {}
+    for k, v in kwargs.items():
+        if k in accepted:
+            out[k] = v
+        elif k in aliases and aliases[k] in accepted:
+            out[aliases[k]] = v
+    return out
 
 
 def _run_inline(recipe: Any, output_dir: Path) -> Any:

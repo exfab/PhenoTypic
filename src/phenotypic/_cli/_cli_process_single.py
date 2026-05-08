@@ -92,8 +92,10 @@ def process_single_image_core(
     if detect_mode != "gray":
         image.set_detect_mode(detect_mode)
 
-    # Execute pipeline
-    measurements = pipeline.apply_and_measure(image, inplace=True)
+    # Execute pipeline. apply_post=False keeps per-image parquets clean;
+    # post ops are applied once in aggregate_measurements() against the
+    # full master so master_measurements.{csv,parquet} stay post-free.
+    measurements = pipeline.apply_and_measure(image, inplace=True, apply_post=False)
 
     # Get image stem for output filenames
     image_stem = image_path.stem
@@ -149,8 +151,9 @@ def process_single_hdf_measure_core(
     image_cls = GridImage if image_type == "GridImage" else Image
     image = image_cls.load_hdf5(hdf_path)
 
-    # Measurement only — no apply / detection
-    measurements = pipeline.measure(image)
+    # Measurement only — no apply / detection. apply_post=False matches
+    # the forward path so HDF re-measure parquets are also post-free.
+    measurements = pipeline.measure(image, apply_post=False)
 
     # Save measurements parquet (overlay + HDF intentionally skipped)
     output_manager.save_measurements(measurements, dataset_name, hdf_path.stem)

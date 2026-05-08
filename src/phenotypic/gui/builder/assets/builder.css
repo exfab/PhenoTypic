@@ -7,25 +7,23 @@
  * Implements the design system documented in DESIGN.md:
  *   -- Primary palette (navy, blue, gold) for chrome
  *   -- Okabe-Ito reserved for data viz only
- *   -- DM Serif Display / DM Sans / DM Mono three-font stack
+ *   -- Single-family stack injected from gui/_design.py (currently Roboto;
+ *      semantic var(--font-display | --font-body | --font-mono) at call
+ *      sites makes the swap to a multi-family stack mechanical)
  *   -- 8pt spacing grid, navy-tinted shadows, generous radii
  */
 
 /* All shared design tokens (--font-*, --color-*, --oi-*, --text-*,
- * --sp-*, --radius-*, --shadow-*, --ease-*, --transition) are injected
- * at runtime by `phenotypic.gui._design.inject_design_tokens` so a
- * single Python module controls the entire GUI palette. Do NOT
+ * --font-size-*, --sp-*, --radius-*, --shadow-*, --ease-*, --transition)
+ * are injected at runtime by `phenotypic.gui._design.inject_design_tokens`
+ * so a single Python module controls the entire GUI palette. Do NOT
  * redeclare them here -- edit `gui/_design.py` instead.
  *
  * Builder-specific overrides live below: a semantic accent for the
- * point-picker mixin and an extra heading size used only by builder
- * canvas titles. */
+ * point-picker mixin. */
 :root {
     /* Semantic accents -- interactive ops (point-picker mixin) */
     --color-interactive: var(--oi-purple);
-
-    /* Builder-only heading size; shared scale stops at --text-xl. */
-    --text-2xl:  1.875rem;
 }
 
 /* ===========================================================================
@@ -39,7 +37,7 @@ body {
     line-height: 1.55;
 }
 
-/* Headings -- DM Serif Display for h1-h3, DM Sans 600 for h4-h6 */
+/* Headings -- display family (h1-h3) vs body family 600 (h4-h6) */
 h1, .h1, h2, .h2, h3, .h3 {
     font-family: var(--font-display);
     color: var(--color-heading);
@@ -69,7 +67,8 @@ code, pre, .text-monospace, .font-monospace {
     margin-bottom: var(--sp-3);
 }
 .pheno-app-header__logo {
-    height: 44px;
+    /* 2.25× the h1 line-height for prominent dashboard branding. */
+    height: 5.0625rem;
     width: auto;
     flex-shrink: 0;
 }
@@ -106,7 +105,7 @@ code, pre, .text-monospace, .font-monospace {
 }
 .card .card-body { padding: var(--sp-5) var(--sp-6); }
 
-/* Section headings inside cards (H6) -- DM Mono overlines */
+/* Section headings inside cards (H6) -- mono overlines */
 .card-body > h6:first-child,
 .card-body > .h6:first-child {
     text-transform: uppercase;
@@ -123,7 +122,7 @@ code, pre, .text-monospace, .font-monospace {
  * ``d-inline-flex``) shrink-wraps the pill to its contents. */
 .pheno-breadcrumb {
     font-family: var(--font-mono);
-    font-size: 1rem;
+    font-size: var(--font-size-body-lg);
     color: var(--color-muted);
     letter-spacing: 0.04em;
     background: rgba(220, 226, 235, 0.85);
@@ -135,7 +134,7 @@ code, pre, .text-monospace, .font-monospace {
     text-decoration: none;
     padding: 0 var(--sp-1);
     font-family: var(--font-mono);
-    font-size: 1rem;
+    font-size: var(--font-size-body-lg);
 }
 .pheno-breadcrumb .btn-link:hover {
     text-decoration: underline;
@@ -144,7 +143,7 @@ code, pre, .text-monospace, .font-monospace {
 .pheno-breadcrumb .fw-bold {
     color: var(--color-heading);
     font-weight: 600;
-    font-size: 1rem;
+    font-size: var(--font-size-body-lg);
 }
 
 /* ===========================================================================
@@ -461,7 +460,7 @@ code, pre, .text-monospace, .font-monospace {
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    font-size: 0.65rem;
+    font-size: var(--font-size-caption);
     padding: 0.2rem 0.55rem;
     border-radius: 9999px;
     border: 1px solid;
@@ -511,7 +510,7 @@ code, pre, .text-monospace, .font-monospace {
     justify-content: center;
     color: white;
     background: rgba(0, 0, 0, 0.5);
-    font-family: var(--font-sans, sans-serif);
+    font-family: var(--font-body);
     pointer-events: none;
     z-index: 5;
 }

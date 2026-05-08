@@ -7,6 +7,7 @@ from scipy.stats import permutation_test
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
+from phenotypic.tools_ import ColumnRef, ColumnRefList
 from phenotypic.tools_.measurement_info import EDGE_CORRECTION
 from .abc_ import SetAnalyzer
 
@@ -57,9 +58,9 @@ class EdgeCorrector(SetAnalyzer):
 
     def __init__(
             self,
-            on: str,
-            groupby: list[str],
-            time_label: str = "Metadata_Time",
+            on: ColumnRef,
+            groupby: ColumnRefList,
+            time_label: ColumnRef = "Metadata_Time",
             nrows: int = 8,
             ncols: int = 12,
             top_n: int = 3,

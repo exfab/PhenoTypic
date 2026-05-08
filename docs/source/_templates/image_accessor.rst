@@ -37,5 +37,4 @@
    :show-inheritance:
    :special-members: __getitem__, __setitem__, __len__, __call__
    :member-order: groupwise
-   :noindex:
 {% endif %}

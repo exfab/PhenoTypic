@@ -81,7 +81,7 @@ def test_orphan_capture_function_is_flagged(
         tmp_path,
         rows_md=(
             "| setup | Setup | desc | `_capture_setup` "
-            "| `gui_walkthrough/01_setup.md` | ✅ shipping |\n"
+            "| `gui/01_setup.md` | ✅ shipping |\n"
         ),
         capture_py=(
             "def _capture_setup(c, b): pass\n"
@@ -96,8 +96,8 @@ def test_orphan_capture_function_is_flagged(
     (screenshots / "setup").mkdir(parents=True)
     (screenshots / "setup" / "01.png").write_bytes(b"PNG")
     tutorials = tmp_path / "tutorials"
-    (tutorials / "gui_walkthrough").mkdir(parents=True)
-    (tutorials / "gui_walkthrough" / "01_setup.md").write_text("# Setup")
+    (tutorials / "gui").mkdir(parents=True)
+    (tutorials / "gui" / "01_setup.md").write_text("# Setup")
     _patch_paths(
         monkeypatch, validator,
         md=md, script=script,
@@ -118,7 +118,7 @@ def test_referenced_function_not_dispatched_is_flagged(
         tmp_path,
         rows_md=(
             "| setup | Setup | desc | `_capture_setup` "
-            "| `gui_walkthrough/01_setup.md` | ✅ shipping |\n"
+            "| `gui/01_setup.md` | ✅ shipping |\n"
         ),
         capture_py=(
             "def _capture_setup(c, b): pass\n"
@@ -130,8 +130,8 @@ def test_referenced_function_not_dispatched_is_flagged(
     (screenshots / "setup").mkdir(parents=True)
     (screenshots / "setup" / "01.png").write_bytes(b"PNG")
     tutorials = tmp_path / "tutorials"
-    (tutorials / "gui_walkthrough").mkdir(parents=True)
-    (tutorials / "gui_walkthrough" / "01_setup.md").write_text("# Setup")
+    (tutorials / "gui").mkdir(parents=True)
+    (tutorials / "gui" / "01_setup.md").write_text("# Setup")
     _patch_paths(
         monkeypatch, validator,
         md=md, script=script,
@@ -152,7 +152,7 @@ def test_shipping_row_with_empty_screenshot_folder_is_flagged(
         tmp_path,
         rows_md=(
             "| setup | Setup | desc | `_capture_setup` "
-            "| `gui_walkthrough/01_setup.md` | ✅ shipping |\n"
+            "| `gui/01_setup.md` | ✅ shipping |\n"
         ),
         capture_py=(
             "def _capture_setup(c, b): pass\n"
@@ -163,8 +163,8 @@ def test_shipping_row_with_empty_screenshot_folder_is_flagged(
     )
     screenshots = tmp_path / "shots"  # empty -- folder doesn't even exist
     tutorials = tmp_path / "tutorials"
-    (tutorials / "gui_walkthrough").mkdir(parents=True)
-    (tutorials / "gui_walkthrough" / "01_setup.md").write_text("# Setup")
+    (tutorials / "gui").mkdir(parents=True)
+    (tutorials / "gui" / "01_setup.md").write_text("# Setup")
     _patch_paths(
         monkeypatch, validator,
         md=md, script=script,
@@ -184,7 +184,7 @@ def test_shipping_row_with_missing_tutorial_is_flagged(
         tmp_path,
         rows_md=(
             "| setup | Setup | desc | `_capture_setup` "
-            "| `gui_walkthrough/missing.md` | ✅ shipping |\n"
+            "| `gui/missing.md` | ✅ shipping |\n"
         ),
         capture_py=(
             "def _capture_setup(c, b): pass\n"
@@ -197,7 +197,7 @@ def test_shipping_row_with_missing_tutorial_is_flagged(
     (screenshots / "setup").mkdir(parents=True)
     (screenshots / "setup" / "01.png").write_bytes(b"PNG")
     tutorials = tmp_path / "tutorials"
-    (tutorials / "gui_walkthrough").mkdir(parents=True)
+    (tutorials / "gui").mkdir(parents=True)
     # NB: no missing.md created
     _patch_paths(
         monkeypatch, validator,
@@ -219,7 +219,7 @@ def test_planned_row_skips_screenshot_and_tutorial_checks(
         tmp_path,
         rows_md=(
             "| future | Future | desc | `_capture_future` "
-            "| `gui_walkthrough/99_future.md` | 🔭 planned |\n"
+            "| `gui/99_future.md` | 🔭 planned |\n"
         ),
         capture_py=(
             "def _capture_future(c, b): pass\n"

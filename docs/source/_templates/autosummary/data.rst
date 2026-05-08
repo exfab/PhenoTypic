@@ -3,4 +3,3 @@
 .. currentmodule:: {{ module }}
 
 .. autodata:: {{ objname }}
-   :no-index:

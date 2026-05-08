@@ -24,7 +24,14 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
 from dash.development.base_component import Component
 
-from phenotypic.gui._design import COLOR_BG, COLOR_BLUE, COLOR_NAVY, COLOR_SURFACE
+from phenotypic.gui._design import (
+    COLOR_BG,
+    COLOR_BLUE,
+    COLOR_NAVY,
+    COLOR_SURFACE,
+    FONT_FAMILY_MONO,
+    FONT_SIZE_LABEL,
+)
 from phenotypic.gui.results_viewer import _ids as ids
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 
@@ -61,7 +68,12 @@ def _build_toolbar() -> Component:
     x_label = html.Span(
         "X axis",
         className="me-1",
-        style={"color": _NAVY, "fontWeight": 500, "fontSize": "0.85rem"},
+        style={
+            "color": _NAVY,
+            "fontWeight": 500,
+            "fontSize": FONT_SIZE_LABEL,
+            "whiteSpace": "nowrap",
+        },
     )
     x_dropdown = dcc.Dropdown(
         id=ids.COLONY_X_AXIS_DROPDOWN_ID,
@@ -74,7 +86,12 @@ def _build_toolbar() -> Component:
     y_label = html.Span(
         "Y axis",
         className="me-1",
-        style={"color": _NAVY, "fontWeight": 500, "fontSize": "0.85rem"},
+        style={
+            "color": _NAVY,
+            "fontWeight": 500,
+            "fontSize": FONT_SIZE_LABEL,
+            "whiteSpace": "nowrap",
+        },
     )
     y_dropdown = dcc.Dropdown(
         id=ids.COLONY_Y_AXIS_DROPDOWN_ID,
@@ -89,8 +106,8 @@ def _build_toolbar() -> Component:
         id=ids.COLONY_CROP_SIZE_INFO_ID,
         children="",
         style={
-            "fontFamily": "'DM Mono', monospace",
-            "fontSize": "0.75rem",
+            "fontFamily": FONT_FAMILY_MONO,
+            "fontSize": FONT_SIZE_LABEL,
             "color": _NAVY,
         },
     )
@@ -101,6 +118,12 @@ def _build_toolbar() -> Component:
         n_clicks=0,
         color="secondary",
         size="sm",
+        # `marginLeft: auto` right-aligns the button within its flex row
+        # in place of a dedicated spacer item. This survives wrapping —
+        # when the toolbar wraps onto multiple rows the auto margin
+        # still pushes refresh to the right end of whichever row it
+        # ends up on.
+        style={"marginLeft": "auto"},
     )
 
     tile_size_slider = html.Div(
@@ -108,7 +131,12 @@ def _build_toolbar() -> Component:
             html.Span(
                 "Tile size",
                 className="me-1",
-                style={"color": _NAVY, "fontWeight": 500, "fontSize": "0.85rem"},
+                style={
+                    "color": _NAVY,
+                    "fontWeight": 500,
+                    "fontSize": FONT_SIZE_LABEL,
+                    "whiteSpace": "nowrap",
+                },
             ),
             dcc.Slider(
                 id=ids.COLONY_TILE_SIZE_SLIDER_ID,
@@ -141,14 +169,20 @@ def _build_toolbar() -> Component:
             ),
             tile_size_slider,
             crop_size_info,
-            html.Div(style={"flex": "1 1 auto"}),  # spacer pushes refresh to the right
             refresh_button,
         ],
         id=ids.COLONY_TOOLBAR_ID,
         style={
             "display": "flex",
             "alignItems": "center",
-            "gap": "1rem",
+            # Wrap section blocks onto a new row when the viewport is too
+            # narrow to fit them all. The bar's background grows
+            # vertically because flex-wrap'd rows extend the container's
+            # block-axis size; rowGap keeps wrapped rows visually
+            # separated from the row above.
+            "flexWrap": "wrap",
+            "rowGap": "0.5rem",
+            "columnGap": "1rem",
             "padding": "0.75rem 1rem",
             "borderBottom": f"1px solid {_BLUE}22",
             "background": COLOR_SURFACE,

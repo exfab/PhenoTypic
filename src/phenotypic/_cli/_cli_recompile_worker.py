@@ -352,12 +352,11 @@ def _write_master_outputs_from_shards(
             "(CSV was saved)"
         )
 
-    # ``--recompile`` is one of the paths the user expects to refresh the
-    # curation seed alongside the master, so seed measurements here too.
-    from ._cli_output_manager import _seed_measurements
-
-    _seed_measurements(output_dir, master_df)
-
+    # Seeding ``measurements.{csv,parquet}``, persisting pipeline.json,
+    # emitting analysis, and per-feature splits all happen in
+    # ``_run_post_master_steps`` via ``finalize_post_master_outputs`` so
+    # the post-applied frame seeded into the GUI mirror matches the one
+    # fed to the analysis chain.
     return master_df
 
 
@@ -371,32 +370,26 @@ def _run_post_master_steps(
     from ._cli_chunk_writer import _run_analysis_plugins
     from ._cli_output_manager import (
         _load_pipeline_from_output_dir,
-        split_master_by_feature,
+        finalize_post_master_outputs,
     )
     from ._cli_utils import load_job_metadata
     from ._dashboard._generator import generate_dashboard
     from ._dashboard._manifest_builder import build_manifest
 
+    plugin_df: Any | None = merged_df
     if merged_df is not None:
+        # Single canonical post-master finalize: applies post to a copy of
+        # the clean master, seeds ``measurements.{csv,parquet}`` with the
+        # post-applied frame, persists ``pipeline.json``, emits analysis,
+        # and writes per-feature splits — same path the forward CLI takes.
+        # Reuse the returned post-applied frame for analysis-plugin
+        # dispatch so plugins see the same data the analysis chain and
+        # the GUI viewer see.
         pipeline = _load_pipeline_from_output_dir(output_dir)
-        if pipeline is not None:
-            # Re-emit analysis from the freshly recompiled master so a
-            # ``--recompile`` run refreshes ``analysis.{csv,parquet}`` in
-            # lock-step with ``measurements.{csv,parquet}``. No-op when
-            # the pipeline has no model configured.
-            from ._cli_output_manager import _emit_analysis_outputs
-
-            _emit_analysis_outputs(output_dir, merged_df, pipeline)
-
-            try:
-                split_master_by_feature(merged_df, output_dir, pipeline)
-            except Exception:
-                logger.warning(
-                    "Per-feature split failed during recompile", exc_info=True
-                )
+        plugin_df = finalize_post_master_outputs(output_dir, merged_df, pipeline)
 
     try:
-        _run_analysis_plugins(output_dir, progress_dir, merged_df)
+        _run_analysis_plugins(output_dir, progress_dir, plugin_df)
     except Exception:
         logger.warning(
             "Analysis plugin dispatch failed during recompile", exc_info=True

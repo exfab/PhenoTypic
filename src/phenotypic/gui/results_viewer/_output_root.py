@@ -19,12 +19,17 @@ import polars as pl
 
 from phenotypic.gui._config import (
     MASTER_MEASUREMENTS_PARQUET,
+    MEASUREMENTS_PARQUET,
     VIEWER_CACHE_DIRNAME,
 )
 
 logger = logging.getLogger(__name__)
 
 _MASTER_FILENAME = MASTER_MEASUREMENTS_PARQUET
+#: The post-applied mirror seeded by ``_seed_measurements``. Preferred
+#: over the master archive for the viewer's display frame because it
+#: reflects whatever ``PostMeasurement`` ops the user configured.
+_MIRROR_FILENAME = MEASUREMENTS_PARQUET
 _RESULTS_DIRNAME = "results"
 _OVERLAYS_DIRNAME = "overlays"
 _MEASUREMENTS_DIRNAME = "measurements"
@@ -104,8 +109,28 @@ class OutputRoot:
                 "before launching the results viewer."
             )
 
-        logger.info("Loading master measurements from %s", master_path)
-        master_df = pl.read_parquet(master_path)
+        # Prefer the post-applied mirror seeded by ``_seed_measurements``
+        # so filter sidebars, image picker, and column-value sets reflect
+        # whatever ``PostMeasurement`` ops the user configured. Master is
+        # the discovery sentinel and the archival source of truth, but a
+        # CLI run that adds/renames columns via post should be visible to
+        # the viewer. Falls back to master mid-run (when the chunk writer
+        # has produced master_measurements.parquet but finalize hasn't yet
+        # seeded measurements.parquet) and on legacy outputs from before
+        # the clean-master split.
+        mirror_path = root / _MIRROR_FILENAME
+        if mirror_path.is_file():
+            logger.info(
+                "Loading post-applied measurements mirror from %s", mirror_path
+            )
+            master_df = pl.read_parquet(mirror_path)
+        else:
+            logger.info(
+                "Mirror %s not found; loading clean master from %s",
+                mirror_path,
+                master_path,
+            )
+            master_df = pl.read_parquet(master_path)
 
         results_dir = root / _RESULTS_DIRNAME
         if not results_dir.is_dir():

@@ -50,7 +50,12 @@ from dash import (
 )
 
 from phenotypic.gui._config import CFG_FILTERED_STATE
-from phenotypic.gui._design import COLOR_MUTED, COLOR_NAVY
+from phenotypic.gui._design import (
+    COLOR_MUTED,
+    COLOR_NAVY,
+    FONT_FAMILY_MONO,
+    FONT_SIZE_LABEL,
+)
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
 from phenotypic.gui.results_viewer._filtered_state import (
     FilteredMeasurements,
@@ -288,13 +293,13 @@ def layout(idx: str, output_root: OutputRoot) -> Any:
         editable=False,
         style_table={"overflowX": "auto"},
         style_cell={
-            "fontFamily": "DM Mono, monospace",
-            "fontSize": "12px",
+            "fontFamily": FONT_FAMILY_MONO,
+            "fontSize": FONT_SIZE_LABEL,
             "padding": "4px 8px",
             "textAlign": "left",
         },
         style_header={
-            "fontFamily": "DM Mono, monospace",
+            "fontFamily": FONT_FAMILY_MONO,
             "fontWeight": "500",
             "textTransform": "uppercase",
             "letterSpacing": "0.08em",

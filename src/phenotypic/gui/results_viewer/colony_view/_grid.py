@@ -28,14 +28,21 @@ from typing import Any
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 import polars as pl
-from dash import html
+from dash import dcc, html
 from dash.development.base_component import Component
 from flask import current_app, has_app_context
 
 from phenotypic.gui._config import CFG_URL_PREFIX, MOUNT_HOME
-from phenotypic.gui._design import COLOR_NAVY
+from phenotypic.gui._design import (
+    COLOR_NAVY,
+    FONT_FAMILY_MONO,
+    FONT_SIZE_CAPTION,
+    FONT_SIZE_LABEL,
+)
 from phenotypic.gui.results_viewer._ids import (
     colony_cell_count_badge_id,
+    colony_cell_popover_body_id,
+    colony_cell_popover_data_id,
     colony_cell_remove_btn_id,
 )
 from phenotypic.gui.results_viewer._filtered_state import (
@@ -259,18 +266,31 @@ def _representative_per_cell(
     )
 
 
-def _build_axis_label(value: object, *, axis: str) -> Component:
-    """Render an X/Y axis header label for the corner row/column."""
+def _build_axis_label(value: object, *, axis: str, max_width_px: int) -> Component:
+    """Render an X/Y axis header label for the corner row/column.
+
+    ``max_width_px`` caps the label so long values wrap inside their grid
+    track instead of stretching the column (Y) or spilling past the cell
+    width (X). Combined with ``minWidth: 0`` and ``overflowWrap: anywhere``
+    so the wrap is robust against long unbroken tokens like dataset stems
+    (``Run_12-01_29_26``).
+    """
     return html.Div(
         _format_axis_value(value),
         className=f"colony-axis-label colony-axis-label--{axis}",
         style={
-            "fontFamily": "'DM Mono', monospace",
-            "fontSize": "0.75rem",
+            "fontFamily": FONT_FAMILY_MONO,
+            "fontSize": FONT_SIZE_LABEL,
             "color": COLOR_NAVY,
             "textAlign": "center",
             "alignSelf": "center",
             "padding": "0.25rem",
+            "maxWidth": f"{max_width_px}px",
+            "minWidth": 0,
+            "whiteSpace": "normal",
+            "wordBreak": "break-word",
+            "overflowWrap": "anywhere",
+            "lineHeight": "1.2",
         },
     )
 
@@ -287,7 +307,6 @@ def _build_cell(
     is_removed: bool,
     is_selected: bool,
     members: list[tuple[str, str, int]] | None = None,
-    removed_keys: set[tuple[str, int]] | None = None,
 ) -> Component:
     """Render the chrome + crop for a single grid cell.
 
@@ -416,14 +435,14 @@ def _build_cell(
             )
         )
         if members:
-            removed_lookup = removed_keys or set()
-            children.append(
+            children.extend(
                 _build_stack_popover(
                     target_id=badge_id,
+                    image_file=image_file,
+                    label=label,
                     members=members,
                     crop_size=max_size,
                     display_size=display_size,
-                    removed_keys=removed_lookup,
                 )
             )
 
@@ -441,17 +460,68 @@ def _build_cell(
 
 def _build_stack_popover(
     *,
-    target_id: dict[str, str],
+    target_id: Mapping[str, Any],
+    image_file: str,
+    label: int,
     members: list[tuple[str, str, int]],
     crop_size: int,
     display_size: int,
-    removed_keys: set[tuple[str, int]],
-) -> Component:
-    """Render the click-to-expand stack of crops for a multi-colony cell.
+) -> list[Component]:
+    """Render the click-to-expand stack popover with a deferred body.
 
-    Each member colony renders as a small ``<img>`` with its label visible
-    beneath. Removed colonies are dimmed. The popover anchors to the cell's
-    ``N=k`` badge button and toggles open on click.
+    The popover anchors to the cell's ``N=k`` badge and ships an empty
+    body plus a co-located ``dcc.Store`` carrying the cell's members and
+    sizes. The first time the badge is clicked, a pattern-matched
+    callback (see :func:`build_stack_popover_rows`) reads the store and
+    populates the body. The ``<img>`` elements never enter the DOM until
+    the user actually opens the stack — strictly stronger than native
+    ``loading="lazy"`` because there is nothing for the browser to fetch.
+
+    Returns a pair ``[popover, store]`` so the caller can splice both
+    siblings into the cell tree.
+    """
+    body_id = colony_cell_popover_body_id(image_file, label)
+    data_id = colony_cell_popover_data_id(image_file, label)
+    popover = dbc.Popover(
+        dbc.PopoverBody(
+            [],
+            id=body_id,
+            style={
+                "maxHeight": "60vh",
+                "overflowY": "auto",
+                "padding": "0.5rem",
+            },
+        ),
+        target=target_id,
+        trigger="legacy",
+        placement="right",
+        hide_arrow=False,
+        style={"zIndex": "1080"},
+    )
+    store = dcc.Store(
+        id=data_id,
+        data={
+            "members": [[im, ds, lbl] for im, ds, lbl in members],
+            "crop_size": int(crop_size),
+            "display_size": int(display_size),
+        },
+    )
+    return [popover, store]
+
+
+def build_stack_popover_rows(
+    members: list[tuple[str, str, int]],
+    *,
+    crop_size: int,
+    display_size: int,
+    removed_keys: set[tuple[str, int]],
+) -> list[Component]:
+    """Render the per-member rows that populate a stack popover body.
+
+    Called from a pattern-matched populate-on-click callback when the
+    user first opens a multi-colony cell's badge. Each member colony
+    renders as a small ``<img>`` with its label beneath; removed
+    colonies are dimmed.
     """
     rows: list[Component] = []
     prefix = _url_prefix()
@@ -463,13 +533,6 @@ def _build_stack_popover(
                 [
                     html.Img(
                         src=crop_url,
-                        # Defer the fetch until the popover scrolls into
-                        # view. With cells that aggregate hundreds of
-                        # colonies the alternative is a wave of /crops/
-                        # requests on initial page render -- the popover
-                        # is click-gated, so the user only ever opens
-                        # one at a time.
-                        loading="lazy",
                         style={
                             "width": f"{display_size}px",
                             "height": f"{display_size}px",
@@ -483,8 +546,8 @@ def _build_stack_popover(
                         f"label {label}"
                         + ("  (removed)" if is_removed else ""),
                         style={
-                            "fontFamily": "'DM Mono', monospace",
-                            "fontSize": "0.65rem",
+                            "fontFamily": FONT_FAMILY_MONO,
+                            "fontSize": FONT_SIZE_CAPTION,
                             "color": COLOR_NAVY,
                             "textAlign": "center",
                             "marginTop": "0.15rem",
@@ -494,21 +557,7 @@ def _build_stack_popover(
                 style={"marginBottom": "0.4rem"},
             )
         )
-    return dbc.Popover(
-        dbc.PopoverBody(
-            rows,
-            style={
-                "maxHeight": "60vh",
-                "overflowY": "auto",
-                "padding": "0.5rem",
-            },
-        ),
-        target=target_id,
-        trigger="legacy",
-        placement="right",
-        hide_arrow=False,
-        style={"zIndex": "1080"},
-    )
+    return rows
 
 
 def build_grid(
@@ -626,15 +675,21 @@ def build_grid(
     # mirrors the visible reading order (left-to-right within a row).
     children: list[Component] = []
 
+    # Y-label column gets the same width as a cell so long dataset stems
+    # wrap into multiple lines instead of widening the entire grid.
+    y_label_width = display_size
+
     # Empty top-left corner.
     children.append(html.Div(className="colony-grid-corner"))
     # X-axis header row.
     for x_value in x_values:
-        children.append(_build_axis_label(x_value, axis="x"))
+        children.append(_build_axis_label(x_value, axis="x", max_width_px=display_size))
 
     grid_order: list[tuple[str, int]] = []
     for y_value in y_values:
-        children.append(_build_axis_label(y_value, axis="y"))
+        children.append(
+            _build_axis_label(y_value, axis="y", max_width_px=y_label_width)
+        )
         for x_value in x_values:
             entry = cell_index.get((x_value, y_value))
             if entry is None:
@@ -677,7 +732,6 @@ def build_grid(
                     is_removed=key in removed_keys,
                     is_selected=key in selected_keys,
                     members=typed_members,
-                    removed_keys=removed_keys,
                 )
             )
 
@@ -687,7 +741,10 @@ def build_grid(
         className="colony-grid",
         style={
             "display": "grid",
-            "gridTemplateColumns": "auto " + " ".join([f"{display_size}px"] * len(x_values)),
+            "gridTemplateColumns": (
+                f"minmax(0, {y_label_width}px) "
+                + " ".join([f"{display_size}px"] * len(x_values))
+            ),
             "gridTemplateRows": (
                 "auto "
                 + " ".join([f"{display_size + _STACK_TAB_OFFSET}px"] * len(y_values))

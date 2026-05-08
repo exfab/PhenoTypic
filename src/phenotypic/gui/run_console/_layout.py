@@ -25,6 +25,8 @@ from typing import List
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
 
+from phenotypic.gui._config import MOUNT_HOME
+from phenotypic.gui._shared import SHARED_LOGO_PATH
 from phenotypic.gui.run_console import _ids as ids
 from phenotypic.gui.run_console._form import (
     build_form,
@@ -246,6 +248,7 @@ def build_run_console_layout(
     *,
     registry: RunRegistry,
     runner: LocalRunner | None = None,
+    url_prefix: str = MOUNT_HOME,
 ) -> html.Div:
     """Build the Run console layout.
 
@@ -263,12 +266,16 @@ def build_run_console_layout(
             (e.g. seeding "running now" state at first paint); the
             current callback layer reads the runner via
             ``app.server.config["pheno_runner"]`` instead.
+        url_prefix: Mount-point prefix used to resolve the dashboard
+            logo URL in the header. Defaults to ``MOUNT_HOME`` ("/")
+            for standalone launches; the hub passes ``MOUNT_RUN``.
 
     Returns:
         A :class:`dash.html.Div` ready to assign to ``app.layout``.
     """
     del runner  # currently unused; reserved for symmetry with builder layout
 
+    header = _header(url_prefix=url_prefix)
     form = build_form(sandbox)
     iframe_panel = _iframe_panel()
     log_section = _log_tail()
@@ -303,9 +310,24 @@ def build_run_console_layout(
     )
 
     return html.Div(
-        [_stores(), _toast(), modals, body],
+        [_stores(), _toast(), modals, header, body],
         id=ids.RC_ROOT,
         className="run-console-root",
+    )
+
+
+def _header(*, url_prefix: str) -> html.Div:
+    """Top-of-page header bar with dashboard logo and app title."""
+    return html.Div(
+        [
+            html.Img(
+                src=f"{url_prefix}{SHARED_LOGO_PATH}",
+                alt="PhenoTypic",
+                className="run-console-header__logo",
+            ),
+            html.H4("Run Console", className="run-console-header__title mb-0"),
+        ],
+        className="run-console-header",
     )
 
 

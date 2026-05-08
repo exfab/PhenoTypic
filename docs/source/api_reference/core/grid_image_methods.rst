@@ -110,6 +110,7 @@ algorithm. Detection results are cached for efficiency.
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
 
 Grid-Based Access
 -----------------

@@ -37,6 +37,8 @@ from phenotypic.gui._design import (
     COLOR_BLUE,
     COLOR_NAVY,
     COLOR_SURFACE,
+    FONT_FAMILY_MONO,
+    FONT_SIZE_CAPTION,
     OI_VERMILION,
 )
 from phenotypic.gui.results_viewer import _ids as ids
@@ -222,8 +224,8 @@ def _render_chip(label: str, *, matched: bool) -> Component:
         label,
         className="me-1 mb-1 d-inline-block",
         style={
-            "fontFamily": "'DM Mono', monospace",
-            "fontSize": "0.65rem",
+            "fontFamily": FONT_FAMILY_MONO,
+            "fontSize": FONT_SIZE_CAPTION,
             "padding": "0.15rem 0.5rem",
             "border": f"1px solid {border}",
             "background": bg,
@@ -261,7 +263,7 @@ def _render_paste_chips(matched: list[str], unmatched: list[str]) -> list[Compon
             html.Span(
                 f"… and {overflow} more",
                 className="me-1 mb-1 d-inline-block text-muted small",
-                style={"fontFamily": "'DM Mono', monospace"},
+                style={"fontFamily": FONT_FAMILY_MONO},
             )
         )
     return chips
