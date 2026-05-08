@@ -156,7 +156,7 @@ sufficient — no Enum needed. Examples: `FootprintShape`, `DetectMode`, `Execut
 Pair an Enum with a `Literal` alias only when both forms are used at boundary code
 (string-typed external input + enum-typed internal storage), and add an alignment test
 (`set(get_args(MyLiteral)) == {m.value for m in MyEnum}` — see
-`tests/unit/tools_/test_io_constants.py::test_image_type_literal_covers_base_and_grid_enum_values`).
+`tests/unit/tools_/test_io_constants.py::TestEnumLiteralAlignment::test_image_type_literal_covers_base_and_grid_enum_values`).
 When the Literal intentionally covers only a subset of the Enum's members (e.g.
 `ImageTypeName` exposes only `BASE` and `GRID`, not the internal-only `CROP`/`OBJECT`/
 `GRID_SECTION`), assert with `issubset` instead and document the partial coverage in

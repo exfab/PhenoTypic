@@ -16,9 +16,11 @@ from ._cli_recompile_slurm_scripts import (
     TASK_OVERLAY,
 )
 from phenotypic.tools_ import (
+    DIR_MEASUREMENTS,
     DIR_PROGRESS,
     DIR_RECOMPILE,
     DIR_RECOMPILE_STATUS,
+    DIR_RESULTS,
     MASTER_MEASUREMENTS_CSV,
     MASTER_MEASUREMENTS_PARQUET,
     JobMetadataKey,
@@ -208,11 +210,11 @@ def _dataset_name_from_measurement_path(output_dir: Path, path: Path) -> str:
     parts = relative.parts
     if (
         len(parts) >= 4
-        and parts[0] == "results"
-        and parts[2] == "measurements"
+        and parts[0] == DIR_RESULTS
+        and parts[2] == DIR_MEASUREMENTS
     ):
         return parts[1]
-    if path.parent.name == "measurements":
+    if path.parent.name == DIR_MEASUREMENTS:
         return path.parent.parent.name
     raise ValueError(
         f"Cannot derive dataset name from measurement path: {path}"
@@ -424,7 +426,6 @@ def _dataset_totals(
     """Count per-image measurement Parquets for manifest totals."""
     totals: dict[str, int] = {}
     for dataset_name in dataset_names:
-        from phenotypic.tools_ import DIR_RESULTS, DIR_MEASUREMENTS
         meas_dir = output_dir / DIR_RESULTS / dataset_name / DIR_MEASUREMENTS
         if not meas_dir.is_dir():
             totals[dataset_name] = 0

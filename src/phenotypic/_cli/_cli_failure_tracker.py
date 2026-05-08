@@ -17,6 +17,7 @@ from typing import Any, Dict, List
 
 from ._cli_file_locking import atomic_append, FileLockTimeout
 from phenotypic.tools_ import FAILURES_JSONL
+from phenotypic.tools_.typing_ import FailureSource
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ def append_failure(
     error_message: str,
     traceback: str = "",
     slurm_job_id: str = "",
-    failure_source: str = "python",
+    failure_source: FailureSource = "python",
 ) -> None:
     """
     Atomically append a structured failure record to ``failures.jsonl``.

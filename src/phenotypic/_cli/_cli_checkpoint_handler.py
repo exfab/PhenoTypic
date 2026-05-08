@@ -53,12 +53,12 @@ def main(output_dir: Path, checkpoint_type: str) -> None:
     try:
         with open(lock_path, "r") as fh:
             with file_lock(fh, timeout=1.0, shared=False):
-                if checkpoint_type == "manifest":
+                if checkpoint == "manifest":
                     _run_manifest(output_dir, progress_dir)
                 else:
                     _run_finalize(output_dir, progress_dir)
     except FileLockTimeout:
-        logger.info("Another task is handling %s -- skipping", checkpoint_type)
+        logger.info("Another task is handling %s -- skipping", checkpoint)
 
 
 # ---------------------------------------------------------------------------

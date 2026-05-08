@@ -20,7 +20,30 @@ Module layout
 * **Path helpers** — `progress_dir(output)`, `event_log_path(output)`,
   etc. Take a base ``output_dir: Path`` and return the canonical
   artifact path. Replace ``output_dir / "literal"`` constructions
-  scattered across the CLI.
+  scattered across the CLI. Two parameter conventions are used:
+
+    - **`output_dir: Path`** — the run output root (e.g. ``./out``).
+      Use these from any caller that has the run root in scope:
+      ``master_measurements_csv_path``, ``manifest_json_path``,
+      ``job_metadata_path``, ``pipeline_json_path``, ``task_status_path``,
+      ``logs_dir``, ``slurm_scripts_dir``, ``analysis_html_path``,
+      ``processing_report_html_path``, ``measurements_by_feature_dir``,
+      etc.
+    - **`progress_dir_: Path`** — the already-resolved progress dir
+      (i.e. ``output_dir / "progress"``). Used for helpers that produce
+      paths to *internal mid-run artifacts* the SLURM sentinel + chunk
+      writer hand around between each other:
+      ``analysis_full_parquet_path``, ``analysis_scatter_json_path``,
+      ``sentinel_resubmitted_path``, ``chunk_lock_path``, ``chunks_dir``,
+      ``chunk_parquet_path``, ``checkpoint_lock_path``, ``recompile_dir``,
+      ``recompile_status_dir``. The trailing underscore on the parameter
+      name disambiguates it from the ``progress_dir(output_dir)``
+      function.
+
+  When in doubt, prefer the ``output_dir``-rooted form — it composes
+  cleanly with ``progress_dir(output_dir)`` if you need the progress
+  directory separately. Helpers that take ``progress_dir_`` are noted
+  in their individual docstrings.
 * **Reader helpers** — `read_run_manifest`, `load_master_measurements`,
   `resolve_execution_mode` consolidate three high-frequency duplicates.
 * **JSON contract keys** (`JobMetadataKey`, `DashboardManifestKey`,
@@ -58,6 +81,9 @@ from .typing_ import (
 
 if TYPE_CHECKING:
     import polars as pl  # type: ignore[import-not-found]
+
+    from phenotypic._core._grid_image import GridImage as _GridImage
+    from phenotypic._core._image import Image as _Image
 
 logger = logging.getLogger(__name__)
 
@@ -555,8 +581,14 @@ def resolve_execution_mode(job_meta: Optional[dict]) -> ExecutionMode:
 
     Replaces a 5-site copy-paste of the
     ``job_meta.get("execution_mode", "local") if job_meta else "local"``
-    pattern. Garbage values (anything not in the Literal alias) collapse
-    to ``"local"`` rather than raising.
+    pattern.
+
+    **Silent coercion:** any value that isn't exactly ``"slurm"`` collapses
+    to ``"local"`` — including ``None`` (no metadata file), ``{}`` (no
+    key), garbage strings (e.g. ``"validate"``, ``""``), and the literal
+    ``None`` value. The function never raises. Callers who need to detect
+    an unknown mode and warn / refuse should inspect ``job_meta`` directly
+    before calling this helper.
 
     Args:
         job_meta: Parsed ``progress/job_metadata.json`` content, or
@@ -712,7 +744,7 @@ def load_image_from_hdf(
     hdf_path: Path,
     *,
     fallback: ImageTypeName = "Image",
-):
+) -> "_Image | _GridImage":
     """Open an HDF5, read its ``phenotypic_class`` attr, dispatch to the right Image class.
 
     Replaces the 3 ad-hoc ``h5py.File(...) → fh.attrs.get('phenotypic_class', 'Image')
@@ -723,8 +755,10 @@ def load_image_from_hdf(
     Args:
         hdf_path: Path to a per-image HDF5 file.
         fallback: Image class name to use when the HDF lacks the
-            ``phenotypic_class`` attribute (legacy files). Validated
-            against :data:`ImageTypeName`.
+            ``phenotypic_class`` attribute (legacy files). Type-checked
+            (statically) against :data:`ImageTypeName` — there is no
+            runtime validation; the only effect of an unrecognized
+            string is that the dispatch falls through to :class:`Image`.
 
     Returns:
         An :class:`Image` or :class:`GridImage` instance loaded from the HDF.

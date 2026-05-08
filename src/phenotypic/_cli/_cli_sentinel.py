@@ -22,7 +22,13 @@ from pathlib import Path
 import click
 
 from ._dashboard import build_manifest
-from phenotypic.tools_ import JOB_METADATA_JSON, MANIFEST_JSON, JobMetadataKey, sentinel_resubmitted_path
+from phenotypic.tools_ import (
+    JOB_METADATA_JSON,
+    MANIFEST_JSON,
+    DashboardManifestKey,
+    JobMetadataKey,
+    sentinel_resubmitted_path,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +141,7 @@ def sentinel_main(
         if manifest_path.exists():
             with open(manifest_path, encoding="utf-8") as fh:
                 manifest = json.load(fh)
-            is_complete = manifest.get("is_complete", False)
+            is_complete = manifest.get(DashboardManifestKey.IS_COMPLETE, False)
 
         if is_complete:
             logger.info("All tasks complete — aggregating measurements.")

@@ -91,12 +91,30 @@ class TestEnumLiteralAlignment:
             f"literal has {literal_values}, enum has {enum_values}"
         )
 
-    def test_image_type_literal_does_not_admit_unknown_values(self) -> None:
-        """ImageTypeName must not silently accept arbitrary strings."""
+    def test_image_type_literal_get_args_returns_only_image_and_gridimage(self) -> None:
+        """``get_args(ImageTypeName)`` returns the documented two-tuple.
+
+        Note: ``Literal`` aliases are erased at runtime — there is no actual
+        runtime rejection of arbitrary strings. This test asserts the
+        introspectable contract (what type-checkers see), not runtime
+        validation.
+        """
         literal_values = set(get_args(ImageTypeName))
-        assert "Image" in literal_values
-        assert "GridImage" in literal_values
-        assert "GibberishType" not in literal_values
+        assert literal_values == {"Image", "GridImage"}
+
+    def test_image_type_literal_subset_of_enum_guards_widening(self) -> None:
+        """Catches accidental Literal widening (e.g. someone adding ``"Crop"``
+        to ``ImageTypeName`` without a matching ``IMAGE_TYPES`` entry).
+
+        Pairs with :meth:`test_image_type_literal_covers_base_and_grid_enum_values`
+        which guards the other direction (Enum-value rename).
+        """
+        literal_values = set(get_args(ImageTypeName))
+        enum_values = {m.value for m in IMAGE_TYPES}
+        assert literal_values.issubset(enum_values), (
+            f"ImageTypeName has values not in IMAGE_TYPES enum — "
+            f"literal extra: {literal_values - enum_values}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -253,6 +271,54 @@ class TestPathHelpers:
             output / "progress" / "recompile" / "status" / "task_3.json"
         )
 
+    def test_progress_rooted_helpers(self) -> None:
+        """Helpers that take ``progress_dir_`` (not ``output_dir``)."""
+        from phenotypic.tools_ import (
+            analysis_full_parquet_path,
+            analysis_scatter_json_path,
+            checkpoint_lock_path,
+            chunk_lock_path,
+            chunk_parquet_path,
+            chunks_dir,
+            recompile_dir,
+            recompile_status_dir,
+            sentinel_resubmitted_path,
+        )
+
+        progress = Path("/tmp/run/progress")
+        assert chunks_dir(progress) == progress / "chunks"
+        assert recompile_dir(progress) == progress / "recompile"
+        assert recompile_status_dir(progress) == progress / "recompile" / "status"
+        assert chunk_parquet_path(progress, 5) == progress / "chunks" / "chunk_005.parquet"
+        assert checkpoint_lock_path(progress, "manifest") == progress / ".manifest_lock"
+        assert checkpoint_lock_path(progress, "finalize") == progress / ".finalize_lock"
+        assert chunk_lock_path(progress) == progress / ".chunk_lock"
+        assert analysis_full_parquet_path(progress) == progress / "analysis_full.parquet"
+        assert analysis_scatter_json_path(progress) == progress / "analysis_scatter.json"
+        assert sentinel_resubmitted_path(progress) == progress / "sentinel_resubmitted"
+
+    def test_output_rooted_helpers(self, output: Path) -> None:
+        """Helpers that take ``output_dir`` (the run root)."""
+        from phenotypic.tools_ import (
+            analysis_html_path,
+            chunk_manifest_path,
+            chunk_state_path,
+            failures_jsonl_path,
+            logs_dir,
+            overlay_manifest_path,
+            processing_report_html_path,
+            slurm_scripts_dir,
+        )
+
+        assert logs_dir(output) == output / "logs"
+        assert slurm_scripts_dir(output) == output / "slurm_scripts"
+        assert analysis_html_path(output) == output / "analysis.html"
+        assert processing_report_html_path(output) == output / "processing_report.html"
+        assert failures_jsonl_path(output) == output / "progress" / "failures.jsonl"
+        assert chunk_manifest_path(output) == output / "progress" / "chunk_manifest.json"
+        assert chunk_state_path(output) == output / "progress" / "chunk_state.json"
+        assert overlay_manifest_path(output) == output / "progress" / "overlay_manifest.json"
+
 
 # ---------------------------------------------------------------------------
 # JSON contract key namespace classes
@@ -268,10 +334,37 @@ class TestJsonContractKeys:
         assert JobMetadataKey.SLURM_JOB_IDS == "slurm_job_ids"
         assert JobMetadataKey.CHUNK_JOB_IDS == "chunk_job_ids"
         assert JobMetadataKey.CHUNK_SCRIPTS == "chunk_scripts"
+        assert JobMetadataKey.DATASETS == "datasets"
+        assert JobMetadataKey.INCLUDE_DATASET_COLUMN == "include_dataset_column"
+        assert JobMetadataKey.IMAGE_TASK_MAPPING == "image_task_mapping"
 
     def test_dashboard_manifest_keys(self) -> None:
-        assert DashboardManifestKey.FAILED == "failed"
+        assert DashboardManifestKey.VERSION == "version"
+        assert DashboardManifestKey.LAST_UPDATED == "last_updated"
         assert DashboardManifestKey.EXECUTION_MODE == "execution_mode"
+        assert DashboardManifestKey.TOTAL_IMAGES == "total_images"
+        assert DashboardManifestKey.COMPLETED == "completed"
+        assert DashboardManifestKey.FAILED == "failed"
+        assert DashboardManifestKey.STARTED == "started"
+        assert DashboardManifestKey.PENDING == "pending"
+        assert DashboardManifestKey.SUCCESS_RATE == "success_rate"
+        assert DashboardManifestKey.IS_COMPLETE == "is_complete"
+        assert DashboardManifestKey.START_TIME == "start_time"
+        assert DashboardManifestKey.INPUT_PATH == "input_path"
+        assert DashboardManifestKey.DATASETS == "datasets"
+        assert DashboardManifestKey.FAILURE_CATEGORIES == "failure_categories"
+        assert DashboardManifestKey.ANALYSIS_DATA_VERSION == "analysis_data_version"
+        assert DashboardManifestKey.SLURM_INFO == "slurm_info"
+
+    def test_dashboard_manifest_slurm_info_keys(self) -> None:
+        from phenotypic.tools_ import DashboardManifestSlurmInfoKey
+
+        assert DashboardManifestSlurmInfoKey.CHUNK_SCRIPTS == "chunk_scripts"
+        assert DashboardManifestSlurmInfoKey.TOTAL_CHUNKS == "total_chunks"
+        assert DashboardManifestSlurmInfoKey.CHUNK_JOB_IDS == "chunk_job_ids"
+        assert DashboardManifestSlurmInfoKey.ACTIVE_CHUNKS == "active_chunks"
+        assert DashboardManifestSlurmInfoKey.COMPLETED_CHUNKS == "completed_chunks"
+        assert DashboardManifestSlurmInfoKey.PENDING_CHUNKS == "pending_chunks"
 
     def test_chunk_state_keys(self) -> None:
         assert ChunkStateKey.CHUNKED_FILES == "chunked_files"
@@ -310,6 +403,8 @@ class TestEnvVarConstants:
         assert EnvVar.SLURM_ARRAY_JOB_ID == "SLURM_ARRAY_JOB_ID"
         assert EnvVar.SLURM_ARRAY_TASK_ID == "SLURM_ARRAY_TASK_ID"
         assert EnvVar.SLURM_ARRAY_TASK_COUNT == "SLURM_ARRAY_TASK_COUNT"
+        assert EnvVar.SLURM_CPUS_PER_TASK == "SLURM_CPUS_PER_TASK"
+        assert EnvVar.SLURM_MEM_PER_NODE == "SLURM_MEM_PER_NODE"
 
 
 # ---------------------------------------------------------------------------
