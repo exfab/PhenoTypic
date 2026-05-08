@@ -95,7 +95,8 @@ def test_analysis_mount_renders_empty_state(page: Page, hub_url: str) -> None:
     page.wait_for_selector("#analysis-page", timeout=10_000)
     expect(page.locator("#analysis-page")).to_be_visible()
     text = page.locator("#analysis-page").text_content() or ""
-    assert "Select a CLI output" in text
+    assert "No output selected" in text
+    assert "Pick a CLI output directory" in text
 
 
 def test_analysis_tab_in_top_bar(page: Page, hub_url: str) -> None:
