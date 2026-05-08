@@ -4,4 +4,3 @@ phenotypic.tools\_.exceptions\_.InvalidHsvSchemaError
 .. currentmodule:: phenotypic.tools_.exceptions_
 
 .. autoexception:: InvalidHsvSchemaError
-   :no-index:

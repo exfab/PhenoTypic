@@ -4,4 +4,3 @@ phenotypic.tools\_.slurm.validate\_array\_chunk
 .. currentmodule:: phenotypic.tools_.slurm
 
 .. autofunction:: validate_array_chunk
-   :no-index:

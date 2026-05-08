@@ -4,6 +4,7 @@ Visualization & Plotting
 .. currentmodule:: phenotypic
 
 .. autoproperty:: Image.plot
+   :no-index:
 
 The ``plot`` property provides quality-of-life visualizations for pipeline development,
 specifically designed for colony detection parameter tuning on arrayed microbe cultures

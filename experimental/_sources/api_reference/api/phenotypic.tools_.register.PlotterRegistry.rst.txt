@@ -8,8 +8,7 @@ phenotypic.tools\_.register.PlotterRegistry
    :undoc-members:
    :show-inheritance:
    :member-order: bysource
-   :no-index:
-   
+
    
    
    .. rubric:: Methods

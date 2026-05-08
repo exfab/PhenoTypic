@@ -8,8 +8,7 @@ phenotypic.detect.RankOtsuDetector
    :undoc-members:
    :show-inheritance:
    :member-order: bysource
-   :no-index:
-   
+
    
    
    .. rubric:: Methods

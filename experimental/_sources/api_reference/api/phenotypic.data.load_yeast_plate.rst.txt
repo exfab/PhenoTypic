@@ -4,4 +4,3 @@ phenotypic.data.load\_yeast\_plate
 .. currentmodule:: phenotypic.data
 
 .. autofunction:: load_yeast_plate
-   :no-index:

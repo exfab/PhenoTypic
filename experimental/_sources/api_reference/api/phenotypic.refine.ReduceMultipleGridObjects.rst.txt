@@ -8,8 +8,7 @@ phenotypic.refine.ReduceMultipleGridObjects
    :undoc-members:
    :show-inheritance:
    :member-order: bysource
-   :no-index:
-   
+
    
    
    .. rubric:: Methods

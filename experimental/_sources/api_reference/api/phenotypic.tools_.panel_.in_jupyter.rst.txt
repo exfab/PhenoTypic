@@ -4,4 +4,3 @@ phenotypic.tools\_.panel\_.in\_jupyter
 .. currentmodule:: phenotypic.tools_.panel_
 
 .. autofunction:: in_jupyter
-   :no-index:

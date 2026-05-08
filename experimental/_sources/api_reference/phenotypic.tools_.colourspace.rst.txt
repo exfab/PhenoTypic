@@ -1,5 +1,5 @@
-phenotypic.tools\_.colourspaces\_
-===============================
+phenotypic.tools\_.colourspace module
+=====================================
 
 .. automodule:: phenotypic.tools_.colourspace
    :members:

@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=800a184d" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=7d76a7d2" />
   
   <!-- So that users can add custom icons -->
   <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -65,8 +65,8 @@
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/tutorials/index.html" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Tutorial 1: Your First Plate Image" href="notebooks/01_your_first_plate_image.html" />
-    <link rel="prev" title="Installation" href="../installation.html" />
+    <link rel="next" title="Getting Started" href="getting_started.html" />
+    <link rel="prev" title="PhenoTypic" href="../index.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="0.14.0b5" />
@@ -148,74 +148,88 @@
     <div class="me-auto navbar-header-items__center">
       
         <div class="navbar-item">
+
 <nav>
   <ul class="bd-navbar-elements navbar-nav">
+
     
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../installation.html">
-    Installation
-  </a>
-</li>
+    <li class="nav-item dropdown current active">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
 
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
 
-<li class="nav-item current active">
-  <a class="nav-link nav-internal" href="#">
-    Tutorials
-  </a>
-</li>
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
 
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../how_to/index.html">
-    How-To Guides
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../explanation/index.html">
-    Explanation
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../extending/index.html">
-    Extending PhenoTypic
-  </a>
-</li>
-
-            <li class="nav-item dropdown">
-                <button class="btn dropdown-toggle nav-item" type="button"
-                data-bs-toggle="dropdown" aria-expanded="false"
-                aria-controls="pst-nav-more-links">
-                    More
-                </button>
-                <ul id="pst-nav-more-links" class="dropdown-menu">
-                    
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="../api_reference/index.html">
-    API Reference
-  </a>
-</li>
-
-
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="../contrib_guide/index.html">
-    Developer Guide
-  </a>
-</li>
-
-
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="../downloads.html">
-    Downloads
-  </a>
-</li>
-
-                </ul>
-            </li>
-            
   </ul>
 </nav></div>
       
@@ -322,63 +336,87 @@
           
           
             <div class="navbar-item">
+
 <nav>
   <ul class="bd-navbar-elements navbar-nav">
+
     
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../installation.html">
-    Installation
-  </a>
-</li>
+    <li class="nav-item dropdown current active">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
 
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
 
-<li class="nav-item current active">
-  <a class="nav-link nav-internal" href="#">
-    Tutorials
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../how_to/index.html">
-    How-To Guides
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../explanation/index.html">
-    Explanation
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../extending/index.html">
-    Extending PhenoTypic
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../api_reference/index.html">
-    API Reference
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../contrib_guide/index.html">
-    Developer Guide
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../downloads.html">
-    Downloads
-  </a>
-</li>
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
 
   </ul>
 </nav></div>
@@ -443,18 +481,33 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Learning Path</span></p>
-<ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="notebooks/01_your_first_plate_image.html">Tutorial 1: Your First Plate Image</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notebooks/02_detecting_colonies.html">Tutorial 2: Detecting Colonies</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notebooks/03_enhancing_before_detection.html">Tutorial 3: Enhancing Before Detection</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notebooks/04_building_a_pipeline.html">Tutorial 4: Building a Pipeline</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notebooks/05_working_with_grid_plates.html">Tutorial 5: Working with Detected Grid Plates</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notebooks/06_batch_processing.html">Tutorial 6: Batch Processing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notebooks/07_measuring_and_exporting.html">Tutorial 7: Measuring and Exporting</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notebooks/08_using_prefab_pipelines.html">Tutorial 8: Using Prefab Pipelines</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notebooks/09_diagnosing_image_quality.html">Tutorial 9: Diagnosing Image Quality</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notebooks/10_detecting_filamentous_fungi.html">Tutorial 10: Detecting Filamentous Fungi</a></li>
+  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+
+<li class="toctree-l1 has-children"><a class="reference internal" href="python_api.html">Python API Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/01_your_first_plate_image.html">Tutorial 1: Your First Plate Image</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/02_detecting_colonies.html">Tutorial 2: Detecting Colonies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/03_enhancing_before_detection.html">Tutorial 3: Enhancing Before Detection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/04_building_a_pipeline.html">Tutorial 4: Building a Pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/05_working_with_grid_plates.html">Tutorial 5: Working with Detected Grid Plates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/06_batch_processing.html">Tutorial 6: Batch Processing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/07_measuring_and_exporting.html">Tutorial 7: Measuring and Exporting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/08_using_prefab_pipelines.html">Tutorial 8: Using Prefab Pipelines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/09_diagnosing_image_quality.html">Tutorial 9: Diagnosing Image Quality</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/10_detecting_filamentous_fungi.html">Tutorial 10: Detecting Filamentous Fungi</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="gui/index.html">GUI Walkthrough</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="gui/01_setup.html">Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gui/02_file_explorer.html">File Explorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gui/03_build_pipeline.html">Build a Pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gui/04_run_local.html">Run Locally</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gui/05_run_slurm.html">Run on SLURM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gui/06_view_results.html">View Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gui/07_pick_points.html">Pick Points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gui/08_analysis.html">Analysis sub-app</a></li>
+</ul>
+</details></li>
 </ul>
 </div>
 </nav></div>
@@ -514,24 +567,54 @@
                   
   <section id="tutorials">
 <h1>Tutorials<a class="headerlink" href="#tutorials" title="Link to this heading">#</a></h1>
-<p>Guided lessons that teach through doing. Each tutorial builds on the previous,
-forming a sequential learning path from loading your first plate image to
-detecting filamentous fungi.</p>
-<p>Every code cell is runnable against PhenoTypic’s bundled sample data.</p>
+<p>Whether you’re installing PhenoTypic for the first time, working through the
+notebook learning path, or taking a screenshot tour of the GUI hub, the
+tutorials are organized into three tracks. Pick the one that matches how you
+plan to use PhenoTypic.</p>
+<div class="sd-container-fluid sd-sphinx-override sd-mb-4 sd-pt-2 sd-pb-2 sd-pl-0 sd-pr-0 sd-text-center docutils">
+<div class="sd-row sd-row-cols-1 sd-row-cols-xs-1 sd-row-cols-sm-2 sd-row-cols-md-3 sd-row-cols-lg-3 sd-g-4 sd-g-xs-4 sd-g-sm-4 sd-g-md-4 sd-g-lg-4 docutils">
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-md intro-card docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Getting Started</div>
+<p class="sd-card-text">Install PhenoTypic, set up extras (<code class="docutils literal notranslate"><span class="pre">[gui]</span></code>, <code class="docutils literal notranslate"><span class="pre">[torch]</span></code>), verify your
+install, and launch the GUI hub for the first time.</p>
+</div>
+<div class="sd-card-footer docutils">
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary sd-stretched-link reference internal" href="getting_started.html"><span class="doc">Install &amp; launch</span></a></span></p>
+</div>
+</div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-md intro-card docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Python API</div>
+<p class="sd-card-text">Ten guided notebooks that take you from loading your first plate image
+to building grid-aware pipelines and detecting filamentous fungi.</p>
+</div>
+<div class="sd-card-footer docutils">
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary sd-stretched-link reference internal" href="python_api.html"><span class="doc">Start the learning path</span></a></span></p>
+</div>
+</div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-md intro-card docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+GUI</div>
+<p class="sd-card-text">A screenshot-driven walkthrough of the PhenoTypic hub — sandbox setup,
+pipeline builder, run console, results viewer, and analysis sub-app.</p>
+</div>
+<div class="sd-card-footer docutils">
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary sd-stretched-link reference internal" href="gui/index.html"><span class="doc">Tour the GUI</span></a></span></p>
+</div>
+</div>
+</div>
+</div>
+</div>
 <div class="toctree-wrapper compound">
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Learning Path</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="notebooks/01_your_first_plate_image.html">Tutorial 1: Your First Plate Image</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notebooks/02_detecting_colonies.html">Tutorial 2: Detecting Colonies</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notebooks/03_enhancing_before_detection.html">Tutorial 3: Enhancing Before Detection</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notebooks/04_building_a_pipeline.html">Tutorial 4: Building a Pipeline</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notebooks/05_working_with_grid_plates.html">Tutorial 5: Working with Detected Grid Plates</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notebooks/06_batch_processing.html">Tutorial 6: Batch Processing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notebooks/07_measuring_and_exporting.html">Tutorial 7: Measuring and Exporting</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notebooks/08_using_prefab_pipelines.html">Tutorial 8: Using Prefab Pipelines</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notebooks/09_diagnosing_image_quality.html">Tutorial 9: Diagnosing Image Quality</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notebooks/10_detecting_filamentous_fungi.html">Tutorial 10: Detecting Filamentous Fungi</a></li>
-</ul>
 </div>
 </section>
 

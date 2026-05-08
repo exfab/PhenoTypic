@@ -1,7 +1,15 @@
-phenotypic.util
-===============
+phenotypic.util package
+=======================
 
 .. automodule:: phenotypic.util
    :members:
    :undoc-members:
    :show-inheritance:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   phenotypic.util.image_metrics

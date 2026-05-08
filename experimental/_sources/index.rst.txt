@@ -136,7 +136,6 @@ started.
    :hidden:
    :titlesonly:
 
-   Installation <installation>
    tutorials/index
    how_to/index
    explanation/index

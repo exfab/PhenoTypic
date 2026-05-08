@@ -1,5 +1,5 @@
-phenotypic.analysis
-===================
+phenotypic.analysis package
+===========================
 
 .. automodule:: phenotypic.analysis
    :members:

@@ -1,5 +1,5 @@
-phenotypic.tools\_.hdf\_
-======================
+phenotypic.tools\_.hdf\_ module
+===============================
 
 .. automodule:: phenotypic.tools_.hdf_
    :members:

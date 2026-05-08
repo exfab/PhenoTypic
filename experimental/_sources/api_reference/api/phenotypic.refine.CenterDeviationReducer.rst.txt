@@ -8,8 +8,7 @@ phenotypic.refine.CenterDeviationReducer
    :undoc-members:
    :show-inheritance:
    :member-order: bysource
-   :no-index:
-   
+
    
    
    .. rubric:: Methods

@@ -4,4 +4,3 @@ phenotypic.tools\_.slurm.generate\_dispatcher\_script
 .. currentmodule:: phenotypic.tools_.slurm
 
 .. autofunction:: generate_dispatcher_script
-   :no-index:

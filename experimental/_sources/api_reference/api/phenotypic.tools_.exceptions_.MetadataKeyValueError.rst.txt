@@ -4,4 +4,3 @@ phenotypic.tools\_.exceptions\_.MetadataKeyValueError
 .. currentmodule:: phenotypic.tools_.exceptions_
 
 .. autoexception:: MetadataKeyValueError
-   :no-index:

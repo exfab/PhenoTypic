@@ -8,8 +8,7 @@ phenotypic.measure.MeasureColor
    :undoc-members:
    :show-inheritance:
    :member-order: bysource
-   :no-index:
-   
+
    
    
    .. rubric:: Methods

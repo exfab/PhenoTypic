@@ -4,4 +4,3 @@ phenotypic.data.load\_fungi\_plate
 .. currentmodule:: phenotypic.data
 
 .. autofunction:: load_fungi_plate
-   :no-index:

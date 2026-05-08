@@ -8,8 +8,7 @@ phenotypic.detect.ManualPointDetector
    :undoc-members:
    :show-inheritance:
    :member-order: bysource
-   :no-index:
-   
+
    
    
    .. rubric:: Methods

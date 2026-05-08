@@ -8,8 +8,7 @@ phenotypic.abc\_.FootprintMixin
    :undoc-members:
    :show-inheritance:
    :member-order: bysource
-   :no-index:
-   
+
    
    
    .. rubric:: Methods

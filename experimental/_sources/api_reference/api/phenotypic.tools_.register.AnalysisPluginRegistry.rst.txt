@@ -8,8 +8,7 @@ phenotypic.tools\_.register.AnalysisPluginRegistry
    :undoc-members:
    :show-inheritance:
    :member-order: bysource
-   :no-index:
-   
+
    
    
    .. rubric:: Methods

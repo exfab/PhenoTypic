@@ -8,8 +8,7 @@ phenotypic.enhance.ContrastStretching
    :undoc-members:
    :show-inheritance:
    :member-order: bysource
-   :no-index:
-   
+
    
    
    .. rubric:: Methods

@@ -8,8 +8,7 @@ phenotypic.abc\_.GridCorrector
    :undoc-members:
    :show-inheritance:
    :member-order: bysource
-   :no-index:
-   
+
    
    
    .. rubric:: Methods

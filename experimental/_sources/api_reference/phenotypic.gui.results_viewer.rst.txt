@@ -3,8 +3,8 @@ phenotypic.gui.results\_viewer package
 
 .. automodule:: phenotypic.gui.results_viewer
    :members:
-   :show-inheritance:
    :undoc-members:
+   :show-inheritance:
 
 Subpackages
 -----------

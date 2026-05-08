@@ -4,4 +4,3 @@ phenotypic.data.make\_synthetic\_filamentous\_plate
 .. currentmodule:: phenotypic.data
 
 .. autofunction:: make_synthetic_filamentous_plate
-   :no-index:

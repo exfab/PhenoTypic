@@ -130,6 +130,7 @@ Color Space Operations
 -----------------------
 
 .. autoproperty:: Image.color
+   :no-index:
 
 The ``color`` property provides unified access to multiple color space representations
 through the ColorAccessor interface. This groups together device-dependent (HSV) and
@@ -157,6 +158,7 @@ Visualization & Plotting
 ------------------------
 
 .. autoproperty:: Image.plot
+   :no-index:
 
 The ``plot`` property provides quality-of-life visualizations for pipeline development,
 specifically designed for colony detection parameter tuning on arrayed microbe cultures

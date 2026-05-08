@@ -8,8 +8,7 @@ phenotypic.tools\_.constants\_.PIPE\_STATUS
    :undoc-members:
    :show-inheritance:
    :member-order: bysource
-   :no-index:
-   
+
    
    
    .. rubric:: Methods

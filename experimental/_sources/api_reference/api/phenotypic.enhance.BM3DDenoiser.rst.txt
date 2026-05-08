@@ -8,8 +8,7 @@ phenotypic.enhance.BM3DDenoiser
    :undoc-members:
    :show-inheritance:
    :member-order: bysource
-   :no-index:
-   
+
    
    
    .. rubric:: Methods

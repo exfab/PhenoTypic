@@ -8,8 +8,7 @@ phenotypic.refine.MaskEroder
    :undoc-members:
    :show-inheritance:
    :member-order: bysource
-   :no-index:
-   
+
    
    
    .. rubric:: Methods

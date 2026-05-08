@@ -4,4 +4,3 @@ phenotypic.tools\_.slurm.estimate\_concurrent\_capacity
 .. currentmodule:: phenotypic.tools_.slurm
 
 .. autofunction:: estimate_concurrent_capacity
-   :no-index:

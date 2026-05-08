@@ -4,4 +4,3 @@ phenotypic.tools\_.slurm.parse\_job\_id
 .. currentmodule:: phenotypic.tools_.slurm
 
 .. autofunction:: parse_job_id
-   :no-index:

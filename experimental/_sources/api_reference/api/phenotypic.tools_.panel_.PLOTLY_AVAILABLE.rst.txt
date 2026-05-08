@@ -4,4 +4,3 @@ phenotypic.tools\_.panel\_.PLOTLY\_AVAILABLE
 .. currentmodule:: phenotypic.tools_.panel_
 
 .. autodata:: PLOTLY_AVAILABLE
-   :no-index:
