@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from ..abc_ import ImageCorrector
-from ..enhance._anscombe import gat_forward, gat_inverse
+from ..tools_._anscombe import gat_forward, gat_inverse
 
 
 class StableDenoise(ImageCorrector):

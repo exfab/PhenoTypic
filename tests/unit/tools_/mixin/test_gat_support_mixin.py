@@ -28,7 +28,7 @@ from phenotypic.enhance import (
     BM3DDenoiser,
     VisuShrinkEnhancer,
 )
-from phenotypic.enhance._anscombe import gat_forward, gat_inverse
+from phenotypic.tools_._anscombe import gat_forward, gat_inverse
 
 
 # -- Fixtures --------------------------------------------------------------

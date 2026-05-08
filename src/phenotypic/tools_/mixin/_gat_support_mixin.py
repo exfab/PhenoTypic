@@ -4,6 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Callable, ClassVar
 
+from phenotypic.tools_._anscombe import (
+    gat_forward,
+    gat_inverse,
+    resolve_scale_factor,
+)
+
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
@@ -105,14 +111,6 @@ class _GATSupportMixin:
         if not self.use_gat:
             fn(image)
             return
-
-        # Deferred import: avoids a circular load between
-        # phenotypic.enhance.__init__ and this mixin.
-        from phenotypic.enhance._anscombe import (
-            gat_forward,
-            gat_inverse,
-            resolve_scale_factor,
-        )
 
         scale = resolve_scale_factor(image, self.gat_scale_factor)
 
