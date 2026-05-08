@@ -1,0 +1,20 @@
+phenotypic.gui package
+======================
+
+.. automodule:: phenotypic.gui
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   phenotypic.gui.analysis
+   phenotypic.gui.builder
+   phenotypic.gui.results_viewer
+   phenotypic.gui.run_console
+   phenotypic.gui.shell
+   phenotypic.gui.sweep

@@ -1,0 +1,106 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# How To: Merge Fragmented Detections\n",
+    "\n",
+    "When a single colony is split into multiple objects (fragmentation),\n",
+    "use refiners to merge the fragments back together."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from phenotypic.data import load_yeast_plate\n",
+    "from phenotypic.enhance import GaussianBlur, CLAHE\n",
+    "from phenotypic.detect import OtsuDetector\n",
+    "from phenotypic.refine import NearestNeighborMerger, MaskFill, MaskCloser"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "plate = load_yeast_plate()\n",
+    "plate = GaussianBlur(sigma=2.0).apply(plate)\n",
+    "plate = CLAHE(clip_limit=0.01).apply(plate)\n",
+    "plate = OtsuDetector().apply(plate)\n",
+    "print(f\"Before merging: {plate.num_objects} objects\")\n",
+    "plate.dash(overlay=True)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Morphological Closing\n",
+    "\n",
+    "`MaskCloser` bridges small gaps between nearby fragments using dilation\n",
+    "followed by erosion."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "closed = MaskCloser(width=5).apply(plate.copy())\n",
+    "closed = MaskFill().apply(closed)\n",
+    "print(f\"After closing + fill: {closed.num_objects} objects\")\n",
+    "closed.dash(overlay=True)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Nearest-Neighbor Merging\n",
+    "\n",
+    "`NearestNeighborMerger` merges objects that are within a specified\n",
+    "distance of each other, assigning smaller fragments to their nearest\n",
+    "larger neighbor."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "merged = NearestNeighborMerger().apply(plate.copy())\n",
+    "print(f\"After NN merge: {merged.num_objects} objects\")\n",
+    "merged.dash(overlay=True)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Use `MaskCloser` for small gaps between fragments, and\n",
+    "`NearestNeighborMerger` when fragments are further apart but clearly\n",
+    "belong to the same colony."
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "name": "python",
+   "version": "3.11.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}

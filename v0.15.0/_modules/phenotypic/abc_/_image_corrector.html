@@ -1,0 +1,927 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.abc_._image_corrector &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=52d5597a"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/abc_/_image_corrector';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.15.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.15.0/_modules/phenotypic/abc_/_image_corrector.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.15.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.abc_._image_corrector</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.abc_._image_corrector</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">overload</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._image_operation</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageOperation</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+
+
+<div class="viewcode-block" id="ImageCorrector">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ImageCorrector">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ImageCorrector</span><span class="p">(</span><span class="n">ImageOperation</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract base class for whole-image transformation operations affecting all components.</span>
+
+<span class="sd">    ImageCorrector is a specialized subclass of ImageOperation for global image transformations</span>
+<span class="sd">    that modify **every image component together** (rgb, gray, detect_mat, objmask, objmap).</span>
+<span class="sd">    Unlike ImageEnhancer (modifies only detect_mat) or ObjectDetector/ObjectRefiner (modify only</span>
+<span class="sd">    detection results), an ImageCorrector transforms the entire image geometry or structure,</span>
+<span class="sd">    ensuring all components remain synchronized.</span>
+
+<span class="sd">    **Quick Decision Guide: Which Operation Type?**</span>
+
+<span class="sd">    - **ImageEnhancer:** Modify only ``image.detect_mat`` for preprocessing.</span>
+<span class="sd">      Use for: noise reduction, contrast enhancement, background subtraction.</span>
+<span class="sd">    - **ObjectDetector:** Analyze image, produce only ``objmask`` and ``objmap``.</span>
+<span class="sd">      Use for: colony/object detection and labeling.</span>
+<span class="sd">    - **ObjectRefiner:** Edit mask and map (filtering, merging, removing objects).</span>
+<span class="sd">      Use for: post-detection cleanup and refinement.</span>
+<span class="sd">    - **ImageCorrector (this class):** Transform entire image (rotation, resampling, perspective).</span>
+<span class="sd">      Use for: geometric corrections, coordinate system changes, alignment.</span>
+<span class="sd">      Example: [GridAligner](src/phenotypic/correction/_grid_aligner.py).</span>
+
+<span class="sd">    **What is ImageCorrector?**</span>
+
+<span class="sd">    ImageCorrector handles operations where it is impossible or meaningless to modify only a</span>
+<span class="sd">    single component. When you rotate, warp, or apply perspective transforms to an image, the</span>
+<span class="sd">    rgb and gray representations must change together, and any existing detection masks and</span>
+<span class="sd">    maps must be rotated identically. ImageCorrector guarantees this synchronization without</span>
+<span class="sd">    requiring manual alignment of separate components.</span>
+
+<span class="sd">    **Key Design Principle: No Integrity Checks**</span>
+
+<span class="sd">    Unlike ImageEnhancer and ObjectDetector, ImageCorrector uses **no @validate_operation_integrity</span>
+<span class="sd">    decorator**. This is by design: since all components must change together in a coordinated way,</span>
+<span class="sd">    there is nothing to &quot;protect&quot; or &quot;validate&quot;. The entire image is intentionally modified as a</span>
+<span class="sd">    unit. The absence of integrity checks reflects this design, not a security weakness.</span>
+
+<span class="sd">    **Typical Use Cases**</span>
+
+<span class="sd">    ImageCorrector is designed for operations that physically transform the image:</span>
+
+<span class="sd">    - **Rotation:** Align plate image with detected grid structure to make colony rows parallel to axes.</span>
+<span class="sd">    - **Perspective transformation:** Correct camera angle or lens distortion effects.</span>
+<span class="sd">    - **Image resampling:** Change resolution or interpolation method for downstream processing.</span>
+<span class="sd">    - **Global color correction:** Apply white balance or color space mapping to entire image.</span>
+<span class="sd">    - **Alignment:** Register image to reference coordinate system for grid-based analysis.</span>
+
+<span class="sd">    **When NOT to use ImageCorrector**</span>
+
+<span class="sd">    Do NOT use ImageCorrector for operations that affect only specific image aspects:</span>
+
+<span class="sd">    - **Don&#39;t use for:** Enhancing only ``detect_mat`` (preprocessing). Use ``ImageEnhancer`` instead.</span>
+<span class="sd">    - **Don&#39;t use for:** Detecting colonies or objects. Use ``ObjectDetector`` instead.</span>
+<span class="sd">    - **Don&#39;t use for:** Filtering or editing detection results. Use ``ObjectRefiner`` instead.</span>
+<span class="sd">    - **Don&#39;t use for:** Local edits (e.g., removing a specific region). These typically require custom masking or ``ObjectRefiner``.</span>
+
+<span class="sd">    The key question: Are you transforming **the entire image geometry**, or only a specific aspect?</span>
+<span class="sd">    If only an aspect, use the specialized operation type (Enhancer, Detector, Refiner).</span>
+
+<span class="sd">    **Why ImageCorrector is Rare in Practice**</span>
+
+<span class="sd">    Most image processing operations are targeted to specific aspects of the image:</span>
+
+<span class="sd">    - Colony detection focuses on finding objects in image data.</span>
+<span class="sd">    - Post-detection cleanup focuses on refining the mask/map.</span>
+<span class="sd">    - Preprocessing focuses on making detection more robust.</span>
+
+<span class="sd">    Operations transforming the entire image structure are comparatively rare because:</span>
+
+<span class="sd">    - Plate images are typically already well-oriented from the scanner/camera.</span>
+<span class="sd">    - Most analysis works directly with image data as acquired (no rotation needed).</span>
+<span class="sd">    - Grid-based alignment is a specialized step, not routine preprocessing.</span>
+
+<span class="sd">    However, when needed, ImageCorrector provides the correct abstraction.</span>
+
+<span class="sd">    **Subclass References**</span>
+
+<span class="sd">    ImageCorrector implementations are rare. The canonical example is:</span>
+
+<span class="sd">    - [GridAligner](src/phenotypic/correction/_grid_aligner.py): Rotates entire GridImage to align</span>
+<span class="sd">      detected colonies with expected grid structure. Demonstrates synchronizing all components during transformation.</span>
+
+<span class="sd">    **How to Implement a Custom ImageCorrector**</span>
+
+<span class="sd">    Inherit from ImageCorrector and implement the ``_operate()`` instance method. Access</span>
+<span class="sd">    parameters via ``self`` attributes within the method body.</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        from phenotypic.abc_ import ImageCorrector</span>
+<span class="sd">        from phenotypic import Image</span>
+
+<span class="sd">        class MyRotator(ImageCorrector):</span>
+<span class="sd">            def __init__(self, angle: float):</span>
+<span class="sd">                super().__init__()</span>
+<span class="sd">                self.angle = angle  # Instance attribute, matched to _operate()</span>
+
+<span class="sd">            @staticmethod</span>
+<span class="sd">            def _operate(image: Image, angle: float) -&gt; Image:</span>
+<span class="sd">                # Rotate ALL image components together</span>
+<span class="sd">                image.rotate(angle_of_rotation=angle, mode=&#39;edge&#39;)</span>
+<span class="sd">                return image</span>
+
+<span class="sd">        # Usage</span>
+<span class="sd">        rotator = MyRotator(angle=5.0)</span>
+<span class="sd">        rotated_image = rotator.apply(image)</span>
+
+<span class="sd">    **Key Implementation Rules**</span>
+
+<span class="sd">    1. ``_operate()`` must be an **instance method** (access parameters via ``self``).</span>
+<span class="sd">    2. All parameters must be stored as instance attributes.</span>
+<span class="sd">    3. The method must transform **all components equally** (rgb, gray, detect_mat, objmask, objmap).</span>
+<span class="sd">    4. Never modify only one component—this breaks the &quot;whole-image transformation&quot; contract.</span>
+<span class="sd">    5. Use the Image class&#39;s helper methods (``image.rotate()``) whenever possible for consistency.</span>
+<span class="sd">    6. Always return the modified Image object after transformation.</span>
+
+<span class="sd">    **Parameter Matching Example**</span>
+
+<span class="sd">    When instance attributes don&#39;t match ``_operate()`` parameters, serialization and parallelization fail:</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        # CORRECT: attribute names match parameter names</span>
+<span class="sd">        class GoodRotator(ImageCorrector):</span>
+<span class="sd">            def __init__(self, angle: float):</span>
+<span class="sd">                super().__init__()</span>
+<span class="sd">                self.angle = angle  # Matches _operate() parameter</span>
+
+<span class="sd">            @staticmethod</span>
+<span class="sd">            def _operate(image: Image, angle: float) -&gt; Image:</span>
+<span class="sd">                image.rotate(angle_of_rotation=angle, mode=&#39;edge&#39;)</span>
+<span class="sd">                return image</span>
+
+<span class="sd">        # WRONG: attribute name doesn&#39;t match parameter name</span>
+<span class="sd">        class BadRotator(ImageCorrector):</span>
+<span class="sd">            def __init__(self, angle: float):</span>
+<span class="sd">                super().__init__()</span>
+<span class="sd">                self.rotation_angle = angle  # Mismatch!</span>
+
+<span class="sd">            @staticmethod</span>
+<span class="sd">            def _operate(image: Image, angle: float) -&gt; Image:  # Parameter is &#39;angle&#39;</span>
+<span class="sd">                # This will fail—no &#39;angle&#39; attribute on self</span>
+<span class="sd">                image.rotate(angle_of_rotation=angle, mode=&#39;edge&#39;)</span>
+<span class="sd">                return image</span>
+
+<span class="sd">    **Critical Implementation Detail: Updating All Components**</span>
+
+<span class="sd">    Your ``_operate()`` method must ensure **all image components are updated together**. When</span>
+<span class="sd">    any geometric transformation is applied, it must affect every component identically:</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        @staticmethod</span>
+<span class="sd">        def _operate(image: Image, angle: float) -&gt; Image:</span>
+<span class="sd">            # Rotate rgb and gray (color representation)</span>
+<span class="sd">            image.rotate(angle_of_rotation=angle, mode=&#39;edge&#39;)</span>
+
+<span class="sd">            # The following are automatically handled by image.rotate():</span>
+<span class="sd">            # - Rotate detect_mat (enhanced version for detection)</span>
+<span class="sd">            # - Rotate objmask and objmap (detection results)</span>
+<span class="sd">            # - Synchronize all caches and metadata</span>
+
+<span class="sd">            return image</span>
+
+<span class="sd">    **What happens if components get out of sync?**</span>
+
+<span class="sd">    If you accidentally rotate only ``image.rgb`` without rotating ``image.objmap``, downstream</span>
+<span class="sd">    analysis breaks because pixel coordinates no longer match object labels. The Image class&#39;s</span>
+<span class="sd">    helper methods protect against this by guaranteeing synchronized updates.</span>
+
+<span class="sd">    **Access image data through accessors** (never direct attributes):</span>
+
+<span class="sd">    When implementing custom transformations, always use the accessor interface:</span>
+
+<span class="sd">    - **Reading:** ``image.rgb[:]``, ``image.gray[:]``, ``image.detect_mat[:]``, ``image.objmask[:]``, ``image.objmap[:]``</span>
+<span class="sd">    - **Modifying:** ``image.rgb[:] = new_data``, ``image.objmap[:] = new_map``</span>
+
+<span class="sd">    The accessor interface ensures that:</span>
+
+<span class="sd">    - Caches are invalidated appropriately after modifications.</span>
+<span class="sd">    - Color space conversions remain synchronized with RGB data.</span>
+<span class="sd">    - Object detection results stay consistent with image geometry.</span>
+
+<span class="sd">    The Image class provides helper methods for common transformations:</span>
+
+<span class="sd">    - ``image.rotate(angle_of_rotation, mode=&#39;edge&#39;)`` - Rotates all components identically</span>
+<span class="sd">    - For custom transformations, apply the same operation to all components</span>
+<span class="sd">    - Always verify that helper methods exist before implementing custom transform code</span>
+
+<span class="sd">    **Pipeline Integration and Serialization**</span>
+
+<span class="sd">    ImageCorrector operations are fully serializable and can be included in ImagePipeline for</span>
+<span class="sd">    batch processing. The static method design enables distributed execution:</span>
+
+<span class="sd">    - **Automatic parameter passing:** Instance attributes are extracted when ``apply()`` is called.</span>
+<span class="sd">    - **Serialization:** Operations can be saved to JSON/YAML and reconstructed on worker processes.</span>
+<span class="sd">    - **Batch processing:** Use ``ImagePipeline.apply_and_measure()`` for automatic benchmarking.</span>
+<span class="sd">    - **Reproducibility:** Serialized pipelines document the exact transformations applied.</span>
+
+<span class="sd">    **Performance and Interpolation Considerations**</span>
+
+<span class="sd">    When rotating or resampling, use appropriate interpolation for each component:</span>
+
+<span class="sd">    - **Color data (rgb, gray):** Use smooth interpolation (order=1 bilinear or higher) to preserve color gradients and colony boundaries.</span>
+<span class="sd">    - **Detection data (objmask, objmap):** Use nearest-neighbor interpolation (order=0) to preserve discrete object identities and integer labels.</span>
+<span class="sd">    - **Detection matrix (detect_mat):** Use same interpolation as color data for consistency.</span>
+
+<span class="sd">    Example with explicit interpolation control:</span>
+
+<span class="sd">    &gt;&gt;&gt; from scipy.ndimage import rotate as ndimage_rotate</span>
+<span class="sd">    &gt;&gt;&gt; from skimage.transform import rotate as skimage_rotate</span>
+<span class="sd">    &gt;&gt;&gt; # For rgb/gray: use bilinear interpolation</span>
+<span class="sd">    &gt;&gt;&gt; rotated_rgb = skimage_rotate(image.rgb[:], angle=5.0, order=1, preserve_range=True)</span>
+<span class="sd">    &gt;&gt;&gt; # For objmap: use nearest-neighbor to preserve integer labels</span>
+<span class="sd">    &gt;&gt;&gt; rotated_objmap = ndimage_rotate(image.objmap[:], angle=5.0, order=0, reshape=False)</span>
+
+<span class="sd">    **Edge Handling During Transformation**</span>
+
+<span class="sd">    Transformations introduce edge artifacts; choose mode based on downstream analysis:</span>
+
+<span class="sd">    - **&#39;edge&#39; mode:** Replicas image border pixels (minimal artifacts, safest for colony detection).</span>
+<span class="sd">    - **&#39;constant&#39; mode:** Fills with constant value (usually 0 for dark edge, may create false boundaries).</span>
+<span class="sd">    - **&#39;reflect&#39; mode:** Reflects image at boundary (avoids abrupt discontinuities but changes image content).</span>
+
+<span class="sd">    **Common Pitfalls and Best Practices**</span>
+
+<span class="sd">    - **Pitfall:** Modifying only one component (e.g., rotating RGB but not objmap). Result: pixel coordinates become misaligned.</span>
+<span class="sd">    - **Best practice:** Use Image class helper methods (``image.rotate()``) which synchronize all components automatically.</span>
+<span class="sd">    - **Pitfall:** Using smooth interpolation for object maps. Result: object labels become non-integer, breaking downstream analysis.</span>
+<span class="sd">    - **Best practice:** Use order=0 (nearest-neighbor) for masks and maps to preserve discrete identities.</span>
+<span class="sd">    - **Pitfall:** Forgetting to handle edge artifacts. Result: false objects detected at image boundaries.</span>
+<span class="sd">    - **Best practice:** Choose &#39;edge&#39; mode for colony detection (minimal artifacts) or use image padding before transformation.</span>
+
+<span class="sd">    **Attributes**</span>
+
+<span class="sd">    - ImageCorrector has no public attributes; subclasses define operation-specific parameters as instance attributes.</span>
+<span class="sd">    - All subclass attributes must match ``_operate()`` method signature for parallelization support.</span>
+
+<span class="sd">    **Methods**</span>
+
+<span class="sd">    - ``apply(image, inplace=False)`` - Execute the correction (default: returns new image).</span>
+<span class="sd">    - ``_operate(image, **kwargs)`` - Abstract method you implement with transformation logic.</span>
+
+<span class="sd">    **Notes**</span>
+
+<span class="sd">    - **Instance method:** ``_operate()`` is an instance method; access parameters via ``self``.</span>
+<span class="sd">    - **Parameter matching:** All ``_operate()`` parameters (except ``image``) must exist as instance attributes.</span>
+<span class="sd">    - **No copy by default:** Operations return modified copies by default (inplace=False).</span>
+<span class="sd">    - **Coordinate system changes:** Downstream operations may need re-detection after transformation.</span>
+<span class="sd">    - **Grid alignment workflow:** [GridAligner](src/phenotypic/correction/_grid_aligner.py) is the canonical example.</span>
+
+<span class="sd">    **Examples**</span>
+
+<span class="sd">    Basic rotation operation:</span>
+
+<span class="sd">    &gt;&gt;&gt; from phenotypic.abc_ import ImageCorrector</span>
+<span class="sd">    &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; class SimpleRotator(ImageCorrector):</span>
+<span class="sd">    ...     def __init__(self, angle=5.0):</span>
+<span class="sd">    ...         super().__init__()</span>
+<span class="sd">    ...         self.angle = angle</span>
+<span class="sd">    ...     @staticmethod</span>
+<span class="sd">    ...     def _operate(image, angle):</span>
+<span class="sd">    ...         image.rotate(angle_of_rotation=angle, mode=&#39;edge&#39;)</span>
+<span class="sd">    ...         return image</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; image = load_synth_yeast_plate()</span>
+<span class="sd">    &gt;&gt;&gt; rotator = SimpleRotator(angle=5.0)</span>
+<span class="sd">    &gt;&gt;&gt; rotated = rotator.apply(image)</span>
+<span class="sd">    &gt;&gt;&gt; # All components rotated together: rgb, gray, detect_mat, objmask, objmap</span>
+<span class="sd">    &gt;&gt;&gt; rotated.shape == image.shape</span>
+<span class="sd">    False</span>
+
+<span class="sd">    Custom perspective correction (preserving component synchronization):</span>
+
+<span class="sd">    &gt;&gt;&gt; from phenotypic.abc_ import ImageCorrector</span>
+<span class="sd">    &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
+<span class="sd">    &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; class PerspectiveCorrector(ImageCorrector):</span>
+<span class="sd">    ...     def __init__(self, tilt_angle=10.0):</span>
+<span class="sd">    ...         super().__init__()</span>
+<span class="sd">    ...         self.tilt_angle = tilt_angle</span>
+<span class="sd">    ...     @staticmethod</span>
+<span class="sd">    ...     def _operate(image, tilt_angle):</span>
+<span class="sd">    ...         # Apply perspective transform to all components</span>
+<span class="sd">    ...         image.rotate(angle_of_rotation=tilt_angle, mode=&#39;edge&#39;)</span>
+<span class="sd">    ...         return image</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; image = load_synth_yeast_plate()</span>
+<span class="sd">    &gt;&gt;&gt; corrector = PerspectiveCorrector(tilt_angle=10.0)</span>
+<span class="sd">    &gt;&gt;&gt; corrected = corrector.apply(image)</span>
+<span class="sd">    &gt;&gt;&gt; # All components are transformed together, maintaining synchronization</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span> <span class="o">...</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span> <span class="o">...</span>
+
+<div class="viewcode-block" id="ImageCorrector.apply">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ImageCorrector.apply">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span></div>
+
+
+    <span class="nd">@overload</span>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span> <span class="o">...</span>
+
+    <span class="nd">@overload</span>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span> <span class="o">...</span>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">image</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

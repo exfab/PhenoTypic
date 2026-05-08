@@ -1,0 +1,27 @@
+phenotypic.refine.AsymmetricSpurTrimmer
+=======================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: AsymmetricSpurTrimmer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~AsymmetricSpurTrimmer.__init__
+      ~AsymmetricSpurTrimmer.apply
+      ~AsymmetricSpurTrimmer.widget
+   
+   
+
+   
+   
+   

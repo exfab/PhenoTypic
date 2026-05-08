@@ -1,0 +1,7 @@
+phenotypic.phenotypicCLI module
+===============================
+
+.. automodule:: phenotypic.phenotypicCLI
+   :members:
+   :undoc-members:
+   :show-inheritance:

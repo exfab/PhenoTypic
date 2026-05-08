@@ -1,0 +1,27 @@
+phenotypic.refine.GridAlignmentRefiner
+======================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: GridAlignmentRefiner
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GridAlignmentRefiner.__init__
+      ~GridAlignmentRefiner.apply
+      ~GridAlignmentRefiner.widget
+   
+   
+
+   
+   
+   

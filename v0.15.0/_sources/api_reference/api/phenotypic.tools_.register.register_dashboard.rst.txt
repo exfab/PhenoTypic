@@ -1,0 +1,6 @@
+phenotypic.tools\_.register.register\_dashboard
+===============================================
+
+.. currentmodule:: phenotypic.tools_.register
+
+.. autofunction:: register_dashboard

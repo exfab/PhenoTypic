@@ -1,0 +1,38 @@
+phenotypic.tools\_ package
+==========================
+
+.. automodule:: phenotypic.tools_
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   phenotypic.tools_.branch_pathfinding
+   phenotypic.tools_.measurement_info
+   phenotypic.tools_.mixin
+   phenotypic.tools_.napari_
+   phenotypic.tools_.register
+   phenotypic.tools_.slurm
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   phenotypic.tools_.colourspace
+   phenotypic.tools_.constants_
+   phenotypic.tools_.exceptions_
+   phenotypic.tools_.funcs_
+   phenotypic.tools_.generate_report
+   phenotypic.tools_.hdf_
+   phenotypic.tools_.monitor_slurm_jobs
+   phenotypic.tools_.panel_
+   phenotypic.tools_.slurm_
+   phenotypic.tools_.submitit_
+   phenotypic.tools_.typing_

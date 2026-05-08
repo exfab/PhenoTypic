@@ -1,0 +1,6 @@
+phenotypic.tools\_.analysis\_parquet\_path
+==========================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: analysis_parquet_path

@@ -1,0 +1,6 @@
+phenotypic.tools\_.chunk\_parquet\_path
+=======================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: chunk_parquet_path

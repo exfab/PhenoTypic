@@ -1,0 +1,7 @@
+phenotypic.tools\_.branch\_pathfinding package
+==============================================
+
+.. automodule:: phenotypic.tools_.branch_pathfinding
+   :members:
+   :undoc-members:
+   :show-inheritance:

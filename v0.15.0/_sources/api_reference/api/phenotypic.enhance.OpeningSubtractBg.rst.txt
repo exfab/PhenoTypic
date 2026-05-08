@@ -1,0 +1,27 @@
+phenotypic.enhance.OpeningSubtractBg
+====================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: OpeningSubtractBg
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~OpeningSubtractBg.__init__
+      ~OpeningSubtractBg.apply
+      ~OpeningSubtractBg.widget
+   
+   
+
+   
+   
+   

@@ -1,0 +1,27 @@
+phenotypic.detect.RoundPeaksDetector
+====================================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: RoundPeaksDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~RoundPeaksDetector.__init__
+      ~RoundPeaksDetector.apply
+      ~RoundPeaksDetector.widget
+   
+   
+
+   
+   
+   

@@ -1,0 +1,1107 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.detect._sine_peak_detector &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=52d5597a"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/detect/_sine_peak_detector';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.15.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.15.0/_modules/phenotypic/detect/_sine_peak_detector.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.15.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.detect._sine_peak_detector</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.detect._sine_peak_detector</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ndimage</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">gaussian_filter1d</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.signal</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_peaks</span><span class="p">,</span> <span class="n">fftconvolve</span><span class="p">,</span> <span class="n">medfilt</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">rankdata</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectDetector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridInferenceMixin</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">skimage.filters</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">filters</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">skimage.morphology</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">morphology</span>
+
+
+<div class="viewcode-block" id="SinePeakDetector">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.detect.html#phenotypic.detect.SinePeakDetector">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SinePeakDetector</span><span class="p">(</span><span class="n">GridInferenceMixin</span><span class="p">,</span> <span class="n">ObjectDetector</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect colonies on gridded plates using sinusoidal cross-correlation peak finding.</span>
+
+<span class="sd">    Generate a sinusoidal template matching the expected colony periodicity,</span>
+<span class="sd">    compute FFT-based rank (Spearman) cross-correlation against row and</span>
+<span class="sd">    column projection signals, and select peaks from the correlation output</span>
+<span class="sd">    to locate grid positions. Rank-based correlation is insensitive to</span>
+<span class="sd">    outlier colonies and monotonic intensity transformations, making this</span>
+<span class="sd">    more robust than direct peak finding on plates with heterogeneous</span>
+<span class="sd">    growth. For a full comparison see</span>
+<span class="sd">    :doc:`/explanation/detection_strategies_compared`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        thresh_method: Thresholding method for binary mask creation.</span>
+<span class="sd">            Accepted values: ``&#39;otsu&#39;``, ``&#39;mean&#39;``, ``&#39;local&#39;``,</span>
+<span class="sd">            ``&#39;triangle&#39;``, ``&#39;minimum&#39;``, ``&#39;isodata&#39;``, ``&#39;li&#39;``.</span>
+<span class="sd">            Default: ``&#39;otsu&#39;``.</span>
+
+<span class="sd">        subtract_background: Apply white tophat transform to remove</span>
+<span class="sd">            uneven illumination before thresholding. Default: True.</span>
+
+<span class="sd">        remove_noise: Apply morphological opening to remove small noise</span>
+<span class="sd">            artifacts from the binary mask. Default: True.</span>
+
+<span class="sd">        footprint_width: Width in pixels for the background subtraction</span>
+<span class="sd">            kernel. When a GridImage is provided, an adaptive kernel sized</span>
+<span class="sd">            to 1.5x colony spacing is used instead. Default: 6.</span>
+
+<span class="sd">        noise_radius: Radius of the diamond structuring element for</span>
+<span class="sd">            morphological noise removal. Default: 1.</span>
+
+<span class="sd">        smoothing_sigma: Standard deviation for Gaussian smoothing of</span>
+<span class="sd">            row/column intensity profiles before cross-correlation. Higher</span>
+<span class="sd">            values smooth noise but may merge adjacent peaks. Set to 0 to</span>
+<span class="sd">            disable. Default: 2.0.</span>
+
+<span class="sd">        min_peak_distance: Minimum pixel distance between detected peaks.</span>
+<span class="sd">            If ``None``, automatically estimated from grid dimensions.</span>
+<span class="sd">            Default: None.</span>
+
+<span class="sd">        peak_prominence: Minimum prominence for peak detection. If</span>
+<span class="sd">            ``None``, auto-calculated as 0.1 * signal range. Higher values</span>
+<span class="sd">            are more selective. Default: None.</span>
+
+<span class="sd">        edge_refinement: Refine grid edges using weighted local intensity</span>
+<span class="sd">            profiles for improved accuracy. Default: True.</span>
+
+<span class="sd">        correlation_threshold: Minimum normalised cross-correlation for a</span>
+<span class="sd">            peak to be valid. Lower values accept weaker matches; higher</span>
+<span class="sd">            values are more selective. Typical range: 0.1--0.5. Default:</span>
+<span class="sd">            0.3.</span>
+
+<span class="sd">        selection_mode: Strategy for choosing one object per grid cell.</span>
+<span class="sd">            ``&quot;dominant&quot;`` keeps the largest object by pixel count.</span>
+<span class="sd">            ``&quot;centered&quot;`` keeps the object closest to the cell centre.</span>
+<span class="sd">            ``&quot;regularized&quot;`` fits a global regular-grid model from median</span>
+<span class="sd">            centroids, then re-selects per cell. Default: ``&quot;dominant&quot;``.</span>
+
+<span class="sd">        split_merged: Pre-split merged colonies spanning multiple grid</span>
+<span class="sd">            cells using EDT watershed before grid assignment. Default:</span>
+<span class="sd">            True.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmask`` set to binary mask and</span>
+<span class="sd">        ``objmap`` set to labeled connected components.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If ``thresh_method`` is not one of the accepted</span>
+<span class="sd">            values.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        * Gridded plates (96-well, 384-well, pinned arrays) where colonies</span>
+<span class="sd">          are arranged in a regular periodic pattern.</span>
+<span class="sd">        * Plates with heterogeneous colony sizes or uneven growth where</span>
+<span class="sd">          rank-based correlation outperforms intensity-based peak finding.</span>
+<span class="sd">        * High-throughput batch processing of arrayed plates without</span>
+<span class="sd">          manual grid specification.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        * :class:`RoundPeaksDetector` for a simpler grid detector when</span>
+<span class="sd">          colony intensities are uniform and direct peak finding suffices.</span>
+<span class="sd">        * :class:`OtsuDetector` when colonies are not gridded and a global</span>
+<span class="sd">          threshold is appropriate.</span>
+<span class="sd">        * :class:`RankOtsuDetector` when spatial illumination variation is</span>
+<span class="sd">          the primary challenge rather than grid localisation.</span>
+
+<span class="sd">    References:</span>
+<span class="sd">        [1] O. Wagih and L. Parts, &quot;gitter: a robust and accurate method</span>
+<span class="sd">        for quantification of colony sizes from plate images,&quot;</span>
+<span class="sd">        *G3 (Bethesda)*, vol. 4, no. 3, pp. 547--552, 2014.</span>
+
+<span class="sd">    See Also:</span>
+<span class="sd">        :doc:`/tutorials/notebooks/02_detecting_colonies`</span>
+<span class="sd">            Step-by-step tutorial for basic colony detection.</span>
+<span class="sd">        :doc:`/how_to/notebooks/choose_detection_algorithm`</span>
+<span class="sd">            Guide for selecting the right detector for your plate images.</span>
+<span class="sd">        :doc:`/explanation/detection_strategies_compared`</span>
+<span class="sd">            In-depth comparison of all detection strategies.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SinePeakDetector.__init__">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.detect.html#phenotypic.detect.SinePeakDetector.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">thresh_method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span>
+                <span class="s2">&quot;otsu&quot;</span><span class="p">,</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">,</span> <span class="s2">&quot;triangle&quot;</span><span class="p">,</span> <span class="s2">&quot;minimum&quot;</span><span class="p">,</span> <span class="s2">&quot;isodata&quot;</span><span class="p">,</span> <span class="s2">&quot;li&quot;</span>
+            <span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;otsu&quot;</span><span class="p">,</span>
+            <span class="n">subtract_background</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="n">remove_noise</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="n">footprint_width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
+            <span class="n">noise_radius</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="n">smoothing_sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span>
+            <span class="n">min_peak_distance</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">peak_prominence</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">edge_refinement</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="n">correlation_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span>
+            <span class="n">selection_mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;dominant&quot;</span><span class="p">,</span> <span class="s2">&quot;centered&quot;</span><span class="p">,</span> <span class="s2">&quot;regularized&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;dominant&quot;</span><span class="p">,</span>
+            <span class="n">split_merged</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the SinePeakDetector with specified parameters.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            thresh_method: Method for thresholding the image. Options are:</span>
+<span class="sd">                &#39;otsu&#39; (default), &#39;mean&#39;, &#39;local&#39;, &#39;triangle&#39;, &#39;minimum&#39;,</span>
+<span class="sd">                &#39;isodata&#39;, &#39;li&#39;.</span>
+<span class="sd">            subtract_background: If True, apply white tophat transform to remove</span>
+<span class="sd">                background variations before thresholding.</span>
+<span class="sd">            remove_noise: If True, apply morphological opening to remove small</span>
+<span class="sd">                noise artifacts from the binary mask.</span>
+<span class="sd">            footprint_width: Width in pixels for the background subtraction kernel.</span>
+<span class="sd">                When a GridImage is provided, an adaptive kernel sized to 1.5x</span>
+<span class="sd">                colony spacing is used instead, making this a fallback.</span>
+<span class="sd">            noise_radius: Radius for the diamond structuring element used in</span>
+<span class="sd">                morphological noise removal. Default 1 (3x3 diamond, matching</span>
+<span class="sd">                gitter). Increase for larger noise artifacts.</span>
+<span class="sd">            smoothing_sigma: Standard deviation for Gaussian smoothing of intensity</span>
+<span class="sd">                profiles before cross-correlation. Set to 0 to disable smoothing.</span>
+<span class="sd">            min_peak_distance: Minimum allowed distance between detected peaks.</span>
+<span class="sd">                If None, automatically estimated from grid dimensions.</span>
+<span class="sd">            peak_prominence: Minimum prominence required for peak detection.</span>
+<span class="sd">                If None, automatically calculated as 0.1 * signal range.</span>
+<span class="sd">            edge_refinement: If True, refine grid edges using weighted intensity</span>
+<span class="sd">                profiles for improved accuracy.</span>
+<span class="sd">            correlation_threshold: Minimum normalized cross-correlation value for</span>
+<span class="sd">                a peak to be considered valid. Default 0.3. Values below this</span>
+<span class="sd">                threshold are zeroed before peak detection.</span>
+<span class="sd">            selection_mode: Strategy for choosing one object per grid cell.</span>
+<span class="sd">                &#39;dominant&#39; (default) keeps the largest, &#39;centered&#39; keeps</span>
+<span class="sd">                the most centred, &#39;regularized&#39; uses a global fit.</span>
+<span class="sd">            split_merged: If True (default), pre-split merged colonies that</span>
+<span class="sd">                span multiple grid cells using EDT watershed before assignment.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">thresh_method</span> <span class="o">=</span> <span class="n">thresh_method</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">subtract_background</span> <span class="o">=</span> <span class="n">subtract_background</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">footprint_radius</span> <span class="o">=</span> <span class="n">footprint_width</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">noise_radius</span> <span class="o">=</span> <span class="n">noise_radius</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">remove_noise</span> <span class="o">=</span> <span class="n">remove_noise</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">smoothing_sigma</span> <span class="o">=</span> <span class="n">smoothing_sigma</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_peak_distance</span> <span class="o">=</span> <span class="n">min_peak_distance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">peak_prominence</span> <span class="o">=</span> <span class="n">peak_prominence</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">edge_refinement</span> <span class="o">=</span> <span class="n">edge_refinement</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">correlation_threshold</span> <span class="o">=</span> <span class="n">correlation_threshold</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">selection_mode</span> <span class="o">=</span> <span class="n">selection_mode</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">split_merged</span> <span class="o">=</span> <span class="n">split_merged</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_round_odd</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Round to nearest odd integer (minimum 3).&quot;&quot;&quot;</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">n</span> <span class="k">if</span> <span class="n">n</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">n</span> <span class="o">+</span> <span class="mi">1</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Detect colonies using sinusoidal cross-correlation grid estimation.</span>
+
+<span class="sd">        This method performs the core detection workflow:</span>
+<span class="sd">        1. Extract grid dimensions (if GridImage)</span>
+<span class="sd">        2. Threshold the detection matrix with adaptive kernel sizing</span>
+<span class="sd">        3. Remove noise if requested</span>
+<span class="sd">        4. Label connected components</span>
+<span class="sd">        5. Determine or estimate grid edges (via sinusoidal cross-correlation)</span>
+<span class="sd">        6. Assign dominant colonies to grid cells</span>
+<span class="sd">        7. Create final object map</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: Image object to process. Can be a regular Image or GridImage.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Image: The processed image with updated objmask and objmap.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+
+        <span class="n">enh_matrix</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;getting detection matrix&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Extract grid dimensions early for adaptive kernel sizing</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">):</span>
+            <span class="n">nrows</span><span class="p">,</span> <span class="n">ncols</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">ncols</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">nrows</span> <span class="o">=</span> <span class="n">ncols</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">objmask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_thresholding</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">,</span> <span class="n">nrows</span><span class="o">=</span><span class="n">nrows</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="n">ncols</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;thresholding&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">remove_noise</span><span class="p">:</span>
+            <span class="n">objmask</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">opening</span><span class="p">(</span>
+                    <span class="n">objmask</span><span class="p">,</span> <span class="n">footprint</span><span class="o">=</span><span class="n">morphology</span><span class="o">.</span><span class="n">diamond</span><span class="p">(</span><span class="n">radius</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">noise_radius</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;noise removal&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Keep a copy of the mask we intend to use for downstream measurements</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">objmask</span>
+
+        <span class="n">labeled</span><span class="p">,</span> <span class="n">num_features</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">label</span><span class="p">(</span>
+                <span class="n">objmask</span><span class="p">,</span> <span class="n">structure</span><span class="o">=</span><span class="n">ndimage</span><span class="o">.</span><span class="n">generate_binary_structure</span><span class="p">(</span>
+                        <span class="n">rank</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                        <span class="n">connectivity</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;labeling (</span><span class="si">{</span><span class="n">num_features</span><span class="si">}</span><span class="s2"> features)&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Determine grid edges either from GridImage or by estimating from the binary mask</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">):</span>
+            <span class="n">row_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">get_row_edges</span><span class="p">())</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+            <span class="n">col_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">get_col_edges</span><span class="p">())</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">row_edges</span> <span class="o">=</span> <span class="n">col_edges</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">row_edges</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">col_edges</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Estimate edges using sinusoidal cross-correlation on row/col sums</span>
+            <span class="n">nrows</span><span class="p">,</span> <span class="n">ncols</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_infer_grid_shape</span><span class="p">(</span><span class="n">objmask</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;inferred grid shape: </span><span class="si">{</span><span class="n">nrows</span><span class="si">}</span><span class="s2">x</span><span class="si">{</span><span class="n">ncols</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="n">row_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_estimate_edges</span><span class="p">(</span><span class="n">objmask</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_bins</span><span class="o">=</span><span class="n">nrows</span><span class="p">)</span>
+            <span class="n">col_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_estimate_edges</span><span class="p">(</span><span class="n">objmask</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_bins</span><span class="o">=</span><span class="n">ncols</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;edge estimation&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Refine edges if requested</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">edge_refinement</span><span class="p">:</span>
+                <span class="n">row_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_refine_edges</span><span class="p">(</span><span class="n">objmask</span><span class="p">,</span> <span class="n">row_edges</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">col_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_refine_edges</span><span class="p">(</span><span class="n">objmask</span><span class="p">,</span> <span class="n">col_edges</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;edge refinement&quot;</span><span class="p">)</span>
+
+        <span class="n">row_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">row_edges</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">objmask</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">col_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">col_edges</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">objmask</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="c1"># Assign colonies to grid cells using selection strategy</span>
+        <span class="n">objmap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_assign_grid_objects</span><span class="p">(</span>
+            <span class="n">labeled</span><span class="p">,</span> <span class="n">row_edges</span><span class="p">,</span> <span class="n">col_edges</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">selection_mode</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">_OBJMAP_DTYPE</span><span class="p">,</span>
+            <span class="n">intensity</span><span class="o">=</span><span class="n">enh_matrix</span><span class="p">,</span> <span class="n">split_merged</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">split_merged</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Fallback if no regions were labeled (e.g., grid inference failed)</span>
+        <span class="k">if</span> <span class="n">objmap</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">objmap</span> <span class="o">=</span> <span class="n">labeled</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">_OBJMAP_DTYPE</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;grid cell assignment&quot;</span><span class="p">)</span>
+
+        <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">objmap</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="o">.</span><span class="n">relabel</span><span class="p">(</span><span class="n">connectivity</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>  <span class="c1"># Force garbage collection</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span>
+                <span class="s2">&quot;final cleanup&quot;</span><span class="p">,</span> <span class="n">include_process</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">include_tracemalloc</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">image</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_thresholding</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">ncols</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Threshold the image to create a binary mask of foreground colonies.</span>
+
+<span class="sd">        This method applies optional background subtraction followed by one of</span>
+<span class="sd">        several thresholding algorithms to separate colonies from background.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            matrix: 2D detection matrix array with pixel intensities.</span>
+<span class="sd">            nrows: Number of grid rows (from GridImage). When provided, the</span>
+<span class="sd">                background subtraction kernel is adaptively sized to 1.5x</span>
+<span class="sd">                the colony spacing along the row axis.</span>
+<span class="sd">            ncols: Number of grid columns (from GridImage). When provided,</span>
+<span class="sd">                the background subtraction kernel is adaptively sized to 1.5x</span>
+<span class="sd">                the colony spacing along the column axis.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Binary mask where True/1 indicates colony pixels,</span>
+<span class="sd">                False/0 indicates background.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If an invalid thresholding method is specified.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Adaptive kernel sizing: use grid spacing when available, fallback otherwise</span>
+        <span class="k">if</span> <span class="n">nrows</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">bg_h</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_round_odd</span><span class="p">(</span><span class="nb">round</span><span class="p">((</span><span class="n">matrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">nrows</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1.5</span><span class="p">))</span>
+            <span class="n">bg_w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_round_odd</span><span class="p">(</span><span class="nb">round</span><span class="p">((</span><span class="n">matrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="n">ncols</span> <span class="ow">or</span> <span class="n">nrows</span><span class="p">))</span> <span class="o">*</span> <span class="mf">1.5</span><span class="p">))</span>
+            <span class="n">kernel</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">footprint_rectangle</span><span class="p">((</span><span class="n">bg_h</span><span class="p">,</span> <span class="n">bg_w</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">dim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_round_odd</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">footprint_radius</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="n">kernel</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">footprint_rectangle</span><span class="p">((</span><span class="n">dim</span><span class="p">,</span> <span class="n">dim</span><span class="p">))</span>
+
+        <span class="n">enh_matrix</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>  <span class="c1"># Work on a copy to avoid modifying input</span>
+
+        <span class="c1"># Isolate bright foreground colonies via white tophat (image - opening)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">subtract_background</span><span class="p">:</span>
+            <span class="n">enh_matrix</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">white_tophat</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">,</span> <span class="n">kernel</span><span class="p">)</span>
+
+        <span class="c1"># Apply selected thresholding method</span>
+        <span class="k">match</span> <span class="bp">self</span><span class="o">.</span><span class="n">thresh_method</span><span class="p">:</span>
+            <span class="k">case</span> <span class="s2">&quot;otsu&quot;</span><span class="p">:</span>
+                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_otsu</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">)</span>
+            <span class="k">case</span> <span class="s2">&quot;mean&quot;</span><span class="p">:</span>
+                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_mean</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">)</span>
+            <span class="k">case</span> <span class="s2">&quot;local&quot;</span><span class="p">:</span>
+                <span class="n">block_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">footprint_radius</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span>
+                <span class="p">)</span>  <span class="c1"># Ensure odd block size</span>
+                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_local</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">,</span> <span class="n">block_size</span><span class="o">=</span><span class="n">block_size</span><span class="p">)</span>
+            <span class="k">case</span> <span class="s2">&quot;triangle&quot;</span><span class="p">:</span>
+                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_triangle</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">)</span>
+            <span class="k">case</span> <span class="s2">&quot;minimum&quot;</span><span class="p">:</span>
+                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_minimum</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">)</span>
+            <span class="k">case</span> <span class="s2">&quot;isodata&quot;</span><span class="p">:</span>
+                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_isodata</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">)</span>
+            <span class="k">case</span> <span class="s2">&quot;li&quot;</span><span class="p">:</span>
+                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_li</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">)</span>
+            <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
+                <span class="c1"># Default to Otsu if method not recognized</span>
+                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_otsu</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">enh_matrix</span> <span class="o">&gt;=</span> <span class="n">thresh</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_estimate_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">binary_image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">axis</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n_bins</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>  <span class="c1"># type: ignore[override]</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Estimate grid edges using sinusoidal cross-correlation.</span>
+
+<span class="sd">        Overrides GridInferenceMixin._estimate_edges with a gitter-faithful</span>
+<span class="sd">        approach: generates a sine template matching expected colony periodicity,</span>
+<span class="sd">        computes FFT-based normalized cross-correlation against the projection</span>
+<span class="sd">        signal, and selects peaks from the correlation output. Rank-based</span>
+<span class="sd">        (Spearman) correlation provides robustness to outliers and monotonic</span>
+<span class="sd">        intensity transformations.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            binary_image: Binary mask of detected colonies.</span>
+<span class="sd">            axis: Direction for edge detection (0 for row edges, 1 for column edges).</span>
+<span class="sd">            n_bins: Expected number of grid bins (rows or columns).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Array of edge positions including image borders.</span>
+<span class="sd">                Length is n_bins + 1.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            Unlike the mixin&#39;s static ``_estimate_edges``, this instance method</span>
+<span class="sd">            reads ``smoothing_sigma``, ``min_peak_distance``, ``peak_prominence``,</span>
+<span class="sd">            and ``correlation_threshold`` from ``self``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 1. Clean projection sums (from mixin)</span>
+        <span class="n">sums</span> <span class="o">=</span> <span class="n">GridInferenceMixin</span><span class="o">.</span><span class="n">_clean_and_sum_binary</span><span class="p">(</span><span class="n">binary_image</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">axis</span><span class="p">)</span>
+
+        <span class="c1"># 2. Gaussian smooth</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">smoothing_sigma</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">sums</span> <span class="o">=</span> <span class="n">gaussian_filter1d</span><span class="p">(</span><span class="n">sums</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">smoothing_sigma</span><span class="p">)</span>
+
+        <span class="c1"># 3. Signal enhancement: multiply by median-filtered version</span>
+        <span class="n">image_size</span> <span class="o">=</span> <span class="n">binary_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span> <span class="o">-</span> <span class="n">axis</span><span class="p">]</span>
+        <span class="n">expected_spacing</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">image_size</span> <span class="o">//</span> <span class="nb">max</span><span class="p">(</span><span class="n">n_bins</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">window_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">expected_spacing</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="n">medfilt_kernel</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">window_size</span> <span class="o">//</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">medfilt_kernel</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">medfilt_kernel</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">enhanced</span> <span class="o">=</span> <span class="n">sums</span> <span class="o">*</span> <span class="n">medfilt</span><span class="p">(</span><span class="n">sums</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">medfilt_kernel</span><span class="p">)</span>
+
+        <span class="c1"># 4. Rank transform for Spearman robustness</span>
+        <span class="n">ranked_signal</span> <span class="o">=</span> <span class="n">rankdata</span><span class="p">(</span><span class="n">enhanced</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+        <span class="c1"># 5. Rank sine template</span>
+        <span class="n">template</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">window_size</span><span class="p">))</span>
+        <span class="n">ranked_template</span> <span class="o">=</span> <span class="n">rankdata</span><span class="p">(</span><span class="n">template</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+        <span class="c1"># 6. FFT normalized cross-correlation</span>
+        <span class="n">ncc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalized_cross_correlation</span><span class="p">(</span><span class="n">ranked_signal</span><span class="p">,</span> <span class="n">ranked_template</span><span class="p">)</span>
+
+        <span class="c1"># 7. Threshold low correlations</span>
+        <span class="n">ncc</span><span class="p">[</span><span class="n">ncc</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">correlation_threshold</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># 8. Find peaks</span>
+        <span class="n">min_distance</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">min_peak_distance</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_peak_distance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="nb">max</span><span class="p">(</span><span class="n">expected_spacing</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">peak_prominence</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">prominence</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">peak_prominence</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">signal_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">ncc</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">ncc</span><span class="p">)</span>
+            <span class="n">prominence</span> <span class="o">=</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">signal_range</span> <span class="k">if</span> <span class="n">signal_range</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="kc">None</span>
+
+        <span class="n">peaks</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">find_peaks</span><span class="p">(</span><span class="n">ncc</span><span class="p">,</span> <span class="n">distance</span><span class="o">=</span><span class="n">min_distance</span><span class="p">,</span> <span class="n">prominence</span><span class="o">=</span><span class="n">prominence</span><span class="p">)</span>
+
+        <span class="c1"># 9. Select best n_bins peaks by correlation height, sorted by position</span>
+        <span class="k">if</span> <span class="n">peaks</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="n">n_bins</span><span class="p">:</span>
+            <span class="n">peak_heights</span> <span class="o">=</span> <span class="n">ncc</span><span class="p">[</span><span class="n">peaks</span><span class="p">]</span>
+            <span class="n">top_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">peak_heights</span><span class="p">)[</span><span class="o">-</span><span class="n">n_bins</span><span class="p">:]</span>
+            <span class="n">peaks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">peaks</span><span class="p">[</span><span class="n">top_indices</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="n">peaks</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="n">n_bins</span><span class="p">:</span>
+            <span class="c1"># Fallback: evenly spaced peaks</span>
+            <span class="n">peaks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span>
+                <span class="n">start</span><span class="o">=</span><span class="n">expected_spacing</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span>
+                <span class="n">stop</span><span class="o">=</span><span class="n">image_size</span> <span class="o">-</span> <span class="n">expected_spacing</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span>
+                <span class="n">num</span><span class="o">=</span><span class="n">n_bins</span><span class="p">,</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="c1"># 10. Derive edges at midpoints</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">peaks</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">midpoints</span> <span class="o">=</span> <span class="p">((</span><span class="n">peaks</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">peaks</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+            <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(([</span><span class="mi">0</span><span class="p">],</span> <span class="n">midpoints</span><span class="p">,</span> <span class="p">[</span><span class="n">image_size</span><span class="p">]))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">image_size</span><span class="p">,</span> <span class="n">n_bins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+
+        <span class="c1"># Ensure exactly n_bins + 1 edges</span>
+        <span class="k">if</span> <span class="n">edges</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="n">n_bins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">edges</span> <span class="o">=</span> <span class="n">edges</span><span class="p">[:</span><span class="n">n_bins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">edges</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="n">n_bins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">missing</span> <span class="o">=</span> <span class="p">(</span><span class="n">n_bins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">edges</span><span class="o">.</span><span class="n">size</span>
+            <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">edges</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">missing</span><span class="p">,</span> <span class="n">image_size</span><span class="p">)))</span>
+
+        <span class="k">return</span> <span class="n">edges</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_normalized_cross_correlation</span><span class="p">(</span><span class="n">signal</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">template</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;FFT-based normalized cross-correlation.</span>
+
+<span class="sd">        Computes the normalized cross-correlation between a signal and a</span>
+<span class="sd">        template using FFT convolution for O(N log N) performance. The</span>
+<span class="sd">        result is clipped to [-1, 1].</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            signal: 1D input signal array.</span>
+<span class="sd">            template: 1D template array (typically shorter than signal).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Normalized cross-correlation values, same length as</span>
+<span class="sd">                signal, clipped to [-1, 1].</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">signal</span><span class="p">)</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">template</span><span class="p">)</span>
+
+        <span class="c1"># Zero-mean template</span>
+        <span class="n">template_mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">template</span><span class="p">)</span>
+        <span class="n">template_zm</span> <span class="o">=</span> <span class="n">template</span> <span class="o">-</span> <span class="n">template_mean</span>
+        <span class="n">template_norm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">template_zm</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">template_norm</span> <span class="o">&lt;</span> <span class="mf">1e-10</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+
+        <span class="c1"># Cross-correlation via FFT</span>
+        <span class="n">xcorr</span> <span class="o">=</span> <span class="n">fftconvolve</span><span class="p">(</span><span class="n">signal</span><span class="p">,</span> <span class="n">template_zm</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;same&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Local statistics via FFT with ones kernel</span>
+        <span class="n">ones_kernel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+        <span class="n">local_sum</span> <span class="o">=</span> <span class="n">fftconvolve</span><span class="p">(</span><span class="n">signal</span><span class="p">,</span> <span class="n">ones_kernel</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;same&quot;</span><span class="p">)</span>
+        <span class="n">local_sum_sq</span> <span class="o">=</span> <span class="n">fftconvolve</span><span class="p">(</span><span class="n">signal</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="n">ones_kernel</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;same&quot;</span><span class="p">)</span>
+
+        <span class="n">local_mean</span> <span class="o">=</span> <span class="n">local_sum</span> <span class="o">/</span> <span class="n">k</span>
+        <span class="c1"># Use sum-of-squares form: sqrt(sum((x-mean)^2)) to match template_norm scale</span>
+        <span class="n">local_energy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">local_sum_sq</span> <span class="o">-</span> <span class="n">local_sum</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">k</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">local_std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">local_energy</span><span class="p">)</span>
+
+        <span class="c1"># Normalize (suppress divide-by-zero where denom is near-zero)</span>
+        <span class="n">denom</span> <span class="o">=</span> <span class="n">local_std</span> <span class="o">*</span> <span class="n">template_norm</span>
+        <span class="n">safe_denom</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">denom</span> <span class="o">&gt;</span> <span class="mf">1e-10</span><span class="p">,</span> <span class="n">denom</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">ncc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+            <span class="n">denom</span> <span class="o">&gt;</span> <span class="mf">1e-10</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">xcorr</span> <span class="o">-</span> <span class="n">local_mean</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">template_zm</span><span class="p">))</span> <span class="o">/</span> <span class="n">safe_denom</span><span class="p">,</span>
+            <span class="mf">0.0</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">ncc</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span></div>
+
+
+
+<span class="n">SinePeakDetector</span><span class="o">.</span><span class="n">apply</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">SinePeakDetector</span><span class="o">.</span><span class="n">_operate</span><span class="o">.</span><span class="vm">__doc__</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

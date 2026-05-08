@@ -1,0 +1,45 @@
+phenotypic.tools\_.panel\_
+==========================
+
+.. automodule:: phenotypic.tools_.panel_
+   :no-index:
+
+   
+   
+   .. rubric:: Module Attributes
+
+   .. autosummary::
+      :toctree:
+   
+      PANEL_AVAILABLE
+      PLOTLY_AVAILABLE
+      PANEL_IMPORT_ERROR
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :nosignatures:
+   
+      display_or_return
+      ensure_panel_extension
+      in_ipython
+      in_jupyter
+      require_panel
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

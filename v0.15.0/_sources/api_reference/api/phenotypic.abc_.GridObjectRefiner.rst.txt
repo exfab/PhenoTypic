@@ -1,0 +1,27 @@
+phenotypic.abc\_.GridObjectRefiner
+==================================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: GridObjectRefiner
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GridObjectRefiner.__init__
+      ~GridObjectRefiner.apply
+      ~GridObjectRefiner.widget
+   
+   
+
+   
+   
+   

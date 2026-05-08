@@ -1,0 +1,6 @@
+phenotypic.tools\_.chunks\_dir
+==============================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: chunks_dir

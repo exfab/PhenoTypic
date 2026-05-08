@@ -1,0 +1,6 @@
+phenotypic.tools\_.chunk\_state\_path
+=====================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: chunk_state_path

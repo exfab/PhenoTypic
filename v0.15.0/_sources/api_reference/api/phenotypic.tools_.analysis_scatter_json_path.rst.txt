@@ -1,0 +1,6 @@
+phenotypic.tools\_.analysis\_scatter\_json\_path
+================================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: analysis_scatter_json_path

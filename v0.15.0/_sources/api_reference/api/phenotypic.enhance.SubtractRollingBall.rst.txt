@@ -1,0 +1,27 @@
+phenotypic.enhance.SubtractRollingBall
+======================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: SubtractRollingBall
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SubtractRollingBall.__init__
+      ~SubtractRollingBall.apply
+      ~SubtractRollingBall.widget
+   
+   
+
+   
+   
+   

@@ -1,0 +1,6 @@
+phenotypic.tools\_.dashboard\_html\_path
+========================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: dashboard_html_path

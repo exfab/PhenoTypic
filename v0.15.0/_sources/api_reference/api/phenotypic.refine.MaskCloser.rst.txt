@@ -1,0 +1,27 @@
+phenotypic.refine.MaskCloser
+============================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: MaskCloser
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MaskCloser.__init__
+      ~MaskCloser.apply
+      ~MaskCloser.widget
+   
+   
+
+   
+   
+   

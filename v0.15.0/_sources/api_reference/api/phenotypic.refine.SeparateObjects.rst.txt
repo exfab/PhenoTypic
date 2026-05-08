@@ -1,0 +1,27 @@
+phenotypic.refine.SeparateObjects
+=================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: SeparateObjects
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SeparateObjects.__init__
+      ~SeparateObjects.apply
+      ~SeparateObjects.widget
+   
+   
+
+   
+   
+   

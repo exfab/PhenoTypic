@@ -1,0 +1,27 @@
+phenotypic.correction.StableDenoise
+===================================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: StableDenoise
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~StableDenoise.__init__
+      ~StableDenoise.apply
+      ~StableDenoise.widget
+   
+   
+
+   
+   
+   

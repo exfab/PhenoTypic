@@ -1,0 +1,6 @@
+phenotypic.tools\_.load\_master\_measurements
+=============================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: load_master_measurements

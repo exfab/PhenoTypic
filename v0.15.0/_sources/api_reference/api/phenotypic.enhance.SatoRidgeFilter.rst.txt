@@ -1,0 +1,27 @@
+phenotypic.enhance.SatoRidgeFilter
+==================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: SatoRidgeFilter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SatoRidgeFilter.__init__
+      ~SatoRidgeFilter.apply
+      ~SatoRidgeFilter.widget
+   
+   
+
+   
+   
+   

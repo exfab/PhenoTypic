@@ -1,0 +1,27 @@
+phenotypic.correction.BayesShrinkCorrector
+==========================================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: BayesShrinkCorrector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~BayesShrinkCorrector.__init__
+      ~BayesShrinkCorrector.apply
+      ~BayesShrinkCorrector.widget
+   
+   
+
+   
+   
+   

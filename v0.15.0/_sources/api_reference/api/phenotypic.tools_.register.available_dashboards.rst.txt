@@ -1,0 +1,6 @@
+phenotypic.tools\_.register.available\_dashboards
+=================================================
+
+.. currentmodule:: phenotypic.tools_.register
+
+.. autofunction:: available_dashboards

@@ -1,0 +1,27 @@
+phenotypic.detect.SinePeakDetector
+==================================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: SinePeakDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SinePeakDetector.__init__
+      ~SinePeakDetector.apply
+      ~SinePeakDetector.widget
+   
+   
+
+   
+   
+   

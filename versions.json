@@ -3,5 +3,11 @@
     "name": "experimental (main)",
     "version": "dev",
     "url": "https://exfab.github.io/PhenoTypic/experimental/"
+  },
+  {
+    "name": "v0.15.0 (stable)",
+    "version": "v0.15.0",
+    "url": "https://exfab.github.io/PhenoTypic/v0.15.0/",
+    "preferred": true
   }
 ]

@@ -1,0 +1,53 @@
+phenotypic.prefab.HeavyWatershedPipeline
+========================================
+
+.. currentmodule:: phenotypic.prefab
+
+.. autoclass:: HeavyWatershedPipeline
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~HeavyWatershedPipeline.__init__
+      ~HeavyWatershedPipeline.analyze
+      ~HeavyWatershedPipeline.apply
+      ~HeavyWatershedPipeline.apply_and_measure
+      ~HeavyWatershedPipeline.apply_napari
+      ~HeavyWatershedPipeline.apply_with_intermediates
+      ~HeavyWatershedPipeline.benchmark_results
+      ~HeavyWatershedPipeline.from_json
+      ~HeavyWatershedPipeline.get_filters
+      ~HeavyWatershedPipeline.get_meas
+      ~HeavyWatershedPipeline.get_model
+      ~HeavyWatershedPipeline.get_ops
+      ~HeavyWatershedPipeline.get_post
+      ~HeavyWatershedPipeline.measure
+      ~HeavyWatershedPipeline.set_filters
+      ~HeavyWatershedPipeline.set_meas
+      ~HeavyWatershedPipeline.set_model
+      ~HeavyWatershedPipeline.set_ops
+      ~HeavyWatershedPipeline.set_post
+      ~HeavyWatershedPipeline.to_json
+      ~HeavyWatershedPipeline.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~HeavyWatershedPipeline.desc
+      ~HeavyWatershedPipeline.ncols
+      ~HeavyWatershedPipeline.nrows
+   
+   

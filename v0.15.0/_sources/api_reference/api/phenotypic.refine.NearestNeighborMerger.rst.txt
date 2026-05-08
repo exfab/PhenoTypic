@@ -1,0 +1,27 @@
+phenotypic.refine.NearestNeighborMerger
+=======================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: NearestNeighborMerger
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~NearestNeighborMerger.__init__
+      ~NearestNeighborMerger.apply
+      ~NearestNeighborMerger.widget
+   
+   
+
+   
+   
+   

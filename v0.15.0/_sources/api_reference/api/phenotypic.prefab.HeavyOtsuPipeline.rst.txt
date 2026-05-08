@@ -1,0 +1,53 @@
+phenotypic.prefab.HeavyOtsuPipeline
+===================================
+
+.. currentmodule:: phenotypic.prefab
+
+.. autoclass:: HeavyOtsuPipeline
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~HeavyOtsuPipeline.__init__
+      ~HeavyOtsuPipeline.analyze
+      ~HeavyOtsuPipeline.apply
+      ~HeavyOtsuPipeline.apply_and_measure
+      ~HeavyOtsuPipeline.apply_napari
+      ~HeavyOtsuPipeline.apply_with_intermediates
+      ~HeavyOtsuPipeline.benchmark_results
+      ~HeavyOtsuPipeline.from_json
+      ~HeavyOtsuPipeline.get_filters
+      ~HeavyOtsuPipeline.get_meas
+      ~HeavyOtsuPipeline.get_model
+      ~HeavyOtsuPipeline.get_ops
+      ~HeavyOtsuPipeline.get_post
+      ~HeavyOtsuPipeline.measure
+      ~HeavyOtsuPipeline.set_filters
+      ~HeavyOtsuPipeline.set_meas
+      ~HeavyOtsuPipeline.set_model
+      ~HeavyOtsuPipeline.set_ops
+      ~HeavyOtsuPipeline.set_post
+      ~HeavyOtsuPipeline.to_json
+      ~HeavyOtsuPipeline.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~HeavyOtsuPipeline.desc
+      ~HeavyOtsuPipeline.ncols
+      ~HeavyOtsuPipeline.nrows
+   
+   

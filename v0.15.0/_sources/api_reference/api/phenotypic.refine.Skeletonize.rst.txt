@@ -1,0 +1,27 @@
+phenotypic.refine.Skeletonize
+=============================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: Skeletonize
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~Skeletonize.__init__
+      ~Skeletonize.apply
+      ~Skeletonize.widget
+   
+   
+
+   
+   
+   

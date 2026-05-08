@@ -1,0 +1,27 @@
+phenotypic.enhance.GrayOpening
+==============================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: GrayOpening
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GrayOpening.__init__
+      ~GrayOpening.apply
+      ~GrayOpening.widget
+   
+   
+
+   
+   
+   

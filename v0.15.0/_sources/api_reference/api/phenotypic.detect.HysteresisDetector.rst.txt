@@ -1,0 +1,27 @@
+phenotypic.detect.HysteresisDetector
+====================================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: HysteresisDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~HysteresisDetector.__init__
+      ~HysteresisDetector.apply
+      ~HysteresisDetector.widget
+   
+   
+
+   
+   
+   

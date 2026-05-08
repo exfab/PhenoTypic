@@ -1,0 +1,53 @@
+phenotypic.prefab.FilamentousFungiPipeline
+==========================================
+
+.. currentmodule:: phenotypic.prefab
+
+.. autoclass:: FilamentousFungiPipeline
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FilamentousFungiPipeline.__init__
+      ~FilamentousFungiPipeline.analyze
+      ~FilamentousFungiPipeline.apply
+      ~FilamentousFungiPipeline.apply_and_measure
+      ~FilamentousFungiPipeline.apply_napari
+      ~FilamentousFungiPipeline.apply_with_intermediates
+      ~FilamentousFungiPipeline.benchmark_results
+      ~FilamentousFungiPipeline.from_json
+      ~FilamentousFungiPipeline.get_filters
+      ~FilamentousFungiPipeline.get_meas
+      ~FilamentousFungiPipeline.get_model
+      ~FilamentousFungiPipeline.get_ops
+      ~FilamentousFungiPipeline.get_post
+      ~FilamentousFungiPipeline.measure
+      ~FilamentousFungiPipeline.set_filters
+      ~FilamentousFungiPipeline.set_meas
+      ~FilamentousFungiPipeline.set_model
+      ~FilamentousFungiPipeline.set_ops
+      ~FilamentousFungiPipeline.set_post
+      ~FilamentousFungiPipeline.to_json
+      ~FilamentousFungiPipeline.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FilamentousFungiPipeline.desc
+      ~FilamentousFungiPipeline.ncols
+      ~FilamentousFungiPipeline.nrows
+   
+   

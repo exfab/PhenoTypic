@@ -1,0 +1,7 @@
+phenotypic.gui.shell package
+============================
+
+.. automodule:: phenotypic.gui.shell
+   :members:
+   :undoc-members:
+   :show-inheritance:
