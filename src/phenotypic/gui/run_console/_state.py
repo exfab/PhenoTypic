@@ -37,6 +37,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from phenotypic.tools_.typing_ import ExecutionMode
+
 
 __all__ = [
     "RunConsoleState",
@@ -93,7 +95,7 @@ class RunConsoleState:
     pipeline_path: str | None = None
     input_dir: str | None = None
     output_dir: str | None = None
-    mode: Literal["local", "slurm"] = "local"
+    mode: ExecutionMode = "local"
     dry_run: bool = False
     resume: bool = False
     advanced_args: dict[str, Any] = field(default_factory=dict)
@@ -148,7 +150,7 @@ def run_state_from_json(payload: dict[str, Any]) -> RunConsoleState:
         return RunConsoleState()
 
     raw_mode = payload.get("mode", "local")
-    mode: Literal["local", "slurm"]
+    mode: ExecutionMode
     mode = "slurm" if raw_mode == "slurm" else "local"
 
     advanced_raw = payload.get("advanced_args") or {}

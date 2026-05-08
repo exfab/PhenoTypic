@@ -1,0 +1,742 @@
+"""Shared CLI ↔ GUI artifact-layout constants.
+
+Single source of truth for everything written to disk by the forward CLI,
+the SLURM recompile worker, and the chunk writer — and read back by the
+GUI viewer / analysis sub-app. Both subpackages should import from here
+rather than re-spelling. This module replaces the scattered inline
+``"master_measurements.parquet"`` / ``"progress"`` / etc. literals that
+previously lived as private constants in ~10 different files.
+
+Module layout
+-------------
+* **Filenames** (`MASTER_MEASUREMENTS_*`, `PIPELINE_JSON`, …) — bare strings
+  written/read by both producer (CLI) and consumer (GUI).
+* **Directory names** (`DIR_*`) — same.
+* **Templated filenames** — private ``_FOO_TEMPLATE: Final[str]``
+  constants paired with public ``foo_filename(...)`` render functions.
+  The render function's typed signature is the public API; the template
+  itself is private. This is the project's first deployment of the
+  CLAUDE.md "parameterized strings are not enumerations" pattern.
+* **Path helpers** — `progress_dir(output)`, `event_log_path(output)`,
+  etc. Take a base ``output_dir: Path`` and return the canonical
+  artifact path. Replace ``output_dir / "literal"`` constructions
+  scattered across the CLI.
+* **Reader helpers** — `read_run_manifest`, `load_master_measurements`,
+  `resolve_execution_mode` consolidate three high-frequency duplicates.
+* **JSON contract keys** (`JobMetadataKey`, `DashboardManifestKey`,
+  `ChunkStateKey`, `ChunkManifestKey`, `HdfAttr`) — namespace classes
+  whose class-level ``Final[str]`` attributes are the keys writers and
+  readers must reference instead of bare strings. Keeps the contract
+  on-disk format mechanically discoverable.
+* **`ModulePath`** — importable module paths used in ``importlib.import_module``
+  dispatch by the analysis GUI's recipe loader.
+* **`EnvVar`** — environment variable names read by the CLI (SLURM /
+  scratch).
+
+See also
+--------
+:mod:`phenotypic.tools_.constants_`
+    Image-data and measurement enums (``IMAGE_MODE``, ``IMAGE_TYPES``,
+    ``GAMMA_ENCODINGS``, ``METADATA``, ``PIPE_STATUS``).
+:mod:`phenotypic.tools_.typing_`
+    Literal aliases for closed value sets used at public boundaries
+    (``ExecutionMode``, ``ImageTypeName``, …).
+"""
+from __future__ import annotations
+
+import json
+import logging
+from datetime import datetime
+from pathlib import Path
+from typing import TYPE_CHECKING, Final, Optional
+
+from .typing_ import (
+    CheckpointType,
+    ExecutionMode,
+    ImageTypeName,
+)
+
+if TYPE_CHECKING:
+    import polars as pl  # type: ignore[import-not-found]
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# CLI artifact filenames
+# ---------------------------------------------------------------------------
+
+#: Master archive of all aggregated measurements (clean, pre-post). Written by
+#: :func:`phenotypic._cli._cli_output_manager.aggregate_measurements` after
+#: every per-image Parquet has been concatenated and joined with optional
+#: external metadata. Treated as the authoritative source by downstream
+#: tooling; never edited in place.
+MASTER_MEASUREMENTS_CSV: Final[str] = "master_measurements.csv"
+
+#: Parquet companion of :data:`MASTER_MEASUREMENTS_CSV`. Preserves dtypes the
+#: CSV cannot and is the format the GUI viewer prefers when present.
+MASTER_MEASUREMENTS_PARQUET: Final[str] = "master_measurements.parquet"
+
+#: Editable curated CSV mirror seeded by the CLI as a copy of
+#: :data:`MASTER_MEASUREMENTS_CSV` after :func:`_apply_post_to_master`. The
+#: results viewer rewrites this file in place when the user removes/restores
+#: colonies. Re-running the CLI overwrites it with a fresh full copy.
+MEASUREMENTS_CSV: Final[str] = "measurements.csv"
+
+#: Editable curated Parquet companion to :data:`MEASUREMENTS_CSV`. The
+#: parquet is the GUI's source of truth at boot (CSV is the human-readable
+#: mirror); both are written atomically together.
+MEASUREMENTS_PARQUET: Final[str] = "measurements.parquet"
+
+#: Output filename of the model-fit summary written by the CLI when the
+#: pipeline has a ``model`` configured (and re-emitted by the analysis
+#: GUI's "Run analysis" button). Human-readable mirror of
+#: :data:`ANALYSIS_PARQUET`.
+ANALYSIS_CSV: Final[str] = "analysis.csv"
+
+#: Parquet companion of :data:`ANALYSIS_CSV` — primary downstream
+#: artifact since it preserves dtypes the CSV cannot.
+ANALYSIS_PARQUET: Final[str] = "analysis.parquet"
+
+#: Canonical pipeline-spec filename written into the output root by the
+#: CLI (and rewritten by the analysis GUI on every recipe edit). Captures
+#: operations, measurements, post, filters, and model — i.e. the whole
+#: reproducibility surface.
+PIPELINE_JSON: Final[str] = "pipeline.json"
+
+#: Resume-state JSON written by ``ProcessingState.save`` and read by
+#: ``ProcessingState.load`` when ``--resume`` is passed.
+PROCESSING_STATE_JSON: Final[str] = "processing_state.json"
+
+# ---------------------------------------------------------------------------
+# Run-time progress sidecar files (live inside DIR_PROGRESS)
+# ---------------------------------------------------------------------------
+
+#: Append-only JSONL event log of per-image processing transitions.
+#: Producers: ``_cli_update_state.append_event``. Consumers: dashboard
+#: generator, recompile worker. Was previously re-spelled in 10 files.
+PROCESSING_EVENTS_LOG: Final[str] = "processing_events.log"
+
+#: SLURM job-metadata sidecar written once at job submission. Keys are
+#: documented in :class:`JobMetadataKey`.
+JOB_METADATA_JSON: Final[str] = "job_metadata.json"
+
+#: Append-only JSONL of per-image failures. Each row carries a
+#: :data:`phenotypic.tools_.typing_.FailureSource` tag.
+FAILURES_JSONL: Final[str] = "failures.jsonl"
+
+#: SLURM checkpoint chunk manifest (mid-run partial-result feed).
+CHUNK_MANIFEST_JSON: Final[str] = "chunk_manifest.json"
+
+#: SLURM checkpoint chunk state (which per-image files have been chunked).
+CHUNK_STATE_JSON: Final[str] = "chunk_state.json"
+
+#: Manifest of overlay PNGs (one entry per per-image overlay).
+OVERLAY_MANIFEST_JSON: Final[str] = "overlay_manifest.json"
+
+#: Top-level dashboard manifest read by the dashboard HTML JS shim.
+#: Keys are documented in :class:`DashboardManifestKey`.
+MANIFEST_JSON: Final[str] = "manifest.json"
+
+#: Per-dataset pre-aggregated Parquet emitted by the chunk writer for the
+#: GPFS-optimized aggregation path. Underscore prefix marks the file as
+#: an aggregator-internal intermediate (chunk-writer scan should skip).
+DATASET_AGGREGATED_PARQUET: Final[str] = "_dataset_aggregated.parquet"
+
+# ---------------------------------------------------------------------------
+# Dashboard / log files
+# ---------------------------------------------------------------------------
+
+#: Generated HTML dashboard with charts + chunked-data viewer.
+DASHBOARD_HTML: Final[str] = "dashboard.html"
+
+#: Per-run stdout capture written by the run console's local runner.
+STDOUT_LOG: Final[str] = "stdout.log"
+
+#: Generated standalone analysis HTML emitted alongside the dashboard.
+ANALYSIS_HTML: Final[str] = "analysis.html"
+
+#: Top-level processing report HTML emitted by ``--recompile``.
+PROCESSING_REPORT_HTML: Final[str] = "processing_report.html"
+
+#: Mid-run combined Parquet that the chunk writer rewrites incrementally
+#: as new per-image measurements arrive (lives in ``DIR_PROGRESS``).
+ANALYSIS_FULL_PARQUET: Final[str] = "analysis_full.parquet"
+
+#: Pre-computed scatter-plot data for the dashboard analysis pane.
+ANALYSIS_SCATTER_JSON: Final[str] = "analysis_scatter.json"
+
+#: Sentinel marker file written by the SLURM sentinel after a re-submission;
+#: presence prevents an infinite resubmission loop on the next checkpoint.
+SENTINEL_RESUBMITTED_MARKER: Final[str] = "sentinel_resubmitted"
+
+#: Hidden chunk-aggregation lock file (lives in ``DIR_PROGRESS``).
+CHUNK_LOCK: Final[str] = ".chunk_lock"
+
+
+# ---------------------------------------------------------------------------
+# CLI artifact directory names
+# ---------------------------------------------------------------------------
+
+#: ``<output>/results/`` — per-dataset subdirectories live below here.
+DIR_RESULTS: Final[str] = "results"
+
+#: ``<output>/progress/`` — sidecar JSON / JSONL state for in-flight runs.
+DIR_PROGRESS: Final[str] = "progress"
+
+#: Per-dataset measurements subdirectory: ``<output>/results/<ds>/measurements/``.
+DIR_MEASUREMENTS: Final[str] = "measurements"
+
+#: Per-feature spreadsheet split written by
+#: :func:`phenotypic._cli._cli_output_manager.split_master_by_feature`.
+DIR_MEASUREMENTS_BY_FEATURE: Final[str] = "measurements_by_feature"
+
+#: SLURM stdout/stderr / sbatch-script subdirectory.
+DIR_LOGS: Final[str] = "logs"
+
+#: HDF5 image-state subdirectory: ``<output>/results/<ds>/hdf/``.
+DIR_HDF: Final[str] = "hdf"
+
+#: Overlay PNG subdirectory: ``<output>/results/<ds>/overlays/``.
+DIR_OVERLAYS: Final[str] = "overlays"
+
+#: Mid-run chunk parquet subdirectory: ``<progress>/chunks/``.
+DIR_CHUNKS: Final[str] = "chunks"
+
+#: Recompile-worker shard / status subdirectory: ``<progress>/recompile/``.
+DIR_RECOMPILE: Final[str] = "recompile"
+
+#: Per-task JSON status subdirectory: ``<progress>/recompile/status/``.
+DIR_RECOMPILE_STATUS: Final[str] = "status"
+
+#: Generated SLURM script subdirectory: ``<output>/slurm_scripts/``.
+DIR_SLURM_SCRIPTS: Final[str] = "slurm_scripts"
+
+
+# ---------------------------------------------------------------------------
+# Templated filenames — Final[str] template + typed render function
+# ---------------------------------------------------------------------------
+# Pattern: keep the raw ``"…{x}…"`` template private as ``_FOO_TEMPLATE``,
+# expose a typed render function whose parameters are the public API.
+# Callers must reach the template through the function — never .format() it
+# directly. This is the project's first deployment of CLAUDE.md's
+# "parameterized strings are not enumerations" rule.
+
+_TASK_STATUS_FILENAME_TEMPLATE: Final[str] = "task_{task_index}.json"
+
+
+def task_status_filename(task_index: int) -> str:
+    """Filename of a per-task SLURM-recompile status JSON.
+
+    Args:
+        task_index: Zero-based recompile task index.
+
+    Returns:
+        Filename relative to ``<progress>/recompile/status/``.
+    """
+    return _TASK_STATUS_FILENAME_TEMPLATE.format(task_index=task_index)
+
+
+_SHARD_PARQUET_FILENAME_TEMPLATE: Final[str] = "shard_{shard_id}.parquet"
+
+
+def shard_parquet_filename(shard_id: int) -> str:
+    """Filename of a per-shard Parquet inside the recompile worker.
+
+    Args:
+        shard_id: Zero-based shard index.
+
+    Returns:
+        Filename relative to the recompile shard directory.
+    """
+    return _SHARD_PARQUET_FILENAME_TEMPLATE.format(shard_id=shard_id)
+
+
+_CHUNK_PARQUET_FILENAME_TEMPLATE: Final[str] = "chunk_{chunk_id:03d}.parquet"
+
+
+def chunk_parquet_filename(chunk_id: int) -> str:
+    """Filename of a dashboard chunk Parquet (zero-padded chunk id).
+
+    Args:
+        chunk_id: Zero-based chunk index, formatted ``{chunk_id:03d}``.
+
+    Returns:
+        Filename relative to ``<progress>/chunks/``.
+    """
+    return _CHUNK_PARQUET_FILENAME_TEMPLATE.format(chunk_id=chunk_id)
+
+
+_DEFAULT_OUTPUT_DIR_NAME_TEMPLATE: Final[str] = "phenotypic_results_{timestamp}"
+_DEFAULT_OUTPUT_TIMESTAMP_FORMAT: Final[str] = "%Y%m%d_%H%M%S"
+
+
+def default_output_dir_name(now: Optional[datetime] = None) -> str:
+    """Default name for an auto-generated output directory.
+
+    Used when the user runs the CLI without ``--output-dir`` and we
+    need to fabricate a timestamped fallback in the current working
+    directory.
+
+    Args:
+        now: Override clock for tests; defaults to ``datetime.now()``.
+
+    Returns:
+        ``"phenotypic_results_YYYYMMDD_HHMMSS"``.
+    """
+    when = now if now is not None else datetime.now()
+    return _DEFAULT_OUTPUT_DIR_NAME_TEMPLATE.format(
+        timestamp=when.strftime(_DEFAULT_OUTPUT_TIMESTAMP_FORMAT)
+    )
+
+
+_CHECKPOINT_LOCK_FILENAME_TEMPLATE: Final[str] = ".{checkpoint_type}_lock"
+
+
+def checkpoint_lock_filename(checkpoint_type: CheckpointType) -> str:
+    """Filename of the SLURM-sentinel exclusive lock for a checkpoint task.
+
+    Args:
+        checkpoint_type: ``"manifest"`` or ``"finalize"``. Validated by
+            the :data:`phenotypic.tools_.typing_.CheckpointType` Literal
+            alias at type-check time.
+
+    Returns:
+        Filename relative to ``<progress>/`` (hidden file, leading ``.``).
+    """
+    return _CHECKPOINT_LOCK_FILENAME_TEMPLATE.format(checkpoint_type=checkpoint_type)
+
+
+# ---------------------------------------------------------------------------
+# Path-builder helpers — replace inline ``output / "literal"`` constructions
+# ---------------------------------------------------------------------------
+
+
+def progress_dir(output_dir: Path) -> Path:
+    """Return ``<output>/progress/``.
+
+    Pure path expression; callers are responsible for ``mkdir`` when they
+    intend to write into it.
+    """
+    return output_dir / DIR_PROGRESS
+
+
+def results_dir(output_dir: Path) -> Path:
+    """Return ``<output>/results/``."""
+    return output_dir / DIR_RESULTS
+
+
+def event_log_path(output_dir: Path) -> Path:
+    """Return ``<output>/processing_events.log``."""
+    return output_dir / PROCESSING_EVENTS_LOG
+
+
+def processing_state_path(output_dir: Path) -> Path:
+    """Return ``<output>/processing_state.json``."""
+    return output_dir / PROCESSING_STATE_JSON
+
+
+def master_measurements_csv_path(output_dir: Path) -> Path:
+    """Return ``<output>/master_measurements.csv``."""
+    return output_dir / MASTER_MEASUREMENTS_CSV
+
+
+def master_measurements_parquet_path(output_dir: Path) -> Path:
+    """Return ``<output>/master_measurements.parquet``."""
+    return output_dir / MASTER_MEASUREMENTS_PARQUET
+
+
+def measurements_csv_path(output_dir: Path) -> Path:
+    """Return ``<output>/measurements.csv`` (post-applied mirror)."""
+    return output_dir / MEASUREMENTS_CSV
+
+
+def measurements_parquet_path(output_dir: Path) -> Path:
+    """Return ``<output>/measurements.parquet`` (post-applied mirror)."""
+    return output_dir / MEASUREMENTS_PARQUET
+
+
+def pipeline_json_path(output_dir: Path) -> Path:
+    """Return ``<output>/pipeline.json``."""
+    return output_dir / PIPELINE_JSON
+
+
+def analysis_csv_path(output_dir: Path) -> Path:
+    """Return ``<output>/analysis.csv``."""
+    return output_dir / ANALYSIS_CSV
+
+
+def analysis_parquet_path(output_dir: Path) -> Path:
+    """Return ``<output>/analysis.parquet``."""
+    return output_dir / ANALYSIS_PARQUET
+
+
+def dashboard_html_path(output_dir: Path) -> Path:
+    """Return ``<output>/dashboard.html``."""
+    return output_dir / DASHBOARD_HTML
+
+
+def dataset_results_dir(output_dir: Path, dataset: str) -> Path:
+    """Return ``<output>/results/<dataset>/``."""
+    return results_dir(output_dir) / dataset
+
+
+def dataset_measurements_dir(output_dir: Path, dataset: str) -> Path:
+    """Return ``<output>/results/<dataset>/measurements/``."""
+    return dataset_results_dir(output_dir, dataset) / DIR_MEASUREMENTS
+
+
+def dataset_hdf_dir(output_dir: Path, dataset: str) -> Path:
+    """Return ``<output>/results/<dataset>/hdf/``."""
+    return dataset_results_dir(output_dir, dataset) / DIR_HDF
+
+
+def dataset_overlays_dir(output_dir: Path, dataset: str) -> Path:
+    """Return ``<output>/results/<dataset>/overlays/``."""
+    return dataset_results_dir(output_dir, dataset) / DIR_OVERLAYS
+
+
+def measurements_by_feature_dir(output_dir: Path) -> Path:
+    """Return ``<output>/measurements_by_feature/``."""
+    return output_dir / DIR_MEASUREMENTS_BY_FEATURE
+
+
+def logs_dir(output_dir: Path) -> Path:
+    """Return ``<output>/logs/`` (SLURM stdout/stderr + sbatch scripts)."""
+    return output_dir / DIR_LOGS
+
+
+def chunks_dir(progress_dir_: Path) -> Path:
+    """Return ``<progress>/chunks/`` for the dashboard chunk parquets."""
+    return progress_dir_ / DIR_CHUNKS
+
+
+def recompile_dir(progress_dir_: Path) -> Path:
+    """Return ``<progress>/recompile/``."""
+    return progress_dir_ / DIR_RECOMPILE
+
+
+def recompile_status_dir(progress_dir_: Path) -> Path:
+    """Return ``<progress>/recompile/status/``."""
+    return recompile_dir(progress_dir_) / DIR_RECOMPILE_STATUS
+
+
+def task_status_path(output_dir: Path, task_index: int) -> Path:
+    """Return ``<progress>/recompile/status/task_<idx>.json``."""
+    return recompile_status_dir(progress_dir(output_dir)) / task_status_filename(task_index)
+
+
+def chunk_parquet_path(progress_dir_: Path, chunk_id: int) -> Path:
+    """Return ``<progress>/chunks/chunk_<id:03d>.parquet``."""
+    return chunks_dir(progress_dir_) / chunk_parquet_filename(chunk_id)
+
+
+def checkpoint_lock_path(progress_dir_: Path, checkpoint_type: CheckpointType) -> Path:
+    """Return ``<progress>/.{checkpoint_type}_lock``."""
+    return progress_dir_ / checkpoint_lock_filename(checkpoint_type)
+
+
+def job_metadata_path(output_dir: Path) -> Path:
+    """Return ``<output>/progress/job_metadata.json``."""
+    return progress_dir(output_dir) / JOB_METADATA_JSON
+
+
+def failures_jsonl_path(output_dir: Path) -> Path:
+    """Return ``<output>/progress/failures.jsonl``."""
+    return progress_dir(output_dir) / FAILURES_JSONL
+
+
+def manifest_json_path(output_dir: Path) -> Path:
+    """Return ``<output>/progress/manifest.json`` (dashboard manifest)."""
+    return progress_dir(output_dir) / MANIFEST_JSON
+
+
+def chunk_manifest_path(output_dir: Path) -> Path:
+    """Return ``<output>/progress/chunk_manifest.json``."""
+    return progress_dir(output_dir) / CHUNK_MANIFEST_JSON
+
+
+def chunk_state_path(output_dir: Path) -> Path:
+    """Return ``<output>/progress/chunk_state.json``."""
+    return progress_dir(output_dir) / CHUNK_STATE_JSON
+
+
+def overlay_manifest_path(output_dir: Path) -> Path:
+    """Return ``<output>/progress/overlay_manifest.json``."""
+    return progress_dir(output_dir) / OVERLAY_MANIFEST_JSON
+
+
+def analysis_html_path(output_dir: Path) -> Path:
+    """Return ``<output>/analysis.html``."""
+    return output_dir / ANALYSIS_HTML
+
+
+def processing_report_html_path(output_dir: Path) -> Path:
+    """Return ``<output>/processing_report.html``."""
+    return output_dir / PROCESSING_REPORT_HTML
+
+
+def analysis_full_parquet_path(progress_dir_: Path) -> Path:
+    """Return ``<progress>/analysis_full.parquet`` (incremental combined frame).
+
+    Takes a *progress_dir* (not the run output root) since this file lives
+    inside ``progress/`` — it's an internal mid-run artifact, not a user-
+    facing output.
+    """
+    return progress_dir_ / ANALYSIS_FULL_PARQUET
+
+
+def analysis_scatter_json_path(progress_dir_: Path) -> Path:
+    """Return ``<progress>/analysis_scatter.json``."""
+    return progress_dir_ / ANALYSIS_SCATTER_JSON
+
+
+def sentinel_resubmitted_path(progress_dir_: Path) -> Path:
+    """Return ``<progress>/sentinel_resubmitted`` marker file path."""
+    return progress_dir_ / SENTINEL_RESUBMITTED_MARKER
+
+
+def chunk_lock_path(progress_dir_: Path) -> Path:
+    """Return ``<progress>/.chunk_lock``."""
+    return progress_dir_ / CHUNK_LOCK
+
+
+def slurm_scripts_dir(output_dir: Path) -> Path:
+    """Return ``<output>/slurm_scripts/``."""
+    return output_dir / DIR_SLURM_SCRIPTS
+
+
+# ---------------------------------------------------------------------------
+# Loader / reader helpers (consolidate 3 duplicated read sites each)
+# ---------------------------------------------------------------------------
+
+
+def read_run_manifest(output_dir: Path) -> Optional[dict]:
+    """Read ``<output>/progress/manifest.json`` if present.
+
+    Replaces 4 inline ``json.loads(manifest_path.read_text())`` blocks.
+
+    Args:
+        output_dir: Run output directory containing ``progress/``.
+
+    Returns:
+        Parsed manifest dict, or :data:`None` when the file is missing
+        or unparseable (callers can decide whether absence is fatal).
+    """
+    path = manifest_json_path(output_dir)
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError):
+        logger.warning("Failed to parse %s; treating as missing", path, exc_info=True)
+        return None
+
+
+def load_master_measurements(output_dir: Path) -> Optional["pl.DataFrame"]:
+    """Read ``<output>/master_measurements.csv`` into a polars DataFrame.
+
+    Args:
+        output_dir: Run output directory.
+
+    Returns:
+        DataFrame, or :data:`None` when the file is missing.
+    """
+    import polars as pl  # type: ignore[import-not-found]  # lazy
+
+    path = master_measurements_csv_path(output_dir)
+    if not path.exists():
+        return None
+    return pl.read_csv(path)
+
+
+def resolve_execution_mode(job_meta: Optional[dict]) -> ExecutionMode:
+    """Extract :data:`ExecutionMode` from job metadata, defaulting to ``"local"``.
+
+    Replaces a 5-site copy-paste of the
+    ``job_meta.get("execution_mode", "local") if job_meta else "local"``
+    pattern. Garbage values (anything not in the Literal alias) collapse
+    to ``"local"`` rather than raising.
+
+    Args:
+        job_meta: Parsed ``progress/job_metadata.json`` content, or
+            :data:`None` when the file is absent.
+
+    Returns:
+        ``"local"`` or ``"slurm"``.
+    """
+    if not job_meta:
+        return "local"
+    raw = job_meta.get(JobMetadataKey.EXECUTION_MODE, "local")
+    if raw == "slurm":
+        return "slurm"
+    return "local"
+
+
+# ---------------------------------------------------------------------------
+# Cross-file JSON contract keys
+# ---------------------------------------------------------------------------
+
+
+class JobMetadataKey:
+    """Keys inside ``<output>/progress/job_metadata.json``.
+
+    Writers (CLI execution strategies) and readers (recompile worker,
+    sentinel, checkpoint handler, GUI runs registry) must reference
+    these constants — never the bare string. Renaming a key here
+    should fail fast at every site.
+    """
+
+    EXECUTION_MODE: Final[str] = "execution_mode"
+    START_TIME: Final[str] = "start_time"
+    INPUT_PATH: Final[str] = "input_path"
+    METADATA_CSV: Final[str] = "metadata_csv"
+    SLURM_JOB_IDS: Final[str] = "slurm_job_ids"
+    CHUNK_JOB_IDS: Final[str] = "chunk_job_ids"
+    CHUNK_SCRIPTS: Final[str] = "chunk_scripts"
+    DATASETS: Final[str] = "datasets"
+    INCLUDE_DATASET_COLUMN: Final[str] = "include_dataset_column"
+    IMAGE_TASK_MAPPING: Final[str] = "image_task_mapping"
+
+
+class DashboardManifestKey:
+    """Keys inside ``<output>/progress/manifest.json`` (dashboard manifest).
+
+    The manifest is built by :func:`_cli._dashboard._manifest_builder.build_manifest`
+    and consumed by both the dashboard JS and the GUI run-console's runs
+    registry (``_runs_registry.py``). Writers and readers must reference
+    these constants rather than spelling the bare string.
+    """
+
+    VERSION: Final[str] = "version"
+    LAST_UPDATED: Final[str] = "last_updated"
+    EXECUTION_MODE: Final[str] = "execution_mode"
+    TOTAL_IMAGES: Final[str] = "total_images"
+    COMPLETED: Final[str] = "completed"
+    FAILED: Final[str] = "failed"
+    STARTED: Final[str] = "started"
+    PENDING: Final[str] = "pending"
+    SUCCESS_RATE: Final[str] = "success_rate"
+    IS_COMPLETE: Final[str] = "is_complete"
+    START_TIME: Final[str] = "start_time"
+    INPUT_PATH: Final[str] = "input_path"
+    DATASETS: Final[str] = "datasets"
+    FAILURE_CATEGORIES: Final[str] = "failure_categories"
+    ANALYSIS_DATA_VERSION: Final[str] = "analysis_data_version"
+    SLURM_INFO: Final[str] = "slurm_info"
+
+
+class DashboardManifestSlurmInfoKey:
+    """Keys inside the ``slurm_info`` sub-dict of the dashboard manifest.
+
+    Distinct from :class:`JobMetadataKey`, even when string values overlap —
+    these describe the *manifest* contract, not the job-metadata sidecar.
+    """
+
+    CHUNK_SCRIPTS: Final[str] = "chunk_scripts"
+    TOTAL_CHUNKS: Final[str] = "total_chunks"
+    CHUNK_JOB_IDS: Final[str] = "chunk_job_ids"
+    ACTIVE_CHUNKS: Final[str] = "active_chunks"
+    COMPLETED_CHUNKS: Final[str] = "completed_chunks"
+    PENDING_CHUNKS: Final[str] = "pending_chunks"
+
+
+class ChunkStateKey:
+    """Keys inside ``<output>/progress/chunk_state.json``."""
+
+    CHUNKED_FILES: Final[str] = "chunked_files"
+    NEXT_CHUNK_ID: Final[str] = "next_chunk_id"
+
+
+class ChunkManifestKey:
+    """Keys inside ``<output>/progress/chunk_manifest.json``."""
+
+    CHUNKS: Final[str] = "chunks"
+    ROWS: Final[str] = "rows"
+    DATASETS: Final[str] = "datasets"
+    TOTAL_ROWS: Final[str] = "total_rows"
+    NAME: Final[str] = "name"
+
+
+class HdfAttr:
+    """Top-level attribute keys on per-image HDF5 files."""
+
+    PHENOTYPIC_CLASS: Final[str] = "phenotypic_class"
+
+
+# ---------------------------------------------------------------------------
+# Module-path constants for importlib dispatch
+# ---------------------------------------------------------------------------
+
+
+class ModulePath:
+    """Importable module paths used in dynamic ``importlib.import_module`` dispatch.
+
+    Spelled out here so a renamed sub-package fails at type-check time
+    (consumers reference ``ModulePath.POST`` — a typo there is caught
+    by mypy) rather than silently at runtime.
+    """
+
+    POST: Final[str] = "phenotypic.post"
+    ANALYSIS: Final[str] = "phenotypic.analysis"
+
+
+# ---------------------------------------------------------------------------
+# Environment variable names
+# ---------------------------------------------------------------------------
+
+
+class EnvVar:
+    """Environment variable names read or set by the CLI.
+
+    SLURM injects these into batch scripts; the CLI reads them to
+    discover its execution context (job id, array task id, …) and
+    to find node-local scratch storage.
+    """
+
+    SCRATCH: Final[str] = "SCRATCH"
+    SLURM_JOB_ID: Final[str] = "SLURM_JOB_ID"
+    SLURM_ARRAY_JOB_ID: Final[str] = "SLURM_ARRAY_JOB_ID"
+    SLURM_ARRAY_TASK_ID: Final[str] = "SLURM_ARRAY_TASK_ID"
+    SLURM_ARRAY_TASK_COUNT: Final[str] = "SLURM_ARRAY_TASK_COUNT"
+    SLURM_CPUS_PER_TASK: Final[str] = "SLURM_CPUS_PER_TASK"
+    SLURM_MEM_PER_NODE: Final[str] = "SLURM_MEM_PER_NODE"
+
+
+# ---------------------------------------------------------------------------
+# HDF image-class reader (eliminates 3-site duplication)
+# ---------------------------------------------------------------------------
+
+
+def load_image_from_hdf(
+    hdf_path: Path,
+    *,
+    fallback: ImageTypeName = "Image",
+):
+    """Open an HDF5, read its ``phenotypic_class`` attr, dispatch to the right Image class.
+
+    Replaces the 3 ad-hoc ``h5py.File(...) → fh.attrs.get('phenotypic_class', 'Image')
+    → GridImage if cls_attr == 'GridImage' else Image`` patterns in
+    :mod:`_cli_recompile_worker`, :mod:`_cli_execution_strategies`, and
+    :mod:`phenotypicCLI`.
+
+    Args:
+        hdf_path: Path to a per-image HDF5 file.
+        fallback: Image class name to use when the HDF lacks the
+            ``phenotypic_class`` attribute (legacy files). Validated
+            against :data:`ImageTypeName`.
+
+    Returns:
+        An :class:`Image` or :class:`GridImage` instance loaded from the HDF.
+    """
+    import h5py  # type: ignore[import-untyped]
+
+    from phenotypic import GridImage, Image  # lazy: avoids circular import at module load
+    from phenotypic.tools_.constants_ import IMAGE_TYPES
+
+    with h5py.File(hdf_path, "r") as fh:
+        cls_attr = fh.attrs.get(HdfAttr.PHENOTYPIC_CLASS, fallback)
+    if isinstance(cls_attr, bytes):
+        cls_attr = cls_attr.decode("utf-8", errors="replace")
+    image_cls = GridImage if cls_attr == IMAGE_TYPES.GRID.value else Image
+    return image_cls.load_hdf5(hdf_path)

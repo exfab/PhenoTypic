@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from ._cli_file_locking import atomic_append, FileLockTimeout
+from phenotypic.tools_ import FAILURES_JSONL
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,7 @@ def append_failure(
             failures detected via ``sacct``.
     """
     progress_dir.mkdir(parents=True, exist_ok=True)
-    failures_path = progress_dir / "failures.jsonl"
+    failures_path = progress_dir / FAILURES_JSONL
 
     record: Dict[str, Any] = {
         "timestamp": datetime.now().isoformat(timespec="milliseconds"),
@@ -87,7 +88,7 @@ def read_failures(progress_dir: Path) -> List[Dict[str, Any]]:
         List of failure record dicts, one per JSONL line.  Malformed lines
         are skipped with a warning.
     """
-    failures_path = progress_dir / "failures.jsonl"
+    failures_path = progress_dir / FAILURES_JSONL
     if not failures_path.exists():
         return []
 

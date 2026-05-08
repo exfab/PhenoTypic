@@ -1,5 +1,4 @@
-"""
-PhenoTypic Constants
+"""PhenoTypic Constants
 
 This module contains constant values and enumerations used throughout the PhenoTypic library.
 Constants are organized by module and functionality.
@@ -8,6 +7,14 @@ Note: Class names are defined in ALL_CAPS to avoid namespace conflicts with actu
     in the codebase (e.g., GRID_DEP vs an actual Grid class). When importing, use the format::
 
         from phenotypic.tools_.constants_ import IMAGE_MODE, OBJECT
+
+See also
+--------
+:mod:`phenotypic.tools_._io_constants`
+    CLI artifact filenames, directory names, JSON contract keys, environment
+    variable names, and path helpers shared between the CLI and GUI.
+:mod:`phenotypic.tools_.typing_`
+    Literal type aliases for closed value sets used at public boundaries.
 """
 
 import phenotypic

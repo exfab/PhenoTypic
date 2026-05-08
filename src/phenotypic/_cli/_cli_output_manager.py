@@ -26,6 +26,24 @@ if TYPE_CHECKING:
 
 from ._cli_types import Dataset
 from ._cli_duckdb_agg import duckdb_aggregate
+from phenotypic.tools_ import (
+    MASTER_MEASUREMENTS_CSV,
+    MASTER_MEASUREMENTS_PARQUET,
+    MEASUREMENTS_CSV,
+    MEASUREMENTS_PARQUET,
+    ANALYSIS_CSV,
+    ANALYSIS_PARQUET,
+    PIPELINE_JSON,
+    PROCESSING_STATE_JSON,
+    DIR_RESULTS,
+    DIR_MEASUREMENTS,
+    DIR_MEASUREMENTS_BY_FEATURE,
+    DIR_LOGS,
+    DIR_HDF,
+    DIR_OVERLAYS,
+    DATASET_AGGREGATED_PARQUET,
+    EnvVar,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +159,7 @@ def _stage_to_scratch(parquet_files: List[Path]) -> Optional[Path]:
     Returns:
         Path to staging directory, or ``None`` if $SCRATCH is unavailable.
     """
-    scratch = os.environ.get("SCRATCH")
+    scratch = os.environ.get(EnvVar.SCRATCH)
     if not scratch:
         return None
 
@@ -149,8 +167,8 @@ def _stage_to_scratch(parquet_files: List[Path]) -> Optional[Path]:
     if not scratch_path.is_dir():
         return None
 
-    job_id = os.environ.get("SLURM_JOB_ID", "")
-    task_id = os.environ.get("SLURM_ARRAY_TASK_ID", "")
+    job_id = os.environ.get(EnvVar.SLURM_JOB_ID, "")
+    task_id = os.environ.get(EnvVar.SLURM_ARRAY_TASK_ID, "")
     if job_id and task_id:
         suffix = f"{job_id}_{task_id}"
     elif job_id:
@@ -269,7 +287,7 @@ def _load_pipeline_from_output_dir(
     """
     from phenotypic._core._image_pipeline import ImagePipeline
 
-    canonical = output_dir / "pipeline.json"
+    canonical = output_dir / PIPELINE_JSON
     if canonical.exists():
         try:
             return ImagePipeline.from_json(canonical)
@@ -281,7 +299,7 @@ def _load_pipeline_from_output_dir(
             )
             # Fall through to legacy lookup.
 
-    state_path = output_dir / "processing_state.json"
+    state_path = output_dir / PROCESSING_STATE_JSON
     if not state_path.exists():
         return None
     try:
@@ -324,7 +342,7 @@ def _persist_pipeline_to_output_dir(
         failed. Failure is logged at WARNING; the caller does not need to
         handle the exception.
     """
-    target = output_dir / "pipeline.json"
+    target = output_dir / PIPELINE_JSON
 
     def _write(p: str) -> None:
         Path(p).write_text(pipeline.to_json() or "")
@@ -387,8 +405,8 @@ def _emit_analysis_outputs(
         )
         return None
 
-    csv_path = output_dir / "analysis.csv"
-    pq_path = output_dir / "analysis.parquet"
+    csv_path = output_dir / ANALYSIS_CSV
+    pq_path = output_dir / ANALYSIS_PARQUET
 
     try:
         _atomic_write(csv_path, fit_pl.write_csv)
@@ -465,8 +483,6 @@ def _seed_measurements(output_dir: Path, master_df: "pl.DataFrame") -> None:
     written. Failures of either write are logged at WARNING and do not raise
     — the master output is preserved as the authoritative source.
     """
-    from phenotypic.gui._config import MEASUREMENTS_CSV, MEASUREMENTS_PARQUET
-
     try:
         _atomic_write(output_dir / MEASUREMENTS_CSV, master_df.write_csv)
     except Exception:
@@ -493,17 +509,21 @@ def finalize_post_master_outputs(
     """Run every CLI side effect that follows a freshly written master file.
 
     This is the single canonical entry point for the work that happens after
-    ``master_measurements.{csv,parquet}`` lands on disk. Every code path that
-    writes the master — :func:`aggregate_measurements`, the recompile
-    sentinel, future re-aggregators — should call this so the post-applied
-    ``measurements.{csv,parquet}`` mirror, the persisted ``pipeline.json``,
-    the analysis output, and the per-feature splits stay in lock-step.
+    :data:`~phenotypic.tools_.MASTER_MEASUREMENTS_PARQUET` (and its CSV
+    counterpart) land on disk. Every code path that writes the master —
+    :func:`aggregate_measurements`, the recompile sentinel, future
+    re-aggregators — should call this so the post-applied
+    :data:`~phenotypic.tools_.MEASUREMENTS_PARQUET` mirror, the persisted
+    :data:`~phenotypic.tools_.PIPELINE_JSON`, the analysis output, and the
+    per-feature splits stay in lock-step.
 
     The order is:
 
     1. Apply ``pipeline._post`` to a copy of *master_df* via
        :func:`_apply_post_to_master`. The resulting ``post_df`` is what the
-       GUI viewer/curation layer reads from ``measurements.{csv,parquet}``.
+       GUI viewer/curation layer reads from
+       :data:`~phenotypic.tools_.MEASUREMENTS_CSV` /
+       :data:`~phenotypic.tools_.MEASUREMENTS_PARQUET`.
        When *pipeline* is ``None`` or has no post ops, ``post_df`` is the
        clean master unchanged.
     2. :func:`_seed_measurements` writes the post-applied frame.
@@ -519,7 +539,8 @@ def finalize_post_master_outputs(
 
     Args:
         output_dir: Output root that already contains
-            ``master_measurements.{csv,parquet}``.
+            :data:`~phenotypic.tools_.MASTER_MEASUREMENTS_PARQUET` (and the
+            CSV counterpart).
         master_df: The clean (post-free) aggregated master.
         pipeline: Recovered pipeline, or ``None`` when it can't be
             located (the SLURM sentinel may run before any pipeline.json
@@ -598,7 +619,7 @@ def split_master_by_feature(
 
     non_feature_cols = [c for c in master_df.columns if c not in all_feature_cols]
 
-    split_dir = output_dir / "measurements_by_feature"
+    split_dir = output_dir / DIR_MEASUREMENTS_BY_FEATURE
     split_dir.mkdir(parents=True, exist_ok=True)
 
     written: Dict[str, Path] = {}
@@ -705,16 +726,16 @@ def aggregate_measurements(
         pipeline has any :class:`PostMeasurement` op configured. Split
         and analysis failures never change the return value.
     """
-    results_dir = output_dir / "results"
+    results_dir = output_dir / DIR_RESULTS
 
     # -- File discovery ------------------------------------------------
     path_to_dataset: Dict[Path, str] = {}
     for dataset_name in dataset_names:
-        meas_dir = results_dir / dataset_name / "measurements"
+        meas_dir = results_dir / dataset_name / DIR_MEASUREMENTS
         if not meas_dir.is_dir():
             continue
         # Prefer pre-aggregated file
-        agg_parquet = meas_dir / "_dataset_aggregated.parquet"
+        agg_parquet = meas_dir / DATASET_AGGREGATED_PARQUET
         if agg_parquet.exists():
             path_to_dataset[agg_parquet] = dataset_name
         else:
@@ -760,8 +781,8 @@ def aggregate_measurements(
             logger.warning("Failed to join metadata CSV: %s: %s", type(e).__name__, e)
 
     # -- Write master CSV and Parquet ----------------------------------
-    master_csv_path = output_dir / "master_measurements.csv"
-    master_pq_path = output_dir / "master_measurements.parquet"
+    master_csv_path = output_dir / MASTER_MEASUREMENTS_CSV
+    master_pq_path = output_dir / MASTER_MEASUREMENTS_PARQUET
 
     try:
         _atomic_write(master_csv_path, master_df.write_csv)
@@ -834,10 +855,10 @@ class OutputManager:
         self.save_overlays = save_overlays
 
         # Results directory for dataset outputs (images, measurements, overlays)
-        self.results_dir = self.base_dir / "results"
+        self.results_dir = self.base_dir / DIR_RESULTS
 
         # Logs directory (always at root level)
-        self.logs_dir = self.base_dir / "logs"
+        self.logs_dir = self.base_dir / DIR_LOGS
 
     @classmethod
     def from_config(
@@ -903,10 +924,10 @@ class OutputManager:
             dataset_dir = self.results_dir / dataset.name
             dataset_dir.mkdir(exist_ok=True)
 
-            (dataset_dir / "measurements").mkdir(exist_ok=True)
-            (dataset_dir / "hdf").mkdir(exist_ok=True)
+            (dataset_dir / DIR_MEASUREMENTS).mkdir(exist_ok=True)
+            (dataset_dir / DIR_HDF).mkdir(exist_ok=True)
             if self.save_overlays:
-                (dataset_dir / "overlays").mkdir(exist_ok=True)
+                (dataset_dir / DIR_OVERLAYS).mkdir(exist_ok=True)
 
     def get_output_path(
         self,

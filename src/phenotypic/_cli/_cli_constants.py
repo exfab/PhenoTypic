@@ -1,7 +1,9 @@
-"""Constants for CLI configuration.
+"""Constants for CLI configuration — tuning and grid defaults only.
 
-This module centralizes all hardcoded configuration values used throughout
-the CLI to enable easy tuning and maintenance.
+I/O artifact filenames, directory names, path helpers, and JSON contract
+keys live in :mod:`phenotypic.tools_._io_constants` (importable via
+``from phenotypic.tools_ import <name>``).  This module retains only the
+CLI-tuning knobs that are not shared with the GUI.
 """
 
 # SLURM configuration defaults

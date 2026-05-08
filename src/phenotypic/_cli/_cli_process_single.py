@@ -13,7 +13,7 @@ import logging
 import click
 import traceback
 from pathlib import Path
-from typing import Optional, Literal, Dict, Any
+from typing import Optional, Dict, Any
 
 import h5py  # type: ignore[import-untyped]
 import matplotlib
@@ -25,6 +25,8 @@ from ._cli_output_manager import OutputManager
 from ._cli_update_state import append_event, append_completion_event
 from ._cli_failure_tracker import append_failure
 from ._cli_utils import normalize_extension
+from phenotypic.tools_ import DIR_PROGRESS, EnvVar, HdfAttr
+from phenotypic.tools_.typing_ import ImageTypeName
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +36,7 @@ def process_single_image_core(
     image_path: Path,
     output_dir: Path,
     dataset_name: str,
-    image_type: Literal["Image", "GridImage"],
+    image_type: ImageTypeName,
     read_kwargs: Dict[str, Any],
     output_manager: OutputManager,
     cli_nrows: Optional[int] = None,
@@ -114,7 +116,7 @@ def process_single_hdf_measure_core(
     hdf_path: Path,
     output_dir: Path,
     dataset_name: str,
-    image_type: Literal["Image", "GridImage"],
+    image_type: ImageTypeName,
     output_manager: OutputManager,
 ) -> bool:
     """Rerun pipeline.measure() on an already-processed HDF file.
@@ -286,8 +288,8 @@ def main(
                 dataset=dataset_name,
                 image=image.name,
                 status="started",
-                slurm_job_id=os.environ.get("SLURM_JOB_ID", ""),
-                slurm_array_task_id=os.environ.get("SLURM_ARRAY_TASK_ID", ""),
+                slurm_job_id=os.environ.get(EnvVar.SLURM_JOB_ID, ""),
+                slurm_array_task_id=os.environ.get(EnvVar.SLURM_ARRAY_TASK_ID, ""),
             )
 
         if measure_only:
@@ -295,12 +297,12 @@ def main(
             # Determine the image class from the saved file's root attr.
             # Legacy v1 files lack the attr — fall back to the configured
             # --image-type so behaviour matches the local executor.
-            resolved_image_type: Literal["Image", "GridImage"] = (
+            resolved_image_type: ImageTypeName = (
                 image_type  # type: ignore[assignment]
             )
             try:
                 with h5py.File(image, "r") as hf:
-                    saved_class = hf.attrs.get("phenotypic_class")
+                    saved_class = hf.attrs.get(HdfAttr.PHENOTYPIC_CLASS)
                     if isinstance(saved_class, bytes):
                         saved_class = saved_class.decode("utf-8", errors="replace")
                     if saved_class == "GridImage":
@@ -408,9 +410,9 @@ def main(
 
         # Write structured failure record
         try:
-            progress_dir = output_dir / "progress"
-            slurm_job_id = os.environ.get("SLURM_JOB_ID", "")
-            slurm_task_id = os.environ.get("SLURM_ARRAY_TASK_ID", "")
+            progress_dir = output_dir / DIR_PROGRESS
+            slurm_job_id = os.environ.get(EnvVar.SLURM_JOB_ID, "")
+            slurm_task_id = os.environ.get(EnvVar.SLURM_ARRAY_TASK_ID, "")
             full_slurm_id = (
                 f"{slurm_job_id}_{slurm_task_id}"
                 if slurm_job_id and slurm_task_id

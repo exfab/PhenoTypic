@@ -14,6 +14,8 @@ from importlib.resources import files
 from pathlib import Path
 
 from phenotypic.tools_.register import AnalysisPluginRegistry
+from phenotypic.tools_ import DIR_PROGRESS, dashboard_html_path, analysis_html_path
+from phenotypic.tools_.typing_ import ExecutionMode
 
 from ._vendor_js import MARKED_MIN_JS
 
@@ -67,7 +69,7 @@ def _build_analysis_subtabs(plugins: list) -> str:
     )
 
 
-def generate_dashboard(output_dir: Path, *, execution_mode: str = "local") -> None:
+def generate_dashboard(output_dir: Path, *, execution_mode: ExecutionMode = "local") -> None:
     """Write ``dashboard.html`` and ``analysis.html`` to the output directory root.
 
     Args:
@@ -75,17 +77,52 @@ def generate_dashboard(output_dir: Path, *, execution_mode: str = "local") -> No
         execution_mode: ``"local"`` or ``"slurm"``.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
-    dashboard_path = output_dir / "dashboard.html"
+    dashboard_path = dashboard_html_path(output_dir)
     dashboard_path.write_text(_build_html(execution_mode), encoding="utf-8")
     logger.info("Dashboard written to %s", dashboard_path)
 
-    analysis_path = output_dir / "analysis.html"
+    analysis_path = analysis_html_path(output_dir)
     analysis_path.write_text(_build_analysis_html(), encoding="utf-8")
     logger.info("Analysis page written to %s", analysis_path)
 
     # Write JS sidecars for lazy loading by the Analysis page
     _write_js_sidecar(output_dir, "plotly.min.js", "Plotly.js")
     _write_js_sidecar(output_dir, "hyparquet.min.js", "hyparquet.js")
+
+
+def regenerate_dashboard_artifacts(
+    output_dir: Path,
+    job_meta: "dict | None",
+    datasets: "dict[str, int]",
+) -> None:
+    """Rebuild manifest.json and regenerate dashboard HTML in one call.
+
+    Consolidates the ``build_manifest`` + ``generate_dashboard`` pattern used
+    by checkpoint handlers, recompile workers, and local-run finalisers.
+
+    Args:
+        output_dir: Root output directory.
+        job_meta: Parsed ``job_metadata.json`` dict (may be ``None`` for
+            runs that pre-date metadata persistence).
+        datasets: Mapping of dataset name to total image count.
+    """
+    from phenotypic.tools_ import DIR_PROGRESS, JobMetadataKey, resolve_execution_mode
+    from ._manifest_builder import build_manifest
+
+    progress_dir = output_dir / DIR_PROGRESS
+    execution_mode = resolve_execution_mode(job_meta)
+
+    build_manifest(
+        output_dir=output_dir,
+        progress_dir=progress_dir,
+        datasets=datasets,
+        execution_mode=execution_mode,
+        start_time=(job_meta or {}).get(JobMetadataKey.START_TIME, ""),
+        slurm_job_ids=(job_meta or {}).get(JobMetadataKey.CHUNK_JOB_IDS),
+        chunk_scripts=(job_meta or {}).get(JobMetadataKey.CHUNK_SCRIPTS),
+        input_path=(job_meta or {}).get(JobMetadataKey.INPUT_PATH),
+    )
+    generate_dashboard(output_dir, execution_mode=execution_mode)
 
 
 def _write_js_sidecar(output_dir: Path, filename: str, label: str) -> None:
@@ -96,7 +133,7 @@ def _write_js_sidecar(output_dir: Path, filename: str, label: str) -> None:
         filename: Asset filename (e.g. ``"plotly.min.js"``).
         label: Human-readable name for log messages (e.g. ``"Plotly.js"``).
     """
-    progress_dir = output_dir / "progress"
+    progress_dir = output_dir / DIR_PROGRESS
     progress_dir.mkdir(parents=True, exist_ok=True)
     dest = progress_dir / filename
     try:

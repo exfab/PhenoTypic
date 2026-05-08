@@ -20,6 +20,7 @@ server.
 
 | Need                                     | File                                                  |
 | ---------------------------------------- | ----------------------------------------------------- |
+| New CLI-produced output filename / dirname (consumed by GUI) | [`phenotypic.tools_._io_constants`](../tools_/_io_constants.py) (`MASTER_MEASUREMENTS_PARQUET`, `DIR_RESULTS`, `JOB_METADATA_JSON`, …) |
 | New CLI default / port / log format      | [_config.py](_config.py) (`DEFAULT_*`, `LOG_FORMAT`)  |
 | New brand color / type / radius / shadow | [_design.py](_design.py) (`COLOR_*`, `TEXT_*`, …)     |
 | New mount prefix                         | [_config.py](_config.py) (`MOUNT_*`) + register in [shell/_app.py](shell/_app.py) |
@@ -29,8 +30,11 @@ server.
 | New cross-tool path store ID             | [shell/_ids.py](shell/_ids.py)                        |
 
 **Default rule:** if a string literal would appear in two or more files,
-move it to `_config.py` (Python identifiers) or `_design.py` (CSS-shaped
-values). Don't re-spell.
+move it to `_config.py` (Python identifiers) or `_design.py` (CSS-shaped values).
+Don't re-spell. **For CLI-produced output artifact filenames (anything the
+CLI writes that the GUI reads), the canonical home is
+`phenotypic.tools_._io_constants` instead — `_config.py` re-exports the
+shared names so existing imports keep working.**
 
 ---
 
@@ -130,6 +134,28 @@ from phenotypic.gui._config import THREAD_NAME_PREFIX  # "phenotypic-gui"
 ThreadPoolExecutor(thread_name_prefix=f"{THREAD_NAME_PREFIX}-slurm")
 threading.Thread(name=f"{THREAD_NAME_PREFIX}-idle-release", ...)
 ```
+
+### CLI-produced output filenames (re-exported from `phenotypic.tools_`)
+
+```python
+from phenotypic.gui._config import (
+    MASTER_MEASUREMENTS_PARQUET,  # "master_measurements.parquet"
+    MEASUREMENTS_CSV,             # "measurements.csv"
+    MEASUREMENTS_PARQUET,         # "measurements.parquet"
+    ANALYSIS_CSV,                 # "analysis.csv"
+    ANALYSIS_PARQUET,             # "analysis.parquet"
+    PIPELINE_JSON,                # "pipeline.json"
+    RESULTS_DIRNAME,              # "results"
+    PROGRESS_DIRNAME,             # "progress"
+    DASHBOARD_FILENAME,           # "dashboard.html"
+)
+```
+
+These are re-exports of the canonical constants in
+`phenotypic.tools_._io_constants`; importing from either location
+yields the same string. Use `_config.py` for ergonomic GUI imports; reach
+for `phenotypic.tools_` directly when in non-GUI code that consumes these
+filenames (e.g. test fixtures, CLI integration tests).
 
 ---
 

@@ -51,6 +51,7 @@ from flask import current_app
 
 from phenotypic.gui._config import CFG_IMAGE_ROOT, CFG_OPERATION_REGISTRY
 from phenotypic.gui.builder import _ids as ids
+from phenotypic.gui.builder._ids import LoadPickerPage, StageName
 from phenotypic.gui.builder._directory_browser import (
     IMAGE_EXTS,
     PIPELINE_EXTS,
@@ -1490,7 +1491,7 @@ def register_callbacks(app: dash.Dash) -> None:
         prevent_initial_call=True,
     )
     def render_load_picker(
-        page: Optional[str], dir_value: Optional[str]
+        page: Optional[LoadPickerPage], dir_value: Optional[str]
     ) -> Any:
         """Rebuild :data:`ids.MODAL_LOAD_PICKER_BODY` when the page or browse directory changes.
 
@@ -1525,7 +1526,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Input(ids.STORE_LOAD_PICKER_PAGE, "data"),
     )
     def toggle_load_picker_chrome(
-        page: Optional[str],
+        page: Optional[LoadPickerPage],
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """Show/hide back button + chooser buttons based on the active page.
 

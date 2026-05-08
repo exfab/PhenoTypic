@@ -17,6 +17,7 @@ import dash
 import polars as pl
 from flask import Blueprint, Response, request
 
+from phenotypic.gui._config import COLONY_CROPS_URL_SEGMENT
 from phenotypic.gui.results_viewer._filtered_state import (
     KEY_IMAGE_FILE,
     KEY_OBJECT_LABEL,
@@ -64,7 +65,7 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
             Captured by closure and used to resolve overlay PNGs and the
             master measurements DataFrame.
     """
-    bp = Blueprint("results_viewer_crops", __name__, url_prefix="/crops")
+    bp = Blueprint("results_viewer_crops", __name__, url_prefix=f"/{COLONY_CROPS_URL_SEGMENT}")
 
     @bp.route("/<dataset>/<stem>/<label>.png")
     def crop_endpoint(dataset: str, stem: str, label: str) -> Response | tuple[str, int]:

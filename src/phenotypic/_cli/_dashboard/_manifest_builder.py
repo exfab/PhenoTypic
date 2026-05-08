@@ -20,6 +20,17 @@ from typing import Dict, List, Optional, Tuple
 
 from .._cli_failure_tracker import append_failure, categorize_failures, read_failures
 from .._cli_update_state import aggregate_state_from_events, append_event
+from phenotypic.tools_ import (
+    PROCESSING_EVENTS_LOG,
+    MANIFEST_JSON,
+    DashboardManifestKey,
+    DashboardManifestSlurmInfoKey,
+    analysis_scatter_json_path,
+    analysis_full_parquet_path,
+    chunks_dir,
+    master_measurements_parquet_path,
+)
+from phenotypic.tools_.typing_ import ExecutionMode
 
 logger = logging.getLogger(__name__)
 
@@ -297,7 +308,7 @@ def detect_silent_failures(
         List of failure record dicts for newly detected silent failures.
         Returns an empty list if ``sacct`` is unavailable.
     """
-    event_log = output_dir / "processing_events.log"
+    event_log = output_dir / PROCESSING_EVENTS_LOG
     dataset_states = aggregate_state_from_events(event_log)
 
     # Collect all in-progress images across datasets.
@@ -404,10 +415,10 @@ def _get_analysis_data_version(progress_dir: Path) -> int:
     data is available.
     """
     candidates = [
-        progress_dir / "analysis_scatter.json",
-        progress_dir / "analysis_full.parquet",
-        progress_dir / "chunks",
-        progress_dir.parent / "master_measurements.parquet",
+        analysis_scatter_json_path(progress_dir),
+        analysis_full_parquet_path(progress_dir),
+        chunks_dir(progress_dir),
+        master_measurements_parquet_path(progress_dir.parent),
     ]
     max_mtime = 0
     for path in candidates:
@@ -427,7 +438,7 @@ def build_manifest(
     output_dir: Path,
     progress_dir: Path,
     datasets: Dict[str, int],
-    execution_mode: str,
+    execution_mode: ExecutionMode,
     start_time: str,
     slurm_job_ids: Optional[Dict[str, str]] = None,
     chunk_scripts: Optional[List[str]] = None,
@@ -455,7 +466,7 @@ def build_manifest(
             image filename).  Stored in the manifest so the dashboard
             can show which input is being processed.
     """
-    event_log = output_dir / "processing_events.log"
+    event_log = output_dir / PROCESSING_EVENTS_LOG
 
     # 1. Aggregate state from the event log.
     dataset_states = aggregate_state_from_events(event_log)
@@ -538,37 +549,37 @@ def build_manifest(
     is_complete = (global_completed + global_failed) == total_images
 
     manifest: dict = {
-        "version": 1,
-        "last_updated": datetime.now().isoformat(timespec="milliseconds"),
-        "execution_mode": execution_mode,
-        "total_images": total_images,
-        "completed": global_completed,
-        "failed": global_failed,
-        "started": global_in_progress,
-        "pending": max(global_pending, 0),
-        "success_rate": round(success_rate, 6),
-        "is_complete": is_complete,
-        "start_time": start_time,
-        "input_path": input_path,
-        "datasets": per_dataset,
-        "failure_categories": failure_categories,
-        "analysis_data_version": _get_analysis_data_version(progress_dir),
+        DashboardManifestKey.VERSION: 1,
+        DashboardManifestKey.LAST_UPDATED: datetime.now().isoformat(timespec="milliseconds"),
+        DashboardManifestKey.EXECUTION_MODE: execution_mode,
+        DashboardManifestKey.TOTAL_IMAGES: total_images,
+        DashboardManifestKey.COMPLETED: global_completed,
+        DashboardManifestKey.FAILED: global_failed,
+        DashboardManifestKey.STARTED: global_in_progress,
+        DashboardManifestKey.PENDING: max(global_pending, 0),
+        DashboardManifestKey.SUCCESS_RATE: round(success_rate, 6),
+        DashboardManifestKey.IS_COMPLETE: is_complete,
+        DashboardManifestKey.START_TIME: start_time,
+        DashboardManifestKey.INPUT_PATH: input_path,
+        DashboardManifestKey.DATASETS: per_dataset,
+        DashboardManifestKey.FAILURE_CATEGORIES: failure_categories,
+        DashboardManifestKey.ANALYSIS_DATA_VERSION: _get_analysis_data_version(progress_dir),
     }
 
     # Add SLURM info when in SLURM mode.
     if is_slurm:
-        manifest["slurm_info"] = {
-            "chunk_scripts": chunk_scripts or [],
-            "total_chunks": len(slurm_job_ids) if slurm_job_ids else 0,
-            "chunk_job_ids": slurm_job_ids or {},
-            "active_chunks": active_chunks,
-            "completed_chunks": completed_chunks,
-            "pending_chunks": pending_chunks,
+        manifest[DashboardManifestKey.SLURM_INFO] = {
+            DashboardManifestSlurmInfoKey.CHUNK_SCRIPTS: chunk_scripts or [],
+            DashboardManifestSlurmInfoKey.TOTAL_CHUNKS: len(slurm_job_ids) if slurm_job_ids else 0,
+            DashboardManifestSlurmInfoKey.CHUNK_JOB_IDS: slurm_job_ids or {},
+            DashboardManifestSlurmInfoKey.ACTIVE_CHUNKS: active_chunks,
+            DashboardManifestSlurmInfoKey.COMPLETED_CHUNKS: completed_chunks,
+            DashboardManifestSlurmInfoKey.PENDING_CHUNKS: pending_chunks,
         }
 
     # 6. Write manifest atomically.
     progress_dir.mkdir(parents=True, exist_ok=True)
-    manifest_path = progress_dir / "manifest.json"
+    manifest_path = progress_dir / MANIFEST_JSON
 
     fd = tempfile.NamedTemporaryFile(
         mode="w",

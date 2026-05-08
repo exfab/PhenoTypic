@@ -13,6 +13,8 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from phenotypic.tools_ import EnvVar
+
 if TYPE_CHECKING:
     import polars as pl
 
@@ -135,7 +137,7 @@ def duckdb_aggregate(
 
 def _configure_connection(conn: object) -> None:
     """Apply SLURM-aware resource limits to a DuckDB connection."""
-    mem_limit = os.environ.get("SLURM_MEM_PER_NODE", "")
+    mem_limit = os.environ.get(EnvVar.SLURM_MEM_PER_NODE, "")
     if mem_limit.isdigit():
         # SLURM_MEM_PER_NODE is in megabytes when set by Slurm.
         mem_limit = f"{mem_limit}MB"
@@ -143,11 +145,11 @@ def _configure_connection(conn: object) -> None:
         mem_limit = "4GB"
     conn.execute(f"SET memory_limit = '{mem_limit}'")
 
-    temp_dir = os.environ.get("SCRATCH", "/tmp").replace("'", "''")
+    temp_dir = os.environ.get(EnvVar.SCRATCH, "/tmp").replace("'", "''")
     conn.execute(f"SET temp_directory = '{temp_dir}'")
 
     try:
-        threads = int(os.environ.get("SLURM_CPUS_PER_TASK", "4"))
+        threads = int(os.environ.get(EnvVar.SLURM_CPUS_PER_TASK, "4"))
     except ValueError:
         threads = 4
     conn.execute(f"SET threads = {threads}")

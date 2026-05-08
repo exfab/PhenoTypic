@@ -38,6 +38,7 @@ from phenotypic.gui._design import (
 )
 from phenotypic.gui._shared import SHARED_LOGO_PATH
 from phenotypic.gui.builder import _ids as ids
+from phenotypic.gui.builder._ids import StageName
 from phenotypic.gui.builder._modal_browser import (
     load_image_modal,
     load_picker_modal,
@@ -68,7 +69,7 @@ if TYPE_CHECKING:  # pragma: no cover - type-only imports
 #: Background colour for canvas nodes by inferred stage (or pipeline sentinel).
 #: Light tints matched to the palette accordion stage colours so a glance at
 #: the canvas tells the user which stage of the pipeline a node belongs to.
-_STAGE_COLORS = {
+_STAGE_COLORS: dict[StageName | str, str] = {
     "ops": "#dbe8f5",       # navy-tinted (image ops)
     "meas": "#fdebc7",      # gold-tinted (measurements)
     "post": "#cfeee2",      # green-tinted (post-measurements)

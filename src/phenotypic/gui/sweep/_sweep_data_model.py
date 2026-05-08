@@ -11,11 +11,15 @@ import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, get_args
+
+from phenotypic.gui._config import ChannelName, DIR_MEASUREMENTS, DIR_RESULTS
 
 logger = logging.getLogger(__name__)
 
 _HDF5_EXTENSIONS = {".h5", ".hdf5"}
+
+_CHANNELS = get_args(ChannelName)  # ("rgb", "gray", "detect_mat", "objmap")
 
 
 # ---------------------------------------------------------------------------
@@ -71,9 +75,7 @@ def build_layer_resolution_index(
         return {}
 
     # Running "latest source" for each layer
-    latest: dict[str, Path | None] = {
-        "rgb": None, "gray": None, "detect_mat": None, "objmap": None,
-    }
+    latest: dict[str, Path | None] = {name: None for name in _CHANNELS}
     index: dict[int, ResolvedLayerSources] = {}
 
     for step in steps:
@@ -153,7 +155,7 @@ class SweepOutputScanner:
             SweepOutputScanner._parse_manifest(manifest_path)
         )
 
-        results_dir = sweep_dir / "results"
+        results_dir = sweep_dir / DIR_RESULTS
         if results_dir.is_dir():
             hdf5_files = SweepOutputScanner._scan_results(results_dir)
         else:
@@ -371,7 +373,7 @@ class SweepOutputScanner:
         """
         import h5py
 
-        _LAYER_KEYS = {"rgb", "gray", "detect_mat", "objmap"}
+        _LAYER_KEYS = set(get_args(ChannelName))
         intermediates: Dict[str, Dict[str, List[IntermediateStep]]] = {}
 
         for stem_dir in sorted(results_dir.iterdir()):

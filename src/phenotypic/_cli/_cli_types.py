@@ -9,8 +9,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Literal
+from typing import Any, Dict, List, Optional, Set
 from datetime import datetime
+
+from phenotypic.tools_.typing_ import ExecutionMode, ImageTypeName
 
 
 @dataclass
@@ -58,7 +60,7 @@ class ProcessingState:
     input_path: Path  # Input directory or file
     output_dir: Path  # Output directory
     timestamp: datetime  # Processing start time
-    execution_mode: Literal["local", "slurm"]  # Execution mode
+    execution_mode: ExecutionMode  # Execution mode
     last_updated: datetime  # Last state update time
     datasets: Dict[str, DatasetState]  # dataset_name -> state
     config: Dict[str, Any]  # Configuration used (for compatibility checking)
@@ -87,7 +89,7 @@ class ExecutionConfig:
     # Image configuration. ``nrows``/``ncols`` are optional CLI overrides:
     # ``None`` means "no explicit CLI value, fall back to the pipeline's soft
     # preset or the built-in default at image-load time".
-    image_type: Literal["Image", "GridImage"]
+    image_type: ImageTypeName
     nrows: Optional[int]
     ncols: Optional[int]
     bit_depth: Optional[int]
@@ -162,7 +164,7 @@ class ExecutionResults:
     total_images: int
     total_completed: int
     total_failed: int
-    execution_mode: Literal["local", "slurm"]
+    execution_mode: ExecutionMode
     start_time: datetime
     end_time: datetime
     

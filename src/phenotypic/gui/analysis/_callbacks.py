@@ -20,12 +20,15 @@ from typing import TYPE_CHECKING, Any
 import polars as pl
 from dash import ALL, Input, Output, State, callback_context, html, no_update
 
+from phenotypic.tools_ import ModulePath
+
 from phenotypic.gui._config import (
     CFG_MEASUREMENT_SCHEMA,
     CFG_OUTPUT_ROOT,
     CFG_RECIPE_STATE,
     MEASUREMENTS_PARQUET,
 )
+from phenotypic.gui.results_viewer._filtered_state import KEY_IMAGE_FILE
 from phenotypic.gui._design import COLOR_MUTED
 from phenotypic.gui.analysis import _ids as ids
 from phenotypic.gui.analysis._layout import (
@@ -44,10 +47,10 @@ logger = logging.getLogger(__name__)
 _POST_DEFAULTS: dict[str, dict[str, Any]] = {
     "PrependString": {"to_column": "Metadata_Strain", "string": "strain_"},
     "AppendString": {"to_column": "Metadata_Strain", "string": "_x"},
-    "ExpandMetadata": {"on_column": "Metadata_ImageFile",
+    "ExpandMetadata": {"on_column": KEY_IMAGE_FILE,
                        "split_pattern": "_",
                        "new_columns": ["A", "B"]},
-    "MergeMetadata": {"metadata_path": "metadata.csv", "on": "Metadata_ImageFile"},
+    "MergeMetadata": {"metadata_path": "metadata.csv", "on": KEY_IMAGE_FILE},
 }
 _FILTER_DEFAULTS: dict[str, dict[str, Any]] = {
     "EdgeCorrector": {"on": "Shape_Area", "groupby": ["Metadata_Strain"]},
@@ -524,9 +527,9 @@ _KIND_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
 }
 
 _KIND_MODULES: dict[str, str] = {
-    "post": "phenotypic.post",
-    "filter": "phenotypic.analysis",
-    "model": "phenotypic.analysis",
+    "post": ModulePath.POST,
+    "filter": ModulePath.ANALYSIS,
+    "model": ModulePath.ANALYSIS,
 }
 
 

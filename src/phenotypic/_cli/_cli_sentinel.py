@@ -22,6 +22,7 @@ from pathlib import Path
 import click
 
 from ._dashboard import build_manifest
+from phenotypic.tools_ import JOB_METADATA_JSON, MANIFEST_JSON, JobMetadataKey, sentinel_resubmitted_path
 
 logger = logging.getLogger(__name__)
 
@@ -71,11 +72,11 @@ def sentinel_main(
     )
 
     # Clean up stale resubmission marker from a previous sentinel run
-    marker = progress_dir / "sentinel_resubmitted"
+    marker = sentinel_resubmitted_path(progress_dir)
     if marker.exists():
         marker.unlink()
 
-    metadata_path = progress_dir / "job_metadata.json"
+    metadata_path = progress_dir / JOB_METADATA_JSON
     if not metadata_path.exists():
         logger.error("job_metadata.json not found at %s", metadata_path)
         raise SystemExit(1)
@@ -83,12 +84,12 @@ def sentinel_main(
     with open(metadata_path, encoding="utf-8") as fh:
         job_metadata = json.load(fh)
 
-    start_time = job_metadata["start_time"]
-    datasets_info = job_metadata["datasets"]
-    chunk_scripts = job_metadata.get("chunk_scripts", [])
-    chunk_job_ids = job_metadata.get("chunk_job_ids", {})
-    image_task_mapping = job_metadata.get("image_task_mapping", {})
-    input_path = job_metadata.get("input_path")
+    start_time = job_metadata[JobMetadataKey.START_TIME]
+    datasets_info = job_metadata[JobMetadataKey.DATASETS]
+    chunk_scripts = job_metadata.get(JobMetadataKey.CHUNK_SCRIPTS, [])
+    chunk_job_ids = job_metadata.get(JobMetadataKey.CHUNK_JOB_IDS, {})
+    image_task_mapping = job_metadata.get(JobMetadataKey.IMAGE_TASK_MAPPING, {})
+    input_path = job_metadata.get(JobMetadataKey.INPUT_PATH)
 
     # Build {dataset_name: total_images} mapping
     datasets_totals: dict[str, int] = {
@@ -121,7 +122,7 @@ def sentinel_main(
         # Update analysis sidecar data (partial results visible during run)
         try:
             from phenotypic._cli._dashboard._analysis_data import write_analysis_sidecar
-            _meta_csv = job_metadata.get("metadata_csv")
+            _meta_csv = job_metadata.get(JobMetadataKey.METADATA_CSV)
             write_analysis_sidecar(
                 output_dir,
                 metadata_csv=Path(_meta_csv) if _meta_csv else None,
@@ -130,7 +131,7 @@ def sentinel_main(
             logger.debug("Analysis sidecar write failed", exc_info=True)
 
         # Check completion status from the freshly-written manifest
-        manifest_path = progress_dir / "manifest.json"
+        manifest_path = progress_dir / MANIFEST_JSON
         if manifest_path.exists():
             with open(manifest_path, encoding="utf-8") as fh:
                 manifest = json.load(fh)
@@ -141,12 +142,12 @@ def sentinel_main(
             try:
                 from ._cli_output_manager import aggregate_measurements
 
-                _metadata_csv_str = job_metadata.get("metadata_csv")
+                _metadata_csv_str = job_metadata.get(JobMetadataKey.METADATA_CSV)
                 master_path = aggregate_measurements(
                     output_dir=output_dir,
                     dataset_names=list(datasets_totals.keys()),
                     include_dataset_column=job_metadata.get(
-                        "include_dataset_column", True
+                        JobMetadataKey.INCLUDE_DATASET_COLUMN, True
                     ),
                     metadata_csv=Path(_metadata_csv_str) if _metadata_csv_str else None,
                 )
@@ -184,7 +185,7 @@ def sentinel_main(
             new_job_id = result.stdout.strip()
             logger.info("Sentinel resubmitted as SLURM job %s", new_job_id)
             # Signal to bash trap that resubmission already happened
-            marker = progress_dir / "sentinel_resubmitted"
+            marker = sentinel_resubmitted_path(progress_dir)
             marker.write_text(new_job_id, encoding="utf-8")
         else:
             logger.error(

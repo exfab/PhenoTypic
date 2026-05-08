@@ -18,10 +18,15 @@ from pathlib import Path
 import polars as pl
 
 from phenotypic.gui._config import (
+    DIR_MEASUREMENTS,
+    DIR_OVERLAYS,
     MASTER_MEASUREMENTS_PARQUET,
     MEASUREMENTS_PARQUET,
+    PIPELINE_JSON,
+    RESULTS_DIRNAME,
     VIEWER_CACHE_DIRNAME,
 )
+from phenotypic.gui.results_viewer._filtered_state import KEY_DATASET, KEY_IMAGE_FILE
 
 logger = logging.getLogger(__name__)
 
@@ -30,13 +35,11 @@ _MASTER_FILENAME = MASTER_MEASUREMENTS_PARQUET
 #: over the master archive for the viewer's display frame because it
 #: reflects whatever ``PostMeasurement`` ops the user configured.
 _MIRROR_FILENAME = MEASUREMENTS_PARQUET
-_RESULTS_DIRNAME = "results"
-_OVERLAYS_DIRNAME = "overlays"
-_MEASUREMENTS_DIRNAME = "measurements"
+_RESULTS_DIRNAME = RESULTS_DIRNAME
 _CACHE_RELATIVE = Path(VIEWER_CACHE_DIRNAME) / "dzi"
-_PIPELINE_JSON = "pipeline.json"
-_DATASET_COL = "Metadata_Dataset"
-_IMAGEFILE_COL = "Metadata_ImageFile"
+_PIPELINE_JSON = PIPELINE_JSON
+_DATASET_COL = KEY_DATASET
+_IMAGEFILE_COL = KEY_IMAGE_FILE
 _IMAGENAME_COL = "Metadata_ImageName"
 
 
@@ -153,7 +156,7 @@ class OutputRoot:
 
         master_df = _ensure_required_columns(master_df, results_dir, datasets)
         datasets_with_overlays = [
-            ds for ds in datasets if (results_dir / ds / _OVERLAYS_DIRNAME).is_dir()
+            ds for ds in datasets if (results_dir / ds / DIR_OVERLAYS).is_dir()
         ]
         if datasets_with_overlays:
             logger.info(
@@ -204,7 +207,7 @@ class OutputRoot:
             returned path is not checked for existence; use
             :meth:`has_overlay` for that.
         """
-        return self.root / _RESULTS_DIRNAME / dataset / _OVERLAYS_DIRNAME / f"{stem}.png"
+        return self.root / _RESULTS_DIRNAME / dataset / DIR_OVERLAYS / f"{stem}.png"
 
     def has_overlay(self, dataset: str, stem: str) -> bool:
         """Return ``True`` if the overlay PNG exists on disk.
@@ -241,18 +244,18 @@ class OutputRoot:
         """
         pairs_df = (
             df.select(
-                pl.col("Metadata_Dataset").cast(pl.String),
-                pl.col("Metadata_ImageFile").cast(pl.String),
+                pl.col(_DATASET_COL).cast(pl.String),
+                pl.col(_IMAGEFILE_COL).cast(pl.String),
             )
             .drop_nulls()
             .unique()
-            .sort(["Metadata_Dataset", "Metadata_ImageFile"])
+            .sort([_DATASET_COL, _IMAGEFILE_COL])
         )
         return [
             (dataset, stem)
             for dataset, stem in zip(
-                pairs_df.get_column("Metadata_Dataset").to_list(),
-                pairs_df.get_column("Metadata_ImageFile").to_list(),
+                pairs_df.get_column(_DATASET_COL).to_list(),
+                pairs_df.get_column(_IMAGEFILE_COL).to_list(),
                 strict=True,
             )
         ]
@@ -305,7 +308,7 @@ def _ensure_required_columns(
     stem_to_dataset: dict[str, str] = {}
     collisions: set[str] = set()
     for dataset in datasets:
-        meas_dir = results_dir / dataset / _MEASUREMENTS_DIRNAME
+        meas_dir = results_dir / dataset / DIR_MEASUREMENTS
         if not meas_dir.is_dir():
             continue
         for entry in meas_dir.iterdir():
@@ -376,7 +379,7 @@ def _scan_overlay_index(
     """
     pairs: set[tuple[str, str]] = set()
     for dataset in datasets_with_overlays:
-        overlays_dir = results_dir / dataset / _OVERLAYS_DIRNAME
+        overlays_dir = results_dir / dataset / DIR_OVERLAYS
         for entry in overlays_dir.iterdir():
             if entry.suffix.lower() == ".png" and entry.is_file():
                 pairs.add((dataset, entry.stem))
@@ -451,7 +454,7 @@ def _read_pipeline_summary(pipeline_json: Path) -> str | None:
                 value = payload.get(key)
                 if isinstance(value, str) and value.strip():
                     return value.strip()
-        return _PIPELINE_JSON
+        return None
     except Exception:
         logger.debug("Failed to parse %s for pipeline_summary", pipeline_json, exc_info=True)
         return None

@@ -32,6 +32,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Set, Tupl
 import click
 
 from ._cli_constants import DEFAULT_GRID_ROWS, DEFAULT_GRID_COLS
+from phenotypic.tools_ import EnvVar, JOB_METADATA_JSON
 
 if TYPE_CHECKING:
     import polars as pl
@@ -61,7 +62,7 @@ def resolve_local_worker_count(n_jobs: int, work_items: int) -> int:
         return 1
 
     slurm_cpu_cap: Optional[int] = None
-    slurm_cpus = os.environ.get("SLURM_CPUS_PER_TASK")
+    slurm_cpus = os.environ.get(EnvVar.SLURM_CPUS_PER_TASK)
     if slurm_cpus is not None:
         try:
             parsed_slurm_cpus = int(slurm_cpus)
@@ -143,7 +144,7 @@ def load_job_metadata(progress_dir: Path) -> Optional[Dict[str, Any]]:
     Returns:
         Parsed dict, or ``None`` if the file is missing or unreadable.
     """
-    meta_path = progress_dir / "job_metadata.json"
+    meta_path = progress_dir / JOB_METADATA_JSON
     if not meta_path.exists():
         return None
     try:

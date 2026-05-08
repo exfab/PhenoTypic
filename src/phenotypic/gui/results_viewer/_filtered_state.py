@@ -41,6 +41,10 @@ from phenotypic.gui._config import MEASUREMENTS_CSV, MEASUREMENTS_PARQUET
 
 logger = logging.getLogger(__name__)
 
+#: Column name that identifies the dataset (plate / condition group) a colony
+#: belongs to. Maps to the ``Metadata_Dataset`` column written by the CLI.
+KEY_DATASET: str = "Metadata_Dataset"
+
 #: Column name that identifies the source image of a colony.
 KEY_IMAGE_FILE: str = "Metadata_ImageFile"
 

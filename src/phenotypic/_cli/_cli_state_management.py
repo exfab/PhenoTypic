@@ -14,6 +14,7 @@ from datetime import datetime
 
 from ._cli_types import ProcessingState, DatasetState, Dataset, ExecutionConfig
 from ._cli_update_state import aggregate_state_from_events
+from phenotypic.tools_ import PROCESSING_STATE_JSON, PROCESSING_EVENTS_LOG, JobMetadataKey
 
 
 def save_processing_state(
@@ -33,16 +34,16 @@ def save_processing_state(
     Returns:
         Path to saved state file
     """
-    state_file = output_dir / "processing_state.json"
+    state_file = output_dir / PROCESSING_STATE_JSON
     
     # Convert state to dictionary
     state_dict = {
         "version": state.version,
         "pipeline_path": str(state.pipeline_path),
-        "input_path": str(state.input_path),
+        JobMetadataKey.INPUT_PATH: str(state.input_path),
         "output_dir": str(state.output_dir),
         "timestamp": state.timestamp.isoformat(),
-        "execution_mode": state.execution_mode,
+        JobMetadataKey.EXECUTION_MODE: state.execution_mode,
         "last_updated": state.last_updated.isoformat(),
         "datasets": {},
         "config": state.config
@@ -75,7 +76,7 @@ def load_processing_state(output_dir: Path) -> Optional[ProcessingState]:
     Returns:
         ProcessingState object, or None if no state file exists
     """
-    state_file = output_dir / "processing_state.json"
+    state_file = output_dir / PROCESSING_STATE_JSON
     
     if not state_file.exists():
         return None
@@ -88,7 +89,7 @@ def load_processing_state(output_dir: Path) -> Optional[ProcessingState]:
     last_updated = datetime.fromisoformat(state_dict["last_updated"])
     
     # Aggregate latest events from log
-    event_log = output_dir / "processing_events.log"
+    event_log = output_dir / PROCESSING_EVENTS_LOG
     if event_log.exists():
         latest_states = aggregate_state_from_events(event_log)
     else:
@@ -117,10 +118,10 @@ def load_processing_state(output_dir: Path) -> Optional[ProcessingState]:
     state = ProcessingState(
         version=state_dict["version"],
         pipeline_path=Path(state_dict["pipeline_path"]),
-        input_path=Path(state_dict["input_path"]),
+        input_path=Path(state_dict[JobMetadataKey.INPUT_PATH]),
         output_dir=Path(state_dict["output_dir"]),
         timestamp=timestamp,
-        execution_mode=state_dict["execution_mode"],
+        execution_mode=state_dict[JobMetadataKey.EXECUTION_MODE],
         last_updated=last_updated,
         datasets=datasets,
         config=state_dict["config"]
@@ -186,7 +187,7 @@ def update_state_from_events(state: ProcessingState, output_dir: Path) -> Proces
     Returns:
         Updated ProcessingState object
     """
-    event_log = output_dir / "processing_events.log"
+    event_log = output_dir / PROCESSING_EVENTS_LOG
     
     if event_log.exists():
         # Aggregate events

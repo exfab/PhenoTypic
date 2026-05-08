@@ -45,6 +45,8 @@ import dash
 from dash import ALL, Input, Output, State, ctx, no_update
 
 from phenotypic.gui._config import (
+    DASHBOARD_FILENAME,
+    RUNS_BLUEPRINT_PREFIX,
     SANDBOX_GUI_DIRNAME,
     SANDBOX_PRESETS_SUBDIR,
     THREAD_NAME_PREFIX,
@@ -360,7 +362,7 @@ def _dashboard_url(rel_path: str) -> str:
     ``url_prefix`` so we always use the absolute ``/runs/...`` path.
     """
     safe_rel = rel_path.strip("/").replace("\\", "/")
-    return f"/runs/{safe_rel}/dashboard.html"
+    return f"{RUNS_BLUEPRINT_PREFIX}/{safe_rel}/{DASHBOARD_FILENAME}"
 
 
 # ---------------------------------------------------------------------------
@@ -1028,7 +1030,7 @@ def register_callbacks(
         if not rel_path:
             return (no_update,) * 4
         try:
-            target = sandbox.resolve(Path(rel_path) / "dashboard.html")
+            target = sandbox.resolve(Path(rel_path) / DASHBOARD_FILENAME)
         except ValueError:
             return (no_update,) * 4
         if not target.is_file():
@@ -1210,7 +1212,7 @@ def register_callbacks(
         # Only point at a real dashboard.html — clicking a row whose run
         # never produced a dashboard does nothing visible.
         try:
-            target = sandbox.resolve(Path(rel_path) / "dashboard.html")
+            target = sandbox.resolve(Path(rel_path) / DASHBOARD_FILENAME)
         except ValueError:
             return (no_update,) * 4
         if not target.is_file():

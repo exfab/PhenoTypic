@@ -32,7 +32,7 @@ from dash import dcc, html
 from dash.development.base_component import Component
 from flask import current_app, has_app_context
 
-from phenotypic.gui._config import CFG_URL_PREFIX, MOUNT_HOME
+from phenotypic.gui._config import CFG_URL_PREFIX, COLONY_CROPS_URL_SEGMENT, MOUNT_HOME
 from phenotypic.gui._design import (
     COLOR_NAVY,
     FONT_FAMILY_MONO,
@@ -46,6 +46,7 @@ from phenotypic.gui.results_viewer._ids import (
     colony_cell_remove_btn_id,
 )
 from phenotypic.gui.results_viewer._filtered_state import (
+    KEY_DATASET,
     KEY_IMAGE_FILE,
     KEY_OBJECT_LABEL,
 )
@@ -255,7 +256,7 @@ def _representative_per_cell(
     # picks e.g. Metadata_Dataset as an axis).
     aggs = [
         pl.col(KEY_IMAGE_FILE).alias("_members_image_file"),
-        pl.col("Metadata_Dataset").alias("_members_dataset"),
+        pl.col(KEY_DATASET).alias("_members_dataset"),
         pl.col(_OBJECT_LABEL_COL).alias("_members_label"),
         pl.len().alias("count"),
     ]
@@ -338,7 +339,7 @@ def _build_cell(
 
     if has_overlay:
         prefix = _url_prefix()
-        crop_url = f"{prefix}crops/{dataset}/{image_file}/{label}.png?size={max_size}"
+        crop_url = f"{prefix}{COLONY_CROPS_URL_SEGMENT}/{dataset}/{image_file}/{label}.png?size={max_size}"
         crop_node: Component = html.Img(
             src=crop_url,
             className="colony-cell-img",
@@ -527,7 +528,7 @@ def build_stack_popover_rows(
     prefix = _url_prefix()
     for image_file, dataset, label in members:
         is_removed = (image_file, label) in removed_keys
-        crop_url = f"{prefix}crops/{dataset}/{image_file}/{label}.png?size={crop_size}"
+        crop_url = f"{prefix}{COLONY_CROPS_URL_SEGMENT}/{dataset}/{image_file}/{label}.png?size={crop_size}"
         rows.append(
             html.Div(
                 [

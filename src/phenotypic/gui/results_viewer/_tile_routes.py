@@ -19,6 +19,7 @@ import dash
 from flask import Blueprint, Response, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 
+from phenotypic.gui._config import VIEWER_TILES_PREFIX
 from phenotypic.gui.results_viewer import _dzi_tiler
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 
@@ -71,7 +72,7 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
             Captured by closure and used to resolve overlay PNGs and
             the per-image cache directory.
     """
-    bp = Blueprint("results_viewer_tiles", __name__, url_prefix="/tiles")
+    bp = Blueprint("results_viewer_tiles", __name__, url_prefix=VIEWER_TILES_PREFIX)
 
     @bp.route("/<dataset>/<stem>.dzi")
     def manifest(dataset: str, stem: str) -> Response:

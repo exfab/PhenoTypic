@@ -21,7 +21,11 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
-from phenotypic.gui._config import MASTER_MEASUREMENTS_PARQUET
+from phenotypic.gui._config import (
+    DASHBOARD_FILENAME,
+    MASTER_MEASUREMENTS_PARQUET,
+    RESULTS_DIRNAME,
+)
 from phenotypic.gui.builder._directory_browser import IMAGE_EXTS
 
 __all__ = ["Capabilities", "classify", "invalidate_cache"]
@@ -32,8 +36,8 @@ __all__ = ["Capabilities", "classify", "invalidate_cache"]
 # viewer's ``_output_root`` stay in lockstep without either importing the
 # other (which would re-introduce the historical circular dependency).
 _MASTER_MEASUREMENTS_FILENAME = MASTER_MEASUREMENTS_PARQUET
-_RESULTS_DIRNAME = "results"
-_DASHBOARD_FILENAME = "dashboard.html"
+_RESULTS_DIRNAME = RESULTS_DIRNAME
+_DASHBOARD_FILENAME = DASHBOARD_FILENAME
 
 # Image-count cap. Surfaces "many images" without paying for a full scan when
 # a folder holds tens of thousands of plate images.

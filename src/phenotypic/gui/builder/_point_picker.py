@@ -37,6 +37,7 @@ from PIL import Image as PILImage
 from werkzeug.utils import secure_filename
 
 from phenotypic.gui._config import (
+    BUILDER_TILES_PREFIX,
     CFG_IMAGE_ROOT,
     SANDBOX_BUILDER_TILES_SUBDIR,
     SANDBOX_GUI_DIRNAME,
@@ -392,7 +393,7 @@ def register_point_picker_routes(
             resolve their cache directories without re-reading the Dash
             server's config dict.
     """
-    bp = Blueprint("builder_point_picker", __name__, url_prefix="/builder/tiles")
+    bp = Blueprint("builder_point_picker", __name__, url_prefix=BUILDER_TILES_PREFIX)
 
     @bp.route("/<session_id>/<source>.dzi")
     def manifest(session_id: str, source: str) -> Response:
@@ -599,7 +600,7 @@ def _dzi_url(session_id: str, source: str) -> str:
     Returns:
         URL string of the form ``/builder/tiles/<session_id>/<source>.dzi``.
     """
-    return f"/builder/tiles/{session_id}/{source}.dzi"
+    return f"{BUILDER_TILES_PREFIX}/{session_id}/{source}.dzi"
 
 
 # ---------------------------------------------------------------------------

@@ -16,6 +16,15 @@ import click
 
 from ._cli_file_locking import FileLockTimeout, file_lock
 from ._cli_utils import load_job_metadata
+from phenotypic.tools_ import (
+    DIR_PROGRESS,
+    MASTER_MEASUREMENTS_CSV,
+    PROCESSING_EVENTS_LOG,
+    JobMetadataKey,
+    checkpoint_lock_filename,
+    resolve_execution_mode,
+)
+from phenotypic.tools_.typing_ import CheckpointType
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +42,11 @@ logger = logging.getLogger(__name__)
 )
 def main(output_dir: Path, checkpoint_type: str) -> None:
     """Handle manifest or finalize checkpoint tasks."""
-    progress_dir = output_dir / "progress"
-    lock_path = progress_dir / f".{checkpoint_type}_lock"
+    # Click validated the value via Choice, but it arrives as bare str — narrow
+    # to the typed alias before passing into render functions / comparisons.
+    checkpoint: CheckpointType = "manifest" if checkpoint_type == "manifest" else "finalize"
+    progress_dir = output_dir / DIR_PROGRESS
+    lock_path = progress_dir / checkpoint_lock_filename(checkpoint)
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     lock_path.touch(exist_ok=True)
 
@@ -68,7 +80,7 @@ def _run_manifest(output_dir: Path, progress_dir: Path) -> None:
 
     from ._dashboard._manifest_builder import build_manifest
 
-    datasets_raw = job_metadata.get("datasets", {}) or {}
+    datasets_raw = job_metadata.get(JobMetadataKey.DATASETS, {}) or {}
     datasets_totals: dict[str, int] = {
         name: (info["total"] if isinstance(info, dict) else int(info))
         for name, info in datasets_raw.items()
@@ -78,11 +90,11 @@ def _run_manifest(output_dir: Path, progress_dir: Path) -> None:
         output_dir=output_dir,
         progress_dir=progress_dir,
         datasets=datasets_totals,
-        execution_mode=job_metadata.get("execution_mode", "local"),
-        start_time=job_metadata.get("start_time", ""),
-        slurm_job_ids=job_metadata.get("chunk_job_ids"),
-        chunk_scripts=job_metadata.get("chunk_scripts"),
-        input_path=job_metadata.get("input_path"),
+        execution_mode=resolve_execution_mode(job_metadata),
+        start_time=job_metadata.get(JobMetadataKey.START_TIME, ""),
+        slurm_job_ids=job_metadata.get(JobMetadataKey.CHUNK_JOB_IDS),
+        chunk_scripts=job_metadata.get(JobMetadataKey.CHUNK_SCRIPTS),
+        input_path=job_metadata.get(JobMetadataKey.INPUT_PATH),
     )
 
 
@@ -103,7 +115,7 @@ def _run_finalize(output_dir: Path, progress_dir: Path) -> None:
         logger.warning("No job_metadata.json -- cannot finalize")
         return
 
-    datasets_raw = job_metadata.get("datasets", {}) or {}
+    datasets_raw = job_metadata.get(JobMetadataKey.DATASETS, {}) or {}
     datasets_totals: dict[str, int] = {
         name: (info["total"] if isinstance(info, dict) else int(info))
         for name, info in datasets_raw.items()
@@ -116,13 +128,13 @@ def _run_finalize(output_dir: Path, progress_dir: Path) -> None:
     # Final aggregation
     from ._cli_output_manager import aggregate_measurements
 
-    metadata_csv_str = job_metadata.get("metadata_csv")
+    metadata_csv_str = job_metadata.get(JobMetadataKey.METADATA_CSV)
     metadata_csv = Path(metadata_csv_str) if metadata_csv_str else None
 
     aggregate_measurements(
         output_dir=output_dir,
         dataset_names=list(datasets_totals.keys()),
-        include_dataset_column=job_metadata.get("include_dataset_column", True),
+        include_dataset_column=job_metadata.get(JobMetadataKey.INCLUDE_DATASET_COLUMN, True),
         metadata_csv=metadata_csv,
     )
 
@@ -133,11 +145,11 @@ def _run_finalize(output_dir: Path, progress_dir: Path) -> None:
         output_dir=output_dir,
         progress_dir=progress_dir,
         datasets=datasets_totals,
-        execution_mode=job_metadata.get("execution_mode", "local"),
-        start_time=job_metadata.get("start_time", ""),
-        slurm_job_ids=job_metadata.get("chunk_job_ids"),
-        chunk_scripts=job_metadata.get("chunk_scripts"),
-        input_path=job_metadata.get("input_path"),
+        execution_mode=resolve_execution_mode(job_metadata),
+        start_time=job_metadata.get(JobMetadataKey.START_TIME, ""),
+        slurm_job_ids=job_metadata.get(JobMetadataKey.CHUNK_JOB_IDS),
+        chunk_scripts=job_metadata.get(JobMetadataKey.CHUNK_SCRIPTS),
+        input_path=job_metadata.get(JobMetadataKey.INPUT_PATH),
     )
 
     # Final analysis plugins
@@ -145,7 +157,7 @@ def _run_finalize(output_dir: Path, progress_dir: Path) -> None:
 
     import polars as pl
 
-    master_path = output_dir / "master_measurements.csv"
+    master_path = output_dir / MASTER_MEASUREMENTS_CSV
     merged_df: Optional[pl.DataFrame] = None
     if master_path.exists():
         try:
@@ -160,7 +172,7 @@ def _run_finalize(output_dir: Path, progress_dir: Path) -> None:
 
         generate_dashboard(
             output_dir,
-            execution_mode=job_metadata.get("execution_mode", "local"),
+            execution_mode=resolve_execution_mode(job_metadata),
         )
     except Exception:
         logger.warning("Dashboard generation failed", exc_info=True)
@@ -181,7 +193,7 @@ def _wait_for_completion(
     """
     from ._cli_update_state import aggregate_state_from_events
 
-    event_log = progress_dir.parent / "processing_events.log"
+    event_log = progress_dir.parent / PROCESSING_EVENTS_LOG
     deadline = time.monotonic() + timeout
     done = 0
     while time.monotonic() < deadline:

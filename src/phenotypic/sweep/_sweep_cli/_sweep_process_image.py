@@ -11,7 +11,9 @@ import sys
 import time
 import traceback
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, TYPE_CHECKING, Tuple
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple
+
+from phenotypic.tools_.typing_ import ImageTypeName
 
 import click
 
@@ -34,7 +36,7 @@ def _run_single_pipeline(
     pipeline_json_str: str,
     pipeline_name: str,
     image_path: Path,
-    image_type: Literal["Image", "GridImage"],
+    image_type: ImageTypeName,
     read_kwargs: Dict[str, Any],
     output_manager: SweepOutputManager,
     save_intermediates: bool = False,
@@ -155,7 +157,7 @@ def _run_single_pipeline(
 def process_image_all_pipelines(
     image_path: Path,
     pipeline_json_strs: Dict[str, str],
-    image_type: Literal["Image", "GridImage"],
+    image_type: ImageTypeName,
     read_kwargs: Dict[str, Any],
     output_manager: SweepOutputManager,
     n_jobs: int = -1,
@@ -206,7 +208,7 @@ def process_image_all_pipelines(
 def process_image_all_pipelines_sequential(
     image_path: Path,
     pipeline_json_strs: Dict[str, str],
-    image_type: Literal["Image", "GridImage"],
+    image_type: ImageTypeName,
     read_kwargs: Dict[str, Any],
     output_manager: SweepOutputManager,
     save_intermediates: bool = False,
@@ -368,7 +370,7 @@ def sweep_worker_cli(
 
         # Process all pipelines sequentially (SLURM tasks)
         click.echo(f"Processing {image.name} through {len(pipeline_json_strs)} pipelines...")
-        image_type_literal: Literal["Image", "GridImage"] = image_type  # type: ignore[assignment]
+        image_type_literal: ImageTypeName = image_type  # type: ignore[assignment]
         results = process_image_all_pipelines_sequential(
             image_path=image,
             pipeline_json_strs=pipeline_json_strs,

@@ -31,6 +31,8 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Literal, Optional
 
+from phenotypic.gui.builder._ids import StageName
+
 from phenotypic import ImagePipeline
 from phenotypic.abc_ import ImageOperation, MeasureFeatures, PostMeasurement
 from phenotypic.gui._operation_registry import (
@@ -594,7 +596,7 @@ def current_scope(state: BuilderState) -> BuilderScope:
     return scope
 
 
-def stage_of(class_name: str) -> Literal["ops", "meas", "post"]:
+def stage_of(class_name: str) -> StageName:
     """Return the pipeline stage a class belongs to.
 
     Args:

@@ -14,7 +14,9 @@ import logging
 import shutil
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence
+
+from phenotypic.tools_.typing_ import ImageTypeName
 
 import click
 
@@ -453,8 +455,7 @@ def sweep_cli(
         )
 
         strategy: SweepExecutionStrategy
-        image_type_lit: Literal[
-            "Image", "GridImage"] = image_type  # type: ignore[assignment]
+        image_type_lit: ImageTypeName = image_type  # type: ignore[assignment]
         if is_slurm:
             strategy = SLURMSweepStrategy(
                     pipeline_json_strs=pipeline_json_strs,
