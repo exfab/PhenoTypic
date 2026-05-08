@@ -9,21 +9,20 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Dict, List
-from datetime import datetime
 
 from phenotypic.tools_.constants_ import IO
+from phenotypic.tools_ import default_output_dir_name, DIR_RESULTS, DIR_HDF
 from ._cli_types import Dataset
 
 
 def generate_timestamped_output_dir() -> Path:
     """
     Generate timestamped output directory name.
-    
+
     Returns:
         Path like ./phenotypic_results_20260108_143022/
     """
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return Path(f"./phenotypic_results_{timestamp}")
+    return Path(default_output_dir_name())
 
 
 def scan_directory_structure(input_path: Path) -> Dict[str, List[Path]]:
@@ -180,7 +179,7 @@ def scan_hdf_outputs(output_dir: Path) -> List[Dataset]:
         ValueError: If no HDFs are found under ``<output_dir>/results``.
     """
     output_dir = Path(output_dir)
-    results_dir = output_dir / "results"
+    results_dir = output_dir / DIR_RESULTS
 
     datasets: List[Dataset] = []
 
@@ -189,7 +188,7 @@ def scan_hdf_outputs(output_dir: Path) -> List[Dataset]:
             if not subdir.is_dir():
                 continue
 
-            hdf_dir = subdir / "hdf"
+            hdf_dir = subdir / DIR_HDF
             if not hdf_dir.is_dir():
                 continue
 

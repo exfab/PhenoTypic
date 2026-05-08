@@ -200,3 +200,14 @@ under both standalone and dispatcher-mounted launches.
 | `phenotypic gui` non-support note  | gui_hub.md                         | Explicitly states the no-hyphen subcommand is unsupported                | ✅ shipping | manual     | n/a (manual) |
 | CLAUDE.md update                   | Quick Start section                | Mentions `python -m phenotypic.gui` and `phenotypic-gui`                 | ✅ shipping | manual     | n/a (manual) |
 | Point-picker walkthrough           | docs/source/tutorials/gui/07_pick_points.md | Manual-curation tutorial with screenshots; linked from tutorials/gui/index.md  | ✅ shipping | manual     | n/a (manual) |
+
+## Refactor log (no user-visible changes)
+
+This section is bookkeeping for refactors that touch ``gui/`` without adding,
+removing, or changing user-visible affordances. The CI ``features-md-gate``
+requires that any PR touching ``gui/`` modifies this file; refactor entries
+satisfy the gate without claiming new features.
+
+| Refactor                                              | Scope                                                                                         | User-visible change |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------- |
+| `refactor/cli-gui-string-literal-extraction` (PR #78) | Hoists CLI/GUI string literals to `phenotypic.tools_._io_constants`; adds Literal aliases.     | None — pure rename. |

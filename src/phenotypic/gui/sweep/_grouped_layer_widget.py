@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, get_args
 
+from phenotypic.gui._config import ChannelName
 from qtpy.QtCore import Signal
 from qtpy.QtWidgets import (
     QCheckBox,
@@ -15,7 +16,7 @@ from qtpy.QtWidgets import (
 
 logger = logging.getLogger(__name__)
 
-_COMPONENT_ORDER = ("rgb", "gray", "detect_mat", "objmap")
+_COMPONENT_ORDER = get_args(ChannelName)
 
 
 def _component_sort_key(component: str) -> tuple[int, str]:

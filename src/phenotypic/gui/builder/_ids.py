@@ -15,7 +15,13 @@ Notes:
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Literal
+
+#: Closed set of page tokens for the Load Picker modal.
+LoadPickerPage = Literal["chooser", "json", "prefab"]
+
+#: Closed set of pipeline stage names.
+StageName = Literal["ops", "meas", "post"]
 
 
 # ---------------------------------------------------------------------------
@@ -335,6 +341,8 @@ def prefab_card_id(class_name: str) -> Dict[str, Any]:
 
 
 __all__ = [
+    "LoadPickerPage",
+    "StageName",
     "STORE_BUILDER_STATE",
     "STORE_SESSION_ID",
     "STORE_INTERMEDIATE_KEYS",

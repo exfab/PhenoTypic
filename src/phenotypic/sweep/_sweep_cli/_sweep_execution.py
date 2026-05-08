@@ -11,7 +11,9 @@ import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Optional
+
+from phenotypic.tools_.typing_ import ImageTypeName, ProcessingStatus
 
 import click
 
@@ -29,7 +31,7 @@ class SweepExecutionStrategy(ABC):
     def __init__(
         self,
         pipeline_json_strs: Dict[str, str],
-        image_type: Literal["Image", "GridImage"],
+        image_type: ImageTypeName,
         read_kwargs: Dict[str, Any],
         output_manager: SweepOutputManager,
         cli_nrows: Optional[int] = None,
@@ -66,7 +68,7 @@ class LocalSweepStrategy(SweepExecutionStrategy):
     def __init__(
         self,
         pipeline_json_strs: Dict[str, str],
-        image_type: Literal["Image", "GridImage"],
+        image_type: ImageTypeName,
         read_kwargs: Dict[str, Any],
         output_manager: SweepOutputManager,
         n_jobs: int = -1,
@@ -156,7 +158,7 @@ class LocalSweepStrategy(SweepExecutionStrategy):
 
                 for pipe_name, ok, tb in results:
                     event_id = f"{image_path.name}::{pipe_name}"
-                    status = "completed" if ok else "failed"
+                    status: ProcessingStatus = "completed" if ok else "failed"
                     error_msg = "" if ok else tb[:200]
                     append_completion_event(
                         event_log=self.event_log,
@@ -186,7 +188,7 @@ class SLURMSweepStrategy(SweepExecutionStrategy):
     def __init__(
         self,
         pipeline_json_strs: Dict[str, str],
-        image_type: Literal["Image", "GridImage"],
+        image_type: ImageTypeName,
         read_kwargs: Dict[str, Any],
         output_manager: SweepOutputManager,
         manifest_path: Path,

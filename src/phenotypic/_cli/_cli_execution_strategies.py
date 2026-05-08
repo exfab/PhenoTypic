@@ -15,7 +15,7 @@ import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Literal, TYPE_CHECKING
+from typing import Any, Dict, List, TYPE_CHECKING
 
 import click
 import h5py  # type: ignore[import-untyped]
@@ -38,9 +38,11 @@ from ._cli_slurm_array_scripts import generate_all_array_job_scripts
 from ._cli_slurm_submission import submit_slurm_script_chain
 from ._cli_update_state import append_event, append_completion_event, aggregate_state_from_events
 from ._cli_failure_tracker import append_failure, read_failures
-from ._dashboard import build_manifest, generate_dashboard
+from ._dashboard import generate_dashboard, regenerate_dashboard_artifacts
 
 from ._cli_constants import MAX_TRACEBACK_LINES
+from phenotypic.tools_ import DIR_PROGRESS, JOB_METADATA_JSON, PROCESSING_EVENTS_LOG, JobMetadataKey, HdfAttr
+from phenotypic.tools_.typing_ import ImageTypeName
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +118,7 @@ class LocalParallelStrategy(ExecutionStrategy):
             Execution results with success/failure statistics
         """
         start_time = datetime.now()
-        event_log = output_dir / "processing_events.log"
+        event_log = output_dir / PROCESSING_EVENTS_LOG
         measure_only = bool(self.config.measure_only)
 
         # Flatten all images across datasets
@@ -201,17 +203,13 @@ class LocalParallelStrategy(ExecutionStrategy):
 
         # Generate progress manifest and dashboard (local mode — runs once)
         try:
-            progress_dir = output_dir / "progress"
             datasets_totals = {ds.name: len(ds.images) for ds in datasets}
-            build_manifest(
-                output_dir=output_dir,
-                progress_dir=progress_dir,
-                datasets=datasets_totals,
-                execution_mode="local",
-                start_time=start_time.isoformat(timespec="milliseconds"),
-                input_path=self.config.input_path.stem,
-            )
-            generate_dashboard(output_dir, execution_mode="local")
+            local_job_meta: dict = {
+                JobMetadataKey.START_TIME: start_time.isoformat(timespec="milliseconds"),
+                JobMetadataKey.INPUT_PATH: self.config.input_path.stem,
+                JobMetadataKey.EXECUTION_MODE: "local",
+            }
+            regenerate_dashboard_artifacts(output_dir, local_job_meta, datasets_totals)
         except Exception:
             logger.debug("Failed to generate progress dashboard", exc_info=True)
 
@@ -289,7 +287,7 @@ class LocalParallelStrategy(ExecutionStrategy):
 
             # Write structured failure record
             try:
-                progress_dir = output_dir / "progress"
+                progress_dir = output_dir / DIR_PROGRESS
                 append_failure(
                     progress_dir,
                     dataset=dataset.name,
@@ -341,12 +339,12 @@ class LocalParallelStrategy(ExecutionStrategy):
         try:
             # Detect the saved image class from the HDF root attr so
             # GridImage files rehydrate with their grid state intact.
-            resolved_image_type: Literal["Image", "GridImage"] = (
+            resolved_image_type: ImageTypeName = (
                 self.config.image_type  # type: ignore[assignment]
             )
             try:
                 with h5py.File(image_path, "r") as hf:
-                    saved_class = hf.attrs.get("phenotypic_class")
+                    saved_class = hf.attrs.get(HdfAttr.PHENOTYPIC_CLASS)
                     if isinstance(saved_class, bytes):
                         saved_class = saved_class.decode(
                             "utf-8", errors="replace"
@@ -401,7 +399,7 @@ class LocalParallelStrategy(ExecutionStrategy):
             )
 
             try:
-                progress_dir = output_dir / "progress"
+                progress_dir = output_dir / DIR_PROGRESS
                 append_failure(
                     progress_dir,
                     dataset=dataset.name,
@@ -632,7 +630,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         flat_scripts = submission.flat_scripts
 
         # ── Progress dashboard setup ──────────────────────────────────
-        progress_dir = output_dir / "progress"
+        progress_dir = output_dir / DIR_PROGRESS
         progress_dir.mkdir(parents=True, exist_ok=True)
 
         # Build image-task mapping: {job_id}_{array_idx} -> [dataset, image]
@@ -651,23 +649,23 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
 
         # Write job_metadata.json
         job_metadata: Dict[str, Any] = {
-            "start_time": start_time.isoformat(timespec="milliseconds"),
-            "execution_mode": "slurm",
-            "datasets": {
+            JobMetadataKey.START_TIME: start_time.isoformat(timespec="milliseconds"),
+            JobMetadataKey.EXECUTION_MODE: "slurm",
+            JobMetadataKey.DATASETS: {
                 ds.name: {
                     "total": len(ds.images),
                     "images": [img.name for img in ds.images],
                 }
                 for ds in datasets
             },
-            "chunk_scripts": [str(s) for s in flat_scripts],
-            "chunk_job_ids": chunk_job_ids,
-            "image_task_mapping": image_task_mapping,
-            "include_dataset_column": self.config.include_dataset_column,
-            "metadata_csv": str(self.config.metadata_csv) if self.config.metadata_csv else None,
-            "input_path": self.config.input_path.stem,
+            JobMetadataKey.CHUNK_SCRIPTS: [str(s) for s in flat_scripts],
+            JobMetadataKey.CHUNK_JOB_IDS: chunk_job_ids,
+            JobMetadataKey.IMAGE_TASK_MAPPING: image_task_mapping,
+            JobMetadataKey.INCLUDE_DATASET_COLUMN: self.config.include_dataset_column,
+            JobMetadataKey.METADATA_CSV: str(self.config.metadata_csv) if self.config.metadata_csv else None,
+            JobMetadataKey.INPUT_PATH: self.config.input_path.stem,
         }
-        metadata_path = progress_dir / "job_metadata.json"
+        metadata_path = progress_dir / JOB_METADATA_JSON
         metadata_path.write_text(
             json.dumps(job_metadata, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
@@ -734,7 +732,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         Returns:
             Final execution results after all jobs complete
         """
-        event_log = output_dir / "processing_events.log"
+        event_log = output_dir / PROCESSING_EVENTS_LOG
         start_time = datetime.now()
 
         total_images = sum(len(d.images) for d in datasets)
@@ -780,7 +778,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         datasets_state = aggregate_state_from_events(event_log)
 
         # Enrich with structured failure data from failures.jsonl
-        progress_dir = output_dir / "progress"
+        progress_dir = output_dir / DIR_PROGRESS
         failure_records = read_failures(progress_dir)
         failure_lookup: dict[tuple[str, str], dict] = {}
         for rec in failure_records:

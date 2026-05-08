@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, TYPE_CHECKING
 
+from phenotypic.tools_ import DIR_RESULTS
+
 import pandas as pd
 
 if TYPE_CHECKING:
@@ -33,7 +35,7 @@ def clear_previous_run(output_dir: Path) -> bool:
         ``True`` if clearing occurred, ``False`` otherwise.
     """
     output_dir = Path(output_dir)
-    results_dir = output_dir / "results"
+    results_dir = output_dir / DIR_RESULTS
 
     if not results_dir.is_dir() or not any(results_dir.iterdir()):
         return False
@@ -62,7 +64,7 @@ class SweepOutputManager:
 
     def __init__(self, base_dir: Path):
         self.base_dir = Path(base_dir)
-        self.results_dir = self.base_dir / "results"
+        self.results_dir = self.base_dir / DIR_RESULTS
         self.logs_dir = self.base_dir / "logs"
         self.failures_dir = self.logs_dir / "failures"
 

@@ -5,9 +5,11 @@ from __future__ import annotations
 import gc
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, get_args
 
 import numpy as np
+
+from phenotypic.gui._config import ChannelName
 
 from ._sweep_data_model import (
     IntermediateStep,
@@ -20,7 +22,7 @@ from ._swept_param_analysis import get_swept_param_names
 
 logger = logging.getLogger(__name__)
 
-_LAYER_ORDER = ("rgb", "gray", "detect_mat", "objmap")
+_LAYER_ORDER = get_args(ChannelName)
 
 
 class NapariSweepViewer:

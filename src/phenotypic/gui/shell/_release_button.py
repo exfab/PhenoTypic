@@ -12,7 +12,7 @@ from __future__ import annotations
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import html
 
-from phenotypic.gui.shell._ids import release_button_id, release_status_id
+from phenotypic.gui.shell._ids import ToolName, release_button_id, release_status_id
 
 __all__ = ["build_release_button"]
 
@@ -28,16 +28,16 @@ _TOOLTIP = (
 
 
 def build_release_button(
-    tool: str,
+    tool: ToolName,
     *,
     label: str = "Release loaded data",
 ) -> html.Div:
     """Build a Release button + status line for ``tool``.
 
     Args:
-        tool: Tool identifier (``"builder"``, ``"viewer"``, ``"run"``).
-            Used as part of the pattern-matching ID so a single chrome
-            callback can dispatch across all tools.
+        tool: Tool identifier (``"builder"``, ``"viewer"``, ``"run"``,
+            ``"analysis"``). Used as part of the pattern-matching ID so
+            a single chrome callback can dispatch across all tools.
         label: Button label. Defaults to ``"Release loaded data"`` to
             match the honest-UX wording from plan review.
 

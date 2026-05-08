@@ -19,12 +19,40 @@ Design tokens (colors, type scale, radius, shadow, ease) live in the
 sibling :mod:`phenotypic.gui._design` module because they have a CSS
 injection helper (:func:`_design.inject_design_tokens`) that this
 module shouldn't pull in.
+
+The CLI ↔ GUI shared output filenames (``MASTER_MEASUREMENTS_PARQUET``,
+``MEASUREMENTS_CSV``, ``MEASUREMENTS_PARQUET``, ``ANALYSIS_CSV``,
+``ANALYSIS_PARQUET``, ``PIPELINE_JSON``, ``RESULTS_DIRNAME``,
+``PROGRESS_DIRNAME``, ``DASHBOARD_FILENAME``)
+are re-exports of canonical constants in :mod:`phenotypic.tools_._io_constants`.
+The single source of truth is one level up; this module re-exports for
+ergonomic GUI imports. New filenames written by the CLI should be added
+to ``_io_constants.py``, not here.
 """
 from __future__ import annotations
 
 import argparse
 import logging
 from pathlib import Path
+from typing import Literal
+
+from phenotypic.tools_ import (
+    ANALYSIS_CSV,
+    ANALYSIS_PARQUET,
+    DASHBOARD_HTML,
+    DIR_MEASUREMENTS,
+    DIR_OVERLAYS,
+    DIR_PROGRESS,
+    DIR_RESULTS,
+    JOB_METADATA_JSON,
+    MANIFEST_JSON,
+    MASTER_MEASUREMENTS_CSV,
+    MASTER_MEASUREMENTS_PARQUET,
+    MEASUREMENTS_CSV,
+    MEASUREMENTS_PARQUET,
+    PIPELINE_JSON,
+    STDOUT_LOG,
+)
 
 __all__ = [
     # Launcher defaults
@@ -56,13 +84,31 @@ __all__ = [
     "SANDBOX_BUILDER_TILES_SUBDIR",
     "RUN_LOG_DIRNAME",
     "VIEWER_CACHE_DIRNAME",
-    # Output filenames (CLI ↔ GUI shared layout)
+    # Output filenames (CLI ↔ GUI shared layout) — re-exported from phenotypic.tools_
+    "MASTER_MEASUREMENTS_CSV",
     "MASTER_MEASUREMENTS_PARQUET",
     "MEASUREMENTS_CSV",
     "MEASUREMENTS_PARQUET",
     "ANALYSIS_CSV",
     "ANALYSIS_PARQUET",
     "PIPELINE_JSON",
+    "JOB_METADATA_JSON",
+    "MANIFEST_JSON",
+    "STDOUT_LOG",
+    # Directory names — re-exported from phenotypic.tools_
+    "RESULTS_DIRNAME",
+    "PROGRESS_DIRNAME",
+    "DIR_MEASUREMENTS",
+    "DIR_OVERLAYS",
+    # Dashboard filename — re-exported from phenotypic.tools_
+    "DASHBOARD_FILENAME",
+    # URL constants
+    "SANDBOX_API_VIEWER_OUTPUT_ROOT",
+    "BUILDER_TILES_PREFIX",
+    "VIEWER_TILES_PREFIX",
+    "COLONY_CROPS_URL_SEGMENT",
+    # Closed value-set aliases
+    "ChannelName",
     # Tunables
     "DEFAULT_IDLE_RELEASE_SECONDS",
     "RSS_INTERVAL_MS",
@@ -190,42 +236,56 @@ RUN_LOG_DIRNAME: str = ".gui_log"
 VIEWER_CACHE_DIRNAME: str = ".viewer_cache"
 
 # ---------------------------------------------------------------------------
-# Output filenames (CLI ↔ GUI shared layout)
+# Output filenames (CLI ↔ GUI shared layout) — re-exported from phenotypic.tools_
+# ---------------------------------------------------------------------------
+# These names are canonical in phenotypic.tools_._io_constants and re-exported
+# here so existing GUI imports (``from phenotypic.gui._config import MEASUREMENTS_CSV``)
+# keep working with zero downstream churn. Do NOT redefine these as inline literals.
+#
+# Available re-exports (imported at module top):
+#   MASTER_MEASUREMENTS_CSV, MASTER_MEASUREMENTS_PARQUET,
+#   MEASUREMENTS_CSV, MEASUREMENTS_PARQUET,
+#   ANALYSIS_CSV, ANALYSIS_PARQUET,
+#   PIPELINE_JSON, JOB_METADATA_JSON, MANIFEST_JSON, STDOUT_LOG,
+#   DIR_RESULTS, DIR_PROGRESS, DASHBOARD_HTML
+#
+# ---------------------------------------------------------------------------
+# GUI-only convenience aliases for re-exported CLI artifact names
 # ---------------------------------------------------------------------------
 
-#: Aggregate parquet emitted by the CLI finalizer
-#: (:func:`phenotypic._cli._cli_output_manager.aggregate_measurements`).
-#: Read-only from the GUI's perspective — the results viewer treats this
-#: as the immutable source of truth.
-MASTER_MEASUREMENTS_PARQUET: str = "master_measurements.parquet"
+#: ``results`` — the CLI output ``results/`` directory name.
+RESULTS_DIRNAME: str = DIR_RESULTS
 
-#: Editable curated CSV mirror seeded by the CLI as a copy of
-#: ``master_measurements.csv``. The results viewer rewrites this file in
-#: place when the user removes/restores colonies. Re-running the CLI
-#: (forward, ``--measure``, ``--recompile``) overwrites it with a fresh
-#: full copy, intentionally wiping prior curation.
-MEASUREMENTS_CSV: str = "measurements.csv"
+#: ``progress`` — the CLI output ``progress/`` directory name.
+PROGRESS_DIRNAME: str = DIR_PROGRESS
 
-#: Editable curated parquet companion to :data:`MEASUREMENTS_CSV`. The
-#: parquet is the GUI's source of truth at boot (CSV is the human-readable
-#: mirror); both are written atomically together.
-MEASUREMENTS_PARQUET: str = "measurements.parquet"
+#: ``dashboard.html`` — the generated dashboard artifact filename.
+DASHBOARD_FILENAME: str = DASHBOARD_HTML
 
-#: Output filename of the model-fit summary written by the CLI when the
-#: pipeline has a ``model`` configured (and re-emitted by the analysis
-#: GUI's "Run analysis" button). Human-readable mirror of
-#: :data:`ANALYSIS_PARQUET`.
-ANALYSIS_CSV: str = "analysis.csv"
+# ---------------------------------------------------------------------------
+# URL constants
+# ---------------------------------------------------------------------------
 
-#: Parquet companion of :data:`ANALYSIS_CSV` — primary downstream
-#: artifact since it preserves dtypes the CSV cannot.
-ANALYSIS_PARQUET: str = "analysis.parquet"
+#: Full Flask route for the sandbox API viewer output-root handoff endpoint.
+SANDBOX_API_VIEWER_OUTPUT_ROOT: str = f"{SANDBOX_API_PREFIX}/viewer/output-root"
 
-#: Canonical pipeline-spec filename written into the output root by the
-#: CLI (and rewritten by the analysis GUI on every recipe edit). Captures
-#: operations, measurements, post, filters, and model — i.e. the whole
-#: reproducibility surface.
-PIPELINE_JSON: str = "pipeline.json"
+#: URL prefix for the builder's DZI tile blueprint.
+BUILDER_TILES_PREFIX: str = f"{MOUNT_BUILDER}tiles"
+
+#: URL prefix for the results-viewer's DZI tile blueprint. Distinct from
+#: ``BUILDER_TILES_PREFIX`` because the viewer's tile cache and route
+#: namespace are scoped to the results sub-app.
+VIEWER_TILES_PREFIX: str = "/tiles"
+
+#: URL path segment used for per-colony crop images.
+COLONY_CROPS_URL_SEGMENT: str = "crops"
+
+# ---------------------------------------------------------------------------
+# Closed value-set aliases
+# ---------------------------------------------------------------------------
+
+#: Image channel names supported by the builder inspector previews.
+ChannelName = Literal["rgb", "gray", "detect_mat", "objmap"]
 
 # ---------------------------------------------------------------------------
 # Tunables

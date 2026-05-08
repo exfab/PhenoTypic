@@ -41,6 +41,7 @@ from phenotypic.gui._config import (
     CFG_OUTPUT_ROOT,
     CFG_URL_PREFIX,
     MOUNT_HOME,
+    SANDBOX_API_VIEWER_OUTPUT_ROOT,
     TITLE_VIEWER,
 )
 from phenotypic.gui._design import COLOR_BLUE, COLOR_SURFACE, inject_design_tokens
@@ -241,7 +242,7 @@ def _register_empty_state_callbacks(app: dash.Dash, *, url_prefix: str) -> None:
             if (!path) { return "No sidebar selection."; }
             try {
                 const resp = await fetch(
-                    "/sandbox/api/viewer/output-root",
+                    "__PHENO_API_OUTPUT_ROOT__",
                     {
                         method: "POST",
                         headers: {"Content-Type": "application/json"},
@@ -258,7 +259,7 @@ def _register_empty_state_callbacks(app: dash.Dash, *, url_prefix: str) -> None:
                 return String(err);
             }
         }
-        """.replace("__PHENO_VIEWER_PREFIX__", repr(url_prefix)),
+        """.replace("__PHENO_API_OUTPUT_ROOT__", SANDBOX_API_VIEWER_OUTPUT_ROOT).replace("__PHENO_VIEWER_PREFIX__", repr(url_prefix)),
         Output(ids.EMPTY_HANDOFF_ERROR, "children"),
         Input(ids.EMPTY_HANDOFF_OPEN_BUTTON, "n_clicks"),
         State(SHELL_SIDEBAR_SELECTION_STORE, "data"),

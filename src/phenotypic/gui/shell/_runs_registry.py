@@ -28,13 +28,18 @@ Boot rehydration
 """
 from __future__ import annotations
 
-import json
 import logging
 import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, Iterator
+from typing import Iterable, Iterator, Literal
+
+from phenotypic.tools_ import (
+    DashboardManifestKey,
+    DashboardManifestSlurmInfoKey,
+    manifest_json_path,
+)
 
 from phenotypic.gui.shell._classifier import classify
 from phenotypic.gui.shell._sandbox import SandboxRoot
@@ -48,10 +53,11 @@ __all__ = [
     "RunRegistry",
 ]
 
-# Mode tags. We intentionally use plain string literals (not an Enum) so
-# the records survive ``json.dumps`` for any future persistence step.
-RunMode = str  # one of: "local", "slurm", "unknown"
-RunStatus = str  # one of: "running", "complete", "failed", "cancelled", "unknown"
+# Mode and status tags typed as Literal aliases. We keep them as ``str``
+# supersets (via Literal) so the records survive ``json.dumps`` for any
+# future persistence step while gaining static narrowability.
+RunMode = Literal["local", "slurm", "validate", "unknown"]
+RunStatus = Literal["running", "submitting", "complete", "failed", "cancelled", "unknown"]
 
 
 @dataclass
@@ -61,13 +67,19 @@ class RunRecord:
     Attributes:
         run_id: Stable identifier within this process. Local runs use the
             output-dir relative path; SLURM runs use ``slurm-<job_id>``.
-        mode: ``"local"``, ``"slurm"``, or ``"unknown"``.
+        mode: One of :data:`RunMode` — ``"local"``, ``"slurm"``,
+            ``"validate"``, or ``"unknown"``. ``"validate"`` is injected
+            by the run console's pre-flight pipeline-validation flow
+            (`_callbacks._validate_pipeline`).
         output_dir: Absolute path to the run's output directory (where
             ``progress/manifest.json`` lives). Stored as :class:`Path`.
         rel_path: ``output_dir.relative_to(sandbox.root)`` as a string —
             cached so the UI does not re-compute it on every render.
-        status: Current status — ``"running"``, ``"complete"``,
-            ``"failed"``, ``"cancelled"``, or ``"unknown"``.
+        status: Current status — one of :data:`RunStatus` — ``"running"``,
+            ``"submitting"``, ``"complete"``, ``"failed"``, ``"cancelled"``,
+            or ``"unknown"``. ``"submitting"`` is the transient state for
+            SLURM runs between sbatch dispatch and the first chunk's
+            sentinel update.
         pid: Subprocess PID for local runs (``None`` for SLURM and
             rehydrated historical runs).
         slurm_job_id: SLURM array job ID for SLURM runs (``None``
@@ -280,7 +292,9 @@ class RunRegistry:
 
         Returns ``("unknown", "unknown", None)`` on any failure.
         """
-        manifest_path = output_dir / "progress" / "manifest.json"
+        import json
+
+        manifest_path = manifest_json_path(output_dir)
         if not manifest_path.is_file():
             return ("unknown", "unknown", None)
         try:
@@ -288,11 +302,11 @@ class RunRegistry:
         except (OSError, json.JSONDecodeError):
             return ("unknown", "unknown", None)
 
-        execution_mode = manifest.get("execution_mode", "unknown")
-        is_complete = bool(manifest.get("is_complete"))
-        failed = int(manifest.get("failed", 0) or 0)
-        completed = int(manifest.get("completed", 0) or 0)
-        total = int(manifest.get("total_images", 0) or 0)
+        execution_mode = manifest.get(DashboardManifestKey.EXECUTION_MODE, "unknown")
+        is_complete = bool(manifest.get(DashboardManifestKey.IS_COMPLETE))
+        failed = int(manifest.get(DashboardManifestKey.FAILED, 0) or 0)
+        completed = int(manifest.get(DashboardManifestKey.COMPLETED, 0) or 0)
+        total = int(manifest.get(DashboardManifestKey.TOTAL_IMAGES, 0) or 0)
 
         if is_complete:
             status: RunStatus = "complete" if failed == 0 else "failed"
@@ -309,8 +323,8 @@ class RunRegistry:
         else:
             mode = "unknown"
 
-        slurm_info = manifest.get("slurm_info") or {}
-        chunk_job_ids = slurm_info.get("chunk_job_ids") or {}
+        slurm_info = manifest.get(DashboardManifestKey.SLURM_INFO) or {}
+        chunk_job_ids = slurm_info.get(DashboardManifestSlurmInfoKey.CHUNK_JOB_IDS) or {}
         # ``chunk_job_ids`` is a dict[str, str] of chunk index -> job id.
         # The "primary" array id is the common prefix of all values when
         # SLURM submits as an array; we just surface the first as a hint.

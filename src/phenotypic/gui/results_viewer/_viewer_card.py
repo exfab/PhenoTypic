@@ -58,6 +58,9 @@ from phenotypic.gui._design import (
 )
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
 from phenotypic.gui.results_viewer._filtered_state import (
+    KEY_DATASET,
+    KEY_IMAGE_FILE,
+    KEY_OBJECT_LABEL,
     FilteredMeasurements,
     decode_removed_keys_payload,
 )
@@ -448,8 +451,8 @@ def _slice_for_image(
     cleanly against the JSON-decoded picker values.
     """
     return output_root.master_df.filter(
-        (pl.col("Metadata_Dataset").cast(pl.String) == dataset)
-        & (pl.col("Metadata_ImageFile").cast(pl.String) == stem)
+        (pl.col(KEY_DATASET).cast(pl.String) == dataset)
+        & (pl.col(KEY_IMAGE_FILE).cast(pl.String) == stem)
     )
 
 
@@ -510,7 +513,7 @@ def _project_details_columns(
     """
     available = set(df.columns)
     metadata_cols = [c for c in df.columns if c.startswith(_METADATA_PREFIX)]
-    object_label_cols = ["ObjectLabel"] if "ObjectLabel" in available else []
+    object_label_cols = [KEY_OBJECT_LABEL] if KEY_OBJECT_LABEL in available else []
     seen = set(metadata_cols) | set(object_label_cols)
     extra = [c for c in filter_columns if c in available and c not in seen]
     return metadata_cols + object_label_cols + extra
@@ -829,8 +832,8 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         removed_keys_set = _decode_removed_keys_payload(removed_keys_payload)
         rows = projected.to_dicts()
         for row in rows:
-            image_file = row.get("Metadata_ImageFile")
-            label = row.get("ObjectLabel")
+            image_file = row.get(KEY_IMAGE_FILE)
+            label = row.get(KEY_OBJECT_LABEL)
             row[_STATUS_COLUMN_ID] = _row_status(
                 image_file, label, removed_keys_set
             )
@@ -913,8 +916,8 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         if not isinstance(row_idx, int) or row_idx < 0 or row_idx >= len(rows):
             return no_update
         row = rows[row_idx]
-        image_file_raw = row.get("Metadata_ImageFile")
-        label_raw = row.get("ObjectLabel")
+        image_file_raw = row.get(KEY_IMAGE_FILE)
+        label_raw = row.get(KEY_OBJECT_LABEL)
         if image_file_raw is None or label_raw is None:
             return no_update
         try:

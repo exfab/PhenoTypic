@@ -14,6 +14,7 @@ from datetime import datetime
 
 from ._cli_types import ProcessingState, DatasetState, Dataset, ExecutionConfig
 from ._cli_update_state import aggregate_state_from_events
+from phenotypic.tools_ import PROCESSING_STATE_JSON, PROCESSING_EVENTS_LOG, ProcessingStateKey
 
 
 def save_processing_state(
@@ -33,28 +34,28 @@ def save_processing_state(
     Returns:
         Path to saved state file
     """
-    state_file = output_dir / "processing_state.json"
+    state_file = output_dir / PROCESSING_STATE_JSON
     
     # Convert state to dictionary
     state_dict = {
-        "version": state.version,
-        "pipeline_path": str(state.pipeline_path),
-        "input_path": str(state.input_path),
-        "output_dir": str(state.output_dir),
-        "timestamp": state.timestamp.isoformat(),
-        "execution_mode": state.execution_mode,
-        "last_updated": state.last_updated.isoformat(),
-        "datasets": {},
-        "config": state.config
+        ProcessingStateKey.VERSION: state.version,
+        ProcessingStateKey.PIPELINE_PATH: str(state.pipeline_path),
+        ProcessingStateKey.INPUT_PATH: str(state.input_path),
+        ProcessingStateKey.OUTPUT_DIR: str(state.output_dir),
+        ProcessingStateKey.TIMESTAMP: state.timestamp.isoformat(),
+        ProcessingStateKey.EXECUTION_MODE: state.execution_mode,
+        ProcessingStateKey.LAST_UPDATED: state.last_updated.isoformat(),
+        ProcessingStateKey.DATASETS: {},
+        ProcessingStateKey.CONFIG: state.config
     }
-    
+
     # Add dataset states
     for dataset_name, ds_state in state.datasets.items():
-        state_dict["datasets"][dataset_name] = {
-            "completed": list(ds_state.completed),
-            "failed": list(ds_state.failed),
-            "errors": ds_state.errors,
-            "initial_images": list(ds_state.initial_images)
+        state_dict[ProcessingStateKey.DATASETS][dataset_name] = {
+            ProcessingStateKey.COMPLETED: list(ds_state.completed),
+            ProcessingStateKey.FAILED: list(ds_state.failed),
+            ProcessingStateKey.ERRORS: ds_state.errors,
+            ProcessingStateKey.INITIAL_IMAGES: list(ds_state.initial_images)
         }
     
     # Write atomically (temp file + rename)
@@ -75,7 +76,7 @@ def load_processing_state(output_dir: Path) -> Optional[ProcessingState]:
     Returns:
         ProcessingState object, or None if no state file exists
     """
-    state_file = output_dir / "processing_state.json"
+    state_file = output_dir / PROCESSING_STATE_JSON
     
     if not state_file.exists():
         return None
@@ -84,46 +85,46 @@ def load_processing_state(output_dir: Path) -> Optional[ProcessingState]:
     state_dict = json.loads(state_file.read_text(encoding="utf-8"))
     
     # Parse timestamps
-    timestamp = datetime.fromisoformat(state_dict["timestamp"])
-    last_updated = datetime.fromisoformat(state_dict["last_updated"])
-    
+    timestamp = datetime.fromisoformat(state_dict[ProcessingStateKey.TIMESTAMP])
+    last_updated = datetime.fromisoformat(state_dict[ProcessingStateKey.LAST_UPDATED])
+
     # Aggregate latest events from log
-    event_log = output_dir / "processing_events.log"
+    event_log = output_dir / PROCESSING_EVENTS_LOG
     if event_log.exists():
         latest_states = aggregate_state_from_events(event_log)
     else:
         latest_states = {}
-    
+
     # Merge with stored state (prefer event log as source of truth)
     datasets = {}
-    for dataset_name in state_dict["datasets"].keys():
-        ds_dict = state_dict["datasets"][dataset_name]
+    for dataset_name in state_dict[ProcessingStateKey.DATASETS].keys():
+        ds_dict = state_dict[ProcessingStateKey.DATASETS][dataset_name]
         if dataset_name in latest_states:
             # Use aggregated state from event log, but preserve initial_images from stored state
             event_state = latest_states[dataset_name]
-            event_state.initial_images = set(ds_dict.get("initial_images", []))
+            event_state.initial_images = set(ds_dict.get(ProcessingStateKey.INITIAL_IMAGES, []))
             datasets[dataset_name] = event_state
         else:
             # Fallback to stored state
-            ds_dict = state_dict["datasets"][dataset_name]
+            ds_dict = state_dict[ProcessingStateKey.DATASETS][dataset_name]
             datasets[dataset_name] = DatasetState(
-                completed=set(ds_dict.get("completed", [])),
-                failed=set(ds_dict.get("failed", [])),
-                errors=ds_dict.get("errors", {}),
-                initial_images=set(ds_dict.get("initial_images", []))
+                completed=set(ds_dict.get(ProcessingStateKey.COMPLETED, [])),
+                failed=set(ds_dict.get(ProcessingStateKey.FAILED, [])),
+                errors=ds_dict.get(ProcessingStateKey.ERRORS, {}),
+                initial_images=set(ds_dict.get(ProcessingStateKey.INITIAL_IMAGES, []))
             )
-    
+
     # Create ProcessingState object
     state = ProcessingState(
-        version=state_dict["version"],
-        pipeline_path=Path(state_dict["pipeline_path"]),
-        input_path=Path(state_dict["input_path"]),
-        output_dir=Path(state_dict["output_dir"]),
+        version=state_dict[ProcessingStateKey.VERSION],
+        pipeline_path=Path(state_dict[ProcessingStateKey.PIPELINE_PATH]),
+        input_path=Path(state_dict[ProcessingStateKey.INPUT_PATH]),
+        output_dir=Path(state_dict[ProcessingStateKey.OUTPUT_DIR]),
         timestamp=timestamp,
-        execution_mode=state_dict["execution_mode"],
+        execution_mode=state_dict[ProcessingStateKey.EXECUTION_MODE],
         last_updated=last_updated,
         datasets=datasets,
-        config=state_dict["config"]
+        config=state_dict[ProcessingStateKey.CONFIG]
     )
     
     return state
@@ -186,7 +187,7 @@ def update_state_from_events(state: ProcessingState, output_dir: Path) -> Proces
     Returns:
         Updated ProcessingState object
     """
-    event_log = output_dir / "processing_events.log"
+    event_log = output_dir / PROCESSING_EVENTS_LOG
     
     if event_log.exists():
         # Aggregate events

@@ -26,6 +26,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from phenotypic.tools_ import JobMetadataKey, job_metadata_path
+
 from phenotypic.gui.run_console._state import RunConsoleState, to_argv
 
 
@@ -172,14 +174,14 @@ def _read_chunk_job_ids(output_dir: Path) -> dict[str, str]:
         malformed, or contains no ``chunk_job_ids`` entry.
     """
 
-    metadata_path = output_dir / "progress" / "job_metadata.json"
+    metadata_path = job_metadata_path(output_dir)
     if not metadata_path.is_file():
         return {}
     try:
         payload = json.loads(metadata_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {}
-    raw = payload.get("chunk_job_ids")
+    raw = payload.get(JobMetadataKey.CHUNK_JOB_IDS)
     if not isinstance(raw, dict):
         return {}
     out: dict[str, str] = {}
@@ -315,7 +317,7 @@ def submit_slurm(
     if not chunk_job_ids:
         raise SlurmSubmitError(
             "SLURM submission subprocess exited cleanly but "
-            f"{output_dir / 'progress' / 'job_metadata.json'} is missing or "
+            f"{job_metadata_path(output_dir)} is missing or "
             f"empty. stderr:\n{completed.stderr or '<empty>'}"
         )
 

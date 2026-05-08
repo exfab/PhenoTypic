@@ -21,12 +21,13 @@ from __future__ import annotations
 import logging
 import click
 from pathlib import Path
-from typing import Literal, Dict, Set
+from typing import Dict, Set
 from datetime import datetime
 from dataclasses import dataclass
 
 from ._cli_types import DatasetState
 from ._cli_file_locking import atomic_read, atomic_append, FileLockTimeout
+from phenotypic.tools_.typing_ import ProcessingStatus
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ class ProcessingEvent:
     timestamp: datetime
     dataset: str
     image: str
-    status: Literal["started", "completed", "failed"]
+    status: ProcessingStatus
     error_msg: str = ""
     slurm_job_id: str = ""
     slurm_array_task_id: str = ""
@@ -47,7 +48,7 @@ def append_event(
     event_log: Path,
     dataset: str,
     image: str,
-    status: Literal["started", "completed", "failed"],
+    status: ProcessingStatus,
     error_msg: str = "",
     slurm_job_id: str = "",
     slurm_array_task_id: str = "",
@@ -105,7 +106,7 @@ def append_completion_event(
     event_log: Path,
     dataset: str,
     image: str,
-    status: Literal["completed", "failed"],
+    status: ProcessingStatus,
     error_msg: str = "",
 ) -> None:
     """
@@ -146,17 +147,18 @@ def parse_event_line(line: str) -> ProcessingEvent:
     if len(parts) < 4:
         raise ValueError(f"Invalid line format: {line}")
 
-    timestamp_str, dataset, image, status = parts[:4]
+    timestamp_str, dataset, image, status_raw = parts[:4]
     error_msg = parts[4] if len(parts) > 4 else ""
     slurm_job_id = parts[5] if len(parts) > 5 else ""
     slurm_array_task_id = parts[6] if len(parts) > 6 else ""
 
-    # Validate status field
-    if status not in ("started", "completed", "failed"):
+    # Validate + narrow to ProcessingStatus literal
+    if status_raw not in ("started", "completed", "failed"):
         raise ValueError(
-            f"Invalid status value: '{status}' "
+            f"Invalid status value: '{status_raw}' "
             f"(expected 'started', 'completed', or 'failed')"
         )
+    status: ProcessingStatus = status_raw  # type: ignore[assignment]
 
     # Unescape error message
     error_msg = error_msg.replace("\\|", "|")
@@ -277,7 +279,7 @@ def get_remaining_images(
               help="Processing status")
 @click.option("--error", default="",
               help="Error message if status is failed")
-def main(event_log: Path, dataset: str, image: str, status: str, error: str):
+def main(event_log: Path, dataset: str, image: str, status: ProcessingStatus, error: str):
     """
     Append completion event to processing log.
     

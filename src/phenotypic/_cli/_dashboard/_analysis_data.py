@@ -14,6 +14,7 @@ import polars as pl
 
 from .._cli_output_manager import join_metadata
 from .._cli_duckdb_agg import duckdb_aggregate
+from phenotypic.tools_ import DIR_RESULTS, DIR_PROGRESS, DIR_MEASUREMENTS, DATASET_AGGREGATED_PARQUET
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ def write_analysis_sidecar(
     # Trigger registration of all plugins.
     from ._analysis import _image_viewer, _raw_table, _scatter_plot, _summary_stats  # noqa: F401
 
-    progress_dir = output_dir / "progress"
+    progress_dir = output_dir / DIR_PROGRESS
     progress_dir.mkdir(parents=True, exist_ok=True)
 
     merged_df = _load_and_merge(output_dir, metadata_csv)
@@ -97,7 +98,7 @@ def _load_and_merge(
     Returns:
         Merged DataFrame, or ``None`` if no measurements were found.
     """
-    results_dir = output_dir / "results"
+    results_dir = output_dir / DIR_RESULTS
     if not results_dir.is_dir():
         return None
 
@@ -113,10 +114,10 @@ def _load_and_merge(
     # aggregate_measurements logic), skip _-prefixed internal files.
     path_to_dataset: Dict[Path, str] = {}
     for dataset_name in dataset_names:
-        dataset_meas_dir = results_dir / dataset_name / "measurements"
+        dataset_meas_dir = results_dir / dataset_name / DIR_MEASUREMENTS
         if not dataset_meas_dir.is_dir():
             continue
-        agg = dataset_meas_dir / "_dataset_aggregated.parquet"
+        agg = dataset_meas_dir / DATASET_AGGREGATED_PARQUET
         if agg.exists():
             path_to_dataset[agg] = dataset_name
         else:

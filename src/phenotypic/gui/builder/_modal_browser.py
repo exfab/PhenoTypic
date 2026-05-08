@@ -33,8 +33,11 @@ from typing import Any, FrozenSet, List
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
 
+from phenotypic.gui._config import PIPELINE_JSON
+
 from . import _ids as ids
 from ._directory_browser import IMAGE_EXTS, PIPELINE_EXTS, directory_tree
+from ._ids import LoadPickerPage
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -243,7 +246,7 @@ def _make_browser_modal(
     )
 
 
-def render_load_picker_body(page: str, root: Path | None) -> List:
+def render_load_picker_body(page: LoadPickerPage | str, root: Path | None) -> List:
     """Dispatch to the correct subpage builder for :data:`ids.MODAL_LOAD_PICKER_BODY`.
 
     Called by the callback layer whenever :data:`ids.STORE_LOAD_PICKER_PAGE`
@@ -312,7 +315,7 @@ def save_pipeline_modal(root: Path | None) -> dbc.Modal:
             dbc.Input(
                 id=ids.INPUT_SAVE_FILENAME,
                 type="text",
-                value="pipeline.json",
+                value=PIPELINE_JSON,
                 placeholder="filename.json",
                 debounce=True,
                 className="w-100 mb-2",

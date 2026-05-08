@@ -35,7 +35,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, Iterable
 
-from phenotypic.gui._config import RUN_LOG_DIRNAME
+from phenotypic.gui._config import RUN_LOG_DIRNAME, STDOUT_LOG
 
 logger = logging.getLogger(__name__)
 
@@ -164,7 +164,7 @@ class LocalRunner:
         try:
             log_dir = output_dir / RUN_LOG_DIRNAME
             log_dir.mkdir(parents=True, exist_ok=True)
-            log_path = log_dir / "stdout.log"
+            log_path = log_dir / STDOUT_LOG
 
             process = subprocess.Popen(
                 argv,

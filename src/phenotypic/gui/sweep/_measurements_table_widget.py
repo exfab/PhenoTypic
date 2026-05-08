@@ -20,6 +20,8 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
+from phenotypic.gui._config import DIR_MEASUREMENTS, DIR_RESULTS
+
 from ._sweep_data_model import SweepOutputData
 
 logger = logging.getLogger(__name__)
@@ -72,9 +74,9 @@ class MeasurementsTableWidget(QWidget):
 
         csv_path = (
             self._data.root_dir
-            / "results"
+            / DIR_RESULTS
             / pipeline_name
-            / "measurements"
+            / DIR_MEASUREMENTS
             / f"{image_stem}.csv"
         )
         logger.debug("Looking for measurements CSV: %s", csv_path)

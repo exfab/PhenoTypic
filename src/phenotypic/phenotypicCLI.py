@@ -179,6 +179,23 @@ from phenotypic._cli._cli_constants import (
     MIN_SLURM_TIME_MINUTES,
     MAX_SLURM_TIME_MINUTES,
 )
+from phenotypic.tools_ import (
+    DIR_PROGRESS,
+    DIR_RESULTS,
+    DIR_OVERLAYS,
+    DIR_RECOMPILE,
+    JOB_METADATA_JSON,
+    PROCESSING_STATE_JSON,
+    MASTER_MEASUREMENTS_CSV,
+    RECOMPILE_TASK_MANIFEST_JSON,
+    JobMetadataKey,
+    dashboard_html_path,
+    dataset_measurements_dir,
+    resolve_execution_mode,
+    load_image_from_hdf,
+    processing_report_html_path,
+)
+from phenotypic.tools_.typing_ import ExecutionMode, ImageTypeName
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -875,11 +892,14 @@ def phenotypic_cli(
         assert pipeline_json is not None  # narrowed by earlier UsageError branches
         effective_input_path = input_path if input_path is not None else output_dir
         assert effective_input_path is not None  # narrowed by earlier --output-dir checks
+        # Click's Choice() validated image_type against {"Image", "GridImage"};
+        # narrow to the typed alias for ExecutionConfig's Literal-typed field.
+        narrowed_image_type: ImageTypeName = "GridImage" if image_type == "GridImage" else "Image"
         config = ExecutionConfig(
             pipeline_json=pipeline_json,
             input_path=effective_input_path,
             output_dir=output_dir,
-            image_type=image_type,
+            image_type=narrowed_image_type,
             nrows=nrows,
             ncols=ncols,
             bit_depth=bit_depth,
@@ -935,7 +955,7 @@ def phenotypic_cli(
                 sys.exit(1)
 
             # Check for processing state file
-            state_file = output_dir / "processing_state.json"
+            state_file = output_dir / PROCESSING_STATE_JSON
             if not state_file.exists():
                 click.echo(f"Error: No processing state found in {output_dir}", err=True)
                 click.echo(f"\nLooking for: {state_file}", err=True)
@@ -959,7 +979,7 @@ def phenotypic_cli(
 
         # Handle restart mode - clear previous state
         if restart:
-            state_file = output_dir / "processing_state.json"
+            state_file = output_dir / PROCESSING_STATE_JSON
             if output_dir.exists():
                 if state_file.exists():
                     state_file.unlink()
@@ -1228,7 +1248,7 @@ def phenotypic_cli(
         # Generate HTML report
         click.echo("Generating HTML report...")
         report_gen = HTMLReportGenerator()
-        report_path = output_dir / "processing_report.html"
+        report_path = processing_report_html_path(output_dir)
         report_gen.generate_report(results, report_path)
         click.echo(f"✓ Report: {report_path}")
 
@@ -1309,13 +1329,10 @@ def _regenerate_missing_overlays(
     """
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    import h5py
     from rich.console import Console
     from rich.progress import (
         BarColumn, MofNCompleteColumn, Progress, TextColumn, TimeElapsedColumn,
     )
-
-    from phenotypic import GridImage, Image
 
     console = Console()
     try:
@@ -1348,19 +1365,14 @@ def _regenerate_missing_overlays(
         return
 
     for dataset_name in {ds for ds, _ in work}:
-        (output_dir / "results" / dataset_name / "overlays").mkdir(
+        (output_dir / DIR_RESULTS / dataset_name / DIR_OVERLAYS).mkdir(
             parents=True, exist_ok=True
         )
 
     workers = resolve_local_worker_count(n_jobs, len(work))
 
     def _render_one(dataset_name: str, hdf_path: Path) -> None:
-        with h5py.File(hdf_path, "r") as fh:
-            cls_attr = fh.attrs.get("phenotypic_class", "Image")
-        if isinstance(cls_attr, bytes):
-            cls_attr = cls_attr.decode("utf-8", errors="replace")
-        image_cls = GridImage if cls_attr == "GridImage" else Image
-        image = image_cls.load_hdf5(hdf_path)
+        image = load_image_from_hdf(hdf_path)
         output_manager.save_overlay(image, dataset_name, hdf_path.stem)
 
     console.print(
@@ -1437,7 +1449,7 @@ def _handle_recompile_slurm(
     from phenotypic._cli._dashboard import generate_dashboard
 
     output_dir = Path(output_dir)
-    progress_dir = output_dir / "progress"
+    progress_dir = output_dir / DIR_PROGRESS
     progress_dir.mkdir(parents=True, exist_ok=True)
     console = Console()
 
@@ -1466,7 +1478,7 @@ def _handle_recompile_slurm(
     finalizer_task_index: Optional[int] = None
     if tasks and tasks[-1].get("task_type") == TASK_FINALIZE:
         finalizer_task_index = len(tasks) - 1
-        tasks[-1]["metadata_csv"] = str(metadata_csv) if metadata_csv else None
+        tasks[-1][JobMetadataKey.METADATA_CSV] = str(metadata_csv) if metadata_csv else None
 
     console.print("[cyan]Querying SLURM array limits...[/cyan]")
     array_limit = get_slurm_array_limit()
@@ -1502,27 +1514,27 @@ def _handle_recompile_slurm(
     job_ids = submission.job_ids
 
     recompile_manifest_path = (
-        output_dir / "progress" / "recompile" / "task_manifest.json"
+        output_dir / DIR_PROGRESS / DIR_RECOMPILE / RECOMPILE_TASK_MANIFEST_JSON
     )
     job_metadata = {
-        "start_time": datetime.now().isoformat(timespec="milliseconds"),
-        "execution_mode": "slurm",
-        "datasets": _build_recompile_job_metadata_datasets(
+        JobMetadataKey.START_TIME: datetime.now().isoformat(timespec="milliseconds"),
+        JobMetadataKey.EXECUTION_MODE: "slurm",
+        JobMetadataKey.DATASETS: _build_recompile_job_metadata_datasets(
             output_dir,
             dataset_names,
             job_meta,
         ),
-        "chunk_scripts": [str(script) for script in flat_scripts],
-        "chunk_job_ids": {"0": str(job_ids[0])},
-        "include_dataset_column": include_dataset_column,
-        "metadata_csv": str(metadata_csv) if metadata_csv else None,
-        "input_path": str(output_dir),
+        JobMetadataKey.CHUNK_SCRIPTS: [str(script) for script in flat_scripts],
+        JobMetadataKey.CHUNK_JOB_IDS: {"0": str(job_ids[0])},
+        JobMetadataKey.INCLUDE_DATASET_COLUMN: include_dataset_column,
+        JobMetadataKey.METADATA_CSV: str(metadata_csv) if metadata_csv else None,
+        JobMetadataKey.INPUT_PATH: str(output_dir),
         "recompile": {
             "task_manifest": str(recompile_manifest_path),
             "finalizer_task_index": finalizer_task_index,
         },
     }
-    metadata_path = progress_dir / "job_metadata.json"
+    metadata_path = progress_dir / JOB_METADATA_JSON
     metadata_path.write_text(
         json.dumps(job_metadata, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
@@ -1555,17 +1567,20 @@ def _discover_recompile_dataset_names(
     job_meta: Optional[dict[str, Any]],
 ) -> list[str]:
     """Discover datasets using the local recompile precedence."""
-    results_dir = output_dir / "results"
+    from phenotypic.tools_ import DIR_MEASUREMENTS
+    results_dir = output_dir / DIR_RESULTS
     dataset_names: list[str] = []
     if results_dir.is_dir():
         dataset_names = sorted(
             d.name
             for d in results_dir.iterdir()
-            if d.is_dir() and (d / "measurements").is_dir()
+            if d.is_dir() and (d / DIR_MEASUREMENTS).is_dir()
         )
 
     if not dataset_names and job_meta:
-        dataset_names = sorted((job_meta.get("datasets", {}) or {}).keys())
+        dataset_names = sorted(
+            (job_meta.get(JobMetadataKey.DATASETS, {}) or {}).keys()
+        )
 
     return dataset_names
 
@@ -1576,7 +1591,7 @@ def _build_recompile_job_metadata_datasets(
     job_meta: Optional[dict[str, Any]],
 ) -> dict[str, dict[str, Any]]:
     """Build the normal nested ``job_metadata["datasets"]`` shape."""
-    previous_datasets = (job_meta or {}).get("datasets", {}) or {}
+    previous_datasets = (job_meta or {}).get(JobMetadataKey.DATASETS, {}) or {}
     datasets: dict[str, dict[str, Any]] = {}
     for dataset_name in dataset_names:
         images = _recompile_dataset_image_names(output_dir, dataset_name)
@@ -1592,8 +1607,9 @@ def _build_recompile_job_metadata_datasets(
 
 def _recompile_dataset_image_names(output_dir: Path, dataset_name: str) -> list[str]:
     """Infer image names from per-image measurement Parquets or HDFs."""
-    dataset_dir = output_dir / "results" / dataset_name
-    meas_dir = dataset_dir / "measurements"
+    from phenotypic.tools_ import DIR_MEASUREMENTS, DIR_HDF
+    dataset_dir = output_dir / DIR_RESULTS / dataset_name
+    meas_dir = dataset_dir / DIR_MEASUREMENTS
     if meas_dir.is_dir():
         parquet_stems = sorted(
             path.stem
@@ -1603,7 +1619,7 @@ def _recompile_dataset_image_names(output_dir: Path, dataset_name: str) -> list[
         if parquet_stems:
             return parquet_stems
 
-    hdf_dir = dataset_dir / "hdf"
+    hdf_dir = dataset_dir / DIR_HDF
     if hdf_dir.is_dir():
         hdf_stems = sorted(path.stem for path in hdf_dir.glob("*.h5"))
         if hdf_stems:
@@ -1622,12 +1638,13 @@ def _wait_for_recompile_finalizer_status(
     import json
     import time
 
+    from phenotypic.tools_ import DIR_RECOMPILE_STATUS, task_status_filename
     status_path = (
         output_dir
-        / "progress"
-        / "recompile"
-        / "status"
-        / f"task_{finalizer_task_index}.json"
+        / DIR_PROGRESS
+        / DIR_RECOMPILE
+        / DIR_RECOMPILE_STATUS
+        / task_status_filename(finalizer_task_index)
     )
     deadline = time.monotonic() + timeout if timeout is not None else None
     while True:
@@ -1687,23 +1704,14 @@ def _handle_recompile(
     from phenotypic._cli._dashboard import (
         build_manifest,
         generate_dashboard,
+        regenerate_dashboard_artifacts,
     )
 
     console = Console()
-    results_dir = output_dir / "results"
-    progress_dir = output_dir / "progress"
+    progress_dir = output_dir / DIR_PROGRESS
     job_meta = load_job_metadata(progress_dir)
 
-    dataset_names: list[str] = []
-    if results_dir.is_dir():
-        dataset_names = sorted(
-            d.name
-            for d in results_dir.iterdir()
-            if d.is_dir() and (d / "measurements").is_dir()
-        )
-
-    if not dataset_names and job_meta:
-        dataset_names = sorted(job_meta.get("datasets", {}).keys())
+    dataset_names = _discover_recompile_dataset_names(output_dir, job_meta)
 
     if not dataset_names:
         error_exit("No datasets found in output directory", str(output_dir))
@@ -1752,7 +1760,7 @@ def _handle_recompile(
 
     datasets_totals: dict[str, int] = {}
     for name in dataset_names:
-        meas_dir = results_dir / name / "measurements"
+        meas_dir = dataset_measurements_dir(output_dir, name)
         if meas_dir.is_dir():
             datasets_totals[name] = len(
                 [
@@ -1763,22 +1771,9 @@ def _handle_recompile(
         else:
             datasets_totals[name] = 0
 
-    build_manifest(
-        output_dir=output_dir,
-        progress_dir=progress_dir,
-        datasets=datasets_totals,
-        execution_mode=job_meta.get("execution_mode", "local") if job_meta else "local",
-        start_time=job_meta.get("start_time", "") if job_meta else "",
-        slurm_job_ids=job_meta.get("chunk_job_ids") if job_meta else None,
-        chunk_scripts=job_meta.get("chunk_scripts") if job_meta else None,
-        input_path=job_meta.get("input_path") if job_meta else None,
-    )
-    console.print("[green]Manifest rebuilt")
-
-    console.print("[cyan]Regenerating dashboard...")
-    execution_mode = job_meta.get("execution_mode", "local") if job_meta else "local"
-    generate_dashboard(output_dir, execution_mode=execution_mode)
-    console.print(f"[green]Dashboard: {output_dir / 'dashboard.html'}")
+    regenerate_dashboard_artifacts(output_dir, job_meta, datasets_totals)
+    console.print("[green]Manifest + dashboard regenerated")
+    console.print(f"[green]Dashboard: {dashboard_html_path(output_dir)}")
 
     console.print(f"\n[bold green]Recompilation complete: {output_dir}")
 

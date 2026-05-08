@@ -2,7 +2,16 @@
 
 Aggregates unchunked per-image Parquet files into dashboard chunks,
 rebuilds the combined analysis file, and updates the master CSV
-so users can download partial results mid-run.
+(:data:`~phenotypic.tools_.MASTER_MEASUREMENTS_CSV`) so users can download
+partial results mid-run.
+
+Note: this writer intentionally bypasses
+:func:`~phenotypic._cli._cli_output_manager.finalize_post_master_outputs`
+(chunks are mid-run intermediate publications; the full post / per-feature
+split / analysis chain runs once at the end via
+:func:`~phenotypic._cli._cli_output_manager.aggregate_measurements`). See
+the project CLAUDE.md "Master vs. mirror outputs" gotcha for the full
+contract.
 """
 
 from __future__ import annotations
@@ -19,6 +28,24 @@ import polars as pl
 from ._cli_file_locking import file_lock
 from ._cli_output_manager import _atomic_write, join_metadata
 from ._cli_utils import load_job_metadata, scan_parquets
+from phenotypic.tools_ import (
+    DIR_PROGRESS,
+    DIR_CHUNKS,
+    CHUNK_STATE_JSON,
+    CHUNK_MANIFEST_JSON,
+    MASTER_MEASUREMENTS_CSV,
+    MASTER_MEASUREMENTS_PARQUET,
+    OVERLAY_MANIFEST_JSON,
+    DATASET_AGGREGATED_PARQUET,
+    DIR_RESULTS,
+    DIR_MEASUREMENTS,
+    ChunkStateKey,
+    ChunkManifestKey,
+    JobMetadataKey,
+    chunk_parquet_filename,
+    chunk_lock_path,
+    analysis_full_parquet_path,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +64,10 @@ def aggregate_chunks(output_dir: Path) -> None:
     tasks (SLURM may schedule multiple sentinels near-simultaneously)
     do not race on the shared state files or duplicate data.
     """
-    progress_dir = output_dir / "progress"
+    progress_dir = output_dir / DIR_PROGRESS
     progress_dir.mkdir(parents=True, exist_ok=True)
 
-    lock_path = progress_dir / ".chunk_lock"
+    lock_path = chunk_lock_path(progress_dir)
     lock_path.touch(exist_ok=True)
 
     with open(lock_path, "r") as lock_fh:
@@ -50,15 +77,15 @@ def aggregate_chunks(output_dir: Path) -> None:
 
 def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
     """Inner body of chunk aggregation, called under exclusive lock."""
-    chunks_dir = progress_dir / "chunks"
+    chunks_dir = progress_dir / DIR_CHUNKS
     chunks_dir.mkdir(parents=True, exist_ok=True)
 
-    state_path = progress_dir / "chunk_state.json"
-    state = _read_json(state_path, default={"chunked_files": [], "next_chunk_id": 0})
-    chunked_files: set[str] = set(state.get("chunked_files", []))
-    next_chunk_id: int = state.get("next_chunk_id", 0)
+    state_path = progress_dir / CHUNK_STATE_JSON
+    state = _read_json(state_path, default={ChunkStateKey.CHUNKED_FILES: [], ChunkStateKey.NEXT_CHUNK_ID: 0})
+    chunked_files: set[str] = set(state.get(ChunkStateKey.CHUNKED_FILES, []))
+    next_chunk_id: int = state.get(ChunkStateKey.NEXT_CHUNK_ID, 0)
 
-    new_files = _scan_unchunked_parquets(output_dir / "results", chunked_files)
+    new_files = _scan_unchunked_parquets(output_dir / DIR_RESULTS, chunked_files)
     if not new_files:
         logger.info("No new measurement files to chunk")
         _ensure_overlay_manifest(output_dir, progress_dir)
@@ -75,39 +102,39 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
         chunk_df.estimated_size("mb"),
     )
 
-    chunk_name = f"chunk_{next_chunk_id:03d}.parquet"
+    chunk_name = chunk_parquet_filename(next_chunk_id)
     _atomic_write(
         chunks_dir / chunk_name,
         lambda p: chunk_df.write_parquet(p, compression="zstd", compression_level=3),
     )
 
-    state["chunked_files"] = sorted(chunked_files)
-    state["next_chunk_id"] = next_chunk_id + 1
+    state[ChunkStateKey.CHUNKED_FILES] = sorted(chunked_files)
+    state[ChunkStateKey.NEXT_CHUNK_ID] = next_chunk_id + 1
     _write_json(state, state_path)
 
-    manifest_path = progress_dir / "chunk_manifest.json"
-    manifest = _read_json(manifest_path, default={"chunks": [], "total_rows": 0})
+    manifest_path = progress_dir / CHUNK_MANIFEST_JSON
+    manifest = _read_json(manifest_path, default={ChunkManifestKey.CHUNKS: [], ChunkManifestKey.TOTAL_ROWS: 0})
     datasets_in_chunk = chunk_df["Metadata_Dataset"].unique().to_list()
-    manifest["chunks"].append(
+    manifest[ChunkManifestKey.CHUNKS].append(
         {
-            "name": chunk_name,
-            "rows": chunk_df.height,
-            "datasets": sorted(str(d) for d in datasets_in_chunk),
+            ChunkManifestKey.NAME: chunk_name,
+            ChunkManifestKey.ROWS: chunk_df.height,
+            ChunkManifestKey.DATASETS: sorted(str(d) for d in datasets_in_chunk),
         }
     )
-    manifest["total_rows"] = sum(c["rows"] for c in manifest["chunks"])
+    manifest[ChunkManifestKey.TOTAL_ROWS] = sum(c[ChunkManifestKey.ROWS] for c in manifest[ChunkManifestKey.CHUNKS])
     _write_json(manifest, manifest_path)
 
-    combined = _incremental_combined(chunk_df, progress_dir / "analysis_full.parquet")
+    combined = _incremental_combined(chunk_df, analysis_full_parquet_path(progress_dir))
     combined_with_metadata: Optional[pl.DataFrame] = None
     if combined is not None:
         _atomic_write(
-            progress_dir / "analysis_full.parquet",
+            analysis_full_parquet_path(progress_dir),
             lambda p: combined.write_parquet(p, compression="zstd", compression_level=3),
         )
 
         job_meta = load_job_metadata(progress_dir)
-        csv_str = job_meta.get("metadata_csv") if job_meta else None
+        csv_str = job_meta.get(JobMetadataKey.METADATA_CSV) if job_meta else None
         metadata_csv = Path(csv_str) if csv_str else None
         combined_with_metadata = combined
         if metadata_csv is not None:
@@ -121,11 +148,11 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
                 combined_with_metadata = combined
 
         _atomic_write(
-            output_dir / "master_measurements.csv",
+            output_dir / MASTER_MEASUREMENTS_CSV,
             lambda p: combined_with_metadata.write_csv(p),  # type: ignore[union-attr]
         )
         _atomic_write(
-            output_dir / "master_measurements.parquet",
+            output_dir / MASTER_MEASUREMENTS_PARQUET,
             lambda p: combined_with_metadata.write_parquet(  # type: ignore[union-attr]
                 p, compression="zstd", compression_level=3
             ),
@@ -141,8 +168,8 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
         chunk_name,
         len(new_files),
         chunk_df.height,
-        manifest["total_rows"],
-        len(manifest["chunks"]),
+        manifest[ChunkManifestKey.TOTAL_ROWS],
+        len(manifest[ChunkManifestKey.CHUNKS]),
     )
 
 
@@ -171,7 +198,7 @@ def _scan_unchunked_parquets(
     for dataset_dir in sorted(results_dir.iterdir()):
         if not dataset_dir.is_dir():
             continue
-        meas_dir = dataset_dir / "measurements"
+        meas_dir = dataset_dir / DIR_MEASUREMENTS
         if not meas_dir.is_dir():
             continue
         for meas_file in sorted(meas_dir.glob("*.parquet")):
@@ -315,7 +342,7 @@ def _update_dataset_parquet(
         new_df: DataFrame of newly chunked measurements for this dataset.
     """
     agg_path = (
-        output_dir / "results" / dataset_name / "measurements" / "_dataset_aggregated.parquet"
+        output_dir / DIR_RESULTS / dataset_name / DIR_MEASUREMENTS / DATASET_AGGREGATED_PARQUET
     )
     if agg_path.exists():
         try:
@@ -379,7 +406,7 @@ def _ensure_overlay_manifest(output_dir: Path, progress_dir: Path) -> None:
     to ensure the overlay manifest is present even if previous plugin
     runs were skipped or failed.
     """
-    manifest_path = progress_dir / "overlay_manifest.json"
+    manifest_path = progress_dir / OVERLAY_MANIFEST_JSON
     if manifest_path.exists():
         return
     try:

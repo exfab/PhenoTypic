@@ -6,14 +6,27 @@ import json
 import math
 import shlex
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 from ._cli_slurm_scripts import generate_slurm_directives
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
+from phenotypic.tools_ import (
+    DATASET_AGGREGATED_PARQUET,
+    DIR_HDF,
+    DIR_LOGS,
+    DIR_MEASUREMENTS,
+    DIR_OVERLAYS,
+    DIR_PROGRESS,
+    DIR_RECOMPILE,
+    DIR_RESULTS,
+    DIR_SLURM_SCRIPTS,
+    JobMetadataKey,
+    RECOMPILE_TASK_MANIFEST_JSON,
+)
 
-TASK_MEASUREMENTS = "measurements"
-TASK_OVERLAY = "overlay"
-TASK_FINALIZE = "finalize"
+TASK_MEASUREMENTS: Final[str] = "measurements"
+TASK_OVERLAY: Final[str] = "overlay"
+TASK_FINALIZE: Final[str] = "finalize"
 
 
 def build_recompile_tasks(
@@ -69,7 +82,7 @@ def build_recompile_tasks(
                 "task_type": TASK_FINALIZE,
                 "dataset_names": list(dataset_names),
                 "include_dataset_column": include_dataset_column,
-                "metadata_csv": None,
+                JobMetadataKey.METADATA_CSV: None,
                 "expected_non_finalizer_tasks": len(tasks),
             }
         )
@@ -101,9 +114,9 @@ def generate_recompile_slurm_scripts(
         raise ValueError("array_limit must be positive")
 
     output_dir = Path(output_dir)
-    recompile_dir = output_dir / "progress" / "recompile"
+    recompile_dir = output_dir / DIR_PROGRESS / DIR_RECOMPILE
     recompile_dir.mkdir(parents=True, exist_ok=True)
-    manifest_path = recompile_dir / "task_manifest.json"
+    manifest_path = recompile_dir / RECOMPILE_TASK_MANIFEST_JSON
     manifest_path.write_text(
         json.dumps({"tasks": tasks}, indent=2) + "\n",
         encoding="utf-8",
@@ -112,9 +125,9 @@ def generate_recompile_slurm_scripts(
     if not tasks:
         return []
 
-    script_dir = output_dir / "slurm_scripts" / "recompile"
+    script_dir = output_dir / DIR_SLURM_SCRIPTS / "recompile"
     script_dir.mkdir(parents=True, exist_ok=True)
-    log_dir = output_dir / "logs" / "slurm" / "recompile"
+    log_dir = output_dir / DIR_LOGS / "slurm" / "recompile"
     log_dir.mkdir(parents=True, exist_ok=True)
 
     scripts: list[Path] = []
@@ -145,11 +158,11 @@ def _measurement_sources_for_dataset(
     output_dir: Path, dataset_name: str
 ) -> list[Path]:
     """Return deterministic measurement sources for one dataset."""
-    meas_dir = output_dir / "results" / dataset_name / "measurements"
+    meas_dir = output_dir / DIR_RESULTS / dataset_name / DIR_MEASUREMENTS
     if not meas_dir.is_dir():
         return []
 
-    aggregated = meas_dir / "_dataset_aggregated.parquet"
+    aggregated = meas_dir / DATASET_AGGREGATED_PARQUET
     if aggregated.exists():
         return [aggregated]
 
@@ -164,11 +177,11 @@ def _overlay_tasks_for_dataset(
     output_dir: Path, dataset_name: str, overlay_alpha: float
 ) -> list[dict[str, Any]]:
     """Return one task for each missing overlay discoverable from HDF."""
-    hdf_dir = output_dir / "results" / dataset_name / "hdf"
+    hdf_dir = output_dir / DIR_RESULTS / dataset_name / DIR_HDF
     if not hdf_dir.is_dir():
         return []
 
-    overlay_dir = output_dir / "results" / dataset_name / "overlays"
+    overlay_dir = output_dir / DIR_RESULTS / dataset_name / DIR_OVERLAYS
     tasks: list[dict[str, Any]] = []
     for hdf_path in sorted(hdf_dir.glob("*.h5")):
         overlay_path = overlay_dir / f"{hdf_path.stem}.png"

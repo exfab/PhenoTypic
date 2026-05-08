@@ -19,6 +19,11 @@ node) so the same callback can fire for every clicked entry.
 """
 from __future__ import annotations
 
+from typing import Literal
+
+#: Closed set of tool names used in release-button / release-status IDs.
+ToolName = Literal["viewer", "analysis", "builder", "run"]
+
 # ---------------------------------------------------------------------------
 # Top bar
 # ---------------------------------------------------------------------------
@@ -117,12 +122,12 @@ SHELL_MAIN_PANE = "shell-main-pane"
 # tags each with the tool name so a single callback can dispatch).
 # ---------------------------------------------------------------------------
 
-def release_button_id(tool: str) -> dict[str, str]:
+def release_button_id(tool: ToolName) -> dict[str, str]:
     """Pattern-matching ID for a per-tool Release button."""
     return {"type": "shell-release-button", "tool": tool}
 
 
-def release_status_id(tool: str) -> dict[str, str]:
+def release_status_id(tool: ToolName) -> dict[str, str]:
     """Pattern-matching ID for the per-tool Release status text."""
     return {"type": "shell-release-status", "tool": tool}
 
@@ -140,6 +145,7 @@ RUN_OUTPUT_DIR_STORE = "run-output-dir"
 
 
 __all__ = [
+    "ToolName",
     "SHELL_TOP_BAR",
     "SHELL_ROOT_LABEL",
     "SHELL_RSS_LABEL",

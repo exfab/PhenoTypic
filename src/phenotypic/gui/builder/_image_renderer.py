@@ -19,24 +19,23 @@ from __future__ import annotations
 
 import base64
 import io
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import cv2
 import numpy as np
 from dash import dash_table
 from PIL import Image as PILImage
 
+from phenotypic.gui._config import ChannelName
 from phenotypic.gui._design import FONT_FAMILY_MONO, FONT_SIZE_LABEL
 from phenotypic.gui._operation_registry import get_registry
+from phenotypic.gui.builder._ids import StageName
 from phenotypic.gui.builder._state import stage_of
 
 if TYPE_CHECKING:  # pragma: no cover - import only used for type hints
     import pandas as pd  # type: ignore[import-untyped]
     import phenotypic
     from phenotypic.gui._operation_registry import OperationInfo
-
-
-ChannelName = Literal["rgb", "gray", "detect_mat", "objmap"]
 
 
 # ---------------------------------------------------------------------------

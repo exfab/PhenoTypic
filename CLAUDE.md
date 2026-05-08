@@ -120,7 +120,8 @@ operations copy data; avoid unnecessary intermediate allocations.
 - [tools_/CLAUDE.md](src/phenotypic/tools_/CLAUDE.md) — mixins, utilities
 - [settings_/CLAUDE.md](src/phenotypic/settings_/CLAUDE.md) — global config
 - [enhance/CLAUDE.md](src/phenotypic/enhance/CLAUDE.md) — enhancer conventions
-- [gui/CLAUDE.md](src/phenotypic/gui/CLAUDE.md) — GUI sub-apps, shared `_config.py` constants, `_design.py` tokens
+- [gui/CLAUDE.md](src/phenotypic/gui/CLAUDE.md) — GUI sub-apps, shared `_config.py`
+  constants, `_design.py` tokens
 - [DESIGN.md](DESIGN.md) — dashboard & plot style guide
 - `src/phenotypic/post/`, `src/phenotypic/analysis/` — no sub-CLAUDE.md
 
@@ -130,6 +131,42 @@ operations copy data; avoid unnecessary intermediate allocations.
 - `src/phenotypic/_core/_image_pipeline.py` — Pipeline implementation
 - `src/phenotypic/abc_/` — Operation interfaces
 - `src/phenotypic/__main__.py` — CLI entry point
+
+## Code Style
+
+Public parameters with closed value sets: type as `EnumType | Literal["a", "b", ...]`,
+normalize on entry with `value = EnumType(value)`, and use only enum members internally.
+Define the `Literal` alias once as a `TypeAlias` and reuse. If both `Enum` and `Literal`
+exist, add a test asserting their values match.
+
+**Closed value sets needing user-visible documentation: prefer `MeasurementInfo` /
+`ConstantLabels`** (in `phenotypic.tools_.constants_`). Each member is a
+`(label, description)` tuple, the description is accessible to callers, and the existing
+pattern (override `category()` classmethod, optionally `__new__` for bare-label values)
+is the project convention. Examples: `GAMMA_ENCODINGS`, `PIPE_STATUS`, `METADATA`, the
+per-feature `MeasurementInfo` enums in `tools_/measurement_info/`. Do not modify these
+classes' internals to satisfy the generic `MyEnum(value)` normalization — their bespoke
+coercion (e.g. `_GAMMA_COERCE` for `GAMMA_ENCODINGS`) is intentional.
+
+For **type-only enforcement** of a closed set with no documentation surface (CLI dispatch
+keys, internal mode flags), a `Literal[...]` `TypeAlias` in `tools_/typing_.py` is
+sufficient — no Enum needed. Examples: `FootprintShape`, `DetectMode`, `ExecutionMode`,
+`ImageTypeName`, `ProcessingStatus`.
+
+Pair an Enum with a `Literal` alias only when both forms are used at boundary code
+(string-typed external input + enum-typed internal storage), and add an alignment test
+(`set(get_args(MyLiteral)) == {m.value for m in MyEnum}` — see
+`tests/unit/tools_/test_io_constants.py::TestEnumLiteralAlignment::test_image_type_literal_covers_base_and_grid_enum_values`).
+When the Literal intentionally covers only a subset of the Enum's members (e.g.
+`ImageTypeName` exposes only `BASE` and `GRID`, not the internal-only `CROP`/`OBJECT`/
+`GRID_SECTION`), assert with `issubset` instead and document the partial coverage in
+the test docstring.
+
+Parameterized strings are not enumerations: keep the template as a private `Final[str]`
+and expose a typed render function whose parameters are the public API.
+
+Never accept bare `str` for closed sets, never propagate raw strings past the boundary,
+never derive `Literal` from runtime expressions.
 
 ## Gotchas
 
@@ -154,15 +191,58 @@ operations copy data; avoid unnecessary intermediate allocations.
   against the merged master, and the post-applied frame is what
   `analysis.{csv,parquet}` and `measurements_by_feature/<feature>.{csv,
   parquet}` are derived from — only the master archive stays clean.
-- **Always finalize via `finalize_post_master_outputs`:** any code path
-  that writes `master_measurements.{csv,parquet}` must immediately call
+- **Finalize via `finalize_post_master_outputs` for FINAL master writes:**
+  any code path that writes `master_measurements.{csv,parquet}` *as the
+  run's final output* must immediately call
   `phenotypic._cli._cli_output_manager.finalize_post_master_outputs(
-  output_dir, master_df, pipeline)` so the post-applied mirror, the
-  persisted `pipeline.json`, the analysis output, and the per-feature
-  splits stay in lock-step. Never call `_seed_measurements`,
-  `_emit_analysis_outputs`, or `split_master_by_feature` ad-hoc — they
-  are the helper's internals. The forward CLI (`aggregate_measurements`)
-  and the `--recompile` worker (`_run_post_master_steps`) are the two
-  current callers; new aggregators (e.g. a future re-import path)
-  should follow suit. The GUI run console subprocesses
-  `python -m phenotypic`, so it inherits this contract automatically.
+  output_dir, master_df, pipeline)`. The `aggregate_measurements`
+  (forward CLI) and `--recompile` worker (`_run_post_master_steps`)
+  callers already do this.
+
+  Mid-run intermediate writers (`_aggregate_chunks_locked` in
+  `_cli_chunk_writer.py`) intentionally bypass
+  `finalize_post_master_outputs`: chunks publish partial results so users
+  can download mid-run, but the post pipeline, per-feature splits,
+  analysis chain, and `pipeline.json` persistence are deferred to the
+  run's final aggregation. Don't add `finalize_post_master_outputs` to
+  the chunk writer — it would re-run expensive finalize work on every
+  checkpoint.
+
+<!-- code-review-graph MCP tools -->
+## MCP Tools: code-review-graph
+
+**IMPORTANT: This project has a knowledge graph. ALWAYS use the
+code-review-graph MCP tools BEFORE using Grep/Glob/Read to explore
+the codebase.** The graph is faster, cheaper (fewer tokens), and gives
+you structural context (callers, dependents, test coverage) that file
+scanning cannot.
+
+### When to use graph tools FIRST
+
+- **Exploring code**: `semantic_search_nodes` or `query_graph` instead of Grep
+- **Understanding impact**: `get_impact_radius` instead of manually tracing imports
+- **Code review**: `detect_changes` + `get_review_context` instead of reading entire files
+- **Finding relationships**: `query_graph` with callers_of/callees_of/imports_of/tests_for
+- **Architecture questions**: `get_architecture_overview` + `list_communities`
+
+Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
+
+### Key Tools
+
+| Tool | Use when |
+|------|----------|
+| `detect_changes` | Reviewing code changes — gives risk-scored analysis |
+| `get_review_context` | Need source snippets for review — token-efficient |
+| `get_impact_radius` | Understanding blast radius of a change |
+| `get_affected_flows` | Finding which execution paths are impacted |
+| `query_graph` | Tracing callers, callees, imports, tests, dependencies |
+| `semantic_search_nodes` | Finding functions/classes by name or keyword |
+| `get_architecture_overview` | Understanding high-level codebase structure |
+| `refactor_tool` | Planning renames, finding dead code |
+
+### Workflow
+
+1. The graph auto-updates on file changes (via hooks).
+2. Use `detect_changes` for code review.
+3. Use `get_affected_flows` to understand impact.
+4. Use `query_graph` pattern="tests_for" to check coverage.
