@@ -1955,6 +1955,46 @@ class TestAggregateMeasurements:
         assert not (temp_output_dir / "analysis.parquet").exists()
         assert not (temp_output_dir / "pipeline.json").exists()
 
+    def test_finalize_post_master_outputs_post_failure_falls_back_to_clean(
+        self, temp_output_dir, caplog
+    ):
+        """If a post op raises, mirror is seeded with the clean master."""
+        import logging
+
+        import polars as pl
+
+        from phenotypic import ImagePipeline
+        from phenotypic.abc_._post_measurement import PostMeasurement
+
+        class FailingPost(PostMeasurement):
+            def _operate(self, df):
+                raise RuntimeError("post op intentionally broken in test")
+
+        master_df = pl.DataFrame({"area": [10, 20, 30]})
+
+        with caplog.at_level(logging.WARNING):
+            returned = finalize_post_master_outputs(
+                temp_output_dir,
+                master_df,
+                ImagePipeline(post=[FailingPost()]),
+            )
+
+        # WARNING about the post-op exception is logged…
+        assert any(
+            "post-measurement transform raised" in rec.message.lower()
+            for rec in caplog.records
+        ), [rec.message for rec in caplog.records]
+
+        # …and the helper returns the clean master so downstream callers
+        # (e.g. _run_analysis_plugins in the recompile worker) don't see
+        # half-applied post columns.
+        assert returned.equals(master_df)
+
+        # Mirror on disk is seeded with the clean master, not a partial
+        # post-applied frame.
+        mirror = pl.read_parquet(temp_output_dir / "measurements.parquet")
+        assert mirror.equals(master_df)
+
     def test_aggregate_measurements_no_post_master_and_mirror_identical(
         self, temp_output_dir
     ):

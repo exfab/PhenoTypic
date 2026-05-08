@@ -151,7 +151,9 @@ operations copy data; avoid unnecessary intermediate allocations.
   viewer reads/curates. Per-image parquets in `results/<ds>/measurements/`
   are also clean — the CLI calls `pipeline.measure(image, apply_post=False)`
   on the per-image path. Post is applied once at the end of aggregation
-  against the merged master.
+  against the merged master, and the post-applied frame is what
+  `analysis.{csv,parquet}` and `measurements_by_feature/<feature>.{csv,
+  parquet}` are derived from — only the master archive stays clean.
 - **Always finalize via `finalize_post_master_outputs`:** any code path
   that writes `master_measurements.{csv,parquet}` must immediately call
   `phenotypic._cli._cli_output_manager.finalize_post_master_outputs(

@@ -376,16 +376,20 @@ def _run_post_master_steps(
     from ._dashboard._generator import generate_dashboard
     from ._dashboard._manifest_builder import build_manifest
 
+    plugin_df: Any | None = merged_df
     if merged_df is not None:
         # Single canonical post-master finalize: applies post to a copy of
         # the clean master, seeds ``measurements.{csv,parquet}`` with the
         # post-applied frame, persists ``pipeline.json``, emits analysis,
         # and writes per-feature splits — same path the forward CLI takes.
+        # Reuse the returned post-applied frame for analysis-plugin
+        # dispatch so plugins see the same data the analysis chain and
+        # the GUI viewer see.
         pipeline = _load_pipeline_from_output_dir(output_dir)
-        finalize_post_master_outputs(output_dir, merged_df, pipeline)
+        plugin_df = finalize_post_master_outputs(output_dir, merged_df, pipeline)
 
     try:
-        _run_analysis_plugins(output_dir, progress_dir, merged_df)
+        _run_analysis_plugins(output_dir, progress_dir, plugin_df)
     except Exception:
         logger.warning(
             "Analysis plugin dispatch failed during recompile", exc_info=True

@@ -343,7 +343,7 @@ def _persist_pipeline_to_output_dir(
 
 def _emit_analysis_outputs(
     output_dir: Path,
-    master_df: "pl.DataFrame",
+    df: "pl.DataFrame",
     pipeline: "ImagePipeline",
 ) -> Optional[tuple[Path, int]]:
     """Run ``pipeline.analyze`` and atomic-write ``analysis.{csv,parquet}``.
@@ -355,10 +355,12 @@ def _emit_analysis_outputs(
 
     Args:
         output_dir: Output root directory.
-        master_df: Aggregated master measurements (polars). At CLI runtime
-            this is identical to the freshly seeded
-            ``measurements.parquet``, so the GUI and CLI share one
-            conceptual analysis input.
+        df: The frame to analyze (polars). The CLI passes the
+            post-applied frame seeded into ``measurements.parquet`` here
+            via :func:`finalize_post_master_outputs`, not the clean
+            ``master_measurements.parquet`` archive — callers wiring up
+            new entry points are responsible for applying post (if any)
+            before calling this.
         pipeline: Pipeline whose ``model`` (and optional ``filters``)
             define the analysis chain.
 
@@ -376,7 +378,7 @@ def _emit_analysis_outputs(
         return None
 
     try:
-        fit_pd = pipeline.analyze(master_df.to_pandas())
+        fit_pd = pipeline.analyze(df.to_pandas())
         fit_pl = pl.from_pandas(fit_pd)
     except Exception:
         logger.warning(
@@ -487,7 +489,7 @@ def finalize_post_master_outputs(
     output_dir: Path,
     master_df: "pl.DataFrame",
     pipeline: Optional["ImagePipeline"],
-) -> None:
+) -> "pl.DataFrame":
     """Run every CLI side effect that follows a freshly written master file.
 
     This is the single canonical entry point for the work that happens after
@@ -507,8 +509,10 @@ def finalize_post_master_outputs(
     2. :func:`_seed_measurements` writes the post-applied frame.
     3. When *pipeline* is provided: persist ``pipeline.json``, run
        :func:`_emit_analysis_outputs` against ``post_df`` (so analysis sees
-       post-applied data), and split the **clean** *master_df* into
-       per-feature spreadsheets so they match the master archive.
+       post-applied data), and split the post-applied frame into
+       per-feature spreadsheets so users see post-derived columns
+       (e.g. ``Metadata_Strain`` from ``ExpandMetadata``) in
+       ``measurements_by_feature/<feature>.{csv,parquet}``.
 
     Failures inside split or analysis are logged at WARNING and never raise;
     the master files remain authoritative regardless of what happens here.
@@ -520,6 +524,14 @@ def finalize_post_master_outputs(
         pipeline: Recovered pipeline, or ``None`` when it can't be
             located (the SLURM sentinel may run before any pipeline.json
             is persisted).
+
+    Returns:
+        The post-applied frame. Callers that run additional side effects
+        downstream (e.g. analysis-plugin dispatch in the recompile
+        worker) should pass this to those steps so plugins see the same
+        post-applied data the GUI viewer and analysis chain see, rather
+        than the clean master. Equal to *master_df* when no post ops
+        are configured.
     """
     post_df = _apply_post_to_master(master_df, pipeline)
     _seed_measurements(output_dir, post_df)
@@ -530,20 +542,24 @@ def finalize_post_master_outputs(
             "and pipeline.json persistence (master files still written to %s)",
             output_dir,
         )
-        return
+        return post_df
 
     _persist_pipeline_to_output_dir(output_dir, pipeline)
     _emit_analysis_outputs(output_dir, post_df, pipeline)
 
     try:
-        # Splits operate on the clean master so per-feature spreadsheets
-        # match master_measurements.{csv,parquet}.
-        split_master_by_feature(master_df, output_dir, pipeline)
+        # Splits operate on the post-applied frame so per-feature
+        # spreadsheets match what the GUI viewer reads from
+        # measurements.{csv,parquet}. The clean master_measurements.*
+        # remains the archival source of truth.
+        split_master_by_feature(post_df, output_dir, pipeline)
     except Exception:
         logger.warning(
             "Per-feature measurement split failed (master files still written)",
             exc_info=True,
         )
+
+    return post_df
 
 
 def split_master_by_feature(
