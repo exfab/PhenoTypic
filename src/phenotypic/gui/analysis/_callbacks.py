@@ -59,9 +59,12 @@ _FILTER_DEFAULTS: dict[str, dict[str, Any]] = {
 _MODEL_DEFAULTS: dict[str, dict[str, Any]] = {
     "LogGrowthModel": {"on": "Shape_Area", "groupby": ["Metadata_Strain"],
                        "time_label": "Metadata_Time", "n_jobs": 1},
-    "LinearSoftplusModel": {"on": "Shape_Area",
-                            "groupby": ["Metadata_Strain"],
-                            "time_label": "Metadata_Time"},
+    "LinearSoftplus": {"on": "Shape_Area",
+                       "groupby": ["Metadata_Strain"],
+                       "time_label": "Metadata_Time"},
+    "DoubleSoftplus": {"on": "Shape_Area",
+                       "groupby": ["Metadata_Strain"],
+                       "time_label": "Metadata_Time"},
 }
 
 

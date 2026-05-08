@@ -223,9 +223,12 @@ class TestColumnRefDetection:
             ("LogGrowthModel", "on", False),
             ("LogGrowthModel", "groupby", True),
             ("LogGrowthModel", "time_label", False),
-            ("LinearSoftplusModel", "on", False),
-            ("LinearSoftplusModel", "groupby", True),
-            ("LinearSoftplusModel", "time_label", False),
+            ("LinearSoftplus", "on", False),
+            ("LinearSoftplus", "groupby", True),
+            ("LinearSoftplus", "time_label", False),
+            ("DoubleSoftplus", "on", False),
+            ("DoubleSoftplus", "groupby", True),
+            ("DoubleSoftplus", "time_label", False),
         ],
     )
     def test_column_ref_populated(
