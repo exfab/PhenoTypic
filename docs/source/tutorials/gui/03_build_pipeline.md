@@ -11,7 +11,7 @@ Click the `Builder` tab in the top bar (or navigate to `/builder/`). The
 chrome stays in place — same sidebar, same RSS readout — and the main pane
 swaps to the builder UI:
 
-![Empty builder canvas.](../../../_static/gui_images/build_pipeline/01_builder_empty.png)
+![Empty builder canvas.](../../_static/gui_images/build_pipeline/01_builder_empty.png)
 
 The builder has four regions:
 

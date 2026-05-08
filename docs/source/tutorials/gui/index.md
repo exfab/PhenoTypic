@@ -27,12 +27,12 @@ the images aligned with the implementation.
 
 ## Prerequisites
 
-- PhenoTypic installed via `uv sync --group dev` (see [Installation](../../../installation.rst)).
+- PhenoTypic installed via `uv sync --group dev` (see [Getting Started](../getting_started.rst)).
 - Playwright with Chromium installed if you want to regenerate the screenshots
   yourself: `uv run playwright install chromium`.
 
 For a comprehensive reference of every panel, store, and admonition in the
-hub, see the [GUI hub guide](../gui_hub.md). This walkthrough is the
+hub, see the [GUI hub guide](../../how_to/pages/gui_hub.md). This walkthrough is the
 "happy path"; the reference is the manual.
 
 ```{toctree}

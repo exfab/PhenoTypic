@@ -9,7 +9,7 @@ panel shows the live progress dashboard.
 
 Click the `Run` tab (or navigate to `/run/`):
 
-![Run console form.](../../../_static/gui_images/run_local/01_run_console_form.png)
+![Run console form.](../../_static/gui_images/run_local/01_run_console_form.png)
 
 The form has three pickers (Pipeline JSON, Input directory, Output
 directory), a Local/SLURM mode radio, two short-flag checkboxes (Dry-run,
@@ -33,7 +33,7 @@ and finally choose a fresh output folder and use `Set as output dir`.
 **From the inline modal browser.** Click any `Browse…` button. A modal
 opens rooted at the sandbox:
 
-![Input directory picker modal.](../../../_static/gui_images/run_local/02_input_picker_modal.png)
+![Input directory picker modal.](../../_static/gui_images/run_local/02_input_picker_modal.png)
 
 Click into the directory you want and use `Use this directory`. The modal
 respects the same hidden-files / external-symlinks toggles as the sidebar.
@@ -68,7 +68,7 @@ sandbox — both runs from the current session and historical runs
 rehydrated from the sandbox at boot time. The screenshot below shows the
 panel populated with the synthetic dataset's run:
 
-![Recent Runs panel after one local completion.](../../../_static/gui_images/run_local/03_recent_runs_panel.png)
+![Recent Runs panel after one local completion.](../../_static/gui_images/run_local/03_recent_runs_panel.png)
 
 Each row carries the output directory, mode (`local` or `slurm-<job-id>`),
 status (rendered uppercase by CSS, stored lowercase as one of `running`,

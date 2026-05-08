@@ -48,3 +48,23 @@ html {
   .bd-sidebar {
     background-color: var(--pst-color-surface);
   }
+
+  /* Beta tag for the GUI tutorial nav entry. Targets both the navbar
+     dropdown link and the in-page sidebar link by href suffix so the
+     badge follows the page wherever it appears. Sphinx emits relative
+     hrefs (`tutorials/gui/index.html`, `../tutorials/gui/index.html`,
+     etc.), so the suffix has no leading slash. */
+  .bd-navbar a[href$="tutorials/gui/index.html"]::after,
+  .bd-sidebar a[href$="tutorials/gui/index.html"]::after {
+      content: "beta";
+      margin-left: 0.45em;
+      padding: 0.05em 0.45em;
+      background: var(--pst-color-warning, #f0ad4e);
+      color: white;
+      font-size: 0.7em;
+      font-weight: 700;
+      border-radius: 0.3em;
+      vertical-align: middle;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+  }

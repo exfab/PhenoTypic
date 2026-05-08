@@ -1,0 +1,77 @@
+{# Custom navbar: turns "Tutorials" into a dropdown with three children
+   (Getting Started, Python API, GUI). The default theme template
+   renders all root-toctree entries as flat links, which is why this
+   override exists. Other top-level entries are listed explicitly so the
+   navbar order is stable; if you add a new top-level section, add it
+   here. #}
+{% set _pn = pagename | default('') %}
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    {# --- Tutorials dropdown --- #}
+    <li class="nav-item dropdown{% if _pn.startswith('tutorials/') %} current active{% endif %}">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal{% if _pn == 'tutorials/getting_started' %} current active{% endif %}"
+             href="{{ pathto('tutorials/getting_started') }}">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal{% if _pn.startswith('tutorials/python_api') or _pn.startswith('tutorials/notebooks/') %} current active{% endif %}"
+             href="{{ pathto('tutorials/python_api') }}">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal{% if _pn.startswith('tutorials/gui') %} current active{% endif %}"
+             href="{{ pathto('tutorials/gui/index') }}">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    {# --- Remaining top-level pages --- #}
+    {% set _navbar_main = [
+        ('how_to/index', 'How-To Guides', 'how_to/'),
+        ('explanation/index', 'Explanation', 'explanation/'),
+        ('extending/index', 'Extending PhenoTypic', 'extending/'),
+        ('api_reference/index', 'API Reference', 'api_reference/'),
+    ] %}
+    {% for docname, title, prefix in _navbar_main %}
+      <li class="nav-item{% if _pn.startswith(prefix) %} current active{% endif %}">
+        <a class="nav-link nav-internal" href="{{ pathto(docname) }}">
+          {{ title }}
+        </a>
+      </li>
+    {% endfor %}
+
+    {# --- "More" overflow dropdown for low-priority entries --- #}
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal{% if _pn.startswith('contrib_guide/') %} current active{% endif %}"
+             href="{{ pathto('contrib_guide/index') }}">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal{% if _pn == 'downloads' %} current active{% endif %}"
+             href="{{ pathto('downloads') }}">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav>

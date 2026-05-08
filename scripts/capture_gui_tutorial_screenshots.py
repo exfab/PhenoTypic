@@ -427,7 +427,7 @@ def _capture_pick_points(context, base_url: str) -> None:
     """Drive the in-builder point-picker workflow and capture eight PNGs.
 
     The shots demonstrate the manual-curation flow described in
-    ``docs/source/how_to/pages/gui_walkthrough/07_pick_points.md``:
+    ``docs/source/tutorials/gui/07_pick_points.md``:
 
     1. Palette with the PICK badge visible on the two pickable ops.
     2. Canvas with ``GaussianBlur → OtsuDetector → ManualSelector``.

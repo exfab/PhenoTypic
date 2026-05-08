@@ -17,7 +17,7 @@ The builder ships an in-page point-picker for two operations:
 Both operations carry a purple **PICK** badge in the operations palette so
 you can spot them at a glance.
 
-![Operations palette: ManualSelector and ManualPointDetector show the PICK badge.](../../../_static/gui_images/pick_points/01_palette_with_badge.png)
+![Operations palette: ManualSelector and ManualPointDetector show the PICK badge.](../../_static/gui_images/pick_points/01_palette_with_badge.png)
 
 ## Set up a curation pipeline
 
@@ -28,7 +28,7 @@ This walkthrough curates an Otsu detection. The flow is:
 3. Drag `ManualSelector` from `Refiner` (it carries the PICK badge).
 4. Connect them in order: blur → detect → select.
 
-![Pipeline with Otsu followed by ManualSelector.](../../../_static/gui_images/pick_points/02_pipeline_with_selector.png)
+![Pipeline with Otsu followed by ManualSelector.](../../_static/gui_images/pick_points/02_pipeline_with_selector.png)
 
 Run preview once so the predecessor (`OtsuDetector`) caches its output —
 the picker modal can then offer that intermediate as a clearer view for
@@ -40,12 +40,12 @@ Click the `ManualSelector` node to open its param form in the inspector.
 The `centers` parameter has a **Pick on image…** button instead of a text
 input.
 
-![Param form: centers row shows the picker button and a "0 points" count label.](../../../_static/gui_images/pick_points/03_param_form.png)
+![Param form: centers row shows the picker button and a "0 points" count label.](../../_static/gui_images/pick_points/03_param_form.png)
 
 Click the button. A modal opens with an OpenSeadragon viewer showing the
 original RGB plate.
 
-![Picker modal open on the RGB plate.](../../../_static/gui_images/pick_points/04_modal_rgb.png)
+![Picker modal open on the RGB plate.](../../_static/gui_images/pick_points/04_modal_rgb.png)
 
 ## Switch channels
 
@@ -54,7 +54,7 @@ and **Input to this op**. The latter shows the predecessor's output — for
 this pipeline, that's the Otsu binary mask, which can make individual
 colonies easier to distinguish from background noise.
 
-![Picker modal showing the Otsu intermediate.](../../../_static/gui_images/pick_points/05_modal_intermediate.png)
+![Picker modal showing the Otsu intermediate.](../../_static/gui_images/pick_points/05_modal_intermediate.png)
 
 The first time you toggle to **Input to this op** the modal pauses briefly
 while the intermediate tile pyramid is generated; subsequent toggles are
@@ -71,12 +71,12 @@ changes.
 If you over-click, the **Remove last** button drops the most recent pick.
 **Clear all** wipes the list.
 
-![Three picks placed on the RGB plate.](../../../_static/gui_images/pick_points/06_three_picks.png)
+![Three picks placed on the RGB plate.](../../_static/gui_images/pick_points/06_three_picks.png)
 
 When you're satisfied, click **Confirm**. The modal closes. The param form's
 count label now reflects your picks.
 
-![Param form after Confirm: count label reads "3 points".](../../../_static/gui_images/pick_points/07_param_form_after_confirm.png)
+![Param form after Confirm: count label reads "3 points".](../../_static/gui_images/pick_points/07_param_form_after_confirm.png)
 
 ## Re-run preview
 
@@ -84,7 +84,7 @@ Run preview again. The `ManualSelector` step keeps only the labels whose
 pixels overlap your picked footprints; everything else drops out of the
 ``objmap``.
 
-![Preview after curation: only the picked colonies survive.](../../../_static/gui_images/pick_points/08_preview_after_curation.png)
+![Preview after curation: only the picked colonies survive.](../../_static/gui_images/pick_points/08_preview_after_curation.png)
 
 ## When to use which
 

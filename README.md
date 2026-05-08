@@ -4,7 +4,7 @@
 
 # PhenoTypic: A Python Framework for Bio-Image Analysis
 
-![Development Status](https://img.shields.io/badge/dev_status-beta-orange)
+![Development Stage](https://img.shields.io/badge/dev_stage-beta-orange)
 
 A modular image processing framework developed at the NSF Ex-FAB BioFoundry, focused on
 arrayed colony phenotyping on solid media.
@@ -41,7 +41,7 @@ uv add phenotypic
 **Interactive / GUI Install** (napari viewer, Panel dashboards, Jupyter)
 
 ```bash
-uv add "phenotypic[gui]"
+uv add phenotypic --extra gui
 ```
 
 ## Pip
@@ -76,7 +76,7 @@ For extending PhenoTypic.
 ```
 git clone https://github.com/exfab/PhenoTypic.git
 cd PhenoTypic
-uv sync --group dev
+uv sync --group dev --all-extras
 ```
 
 ## GPU-Accelerated Detection (SAM2, micro-sam)
@@ -85,22 +85,7 @@ PhenoTypic ships optional deep-learning detectors backed by Meta's
 [Segment Anything Model 2](https://github.com/facebookresearch/sam2) and
 [micro-sam](https://github.com/computational-cell-analytics/micro-sam).
 
-* **SAM2** is available on PyPI and ships in the `torch` extra:
-
-  ```bash
-  uv add "phenotypic[torch]"   # Linux/macOS only
-  ```
-
-* **micro-sam** is only published on conda-forge (not PyPI), so it is
-  **not** bundled with any `phenotypic` extra. If you need
-  `MicroSamDetector`, see the "Enabling micro_sam" section of the
-  [GPU Detection Setup](https://exfab.github.io/PhenoTypic/how_to/pages/gpu_detection_setup.html)
-  guide for a user-side `pixi.toml` that installs `phenotypic` and
-  `micro_sam` together in a single environment. `MicroSamDetector`
-  remains importable without `micro_sam` installed; the `ImportError`
-  is deferred to the first `apply()` call.
-
-See [GPU Detection Setup](https://exfab.github.io/PhenoTypic/how_to/pages/gpu_detection_setup.html)
+See [GPU Detection Setup](https://exfab.github.io/PhenoTypic/experimental/how_to/pages/gpu_detection_setup.html)
 for model downloads and SLURM deployment instructions.
 
 ## Optional Installation

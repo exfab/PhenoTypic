@@ -11,7 +11,7 @@ by `phenotypic pipeline.json input/ -o output/ --slurm partition=general
 Click the `SLURM` radio in the form. The `SLURM config` collapse opens
 with the typed common fields:
 
-![Run console with SLURM mode selected.](../../../_static/gui_images/run_slurm/01_slurm_mode.png)
+![Run console with SLURM mode selected.](../../_static/gui_images/run_slurm/01_slurm_mode.png)
 
 | Field | Maps to | Notes |
 |-------|---------|-------|
@@ -55,6 +55,6 @@ A successful submission writes:
   the iframe panel can point at the dashboard before any chunk completes.
 
 For deeper SLURM operational detail (chunk sizing, recompile-on-resume,
-per-chunk cgroups), see [SLURM Pipelines](../slurm_pipelines.md).
+per-chunk cgroups), see [SLURM Pipelines](../../how_to/pages/slurm_pipelines.md).
 
 Next: [View Results](06_view_results.md).

@@ -9,7 +9,7 @@ with detection overlays.
 
 Open the `Viewer` tab in the hub:
 
-![Viewer tab in empty state.](../../../_static/gui_images/view_results/01_viewer_empty.png)
+![Viewer tab in empty state.](../../_static/gui_images/view_results/01_viewer_empty.png)
 
 The hub viewer starts in **empty state**. The text on the page tells you
 to "pick a CLI output directory in the sidebar to load the viewer", and
@@ -41,7 +41,7 @@ GUI". The body is identical to what the hub viewer would show once
 rebuild-on-select lands.
 ```
 
-![Loaded viewer with filter pane and image selector.](../../../_static/gui_images/view_results/02_viewer_loaded.png)
+![Loaded viewer with filter pane and image selector.](../../_static/gui_images/view_results/02_viewer_loaded.png)
 
 The viewer is split into three regions:
 
@@ -57,7 +57,7 @@ the OpenSeadragon canvas tiles the overlay and the `> Details` link
 reveals per-image stats. Clicking individual colonies in the canvas
 highlights the matching row in the measurements.
 
-![Measurement table view.](../../../_static/gui_images/view_results/03_measurement_table.png)
+![Measurement table view.](../../_static/gui_images/view_results/03_measurement_table.png)
 
 Scrolling further shows the full measurements table.
 
@@ -78,9 +78,9 @@ a promise about RSS.
 
 ## Where to next
 
-- [GUI hub guide](../gui_hub.md) — the full reference for every panel,
+- [GUI hub guide](../../how_to/pages/gui_hub.md) — the full reference for every panel,
   store, and admonition in the hub.
-- [SLURM Pipelines](../slurm_pipelines.md) — chunk sizing, resume
+- [SLURM Pipelines](../../how_to/pages/slurm_pipelines.md) — chunk sizing, resume
   semantics, recompile flags.
-- [CLI Batch Processing](../cli_batch_processing.md) — every CLI flag the
+- [CLI Batch Processing](../../how_to/pages/cli_batch_processing.md) — every CLI flag the
   Run console form exposes (and a few more).

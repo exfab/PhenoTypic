@@ -27,7 +27,7 @@ on:
       - 'scripts/capture_gui_tutorial_screenshots.py'
       - 'scripts/check_workflows_md.py'
       - 'docs/source/_static/gui_images/**'
-      - 'docs/source/how_to/pages/gui_walkthrough/**'
+      - 'docs/source/tutorials/gui/**'
       - 'pyproject.toml'
       - '.github/workflows/gui-docs.yml'
   pull_request:
@@ -38,7 +38,7 @@ on:
       - 'scripts/capture_gui_tutorial_screenshots.py'
       - 'scripts/check_workflows_md.py'
       - 'docs/source/_static/gui_images/**'
-      - 'docs/source/how_to/pages/gui_walkthrough/**'
+      - 'docs/source/tutorials/gui/**'
       - 'pyproject.toml'
       - '.github/workflows/gui-docs.yml'
   workflow_dispatch:

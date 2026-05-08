@@ -129,59 +129,76 @@ Use these rules to determine which palette an element draws from:
 
 ## 02 -- Typography
 
-Three-font stack: **DM Serif Display** for editorial headings and large numerics,
-**DM Sans** for body and UI copy, **DM Mono** for all labels, data values, and code.
+The active GUI font is **Roboto** (Google Fonts), used for all three font
+roles: display, body, and mono. The same family covers every role today
+because the codebase favours one consistent surface; the role-specific
+CSS custom properties (`--font-display`, `--font-body`, `--font-mono`)
+exist anyway so a future swap to a multi-family stack (e.g. the
+DM Serif Display / DM Sans / DM Mono trio) is mechanical — change
+[`gui/_design.py`](src/phenotypic/gui/_design.py) and every call site
+picks up the new family without edits.
 
 ```css
---font-display: 'DM Serif Display', Georgia, serif;
---font-body:    'DM Sans', system-ui, sans-serif;
---font-mono:    'DM Mono', 'Courier New', monospace;
+--font-display: 'Roboto', Georgia, "Times New Roman", Times, serif;
+--font-body:    'Roboto', -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+--font-mono:    'Roboto', ui-monospace, "SFMono-Regular", Menlo, "Liberation Mono", monospace;
 ```
 
-Google Fonts import:
+Google Fonts import (already wired by `gui/_design.py`):
 
 ```html
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1
-  &family=DM+Mono:wght@300;400;500
-  &family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300
-  &display=swap" rel="stylesheet">
+<link
+  href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap"
+  rel="stylesheet"
+/>
 ```
 
 ### Font Assignment Rules
 
-| Content Type                                                       | Font             | Weight |
-|--------------------------------------------------------------------|------------------|--------|
-| Headings (h1--h3), large display numbers, species names (italic)   | DM Serif Display | 400    |
-| Body copy, lead paragraphs, button labels, tab labels, UI prose    | DM Sans          | varies |
-| Numeric data, axis labels, badge text, form labels, captions, code | DM Mono          | varies |
+| Content Type                                                       | Role                | Weight |
+|--------------------------------------------------------------------|---------------------|--------|
+| Headings (h1--h3), large display numbers, species names (italic)   | `var(--font-display)` | 400  |
+| Body copy, lead paragraphs, button labels, tab labels, UI prose    | `var(--font-body)`    | varies |
+| Numeric data, axis labels, badge text, form labels, captions, code | `var(--font-mono)`    | varies |
 
 ### Type Scale
 
-| Role             | Token         | Size             | Font             | Weight | Line Height |
-|------------------|---------------|------------------|------------------|--------|-------------|
-| H1               | `--text-4xl`  | 3.25rem / 52px   | DM Serif Display | 400    | 1.1         |
-| H2               | `--text-3xl`  | 2.5rem / 40px    | DM Serif Display | 400    | 1.2         |
-| H3               | `--text-2xl`  | 1.875rem / 30px  | DM Serif Display | 400    | 1.25        |
-| H4               | `--text-lg`   | 1.25rem / 20px   | DM Sans          | 600    | 1.4         |
-| H5               | `--text-md`   | 1.0625rem / 17px | DM Sans          | 600    | 1.4         |
-| Lead / Intro     | `--text-lg`   | 1.25rem / 20px   | DM Sans          | 300    | 1.7         |
-| Body             | `--text-base` | 0.9375rem / 15px | DM Sans          | 400    | 1.65        |
-| Caption          | `--text-xs`   | 0.6875rem / 11px | DM Mono          | 400    | 1.5         |
-| Label / Overline | `--text-xs`   | 0.6875rem / 11px | DM Mono          | 500    | --          |
-| Inline Code      | `--text-sm`   | 0.8125rem / 13px | DM Mono          | 400    | --          |
+The scale is rem-based and rooted on 15px body text. New code reaches
+for the **semantic** aliases (right column); the raw `--text-*`
+primitives are kept for back-compat but should not appear in new
+call sites.
+
+| Role            | Primitive    | Size              | Semantic alias          |
+|-----------------|--------------|-------------------|-------------------------|
+| Display         | `--text-3xl` | 2.5rem / 40px     | `--font-size-display`   |
+| Title           | `--text-2xl` | 1.875rem / 30px   | `--font-size-title`     |
+| Header 1 (h4)   | `--text-xl`  | 1.5rem / 24px     | `--font-size-header-1`  |
+| Header 2 (h5)   | `--text-lg`  | 1.25rem / 20px    | `--font-size-header-2`  |
+| Body lead       | `--text-md`  | 1.0625rem / 17px  | `--font-size-body-lg`   |
+| Body            | `--text-base`| 0.9375rem / 15px  | `--font-size-body`      |
+| Label / Overline| `--text-sm`  | 0.8125rem / 13px  | `--font-size-label`     |
+| Caption         | `--text-xs`  | 0.6875rem / 11px  | `--font-size-caption`   |
+
+Python inline styles import the matching `FONT_SIZE_*` and
+`FONT_FAMILY_*` constants from
+[`gui/_design.py`](src/phenotypic/gui/_design.py) — never hardcode a
+rem/px literal or a font-family string at a call site.
 
 ### Typography Rules
 
-- **Headings** use DM Serif Display at weight 400. Italic cut for Latin species names
-  (e.g. *Rhodotorula toruloides*).
-- **Labels and overlines:** DM Mono, `text-transform: uppercase`,
-  `letter-spacing: 0.12em`, `color: --color-muted`.
-- **Stat card values:** DM Serif Display, `--text-3xl`, `color: --color-heading`.
-- **Data values** always render in DM Mono to preserve optical column alignment.
-- **Table numeric cells:** DM Mono, `font-weight: 500`, `color: --color-heading`.
-- **Table secondary cells:** DM Mono, `color: --color-muted`.
-- **Inline code:** `background: #edf2f7`, `color: #003660`, `padding: 1px 5px`,
-  `border-radius: 3px`.
+- **Headings** use the display family at weight 400. Italic cut for
+  Latin species names (e.g. *Rhodotorula toruloides*).
+- **Labels and overlines:** mono family, `text-transform: uppercase`,
+  `letter-spacing: 0.12em`, `color: var(--color-muted)`.
+- **Stat card values:** display family, `--font-size-display`, `color:
+  var(--color-heading)`.
+- **Data values** always render in the mono family to preserve optical
+  column alignment.
+- **Table numeric cells:** mono family, `font-weight: 500`, `color:
+  var(--color-heading)`.
+- **Table secondary cells:** mono family, `color: var(--color-muted)`.
+- **Inline code:** `background: #edf2f7`, `color: #003660`, `padding:
+  1px 5px`, `border-radius: 3px`.
 - **Maximum line length:** 65ch for body prose, 52ch for lead text.
 
 ---

@@ -41,7 +41,6 @@ Task-oriented recipes that solve a specific problem. Each guide is standalone
    pages/slurm_pipelines
    pages/parameter_sweeps
    pages/gui_hub
-   pages/gui_walkthrough/index
    pages/serialize_pipelines
    pages/hdf5_storage
    pages/generate_reports

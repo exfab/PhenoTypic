@@ -86,7 +86,7 @@ The startup banner prints the local URL and an SSH-tunnel command sized to
 the bound port (handy if you launched the hub on a remote workstation).
 Open the URL in your browser:
 
-![Landing page with three capability cards.](../../../_static/gui_images/setup/01_landing_page.png)
+![Landing page with three capability cards.](../../_static/gui_images/setup/01_landing_page.png)
 
 The landing page shows:
 

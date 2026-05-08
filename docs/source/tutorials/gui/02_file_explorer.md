@@ -12,7 +12,7 @@ When the hub boots, the sidebar lists the immediate children of the
 **lazy**: clicking a folder fetches and renders one level of children at a
 time.
 
-![Collapsed sidebar.](../../../_static/gui_images/file_explorer/01_sidebar_collapsed.png)
+![Collapsed sidebar.](../../_static/gui_images/file_explorer/01_sidebar_collapsed.png)
 
 The sidebar header carries three controls:
 
@@ -34,7 +34,7 @@ that emits one or more capability tags:
 | `out` | Directory is a CLI output root: contains both `master_measurements.parquet` and a `results/` subdirectory. |
 | `?` | Directory could not be listed due to a permission error. |
 
-![Sidebar after expanding plates/.](../../../_static/gui_images/file_explorer/02_sidebar_expanded.png)
+![Sidebar after expanding plates/.](../../_static/gui_images/file_explorer/02_sidebar_expanded.png)
 
 Click the `plates` row to expand it. The three TIFFs from the previous step
 appear as children, and the parent folder swaps its closed-folder icon (📁)
@@ -47,7 +47,7 @@ is visible, `»` when hidden) collapses the file explorer so the active
 tool's pane spans the full width. Useful when you're focused on the
 builder canvas or the run console's log tail and don't need the tree.
 
-![Sidebar collapsed via the top-bar chevron.](../../../_static/gui_images/file_explorer/04_sidebar_hidden.png)
+![Sidebar collapsed via the top-bar chevron.](../../_static/gui_images/file_explorer/04_sidebar_hidden.png)
 
 The collapsed flag is persisted to your browser's `localStorage` under
 `shell-sidebar-collapse-store`, so it survives a page reload and
@@ -62,6 +62,6 @@ context-appropriate `Set as pipeline` / `Set as input dir` / `Set as
 output dir` buttons in its hand-off banner. You'll use that flow on the
 [Run Locally](04_run_local.md) page.
 
-![Sidebar tree close-up showing badges.](../../../_static/gui_images/file_explorer/03_capability_badges.png)
+![Sidebar tree close-up showing badges.](../../_static/gui_images/file_explorer/03_capability_badges.png)
 
 Next: [Build a Pipeline](03_build_pipeline.md).

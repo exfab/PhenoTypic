@@ -11,7 +11,7 @@ chain re-runs deterministically from the CLI when you `--recompile`.
 
 Open the `Analysis` tab in the hub:
 
-![Analysis tab in empty state.](../../../_static/gui_images/analysis/01_analysis_empty.png)
+![Analysis tab in empty state.](../../_static/gui_images/analysis/01_analysis_empty.png)
 
 Like the Viewer, the hub-mounted Analysis sub-app starts empty. Pick a
 CLI output directory in the sidebar — the hand-off banner picks up your
@@ -58,7 +58,7 @@ After binding, the page loads with the pipeline summary header, the
 recompile reminder banner, and any pre-existing post/filter/model
 sections rendered as editable cards:
 
-![Pipeline configured against a synthetic CLI output.](../../../_static/gui_images/analysis/02_pipeline_loaded.png)
+![Pipeline configured against a synthetic CLI output.](../../_static/gui_images/analysis/02_pipeline_loaded.png)
 
 Each section card is a fully editable form generated from the
 analyzer's constructor signature. Bools become switches, numerics
@@ -66,7 +66,7 @@ become number inputs, `Literal[...]` becomes a dropdown, and
 `list[T]` / `tuple[T, ...]` become comma-separated text inputs.
 Editing any value persists to `<output>/pipeline.json` automatically:
 
-![Filter section with editable parameter form.](../../../_static/gui_images/analysis/03_filter_section_with_form.png)
+![Filter section with editable parameter form.](../../_static/gui_images/analysis/03_filter_section_with_form.png)
 
 The model section showcases the more advanced widget kinds: the
 `agg_func` field is a multi-type union (`bool | float | int | str |
@@ -76,7 +76,7 @@ None`) rendered as a type-tag dropdown plus an adaptive value input;
 "Use default" toggle that strips the param from the constructor
 kwargs when on:
 
-![Model section with multi-union, Literal, and optional toggle widgets.](../../../_static/gui_images/analysis/04_model_section.png)
+![Model section with multi-union, Literal, and optional toggle widgets.](../../_static/gui_images/analysis/04_model_section.png)
 
 ## CLI parity
 
@@ -88,7 +88,7 @@ reproducibility surface.
 
 ## Where to next
 
-- [GUI hub guide](../gui_hub.md) — the full reference for the hub.
+- [GUI hub guide](../../how_to/pages/gui_hub.md) — the full reference for the hub.
 - [Run Locally](04_run_local.md) — produce a CLI output before opening
   the analysis sub-app.
 - [View Results](06_view_results.md) — curate `measurements.parquet`

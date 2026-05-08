@@ -1,5 +1,5 @@
-Installation
-============
+Getting Started
+===============
 
 Prerequisites
 -------------
@@ -60,10 +60,9 @@ PhenoTypic provides optional extras for different use cases:
 
 ``micro_sam`` (used by ``MicroSamDetector``) is only published on
 conda-forge and is **not** included in any PhenoTypic extra. See the
-`GPU Detection Setup
-<how_to/pages/gpu_detection_setup.html>`_ guide for a self-service
-recipe that combines PhenoTypic and ``micro_sam`` in a single ``pixi``
-environment.
+:doc:`GPU Detection Setup </how_to/pages/gpu_detection_setup>` guide
+for a self-service recipe that combines PhenoTypic and ``micro_sam``
+in a single ``pixi`` environment.
 
 
 Development Installation
