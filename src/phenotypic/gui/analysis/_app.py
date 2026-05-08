@@ -20,6 +20,7 @@ import dash
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 
 from phenotypic.gui._config import (
+    CFG_MEASUREMENT_SCHEMA,
     CFG_OUTPUT_ROOT,
     CFG_RECIPE_STATE,
     CFG_URL_PREFIX,
@@ -29,6 +30,7 @@ from phenotypic.gui._config import (
 from dash import Input, Output, State
 
 from phenotypic.gui._design import COLOR_BLUE, COLOR_SURFACE, inject_design_tokens
+from phenotypic.gui._shared import register_shared_static
 from phenotypic.gui.analysis import _ids as analysis_ids
 from phenotypic.gui.analysis._callbacks import register_callbacks
 from phenotypic.gui.analysis._layout import (
@@ -36,6 +38,7 @@ from phenotypic.gui.analysis._layout import (
     build_empty_state_layout,
 )
 from phenotypic.gui.analysis._recipe_state import RecipeState
+from phenotypic.gui.analysis._schema_cache import MeasurementSchema
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.shell._ids import SHELL_SIDEBAR_SELECTION_STORE
 
@@ -80,6 +83,7 @@ def create_app(
         routes_pathname_prefix=MOUNT_HOME,
     )
     inject_design_tokens(app)
+    register_shared_static(app.server)
     app.server.config[CFG_URL_PREFIX] = url_prefix
 
     if output_root is None:
@@ -88,10 +92,17 @@ def create_app(
         return app
 
     recipe = RecipeState.load(Path(output_root.root))
+    schema = MeasurementSchema(output_root=Path(output_root.root))
     app.server.config[CFG_OUTPUT_ROOT] = output_root
     app.server.config[CFG_RECIPE_STATE] = recipe
+    app.server.config[CFG_MEASUREMENT_SCHEMA] = schema
 
-    app.layout = build_app_layout(output_root, recipe)
+    app.layout = build_app_layout(
+        output_root,
+        recipe,
+        url_prefix=url_prefix,
+        columns_provider=schema.columns_for,
+    )
     register_callbacks(app)
 
     logger.info(

@@ -35,6 +35,7 @@ class _StubParamInfo:
         has_default: bool = True,
         is_operation: bool = False,
         is_pipeline: bool = False,
+        column_ref=None,
     ):
         self.name = name
         self.type_hint = type_hint
@@ -44,6 +45,7 @@ class _StubParamInfo:
         self.has_default = has_default
         self.is_operation = is_operation
         self.is_pipeline = is_pipeline
+        self.column_ref = column_ref
 
 
 class TestUnwrapOptional:
@@ -234,6 +236,211 @@ class TestParamFormViaRegistry:
         form = param_form(info, current_values={}, form_id_prefix="ec")
         # ``dbc.Form`` is a list-like container; one row per parameter.
         assert len(form.children) == len(info.parameters)
+
+
+class TestColumnWidgets:
+    """Coverage for the column-aware dropdowns + two-button mode toggle."""
+
+    def _columns(self, _src):
+        return ["Metadata_Strain", "Metadata_Time", "Shape_Area"]
+
+    def _scalar_spec(self, with_alt=False):
+        from phenotypic.gui._operation_registry import ColumnRefSpec
+
+        return ColumnRefSpec(source="measurements", multi=False, with_alt=with_alt)
+
+    def _multi_spec(self):
+        from phenotypic.gui._operation_registry import ColumnRefSpec
+
+        return ColumnRefSpec(source="measurements", multi=True, with_alt=False)
+
+    def test_scalar_dropdown_renders_for_columnref(self):
+        from phenotypic.tools_ import ColumnRef
+
+        p = _StubParamInfo("on", ColumnRef, column_ref=self._scalar_spec())
+        w = _widget_for_param(
+            p,
+            current_value="Shape_Area",
+            form_id_prefix="t",
+            columns_provider=self._columns,
+        )
+        # dbc.Select sets `value=`; check via vars().
+        assert w.value == "Shape_Area"
+        assert {o["value"] for o in w.options} == {
+            "Metadata_Strain",
+            "Metadata_Time",
+            "Shape_Area",
+        }
+
+    def test_multi_dropdown_renders_for_columnreflist(self):
+        from phenotypic.tools_ import ColumnRefList
+
+        p = _StubParamInfo(
+            "groupby", ColumnRefList, column_ref=self._multi_spec()
+        )
+        w = _widget_for_param(
+            p,
+            current_value=["Metadata_Strain"],
+            form_id_prefix="t",
+            columns_provider=self._columns,
+        )
+        # dcc.Dropdown(multi=True)
+        assert w.multi is True
+        assert w.value == ["Metadata_Strain"]
+
+    def test_stale_value_renders_with_tooltip(self):
+        from phenotypic.tools_ import ColumnRef
+
+        p = _StubParamInfo("on", ColumnRef, column_ref=self._scalar_spec())
+        w = _widget_for_param(
+            p,
+            current_value="MissingCol",
+            form_id_prefix="t",
+            columns_provider=self._columns,
+        )
+        # The stale wrapper Div carries a `title` for the tooltip.
+        assert getattr(w, "title", None)
+        assert "MissingCol" in w.title
+
+    def test_columnref_or_none_renders_two_button_toggle(self):
+        from phenotypic.tools_ import ColumnRef
+
+        p = _StubParamInfo(
+            "Kmax_label",
+            ColumnRef | None,
+            column_ref=self._scalar_spec(with_alt=True),
+        )
+        w = _widget_for_param(
+            p,
+            current_value="Shape_Area",
+            form_id_prefix="t",
+            columns_provider=self._columns,
+        )
+        # Wrapper Div with [RadioItems, Div(dropdown)] children.
+        kids = w.children
+        assert len(kids) == 2
+        radio = kids[0]
+        # RadioItems options include a Column branch + a None branch.
+        values = {o["value"] for o in radio.options}
+        assert {"column", "none"}.issubset(values)
+        assert radio.value == "column"  # current is a string -> column mode
+
+    def test_columnref_or_none_default_mode_is_none_when_value_is_none(self):
+        from phenotypic.tools_ import ColumnRef
+
+        p = _StubParamInfo(
+            "Kmax_label",
+            ColumnRef | None,
+            column_ref=self._scalar_spec(with_alt=True),
+        )
+        w = _widget_for_param(
+            p,
+            current_value=None,
+            form_id_prefix="t",
+            columns_provider=self._columns,
+        )
+        radio = w.children[0]
+        assert radio.value == "none"
+        # The dropdown is disabled when mode is "none".
+        dropdown_wrapper = w.children[1]
+        dropdown = dropdown_wrapper.children
+        assert dropdown.disabled is True
+
+    def test_columnref_list_with_alt_raises(self):
+        """``ColumnRefList | None`` is not yet wired end-to-end.
+
+        Guard exists so adding the first multi+alt param surfaces the
+        gap immediately rather than silently rendering a scalar widget
+        on a list value.
+        """
+        from phenotypic.gui._operation_registry import ColumnRefSpec
+        from phenotypic.tools_ import ColumnRefList
+
+        p = _StubParamInfo(
+            "future_param",
+            ColumnRefList | None,
+            column_ref=ColumnRefSpec(
+                source="measurements", multi=True, with_alt=True
+            ),
+        )
+        with pytest.raises(NotImplementedError, match="ColumnRefList"):
+            _widget_for_param(
+                p,
+                current_value=None,
+                form_id_prefix="t",
+                columns_provider=self._columns,
+            )
+
+
+class TestParseColumnValue:
+    def test_scalar_passthrough(self):
+        from phenotypic.gui._operation_registry import ColumnRefSpec
+
+        p = _StubParamInfo(
+            "on",
+            str,
+            column_ref=ColumnRefSpec("measurements", False, False),
+        )
+        assert parse_widget_value("Shape_Area", p) == "Shape_Area"
+        assert parse_widget_value("", p) is None
+        assert parse_widget_value(None, p) is None
+
+    def test_multi_passthrough(self):
+        from phenotypic.gui._operation_registry import ColumnRefSpec
+
+        p = _StubParamInfo(
+            "groupby",
+            list,
+            column_ref=ColumnRefSpec("measurements", True, False),
+        )
+        assert parse_widget_value(["a", "b"], p) == ["a", "b"]
+        assert parse_widget_value(None, p) == []
+
+    def test_mode_column_returns_scalar(self):
+        from phenotypic.gui._operation_registry import ColumnRefSpec
+
+        p = _StubParamInfo(
+            "Kmax_label",
+            str,
+            column_ref=ColumnRefSpec("measurements", False, True),
+        )
+        assert parse_widget_value(("column", "Shape_Area"), p) == "Shape_Area"
+
+    def test_mode_none_returns_none(self):
+        from phenotypic.gui._operation_registry import ColumnRefSpec
+
+        p = _StubParamInfo(
+            "Kmax_label",
+            str,
+            column_ref=ColumnRefSpec("measurements", False, True),
+        )
+        assert parse_widget_value(("none", "Shape_Area"), p) is None
+
+
+class TestColumnsProviderPlumbing:
+    def test_param_form_passes_provider_to_columnref_params(self):
+        from phenotypic.gui._operation_registry import get_registry
+
+        reg = get_registry()
+        info = reg.get("EdgeCorrector")
+        captured: list[str] = []
+
+        def provider(source: str) -> list[str]:
+            captured.append(source)
+            return ["Shape_Area", "Metadata_Strain", "Metadata_Time"]
+
+        param_form(
+            info,
+            current_values={
+                "on": "Shape_Area",
+                "groupby": ["Metadata_Strain"],
+                "time_label": "Metadata_Time",
+            },
+            form_id_prefix="ec",
+            columns_provider=provider,
+        )
+        # on, groupby, time_label all carry column_ref → 3 calls minimum.
+        assert captured.count("measurements") >= 3
 
 
 class TestBuilderShimReExports:

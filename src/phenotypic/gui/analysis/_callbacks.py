@@ -21,6 +21,7 @@ import polars as pl
 from dash import ALL, Input, Output, State, callback_context, html, no_update
 
 from phenotypic.gui._config import (
+    CFG_MEASUREMENT_SCHEMA,
     CFG_OUTPUT_ROOT,
     CFG_RECIPE_STATE,
     MEASUREMENTS_PARQUET,
@@ -69,8 +70,20 @@ def register_callbacks(app: "dash.Dash") -> None:
     - :data:`CFG_OUTPUT_ROOT` — the validated
       :class:`~phenotypic.gui.results_viewer._output_root.OutputRoot`.
     - :data:`CFG_RECIPE_STATE` — the loaded :class:`RecipeState`.
+    - :data:`CFG_MEASUREMENT_SCHEMA` — the
+      :class:`~phenotypic.gui.analysis._schema_cache.MeasurementSchema`
+      instance whose ``columns_for`` method is plumbed into every
+      ``build_section_stack`` rebuild so column-aware widgets stay in
+      sync with the on-disk measurements file.
     """
     server = app.server
+
+    def _columns_provider(source: str) -> list:
+        """Resolve a ColumnSource to columns from the live schema cache."""
+        schema = server.config.get(CFG_MEASUREMENT_SCHEMA)
+        if schema is None:
+            return []
+        return schema.columns_for(source)
 
     @app.callback(
         Output(ids.ANALYSIS_POST_STACK, "children"),
@@ -91,7 +104,10 @@ def register_callbacks(app: "dash.Dash") -> None:
         recipe.pipeline.set_post(post_dict)
         recipe.save()
         return (
-            build_section_stack(ids.ANALYSIS_POST_STACK, "post", recipe),
+            build_section_stack(
+                ids.ANALYSIS_POST_STACK, "post", recipe,
+                columns_provider=_columns_provider,
+            ),
             _pipeline_summary(recipe),
             recipe.last_json,
         )
@@ -115,7 +131,10 @@ def register_callbacks(app: "dash.Dash") -> None:
         recipe.pipeline.set_filters(filters_dict)
         recipe.save()
         return (
-            build_section_stack(ids.ANALYSIS_FILTER_STACK, "filter", recipe),
+            build_section_stack(
+                ids.ANALYSIS_FILTER_STACK, "filter", recipe,
+                columns_provider=_columns_provider,
+            ),
             _pipeline_summary(recipe),
             recipe.last_json,
         )
@@ -144,7 +163,7 @@ def register_callbacks(app: "dash.Dash") -> None:
         )
         model = recipe.pipeline.get_model()
         section = (
-            _build_model_section(model)
+            _build_model_section(model, columns_provider=_columns_provider)
             if model is not None
             else html.Span("No model configured.", style={"color": COLOR_MUTED})
         )
@@ -203,8 +222,14 @@ def register_callbacks(app: "dash.Dash") -> None:
         recipe.save()
 
         return (
-            build_section_stack(ids.ANALYSIS_POST_STACK, "post", recipe),
-            build_section_stack(ids.ANALYSIS_FILTER_STACK, "filter", recipe),
+            build_section_stack(
+                ids.ANALYSIS_POST_STACK, "post", recipe,
+                columns_provider=_columns_provider,
+            ),
+            build_section_stack(
+                ids.ANALYSIS_FILTER_STACK, "filter", recipe,
+                columns_provider=_columns_provider,
+            ),
             _pipeline_summary(recipe),
             recipe.last_json,
         )
@@ -229,6 +254,9 @@ def register_callbacks(app: "dash.Dash") -> None:
         Input({"type": "param-tuple", "prefix": ALL, "name": ALL}, "value"),
         Input({"type": "param-multi-tag", "prefix": ALL, "name": ALL}, "value"),
         Input({"type": "param-multi-value", "prefix": ALL, "name": ALL}, "value"),
+        Input({"type": "param-column-scalar", "prefix": ALL, "name": ALL}, "value"),
+        Input({"type": "param-column-multi", "prefix": ALL, "name": ALL}, "value"),
+        Input({"type": "param-column-mode", "prefix": ALL, "name": ALL}, "value"),
         prevent_initial_call=True,
     )
     def _on_param_edit(*_values: Any):
@@ -250,17 +278,21 @@ def register_callbacks(app: "dash.Dash") -> None:
         filter_out = no_update
         model_out: Any = no_update
         if kind == "post":
-            post_out = build_section_stack(ids.ANALYSIS_POST_STACK, "post", recipe)
+            post_out = build_section_stack(
+                ids.ANALYSIS_POST_STACK, "post", recipe,
+                columns_provider=_columns_provider,
+            )
         elif kind == "filter":
             filter_out = build_section_stack(
-                ids.ANALYSIS_FILTER_STACK, "filter", recipe
+                ids.ANALYSIS_FILTER_STACK, "filter", recipe,
+                columns_provider=_columns_provider,
             )
         elif kind == "model":
             from phenotypic.gui.analysis._layout import _build_model_section
 
             model = recipe.pipeline.get_model()
             model_out = (
-                _build_model_section(model)
+                _build_model_section(model, columns_provider=_columns_provider)
                 if model is not None
                 else html.Span("No model configured.", style={"color": COLOR_MUTED})
             )
@@ -354,12 +386,28 @@ def _apply_param_edit(recipe: Any, ctx: Any) -> tuple[bool, str | None]:
     if p is None:
         return False, None
 
-    # Multi-union spreads state across two components — combine them so
-    # ``parse_widget_value`` can dispatch on the ``(tag, value)`` tuple.
+    # Multi-component widgets (multi-union, column-with-alt) spread state
+    # across two ids; pack both values so ``parse_widget_value`` can
+    # dispatch on the resulting tuple.
+    def _pair(type_a: str, type_b: str) -> tuple[Any, Any]:
+        return (
+            ctx.inputs.get(_pattern_input_key(name, prefix, type_a)),
+            ctx.inputs.get(_pattern_input_key(name, prefix, type_b)),
+        )
+
     if widget_type in ("param-multi-tag", "param-multi-value"):
-        tag_key = f'{{"name":"{name}","prefix":"{prefix}","type":"param-multi-tag"}}.value'
-        val_key = f'{{"name":"{name}","prefix":"{prefix}","type":"param-multi-value"}}.value'
-        raw: Any = (ctx.inputs.get(tag_key), ctx.inputs.get(val_key))
+        raw: Any = _pair("param-multi-tag", "param-multi-value")
+    elif (
+        widget_type in ("param-column-scalar", "param-column-mode")
+        and p.column_ref is not None
+        and p.column_ref.with_alt
+    ):
+        # Scalar column-with-alt only. ``param-column-multi`` is
+        # intentionally absent: v1 has no ``ColumnRefList | None`` param,
+        # and ``_column_or_alt_widget`` raises ``NotImplementedError`` for
+        # ``spec.multi=True``. Adding multi+alt requires updating both
+        # sites in lockstep.
+        raw = _pair("param-column-mode", "param-column-scalar")
     else:
         raw = ctx.triggered[0]["value"] if ctx.triggered else None
 
@@ -394,6 +442,17 @@ def _apply_param_edit(recipe: Any, ctx: Any) -> tuple[bool, str | None]:
 
     recipe.save()
     return True, kind
+
+
+def _pattern_input_key(name: str, prefix: str, type_: str) -> str:
+    """Build a ``ctx.inputs`` lookup key for a Dash pattern-matching id.
+
+    Dash serializes pattern-matching ids as JSON objects with keys sorted
+    alphabetically — ``name``, ``prefix``, ``type`` — followed by the
+    ``.value`` property. Centralizing the format keeps the ordering
+    invariant in one place rather than scattered across f-strings.
+    """
+    return f'{{"name":"{name}","prefix":"{prefix}","type":"{type_}"}}.value'
 
 
 def _filter_kwargs_to_signature(cls: type, kwargs: dict[str, Any]) -> dict[str, Any]:

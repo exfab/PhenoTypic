@@ -200,3 +200,70 @@ class TestPointPickerMarker:
         assert man is not None
         assert man.is_point_pickable is False
         assert man.point_picker_param is None
+
+
+
+class TestColumnRefDetection:
+    """`_extract_parameters` populates `ParamInfo.column_ref` from `Annotated`."""
+
+    @pytest.fixture(scope="class")
+    def registry(self):
+        reg = OperationRegistry()
+        reg.discover()
+        return reg
+
+    @pytest.mark.parametrize(
+        "cls_name,param_name,expected_multi",
+        [
+            ("EdgeCorrector", "on", False),
+            ("EdgeCorrector", "groupby", True),
+            ("EdgeCorrector", "time_label", False),
+            ("TukeyOutlierRemover", "on", False),
+            ("TukeyOutlierRemover", "groupby", True),
+            ("LogGrowthModel", "on", False),
+            ("LogGrowthModel", "groupby", True),
+            ("LogGrowthModel", "time_label", False),
+            ("LinearSoftplusModel", "on", False),
+            ("LinearSoftplusModel", "groupby", True),
+            ("LinearSoftplusModel", "time_label", False),
+        ],
+    )
+    def test_column_ref_populated(
+        self, registry, cls_name, param_name, expected_multi
+    ):
+        info = registry.get(cls_name)
+        assert info is not None, f"{cls_name} not registered"
+        p = info.parameters.get(param_name)
+        assert p is not None, f"{cls_name}.{param_name} missing"
+        assert p.column_ref is not None, (
+            f"{cls_name}.{param_name} has no column_ref"
+        )
+        assert p.column_ref.source == "measurements"
+        assert p.column_ref.multi is expected_multi
+        assert p.column_ref.with_alt is False
+
+    def test_kmax_label_is_column_ref_with_alt(self, registry):
+        """`Kmax_label: ColumnRef | None` — the alt branch flips with_alt."""
+        info = registry.get("LogGrowthModel")
+        assert info is not None
+        p = info.parameters.get("Kmax_label")
+        assert p is not None
+        assert p.column_ref is not None
+        assert p.column_ref.source == "measurements"
+        assert p.column_ref.multi is False
+        assert p.column_ref.with_alt is True
+
+    def test_non_column_params_have_no_column_ref(self, registry):
+        info = registry.get("EdgeCorrector")
+        assert info is not None
+        for name in ("nrows", "ncols", "top_n", "pvalue"):
+            p = info.parameters.get(name)
+            assert p is not None
+            assert p.column_ref is None, f"{name} should not be a column ref"
+
+    def test_non_analyzer_op_has_no_column_ref(self, registry):
+        """Builder-side operations don't carry the marker."""
+        blur = registry.get("GaussianBlur")
+        assert blur is not None
+        for p in blur.parameters.values():
+            assert p.column_ref is None

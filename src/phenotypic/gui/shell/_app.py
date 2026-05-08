@@ -57,6 +57,7 @@ from phenotypic.gui.shell._ids import (
     SHELL_TAB_VIEWER,
 )
 from phenotypic.gui.shell._layout import wrap_in_chrome
+from phenotypic.gui._shared import register_shared_static
 from phenotypic.gui.shell._routes import register_sandbox_api
 from phenotypic.gui.shell._runs_blueprint import register as register_runs
 from phenotypic.gui.shell._sandbox import SandboxRoot
@@ -158,6 +159,7 @@ def _build_shell_dash_app(
         extra_release_sessions=extra_release_sessions,
     )
     register_runs(app.server, sandbox, viewer_session=viewer_session)
+    register_shared_static(app.server)
     return app
 
 

@@ -6,23 +6,27 @@ Splices a small CSS block into every Dash app's ``index_string`` that:
 * Declares the ``--font-display``, ``--font-body``, and ``--font-mono``
   CSS custom properties used throughout ``shell.css``, ``builder.css``,
   ``results_viewer.css``, and ``run_console.css``.
-* Declares the brand color, Okabe-Ito data, type-scale, radius, shadow,
-  and ease/transition tokens that previously duplicated across
-  ``shell.css`` and ``builder.css`` ``:root`` blocks.
+* Declares the brand color, Okabe-Ito data, type-scale, semantic
+  ``--font-size-*`` aliases, radius, shadow, and ease/transition tokens
+  that previously duplicated across ``shell.css`` and ``builder.css``
+  ``:root`` blocks.
 
 To swap fonts: change ``_GOOGLE_FONT_FAMILY`` + ``_GOOGLE_FONT_URL`` to
 one of the commented alternatives below. Every mounted Dash app picks
 up the new font on next reload -- no CSS file edits required.
 
 To swap a design color or sizing token: edit the matching ``COLOR_*``,
-``TEXT_*``, ``RADIUS_*``, ``SHADOW_*``, or ``EASE_*`` constant. The
-:data:`DESIGN_TOKENS_CSS` block is rebuilt at module import time and
-re-injected into every Dash app via :func:`inject_design_tokens`.
+``TEXT_*``, ``FONT_SIZE_*``, ``RADIUS_*``, ``SHADOW_*``, or ``EASE_*``
+constant. The :data:`DESIGN_TOKENS_CSS` block is rebuilt at module
+import time and re-injected into every Dash app via
+:func:`inject_design_tokens`.
 
-Python callers that need an inline-style hex (e.g. Plotly figure colors,
-``html.Div(style={"color": COLOR_NAVY})``) should ``import`` the
-constant instead of re-spelling ``"#003660"`` -- see
-``DESIGN.md`` for the full UI-vs-data palette rules.
+Python callers that need an inline-style hex, font family, or font size
+(e.g. Plotly figure colors, ``html.Div(style={"color": COLOR_NAVY})``,
+``style_cell={"fontFamily": FONT_FAMILY_MONO, "fontSize": FONT_SIZE_LABEL}``)
+should ``import`` the constant instead of re-spelling literals -- see
+``DESIGN.md`` for the full UI-vs-data palette rules and the typography
+scale.
 """
 from __future__ import annotations
 
@@ -55,6 +59,21 @@ __all__ = [
     "TEXT_MD",
     "TEXT_LG",
     "TEXT_XL",
+    "TEXT_2XL",
+    "TEXT_3XL",
+    # ---- Semantic font-size aliases (preferred call form) ----
+    "FONT_SIZE_DISPLAY",
+    "FONT_SIZE_TITLE",
+    "FONT_SIZE_HEADER_1",
+    "FONT_SIZE_HEADER_2",
+    "FONT_SIZE_BODY_LG",
+    "FONT_SIZE_BODY",
+    "FONT_SIZE_LABEL",
+    "FONT_SIZE_CAPTION",
+    # ---- Python-side font-family constants ----
+    "FONT_FAMILY_DISPLAY",
+    "FONT_FAMILY_BODY",
+    "FONT_FAMILY_MONO",
     "SPACING_1",
     "SPACING_2",
     "SPACING_3",
@@ -106,7 +125,7 @@ _GOOGLE_FONT_URL = (
 # bottoming out on the generic CSS family.
 _FALLBACK_DISPLAY = 'Georgia, "Times New Roman", Times, serif'
 _FALLBACK_BODY = (
-    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, '
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", '
     '"Helvetica Neue", Arial, sans-serif'
 )
 _FALLBACK_MONO = (
@@ -123,6 +142,15 @@ FONT_TOKENS_CSS = f"""\
   --font-mono:    '{_GOOGLE_FONT_FAMILY}', {_FALLBACK_MONO};
 }}
 """
+
+# Python-side font-family strings -- mirror the CSS custom properties
+# above. Use these from Python inline ``style={...}`` dicts and from
+# call-sites that don't see CSS variables (Cytoscape stylesheets,
+# Plotly layout, dash-table style_cell, etc.).
+
+FONT_FAMILY_DISPLAY: str = f"'{_GOOGLE_FONT_FAMILY}', {_FALLBACK_DISPLAY}"
+FONT_FAMILY_BODY: str = f"'{_GOOGLE_FONT_FAMILY}', {_FALLBACK_BODY}"
+FONT_FAMILY_MONO: str = f"'{_GOOGLE_FONT_FAMILY}', {_FALLBACK_MONO}"
 
 # ---------------------------------------------------------------------------
 # Brand / UI palette (PRIMARY -- UI only, never charts)
@@ -174,6 +202,35 @@ TEXT_BASE: str = "0.9375rem"  # ~15 px -- body text
 TEXT_MD: str = "1.0625rem"  # ~17 px -- emphasized body
 TEXT_LG: str = "1.25rem"  # ~20 px -- subhead
 TEXT_XL: str = "1.5rem"  # ~24 px -- builder canvas titles
+TEXT_2XL: str = "1.875rem"  # ~30 px -- page / dashboard top titles
+TEXT_3XL: str = "2.5rem"  # ~40 px -- large stat numerics, hero numbers
+
+# ---------------------------------------------------------------------------
+# Semantic typography roles -- single source of truth for `font-size`.
+# ---------------------------------------------------------------------------
+#
+# New code (CSS or Python inline styles) should use these semantic names
+# rather than the raw `TEXT_*` rem-scale primitives above. Each Python
+# constant has a matching `--font-size-*` CSS custom property spliced in
+# by `inject_design_tokens()`.
+#
+#   FONT_SIZE_DISPLAY   -- large stat numerics, hero numbers
+#   FONT_SIZE_TITLE     -- page / dashboard top titles
+#   FONT_SIZE_HEADER_1  -- section heads
+#   FONT_SIZE_HEADER_2  -- sub-section heads
+#   FONT_SIZE_BODY_LG   -- emphasized / lead body
+#   FONT_SIZE_BODY      -- default body copy
+#   FONT_SIZE_LABEL     -- form labels, picker labels, secondary chrome
+#   FONT_SIZE_CAPTION   -- footnotes, badge text, overlines
+
+FONT_SIZE_DISPLAY: str = TEXT_3XL  # 2.5rem
+FONT_SIZE_TITLE: str = TEXT_2XL  # 1.875rem
+FONT_SIZE_HEADER_1: str = TEXT_XL  # 1.5rem
+FONT_SIZE_HEADER_2: str = TEXT_LG  # 1.25rem
+FONT_SIZE_BODY_LG: str = TEXT_MD  # 1.0625rem
+FONT_SIZE_BODY: str = TEXT_BASE  # 0.9375rem
+FONT_SIZE_LABEL: str = TEXT_SM  # 0.8125rem
+FONT_SIZE_CAPTION: str = TEXT_XS  # 0.6875rem
 
 # ---------------------------------------------------------------------------
 # 8 pt spacing grid (DESIGN.md "Spacing")
@@ -242,6 +299,18 @@ DESIGN_TOKENS_CSS = f"""\
   --text-md:   {TEXT_MD};
   --text-lg:   {TEXT_LG};
   --text-xl:   {TEXT_XL};
+  --text-2xl:  {TEXT_2XL};
+  --text-3xl:  {TEXT_3XL};
+
+  /* ---- Semantic font-size aliases (preferred over --text-*) ---- */
+  --font-size-display:  var(--text-3xl);
+  --font-size-title:    var(--text-2xl);
+  --font-size-header-1: var(--text-xl);
+  --font-size-header-2: var(--text-lg);
+  --font-size-body-lg:  var(--text-md);
+  --font-size-body:     var(--text-base);
+  --font-size-label:    var(--text-sm);
+  --font-size-caption:  var(--text-xs);
 
   /* ---- 8 pt spacing grid ---- */
   --sp-1: {SPACING_1};

@@ -1976,6 +1976,32 @@ def register_callbacks(app: dash.Dash) -> None:
         prevent_initial_call=True,
     )
 
+    # ----------------------------------------------------------------------
+    # 10. Inspector "Documentation" collapse toggle.
+    # ----------------------------------------------------------------------
+    # The Inspector is fully rebuilt by the fan-in callback whenever the
+    # selected node changes, so each new selection starts with the
+    # docstring section collapsed. This callback only handles the
+    # in-place expand / collapse for the currently-selected node.
+    # ``_doc_section_widgets`` (in ``_layout.py``) emits hidden
+    # placeholders carrying the same ids on every other branch so this
+    # callback's Input / State always resolve.
+
+    @app.callback(
+        Output(ids.INSPECTOR_DOC_COLLAPSE, "is_open"),
+        Input(ids.INSPECTOR_DOC_TOGGLE, "n_clicks"),
+        State(ids.INSPECTOR_DOC_COLLAPSE, "is_open"),
+        prevent_initial_call=True,
+    )
+    def _toggle_inspector_doc(
+        n_clicks: Optional[int], is_open: bool
+    ) -> bool:
+        """Flip the docstring collapse open / closed on toggle clicks."""
+
+        if not n_clicks:
+            return is_open
+        return not is_open
+
 
 # ---------------------------------------------------------------------------
 # Helpers (private to this module)

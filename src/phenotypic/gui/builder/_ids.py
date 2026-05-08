@@ -56,6 +56,18 @@ INSPECTOR_PARAM_FORM = "inspector-param-form"
 #: Mount point for the per-step preview (image thumbnail or DataTable).
 INSPECTOR_PREVIEW = "inspector-preview"
 
+#: Toggle button that opens/closes the Inspector "Documentation" collapse.
+#: Rendered visibly in the non-pipeline inspector branch when the selected
+#: operation has a docstring; rendered hidden in every other branch via
+#: ``_hidden_inspector_widgets`` so the toggle callback's ``Input`` always
+#: resolves.
+INSPECTOR_DOC_TOGGLE = "inspector-doc-toggle"
+
+#: Collapse holding the operation class docstring. ``is_open=False`` on
+#: every fresh inspector render (selection change rebuilds the inspector
+#: from scratch, so the section naturally re-collapses on node switch).
+INSPECTOR_DOC_COLLAPSE = "inspector-doc-collapse"
+
 #: Footer row holding image-source + run/save/load buttons.
 FOOTER_CONTAINER = "footer"
 

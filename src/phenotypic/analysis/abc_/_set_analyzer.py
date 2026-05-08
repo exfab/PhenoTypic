@@ -1,19 +1,21 @@
 from __future__ import annotations
 
 import abc
-from typing import Callable, List
+from typing import Callable
 
 import pandas as pd
 import numpy as np
 from collections.abc import Iterable
 from typing import Any, Mapping
 
+from phenotypic.tools_ import ColumnRef, ColumnRefList
+
 
 class SetAnalyzer(abc.ABC):
     def __init__(
         self,
-        on: str,
-        groupby: List[str],
+        on: ColumnRef,
+        groupby: ColumnRefList,
         agg_func: Callable | str | list | dict | None = "mean",
         *,
         num_workers=1,

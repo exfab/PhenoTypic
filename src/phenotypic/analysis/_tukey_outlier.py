@@ -5,6 +5,8 @@ import pandas as pd
 from joblib import delayed, Parallel
 import matplotlib.pyplot as plt
 
+from phenotypic.tools_ import ColumnRef, ColumnRefList
+
 from .abc_ import SetAnalyzer
 
 
@@ -61,7 +63,7 @@ class TukeyOutlierRemover(SetAnalyzer):
     """
 
     def __init__(
-            self, on: str, groupby: list[str], k: float = 1.5, num_workers: int = 1
+            self, on: ColumnRef, groupby: ColumnRefList, k: float = 1.5, num_workers: int = 1
     ):
         """Initialize TukeyOutlierRemover with test parameters.
 

@@ -33,6 +33,7 @@ from phenotypic.gui._config import (
     TITLE_RUN,
 )
 from phenotypic.gui._design import inject_design_tokens
+from phenotypic.gui._shared import register_shared_static
 from phenotypic.gui.run_console._callbacks import register_callbacks
 from phenotypic.gui.run_console._layout import build_run_console_layout
 from phenotypic.gui.run_console._runner import LocalRunner
@@ -91,7 +92,10 @@ def create_app(
         routes_pathname_prefix=MOUNT_HOME,
     )
     inject_design_tokens(app)
-    app.layout = build_run_console_layout(sandbox, registry=registry, runner=runner)
+    register_shared_static(app.server)
+    app.layout = build_run_console_layout(
+        sandbox, registry=registry, runner=runner, url_prefix=url_prefix
+    )
     app.server.config[CFG_URL_PREFIX] = url_prefix
     app.server.config[CFG_SANDBOX_ROOT] = str(sandbox.root)
     # Stream A reads the runner here (per its integration note) rather

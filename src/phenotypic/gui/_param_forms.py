@@ -24,10 +24,15 @@ from typing import TYPE_CHECKING, Any, Callable, Optional, get_args, get_origin
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 import numpy as np
-from dash import html
+from dash import dcc, html
 
 if TYPE_CHECKING:
     from phenotypic.gui._operation_registry import OperationInfo, ParamInfo
+
+
+#: Tag used by the column / alt-dtype mode toggle.
+COLUMN_MODE_TAG = "column"
+NONE_MODE_TAG = "none"
 
 
 # ---------------------------------------------------------------------------
@@ -167,9 +172,27 @@ def parse_widget_value(raw: Any, p: "ParamInfo") -> Any:
     """Convert a Dash widget's reported value back to its declared Python type.
 
     Handles tuple/list comma-split, int/float coercion, enum/literal
-    pass-through, multi-union type-tag dispatch, and bool fall-through.
+    pass-through, multi-union type-tag dispatch, column-ref pass-through
+    (single + multi + mode-toggle), and bool fall-through.
     """
     inner = _unwrap_optional(p.type_hint)
+
+    # Column-ref params: column-with-alt packs ``(mode, scalar)`` so the
+    # active branch is decided at parse time without needing two Inputs.
+    # Plain dropdowns return their natural type (str / list[str]).
+    column_ref = getattr(p, "column_ref", None)
+    if column_ref is not None:
+        if isinstance(raw, tuple) and len(raw) == 2:
+            mode, scalar = raw
+            return None if mode == NONE_MODE_TAG else scalar
+        if column_ref.multi:
+            if isinstance(raw, list):
+                return [str(v) for v in raw if v is not None]
+            return []
+        # ``dbc.Select`` reports ``""`` for "no selection" — fold to None.
+        if raw == "" or raw is None:
+            return None
+        return str(raw)
 
     # Multi-type unions arrive as a tuple (tag, value) from the widget. Any
     # other shape (None, primitive) is treated as the natural-type case.
@@ -277,6 +300,159 @@ def _format_token(v: Any) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _column_options(columns: list[str]) -> list[dict[str, str]]:
+    """Build a Dash options list from a column-name list."""
+    return [{"label": c, "value": c} for c in columns]
+
+
+def _column_widget(
+    *,
+    p: "ParamInfo",
+    current_value: Any,
+    form_id_prefix: str,
+    columns: list[str],
+) -> Any:
+    """Render a column-aware dropdown for plain ``ColumnRef`` / ``ColumnRefList``.
+
+    Stale values (selected but absent from ``columns``) are surfaced via a
+    wrapper-level tooltip — multi widgets keep them selectable as
+    ``(missing) <name>`` entries; scalars clear the value (Dash's
+    ``dbc.Select`` does not render an option that isn't in ``options``).
+    """
+    spec = p.column_ref
+    assert spec is not None  # caller guarantees this
+    component_id = {
+        "prefix": form_id_prefix,
+        "name": p.name,
+    }
+
+    if spec.multi:
+        value_list = list(current_value) if isinstance(current_value, list) else []
+        stale = [
+            v for v in value_list
+            if isinstance(v, str) and v and v not in columns
+        ]
+        options = _column_options(columns) + [
+            {"label": f"{v} (missing)", "value": v} for v in stale
+        ]
+        widget = dcc.Dropdown(
+            id={"type": "param-column-multi", **component_id},
+            options=options,
+            value=value_list,
+            multi=True,
+            placeholder="Pick one or more columns…",
+        )
+        if stale:
+            return html.Div(
+                widget,
+                title=(
+                    f"missing column(s): {', '.join(stale)} "
+                    f"(not in {spec.source} file)"
+                ),
+                className="param-column-stale",
+            )
+        return widget
+
+    scalar = current_value if isinstance(current_value, str) else None
+    is_stale = bool(scalar) and scalar not in columns
+    widget = dbc.Select(
+        id={"type": "param-column-scalar", **component_id},
+        options=_column_options(columns),
+        value=None if is_stale else scalar,
+        placeholder="Pick a column…",
+    )
+    if is_stale:
+        return html.Div(
+            widget,
+            title=f'previously: "{scalar}" (not in {spec.source} file)',
+            className="param-column-stale",
+        )
+    return widget
+
+
+def _column_or_alt_widget(
+    *,
+    p: "ParamInfo",
+    current_value: Any,
+    form_id_prefix: str,
+    columns: list[str],
+) -> Any:
+    """Render a two-button mode toggle for ``ColumnRef | <alt>`` unions.
+
+    The toggle is a ``dbc.RadioItems`` styled as a Bootstrap button group.
+    "Column" enables the dropdown; the alt branch ("None" for
+    ``ColumnRef | None``) disables it and the param saves as the alt's
+    natural value. Mode is derived from ``current_value``: a string means
+    column mode, otherwise the alt branch is active.
+
+    Raises:
+        NotImplementedError: When ``spec.multi`` is True. v1 only renders
+            the scalar dropdown inside the toggle; ``ColumnRefList | None``
+            needs both a multi dropdown branch in this widget AND a
+            matching ``param-column-multi`` arm in
+            ``_apply_param_edit``'s with-alt dispatch — neither is wired
+            up. Any future use must update both sites in lockstep.
+    """
+    spec = p.column_ref
+    assert spec is not None
+    if spec.multi:
+        raise NotImplementedError(
+            f"{p.name}: ColumnRefList with an alternate branch is not "
+            "supported yet. Add both a multi-select dropdown to "
+            "_column_or_alt_widget and a `param-column-multi` arm to "
+            "_apply_param_edit's with-alt dispatch."
+        )
+    component_id = {
+        "prefix": form_id_prefix,
+        "name": p.name,
+    }
+
+    has_none = any(a is type(None) for a in get_args(p.type_hint))
+    mode = COLUMN_MODE_TAG if isinstance(current_value, str) else NONE_MODE_TAG
+    mode_options: list[dict[str, Any]] = [
+        {"label": "Column", "value": COLUMN_MODE_TAG},
+    ]
+    if has_none:
+        mode_options.append({"label": "None", "value": NONE_MODE_TAG})
+
+    scalar_value = current_value if isinstance(current_value, str) else None
+    is_stale = bool(scalar_value) and scalar_value not in columns
+    # Stale values stay selectable here (unlike _column_widget) so the user
+    # can see what was there; the wrapper tooltip surfaces the staleness.
+    column_options = _column_options(columns)
+    if is_stale:
+        column_options.append(
+            {"label": f"{scalar_value} (missing)", "value": scalar_value}
+        )
+
+    dropdown = dbc.Select(
+        id={"type": "param-column-scalar", **component_id},
+        options=column_options,
+        value=scalar_value,
+        placeholder="Pick a column…",
+        disabled=(mode == NONE_MODE_TAG),
+    )
+    radio = dbc.RadioItems(
+        id={"type": "param-column-mode", **component_id},
+        options=mode_options,
+        value=mode,
+        inline=True,
+        class_name="btn-group param-column-mode",
+        input_class_name="btn-check",
+        label_class_name="btn btn-outline-secondary btn-sm",
+    )
+
+    wrapper_kwargs: dict[str, Any] = {"className": "param-column-toggle"}
+    if is_stale:
+        wrapper_kwargs["title"] = (
+            f'previously: "{scalar_value}" (not in {spec.source} file)'
+        )
+    return html.Div(
+        [radio, html.Div(dropdown, style={"marginTop": "0.4rem"})],
+        **wrapper_kwargs,
+    )
+
+
 def _multi_union_widget(
     *,
     p: "ParamInfo",
@@ -338,6 +514,7 @@ def _widget_for_param(
     form_id_prefix: str,
     point_picker_param: Optional[str] = None,
     picker_factory: Optional[Callable[..., Any]] = None,
+    columns_provider: Optional[Callable[[str], list[str]]] = None,
 ) -> Any:
     """Build the primary input widget for a single parameter.
 
@@ -352,6 +529,12 @@ def _widget_for_param(
         picker_factory: Callable that builds the picker widget when
             ``point_picker_param`` matches. Signature:
             ``factory(*, form_id_prefix, name, current_value) -> Component``.
+        columns_provider: Callable returning the column-name list for a
+            given source (``"measurements"`` / ``"master_measurements"``).
+            Analysis sub-app passes ``MeasurementSchema.columns_for``;
+            builder leaves it as ``None``. When provided AND the param
+            carries a ``column_ref``, renders a column dropdown instead
+            of a free-text input.
     """
     if (
         point_picker_param is not None
@@ -362,6 +545,25 @@ def _widget_for_param(
             form_id_prefix=form_id_prefix,
             name=p.name,
             current_value=current_value,
+        )
+
+    # ``columns_provider`` is supplied by the analysis sub-app only —
+    # builder ops carry no column-ref params, so this branch is dead
+    # code on the builder path.
+    column_ref = getattr(p, "column_ref", None)
+    if column_ref is not None and columns_provider is not None:
+        try:
+            columns = columns_provider(column_ref.source)
+        except Exception:  # noqa: BLE001
+            columns = []
+        builder = (
+            _column_or_alt_widget if column_ref.with_alt else _column_widget
+        )
+        return builder(
+            p=p,
+            current_value=current_value,
+            form_id_prefix=form_id_prefix,
+            columns=columns,
         )
 
     # Multi-type unions (e.g. ``bool | float | int | str | None``) take
@@ -478,6 +680,7 @@ def _param_row(
     form_id_prefix: str,
     point_picker_param: Optional[str] = None,
     picker_factory: Optional[Callable[..., Any]] = None,
+    columns_provider: Optional[Callable[[str], list[str]]] = None,
 ) -> Any:
     """Render one parameter as a labelled ``dbc.Row``."""
     widget = _widget_for_param(
@@ -486,6 +689,7 @@ def _param_row(
         form_id_prefix=form_id_prefix,
         point_picker_param=point_picker_param,
         picker_factory=picker_factory,
+        columns_provider=columns_provider,
     )
 
     label_children: list[Any] = [p.name]
@@ -520,6 +724,7 @@ def param_form(
     *,
     form_id_prefix: str,
     picker_factory: Optional[Callable[..., Any]] = None,
+    columns_provider: Optional[Callable[[str], list[str]]] = None,
 ) -> dbc.Form:
     """Generate a parameter form for an operation.
 
@@ -533,6 +738,12 @@ def param_form(
             point picker for parameters whose owning op declares
             ``point_picker_param``. The analysis sub-app leaves this as
             ``None``.
+        columns_provider: Optional analysis-side callable that resolves a
+            ``ColumnSource`` to a list of column names (typically
+            :meth:`MeasurementSchema.columns_for`). When set, params whose
+            type carries a ``ColumnRef`` marker render as dropdowns
+            populated from the live measurements schema instead of a
+            free-text input.
 
     Returns:
         ``dbc.Form`` whose children are one ``dbc.Row`` per parameter.
@@ -547,6 +758,7 @@ def param_form(
                 form_id_prefix=form_id_prefix,
                 point_picker_param=point_picker_param,
                 picker_factory=picker_factory,
+                columns_provider=columns_provider,
             )
         )
     return dbc.Form(rows)

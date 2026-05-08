@@ -28,6 +28,7 @@ from typing import List
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
 
+from phenotypic.gui._design import FONT_FAMILY_MONO
 from phenotypic.gui.builder._directory_browser import (
     PIPELINE_EXTS,
     directory_tree,
@@ -490,7 +491,7 @@ def _build_slurm_section() -> html.Div:
                         id=ids.RC_INPUT_SLURM_EXTRA,
                         placeholder="account=lab\nqos=normal",
                         rows=4,
-                        style={"fontFamily": "ui-monospace, monospace"},
+                        style={"fontFamily": FONT_FAMILY_MONO},
                     ),
                 ]
             ),

@@ -27,6 +27,7 @@ from phenotypic.gui._config import (
 )
 from phenotypic.gui._design import inject_design_tokens
 from phenotypic.gui._operation_registry import OperationRegistry
+from phenotypic.gui._shared import register_shared_static
 from phenotypic.gui.builder._callbacks import register_callbacks
 from phenotypic.gui.builder._layout import build_app_layout
 from phenotypic.gui.builder._point_picker import (
@@ -89,6 +90,7 @@ def create_app(
     )
 
     inject_design_tokens(app)
+    register_shared_static(app.server)
 
     app.layout = build_app_layout(state, registry, image_root, url_prefix=url_prefix)
 

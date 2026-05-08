@@ -217,6 +217,25 @@ def test_builder_logo_uses_prefix(sandbox: SandboxRoot) -> None:
     assert resp.status_code == 200
     payload = resp.get_json()
     # Walk the JSON tree looking for the logo Img's src.
-    found = _find_string_in_json(payload, "pheno_logo.png")
+    found = _find_string_in_json(payload, "dashboard_logo.svg")
     assert found is not None
     assert found.startswith("/builder/")
+
+
+def test_shared_logo_served_under_each_mount(sandbox: SandboxRoot) -> None:
+    """The single canonical ``dashboard_logo.svg`` is reachable under
+    every sub-app's ``/_shared/`` URL prefix.
+
+    Each sub-app's Flask server registers a shared-static blueprint that
+    serves the same file from ``gui/_shared/_static/``. This guards against
+    accidental reintroduction of per-app duplicate copies.
+    """
+    app = create_app(sandbox)
+    client = app.server.test_client()
+    for mount in ("/builder", "/results", "/run", "/analysis"):
+        resp = client.get(f"{mount}/_shared/dashboard_logo.svg")
+        assert resp.status_code == 200, f"{mount} did not serve the shared logo"
+        body = resp.get_data(as_text=True)
+        assert body.startswith("<svg") or body.lstrip().startswith("<?xml"), (
+            f"{mount} returned non-SVG content: {body[:120]!r}"
+        )

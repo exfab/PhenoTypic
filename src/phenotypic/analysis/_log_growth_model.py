@@ -5,6 +5,7 @@ import pandas as pd
 
 from phenotypic.analysis.abc_ import ModelFitter
 from phenotypic.analysis.abc_._model_fitter import LossKind
+from phenotypic.tools_ import ColumnRef, ColumnRefList
 from phenotypic.tools_.measurement_info import LOG_GROWTH_MODEL, MODEL_METRICS
 
 
@@ -65,13 +66,13 @@ class LogGrowthModel(ModelFitter):
 
     def __init__(
             self,
-            on: str,
-            groupby: List[str],
-            time_label: str = "Metadata_Time",
+            on: ColumnRef,
+            groupby: ColumnRefList,
+            time_label: ColumnRef = "Metadata_Time",
             agg_func: Callable | str | list | dict | None = "mean",
             lam: float = 1.2,
             beta: float = 2,
-            Kmax_label: str | None = None,
+            Kmax_label: ColumnRef | None = None,
             loss: LossKind = "huber",
             f_scale: float = 1.0,
             verbose: bool = False,

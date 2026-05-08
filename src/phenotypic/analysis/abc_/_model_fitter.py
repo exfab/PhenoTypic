@@ -18,6 +18,7 @@ from sklearn.metrics import (
     root_mean_squared_error,
 )
 
+from phenotypic.tools_ import ColumnRef, ColumnRefList
 from phenotypic.tools_.measurement_info import MODEL_METRICS
 
 from ._set_analyzer import SetAnalyzer
@@ -78,9 +79,9 @@ class ModelFitter(SetAnalyzer, ABC):
 
     def __init__(
             self,
-            on: str,
-            groupby: List[str],
-            time_label: str = "Metadata_Time",
+            on: ColumnRef,
+            groupby: ColumnRefList,
+            time_label: ColumnRef = "Metadata_Time",
             agg_func: Callable | str | list | dict | None = "mean",
             *,
             num_workers: int = 1,

@@ -93,11 +93,22 @@ _TAB_HREFS = {
 
 _TAB_LABELS = {
     SHELL_TAB_HOME: "Home",
-    SHELL_TAB_BUILDER: "Builder",
+    SHELL_TAB_BUILDER: "Pipelines",
     SHELL_TAB_VIEWER: "Viewer",
     SHELL_TAB_RUN: "Run",
     SHELL_TAB_ANALYSIS: "Analysis",
 }
+
+#: Display order for the top-bar tab nav. The sequence follows the user
+#: workflow: land on Home, compose a pipeline in Builder, execute it from
+#: Run, inspect the output in Viewer, and run downstream stats in Analysis.
+TAB_DISPLAY_ORDER: tuple[str, ...] = (
+    SHELL_TAB_HOME,
+    SHELL_TAB_BUILDER,
+    SHELL_TAB_RUN,
+    SHELL_TAB_VIEWER,
+    SHELL_TAB_ANALYSIS,
+)
 
 
 def build_top_bar(
@@ -142,13 +153,7 @@ def build_top_bar(
             html.Nav(
                 [
                     _build_tab(tab_id, active_tab=active_tab)
-                    for tab_id in (
-                        SHELL_TAB_HOME,
-                        SHELL_TAB_BUILDER,
-                        SHELL_TAB_VIEWER,
-                        SHELL_TAB_RUN,
-                        SHELL_TAB_ANALYSIS,
-                    )
+                    for tab_id in TAB_DISPLAY_ORDER
                 ],
                 className="shell-tab-nav",
             ),

@@ -28,7 +28,7 @@ import logging
 from typing import Any
 
 import dash
-from dash import ALL, Input, Output, State, callback_context, no_update
+from dash import ALL, MATCH, Input, Output, State, callback_context, no_update
 
 from phenotypic.gui.results_viewer import _ids as ids
 from phenotypic.gui.results_viewer._filter_state import FilterSpec
@@ -39,6 +39,7 @@ from phenotypic.gui.results_viewer._filtered_state import (
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer.colony_view._grid import (
     build_grid,
+    build_stack_popover_rows,
     compute_max_bbox_size,
     expand_range,
     selectable_axis_columns,
@@ -518,6 +519,71 @@ def register_callbacks(
         Output(ids.COLONY_SELECTION_EFFECT_ID, "data"),
         Input(ids.STORE_COLONY_SELECTION, "data"),
     )
+
+    # ----------------------------------------------------------------------
+    # 8. Populate stack popover on first badge click
+    # ----------------------------------------------------------------------
+
+    @app.callback(
+        Output(
+            {"type": "colony-cell-popover-body", "image_file": MATCH, "label": MATCH},
+            "children",
+        ),
+        Input(
+            {"type": "colony-cell-count-badge", "image_file": MATCH, "label": MATCH},
+            "n_clicks",
+        ),
+        State(
+            {"type": "colony-cell-popover-data", "image_file": MATCH, "label": MATCH},
+            "data",
+        ),
+        State(ids.STORE_REMOVED_KEYS, "data"),
+        prevent_initial_call=True,
+    )
+    def _populate_stack_popover(
+        n_clicks: int | None,
+        data: Any,
+        removed_payload: Any,
+    ) -> Any:
+        """Render the popover body the first time its badge is clicked.
+
+        The popover ships from :func:`build_grid` with an empty body and
+        a co-located ``dcc.Store`` carrying the cell's members and per-
+        grid sizes. This MATCH callback reads that store on the first
+        click and emits the row children, so no ``<img>`` tags exist in
+        the DOM until the user actually opens the stack.
+
+        Subsequent clicks re-emit the same children (idempotent given
+        identical state) so toggling the popover open/closed never
+        re-fetches.
+        """
+        if not n_clicks or not isinstance(data, dict):
+            return no_update
+        members_payload = data.get("members") or []
+        members: list[tuple[str, str, int]] = []
+        for entry in members_payload:
+            if not isinstance(entry, (list, tuple)) or len(entry) != 3:
+                continue
+            try:
+                members.append((str(entry[0]), str(entry[1]), int(entry[2])))
+            except (TypeError, ValueError):
+                continue
+        if not members:
+            return no_update
+        try:
+            crop_size = int(data.get("crop_size") or 0)
+            display_size = int(data.get("display_size") or 0)
+        except (TypeError, ValueError):
+            return no_update
+        if crop_size <= 0 or display_size <= 0:
+            return no_update
+        removed_keys = set(decode_removed_keys_payload(removed_payload))
+        return build_stack_popover_rows(
+            members,
+            crop_size=crop_size,
+            display_size=display_size,
+            removed_keys=removed_keys,
+        )
 
 
 __all__ = ["register_callbacks"]

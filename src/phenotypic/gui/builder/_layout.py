@@ -20,6 +20,7 @@ Layout is composed top-to-bottom as:
 
 from __future__ import annotations
 
+import inspect
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, List, Optional
 
@@ -27,7 +28,15 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 import dash_cytoscape as cyto  # type: ignore[import-untyped]
 from dash import dcc, html
 
-from phenotypic.gui._design import COLOR_BLUE, COLOR_BORDER, COLOR_MUTED, COLOR_NAVY
+from phenotypic.gui._design import (
+    COLOR_BLUE,
+    COLOR_BORDER,
+    COLOR_MUTED,
+    COLOR_NAVY,
+    FONT_FAMILY_MONO,
+    FONT_SIZE_LABEL,
+)
+from phenotypic.gui._shared import SHARED_LOGO_PATH
 from phenotypic.gui.builder import _ids as ids
 from phenotypic.gui.builder._modal_browser import (
     load_image_modal,
@@ -290,7 +299,9 @@ def _canvas_stylesheet() -> List[dict]:
                 "border-color": COLOR_BORDER,
                 "border-width": 1,
                 "padding": "12px",
-                "font-family": "DM Mono, Courier New, monospace",
+                "font-family": FONT_FAMILY_MONO,
+                # Cytoscape canvas-renders labels and only accepts pixel
+                # values for font-size; rem units silently fall back.
                 "font-size": "12px",
                 "font-weight": "500",
                 "width": "label",
@@ -522,6 +533,81 @@ def _hidden_inspector_widgets() -> List[Any]:
     return [
         dbc.Input(id=ids.INPUT_NODE_LABEL, type="text", style=_HIDDEN_STYLE),
         dbc.Button(id=ids.BTN_DRILL_IN, n_clicks=0, style=_HIDDEN_STYLE),
+        *_doc_section_widgets(None),
+    ]
+
+
+def _doc_section_widgets(docstring: Optional[str]) -> List[Any]:
+    """Return the Inspector "Documentation" section as a list of components.
+
+    Operations carry a Google-style class docstring on the ``OperationInfo``
+    record; surfacing it in-place lets users browse "what does this op do?"
+    without leaving the Inspector. The section is collapsed by default so
+    it never crowds out the parameter form.
+
+    The toggle callback in :mod:`phenotypic.gui.builder._callbacks` keys on
+    ``INSPECTOR_DOC_TOGGLE`` and ``INSPECTOR_DOC_COLLAPSE``; both ids must
+    therefore exist on every render path. When the operation has no
+    docstring (or for branches like ``_empty_inspector_div`` and the
+    nested-pipeline branch where there is nothing meaningful to render) we
+    emit hidden placeholders carrying the same ids so the callback's
+    ``Input``/``State`` always resolve.
+
+    Args:
+        docstring: Raw ``cls.__doc__`` value from the operation registry,
+            or ``None`` (empty inspector / pipeline sentinel / unknown
+            operation).
+
+    Returns:
+        Single-element list with the visible doc section when ``docstring``
+        is non-empty, otherwise a two-element list of hidden placeholders.
+    """
+
+    if docstring and docstring.strip():
+        cleaned = inspect.cleandoc(docstring)
+        return [
+            html.Div(
+                [
+                    dbc.Button(
+                        "Documentation ▾",
+                        id=ids.INSPECTOR_DOC_TOGGLE,
+                        color="link",
+                        size="sm",
+                        n_clicks=0,
+                        className="inspector-doc-toggle p-0",
+                    ),
+                    dbc.Collapse(
+                        html.Pre(
+                            cleaned,
+                            className="inspector-doc-body",
+                            style={
+                                "whiteSpace": "pre-wrap",
+                                "fontFamily": FONT_FAMILY_MONO,
+                                "fontSize": FONT_SIZE_LABEL,
+                                "color": COLOR_MUTED,
+                                "marginBottom": 0,
+                            },
+                        ),
+                        id=ids.INSPECTOR_DOC_COLLAPSE,
+                        is_open=False,
+                    ),
+                ],
+                className="inspector-doc-section mb-3",
+            )
+        ]
+
+    return [
+        dbc.Button(
+            id=ids.INSPECTOR_DOC_TOGGLE,
+            n_clicks=0,
+            style=_HIDDEN_STYLE,
+        ),
+        dbc.Collapse(
+            html.Div(),
+            id=ids.INSPECTOR_DOC_COLLAPSE,
+            is_open=False,
+            style=_HIDDEN_STYLE,
+        ),
     ]
 
 
@@ -637,6 +723,9 @@ def build_inspector(
                 id=ids.INSPECTOR_PREVIEW,
                 className="mt-3",
             ),
+            # Hidden placeholders so the Documentation toggle callback's
+            # Input/State ids resolve even on the pipeline-sentinel branch.
+            *_doc_section_widgets(None),
         ]
         return html.Div(
             dbc.Card(dbc.CardBody(body_children), className="h-100"),
@@ -662,6 +751,10 @@ def build_inspector(
 
     body_children = [
         *header_children,
+        # Documentation section is collapsed by default; emits hidden
+        # placeholders carrying the same ids when ``op_info.docstring`` is
+        # empty so the toggle callback's Input/State always resolve.
+        *_doc_section_widgets(op_info.docstring if op_info else None),
         form,
         html.Hr(),
         html.Div(
@@ -1179,7 +1272,7 @@ def build_app_layout(
     header = html.Div(
         [
             html.Img(
-                src=f"{url_prefix}assets/pheno_logo.png",
+                src=f"{url_prefix}{SHARED_LOGO_PATH}",
                 alt="PhenoTypic",
                 className="pheno-app-header__logo",
             ),

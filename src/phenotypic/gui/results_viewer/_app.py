@@ -44,6 +44,7 @@ from phenotypic.gui._config import (
     TITLE_VIEWER,
 )
 from phenotypic.gui._design import COLOR_BLUE, COLOR_SURFACE, inject_design_tokens
+from phenotypic.gui._shared import register_shared_static
 from phenotypic.gui.results_viewer import _ids as ids, _tile_routes
 from phenotypic.gui.results_viewer._callbacks import register_callbacks
 from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
@@ -150,6 +151,7 @@ def create_app(
     app.index_string = _index_string_with_prefix(url_prefix)
 
     inject_design_tokens(app)
+    register_shared_static(app.server)
 
     app.server.config[CFG_URL_PREFIX] = url_prefix
 
@@ -170,7 +172,7 @@ def create_app(
     app.server.config[CFG_FILTERED_STATE] = filtered_state
     colony_crop_routes.register(app, output_root)
 
-    app.layout = build_app_layout(output_root, filtered_state)
+    app.layout = build_app_layout(output_root, filtered_state, url_prefix=url_prefix)
     register_callbacks(app, output_root)
 
     return app

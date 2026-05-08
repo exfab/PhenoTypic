@@ -26,6 +26,7 @@ import numpy as np
 from dash import dash_table
 from PIL import Image as PILImage
 
+from phenotypic.gui._design import FONT_FAMILY_MONO, FONT_SIZE_LABEL
 from phenotypic.gui._operation_registry import get_registry
 from phenotypic.gui.builder._state import stage_of
 
@@ -459,8 +460,8 @@ def dataframe_to_table(
         "page_action": "none",
         "style_table": {"overflowX": "auto"},
         "style_cell": {
-            "fontFamily": "monospace",
-            "fontSize": "0.85rem",
+            "fontFamily": FONT_FAMILY_MONO,
+            "fontSize": FONT_SIZE_LABEL,
             "padding": "4px 8px",
             "textAlign": "left",
         },
