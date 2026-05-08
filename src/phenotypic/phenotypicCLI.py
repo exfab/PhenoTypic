@@ -187,7 +187,9 @@ from phenotypic.tools_ import (
     JOB_METADATA_JSON,
     PROCESSING_STATE_JSON,
     MASTER_MEASUREMENTS_CSV,
+    RECOMPILE_TASK_MANIFEST_JSON,
     JobMetadataKey,
+    dashboard_html_path,
     dataset_measurements_dir,
     resolve_execution_mode,
     load_image_from_hdf,
@@ -1512,7 +1514,7 @@ def _handle_recompile_slurm(
     job_ids = submission.job_ids
 
     recompile_manifest_path = (
-        output_dir / DIR_PROGRESS / DIR_RECOMPILE / "task_manifest.json"
+        output_dir / DIR_PROGRESS / DIR_RECOMPILE / RECOMPILE_TASK_MANIFEST_JSON
     )
     job_metadata = {
         JobMetadataKey.START_TIME: datetime.now().isoformat(timespec="milliseconds"),
@@ -1702,6 +1704,7 @@ def _handle_recompile(
     from phenotypic._cli._dashboard import (
         build_manifest,
         generate_dashboard,
+        regenerate_dashboard_artifacts,
     )
 
     console = Console()
@@ -1768,22 +1771,9 @@ def _handle_recompile(
         else:
             datasets_totals[name] = 0
 
-    build_manifest(
-        output_dir=output_dir,
-        progress_dir=progress_dir,
-        datasets=datasets_totals,
-        execution_mode=resolve_execution_mode(job_meta),
-        start_time=job_meta.get(JobMetadataKey.START_TIME, "") if job_meta else "",
-        slurm_job_ids=job_meta.get(JobMetadataKey.CHUNK_JOB_IDS) if job_meta else None,
-        chunk_scripts=job_meta.get(JobMetadataKey.CHUNK_SCRIPTS) if job_meta else None,
-        input_path=job_meta.get(JobMetadataKey.INPUT_PATH) if job_meta else None,
-    )
-    console.print("[green]Manifest rebuilt")
-
-    console.print("[cyan]Regenerating dashboard...")
-    execution_mode: ExecutionMode = resolve_execution_mode(job_meta)
-    generate_dashboard(output_dir, execution_mode=execution_mode)
-    console.print(f"[green]Dashboard: {output_dir / 'dashboard.html'}")
+    regenerate_dashboard_artifacts(output_dir, job_meta, datasets_totals)
+    console.print("[green]Manifest + dashboard regenerated")
+    console.print(f"[green]Dashboard: {dashboard_html_path(output_dir)}")
 
     console.print(f"\n[bold green]Recompilation complete: {output_dir}")
 

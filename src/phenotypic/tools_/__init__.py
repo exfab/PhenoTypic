@@ -39,6 +39,7 @@ from ._io_constants import (
     DIR_OVERLAYS,
     DIR_PROGRESS,
     DIR_RECOMPILE,
+    DIR_RECOMPILE_SHARDS,
     DIR_RECOMPILE_STATUS,
     DIR_RESULTS,
     DIR_SLURM_SCRIPTS,
@@ -54,6 +55,7 @@ from ._io_constants import (
     PROCESSING_EVENTS_LOG,
     PROCESSING_REPORT_HTML,
     PROCESSING_STATE_JSON,
+    RECOMPILE_TASK_MANIFEST_JSON,
     SENTINEL_RESUBMITTED_MARKER,
     STDOUT_LOG,
     # Namespace classes
@@ -65,6 +67,7 @@ from ._io_constants import (
     HdfAttr,
     JobMetadataKey,
     ModulePath,
+    ProcessingStateKey,
     # Path helpers
     analysis_csv_path,
     analysis_full_parquet_path,
@@ -162,6 +165,7 @@ __all__ = [
     "PROCESSING_EVENTS_LOG",
     "PROCESSING_REPORT_HTML",
     "PROCESSING_STATE_JSON",
+    "RECOMPILE_TASK_MANIFEST_JSON",
     "SENTINEL_RESUBMITTED_MARKER",
     "STDOUT_LOG",
     # Directory constants
@@ -173,6 +177,7 @@ __all__ = [
     "DIR_OVERLAYS",
     "DIR_PROGRESS",
     "DIR_RECOMPILE",
+    "DIR_RECOMPILE_SHARDS",
     "DIR_RECOMPILE_STATUS",
     "DIR_RESULTS",
     "DIR_SLURM_SCRIPTS",
@@ -185,6 +190,7 @@ __all__ = [
     "HdfAttr",
     "JobMetadataKey",
     "ModulePath",
+    "ProcessingStateKey",
     # Path helpers
     "analysis_csv_path",
     "analysis_full_parquet_path",

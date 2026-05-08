@@ -520,13 +520,13 @@ def _run_inline(recipe: Any, output_dir: Path) -> Any:
 # --- helpers ---------------------------------------------------------------
 
 
-_KIND_DEFAULTS: dict[str, dict[str, dict[str, Any]]] = {
+_KIND_DEFAULTS: dict[ids.InstantiationKind, dict[str, dict[str, Any]]] = {
     "post": _POST_DEFAULTS,
     "filter": _FILTER_DEFAULTS,
     "model": _MODEL_DEFAULTS,
 }
 
-_KIND_MODULES: dict[str, str] = {
+_KIND_MODULES: dict[ids.InstantiationKind, str] = {
     "post": ModulePath.POST,
     "filter": ModulePath.ANALYSIS,
     "model": ModulePath.ANALYSIS,

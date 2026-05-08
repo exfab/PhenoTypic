@@ -30,16 +30,11 @@ from phenotypic.gui.results_viewer._filtered_state import KEY_DATASET, KEY_IMAGE
 
 logger = logging.getLogger(__name__)
 
-_MASTER_FILENAME = MASTER_MEASUREMENTS_PARQUET
 #: The post-applied mirror seeded by ``_seed_measurements``. Preferred
-#: over the master archive for the viewer's display frame because it
-#: reflects whatever ``PostMeasurement`` ops the user configured.
-_MIRROR_FILENAME = MEASUREMENTS_PARQUET
-_RESULTS_DIRNAME = RESULTS_DIRNAME
+#: over the master archive (:data:`MASTER_MEASUREMENTS_PARQUET`) for the
+#: viewer's display frame because it reflects whatever ``PostMeasurement``
+#: ops the user configured.
 _CACHE_RELATIVE = Path(VIEWER_CACHE_DIRNAME) / "dzi"
-_PIPELINE_JSON = PIPELINE_JSON
-_DATASET_COL = KEY_DATASET
-_IMAGEFILE_COL = KEY_IMAGE_FILE
 _IMAGENAME_COL = "Metadata_ImageName"
 
 
@@ -104,7 +99,7 @@ class OutputRoot:
         """
         root = Path(root).resolve()
 
-        master_path = root / _MASTER_FILENAME
+        master_path = root / MASTER_MEASUREMENTS_PARQUET
         if not master_path.is_file():
             raise FileNotFoundError(
                 f"Master measurements parquet not found at {master_path!s}. "
@@ -121,7 +116,7 @@ class OutputRoot:
         # has produced master_measurements.parquet but finalize hasn't yet
         # seeded measurements.parquet) and on legacy outputs from before
         # the clean-master split.
-        mirror_path = root / _MIRROR_FILENAME
+        mirror_path = root / MEASUREMENTS_PARQUET
         if mirror_path.is_file():
             logger.info(
                 "Loading post-applied measurements mirror from %s", mirror_path
@@ -135,7 +130,7 @@ class OutputRoot:
             )
             master_df = pl.read_parquet(master_path)
 
-        results_dir = root / _RESULTS_DIRNAME
+        results_dir = root / RESULTS_DIRNAME
         if not results_dir.is_dir():
             raise FileNotFoundError(
                 f"Expected results directory not found at {results_dir!s}. "
@@ -177,7 +172,7 @@ class OutputRoot:
         cache_dir = root / _CACHE_RELATIVE
         cache_dir.mkdir(parents=True, exist_ok=True)
 
-        pipeline_summary = _read_pipeline_summary(root / _PIPELINE_JSON)
+        pipeline_summary = _read_pipeline_summary(root / PIPELINE_JSON)
         overlay_index = _scan_overlay_index(results_dir, datasets_with_overlays)
 
         return cls(
@@ -192,7 +187,7 @@ class OutputRoot:
     @property
     def results_dir(self) -> Path:
         """Path to ``<root>/results``."""
-        return self.root / _RESULTS_DIRNAME
+        return self.root / RESULTS_DIRNAME
 
     def overlay_path(self, dataset: str, stem: str) -> Path:
         """Return the absolute path of an overlay PNG.
@@ -207,7 +202,7 @@ class OutputRoot:
             returned path is not checked for existence; use
             :meth:`has_overlay` for that.
         """
-        return self.root / _RESULTS_DIRNAME / dataset / DIR_OVERLAYS / f"{stem}.png"
+        return self.root / RESULTS_DIRNAME / dataset / DIR_OVERLAYS / f"{stem}.png"
 
     def has_overlay(self, dataset: str, stem: str) -> bool:
         """Return ``True`` if the overlay PNG exists on disk.
@@ -244,18 +239,18 @@ class OutputRoot:
         """
         pairs_df = (
             df.select(
-                pl.col(_DATASET_COL).cast(pl.String),
-                pl.col(_IMAGEFILE_COL).cast(pl.String),
+                pl.col(KEY_DATASET).cast(pl.String),
+                pl.col(KEY_IMAGE_FILE).cast(pl.String),
             )
             .drop_nulls()
             .unique()
-            .sort([_DATASET_COL, _IMAGEFILE_COL])
+            .sort([KEY_DATASET, KEY_IMAGE_FILE])
         )
         return [
             (dataset, stem)
             for dataset, stem in zip(
-                pairs_df.get_column(_DATASET_COL).to_list(),
-                pairs_df.get_column(_IMAGEFILE_COL).to_list(),
+                pairs_df.get_column(KEY_DATASET).to_list(),
+                pairs_df.get_column(KEY_IMAGE_FILE).to_list(),
                 strict=True,
             )
         ]
@@ -285,24 +280,24 @@ def _ensure_required_columns(
     Raises:
         ValueError: If neither column can be derived.
     """
-    if _IMAGEFILE_COL not in df.columns and _IMAGENAME_COL in df.columns:
+    if KEY_IMAGE_FILE not in df.columns and _IMAGENAME_COL in df.columns:
         logger.info(
             "Master lacks %s; aliasing %s as the image stem column.",
-            _IMAGEFILE_COL,
+            KEY_IMAGE_FILE,
             _IMAGENAME_COL,
         )
         df = df.with_columns(
-            pl.col(_IMAGENAME_COL).cast(pl.String).alias(_IMAGEFILE_COL)
+            pl.col(_IMAGENAME_COL).cast(pl.String).alias(KEY_IMAGE_FILE)
         )
 
-    if _IMAGEFILE_COL not in df.columns:
+    if KEY_IMAGE_FILE not in df.columns:
         raise ValueError(
-            f"Master measurements parquet is missing column {_IMAGEFILE_COL!r} "
+            f"Master measurements parquet is missing column {KEY_IMAGE_FILE!r} "
             f"(and the {_IMAGENAME_COL!r} fallback). Re-run `python -m phenotypic` "
             f"with the current version to regenerate the master."
         )
 
-    if _DATASET_COL in df.columns:
+    if KEY_DATASET in df.columns:
         return df
 
     stem_to_dataset: dict[str, str] = {}
@@ -323,7 +318,7 @@ def _ensure_required_columns(
 
     if not stem_to_dataset:
         raise ValueError(
-            f"Master measurements parquet is missing column {_DATASET_COL!r} "
+            f"Master measurements parquet is missing column {KEY_DATASET!r} "
             "and no per-image parquets were found under "
             f"{results_dir!s}/<dataset>/measurements/ to recover it from."
         )
@@ -338,20 +333,20 @@ def _ensure_required_columns(
 
     logger.info(
         "Backfilling %s from filesystem layout (%d stems mapped across %d datasets).",
-        _DATASET_COL,
+        KEY_DATASET,
         len(stem_to_dataset),
         len(datasets),
     )
     mapping_df = pl.DataFrame(
         {
-            _IMAGEFILE_COL: list(stem_to_dataset.keys()),
-            _DATASET_COL: list(stem_to_dataset.values()),
+            KEY_IMAGE_FILE: list(stem_to_dataset.keys()),
+            KEY_DATASET: list(stem_to_dataset.values()),
         }
     )
-    df = df.with_columns(pl.col(_IMAGEFILE_COL).cast(pl.String))
-    enriched = df.join(mapping_df, on=_IMAGEFILE_COL, how="left")
+    df = df.with_columns(pl.col(KEY_IMAGE_FILE).cast(pl.String))
+    enriched = df.join(mapping_df, on=KEY_IMAGE_FILE, how="left")
 
-    null_count = enriched.get_column(_DATASET_COL).null_count()
+    null_count = enriched.get_column(KEY_DATASET).null_count()
     if null_count:
         logger.warning(
             "%d/%d master rows could not be linked to a dataset directory and "

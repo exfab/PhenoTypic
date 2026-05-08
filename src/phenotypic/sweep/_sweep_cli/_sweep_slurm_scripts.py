@@ -15,12 +15,13 @@ from typing import Any, Dict, List, Optional
 from phenotypic.tools_.slurm._config import calculate_optimal_array_chunks
 from phenotypic.tools_.slurm._sbatch import format_sbatch_directives as generate_slurm_directives
 from phenotypic._cli._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
+from phenotypic.tools_.typing_ import ImageTypeName
 
 
 def _build_worker_command(
     manifest_path: Path,
     output_dir: Path,
-    image_type: str,
+    image_type: ImageTypeName,
     read_kwargs: Dict[str, Any],
     verbose: bool = False,
     save_intermediates: bool = False,
@@ -100,7 +101,7 @@ def generate_sweep_array_script(
     pipeline_names: List[str],
     manifest_path: Path,
     output_dir: Path,
-    image_type: str,
+    image_type: ImageTypeName,
     read_kwargs: Dict[str, Any],
     slurm_args: Dict[str, Any],
     global_offset: int = 0,
@@ -355,7 +356,7 @@ def generate_sweep_array_scripts_chunked(
     pipeline_names: List[str],
     manifest_path: Path,
     output_dir: Path,
-    image_type: str,
+    image_type: ImageTypeName,
     read_kwargs: Dict[str, Any],
     slurm_args: Dict[str, Any],
     array_limit: int,

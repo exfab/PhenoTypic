@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 #: ``source -> (parquet filename, csv filename)``. Resolution always
 #: prefers the parquet footer; the CSV mirror is the no-pyarrow fallback.
-_FILES_BY_SOURCE: dict[str, tuple[str, str]] = {
+_FILES_BY_SOURCE: "dict[ColumnSource, tuple[str, str]]" = {
     "measurements": (MEASUREMENTS_PARQUET, MEASUREMENTS_CSV),
     "master_measurements": (MASTER_MEASUREMENTS_PARQUET, MASTER_MEASUREMENTS_CSV),
 }
@@ -83,7 +83,9 @@ class MeasurementSchema:
             parquet nor the CSV mirror exists.
         """
         source_str = str(source)
-        files = _FILES_BY_SOURCE.get(source_str)
+        # Cast through `Any`-compatible str lookup since the typed dict only
+        # accepts `ColumnSource`; users can pass either form per the signature.
+        files = _FILES_BY_SOURCE.get(source_str)  # type: ignore[arg-type]
         if files is None:
             logger.warning("Unknown column source %r; returning []", source_str)
             return []

@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from phenotypic.gui.shell._classifier import classify
-from phenotypic.gui.shell._runs_registry import RunRegistry, RunStatus
+from phenotypic.gui.shell._runs_registry import RunMode, RunRegistry, RunStatus
 from phenotypic.gui.shell._sandbox import SandboxRoot
 
 logger = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ class RecentRunRow:
     status: RunStatus
     has_dashboard: bool
     last_modified_seconds: float
-    mode: str
+    mode: RunMode
 
 
 def scan_recent_runs(

@@ -38,7 +38,7 @@ from ._cli_slurm_array_scripts import generate_all_array_job_scripts
 from ._cli_slurm_submission import submit_slurm_script_chain
 from ._cli_update_state import append_event, append_completion_event, aggregate_state_from_events
 from ._cli_failure_tracker import append_failure, read_failures
-from ._dashboard import build_manifest, generate_dashboard
+from ._dashboard import generate_dashboard, regenerate_dashboard_artifacts
 
 from ._cli_constants import MAX_TRACEBACK_LINES
 from phenotypic.tools_ import DIR_PROGRESS, JOB_METADATA_JSON, PROCESSING_EVENTS_LOG, JobMetadataKey, HdfAttr
@@ -203,17 +203,13 @@ class LocalParallelStrategy(ExecutionStrategy):
 
         # Generate progress manifest and dashboard (local mode — runs once)
         try:
-            progress_dir = output_dir / DIR_PROGRESS
             datasets_totals = {ds.name: len(ds.images) for ds in datasets}
-            build_manifest(
-                output_dir=output_dir,
-                progress_dir=progress_dir,
-                datasets=datasets_totals,
-                execution_mode="local",
-                start_time=start_time.isoformat(timespec="milliseconds"),
-                input_path=self.config.input_path.stem,
-            )
-            generate_dashboard(output_dir, execution_mode="local")
+            local_job_meta: dict = {
+                JobMetadataKey.START_TIME: start_time.isoformat(timespec="milliseconds"),
+                JobMetadataKey.INPUT_PATH: self.config.input_path.stem,
+                JobMetadataKey.EXECUTION_MODE: "local",
+            }
+            regenerate_dashboard_artifacts(output_dir, local_job_meta, datasets_totals)
         except Exception:
             logger.debug("Failed to generate progress dashboard", exc_info=True)
 

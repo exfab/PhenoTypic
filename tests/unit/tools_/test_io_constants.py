@@ -380,6 +380,38 @@ class TestJsonContractKeys:
     def test_hdf_attr_keys(self) -> None:
         assert HdfAttr.PHENOTYPIC_CLASS == "phenotypic_class"
 
+    def test_processing_state_keys(self) -> None:
+        from phenotypic.tools_ import ProcessingStateKey
+
+        assert ProcessingStateKey.VERSION == "version"
+        assert ProcessingStateKey.PIPELINE_PATH == "pipeline_path"
+        assert ProcessingStateKey.INPUT_PATH == "input_path"
+        assert ProcessingStateKey.OUTPUT_DIR == "output_dir"
+        assert ProcessingStateKey.TIMESTAMP == "timestamp"
+        assert ProcessingStateKey.EXECUTION_MODE == "execution_mode"
+        assert ProcessingStateKey.LAST_UPDATED == "last_updated"
+        assert ProcessingStateKey.DATASETS == "datasets"
+        assert ProcessingStateKey.CONFIG == "config"
+        assert ProcessingStateKey.COMPLETED == "completed"
+        assert ProcessingStateKey.FAILED == "failed"
+        assert ProcessingStateKey.STARTED == "started"
+        assert ProcessingStateKey.ERRORS == "errors"
+        assert ProcessingStateKey.INITIAL_IMAGES == "initial_images"
+
+    def test_processing_state_keys_intentionally_overlap_job_metadata_keys(self) -> None:
+        """Some keys are deliberately shared between processing_state.json and
+        job_metadata.json so a single field migration applies to both contracts.
+
+        This regression test asserts the overlapping keys keep matching string
+        values. If they ever diverge, the cross-file rehydration breaks
+        silently — the test forces the divergence to be intentional.
+        """
+        from phenotypic.tools_ import ProcessingStateKey
+
+        assert ProcessingStateKey.EXECUTION_MODE == JobMetadataKey.EXECUTION_MODE
+        assert ProcessingStateKey.INPUT_PATH == JobMetadataKey.INPUT_PATH
+        assert ProcessingStateKey.DATASETS == JobMetadataKey.DATASETS
+
 
 class TestModulePathConstants:
     def test_post_module_path(self) -> None:

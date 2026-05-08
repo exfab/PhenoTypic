@@ -19,6 +19,7 @@ from phenotypic.tools_ import (
     DIR_MEASUREMENTS,
     DIR_PROGRESS,
     DIR_RECOMPILE,
+    DIR_RECOMPILE_SHARDS,
     DIR_RECOMPILE_STATUS,
     DIR_RESULTS,
     MASTER_MEASUREMENTS_CSV,
@@ -27,7 +28,6 @@ from phenotypic.tools_ import (
     load_image_from_hdf,
     task_status_filename,
     shard_parquet_filename,
-    resolve_execution_mode,
 )
 
 logger = logging.getLogger(__name__)
@@ -173,7 +173,7 @@ def _run_measurement_task(output_dir: Path, task: dict[str, Any]) -> None:
         output_dir
         / DIR_PROGRESS
         / DIR_RECOMPILE
-        / "measurement_shards"
+        / DIR_RECOMPILE_SHARDS
         / shard_parquet_filename(shard_id)
     )
     _atomic_write(
@@ -321,7 +321,7 @@ def _write_master_outputs_from_shards(
 
     from ._cli_output_manager import _atomic_write, join_metadata
 
-    shard_dir = output_dir / DIR_PROGRESS / DIR_RECOMPILE / "measurement_shards"
+    shard_dir = output_dir / DIR_PROGRESS / DIR_RECOMPILE / DIR_RECOMPILE_SHARDS
     shard_files = sorted(shard_dir.glob("shard_*.parquet"))
     if not shard_files:
         return None
@@ -378,8 +378,7 @@ def _run_post_master_steps(
         finalize_post_master_outputs,
     )
     from ._cli_utils import load_job_metadata
-    from ._dashboard._generator import generate_dashboard
-    from ._dashboard._manifest_builder import build_manifest
+    from ._dashboard import regenerate_dashboard_artifacts
 
     plugin_df: Any | None = merged_df
     if merged_df is not None:
@@ -403,21 +402,7 @@ def _run_post_master_steps(
     job_meta = load_job_metadata(progress_dir)
     dataset_names = [str(name) for name in task.get("dataset_names", [])]
     datasets_totals = _dataset_totals(output_dir, dataset_names)
-    execution_mode = resolve_execution_mode(job_meta)
-    build_manifest(
-        output_dir=output_dir,
-        progress_dir=progress_dir,
-        datasets=datasets_totals,
-        execution_mode=execution_mode,
-        start_time=job_meta.get(JobMetadataKey.START_TIME, "") if job_meta else "",
-        slurm_job_ids=job_meta.get(JobMetadataKey.CHUNK_JOB_IDS) if job_meta else None,
-        chunk_scripts=job_meta.get(JobMetadataKey.CHUNK_SCRIPTS) if job_meta else None,
-        input_path=job_meta.get(JobMetadataKey.INPUT_PATH) if job_meta else None,
-    )
-    generate_dashboard(
-        output_dir,
-        execution_mode=execution_mode,
-    )
+    regenerate_dashboard_artifacts(output_dir, job_meta, datasets_totals)
 
 
 def _dataset_totals(

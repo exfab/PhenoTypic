@@ -63,7 +63,7 @@ from phenotypic.gui.run_console._form import (
 from phenotypic.gui.run_console._layout import render_recents_table
 from phenotypic.gui.run_console._recent_runs import scan_recent_runs
 from phenotypic.gui.run_console._runner import LocalRunner
-from phenotypic.gui.shell._runs_registry import RunRecord, RunRegistry
+from phenotypic.gui.shell._runs_registry import RunMode, RunRecord, RunRegistry
 from phenotypic.gui.shell._sandbox import SandboxRoot
 
 logger = logging.getLogger(__name__)
@@ -1324,7 +1324,7 @@ def register_callbacks(
     def update_run_disabled(
         _n: Optional[int],
         _active: Optional[str],
-        mode: Optional[str],
+        mode: Optional[RunMode],
     ) -> bool:
         """Disable Run while a Local run is active (SLURM is unconstrained)."""
         if mode == "slurm":

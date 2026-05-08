@@ -199,6 +199,12 @@ SENTINEL_RESUBMITTED_MARKER: Final[str] = "sentinel_resubmitted"
 #: Hidden chunk-aggregation lock file (lives in ``DIR_PROGRESS``).
 CHUNK_LOCK: Final[str] = ".chunk_lock"
 
+#: Recompile task manifest JSON (one per recompile invocation; lives at
+#: ``<output>/progress/recompile/task_manifest.json``). Lists every per-image
+#: shard the recompile worker is responsible for; consumed by
+#: ``_cli_recompile_worker._main``.
+RECOMPILE_TASK_MANIFEST_JSON: Final[str] = "task_manifest.json"
+
 
 # ---------------------------------------------------------------------------
 # CLI artifact directory names
@@ -234,6 +240,10 @@ DIR_RECOMPILE: Final[str] = "recompile"
 
 #: Per-task JSON status subdirectory: ``<progress>/recompile/status/``.
 DIR_RECOMPILE_STATUS: Final[str] = "status"
+
+#: Per-shard parquet subdirectory inside the recompile dir:
+#: ``<progress>/recompile/measurement_shards/``.
+DIR_RECOMPILE_SHARDS: Final[str] = "measurement_shards"
 
 #: Generated SLURM script subdirectory: ``<output>/slurm_scripts/``.
 DIR_SLURM_SCRIPTS: Final[str] = "slurm_scripts"
@@ -678,6 +688,35 @@ class ChunkStateKey:
 
     CHUNKED_FILES: Final[str] = "chunked_files"
     NEXT_CHUNK_ID: Final[str] = "next_chunk_id"
+
+
+class ProcessingStateKey:
+    """Keys inside ``<output>/processing_state.json`` (resume-state file).
+
+    Distinct from :class:`JobMetadataKey` even where string values overlap
+    (e.g. ``EXECUTION_MODE``, ``INPUT_PATH``) — these describe the
+    `processing_state.json` contract, not the SLURM job metadata sidecar.
+    Some values intentionally match across the two contracts so that a
+    single field (like ``execution_mode``) can be migrated atomically;
+    the ``test_processing_state_keys_match_job_metadata_keys`` regression
+    test asserts the overlap.
+    """
+
+    VERSION: Final[str] = "version"
+    PIPELINE_PATH: Final[str] = "pipeline_path"
+    INPUT_PATH: Final[str] = "input_path"
+    OUTPUT_DIR: Final[str] = "output_dir"
+    TIMESTAMP: Final[str] = "timestamp"
+    EXECUTION_MODE: Final[str] = "execution_mode"
+    LAST_UPDATED: Final[str] = "last_updated"
+    DATASETS: Final[str] = "datasets"
+    CONFIG: Final[str] = "config"
+    # Per-dataset state-dict sub-keys
+    COMPLETED: Final[str] = "completed"
+    FAILED: Final[str] = "failed"
+    STARTED: Final[str] = "started"
+    ERRORS: Final[str] = "errors"
+    INITIAL_IMAGES: Final[str] = "initial_images"
 
 
 class ChunkManifestKey:

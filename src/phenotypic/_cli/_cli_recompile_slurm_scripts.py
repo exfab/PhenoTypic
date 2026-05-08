@@ -10,7 +10,19 @@ from typing import Any, Final
 
 from ._cli_slurm_scripts import generate_slurm_directives
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
-from phenotypic.tools_ import DIR_PROGRESS, DIR_RECOMPILE, DIR_LOGS, DIR_RESULTS, DIR_MEASUREMENTS, DIR_HDF, DIR_OVERLAYS, DIR_SLURM_SCRIPTS, DATASET_AGGREGATED_PARQUET, JobMetadataKey
+from phenotypic.tools_ import (
+    DATASET_AGGREGATED_PARQUET,
+    DIR_HDF,
+    DIR_LOGS,
+    DIR_MEASUREMENTS,
+    DIR_OVERLAYS,
+    DIR_PROGRESS,
+    DIR_RECOMPILE,
+    DIR_RESULTS,
+    DIR_SLURM_SCRIPTS,
+    JobMetadataKey,
+    RECOMPILE_TASK_MANIFEST_JSON,
+)
 
 TASK_MEASUREMENTS: Final[str] = "measurements"
 TASK_OVERLAY: Final[str] = "overlay"
@@ -104,7 +116,7 @@ def generate_recompile_slurm_scripts(
     output_dir = Path(output_dir)
     recompile_dir = output_dir / DIR_PROGRESS / DIR_RECOMPILE
     recompile_dir.mkdir(parents=True, exist_ok=True)
-    manifest_path = recompile_dir / "task_manifest.json"
+    manifest_path = recompile_dir / RECOMPILE_TASK_MANIFEST_JSON
     manifest_path.write_text(
         json.dumps({"tasks": tasks}, indent=2) + "\n",
         encoding="utf-8",

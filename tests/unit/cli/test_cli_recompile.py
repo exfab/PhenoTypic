@@ -139,10 +139,10 @@ class TestHandleRecompile:
                 "phenotypic._cli._cli_chunk_writer._run_analysis_plugins"
             ) as mock_plugins,
             patch(
-                "phenotypic._cli._dashboard.build_manifest"
+                "phenotypic._cli._dashboard._manifest_builder.build_manifest"
             ) as mock_manifest,
             patch(
-                "phenotypic._cli._dashboard.generate_dashboard"
+                "phenotypic._cli._dashboard._generator.generate_dashboard"
             ) as mock_dashboard,
             patch(
                 "phenotypic._cli._dashboard._analysis_data.write_analysis_sidecar"
@@ -286,10 +286,10 @@ class TestRegenerateMissingOverlays:
                 side_effect=RuntimeError("boom"),
             ),
             patch(
-                "phenotypic._cli._dashboard.build_manifest"
+                "phenotypic._cli._dashboard._manifest_builder.build_manifest"
             ) as mock_manifest,
             patch(
-                "phenotypic._cli._dashboard.generate_dashboard"
+                "phenotypic._cli._dashboard._generator.generate_dashboard"
             ) as mock_dashboard,
         ):
             _handle_recompile(
