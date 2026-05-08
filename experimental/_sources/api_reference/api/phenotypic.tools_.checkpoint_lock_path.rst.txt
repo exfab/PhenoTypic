@@ -1,0 +1,6 @@
+phenotypic.tools\_.checkpoint\_lock\_path
+=========================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: checkpoint_lock_path

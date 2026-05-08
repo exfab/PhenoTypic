@@ -1,0 +1,6 @@
+phenotypic.tools\_.logs\_dir
+============================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: logs_dir

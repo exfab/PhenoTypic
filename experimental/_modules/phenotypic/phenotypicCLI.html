@@ -706,6 +706,23 @@
     <span class="n">MIN_SLURM_TIME_MINUTES</span><span class="p">,</span>
     <span class="n">MAX_SLURM_TIME_MINUTES</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">DIR_PROGRESS</span><span class="p">,</span>
+    <span class="n">DIR_RESULTS</span><span class="p">,</span>
+    <span class="n">DIR_OVERLAYS</span><span class="p">,</span>
+    <span class="n">DIR_RECOMPILE</span><span class="p">,</span>
+    <span class="n">JOB_METADATA_JSON</span><span class="p">,</span>
+    <span class="n">PROCESSING_STATE_JSON</span><span class="p">,</span>
+    <span class="n">MASTER_MEASUREMENTS_CSV</span><span class="p">,</span>
+    <span class="n">RECOMPILE_TASK_MANIFEST_JSON</span><span class="p">,</span>
+    <span class="n">JobMetadataKey</span><span class="p">,</span>
+    <span class="n">dashboard_html_path</span><span class="p">,</span>
+    <span class="n">dataset_measurements_dir</span><span class="p">,</span>
+    <span class="n">resolve_execution_mode</span><span class="p">,</span>
+    <span class="n">load_image_from_hdf</span><span class="p">,</span>
+    <span class="n">processing_report_html_path</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExecutionMode</span><span class="p">,</span> <span class="n">ImageTypeName</span>
 
 <span class="c1"># Set up logger</span>
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
@@ -1408,11 +1425,14 @@
         <span class="k">assert</span> <span class="n">pipeline_json</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>  <span class="c1"># narrowed by earlier UsageError branches</span>
         <span class="n">effective_input_path</span> <span class="o">=</span> <span class="n">input_path</span> <span class="k">if</span> <span class="n">input_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">output_dir</span>
         <span class="k">assert</span> <span class="n">effective_input_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>  <span class="c1"># narrowed by earlier --output-dir checks</span>
+        <span class="c1"># Click&#39;s Choice() validated image_type against {&quot;Image&quot;, &quot;GridImage&quot;};</span>
+        <span class="c1"># narrow to the typed alias for ExecutionConfig&#39;s Literal-typed field.</span>
+        <span class="n">narrowed_image_type</span><span class="p">:</span> <span class="n">ImageTypeName</span> <span class="o">=</span> <span class="s2">&quot;GridImage&quot;</span> <span class="k">if</span> <span class="n">image_type</span> <span class="o">==</span> <span class="s2">&quot;GridImage&quot;</span> <span class="k">else</span> <span class="s2">&quot;Image&quot;</span>
         <span class="n">config</span> <span class="o">=</span> <span class="n">ExecutionConfig</span><span class="p">(</span>
             <span class="n">pipeline_json</span><span class="o">=</span><span class="n">pipeline_json</span><span class="p">,</span>
             <span class="n">input_path</span><span class="o">=</span><span class="n">effective_input_path</span><span class="p">,</span>
             <span class="n">output_dir</span><span class="o">=</span><span class="n">output_dir</span><span class="p">,</span>
-            <span class="n">image_type</span><span class="o">=</span><span class="n">image_type</span><span class="p">,</span>
+            <span class="n">image_type</span><span class="o">=</span><span class="n">narrowed_image_type</span><span class="p">,</span>
             <span class="n">nrows</span><span class="o">=</span><span class="n">nrows</span><span class="p">,</span>
             <span class="n">ncols</span><span class="o">=</span><span class="n">ncols</span><span class="p">,</span>
             <span class="n">bit_depth</span><span class="o">=</span><span class="n">bit_depth</span><span class="p">,</span>
@@ -1468,7 +1488,7 @@
                 <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
             <span class="c1"># Check for processing state file</span>
-            <span class="n">state_file</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;processing_state.json&quot;</span>
+            <span class="n">state_file</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">PROCESSING_STATE_JSON</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">state_file</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
                 <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error: No processing state found in </span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
                 <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Looking for: </span><span class="si">{</span><span class="n">state_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -1492,7 +1512,7 @@
 
         <span class="c1"># Handle restart mode - clear previous state</span>
         <span class="k">if</span> <span class="n">restart</span><span class="p">:</span>
-            <span class="n">state_file</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;processing_state.json&quot;</span>
+            <span class="n">state_file</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">PROCESSING_STATE_JSON</span>
             <span class="k">if</span> <span class="n">output_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
                 <span class="k">if</span> <span class="n">state_file</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
                     <span class="n">state_file</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
@@ -1761,7 +1781,7 @@
         <span class="c1"># Generate HTML report</span>
         <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;Generating HTML report...&quot;</span><span class="p">)</span>
         <span class="n">report_gen</span> <span class="o">=</span> <span class="n">HTMLReportGenerator</span><span class="p">()</span>
-        <span class="n">report_path</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;processing_report.html&quot;</span>
+        <span class="n">report_path</span> <span class="o">=</span> <span class="n">processing_report_html_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
         <span class="n">report_gen</span><span class="o">.</span><span class="n">generate_report</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">report_path</span><span class="p">)</span>
         <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Report: </span><span class="si">{</span><span class="n">report_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
@@ -1842,13 +1862,10 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">concurrent.futures</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThreadPoolExecutor</span><span class="p">,</span> <span class="n">as_completed</span>
 
-    <span class="kn">import</span><span class="w"> </span><span class="nn">h5py</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">rich.console</span><span class="w"> </span><span class="kn">import</span> <span class="n">Console</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">rich.progress</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
         <span class="n">BarColumn</span><span class="p">,</span> <span class="n">MofNCompleteColumn</span><span class="p">,</span> <span class="n">Progress</span><span class="p">,</span> <span class="n">TextColumn</span><span class="p">,</span> <span class="n">TimeElapsedColumn</span><span class="p">,</span>
     <span class="p">)</span>
-
-    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span><span class="p">,</span> <span class="n">Image</span>
 
     <span class="n">console</span> <span class="o">=</span> <span class="n">Console</span><span class="p">()</span>
     <span class="k">try</span><span class="p">:</span>
@@ -1881,19 +1898,14 @@
         <span class="k">return</span>
 
     <span class="k">for</span> <span class="n">dataset_name</span> <span class="ow">in</span> <span class="p">{</span><span class="n">ds</span> <span class="k">for</span> <span class="n">ds</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">work</span><span class="p">}:</span>
-        <span class="p">(</span><span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;results&quot;</span> <span class="o">/</span> <span class="n">dataset_name</span> <span class="o">/</span> <span class="s2">&quot;overlays&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span>
+        <span class="p">(</span><span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_RESULTS</span> <span class="o">/</span> <span class="n">dataset_name</span> <span class="o">/</span> <span class="n">DIR_OVERLAYS</span><span class="p">)</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span>
             <span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span>
         <span class="p">)</span>
 
     <span class="n">workers</span> <span class="o">=</span> <span class="n">resolve_local_worker_count</span><span class="p">(</span><span class="n">n_jobs</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">work</span><span class="p">))</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_render_one</span><span class="p">(</span><span class="n">dataset_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hdf_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">hdf_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
-            <span class="n">cls_attr</span> <span class="o">=</span> <span class="n">fh</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;phenotypic_class&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cls_attr</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
-            <span class="n">cls_attr</span> <span class="o">=</span> <span class="n">cls_attr</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;replace&quot;</span><span class="p">)</span>
-        <span class="n">image_cls</span> <span class="o">=</span> <span class="n">GridImage</span> <span class="k">if</span> <span class="n">cls_attr</span> <span class="o">==</span> <span class="s2">&quot;GridImage&quot;</span> <span class="k">else</span> <span class="n">Image</span>
-        <span class="n">image</span> <span class="o">=</span> <span class="n">image_cls</span><span class="o">.</span><span class="n">load_hdf5</span><span class="p">(</span><span class="n">hdf_path</span><span class="p">)</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="n">load_image_from_hdf</span><span class="p">(</span><span class="n">hdf_path</span><span class="p">)</span>
         <span class="n">output_manager</span><span class="o">.</span><span class="n">save_overlay</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">dataset_name</span><span class="p">,</span> <span class="n">hdf_path</span><span class="o">.</span><span class="n">stem</span><span class="p">)</span>
 
     <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
@@ -1970,7 +1982,7 @@
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._dashboard</span><span class="w"> </span><span class="kn">import</span> <span class="n">generate_dashboard</span>
 
     <span class="n">output_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
-    <span class="n">progress_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;progress&quot;</span>
+    <span class="n">progress_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_PROGRESS</span>
     <span class="n">progress_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">console</span> <span class="o">=</span> <span class="n">Console</span><span class="p">()</span>
 
@@ -1999,7 +2011,7 @@
     <span class="n">finalizer_task_index</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="k">if</span> <span class="n">tasks</span> <span class="ow">and</span> <span class="n">tasks</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;task_type&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">TASK_FINALIZE</span><span class="p">:</span>
         <span class="n">finalizer_task_index</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tasks</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
-        <span class="n">tasks</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;metadata_csv&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">metadata_csv</span><span class="p">)</span> <span class="k">if</span> <span class="n">metadata_csv</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">tasks</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">JobMetadataKey</span><span class="o">.</span><span class="n">METADATA_CSV</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">metadata_csv</span><span class="p">)</span> <span class="k">if</span> <span class="n">metadata_csv</span> <span class="k">else</span> <span class="kc">None</span>
 
     <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;[cyan]Querying SLURM array limits...[/cyan]&quot;</span><span class="p">)</span>
     <span class="n">array_limit</span> <span class="o">=</span> <span class="n">get_slurm_array_limit</span><span class="p">()</span>
@@ -2035,27 +2047,27 @@
     <span class="n">job_ids</span> <span class="o">=</span> <span class="n">submission</span><span class="o">.</span><span class="n">job_ids</span>
 
     <span class="n">recompile_manifest_path</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;progress&quot;</span> <span class="o">/</span> <span class="s2">&quot;recompile&quot;</span> <span class="o">/</span> <span class="s2">&quot;task_manifest.json&quot;</span>
+        <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_PROGRESS</span> <span class="o">/</span> <span class="n">DIR_RECOMPILE</span> <span class="o">/</span> <span class="n">RECOMPILE_TASK_MANIFEST_JSON</span>
     <span class="p">)</span>
     <span class="n">job_metadata</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;start_time&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(</span><span class="n">timespec</span><span class="o">=</span><span class="s2">&quot;milliseconds&quot;</span><span class="p">),</span>
-        <span class="s2">&quot;execution_mode&quot;</span><span class="p">:</span> <span class="s2">&quot;slurm&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;datasets&quot;</span><span class="p">:</span> <span class="n">_build_recompile_job_metadata_datasets</span><span class="p">(</span>
+        <span class="n">JobMetadataKey</span><span class="o">.</span><span class="n">START_TIME</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(</span><span class="n">timespec</span><span class="o">=</span><span class="s2">&quot;milliseconds&quot;</span><span class="p">),</span>
+        <span class="n">JobMetadataKey</span><span class="o">.</span><span class="n">EXECUTION_MODE</span><span class="p">:</span> <span class="s2">&quot;slurm&quot;</span><span class="p">,</span>
+        <span class="n">JobMetadataKey</span><span class="o">.</span><span class="n">DATASETS</span><span class="p">:</span> <span class="n">_build_recompile_job_metadata_datasets</span><span class="p">(</span>
             <span class="n">output_dir</span><span class="p">,</span>
             <span class="n">dataset_names</span><span class="p">,</span>
             <span class="n">job_meta</span><span class="p">,</span>
         <span class="p">),</span>
-        <span class="s2">&quot;chunk_scripts&quot;</span><span class="p">:</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">script</span><span class="p">)</span> <span class="k">for</span> <span class="n">script</span> <span class="ow">in</span> <span class="n">flat_scripts</span><span class="p">],</span>
-        <span class="s2">&quot;chunk_job_ids&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;0&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">job_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">])},</span>
-        <span class="s2">&quot;include_dataset_column&quot;</span><span class="p">:</span> <span class="n">include_dataset_column</span><span class="p">,</span>
-        <span class="s2">&quot;metadata_csv&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">metadata_csv</span><span class="p">)</span> <span class="k">if</span> <span class="n">metadata_csv</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="s2">&quot;input_path&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">output_dir</span><span class="p">),</span>
+        <span class="n">JobMetadataKey</span><span class="o">.</span><span class="n">CHUNK_SCRIPTS</span><span class="p">:</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">script</span><span class="p">)</span> <span class="k">for</span> <span class="n">script</span> <span class="ow">in</span> <span class="n">flat_scripts</span><span class="p">],</span>
+        <span class="n">JobMetadataKey</span><span class="o">.</span><span class="n">CHUNK_JOB_IDS</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;0&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">job_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">])},</span>
+        <span class="n">JobMetadataKey</span><span class="o">.</span><span class="n">INCLUDE_DATASET_COLUMN</span><span class="p">:</span> <span class="n">include_dataset_column</span><span class="p">,</span>
+        <span class="n">JobMetadataKey</span><span class="o">.</span><span class="n">METADATA_CSV</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">metadata_csv</span><span class="p">)</span> <span class="k">if</span> <span class="n">metadata_csv</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">JobMetadataKey</span><span class="o">.</span><span class="n">INPUT_PATH</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">output_dir</span><span class="p">),</span>
         <span class="s2">&quot;recompile&quot;</span><span class="p">:</span> <span class="p">{</span>
             <span class="s2">&quot;task_manifest&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">recompile_manifest_path</span><span class="p">),</span>
             <span class="s2">&quot;finalizer_task_index&quot;</span><span class="p">:</span> <span class="n">finalizer_task_index</span><span class="p">,</span>
         <span class="p">},</span>
     <span class="p">}</span>
-    <span class="n">metadata_path</span> <span class="o">=</span> <span class="n">progress_dir</span> <span class="o">/</span> <span class="s2">&quot;job_metadata.json&quot;</span>
+    <span class="n">metadata_path</span> <span class="o">=</span> <span class="n">progress_dir</span> <span class="o">/</span> <span class="n">JOB_METADATA_JSON</span>
     <span class="n">metadata_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span>
         <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">job_metadata</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
         <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span>
@@ -2088,17 +2100,20 @@
     <span class="n">job_meta</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Discover datasets using the local recompile precedence.&quot;&quot;&quot;</span>
-    <span class="n">results_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;results&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">DIR_MEASUREMENTS</span>
+    <span class="n">results_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_RESULTS</span>
     <span class="n">dataset_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">if</span> <span class="n">results_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
         <span class="n">dataset_names</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
             <span class="n">d</span><span class="o">.</span><span class="n">name</span>
             <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">results_dir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()</span>
-            <span class="k">if</span> <span class="n">d</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="ow">and</span> <span class="p">(</span><span class="n">d</span> <span class="o">/</span> <span class="s2">&quot;measurements&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">d</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="ow">and</span> <span class="p">(</span><span class="n">d</span> <span class="o">/</span> <span class="n">DIR_MEASUREMENTS</span><span class="p">)</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span>
         <span class="p">)</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">dataset_names</span> <span class="ow">and</span> <span class="n">job_meta</span><span class="p">:</span>
-        <span class="n">dataset_names</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">((</span><span class="n">job_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;datasets&quot;</span><span class="p">,</span> <span class="p">{})</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="n">dataset_names</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">job_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">JobMetadataKey</span><span class="o">.</span><span class="n">DATASETS</span><span class="p">,</span> <span class="p">{})</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="p">)</span>
 
     <span class="k">return</span> <span class="n">dataset_names</span>
 
@@ -2109,7 +2124,7 @@
     <span class="n">job_meta</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the normal nested ``job_metadata[&quot;datasets&quot;]`` shape.&quot;&quot;&quot;</span>
-    <span class="n">previous_datasets</span> <span class="o">=</span> <span class="p">(</span><span class="n">job_meta</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;datasets&quot;</span><span class="p">,</span> <span class="p">{})</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">previous_datasets</span> <span class="o">=</span> <span class="p">(</span><span class="n">job_meta</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">JobMetadataKey</span><span class="o">.</span><span class="n">DATASETS</span><span class="p">,</span> <span class="p">{})</span> <span class="ow">or</span> <span class="p">{}</span>
     <span class="n">datasets</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">dataset_name</span> <span class="ow">in</span> <span class="n">dataset_names</span><span class="p">:</span>
         <span class="n">images</span> <span class="o">=</span> <span class="n">_recompile_dataset_image_names</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">dataset_name</span><span class="p">)</span>
@@ -2125,8 +2140,9 @@
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_recompile_dataset_image_names</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">dataset_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Infer image names from per-image measurement Parquets or HDFs.&quot;&quot;&quot;</span>
-    <span class="n">dataset_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;results&quot;</span> <span class="o">/</span> <span class="n">dataset_name</span>
-    <span class="n">meas_dir</span> <span class="o">=</span> <span class="n">dataset_dir</span> <span class="o">/</span> <span class="s2">&quot;measurements&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">DIR_MEASUREMENTS</span><span class="p">,</span> <span class="n">DIR_HDF</span>
+    <span class="n">dataset_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_RESULTS</span> <span class="o">/</span> <span class="n">dataset_name</span>
+    <span class="n">meas_dir</span> <span class="o">=</span> <span class="n">dataset_dir</span> <span class="o">/</span> <span class="n">DIR_MEASUREMENTS</span>
     <span class="k">if</span> <span class="n">meas_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
         <span class="n">parquet_stems</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
             <span class="n">path</span><span class="o">.</span><span class="n">stem</span>
@@ -2136,7 +2152,7 @@
         <span class="k">if</span> <span class="n">parquet_stems</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">parquet_stems</span>
 
-    <span class="n">hdf_dir</span> <span class="o">=</span> <span class="n">dataset_dir</span> <span class="o">/</span> <span class="s2">&quot;hdf&quot;</span>
+    <span class="n">hdf_dir</span> <span class="o">=</span> <span class="n">dataset_dir</span> <span class="o">/</span> <span class="n">DIR_HDF</span>
     <span class="k">if</span> <span class="n">hdf_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
         <span class="n">hdf_stems</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">stem</span> <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">hdf_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;*.h5&quot;</span><span class="p">))</span>
         <span class="k">if</span> <span class="n">hdf_stems</span><span class="p">:</span>
@@ -2155,12 +2171,13 @@
     <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
 
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">DIR_RECOMPILE_STATUS</span><span class="p">,</span> <span class="n">task_status_filename</span>
     <span class="n">status_path</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">output_dir</span>
-        <span class="o">/</span> <span class="s2">&quot;progress&quot;</span>
-        <span class="o">/</span> <span class="s2">&quot;recompile&quot;</span>
-        <span class="o">/</span> <span class="s2">&quot;status&quot;</span>
-        <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;task_</span><span class="si">{</span><span class="n">finalizer_task_index</span><span class="si">}</span><span class="s2">.json&quot;</span>
+        <span class="o">/</span> <span class="n">DIR_PROGRESS</span>
+        <span class="o">/</span> <span class="n">DIR_RECOMPILE</span>
+        <span class="o">/</span> <span class="n">DIR_RECOMPILE_STATUS</span>
+        <span class="o">/</span> <span class="n">task_status_filename</span><span class="p">(</span><span class="n">finalizer_task_index</span><span class="p">)</span>
     <span class="p">)</span>
     <span class="n">deadline</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">+</span> <span class="n">timeout</span> <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
     <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
@@ -2220,23 +2237,14 @@
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._dashboard</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
         <span class="n">build_manifest</span><span class="p">,</span>
         <span class="n">generate_dashboard</span><span class="p">,</span>
+        <span class="n">regenerate_dashboard_artifacts</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="n">console</span> <span class="o">=</span> <span class="n">Console</span><span class="p">()</span>
-    <span class="n">results_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;results&quot;</span>
-    <span class="n">progress_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;progress&quot;</span>
+    <span class="n">progress_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_PROGRESS</span>
     <span class="n">job_meta</span> <span class="o">=</span> <span class="n">load_job_metadata</span><span class="p">(</span><span class="n">progress_dir</span><span class="p">)</span>
 
-    <span class="n">dataset_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">if</span> <span class="n">results_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
-        <span class="n">dataset_names</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
-            <span class="n">d</span><span class="o">.</span><span class="n">name</span>
-            <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">results_dir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()</span>
-            <span class="k">if</span> <span class="n">d</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="ow">and</span> <span class="p">(</span><span class="n">d</span> <span class="o">/</span> <span class="s2">&quot;measurements&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span>
-        <span class="p">)</span>
-
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">dataset_names</span> <span class="ow">and</span> <span class="n">job_meta</span><span class="p">:</span>
-        <span class="n">dataset_names</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">job_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;datasets&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+    <span class="n">dataset_names</span> <span class="o">=</span> <span class="n">_discover_recompile_dataset_names</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">job_meta</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">dataset_names</span><span class="p">:</span>
         <span class="n">error_exit</span><span class="p">(</span><span class="s2">&quot;No datasets found in output directory&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">output_dir</span><span class="p">))</span>
@@ -2285,7 +2293,7 @@
 
     <span class="n">datasets_totals</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">dataset_names</span><span class="p">:</span>
-        <span class="n">meas_dir</span> <span class="o">=</span> <span class="n">results_dir</span> <span class="o">/</span> <span class="n">name</span> <span class="o">/</span> <span class="s2">&quot;measurements&quot;</span>
+        <span class="n">meas_dir</span> <span class="o">=</span> <span class="n">dataset_measurements_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">meas_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
             <span class="n">datasets_totals</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span>
                 <span class="p">[</span>
@@ -2296,22 +2304,9 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">datasets_totals</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
 
-    <span class="n">build_manifest</span><span class="p">(</span>
-        <span class="n">output_dir</span><span class="o">=</span><span class="n">output_dir</span><span class="p">,</span>
-        <span class="n">progress_dir</span><span class="o">=</span><span class="n">progress_dir</span><span class="p">,</span>
-        <span class="n">datasets</span><span class="o">=</span><span class="n">datasets_totals</span><span class="p">,</span>
-        <span class="n">execution_mode</span><span class="o">=</span><span class="n">job_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;execution_mode&quot;</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">job_meta</span> <span class="k">else</span> <span class="s2">&quot;local&quot;</span><span class="p">,</span>
-        <span class="n">start_time</span><span class="o">=</span><span class="n">job_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start_time&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">job_meta</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
-        <span class="n">slurm_job_ids</span><span class="o">=</span><span class="n">job_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;chunk_job_ids&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">job_meta</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">chunk_scripts</span><span class="o">=</span><span class="n">job_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;chunk_scripts&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">job_meta</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">input_path</span><span class="o">=</span><span class="n">job_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;input_path&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">job_meta</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;[green]Manifest rebuilt&quot;</span><span class="p">)</span>
-
-    <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;[cyan]Regenerating dashboard...&quot;</span><span class="p">)</span>
-    <span class="n">execution_mode</span> <span class="o">=</span> <span class="n">job_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;execution_mode&quot;</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">job_meta</span> <span class="k">else</span> <span class="s2">&quot;local&quot;</span>
-    <span class="n">generate_dashboard</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">execution_mode</span><span class="o">=</span><span class="n">execution_mode</span><span class="p">)</span>
-    <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[green]Dashboard: </span><span class="si">{</span><span class="n">output_dir</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="s1">&#39;dashboard.html&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">regenerate_dashboard_artifacts</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">job_meta</span><span class="p">,</span> <span class="n">datasets_totals</span><span class="p">)</span>
+    <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;[green]Manifest + dashboard regenerated&quot;</span><span class="p">)</span>
+    <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[green]Dashboard: </span><span class="si">{</span><span class="n">dashboard_html_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">[bold green]Recompilation complete: </span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 

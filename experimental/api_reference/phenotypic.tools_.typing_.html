@@ -535,6 +535,56 @@
                   
   <section id="module-phenotypic.tools_.typing_">
 <span id="phenotypic-tools-typing-module"></span><h1>phenotypic.tools_.typing_ module<a class="headerlink" href="#module-phenotypic.tools_.typing_" title="Link to this heading">#</a></h1>
+<dl class="py data">
+<dt class="sig sig-object py" id="phenotypic.tools_.typing_.CheckpointType">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">CheckpointType</span></span><a class="headerlink" href="#phenotypic.tools_.typing_.CheckpointType" title="Link to this definition">#</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">--checkpoint-type</span></code> flag values for the SLURM sentinel handler.</p>
+<p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Literal</span></code></a>[‘manifest’, ‘finalize’]</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="phenotypic.tools_.typing_.ExecutionMode">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">ExecutionMode</span></span><a class="headerlink" href="#phenotypic.tools_.typing_.ExecutionMode" title="Link to this definition">#</a></dt>
+<dd><p>Forward-run / recompile execution backend. Bare-string carrier for
+serialization (<code class="docutils literal notranslate"><span class="pre">progress/job_metadata.json</span></code>); callers convert to/from the
+dataclass field of the same name on <code class="docutils literal notranslate"><span class="pre">ProcessingState</span></code> / <code class="docutils literal notranslate"><span class="pre">ExecutionResults</span></code>.</p>
+<p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Literal</span></code></a>[‘local’, ‘slurm’]</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="phenotypic.tools_.typing_.FailureSource">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">FailureSource</span></span><a class="headerlink" href="#phenotypic.tools_.typing_.FailureSource" title="Link to this definition">#</a></dt>
+<dd><p>Tag attached to each row of <code class="docutils literal notranslate"><span class="pre">progress/failures.jsonl</span></code> distinguishing
+Python-side exceptions from SLURM sbatch failures.</p>
+<p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Literal</span></code></a>[‘python’, ‘slurm’]</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="phenotypic.tools_.typing_.ImageTypeName">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">ImageTypeName</span></span><a class="headerlink" href="#phenotypic.tools_.typing_.ImageTypeName" title="Link to this definition">#</a></dt>
+<dd><p>String form of the <code class="docutils literal notranslate"><span class="pre">IMAGE_TYPES</span></code> Enum’s <code class="docutils literal notranslate"><span class="pre">BASE</span></code> and <code class="docutils literal notranslate"><span class="pre">GRID</span></code> members,
+which are the only two image-type values that cross CLI / GUI boundary
+code today. Other <code class="docutils literal notranslate"><span class="pre">IMAGE_TYPES</span></code> members (CROP / OBJECT / GRID_SECTION)
+are internal to the core library and don’t need a Literal partner yet.</p>
+<p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Literal</span></code></a>[‘Image’, ‘GridImage’]</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="phenotypic.tools_.typing_.ProcessingStatus">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">ProcessingStatus</span></span><a class="headerlink" href="#phenotypic.tools_.typing_.ProcessingStatus" title="Link to this definition">#</a></dt>
+<dd><p>Per-image processing-events log statuses. Used by <code class="docutils literal notranslate"><span class="pre">_cli_update_state</span></code>
+and consumed by the dashboard generator.</p>
+<p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Literal</span></code></a>[‘started’, ‘completed’, ‘failed’]</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="phenotypic.tools_.typing_.RecompileTaskType">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">RecompileTaskType</span></span><a class="headerlink" href="#phenotypic.tools_.typing_.RecompileTaskType" title="Link to this definition">#</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">--recompile-task</span></code> flag values for the SLURM recompile worker. Mirrors
+the bare-string <code class="docutils literal notranslate"><span class="pre">TASK_*</span></code> constants in <code class="docutils literal notranslate"><span class="pre">_cli_recompile_slurm_scripts.py</span></code>.</p>
+<p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Literal</span></code></a>[‘measurements’, ‘overlay’, ‘finalize’]</p>
+</dd></dl>
+
 </section>
 
 
@@ -551,6 +601,23 @@
                 <dialog id="pst-secondary-sidebar-modal"></dialog>
                 <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
 
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.CheckpointType"><code class="docutils literal notranslate"><span class="pre">CheckpointType</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.ExecutionMode"><code class="docutils literal notranslate"><span class="pre">ExecutionMode</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.FailureSource"><code class="docutils literal notranslate"><span class="pre">FailureSource</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.ImageTypeName"><code class="docutils literal notranslate"><span class="pre">ImageTypeName</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.ProcessingStatus"><code class="docutils literal notranslate"><span class="pre">ProcessingStatus</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.RecompileTaskType"><code class="docutils literal notranslate"><span class="pre">RecompileTaskType</span></code></a></li>
+</ul>
+  </nav></div>
 
   <div class="sidebar-secondary-item">
   <div role="note" aria-label="source link">

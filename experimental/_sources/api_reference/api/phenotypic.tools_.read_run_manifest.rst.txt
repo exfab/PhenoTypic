@@ -1,0 +1,6 @@
+phenotypic.tools\_.read\_run\_manifest
+======================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: read_run_manifest

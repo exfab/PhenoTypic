@@ -18,6 +18,52 @@
    
       is_binary_mask
       timed_execution
+      analysis_csv_path
+      analysis_full_parquet_path
+      analysis_html_path
+      analysis_parquet_path
+      analysis_scatter_json_path
+      chunk_lock_path
+      chunk_manifest_path
+      chunk_parquet_filename
+      chunk_parquet_path
+      chunk_state_path
+      chunks_dir
+      checkpoint_lock_filename
+      checkpoint_lock_path
+      dashboard_html_path
+      dataset_hdf_dir
+      dataset_measurements_dir
+      dataset_overlays_dir
+      dataset_results_dir
+      default_output_dir_name
+      event_log_path
+      failures_jsonl_path
+      job_metadata_path
+      load_image_from_hdf
+      load_master_measurements
+      logs_dir
+      manifest_json_path
+      master_measurements_csv_path
+      master_measurements_parquet_path
+      measurements_by_feature_dir
+      measurements_csv_path
+      measurements_parquet_path
+      overlay_manifest_path
+      pipeline_json_path
+      processing_report_html_path
+      processing_state_path
+      progress_dir
+      read_run_manifest
+      recompile_dir
+      recompile_status_dir
+      resolve_execution_mode
+      results_dir
+      sentinel_resubmitted_path
+      shard_parquet_filename
+      slurm_scripts_dir
+      task_status_filename
+      task_status_path
    
    
 
@@ -35,6 +81,15 @@
       GridInferenceMixin
       HDF
       LazyWidgetMixin
+      ChunkManifestKey
+      ChunkStateKey
+      DashboardManifestKey
+      DashboardManifestSlurmInfoKey
+      EnvVar
+      HdfAttr
+      JobMetadataKey
+      ModulePath
+      ProcessingStateKey
    
    
 

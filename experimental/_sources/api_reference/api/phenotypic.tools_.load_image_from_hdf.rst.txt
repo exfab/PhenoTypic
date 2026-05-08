@@ -1,0 +1,6 @@
+phenotypic.tools\_.load\_image\_from\_hdf
+=========================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: load_image_from_hdf

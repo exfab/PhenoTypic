@@ -555,6 +555,7 @@
     <span class="n">CFG_RECIPE_STATE</span><span class="p">,</span>
     <span class="n">CFG_URL_PREFIX</span><span class="p">,</span>
     <span class="n">MOUNT_HOME</span><span class="p">,</span>
+    <span class="n">SANDBOX_API_VIEWER_OUTPUT_ROOT</span><span class="p">,</span>
     <span class="n">TITLE_ANALYSIS</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dash</span><span class="w"> </span><span class="kn">import</span> <span class="n">Input</span><span class="p">,</span> <span class="n">Output</span><span class="p">,</span> <span class="n">State</span>
@@ -694,7 +695,7 @@
 <span class="sd">            if (!path) { return &quot;No sidebar selection.&quot;; }</span>
 <span class="sd">            try {</span>
 <span class="sd">                const resp = await fetch(</span>
-<span class="sd">                    &quot;/sandbox/api/viewer/output-root&quot;,</span>
+<span class="sd">                    &quot;__PHENO_API_OUTPUT_ROOT__&quot;,</span>
 <span class="sd">                    {</span>
 <span class="sd">                        method: &quot;POST&quot;,</span>
 <span class="sd">                        headers: {&quot;Content-Type&quot;: &quot;application/json&quot;},</span>
@@ -711,7 +712,7 @@
 <span class="sd">                return String(err);</span>
 <span class="sd">            }</span>
 <span class="sd">        }</span>
-<span class="sd">        &quot;&quot;&quot;</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;__PHENO_ANALYSIS_PREFIX__&quot;</span><span class="p">,</span> <span class="nb">repr</span><span class="p">(</span><span class="n">url_prefix</span><span class="p">)),</span>
+<span class="sd">        &quot;&quot;&quot;</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;__PHENO_API_OUTPUT_ROOT__&quot;</span><span class="p">,</span> <span class="n">SANDBOX_API_VIEWER_OUTPUT_ROOT</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;__PHENO_ANALYSIS_PREFIX__&quot;</span><span class="p">,</span> <span class="nb">repr</span><span class="p">(</span><span class="n">url_prefix</span><span class="p">)),</span>
         <span class="n">Output</span><span class="p">(</span><span class="n">analysis_ids</span><span class="o">.</span><span class="n">EMPTY_HANDOFF_ERROR</span><span class="p">,</span> <span class="s2">&quot;children&quot;</span><span class="p">),</span>
         <span class="n">Input</span><span class="p">(</span><span class="n">analysis_ids</span><span class="o">.</span><span class="n">EMPTY_HANDOFF_OPEN_BUTTON</span><span class="p">,</span> <span class="s2">&quot;n_clicks&quot;</span><span class="p">),</span>
         <span class="n">State</span><span class="p">(</span><span class="n">SHELL_SIDEBAR_SELECTION_STORE</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">),</span>
