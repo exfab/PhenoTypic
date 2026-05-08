@@ -73,3 +73,7 @@ tmp/
 # dataset + CLI output (master parquet, dashboard.html, overlays) is
 # excluded because the binary blob is large (~50 MB).
 docs/source/_static/gui_images/_dataset/
+# Added by code-review-graph
+.code-review-graph/
+# Local knowledge-graph cache produced by /graphify (not for VCS)
+graphify-out/

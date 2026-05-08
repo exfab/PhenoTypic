@@ -15,6 +15,14 @@
         "-y",
         "@upstash/context7-mcp"
       ]
+    },
+    "code-review-graph": {
+      "command": "uvx",
+      "args": [
+        "code-review-graph",
+        "serve"
+      ],
+      "type": "stdio"
     }
   }
 }
