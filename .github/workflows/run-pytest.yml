@@ -7,18 +7,36 @@ name: run-pytest
 # ``addopts = "-m 'not slow'"`` in pyproject.toml.
 #
 # Testmon caching strategy:
-# pytest-testmon records which source files each test depends on (stored in
-# .testmondata, a SQLite file). On PR runs, we restore the .testmondata cache
-# built from main so testmon only runs tests whose dependencies changed in the
-# PR. The full lane runs without testmon to keep the nightly cache fresh and
-# to avoid skipping any tests on a clean run. On cache miss (first run, or
-# dependency change), testmon runs everything -- this is expected, not an
-# error. Limitation: testmon tracks Python source only, not config files, data
-# fixtures, or environment variables.
+#   pytest-testmon records (per test) which source files each test
+#   executed and stores a per-block content hash in ``.testmondata`` (a
+#   SQLite file). On the next run, tests whose tracked source blocks all
+#   match are deselected at collection time. We persist ``.testmondata``
+#   across runs via ``actions/cache``.
+#
+#   * ``push: branches: [main]`` runs ``pytest --testmon`` and saves the
+#     cache under a key that includes ``${{ github.ref_name }} = main``.
+#     This is the ONLY workflow that produces a main-prefixed cache —
+#     ``run-pytest-full.yml`` deliberately runs without ``--testmon`` so
+#     it can exercise every test on a clean run.
+#   * ``pull_request`` runs restore the main-prefixed cache via the
+#     ``restore-keys`` chain, so testmon sees every source file as
+#     unchanged except those edited in the PR. Tests whose tracked
+#     blocks intersect the edited set re-run; the rest are deselected.
+#   * Cache miss (first run after the trigger lands, or after a uv.lock
+#     bump) means testmon runs everything — expected, not an error.
+#
+# Limitation: testmon tracks Python source only — not YAML/JSON config,
+# fixture files, image assets, or environment variables. If a test's
+# correctness depends on one of those, the full lane catches it.
 
 on:
   pull_request:
     branches: [main, dev]
+  push:
+    # Seed the main-prefixed ``.testmondata`` cache that PR runs restore
+    # via ``restore-keys``. Without this trigger, no workflow ever writes
+    # a cache with ``main`` in the key, and every PR run starts cold.
+    branches: [main]
   workflow_dispatch:
 
 # Prevent duplicate runs on the same PR/commit
