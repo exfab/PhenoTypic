@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 
 from phenotypic.gui._operation_registry import OperationRegistry
 from phenotypic.gui.builder._layout import _palette_for_categories

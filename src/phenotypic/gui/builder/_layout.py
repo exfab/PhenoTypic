@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import inspect
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 import dash_cytoscape as cyto  # type: ignore[import-untyped]
@@ -35,6 +35,7 @@ from phenotypic.gui._design import (
     COLOR_NAVY,
     FONT_FAMILY_MONO,
     FONT_SIZE_LABEL,
+    OI_PURPLE,
 )
 from phenotypic.gui._shared import SHARED_LOGO_PATH
 from phenotypic.gui.builder import _ids as ids
@@ -50,6 +51,7 @@ from phenotypic.gui.builder._state import (
     PIPELINE_CLASS_NAME,
     BuilderScope,
     BuilderState,
+    StepNode,
     _ensure_param_scope,
     current_scope,
     stage_of,
@@ -281,11 +283,26 @@ def build_post_palette(registry: "OperationRegistry") -> dbc.Accordion:
 # ---------------------------------------------------------------------------
 
 
+#: Background tint for aux-dock nodes. A washed-out lavender so aux nodes
+#: read as "different family" from the main ribbon at a glance, while still
+#: allowing the existing per-stage label color to show through. Hand-mixed
+#: from the ``--oi-purple`` accent (``#CC79A7``) at ~12% opacity over white.
+_AUX_NODE_BG: str = "#f6eaf2"
+
+
 def _canvas_stylesheet() -> List[dict]:
     """Cytoscape stylesheet used by :func:`build_canvas`.
 
     Phase 3 may extend this list (e.g. to highlight nodes with hot
     intermediates), so we keep it as a function for easy reuse.
+
+    The aux-port additions appended at the end (image-flow / aux-wire
+    edges, port handles, aux dock nodes) live in the cytoscape stylesheet
+    so they apply to actual cytoscape elements; the matching DOM-side
+    classes in ``builder.css`` style the inspector mirrors. The cytoscape
+    side intentionally references ``OI_PURPLE`` directly (the value behind
+    ``--color-interactive`` / ``--oi-purple``) because cytoscape's
+    canvas renderer cannot resolve CSS custom properties.
     """
 
     return [
@@ -296,18 +313,21 @@ def _canvas_stylesheet() -> List[dict]:
                 "label": "data(label)",
                 "text-valign": "center",
                 "text-halign": "center",
+                "text-wrap": "ellipsis",
+                "text-max-width": 160,
                 "background-color": "data(bg)",
                 "border-color": COLOR_BORDER,
                 "border-width": 1,
-                "padding": "12px",
+                "padding": "8px",
                 "font-family": FONT_FAMILY_MONO,
                 # Cytoscape canvas-renders labels and only accepts pixel
                 # values for font-size; rem units silently fall back.
                 "font-size": "12px",
                 "font-weight": "500",
-                "width": "label",
-                "height": 40,
-                "min-width": 80,
+                # Fixed-width ribbon/aux nodes so port-handle placement is
+                # predictable (text-wrap kicks in for long class names).
+                "width": 180,
+                "height": 54,
                 "color": COLOR_NAVY,
             },
         },
@@ -328,7 +348,306 @@ def _canvas_stylesheet() -> List[dict]:
                 "width": 1.5,
             },
         },
+        # Image-flow edges between consecutive main-ribbon nodes. Same
+        # visual as the default edge (gray solid + arrow); kept as a
+        # named class so future polish (different arrow head, animation)
+        # can target it without touching aux wires.
+        {
+            "selector": "edge.image-flow",
+            "style": {
+                "curve-style": "bezier",
+                "target-arrow-shape": "triangle",
+                "target-arrow-color": COLOR_MUTED,
+                "line-color": COLOR_MUTED,
+                "width": 1.5,
+            },
+        },
+        # Aux wires: aux-dock node -> consumer port handle. Purple
+        # dashed + no arrow so they read as "configuration flow" rather
+        # than "image flow". The endpoint specs anchor the wire at the
+        # aux's RIGHT edge (``+90px 0`` matches the fixed 180px width)
+        # and the port handle's LEFT edge (``-7px 0`` matches the
+        # 14px port width), so the wire visibly *exits* the aux on
+        # its right and *enters* the port on its left — Galaxy-style
+        # horizontal data-flow with a smooth bezier curve to bridge
+        # the vertical offset between the aux dock and the main
+        # ribbon. ``unbundled-bezier`` lets us define an explicit
+        # control point so the curve bows AWAY from the consumer
+        # body (positive distance pulls the midpoint to the right of
+        # the source-target line).
+        {
+            "selector": "edge.aux-wire",
+            "style": {
+                "curve-style": "unbundled-bezier",
+                "source-endpoint": "90px 0",
+                "target-endpoint": "-7px 0",
+                "control-point-distances": [-30],
+                "control-point-weights": [0.5],
+                "line-color": OI_PURPLE,
+                "line-style": "dashed",
+                "target-arrow-shape": "triangle",
+                "target-arrow-color": OI_PURPLE,
+                "arrow-scale": 0.8,
+                "width": 1.5,
+            },
+        },
+        # Port-handle sub-nodes positioned on the consumer's left edge.
+        # Default appearance: small unfilled square/ellipse (per ``shape``
+        # data field). Labels live in the inspector + hover tooltip
+        # rather than on the canvas — Galaxy-style — so they never
+        # overlap the consumer node's class-name label even for long
+        # parameter names like ``inoculum_detector``.
+        {
+            "selector": "node.port-handle",
+            "style": {
+                "shape": "data(shape)",
+                "label": "",  # canvas-clean; param name shown in inspector
+                "background-color": COLOR_BORDER,
+                "border-color": COLOR_MUTED,
+                "border-width": 1.5,
+                "width": 14,
+                "height": 14,
+                "padding": 0,
+                "min-width": 14,
+            },
+        },
+        # Wired modifier: solid purple fill and matching label color.
+        {
+            "selector": "node.port-handle.wired",
+            "style": {
+                "background-color": OI_PURPLE,
+                "border-color": OI_PURPLE,
+                "color": COLOR_NAVY,
+            },
+        },
+        # Aux dock node: same shape as ribbon nodes but with a soft
+        # lavender background so users can tell at a glance that it's
+        # an aux source rather than part of the image flow.
+        {
+            "selector": "node.aux-node",
+            "style": {
+                "background-color": _AUX_NODE_BG,
+                "border-color": OI_PURPLE,
+                "border-style": "solid",
+            },
+        },
+        # Orphan aux node: no consumer wires reference it. Dashed border
+        # signals "will be dropped on save" so users know to wire it up
+        # or delete it.
+        {
+            "selector": "node.aux-node.aux-orphan",
+            "style": {
+                "border-style": "dashed",
+                "opacity": 0.7,
+            },
+        },
     ]
+
+
+# ---------------------------------------------------------------------------
+# Preset-layout positioning
+# ---------------------------------------------------------------------------
+#
+# Cytoscape's ``preset`` layout requires explicit ``(x, y)`` for every node;
+# the constants below pin the geometry of the main ribbon, port handles,
+# and aux dock so callbacks can stay layout-agnostic. Numbers are tuned
+# against the ~700px canvas slot configured in ``build_app_layout``.
+
+#: Horizontal step between consecutive main-ribbon nodes (px).
+_RIBBON_X_STEP: int = 180
+
+#: Left padding before the first ribbon node (px).
+_RIBBON_X_OFFSET: int = 24
+
+#: Y position of every main-ribbon node (px).
+_RIBBON_Y: int = 80
+
+#: Y position of every aux-dock node (px). Picked so wires from the dock
+#: drop visibly below the main ribbon without competing with selection
+#: handles.
+_AUX_DOCK_Y: int = 240
+
+#: Horizontal step between consecutive orphan aux nodes when they have no
+#: consumer to anchor under (px).
+_ORPHAN_X_STEP: int = 160
+
+#: Horizontal offset of the port handle's CENTER from the consumer's
+#: center. The consumer is 180px wide (half-width 90), the port handle
+#: 14px wide (half-width 7). Setting this to ``-97`` puts the port
+#: handle's center 97px left of consumer center → the port handle's
+#: right edge sits exactly on the consumer's left edge, so the dot
+#: reads as VISUALLY ATTACHED to the node (a small tab on the left
+#: edge) rather than floating in space.
+_PORT_HANDLE_DX: int = -97
+
+#: Horizontal offset of an aux-dock node's center from its anchor
+#: consumer's center. Aux nodes sit BELOW-AND-LEFT of their consumer
+#: so the wire from the aux's RIGHT edge naturally curves UP-AND-RIGHT
+#: into the port handle's LEFT edge — no overlap with the consumer
+#: body, no taxi-vertical "from the top" path. Pairs with the bezier
+#: curve + explicit source-endpoint/target-endpoint defined in the
+#: ``edge.aux-wire`` stylesheet.
+_AUX_DX: int = -240
+
+#: Vertical offset between stacked aux nodes (when one consumer feeds
+#: from multiple aux operations, e.g. a list-typed port).
+_AUX_STACK_DY: int = 70
+
+#: Vertical spacing between stacked port handles on the same consumer (px).
+_PORT_HANDLE_DY: int = 14
+
+#: Encoding scheme for cytoscape port-handle ids.
+#:
+#: Cytoscape elements need flat string ids (cytoscape rejects dict ids
+#: outside the dash pattern-matching layer). We mangle the structured
+#: components ``(node_id, param, slot)`` into a delimited string so
+#: callbacks can recover the structured form via
+#: :func:`_decode_port_handle_id` without a lookup table. Choice of
+#: ``__`` as separator avoids collision with single underscores in
+#: realistic class/param names.
+_PORT_HANDLE_PREFIX: str = "port-handle"
+_PORT_HANDLE_SEP: str = "__"
+
+
+def _encode_port_handle_id(node_id: str, param: str, slot: int) -> str:
+    """Mangle a (node_id, param, slot) triple into a flat cytoscape id.
+
+    The cytoscape canvas needs a string id; the matching dict id is
+    available via :func:`phenotypic.gui.builder._ids.port_handle_id` for
+    Dash pattern-matched callbacks.
+
+    Args:
+        node_id: Consumer node identifier the port handle attaches to.
+        param: Aux-port-eligible parameter name on the consumer.
+        slot: Zero-based slot index. Always ``0`` for scalar ports.
+
+    Returns:
+        Flat string ``"port-handle__<node_id>__<param>__<slot>"`` suitable
+        as a cytoscape element id.
+    """
+
+    return _PORT_HANDLE_SEP.join(
+        [_PORT_HANDLE_PREFIX, node_id, param, str(slot)]
+    )
+
+
+def _decode_port_handle_id(
+    encoded: str,
+) -> Optional[tuple[str, str, int]]:
+    """Reverse of :func:`_encode_port_handle_id`.
+
+    Phase 4 callbacks that read the cytoscape ``tapNodeData`` payload
+    can use this to recover the structured triple. Returns ``None`` for
+    any string that doesn't match the encoding (e.g. a tap on an aux
+    node or main-ribbon node).
+
+    Args:
+        encoded: Cytoscape element id string.
+
+    Returns:
+        ``(node_id, param, slot)`` tuple when *encoded* is a port-handle
+        id, otherwise ``None``.
+    """
+
+    if not encoded.startswith(_PORT_HANDLE_PREFIX + _PORT_HANDLE_SEP):
+        return None
+    parts = encoded.split(_PORT_HANDLE_SEP)
+    # Expected shape: [_PORT_HANDLE_PREFIX, node_id, param, slot]
+    if len(parts) != 4:
+        return None
+    _, node_id, param, slot_str = parts
+    try:
+        slot = int(slot_str)
+    except ValueError:
+        return None
+    return node_id, param, slot
+
+
+def _aux_port_specs(
+    node: StepNode,
+    registry: "OperationRegistry",
+) -> List[tuple[str, int, str]]:
+    """Enumerate ``(param_name, slot_index, shape)`` for a consumer's ports.
+
+    Walks ``node.aux_ports`` and looks up each parameter's metadata in the
+    registry so callers can know whether to render the handle as a square
+    (operation-typed) or ellipse (pipeline-typed). Parameters not in the
+    registry are dropped silently — the node may have an out-of-date
+    ``aux_ports`` map for a class that was renamed/removed, and the
+    canvas should degrade gracefully rather than render orphan handles.
+
+    The order of the returned list matches the parameter order in the
+    registry's ``parameters`` mapping (which preserves declaration order
+    via :class:`inspect.Signature`); within a parameter, slots are
+    enumerated in their stored order.
+
+    Args:
+        node: A consumer :class:`StepNode` whose ``aux_ports`` map should
+            be enumerated.
+        registry: The operation registry for type-flag lookup.
+
+    Returns:
+        Ordered list of ``(param_name, slot_index, shape)`` triples where
+        ``shape`` is ``"ellipse"`` for pipeline-typed ports and
+        ``"square"`` otherwise.
+    """
+
+    info = registry.get(node.class_name)
+    if info is None:
+        return []
+
+    specs: List[tuple[str, int, str]] = []
+    for param_name in info.parameters:
+        slots = node.aux_ports.get(param_name)
+        if slots is None:
+            continue
+        param_info = info.parameters[param_name]
+        shape = "ellipse" if param_info.is_pipeline else "square"
+        for slot_idx, _ in enumerate(slots):
+            specs.append((param_name, slot_idx, shape))
+    return specs
+
+
+def _aux_consumer_anchors(
+    nodes: List[StepNode],
+    aux_nodes: List[StepNode],
+    ribbon_x_by_id: Dict[str, int],
+) -> Dict[str, int]:
+    """Pick the anchor x for each aux node based on its (leftmost) consumer.
+
+    Aux dock nodes sit below the main ribbon at ``y = _AUX_DOCK_Y``; their
+    x is the x of the leftmost main-ribbon consumer that wires into them.
+    Orphans (no consumer references) get a placeholder x of ``-1`` so the
+    caller can layout them separately at the right edge.
+
+    Args:
+        nodes: Main-ribbon nodes (used to discover wires).
+        aux_nodes: Aux-dock nodes that need an anchor.
+        ribbon_x_by_id: Map from main-ribbon ``node_id`` to its x position.
+
+    Returns:
+        Map from aux ``node_id`` to anchor x. ``-1`` for orphans (no
+        consumer found).
+    """
+
+    anchors: Dict[str, int] = {n.node_id: -1 for n in aux_nodes}
+    for consumer in nodes:
+        consumer_x = ribbon_x_by_id.get(consumer.node_id)
+        if consumer_x is None:
+            continue
+        for slots in consumer.aux_ports.values():
+            for aux_id in slots:
+                if aux_id is None:
+                    continue
+                if aux_id not in anchors:
+                    continue
+                # Take the LEFTMOST consumer's x (smaller wins) so the aux
+                # appears under the consumer with smallest x. ``-1`` is
+                # the "no consumer yet" sentinel; any real x replaces it.
+                current = anchors[aux_id]
+                if current == -1 or consumer_x < current:
+                    anchors[aux_id] = consumer_x
+    return anchors
 
 
 def build_canvas(
@@ -337,24 +656,88 @@ def build_canvas(
 ) -> cyto.Cytoscape:
     """Render the linear chain for *scope* as a cytoscape canvas.
 
-    Each :class:`StepNode` becomes one cytoscape node; consecutive nodes are
-    joined by directed edges. Nested ``ImagePipeline`` nodes get a folder
-    glyph in their label so the user can tell drillable nodes apart.
+    Each :class:`StepNode` becomes one cytoscape node; consecutive
+    main-ribbon nodes are joined by ``image-flow`` edges. Nested
+    ``ImagePipeline`` nodes get a folder glyph in their label so the
+    user can tell drillable nodes apart.
+
+    Galaxy-style aux dock additions:
+
+    * Each aux-port-eligible parameter renders one small port-handle
+      sub-node per slot, positioned just to the left of the consumer
+      so incoming wires read as "feeding into" the consumer.
+    * Aux nodes that no consumer wires to (orphans) are placed on the
+      right edge with a dashed border (``aux-orphan`` class) so users
+      can tell they'll be dropped on save.
+    * Aux wires are emitted as edges with ``aux-wire`` class — purple
+      dashed in the cytoscape stylesheet — and target the consumer's
+      port-handle id rather than the consumer node directly.
 
     Args:
         scope: The :class:`BuilderScope` currently in view.
-        selected_node_id: If set, the matching node gets the ``"selected"``
-            class so the stylesheet highlights it.
+        selected_node_id: If set, the matching node gets the
+            ``"selected"`` class so the stylesheet highlights it.
 
     Returns:
-        A :class:`dash_cytoscape.Cytoscape` component populated with elements
-        for *scope*. Layout is ``"grid"`` with one row to keep the chain
-        horizontal.
+        A :class:`dash_cytoscape.Cytoscape` component populated with
+        elements for *scope*. Layout is ``"preset"`` — Python computes
+        ``(x, y)`` for every element so callbacks can stay layout-agnostic.
     """
 
-    elements: List[dict] = []
-    prev_id: Optional[str] = None
+    # Local import so the module's top-level import graph stays Dash-only.
+    # ``get_registry`` walks every operation module; calling it once per
+    # render is fine because the registry is a process-wide singleton.
+    from phenotypic.gui._operation_registry import get_registry
 
+    registry = get_registry()
+
+    elements: List[dict] = []
+
+    # ── 1. Compute positions for the main ribbon. ────────────────────────
+    ribbon_x_by_id: Dict[str, int] = {}
+    for i, node in enumerate(scope.nodes):
+        ribbon_x_by_id[node.node_id] = _RIBBON_X_OFFSET + i * _RIBBON_X_STEP
+
+    # ── 2. Image-flow edges (drawn first so they sit underneath nodes). ─
+    prev_id: Optional[str] = None
+    for node in scope.nodes:
+        if prev_id is not None:
+            elements.append(
+                {
+                    "data": {
+                        "id": f"{prev_id}__{node.node_id}",
+                        "source": prev_id,
+                        "target": node.node_id,
+                    },
+                    "classes": "image-flow",
+                }
+            )
+        prev_id = node.node_id
+
+    # ── 3. Aux wires (target port handles, not consumers). ──────────────
+    for consumer in scope.nodes:
+        for param_name, slots in consumer.aux_ports.items():
+            for slot_idx, aux_id in enumerate(slots):
+                if aux_id is None:
+                    continue
+                handle_id = _encode_port_handle_id(
+                    consumer.node_id, param_name, slot_idx
+                )
+                elements.append(
+                    {
+                        "data": {
+                            "id": (
+                                f"wire__{aux_id}__"
+                                f"{consumer.node_id}__{param_name}__{slot_idx}"
+                            ),
+                            "source": aux_id,
+                            "target": handle_id,
+                        },
+                        "classes": "aux-wire",
+                    }
+                )
+
+    # ── 4. Main-ribbon nodes. ───────────────────────────────────────────
     for node in scope.nodes:
         stage = _safe_stage(node.class_name)
         label = node.label or node.class_name
@@ -374,27 +757,149 @@ def build_canvas(
                 "classes": node_classes,
                 "selectable": True,
                 "grabbable": True,
+                "position": {
+                    "x": ribbon_x_by_id[node.node_id],
+                    "y": _RIBBON_Y,
+                },
             }
         )
-        if prev_id is not None:
+
+    # ── 5. Aux-dock nodes (orphans go to the right). ────────────────────
+    referenced_aux_ids: set[str] = set()
+    for consumer in scope.nodes:
+        for slots in consumer.aux_ports.values():
+            for aux_id in slots:
+                if aux_id is not None:
+                    referenced_aux_ids.add(aux_id)
+
+    aux_anchors = _aux_consumer_anchors(
+        scope.nodes, scope.aux_nodes, ribbon_x_by_id
+    )
+
+    # Walk consumers in left-to-right order; for each, place its aux
+    # nodes in a vertical column to the LEFT of the consumer. Multiple
+    # auxes for the same consumer stack down (slot 0 highest, slot N
+    # lowest), so the wire from each aux's right edge curves up-and-
+    # right cleanly into the matching port handle on the consumer.
+    aux_index_within_consumer: Dict[str, int] = {}
+    aux_positions: Dict[str, tuple[int, int]] = {}
+    for consumer in scope.nodes:
+        # Collect aux ids referenced by this consumer in slot order so
+        # the topmost aux maps to slot 0, the next to slot 1, etc.
+        consumer_aux_ids: List[str] = []
+        for slots in consumer.aux_ports.values():
+            for aux_id in slots:
+                if aux_id is not None and aux_id not in consumer_aux_ids:
+                    consumer_aux_ids.append(aux_id)
+        cons_x = ribbon_x_by_id[consumer.node_id]
+        for stack_idx, aux_id in enumerate(consumer_aux_ids):
+            if aux_id in aux_positions:
+                continue  # already placed under a leftmost consumer
+            aux_positions[aux_id] = (
+                cons_x + _AUX_DX,
+                _RIBBON_Y + (stack_idx + 1) * _AUX_STACK_DY,
+            )
+            aux_index_within_consumer[aux_id] = stack_idx
+
+    # Place orphans to the right of the rightmost ribbon node so they
+    # don't compete with anchored aux nodes for x space.
+    if ribbon_x_by_id:
+        orphan_x_start = (
+            max(ribbon_x_by_id.values()) + _RIBBON_X_STEP
+        )
+    else:
+        orphan_x_start = _RIBBON_X_OFFSET
+    orphan_index = 0
+
+    for aux in scope.aux_nodes:
+        stage = _safe_stage(aux.class_name)
+        label = aux.label or aux.class_name
+        if aux.class_name == PIPELINE_CLASS_NAME:
+            label = f"\U0001F4C1 {label}"
+
+        is_orphan = aux.node_id not in referenced_aux_ids
+        if is_orphan or aux.node_id not in aux_positions:
+            x = orphan_x_start + orphan_index * _ORPHAN_X_STEP
+            y = _AUX_DOCK_Y
+            orphan_index += 1
+        else:
+            x, y = aux_positions[aux.node_id]
+
+        classes = "aux-node"
+        if is_orphan:
+            classes = f"{classes} aux-orphan"
+        if aux.node_id == selected_node_id:
+            classes = f"{classes} selected"
+
+        elements.append(
+            {
+                "data": {
+                    "id": aux.node_id,
+                    "label": label,
+                    "bg": _STAGE_COLORS.get(stage, _STAGE_COLORS["ops"]),
+                    "stage": stage,
+                    "class_name": aux.class_name,
+                },
+                "classes": classes,
+                "selectable": True,
+                "grabbable": True,
+                "position": {"x": x, "y": y},
+            }
+        )
+
+    # Suppress the unused-anchor warning while keeping the helper for
+    # future v2 work (manual repositioning will need it back).
+    _ = aux_anchors
+
+    # ── 6. Port handles (rendered last so they sit on top). ─────────────
+    for consumer in scope.nodes:
+        specs = _aux_port_specs(consumer, registry)
+        if not specs:
+            continue
+        # Center the stack of handles vertically around the consumer.
+        # ``offset`` ranges from -(N-1)/2 to +(N-1)/2 so a 1-handle stack
+        # lands exactly on the consumer's y, a 2-stack straddles it, etc.
+        n_handles = len(specs)
+        consumer_x = ribbon_x_by_id[consumer.node_id]
+        for i, (param_name, slot_idx, shape) in enumerate(specs):
+            offset = (i - (n_handles - 1) / 2) * _PORT_HANDLE_DY
+            handle_x = consumer_x + _PORT_HANDLE_DX
+            handle_y = int(_RIBBON_Y + offset)
+            handle_id = _encode_port_handle_id(
+                consumer.node_id, param_name, slot_idx
+            )
+            slots_for_param = consumer.aux_ports.get(param_name) or []
+            slot_value = (
+                slots_for_param[slot_idx]
+                if slot_idx < len(slots_for_param)
+                else None
+            )
+            wired = slot_value is not None
+            handle_classes = "port-handle"
+            if wired:
+                handle_classes = f"{handle_classes} wired"
             elements.append(
                 {
                     "data": {
-                        "id": f"{prev_id}__{node.node_id}",
-                        "source": prev_id,
-                        "target": node.node_id,
+                        "id": handle_id,
+                        "label": param_name,
+                        "shape": shape,
+                        "consumer_id": consumer.node_id,
+                        "param": param_name,
+                        "slot": slot_idx,
                     },
+                    "classes": handle_classes,
+                    "selectable": True,
+                    "grabbable": False,
+                    "position": {"x": handle_x, "y": handle_y},
                 }
             )
-        prev_id = node.node_id
 
     return cyto.Cytoscape(
         id=ids.CANVAS_CYTOSCAPE,
         elements=elements,
         layout={
-            "name": "grid",
-            "rows": 1,
-            "cols": max(len(scope.nodes), 1),
+            "name": "preset",
             "fit": True,
             "padding": 24,
         },
@@ -416,6 +921,43 @@ def build_canvas(
         userPanningEnabled=True,
         userZoomingEnabled=True,
         boxSelectionEnabled=False,
+        # Cap auto-fit zoom so a sparse canvas (1-2 nodes) doesn't
+        # balloon the consumer to fill the viewport (which would hide
+        # the lane chrome and obscure the swim-lane semantic). 1.0
+        # keeps the absolute Python-computed positions intact; the
+        # user can still zoom in further via the toolbar.
+        maxZoom=1.0,
+        minZoom=0.25,
+    )
+
+
+def build_lane_chrome() -> html.Div:
+    """Static HTML overlay naming the canvas's two swim lanes.
+
+    Lives outside the cytoscape element graph so it doesn't perturb
+    cytoscape's ``fit`` bounding-box calc and doesn't get clipped /
+    obscured when nodes auto-zoom. The wrapper is positioned absolute
+    inside the ``canvas-cytoscape-wrapper`` flex slot via the
+    ``.pheno-canvas-lane-chrome`` rule in ``builder/assets/builder.css``.
+
+    Used by both :func:`build_canvas_section` (initial render) and the
+    fan-in callback in ``_callbacks.py`` (every state mutation re-emits
+    the wrapper's children, so the chrome must be re-included on each
+    update).
+    """
+
+    return html.Div(
+        [
+            html.Span(
+                "MAIN IMAGE FLOW",
+                className="pheno-canvas-lane-label pheno-canvas-lane-label--main",
+            ),
+            html.Span(
+                "AUX OPERATIONS · op-as-config",
+                className="pheno-canvas-lane-label pheno-canvas-lane-label--aux",
+            ),
+        ],
+        className="pheno-canvas-lane-chrome",
     )
 
 
@@ -476,6 +1018,8 @@ def build_canvas_section(
         ],
         className="d-flex justify-content-between align-items-center mb-2",
     )
+
+    lane_chrome = build_lane_chrome()
     # Cytoscape (``height: 100%``) needs a flex-grown sibling slot so the
     # browser can resolve its percentage height. The header has natural
     # height; the cytoscape wrapper takes the remaining flex space via
@@ -489,7 +1033,7 @@ def build_canvas_section(
     # mutation (avoids fighting dash-cytoscape's prop diffing). The id also
     # gives ``window.phenoGetCy()`` a reliable anchor for the React fiber walk.
     cytoscape_slot = html.Div(
-        build_canvas(scope, selected_node_id),
+        [build_canvas(scope, selected_node_id), lane_chrome],
         id="canvas-cytoscape-wrapper",
         style={
             "flex": "1 1 0",
@@ -639,6 +1183,132 @@ def _empty_inspector_div() -> html.Div:
     )
 
 
+def _compatible_classes_for_port(
+    param_info: Any, registry: "OperationRegistry"
+) -> List[str]:
+    """Return registry classes that satisfy a given aux-port type.
+
+    Used by :func:`_build_aux_palette_section` to filter the inspector's
+    drop-on-port palette down to ops/pipelines that the consumer's port
+    will actually accept (the `wire_create` dispatch validates the same
+    contract; pre-filtering here saves the user a useless click).
+
+    Args:
+        param_info: ``ParamInfo`` for the consumer's aux-port-eligible
+            parameter; expected ``is_operation`` or ``is_pipeline`` true.
+        registry: Operation registry to enumerate.
+
+    Returns:
+        Sorted list of class-name strings. The
+        :data:`PIPELINE_CLASS_NAME` sentinel appears when the port accepts
+        an :class:`~phenotypic.ImagePipeline`.
+    """
+
+    from phenotypic.abc_ import ImageOperation
+
+    classes: List[str] = []
+    if param_info.is_operation:
+        for cls_name, info in registry.get_all().items():
+            cls = getattr(info, "cls", None)
+            if isinstance(cls, type) and issubclass(cls, ImageOperation):
+                classes.append(cls_name)
+    if param_info.is_pipeline:
+        classes.append(PIPELINE_CLASS_NAME)
+    return sorted(set(classes))
+
+
+def _build_aux_palette_section(
+    node: StepNode, registry: "OperationRegistry"
+) -> Optional[Any]:
+    """Render the inspector's drop-on-port aux palette.
+
+    For each empty slot in *node*'s ``aux_ports``, surfaces a compact
+    DropdownMenu of compatible classes — clicking an item dispatches
+    ``aux_palette_add`` (creates the aux node and wires it to this slot
+    in one shot). Returns ``None`` when the consumer has no aux-port-
+    eligible parameters with empty slots.
+
+    Args:
+        node: Currently-selected consumer node whose aux ports are being
+            offered.
+        registry: Operation registry consulted for parameter metadata
+            and the compatibility filter.
+
+    Returns:
+        A ``dbc.Card`` for insertion into the inspector body, or
+        ``None`` when there are no empty slots to populate.
+    """
+
+    info = registry.get(node.class_name)
+    if info is None:
+        return None
+
+    groups: List[Any] = []
+    for param_name, p in info.parameters.items():
+        if not (p.is_operation or p.is_pipeline):
+            continue
+        compatible = _compatible_classes_for_port(p, registry)
+        if not compatible:
+            continue
+        # Walk the existing slot list (if any) to find empty slots.
+        # Params that have never been touched have no ``aux_ports`` entry —
+        # treat them as a single empty slot so the palette can offer the
+        # initial wire.
+        existing_slots = node.aux_ports.get(param_name)
+        slot_iter: List[tuple[int, Optional[str]]]
+        if existing_slots is None:
+            slot_iter = [(0, None)]
+        else:
+            slot_iter = list(enumerate(existing_slots))
+        for slot_idx, aux_id in slot_iter:
+            if aux_id is not None:
+                continue  # already wired
+            heading = (
+                f"+ Add aux for {param_name}[{slot_idx}]"
+                if p.is_list
+                else f"+ Add aux for {param_name}"
+            )
+            buttons = [
+                dbc.Button(
+                    cls_name,
+                    id=ids.aux_palette_add_id(
+                        cls_name, node.node_id, param_name, slot_idx
+                    ),
+                    color="primary",
+                    size="sm",
+                    outline=True,
+                    n_clicks=0,
+                    className="me-1 mb-1",
+                )
+                for cls_name in compatible
+            ]
+            groups.append(
+                html.Div(
+                    [
+                        html.Div(
+                            heading,
+                            className="text-muted small mb-1",
+                        ),
+                        html.Div(buttons, className="d-flex flex-wrap"),
+                    ],
+                    className="mb-3 inspector-aux-palette-group",
+                )
+            )
+
+    if not groups:
+        return None
+
+    return dbc.Card(
+        dbc.CardBody(
+            [
+                html.H6("Aux palette", className="mb-2"),
+                html.Div(groups, className="d-flex flex-wrap"),
+            ]
+        ),
+        className="mt-3 inspector-aux-palette",
+    )
+
+
 def build_inspector(
     state: BuilderState,
     registry: "OperationRegistry",
@@ -741,14 +1411,34 @@ def build_inspector(
             className="text-warning",
         )
     else:
+        # Build the wired_slots map for ``param_form``. Each entry maps a
+        # parameter name to a list of source class names (one per slot;
+        # ``None`` for empty slots). Aux node IDs in ``node.aux_ports`` are
+        # resolved against ``scope.aux_nodes`` to get the human-readable
+        # class name shown in the inspector's wired rows. An empty dict
+        # (``{}``) is preserved verbatim — the caller checks
+        # ``wired_slots is None`` vs ``wired_slots == {}`` to decide
+        # between the legacy drill-in shape and the wired-row shape.
+        aux_class_by_id = {a.node_id: a.class_name for a in scope.aux_nodes}
+        wired_slots: dict[str, list[str | None]] = {}
+        for param_name, slots in node.aux_ports.items():
+            wired_slots[param_name] = [
+                aux_class_by_id.get(aux_id) if aux_id is not None else None
+                for aux_id in slots
+            ]
         form = html.Div(
             param_form(
                 op_info,
                 current_values=node.params,
                 form_id_prefix=node.node_id,
+                wired_slots=wired_slots,
             ),
             id=ids.INSPECTOR_PARAM_FORM,
         )
+
+    aux_palette = (
+        _build_aux_palette_section(node, registry) if op_info is not None else None
+    )
 
     body_children = [
         *header_children,
@@ -757,6 +1447,7 @@ def build_inspector(
         # empty so the toggle callback's Input/State always resolve.
         *_doc_section_widgets(op_info.docstring if op_info else None),
         form,
+        *(([aux_palette] if aux_palette is not None else [])),
         html.Hr(),
         html.Div(
             "(Run preview to populate)",
@@ -1213,6 +1904,24 @@ def build_app_layout(
                 id=ids.STORE_IMAGE_PATH,
                 data="",
             ),
+            # Click-then-click wire creation: holds the partially-specified
+            # wire endpoint (either a port handle or an aux node) between the
+            # first and second click. ``None`` when no wire is pending.
+            # Shape: ``{"endpoint_kind": "port", "node_id": str, "param": str,
+            # "slot": int}`` for port-handle endpoints, or
+            # ``{"endpoint_kind": "aux", "aux_id": str}`` for aux-node
+            # endpoints.
+            dcc.Store(
+                id=ids.STORE_PENDING_WIRE,
+                data=None,
+            ),
+            # Aux palette filter target. ``None`` when the palette is in its
+            # default unfiltered mode; ``{"node_id": ..., "param": ...,
+            # "slot": ...}`` when it is filtering for a specific port.
+            dcc.Store(
+                id=ids.STORE_AUX_PALETTE_TARGET,
+                data=None,
+            ),
         ]
     )
 
@@ -1314,4 +2023,5 @@ __all__ = [
     "build_breadcrumb",
     "build_footer",
     "build_app_layout",
+    "_decode_port_handle_id",
 ]

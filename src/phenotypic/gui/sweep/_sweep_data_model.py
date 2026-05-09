@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, get_args
 
-from phenotypic.gui._config import ChannelName, DIR_MEASUREMENTS, DIR_RESULTS
+from phenotypic.gui._config import ChannelName, DIR_RESULTS
 
 logger = logging.getLogger(__name__)
 

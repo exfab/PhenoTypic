@@ -467,3 +467,129 @@ class TestBuilderShimReExports:
         info = pickable[0]
         form = builder_form(info, current_values={}, form_id_prefix="t")
         assert len(form.children) >= 1
+
+
+def _walk_components(node):
+    """Yield ``node`` and every descendant Dash component reachable via ``children``."""
+    yield node
+    children = getattr(node, "children", None)
+    if children is None:
+        return
+    if isinstance(children, (list, tuple)):
+        for child in children:
+            if child is None or isinstance(child, (str, int, float, bool)):
+                continue
+            yield from _walk_components(child)
+    elif not isinstance(children, (str, int, float, bool)):
+        yield from _walk_components(children)
+
+
+def _components_with_id_type(form, type_str):
+    """Return the list of components whose dict-shaped ``id["type"]`` matches."""
+    found = []
+    for c in _walk_components(form):
+        cid = getattr(c, "id", None)
+        if isinstance(cid, dict) and cid.get("type") == type_str:
+            found.append(c)
+    return found
+
+
+class TestWiredSlots:
+    """Coverage for the ``wired_slots`` branch of the shared param-form.
+
+    The branch activates only when a builder caller passes ``wired_slots``;
+    the analysis sub-app passes ``None`` and is unaffected.
+    """
+
+    @pytest.fixture(scope="class")
+    def registry(self):
+        from phenotypic.gui._operation_registry import OperationRegistry
+
+        reg = OperationRegistry()
+        reg.discover()
+        return reg
+
+    def test_wired_slot_renders_disconnect_button(self, registry):
+        info = registry.get("FilamentousFungiDetector")
+        assert info is not None
+        form = param_form(
+            info,
+            current_values={},
+            form_id_prefix="abc",
+            wired_slots={"inoculum_detector": ["OtsuDetector"]},
+        )
+        disconnect_btns = _components_with_id_type(form, "wire-disconnect")
+        assert len(disconnect_btns) == 1, (
+            f"expected one wire-disconnect button, got {len(disconnect_btns)}"
+        )
+        cid = disconnect_btns[0].id
+        assert cid["node_id"] == "abc"
+        assert cid["param"] == "inoculum_detector"
+        assert cid["slot"] == 0
+        # No drill-in rendered for the wired param
+        nested_btns = [
+            c
+            for c in _components_with_id_type(form, "param-edit-nested")
+            if c.id.get("name") == "inoculum_detector"
+        ]
+        assert nested_btns == []
+
+    def test_empty_slot_renders_no_disconnect(self, registry):
+        info = registry.get("FilamentousFungiDetector")
+        form = param_form(
+            info,
+            current_values={},
+            form_id_prefix="abc",
+            wired_slots={"inoculum_detector": [None]},
+        )
+        disconnect_btns = _components_with_id_type(form, "wire-disconnect")
+        assert disconnect_btns == []
+
+    def test_list_port_renders_add_slot_button(self, registry):
+        info = registry.get("CompositeDetector")
+        assert info is not None
+        form = param_form(
+            info,
+            current_values={},
+            form_id_prefix="abc",
+            wired_slots={"detectors": ["OtsuDetector", None]},
+        )
+        add_btns = _components_with_id_type(form, "port-slot-add")
+        assert len(add_btns) == 1
+        assert add_btns[0].id["param"] == "detectors"
+        # One occupied slot → one disconnect button; one empty slot → none.
+        disconnect_btns = _components_with_id_type(form, "wire-disconnect")
+        assert len(disconnect_btns) == 1
+        # List ports also expose per-slot remove buttons.
+        remove_btns = _components_with_id_type(form, "port-slot-remove")
+        assert len(remove_btns) == 2  # one per slot, occupied or empty
+
+    def test_no_wired_slots_emits_no_wired_buttons(self, registry):
+        """Regression guard: ``wired_slots=None`` is the analysis sub-app's
+        path; it must not surface any wired-row buttons. The fallback widget
+        (multi-union, list, etc.) is exercised by the existing
+        ``TestParamFormViaRegistry`` suite."""
+        info = registry.get("FilamentousFungiDetector")
+        form = param_form(
+            info,
+            current_values={},
+            form_id_prefix="abc",
+            wired_slots=None,
+        )
+        assert _components_with_id_type(form, "wire-disconnect") == []
+        assert _components_with_id_type(form, "port-slot-add") == []
+        assert _components_with_id_type(form, "port-slot-remove") == []
+
+    def test_param_not_in_wired_slots_emits_no_wired_buttons(self, registry):
+        """An empty ``wired_slots`` mapping leaves every param on the
+        non-wired branch — verifies the per-param ``wired_slots.get(p.name)``
+        check, not just the outer ``wired_slots is None`` short-circuit."""
+        info = registry.get("FilamentousFungiDetector")
+        form = param_form(
+            info,
+            current_values={},
+            form_id_prefix="abc",
+            wired_slots={},  # explicit empty mapping — no params wired
+        )
+        assert _components_with_id_type(form, "wire-disconnect") == []
+        assert _components_with_id_type(form, "port-slot-add") == []

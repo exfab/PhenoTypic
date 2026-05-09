@@ -514,3 +514,235 @@ code, pre, .text-monospace, .font-monospace {
     pointer-events: none;
     z-index: 5;
 }
+
+/* ===========================================================================
+ * Aux input ports & wires
+ * ===========================================================================
+ *
+ * Galaxy-style auxiliary input ports surface op-as-config dependencies
+ * (e.g. ``FilamentousFungiDetector.inoculum_detector``) as wired aux nodes
+ * in a dock area below the main image-flow ribbon.
+ *
+ * These rules style the DOM-side affordances: inspector port rows,
+ * port-label badges, the pending-wire indicator, orphan aux nodes, and
+ * the per-slot +/× controls. The cytoscape canvas itself (sub-nodes,
+ * aux wires, aux-node tiles) is styled in Python via ``_canvas_stylesheet``
+ * — these CSS rules do NOT apply to cytoscape elements.
+ *
+ * Color choice: ``--color-interactive`` (already aliased to ``--oi-purple``
+ * for the point-picker mixin) is the project's "purple UI accent" token.
+ * It is the closest existing semantic token for an "auxiliary flow"
+ * indicator. ``--color-bg`` and ``--color-rule`` provide the muted
+ * background tones for wired/empty rows. Adding a new dedicated
+ * --color-info token would be a ``_design.py`` change (out of Wave 1
+ * scope). */
+
+/* ─── Aux input ports & wires ─────────────── */
+
+/* Port handle pill shown in inspector rows / DOM badges. Renders as an
+ * inline-flex pill: a small colored shape (square = ImageOperation,
+ * circle = ImagePipeline) followed by the parameter label. */
+.port-handle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
+    padding: 0.15rem 0.5rem;
+    background: var(--color-bg);
+    border: 1px solid var(--color-rule);
+    border-radius: var(--radius);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
+    line-height: 1.2;
+    transition: var(--transition);
+}
+
+.port-handle::before {
+    content: "";
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    background: transparent;
+    border: 1.5px solid var(--color-border);
+    flex-shrink: 0;
+}
+
+/* Operation-typed port: square handle (rounded corners on the dot) */
+.port-handle--operation::before {
+    border-radius: 2px;
+    border-color: var(--color-interactive);
+}
+
+/* Pipeline-typed port: circular handle */
+.port-handle--pipeline::before {
+    border-radius: 50%;
+    border-color: var(--color-interactive);
+}
+
+/* Wired modifier: dot fills solid, label saturates */
+.port-handle--wired {
+    color: var(--color-heading);
+    border-color: var(--color-interactive);
+}
+.port-handle--wired::before {
+    background: var(--color-interactive);
+    border-color: var(--color-interactive);
+}
+
+/* Aux wire indicator for non-cytoscape DOM elements that mirror wire
+ * state (e.g. an inline note "wired from canvas" in the inspector).
+ * Cytoscape aux wires themselves are styled in the cytoscape stylesheet
+ * (Python). This class is a CSS-only mirror affordance. */
+.aux-wire {
+    display: inline-block;
+    padding-left: var(--sp-2);
+    border-left: 2px dashed var(--color-interactive);
+    color: var(--color-interactive);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+}
+
+/* Pending-wire source: the inspector port row currently selected as
+ * the source of a click-then-click wire. Pulses to signal "click a
+ * complementary endpoint to complete the wire". */
+@keyframes pheno-pending-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(204, 121, 167, 0.55); }
+    50%      { box-shadow: 0 0 0 4px rgba(204, 121, 167, 0); }
+}
+
+.pending-wire-source {
+    cursor: pointer;
+    border-color: var(--color-interactive);
+    animation: pheno-pending-pulse 1.4s var(--ease-out) infinite;
+}
+
+/* Orphan aux row: aux node that has no consumer wires.
+ * Layout code appends "(orphan)" to the row label; this rule styles
+ * the surrounding container. */
+.aux-orphan {
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius);
+    padding: var(--sp-2) var(--sp-3);
+    opacity: 0.6;
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-label);
+    transition: var(--transition);
+}
+.aux-orphan:hover { opacity: 0.85; }
+
+/* Inspector port row: wired -- gray background + accent left border to
+ * indicate "Connected from canvas" (read-only-ish; users disconnect
+ * via the per-row × button rather than editing inline). */
+.inspector-port-row--wired {
+    background: var(--color-bg);
+    border-left: 3px solid var(--color-interactive);
+    border-radius: var(--radius-sm);
+    padding: var(--sp-2) var(--sp-3);
+    color: var(--color-muted);
+    font-family: var(--font-body);
+    font-size: var(--font-size-label);
+    margin-bottom: var(--sp-1);
+}
+
+/* Inspector port row: empty slot prompting "Click to connect…". Dashed
+ * border + lighter text to distinguish from wired rows. */
+.inspector-port-row--empty {
+    background: transparent;
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--sp-2) var(--sp-3);
+    color: var(--color-muted);
+    font-family: var(--font-body);
+    font-size: var(--font-size-label);
+    margin-bottom: var(--sp-1);
+    cursor: pointer;
+    transition: var(--transition);
+}
+.inspector-port-row--empty:hover {
+    border-color: var(--color-interactive);
+    color: var(--color-body);
+}
+
+/* Per-row controls (× remove + slot index label). Right-aligned via
+ * margin-left auto so the row label stays left while controls cluster
+ * at the row tail. */
+.inspector-port-slot-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
+}
+
+/* + button to spawn a new slot under the last row of a list-typed aux
+ * port. Styled as a small outline button matching the existing
+ * .btn-outline-primary palette. */
+.inspector-port-add-slot {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
+    padding: 0.2rem 0.6rem;
+    margin-top: var(--sp-1);
+    background: transparent;
+    color: var(--color-muted);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: var(--transition);
+}
+.inspector-port-add-slot:hover, .inspector-port-add-slot:focus {
+    color: var(--color-interactive);
+    border-color: var(--color-interactive);
+    border-style: solid;
+    background: rgba(204, 121, 167, 0.04);
+}
+
+/* ─── Canvas swim-lane chrome ───────────────────────────────────────── */
+/* Two-row lane labels rendered as overlay spans on top of the
+ * cytoscape canvas (z-index above the canvas). They live outside
+ * cytoscape's element graph so they don't perturb its ``fit``
+ * bounding-box calc; they're static chrome that names the swim
+ * lanes ("MAIN IMAGE FLOW" / "AUX OPERATIONS") regardless of
+ * canvas zoom/pan. */
+.pheno-canvas-lane-chrome {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 100;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--color-muted);
+}
+.pheno-canvas-lane-label {
+    position: absolute;
+    left: var(--sp-2);
+    padding: 2px 8px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    line-height: 1.3;
+    white-space: nowrap;
+}
+/* Top label sits just inside the canvas's top-left corner. */
+.pheno-canvas-lane-label--main {
+    top: var(--sp-1);
+}
+/* Bottom label sits roughly mid-canvas — that's where ``_AUX_DOCK_Y``
+ * (cytoscape coord 240, vs the ribbon at 80) lands after the canvas
+ * viewport's intrinsic top padding. ``45%`` is a stable proxy that
+ * tracks the slot height regardless of viewport size. */
+.pheno-canvas-lane-label--aux {
+    top: 45%;
+    color: var(--color-interactive);
+    border-color: var(--color-interactive);
+}

@@ -35,7 +35,7 @@ Examples:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any
 
 from phenotypic.tools_.typing_ import ExecutionMode
 

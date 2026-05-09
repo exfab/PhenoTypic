@@ -1,7 +1,12 @@
 """Unit tests for OperationRegistry and ParamInfo."""
 
+from __future__ import annotations
+
+from typing import List, Optional
+
 import pytest
 
+from phenotypic.abc_ import ObjectDetector
 from phenotypic.enhance import GaussianBlur
 from phenotypic.gui._operation_registry import (
     OperationRegistry,
@@ -267,3 +272,78 @@ class TestColumnRefDetection:
         assert blur is not None
         for p in blur.parameters.values():
             assert p.column_ref is None
+
+
+class TestIsListDetection:
+    """`_extract_parameters` populates ``ParamInfo.is_list`` for list-typed params.
+
+    The flag distinguishes list-typed aux ports (e.g.
+    ``CompositeDetector.detectors: List[Union[ObjectDetector, ImagePipeline]]``)
+    from scalar variants (e.g.
+    ``FilamentousFungiDetector.inoculum_detector: Union[ObjectDetector,
+    ImagePipeline, None]``) so the GUI builder can render multi-port
+    ``+``/``×`` controls only on list slots.
+    """
+
+    @pytest.fixture(scope="class")
+    def registry(self):
+        reg = OperationRegistry()
+        reg.discover()
+        return reg
+
+    def test_composite_detector_detectors_is_list(self, registry):
+        """``CompositeDetector.detectors: List[Union[Op, Pipeline]]``."""
+        info = registry.get("CompositeDetector")
+        assert info is not None
+        p = info.parameters.get("detectors")
+        assert p is not None
+        assert p.is_list is True
+        assert p.is_operation is True
+        assert p.is_pipeline is True
+        assert p.is_optional is False
+
+    def test_filamentous_inoculum_is_scalar_optional(self, registry):
+        """``inoculum_detector: Union[Op, Pipeline, None]`` is scalar+optional."""
+        info = registry.get("FilamentousFungiDetector")
+        assert info is not None
+        p = info.parameters.get("inoculum_detector")
+        assert p is not None
+        assert p.is_list is False
+        assert p.is_operation is True
+        assert p.is_pipeline is True
+        assert p.is_optional is True
+
+    def test_optional_list_of_operations(self):
+        """``Optional[List[ObjectDetector]]`` peels both wrappers."""
+
+        class _SyntheticOptionalListOp:
+            def __init__(self, param: Optional[List[ObjectDetector]] = None):
+                self.param = param
+
+        reg = OperationRegistry()
+        params = reg._extract_parameters(_SyntheticOptionalListOp)
+        p = params["param"]
+        assert p.is_list is True
+        assert p.is_operation is True
+        assert p.is_optional is True
+
+    def test_bare_list_no_args(self):
+        """Bare ``list`` annotation flags ``is_list`` without op/pipeline."""
+
+        class _SyntheticBareListOp:
+            def __init__(self, param: list = []):
+                self.param = param
+
+        reg = OperationRegistry()
+        params = reg._extract_parameters(_SyntheticBareListOp)
+        p = params["param"]
+        assert p.is_list is True
+        assert p.is_operation is False
+        assert p.is_pipeline is False
+
+    def test_scalar_param_is_not_list(self, registry):
+        """Scalar params keep ``is_list=False`` (regression guard)."""
+        blur = registry.get("GaussianBlur")
+        assert blur is not None
+        for p in blur.parameters.values():
+            assert p.is_list is False

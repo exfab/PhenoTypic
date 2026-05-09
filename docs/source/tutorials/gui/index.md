@@ -24,6 +24,7 @@ the images aligned with the implementation.
 | [View Results](06_view_results.md) | Open the results viewer against a finished CLI output. |
 | [Pick points](07_pick_points.md) | Curate detected colonies manually with the in-builder point picker. |
 | [Analysis](08_analysis.md) | Compose `phenotypic.analysis` filters + endpoint model and emit `analysis.{csv,parquet}`. |
+| [Aux ports](09_aux_ports.md) | Wire operation-typed parameters (e.g. `FilamentousFungiDetector.inoculum_detector`) via Galaxy-style aux input ports. |
 
 ## Prerequisites
 
@@ -47,4 +48,5 @@ hub, see the [GUI hub guide](../../how_to/pages/gui_hub.md). This walkthrough is
 06_view_results
 07_pick_points
 08_analysis
+09_aux_ports
 ```

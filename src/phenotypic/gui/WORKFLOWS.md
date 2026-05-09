@@ -41,6 +41,7 @@ without a matching defined+dispatched `_capture_<id>` (or a
 | view_results   | View results         | Empty-state hub mount + populated standalone viewer + measurement table.   | `_capture_view_results`   | `gui/06_view_results.md`     | ✅ shipping |
 | pick_points    | Manual point picker  | Pickable badge, picker modal, RGB / Input channel toggle, confirm round trip. | `_capture_pick_points`    | `gui/07_pick_points.md`      | ✅ shipping |
 | analysis       | Analysis sub-app     | `/analysis/` mount, pipeline header, post / filter / model section authoring, run button emitting `analysis.{csv,parquet}`. | `_capture_analysis` | `gui/08_analysis.md` | ✅ shipping |
+| aux_ports      | Wiring aux op params | Galaxy-style aux input ports: ops such as `FilamentousFungiDetector` / `CompositeDetector` accept other ops as constructor params; builder surfaces these as port handles wired from an aux dock via click-then-click (or the inspector "Add aux for ..." palette as a drop-on-port shortcut), with `+`/`×` slot controls and drill-in for nested aux. | `_capture_aux_ports` | `gui/09_aux_ports.md`     | ✅ shipping |
 
 > **`view_results` note.** The empty-state screenshot
 > (`view_results/01_viewer_empty.png`) is captured by

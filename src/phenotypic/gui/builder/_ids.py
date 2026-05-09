@@ -37,6 +37,17 @@ STORE_SESSION_ID = "store-session-id"
 #: List of ``node_id`` values that have a cached intermediate this session.
 STORE_INTERMEDIATE_KEYS = "store-intermediate-keys"
 
+#: ``dcc.Store`` holding the partially-specified wire during the click-then-click
+#: connection flow. Data shape:
+#: ``{"endpoint_kind": "port" | "aux", "node_id": str, "param": str | None,
+#: "slot": int | None}`` or ``None`` when no wire is pending.
+STORE_PENDING_WIRE = "store-pending-wire"
+
+#: ``dcc.Store`` recording which ``(consumer_node_id, param_name, slot)`` the
+#: aux palette is currently filtering for. ``None`` when the palette is not in
+#: port-targeted mode.
+STORE_AUX_PALETTE_TARGET = "store-aux-palette-target"
+
 
 # ---------------------------------------------------------------------------
 # Top-level layout regions
@@ -96,6 +107,9 @@ BTN_NEW_PIPELINE_NODE = "btn-new-pipeline-node"
 
 #: Removes the currently selected node from the visible scope.
 BTN_DELETE_NODE = "btn-delete-node"
+
+#: Toolbar button next to "Delete selected" for deleting the selected aux wire.
+BTN_DELETE_WIRE = "btn-delete-wire"
 
 #: Pops the breadcrumb (returns to the parent scope).
 BTN_DRILL_OUT = "btn-drill-out"
@@ -340,12 +354,157 @@ def prefab_card_id(class_name: str) -> Dict[str, Any]:
     return {"type": "prefab-card", "class_name": class_name}
 
 
+def port_handle_id(node_id: str, param: str, slot: int) -> Dict[str, Any]:
+    """Build the pattern-matching id for a consumer's port-handle sub-node.
+
+    Each aux-consuming operation renders one cytoscape sub-node per occupied
+    aux-port slot; clicking the sub-node either starts or completes a wire in
+    the click-then-click connection flow.
+
+    Args:
+        node_id: ``node_id`` of the consumer operation the port is attached to.
+        param: Name of the consumer's aux-typed parameter the port represents.
+        slot: Zero-based slot index. Always ``0`` for scalar aux ports;
+            list-typed aux ports use ``0..n-1``.
+
+    Returns:
+        Dict of shape ``{"type": "port-handle", "node_id": node_id,
+        "param": param, "slot": slot}``. Phase 3 callbacks should match
+        ``Input({"type": "port-handle", "node_id": ALL, "param": ALL,
+        "slot": ALL}, "n_clicks")`` and use ``MATCH`` on the keys they need
+        to disambiguate per-handle events.
+    """
+
+    return {"type": "port-handle", "node_id": node_id, "param": param, "slot": slot}
+
+
+def aux_node_id(node_id: str) -> Dict[str, Any]:
+    """Build the pattern-matching id for an aux-dock cytoscape node.
+
+    Aux nodes live in the dock area below the main ribbon and feed values into
+    consumer operations through wires. Distinct from main-ribbon node IDs
+    (which use raw strings) so callbacks can pattern-match aux-specific
+    events without colliding with ribbon selections.
+
+    Args:
+        node_id: Stable identifier of the aux node (matches the ``node_id``
+            in :class:`BuilderState`).
+
+    Returns:
+        Dict of shape ``{"type": "aux-node", "node_id": node_id}``. Phase 3
+        callbacks should match ``Input({"type": "aux-node", "node_id": ALL},
+        "tapNode")`` (or similar) and ``MATCH`` on ``node_id``.
+    """
+
+    return {"type": "aux-node", "node_id": node_id}
+
+
+def port_slot_add_id(node_id: str, param: str) -> Dict[str, Any]:
+    """Build the pattern-matching id for the inspector's "+" slot button.
+
+    Rendered next to list-typed aux ports in the inspector so the user can
+    grow the slot count by one. Scalar aux ports do not render this button.
+
+    Args:
+        node_id: ``node_id`` of the consumer whose port is being grown.
+        param: Name of the list-typed aux parameter to add a slot to.
+
+    Returns:
+        Dict of shape ``{"type": "port-slot-add", "node_id": node_id,
+        "param": param}``. Phase 3 callbacks should match
+        ``Input({"type": "port-slot-add", "node_id": ALL, "param": ALL},
+        "n_clicks")`` and ``MATCH`` on the keys they care about.
+    """
+
+    return {"type": "port-slot-add", "node_id": node_id, "param": param}
+
+
+def port_slot_remove_id(node_id: str, param: str, slot: int) -> Dict[str, Any]:
+    """Build the pattern-matching id for the inspector's per-slot "x" button.
+
+    One button per slot on a list-typed aux port; clicking it removes that
+    slot (and any wire connected to it).
+
+    Args:
+        node_id: ``node_id`` of the consumer whose port slot is being removed.
+        param: Name of the list-typed aux parameter the slot belongs to.
+        slot: Zero-based index of the slot to remove.
+
+    Returns:
+        Dict of shape ``{"type": "port-slot-remove", "node_id": node_id,
+        "param": param, "slot": slot}``. Phase 3 callbacks should match
+        ``Input({"type": "port-slot-remove", "node_id": ALL, "param": ALL,
+        "slot": ALL}, "n_clicks")``.
+    """
+
+    return {"type": "port-slot-remove", "node_id": node_id, "param": param, "slot": slot}
+
+
+def wire_disconnect_id(node_id: str, param: str, slot: int) -> Dict[str, Any]:
+    """Build the pattern-matching id for the inspector's "Disconnect" button.
+
+    Rendered on each wired-port row in the inspector so the user can detach
+    the producer from this consumer slot without deleting the producer node.
+
+    Args:
+        node_id: ``node_id`` of the consumer whose port is wired.
+        param: Name of the consumer's aux parameter that holds the wire.
+        slot: Zero-based slot index of the wire to disconnect (always ``0``
+            for scalar ports).
+
+    Returns:
+        Dict of shape ``{"type": "wire-disconnect", "node_id": node_id,
+        "param": param, "slot": slot}``. Phase 3 callbacks should match
+        ``Input({"type": "wire-disconnect", "node_id": ALL, "param": ALL,
+        "slot": ALL}, "n_clicks")``.
+    """
+
+    return {"type": "wire-disconnect", "node_id": node_id, "param": param, "slot": slot}
+
+
+def aux_palette_add_id(
+    class_name: str, target_node_id: str, param: str, slot: int
+) -> Dict[str, Any]:
+    """Build the pattern-matching id for a port-targeted aux-palette button.
+
+    Shown when the aux palette is filtered for a specific port (i.e.
+    ``STORE_AUX_PALETTE_TARGET`` is non-``None``). Clicking the button creates
+    the aux node AND wires it to the target port in one shot.
+
+    Args:
+        class_name: Registry key (e.g. ``"PixelPicker"``) of the aux op the
+            button creates.
+        target_node_id: ``node_id`` of the consumer whose port the new aux
+            node will be wired to.
+        param: Name of the consumer's aux parameter that will receive the
+            wire.
+        slot: Zero-based slot index of the destination port.
+
+    Returns:
+        Dict of shape ``{"type": "aux-palette-add", "class_name": class_name,
+        "target_node_id": target_node_id, "param": param, "slot": slot}``.
+        Phase 3 callbacks should match ``Input({"type": "aux-palette-add",
+        "class_name": ALL, "target_node_id": ALL, "param": ALL, "slot": ALL},
+        "n_clicks")``.
+    """
+
+    return {
+        "type": "aux-palette-add",
+        "class_name": class_name,
+        "target_node_id": target_node_id,
+        "param": param,
+        "slot": slot,
+    }
+
+
 __all__ = [
     "LoadPickerPage",
     "StageName",
     "STORE_BUILDER_STATE",
     "STORE_SESSION_ID",
     "STORE_INTERMEDIATE_KEYS",
+    "STORE_PENDING_WIRE",
+    "STORE_AUX_PALETTE_TARGET",
     "BREADCRUMB_CONTAINER",
     "PALETTE_CONTAINER",
     "CANVAS_CYTOSCAPE",
@@ -358,6 +517,7 @@ __all__ = [
     "BTN_LOAD",
     "BTN_NEW_PIPELINE_NODE",
     "BTN_DELETE_NODE",
+    "BTN_DELETE_WIRE",
     "BTN_DRILL_OUT",
     "BTN_DRILL_IN",
     "BTN_CANVAS_FIT",
@@ -415,4 +575,10 @@ __all__ = [
     "palette_button_id",
     "breadcrumb_link_id",
     "prefab_card_id",
+    "port_handle_id",
+    "aux_node_id",
+    "port_slot_add_id",
+    "port_slot_remove_id",
+    "wire_disconnect_id",
+    "aux_palette_add_id",
 ]

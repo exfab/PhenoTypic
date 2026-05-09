@@ -29,7 +29,6 @@ from PIL import Image as PILImage
 from phenotypic.gui._config import ChannelName
 from phenotypic.gui._design import FONT_FAMILY_MONO, FONT_SIZE_LABEL
 from phenotypic.gui._operation_registry import get_registry
-from phenotypic.gui.builder._ids import StageName
 from phenotypic.gui.builder._state import stage_of
 
 if TYPE_CHECKING:  # pragma: no cover - import only used for type hints
