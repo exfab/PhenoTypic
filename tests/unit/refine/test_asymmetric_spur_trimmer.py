@@ -173,35 +173,12 @@ class TestWebNoiseTrimmedBeehiveMode:
     def test_web_removed(self, web_noise_colony: Image) -> None:
         refined = AsymmetricSpurTrimmer(
                 beehive_threshold=0.002,
-                max_trim_fraction=0.9,  # lift the safety cap for this synthetic
         ).apply(web_noise_colony)
 
         # The web lives at cols 160-340 ish. After trim, little should survive there.
         web_cols_after = (refined.objmap[:, 180:330] > 0).sum()
         assert web_cols_after < 200, (
             "Web noise should be largely removed"
-        )
-
-
-class TestUniformlyAsymmetricSafetyCap:
-    """A mostly-asymmetric single colony trips the safety cap → no trim."""
-
-    def test_thin_ellipse_untouched(self) -> None:
-        objmap = np.zeros((200, 200), dtype=np.int32)
-        rr, cc = np.indices(objmap.shape)
-        # Thin horizontal ellipse: semi-major=80, semi-minor=8.
-        ellipse = ((rr - 100) / 8.0) ** 2 + ((cc - 100) / 80.0) ** 2 <= 1.0
-        objmap[ellipse] = 1
-        image = _make_image(objmap)
-
-        before = image.objmap[:].copy()
-        refined = AsymmetricSpurTrimmer().apply(image)
-
-        # Safety cap or a non-trivially-large preservation expected.
-        trimmed = int((before > 0).sum()) - int((refined.objmap[:] > 0).sum())
-        original = int((before > 0).sum())
-        assert trimmed / max(original, 1) <= 0.25 + 1e-9, (
-            "Safety cap was not respected"
         )
 
 
@@ -242,35 +219,13 @@ class TestMultiColonyIndependent:
             self, two_colonies_one_spurred: Image
     ) -> None:
         before = two_colonies_one_spurred.objmap[:].copy()
-        refined = AsymmetricSpurTrimmer(max_trim_fraction=0.9).apply(
-                two_colonies_one_spurred
-        )
+        refined = AsymmetricSpurTrimmer().apply(two_colonies_one_spurred)
         after = refined.objmap[:]
 
         # Label-1 disk (no spur) must be byte-for-byte identical.
         np.testing.assert_array_equal(after == 1, before == 1)
         # Label 2's spur region must have lost pixels.
         assert (after == 2).sum() < (before == 2).sum()
-
-
-class TestMaxTrimFractionSafety:
-    """A small colony with a big spur must not be eaten past max_trim_fraction."""
-
-    def test_safety_cap_respected(self) -> None:
-        objmap = np.zeros((150, 500), dtype=np.int32)
-        _stamp_disk(objmap, centre=(75, 50), radius=15, label=1)
-        # Spur dominating the colony by pixel count.
-        _stamp_rect(objmap, start=(73, 80), end=(77, 480), label=1)
-        image = _make_image(objmap)
-
-        original_area = int((image.objmap[:] == 1).sum())
-        refined = AsymmetricSpurTrimmer(max_trim_fraction=0.25).apply(image)
-        after_area = int((refined.objmap[:] == 1).sum())
-
-        trimmed_fraction = (original_area - after_area) / max(original_area, 1)
-        assert trimmed_fraction <= 0.25 + 1e-9, (
-            f"Safety cap violated: trimmed {trimmed_fraction:.2%}"
-        )
 
 
 class TestBeehiveThresholdMonotonic:
@@ -283,7 +238,6 @@ class TestBeehiveThresholdMonotonic:
             img = _make_image(web_noise_colony.objmap[:].copy())
             refined = AsymmetricSpurTrimmer(
                     beehive_threshold=threshold,
-                    max_trim_fraction=0.9,
             ).apply(img)
             trimmed_counts.append(
                     originals - int((refined.objmap[:] > 0).sum())
@@ -302,7 +256,6 @@ class TestJsonRoundtrip:
         trimmer = AsymmetricSpurTrimmer(
                 symmetry_threshold=0.4,
                 beehive_threshold=0.003,
-                max_trim_fraction=0.3,
                 min_cc_area=75,
                 min_object_area=120,
                 method="intensity",
@@ -316,7 +269,6 @@ class TestJsonRoundtrip:
         assert isinstance(restored_trimmer, AsymmetricSpurTrimmer)
         assert restored_trimmer.symmetry_threshold == 0.4
         assert restored_trimmer.beehive_threshold == 0.003
-        assert restored_trimmer.max_trim_fraction == 0.3
         assert restored_trimmer.min_cc_area == 75
         assert restored_trimmer.min_object_area == 120
         assert restored_trimmer.method == "intensity"
@@ -383,10 +335,6 @@ class TestInvalidConstructorArgs:
     def test_negative_beehive_threshold(self) -> None:
         with pytest.raises(ValueError):
             AsymmetricSpurTrimmer(beehive_threshold=-0.01)
-
-    def test_max_trim_fraction_zero(self) -> None:
-        with pytest.raises(ValueError):
-            AsymmetricSpurTrimmer(max_trim_fraction=0.0)
 
     def test_invalid_method(self) -> None:
         with pytest.raises(ValueError):
