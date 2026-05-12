@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=320b28a0"></script>
+    <script src="../../../_static/documentation_options.js?v=52d5597a"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -64,7 +64,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.14.0b5" />
+  <meta name="docsearch:version" content="0.15.0" />
   </head>
   
   
@@ -527,19 +527,20 @@
   <h1>Source code for phenotypic.enhance._bilateral_denoise</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">ClassVar</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.restoration</span><span class="w"> </span><span class="kn">import</span> <span class="n">denoise_bilateral</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageEnhancer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageDenoiser</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..tools_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">_GATSupportMixin</span>
 
 
 <div class="viewcode-block" id="BilateralDenoise">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.BilateralDenoise">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">BilateralDenoise</span><span class="p">(</span><span class="n">ImageEnhancer</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">BilateralDenoise</span><span class="p">(</span><span class="n">_GATSupportMixin</span><span class="p">,</span> <span class="n">ImageDenoiser</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Denoise ``detect_mat`` with edge-preserving bilateral filtering.</span>
 
 <span class="sd">    Averages pixel values based on both spatial proximity and intensity</span>
@@ -555,19 +556,24 @@
 <span class="sd">            (0.02--0.05) preserve subtle boundaries; medium values</span>
 <span class="sd">            (0.05--0.15) balance denoising and edge preservation; large</span>
 <span class="sd">            values (0.2--0.5) smooth aggressively. ``None`` (default)</span>
-<span class="sd">            auto-estimates from image statistics.</span>
+<span class="sd">            auto-estimates from image statistics. Retargeted to 1.0 when</span>
+<span class="sd">            ``use_gat=True``.</span>
 <span class="sd">        sigma_spatial: Spatial distance weighting in pixels. Small values</span>
 <span class="sd">            (1--5) apply local denoising; medium values (10--20) smooth</span>
 <span class="sd">            regionally; large values (30--50) smooth wide areas. Keep</span>
-<span class="sd">            below the minimum colony diameter. Default: 15.</span>
+<span class="sd">            below the minimum colony diameter. Default: 15. Not affected</span>
+<span class="sd">            by GAT (purely spatial parameter).</span>
 <span class="sd">        win_size: Window size for filter computation. ``None`` (default)</span>
 <span class="sd">            auto-calculates from ``sigma_spatial``.</span>
 <span class="sd">        mode: Boundary handling. Accepted values: ``&#39;constant&#39;``,</span>
 <span class="sd">            ``&#39;edge&#39;``, ``&#39;symmetric&#39;``, ``&#39;reflect&#39;``, ``&#39;wrap&#39;``.</span>
 <span class="sd">            Default: ``&#39;constant&#39;``.</span>
 <span class="sd">        cval: Fill value when ``mode=&#39;constant&#39;``. Default: 0.</span>
-<span class="sd">        clip: Clip output to [0, 1]. Default: ``True``. Set to ``False``</span>
-<span class="sd">            when using with variance-stabilizing transforms (e.g., GAT).</span>
+<span class="sd">        clip: Clip output to [0, 1]. Default: ``True``. Automatically</span>
+<span class="sd">            deferred when ``use_gat=True``.</span>
+<span class="sd">        use_gat: Wrap denoising in the Generalized Anscombe Transform.</span>
+<span class="sd">            Default: ``False``.</span>
+<span class="sd">        gat_gain, gat_mu, gat_read_sigma, gat_scale_factor: GAT parameters.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``detect_mat`` smoothed by bilateral</span>
@@ -595,6 +601,9 @@
 <span class="sd">        denoising strategies on low-light plate images.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
+    <span class="n">_GAT_NOISE_PARAMS</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;sigma_color&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">}</span>
+    <span class="n">_GAT_DEFER_ATTRS</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;clip&quot;</span><span class="p">,)</span>
+
 <div class="viewcode-block" id="BilateralDenoise.__init__">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.BilateralDenoise.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
@@ -606,41 +615,23 @@
             <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;constant&quot;</span><span class="p">,</span>
             <span class="n">cval</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
             <span class="n">clip</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Parameters:</span>
-<span class="sd">            sigma_color (float | None): Standard deviation for grayvalue/color similarity.</span>
-<span class="sd">                Controls how permissive the filter is when averaging nearby pixels. Small</span>
-<span class="sd">                values (0.02–0.05 for float images) enforce strict color matching,</span>
-<span class="sd">                preserving edges but leaving more noise. Medium values (0.05–0.15)</span>
-<span class="sd">                provide balanced denoising and edge preservation—recommended for most</span>
-<span class="sd">                fungal colony imaging. Large values (0.2–0.5) aggressively average</span>
-<span class="sd">                across brightness ranges, risking boundary blur. If None (default),</span>
-<span class="sd">                automatically estimated from the standard deviation of the image.</span>
-<span class="sd">                For uint8 images (0–255), scale values proportionally: 0.05 float</span>
-<span class="sd">                corresponds roughly to 13 in uint8 scale. Recommended: leave as None</span>
-<span class="sd">                for automatic estimation, or set to 0.08–0.12 for typical colony plates.</span>
-<span class="sd">            sigma_spatial (float): Standard deviation for spatial distance in pixels.</span>
-<span class="sd">                Controls the extent of the neighborhood influencing each pixel. Small</span>
-<span class="sd">                values (1–5) apply highly local denoising, preserving fine texture.</span>
-<span class="sd">                Medium values (10–20) smooth regionally without over-smoothing—suitable</span>
-<span class="sd">                for general use. Large values (30–50) smooth broad areas, helpful for</span>
-<span class="sd">                correcting illumination variations but risking loss of small colonies</span>
-<span class="sd">                or merging of adjacent growth. Recommended: 15 for balanced results;</span>
-<span class="sd">                adjust based on colony size (keep smaller than minimum colony diameter).</span>
-<span class="sd">            win_size (int | None): Window size for bilateral filter computation. If None</span>
-<span class="sd">                (default), automatically calculated as max(5, 2 * ceil(3 * sigma_spatial) + 1).</span>
-<span class="sd">                Generally safe to leave as None; adjust only if you have specific</span>
-<span class="sd">                performance or memory constraints.</span>
-<span class="sd">            mode (str): How to handle image boundaries. Options: &#39;constant&#39; (default,</span>
-<span class="sd">                pad with cval), &#39;edge&#39; (replicate edge), &#39;symmetric&#39;, &#39;reflect&#39;, &#39;wrap&#39;.</span>
-<span class="sd">                &#39;constant&#39; with cval=0 works well for agar plate backgrounds (black edges).</span>
-<span class="sd">                &#39;reflect&#39; mirrors edges, useful for non-border regions.</span>
-<span class="sd">            cval (float): Constant fill value for boundaries when mode=&#39;constant&#39;. Default</span>
-<span class="sd">                is 0 (black), appropriate for agar backgrounds.</span>
-<span class="sd">            clip (bool): Whether to clip output to [0, 1] range. Default True. Set to</span>
-<span class="sd">                False when using with variance-stabilizing transforms (e.g., GAT) that</span>
-<span class="sd">                require preserving the original scale of transformed data.</span>
+<span class="sd">            sigma_color (float | None): Standard deviation for grayvalue</span>
+<span class="sd">                similarity. None (default) auto-estimates. Retargeted to 1.0</span>
+<span class="sd">                when ``use_gat=True``.</span>
+<span class="sd">            sigma_spatial (float): Standard deviation for spatial distance</span>
+<span class="sd">                in pixels. Default: 15.</span>
+<span class="sd">            win_size (int | None): Window size for bilateral filter</span>
+<span class="sd">                computation. None (default) auto-calculates.</span>
+<span class="sd">            mode (str): Boundary handling. &#39;constant&#39; (default), &#39;edge&#39;,</span>
+<span class="sd">                &#39;symmetric&#39;, &#39;reflect&#39;, &#39;wrap&#39;.</span>
+<span class="sd">            cval (float): Fill value for &#39;constant&#39; mode. Default: 0.</span>
+<span class="sd">            clip (bool): Whether to clip output to [0, 1] range. Default</span>
+<span class="sd">                True. Automatically deferred when ``use_gat=True``.</span>
+<span class="sd">            **kwargs: Forwarded to :class:`_GATSupportMixin`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">sigma_spatial</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;sigma_spatial must be &gt; 0&quot;</span><span class="p">)</span>
@@ -654,6 +645,7 @@
                     <span class="sa">f</span><span class="s1">&#39;&quot;wrap&quot;; got </span><span class="si">{</span><span class="n">mode</span><span class="si">!r}</span><span class="s1">&#39;</span>
             <span class="p">)</span>
 
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sigma_color</span> <span class="o">=</span> <span class="n">sigma_color</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sigma_spatial</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">sigma_spatial</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">win_size</span> <span class="o">=</span> <span class="n">win_size</span>
@@ -663,7 +655,11 @@
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply bilateral denoising to reduce noise while preserving colony edges in the detection matrix channel.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply bilateral denoising to reduce noise while preserving colony edges.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_gat_apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;detect_mat&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_denoise_detect_mat</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">image</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_denoise_detect_mat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="c1"># denoise_bilateral may require a writable array, so create a copy</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">denoise_bilateral</span><span class="p">(</span>
                 <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
@@ -676,8 +672,7 @@
         <span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">clip</span><span class="p">:</span>
             <span class="n">result</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
-        <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">result</span>
-        <span class="k">return</span> <span class="n">image</span></div>
+        <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">result</span></div>
 
 </pre></div>
 

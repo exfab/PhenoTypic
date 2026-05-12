@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=320b28a0"></script>
+    <script src="../../_static/documentation_options.js?v=52d5597a"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -69,7 +69,7 @@
     <link rel="prev" title="phenotypic.analysis.EdgeCorrector" href="phenotypic.analysis.EdgeCorrector.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.14.0b5" />
+  <meta name="docsearch:version" content="0.15.0" />
   </head>
   
   
@@ -515,6 +515,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.MeasureFeatures.html">phenotypic.abc_.MeasureFeatures</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageOperation.html">phenotypic.abc_.ImageOperation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageEnhancer.html">phenotypic.abc_.ImageEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageDenoiser.html">phenotypic.abc_.ImageDenoiser</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageCorrector.html">phenotypic.abc_.ImageCorrector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ObjectDetector.html">phenotypic.abc_.ObjectDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ObjectRefiner.html">phenotypic.abc_.ObjectRefiner</a></li>
@@ -598,8 +599,6 @@
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.enhance.html">phenotypic.enhance</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.AnscombeForward.html">phenotypic.enhance.AnscombeForward</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.AnscombeInverse.html">phenotypic.enhance.AnscombeInverse</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.BayesShrinkEnhancer.html">phenotypic.enhance.BayesShrinkEnhancer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.BilateralDenoise.html">phenotypic.enhance.BilateralDenoise</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.BM3DDenoiser.html">phenotypic.enhance.BM3DDenoiser</a></li>
@@ -1334,7 +1333,7 @@ otherwise an array.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.analysis.LinearSoftplusModel.analyze">
-<span class="sig-name descname"><span class="pre">analyze</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.2)"><span class="pre">pandas.DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.2)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/analysis/_linear_softplus.html#LinearSoftplusModel.analyze"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.analysis.LinearSoftplusModel.analyze" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">analyze</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/analysis/_linear_softplus.html#LinearSoftplusModel.analyze"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.analysis.LinearSoftplusModel.analyze" title="Link to this definition">#</a></dt>
 <dd><p>Fit the model to every group of <code class="docutils literal notranslate"><span class="pre">data</span></code>.</p>
 <p>Pre-computes broadcasted helper columns on the raw data before
 delegating to the base-class aggregation pipeline:</p>
@@ -1366,10 +1365,10 @@ column without MultiIndex juggling.</p>
     or references columns absent from <code class="docutils literal notranslate"><span class="pre">data</span></code>.</p>
 </dd>
 <dt class="field-even">Parameters<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>data</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.2)"><em>pandas.DataFrame</em></a>)</p>
+<dd class="field-even"><p><strong>data</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><em>pandas.DataFrame</em></a>)</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.2)">pandas.DataFrame</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)">pandas.DataFrame</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -1406,11 +1405,11 @@ legend entry.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.analysis.LinearSoftplusModel.results">
-<span class="sig-name descname"><span class="pre">results</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.2)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.LinearSoftplusModel.results" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">results</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.LinearSoftplusModel.results" title="Link to this definition">#</a></dt>
 <dd><p>Return the most recent fit results produced by <a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.LinearSoftplusModel.analyze" title="phenotypic.analysis.LinearSoftplusModel.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.2)">pandas.DataFrame</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)">pandas.DataFrame</a></p>
 </dd>
 </dl>
 </dd></dl>

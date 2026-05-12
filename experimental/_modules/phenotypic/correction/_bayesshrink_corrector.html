@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=320b28a0"></script>
+    <script src="../../../_static/documentation_options.js?v=52d5597a"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -64,7 +64,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.14.0b5" />
+  <meta name="docsearch:version" content="0.15.0" />
   </head>
   
   
@@ -527,7 +527,7 @@
   <h1>Source code for phenotypic.correction._bayesshrink_corrector</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Literal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Literal</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
@@ -536,11 +536,12 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.restoration</span><span class="w"> </span><span class="kn">import</span> <span class="n">denoise_wavelet</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageCorrector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..tools_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">_GATSupportMixin</span>
 
 
 <div class="viewcode-block" id="BayesShrinkCorrector">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.correction.html#phenotypic.correction.BayesShrinkCorrector">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">BayesShrinkCorrector</span><span class="p">(</span><span class="n">ImageCorrector</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">BayesShrinkCorrector</span><span class="p">(</span><span class="n">_GATSupportMixin</span><span class="p">,</span> <span class="n">ImageCorrector</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Denoise all image components using adaptive BayesShrink wavelet thresholding.</span>
 
 <span class="sd">    Apply subband-adaptive wavelet denoising to RGB (if present), grayscale,</span>
@@ -553,7 +554,9 @@
 <span class="sd">    Args:</span>
 <span class="sd">        sigma: Noise standard deviation. ``None`` auto-estimates from the</span>
 <span class="sd">            finest wavelet subband. Typical range: 0.01--0.1 for normalized</span>
-<span class="sd">            images. Default: ``None``.</span>
+<span class="sd">            images. Retargeted to 1.0 when ``use_gat=True`` (applies only</span>
+<span class="sd">            to the gray and detect_mat passes; RGB stays out of GAT).</span>
+<span class="sd">            Default: ``None``.</span>
 <span class="sd">        wavelet: Wavelet family name. ``&#39;db2&#39;`` balances smoothness and</span>
 <span class="sd">            locality; ``&#39;db4&#39;`` preserves finer spatial detail. Default:</span>
 <span class="sd">            ``&#39;db2&#39;``.</span>
@@ -565,6 +568,14 @@
 <span class="sd">        convert2ycbcr: Denoise RGB in YCbCr space so luminance and</span>
 <span class="sd">            chrominance are handled separately, preserving colony color.</span>
 <span class="sd">            Only applies when RGB data is present. Default: ``True``.</span>
+<span class="sd">        rescale_sigma: skimage flag controlling internal sigma rescaling.</span>
+<span class="sd">            Default: ``True``. Automatically forced to ``False`` for the</span>
+<span class="sd">            gray/detect_mat passes when ``use_gat=True`` (RGB pass keeps</span>
+<span class="sd">            its caller-supplied value because GAT is bypassed there).</span>
+<span class="sd">        use_gat: Wrap gray and detect_mat denoising in the Generalized</span>
+<span class="sd">            Anscombe Transform for Poisson-Gaussian noise. RGB is not</span>
+<span class="sd">            transformed. Default: ``False``.</span>
+<span class="sd">        gat_gain, gat_mu, gat_read_sigma, gat_scale_factor: GAT parameters.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with all components (RGB, gray, detect_mat)</span>
@@ -596,6 +607,9 @@
 <span class="sd">        denoising plate images before color analysis.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
+    <span class="n">_GAT_NOISE_PARAMS</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;sigma&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">}</span>
+    <span class="n">_GAT_DEFER_ATTRS</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;rescale_sigma&quot;</span><span class="p">,</span> <span class="s2">&quot;clip&quot;</span><span class="p">)</span>
+
 <div class="viewcode-block" id="BayesShrinkCorrector.__init__">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.correction.html#phenotypic.correction.BayesShrinkCorrector.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
@@ -605,50 +619,60 @@
         <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;soft&quot;</span><span class="p">,</span> <span class="s2">&quot;hard&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;soft&quot;</span><span class="p">,</span>
         <span class="n">wavelet_levels</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">convert2ycbcr</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">rescale_sigma</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">clip</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize BayesShrink adaptive corrector for all image components.</span>
 
 <span class="sd">        Parameters:</span>
 <span class="sd">            sigma (float | None): Noise level. None (default) auto-estimates.</span>
-<span class="sd">                BayesShrink benefits from accurate sigma for optimal adaptive</span>
-<span class="sd">                thresholding. Test explicit values if auto-estimation seems off.</span>
-<span class="sd">            wavelet (str): Wavelet type. &#39;db2&#39; (default) is general-purpose.</span>
-<span class="sd">                &#39;db4&#39; for finer detail preservation.</span>
-<span class="sd">            mode (Literal[&#39;soft&#39;, &#39;hard&#39;]): &#39;soft&#39; (default) for smoothness,</span>
-<span class="sd">                &#39;hard&#39; for sharper edges with possible noise residue.</span>
-<span class="sd">            wavelet_levels (int | None): Levels. None = max-3 (automatic).</span>
-<span class="sd">            convert2ycbcr (bool): Denoise RGB in YCbCr (True, default) for</span>
-<span class="sd">                better color preservation. Only applies when RGB exists.</span>
+<span class="sd">                Retargeted to 1.0 when ``use_gat=True``.</span>
+<span class="sd">            wavelet (str): Wavelet type. &#39;db2&#39; (default).</span>
+<span class="sd">            mode (Literal[&#39;soft&#39;, &#39;hard&#39;]): &#39;soft&#39; (default) or &#39;hard&#39;.</span>
+<span class="sd">            wavelet_levels (int | None): None = max-3 (automatic).</span>
+<span class="sd">            convert2ycbcr (bool): Denoise RGB in YCbCr (default True).</span>
+<span class="sd">            rescale_sigma (bool): skimage internal flag. Default True.</span>
+<span class="sd">                Auto-deferred during GAT.</span>
+<span class="sd">            **kwargs: Forwarded to :class:`_GATSupportMixin`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span> <span class="o">=</span> <span class="n">sigma</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">wavelet</span> <span class="o">=</span> <span class="n">wavelet</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="n">mode</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">wavelet_levels</span> <span class="o">=</span> <span class="n">wavelet_levels</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">convert2ycbcr</span> <span class="o">=</span> <span class="n">convert2ycbcr</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">convert2ycbcr</span> <span class="o">=</span> <span class="n">convert2ycbcr</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rescale_sigma</span> <span class="o">=</span> <span class="n">rescale_sigma</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">clip</span> <span class="o">=</span> <span class="n">clip</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply BayesShrink adaptive wavelet denoising to all image components.</span>
 
-<span class="sd">        Returns:</span>
-<span class="sd">            Modified Image with all components denoised adaptively</span>
+<span class="sd">        RGB stays outside the GAT region (uint8, color-mixed channels);</span>
+<span class="sd">        gray and detect_mat are GAT-wrapped when ``use_gat=True``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># Denoise RGB if present</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">image</span><span class="o">.</span><span class="n">rgb</span><span class="o">.</span><span class="n">isempty</span><span class="p">():</span>
-            <span class="n">denoised_rgb</span> <span class="o">=</span> <span class="n">denoise_wavelet</span><span class="p">(</span>
-                <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">rgb</span><span class="p">[:],</span>
-                <span class="n">sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma</span><span class="p">,</span>
-                <span class="n">wavelet</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">wavelet</span><span class="p">,</span>
-                <span class="n">mode</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="p">,</span>
-                <span class="n">wavelet_levels</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">wavelet_levels</span><span class="p">,</span>
-                <span class="n">method</span><span class="o">=</span><span class="s2">&quot;BayesShrink&quot;</span><span class="p">,</span>
-                <span class="n">convert2ycbcr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">convert2ycbcr</span><span class="p">,</span>
-                <span class="n">channel_axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
-                <span class="n">rescale_sigma</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="n">image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">rgb</span> <span class="o">=</span> <span class="n">denoised_rgb</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_denoise_rgb</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_gat_apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_denoise_gray</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_gat_apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;detect_mat&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_denoise_detect_mat</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">image</span>
 
-        <span class="c1"># Always denoise gray</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_denoise_rgb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">denoised_rgb</span> <span class="o">=</span> <span class="n">denoise_wavelet</span><span class="p">(</span>
+            <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">rgb</span><span class="p">[:],</span>
+            <span class="n">sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma</span><span class="p">,</span>
+            <span class="n">wavelet</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">wavelet</span><span class="p">,</span>
+            <span class="n">mode</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="p">,</span>
+            <span class="n">wavelet_levels</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">wavelet_levels</span><span class="p">,</span>
+            <span class="n">method</span><span class="o">=</span><span class="s2">&quot;BayesShrink&quot;</span><span class="p">,</span>
+            <span class="n">convert2ycbcr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">convert2ycbcr</span><span class="p">,</span>
+            <span class="n">channel_axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">rescale_sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rescale_sigma</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">rgb</span> <span class="o">=</span> <span class="n">denoised_rgb</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_denoise_gray</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">denoised_gray</span> <span class="o">=</span> <span class="n">denoise_wavelet</span><span class="p">(</span>
             <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">gray</span><span class="p">[:],</span>
             <span class="n">sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma</span><span class="p">,</span>
@@ -657,11 +681,13 @@
             <span class="n">wavelet_levels</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">wavelet_levels</span><span class="p">,</span>
             <span class="n">method</span><span class="o">=</span><span class="s2">&quot;BayesShrink&quot;</span><span class="p">,</span>
             <span class="n">channel_axis</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-            <span class="n">rescale_sigma</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">rescale_sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rescale_sigma</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="n">image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">gray</span> <span class="o">=</span> <span class="n">denoised_gray</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">clip</span><span class="p">:</span>
+            <span class="n">denoised_gray</span> <span class="o">=</span> <span class="n">denoised_gray</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">gray</span> <span class="o">=</span> <span class="n">denoised_gray</span>
 
-        <span class="c1"># Always denoise detect_mat</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_denoise_detect_mat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">denoised_enh</span> <span class="o">=</span> <span class="n">denoise_wavelet</span><span class="p">(</span>
             <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:],</span>
             <span class="n">sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma</span><span class="p">,</span>
@@ -670,11 +696,11 @@
             <span class="n">wavelet_levels</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">wavelet_levels</span><span class="p">,</span>
             <span class="n">method</span><span class="o">=</span><span class="s2">&quot;BayesShrink&quot;</span><span class="p">,</span>
             <span class="n">channel_axis</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-            <span class="n">rescale_sigma</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">rescale_sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rescale_sigma</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="n">image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">detect_mat</span> <span class="o">=</span> <span class="n">denoised_enh</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">image</span></div>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">clip</span><span class="p">:</span>
+            <span class="n">denoised_enh</span> <span class="o">=</span> <span class="n">denoised_enh</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">detect_mat</span> <span class="o">=</span> <span class="n">denoised_enh</span></div>
 
 </pre></div>
 

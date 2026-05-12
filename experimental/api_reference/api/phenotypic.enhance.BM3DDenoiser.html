@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=320b28a0"></script>
+    <script src="../../_static/documentation_options.js?v=52d5597a"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -67,7 +67,7 @@
     <link rel="prev" title="phenotypic.enhance.BilateralDenoise" href="phenotypic.enhance.BilateralDenoise.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.14.0b5" />
+  <meta name="docsearch:version" content="0.15.0" />
   </head>
   
   
@@ -513,6 +513,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.MeasureFeatures.html">phenotypic.abc_.MeasureFeatures</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageOperation.html">phenotypic.abc_.ImageOperation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageEnhancer.html">phenotypic.abc_.ImageEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageDenoiser.html">phenotypic.abc_.ImageDenoiser</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageCorrector.html">phenotypic.abc_.ImageCorrector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ObjectDetector.html">phenotypic.abc_.ObjectDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ObjectRefiner.html">phenotypic.abc_.ObjectRefiner</a></li>
@@ -596,8 +597,6 @@
 </ul>
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="phenotypic.enhance.html">phenotypic.enhance</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.AnscombeForward.html">phenotypic.enhance.AnscombeForward</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.AnscombeInverse.html">phenotypic.enhance.AnscombeInverse</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.BayesShrinkEnhancer.html">phenotypic.enhance.BayesShrinkEnhancer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.BilateralDenoise.html">phenotypic.enhance.BilateralDenoise</a></li>
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">phenotypic.enhance.BM3DDenoiser</a></li>
@@ -925,8 +924,8 @@
 <h1>phenotypic.enhance.BM3DDenoiser<a class="headerlink" href="#phenotypic-enhance-bm3ddenoiser" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.enhance.BM3DDenoiser">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.enhance.</span></span><span class="sig-name descname"><span class="pre">BM3DDenoiser</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma_psd</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stage_arg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'all_stages'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'hard_thresholding'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'all_stages'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/enhance/_bm3d_denoiser.html#BM3DDenoiser"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.BM3DDenoiser" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.ImageEnhancer" title="phenotypic.abc_._image_enhancer.ImageEnhancer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancer</span></code></a></p>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.enhance.</span></span><span class="sig-name descname"><span class="pre">BM3DDenoiser</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma_psd</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stage_arg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'all_stages'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'hard_thresholding'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'all_stages'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/enhance/_bm3d_denoiser.html#BM3DDenoiser"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.BM3DDenoiser" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_GATSupportMixin</span></code>, <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.ImageDenoiser" title="phenotypic.abc_._image_denoiser.ImageDenoiser"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageDenoiser</span></code></a></p>
 <p>Denoise <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> with block-matching and 3D collaborative filtering.</p>
 <p>Groups similar image patches and filters them jointly in the transform
 domain, preserving fine colony details while removing structured noise
@@ -940,14 +939,24 @@ significantly higher computational cost.</p>
 <li><p><strong>sigma_psd</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Noise standard deviation in [0, 1] normalized scale.
 Typical range: 0.01–0.05 for moderate noise, 0.05–0.15 for
 heavy noise. Too low preserves noise; too high removes colony
-texture. Default: 0.02.</p></li>
+texture. Ignored when <code class="docutils literal notranslate"><span class="pre">use_gat=True</span></code> (the stabilized-domain
+value 1.0 is used internally). Default: 0.02.</p></li>
 <li><p><strong>block_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Block size for BM3D patch matching. Default: 8.</p></li>
 <li><p><strong>stage_arg</strong> (<em>Literal</em><em>[</em><em>'all_stages'</em><em>, </em><em>'hard_thresholding'</em><em>]</em>) – Processing mode. <code class="docutils literal notranslate"><span class="pre">'all_stages'</span></code> (default) applies both
 hard thresholding and Wiener filtering for highest quality;
 <code class="docutils literal notranslate"><span class="pre">'hard_thresholding'</span></code> runs only the first stage for faster
 processing.</p></li>
-<li><p><strong>clip</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Clip output to [0, 1]. Default: <code class="docutils literal notranslate"><span class="pre">True</span></code>. Set to <code class="docutils literal notranslate"><span class="pre">False</span></code>
-when using with variance-stabilizing transforms (e.g., GAT).</p></li>
+<li><p><strong>clip</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Clip output to [0, 1]. Default: <code class="docutils literal notranslate"><span class="pre">True</span></code>. Automatically
+deferred when <code class="docutils literal notranslate"><span class="pre">use_gat=True</span></code>.</p></li>
+<li><p><strong>use_gat</strong> – Wrap denoising in the Generalized Anscombe Transform for
+Poisson-Gaussian noise. Default: <code class="docutils literal notranslate"><span class="pre">False</span></code>. See
+<code class="xref py py-class docutils literal notranslate"><span class="pre">phenotypic.tools_.mixin._GATSupportMixin</span></code>.</p></li>
+<li><p><strong>gat_gain</strong> – Camera gain (e/ADU) used by the GAT. Default: 1.0.</p></li>
+<li><p><strong>gat_mu</strong> – Read-noise mean used by the GAT. Default: 0.0.</p></li>
+<li><p><strong>gat_read_sigma</strong> – Read-noise standard deviation used by the GAT.
+Default: 0.0.</p></li>
+<li><p><strong>gat_scale_factor</strong> – [0, 1] -&gt; counts multiplier. <code class="docutils literal notranslate"><span class="pre">None</span></code> auto-detects
+from image bit depth. Default: <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -964,6 +973,9 @@ collaborative filtering. <code class="docutils literal notranslate"><span class=
 <li><p>Low-light imaging where high ISO introduces patterned noise.</p></li>
 <li><p>Preserving fine morphological features (wrinkles, satellite
 colonies) during denoising.</p></li>
+<li><p>Poisson-Gaussian noise via <code class="docutils literal notranslate"><span class="pre">use_gat=True</span></code> (replaces the legacy
+<code class="docutils literal notranslate"><span class="pre">AnscombeForward</span></code> -&gt; <code class="docutils literal notranslate"><span class="pre">BM3DDenoiser</span></code> -&gt; <code class="docutils literal notranslate"><span class="pre">AnscombeInverse</span></code>
+three-step pipeline with one operation).</p></li>
 </ul>
 </dd>
 <dt>Consider Also:</dt><dd><ul class="simple">
@@ -982,6 +994,9 @@ speed matters more than quality.</p></li>
 denoising by sparse 3-D transform-domain collaborative filtering,”
 <em>IEEE Trans. Image Process.</em>, vol. 16, no. 8, pp. 2080–2095,
 Aug. 2007.</p>
+<p>[2] M. Mäkitalo and A. Foi, “Optimal inversion of the generalized
+Anscombe transformation for Poisson-Gaussian noise,” <em>IEEE Trans.
+Image Process.</em>, vol. 22, no. 1, pp. 91–103, Jan. 2013.</p>
 </div>
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
@@ -1007,7 +1022,7 @@ denoising strategies on low-light plate images.</p>
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.enhance.BM3DDenoiser.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma_psd</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stage_arg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'all_stages'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'hard_thresholding'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'all_stages'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/enhance/_bm3d_denoiser.html#BM3DDenoiser.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.BM3DDenoiser.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma_psd</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stage_arg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'all_stages'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'hard_thresholding'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'all_stages'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/enhance/_bm3d_denoiser.html#BM3DDenoiser.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.BM3DDenoiser.__init__" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1021,8 +1036,10 @@ stages to run. ‘all_stages’ gives best quality at the cost of
 speed; ‘hard_thresholding’ is faster and adequate for routine
 plate analysis.</p></li>
 <li><p><strong>clip</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to clip output to [0, 1] range. Default True.
-Set to False when using with variance-stabilizing transforms
-(e.g., GAT) that require preserving the original scale.</p></li>
+Automatically deferred when <code class="docutils literal notranslate"><span class="pre">use_gat=True</span></code>.</p></li>
+<li><p><strong>**kwargs</strong> – Forwarded to <code class="xref py py-class docutils literal notranslate"><span class="pre">_GATSupportMixin</span></code> (<code class="docutils literal notranslate"><span class="pre">use_gat</span></code>,
+<code class="docutils literal notranslate"><span class="pre">gat_gain</span></code>, <code class="docutils literal notranslate"><span class="pre">gat_mu</span></code>, <code class="docutils literal notranslate"><span class="pre">gat_read_sigma</span></code>,
+<code class="docutils literal notranslate"><span class="pre">gat_scale_factor</span></code>).</p></li>
 </ul>
 </dd>
 </dl>

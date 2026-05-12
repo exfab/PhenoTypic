@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=320b28a0"></script>
+    <script src="../../_static/documentation_options.js?v=52d5597a"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -67,7 +67,7 @@
     <link rel="prev" title="API Reference" href="../index.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.14.0b5" />
+  <meta name="docsearch:version" content="0.15.0" />
   </head>
   
   
@@ -513,6 +513,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.abc_.MeasureFeatures.html">phenotypic.abc_.MeasureFeatures</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.abc_.ImageOperation.html">phenotypic.abc_.ImageOperation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.abc_.ImageEnhancer.html">phenotypic.abc_.ImageEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.abc_.ImageDenoiser.html">phenotypic.abc_.ImageDenoiser</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.abc_.ImageCorrector.html">phenotypic.abc_.ImageCorrector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.abc_.ObjectDetector.html">phenotypic.abc_.ObjectDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.abc_.ObjectRefiner.html">phenotypic.abc_.ObjectRefiner</a></li>
@@ -596,8 +597,6 @@
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../api/phenotypic.enhance.html">phenotypic.enhance</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.enhance.AnscombeForward.html">phenotypic.enhance.AnscombeForward</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.enhance.AnscombeInverse.html">phenotypic.enhance.AnscombeInverse</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.enhance.BayesShrinkEnhancer.html">phenotypic.enhance.BayesShrinkEnhancer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.enhance.BilateralDenoise.html">phenotypic.enhance.BilateralDenoise</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.enhance.BM3DDenoiser.html">phenotypic.enhance.BM3DDenoiser</a></li>
@@ -3918,7 +3917,7 @@ and ImageType is not changed to ‘Object’.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic._core._image_parts.accessors._objects_accessor.ObjectsAccessor.info">
-<span class="sig-name descname"><span class="pre">info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">include_metadata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.2)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/_core/_image_parts/accessors/_objects_accessor.html#ObjectsAccessor.info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic._core._image_parts.accessors._objects_accessor.ObjectsAccessor.info" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">include_metadata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/_core/_image_parts/accessors/_objects_accessor.html#ObjectsAccessor.info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic._core._image_parts.accessors._objects_accessor.ObjectsAccessor.info" title="Link to this definition">#</a></dt>
 <dd><p>Generate a summary table of colony positions and bounding boxes.</p>
 <p>This method creates a pandas DataFrame containing key positional information for all
 detected colonies, including their labels, centroid coordinates, and bounding box
@@ -4001,7 +4000,7 @@ colony information. Defaults to True.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic._core._image_parts.accessors._objects_accessor.ObjectsAccessor.labels2series">
-<span class="sig-name descname"><span class="pre">labels2series</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v3.0.2)"><span class="pre">pandas.Series</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/_core/_image_parts/accessors/_objects_accessor.html#ObjectsAccessor.labels2series"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic._core._image_parts.accessors._objects_accessor.ObjectsAccessor.labels2series" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">labels2series</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v3.0.3)"><span class="pre">pandas.Series</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/_core/_image_parts/accessors/_objects_accessor.html#ObjectsAccessor.labels2series"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic._core._image_parts.accessors._objects_accessor.ObjectsAccessor.labels2series" title="Link to this definition">#</a></dt>
 <dd><p>Convert colony labels to a pandas Series for joining with measurement DataFrames.</p>
 <p>This method creates a pandas Series containing all colony labels with a properly named
 column (‘ObjectLabel’) and indexed by position. This is specifically designed to
@@ -8539,7 +8538,7 @@ and returns the first match found.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic._core._image_parts.accessors._metadata_accessor.MetadataAccessor.insert_metadata">
-<span class="sig-name descname"><span class="pre">insert_metadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.2)"><span class="pre">pandas.DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_duplicates</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.2)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/_core/_image_parts/accessors/_metadata_accessor.html#MetadataAccessor.insert_metadata"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic._core._image_parts.accessors._metadata_accessor.MetadataAccessor.insert_metadata" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">insert_metadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_duplicates</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/_core/_image_parts/accessors/_metadata_accessor.html#MetadataAccessor.insert_metadata"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic._core._image_parts.accessors._metadata_accessor.MetadataAccessor.insert_metadata" title="Link to this definition">#</a></dt>
 <dd><p>Insert metadata as columns into a DataFrame.</p>
 <p>Adds public and protected metadata as new columns at the beginning of the DataFrame.
 Column names are prefixed with <code class="docutils literal notranslate"><span class="pre">Metadata_</span></code> if not already present. Image name is
@@ -8659,7 +8658,7 @@ cannot be removed.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic._core._image_parts.accessors._metadata_accessor.MetadataAccessor.table">
-<span class="sig-name descname"><span class="pre">table</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v3.0.2)"><span class="pre">pandas.Series</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/_core/_image_parts/accessors/_metadata_accessor.html#MetadataAccessor.table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic._core._image_parts.accessors._metadata_accessor.MetadataAccessor.table" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">table</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v3.0.3)"><span class="pre">pandas.Series</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/_core/_image_parts/accessors/_metadata_accessor.html#MetadataAccessor.table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic._core._image_parts.accessors._metadata_accessor.MetadataAccessor.table" title="Link to this definition">#</a></dt>
 <dd><p>Convert metadata to a pandas Series.</p>
 <p>Creates a Series containing all metadata (private, protected, and public)
 with the parent image name as the Series name.</p>

@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=320b28a0"></script>
+    <script src="../../../_static/documentation_options.js?v=52d5597a"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -64,7 +64,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.14.0b5" />
+  <meta name="docsearch:version" content="0.15.0" />
   </head>
   
   
@@ -527,19 +527,20 @@
   <h1>Source code for phenotypic.enhance._visushrink_enhancer</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Literal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Literal</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.restoration</span><span class="w"> </span><span class="kn">import</span> <span class="n">denoise_wavelet</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageEnhancer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageDenoiser</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..tools_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">_GATSupportMixin</span>
 
 
 <div class="viewcode-block" id="VisuShrinkEnhancer">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.VisuShrinkEnhancer">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">VisuShrinkEnhancer</span><span class="p">(</span><span class="n">ImageEnhancer</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">VisuShrinkEnhancer</span><span class="p">(</span><span class="n">_GATSupportMixin</span><span class="p">,</span> <span class="n">ImageDenoiser</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Denoise ``detect_mat`` with universal VisuShrink wavelet thresholding.</span>
 
 <span class="sd">    Applies wavelet-domain denoising with a single universal threshold across</span>
@@ -552,15 +553,23 @@
 <span class="sd">    Args:</span>
 <span class="sd">        sigma: Noise standard deviation in [0, 1] scale. ``None`` (default)</span>
 <span class="sd">            auto-estimates via MAD. Typical range: 0.01--0.05 for moderate</span>
-<span class="sd">            scanner/camera noise. Too high causes over-smoothing.</span>
+<span class="sd">            scanner/camera noise. Too high causes over-smoothing. Ignored</span>
+<span class="sd">            when ``use_gat=True`` (the stabilized-domain value 1.0 is used</span>
+<span class="sd">            internally).</span>
 <span class="sd">        wavelet: Wavelet family. ``&#39;db2&#39;`` (default) balances smoothness and</span>
 <span class="sd">            locality; ``&#39;db4&#39;`` captures more detail. Must be orthogonal.</span>
 <span class="sd">        mode: Thresholding mode. ``&#39;soft&#39;`` (default) produces smoother</span>
 <span class="sd">            results for additive noise; ``&#39;hard&#39;`` preserves edges more.</span>
 <span class="sd">        wavelet_levels: Decomposition depth. ``None`` (default) uses max-3</span>
 <span class="sd">            automatically. Higher values give finer denoising.</span>
-<span class="sd">        clip: Clip output to [0, 1]. Default: ``True``. Set to ``False``</span>
-<span class="sd">            when using with variance-stabilizing transforms (e.g., GAT).</span>
+<span class="sd">        clip: Clip output to [0, 1]. Default: ``True``. Automatically</span>
+<span class="sd">            deferred when ``use_gat=True``.</span>
+<span class="sd">        rescale_sigma: skimage&#39;s internal rescale flag. Default ``True``.</span>
+<span class="sd">            Automatically forced to ``False`` when ``use_gat=True``.</span>
+<span class="sd">        use_gat: Wrap denoising in the Generalized Anscombe Transform.</span>
+<span class="sd">            Default: ``False``. See</span>
+<span class="sd">            :class:`phenotypic.tools_.mixin._GATSupportMixin`.</span>
+<span class="sd">        gat_gain, gat_mu, gat_read_sigma, gat_scale_factor: GAT parameters.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``detect_mat`` denoised via universal</span>
@@ -572,6 +581,7 @@
 <span class="sd">        - Agar granularity and condensation speckle suppression before</span>
 <span class="sd">          detection.</span>
 <span class="sd">        - Pre-filtering before edge detection to avoid noise amplification.</span>
+<span class="sd">        - Poisson-Gaussian noise via ``use_gat=True``.</span>
 
 <span class="sd">    Consider Also:</span>
 <span class="sd">        - :class:`BayesShrinkEnhancer` for adaptive thresholding that</span>
@@ -593,6 +603,9 @@
 <span class="sd">        wavelet denoising and threshold selection strategies.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
+    <span class="n">_GAT_NOISE_PARAMS</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;sigma&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">}</span>
+    <span class="n">_GAT_DEFER_ATTRS</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;clip&quot;</span><span class="p">,</span> <span class="s2">&quot;rescale_sigma&quot;</span><span class="p">)</span>
+
 <div class="viewcode-block" id="VisuShrinkEnhancer.__init__">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.VisuShrinkEnhancer.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
@@ -602,40 +615,42 @@
             <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;soft&quot;</span><span class="p">,</span> <span class="s2">&quot;hard&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;soft&quot;</span><span class="p">,</span>
             <span class="n">wavelet_levels</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
             <span class="n">clip</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="n">rescale_sigma</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize VisuShrink wavelet denoiser.</span>
 
 <span class="sd">        Parameters:</span>
 <span class="sd">            sigma (float | None): Noise standard deviation in [0, 1] scale. None</span>
 <span class="sd">                (default) auto-estimates via median absolute deviation (MAD).</span>
-<span class="sd">                For reference: 8-bit noise σ=10/255 ≈ 0.04 in normalized scale.</span>
-<span class="sd">                Typical values: 0.01-0.05 for moderate scanner/camera noise.</span>
-<span class="sd">                Start with auto-estimation, then tune if needed.</span>
-<span class="sd">            wavelet (str): Wavelet type from PyWavelets. &#39;db2&#39; (default) is a</span>
-<span class="sd">                good general choice. &#39;db4&#39; for more detail, &#39;sym2&#39; for symmetry.</span>
-<span class="sd">                Must be orthogonal (db*, sym*) for proper noise handling.</span>
-<span class="sd">            mode (Literal[&#39;soft&#39;, &#39;hard&#39;]): Threshold type. &#39;soft&#39; (default)</span>
-<span class="sd">                produces smoother results for additive noise. &#39;hard&#39; preserves</span>
-<span class="sd">                edges more but may leave noise artifacts.</span>
+<span class="sd">                Overridden to 1.0 when ``use_gat=True``.</span>
+<span class="sd">            wavelet (str): Wavelet type from PyWavelets. &#39;db2&#39; (default).</span>
+<span class="sd">                Must be orthogonal (db*, sym*).</span>
+<span class="sd">            mode (Literal[&#39;soft&#39;, &#39;hard&#39;]): Threshold type. &#39;soft&#39; (default).</span>
 <span class="sd">            wavelet_levels (int | None): Decomposition depth. None (default)</span>
-<span class="sd">                uses max-3 automatically. Higher = finer denoising, slower.</span>
+<span class="sd">                uses max-3 automatically.</span>
 <span class="sd">            clip (bool): Whether to clip output to [0, 1] range. Default True.</span>
-<span class="sd">                Set to False when using with variance-stabilizing transforms</span>
-<span class="sd">                (e.g., GAT) that require preserving the original scale.</span>
+<span class="sd">                Automatically deferred when ``use_gat=True``.</span>
+<span class="sd">            rescale_sigma (bool): skimage flag to rescale sigma to the wavelet</span>
+<span class="sd">                decomposition scale. Default True. Automatically set to False</span>
+<span class="sd">                when ``use_gat=True``.</span>
+<span class="sd">            **kwargs: Forwarded to :class:`_GATSupportMixin`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span> <span class="o">=</span> <span class="n">sigma</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">wavelet</span> <span class="o">=</span> <span class="n">wavelet</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="n">mode</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">wavelet_levels</span> <span class="o">=</span> <span class="n">wavelet_levels</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">clip</span> <span class="o">=</span> <span class="n">clip</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">clip</span> <span class="o">=</span> <span class="n">clip</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rescale_sigma</span> <span class="o">=</span> <span class="n">rescale_sigma</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply VisuShrink wavelet denoising to detection matrix.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply VisuShrink wavelet denoising to detection matrix.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_gat_apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;detect_mat&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_denoise_detect_mat</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">image</span>
 
-<span class="sd">        Returns:</span>
-<span class="sd">            Modified Image with denoised detect_mat</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_denoise_detect_mat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">denoised</span> <span class="o">=</span> <span class="n">denoise_wavelet</span><span class="p">(</span>
                 <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:],</span>
                 <span class="n">sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma</span><span class="p">,</span>
@@ -644,12 +659,11 @@
                 <span class="n">wavelet_levels</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">wavelet_levels</span><span class="p">,</span>
                 <span class="n">method</span><span class="o">=</span><span class="s2">&quot;VisuShrink&quot;</span><span class="p">,</span>
                 <span class="n">channel_axis</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                <span class="n">rescale_sigma</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">rescale_sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rescale_sigma</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">clip</span><span class="p">:</span>
             <span class="n">denoised</span> <span class="o">=</span> <span class="n">denoised</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
-        <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">denoised</span>
-        <span class="k">return</span> <span class="n">image</span></div>
+        <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">denoised</span></div>
 
 </pre></div>
 

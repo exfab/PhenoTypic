@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=320b28a0"></script>
+    <script src="../../_static/documentation_options.js?v=52d5597a"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -67,7 +67,7 @@
     <link rel="prev" title="phenotypic.enhance.MultiscaleLoGEnhancer" href="phenotypic.enhance.MultiscaleLoGEnhancer.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.14.0b5" />
+  <meta name="docsearch:version" content="0.15.0" />
   </head>
   
   
@@ -513,6 +513,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.MeasureFeatures.html">phenotypic.abc_.MeasureFeatures</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageOperation.html">phenotypic.abc_.ImageOperation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageEnhancer.html">phenotypic.abc_.ImageEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageDenoiser.html">phenotypic.abc_.ImageDenoiser</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageCorrector.html">phenotypic.abc_.ImageCorrector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ObjectDetector.html">phenotypic.abc_.ObjectDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ObjectRefiner.html">phenotypic.abc_.ObjectRefiner</a></li>
@@ -596,8 +597,6 @@
 </ul>
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="phenotypic.enhance.html">phenotypic.enhance</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.AnscombeForward.html">phenotypic.enhance.AnscombeForward</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.AnscombeInverse.html">phenotypic.enhance.AnscombeInverse</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.BayesShrinkEnhancer.html">phenotypic.enhance.BayesShrinkEnhancer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.BilateralDenoise.html">phenotypic.enhance.BilateralDenoise</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.BM3DDenoiser.html">phenotypic.enhance.BM3DDenoiser</a></li>
@@ -925,8 +924,8 @@
 <h1>phenotypic.enhance.NonLocalMeansDenoiser<a class="headerlink" href="#phenotypic-enhance-nonlocalmeansdenoiser" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.enhance.NonLocalMeansDenoiser">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.enhance.</span></span><span class="sig-name descname"><span class="pre">NonLocalMeansDenoiser</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">patch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">11</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">h</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fast_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/enhance/_non_local_means.html#NonLocalMeansDenoiser"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.NonLocalMeansDenoiser" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.ImageEnhancer" title="phenotypic.abc_._image_enhancer.ImageEnhancer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancer</span></code></a></p>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.enhance.</span></span><span class="sig-name descname"><span class="pre">NonLocalMeansDenoiser</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">patch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">11</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">h</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fast_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/enhance/_non_local_means.html#NonLocalMeansDenoiser"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.NonLocalMeansDenoiser" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_GATSupportMixin</span></code>, <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.ImageDenoiser" title="phenotypic.abc_._image_denoiser.ImageDenoiser"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageDenoiser</span></code></a></p>
 <p>Denoise <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> with non-local means patch-based filtering.</p>
 <p>Compares patches across the image to identify similar structures and
 averages them, preserving thin colony boundaries and internal texture
@@ -944,13 +943,21 @@ Larger values find more candidates at higher cost. Typical
 range: 5–21. Default: 11.</p></li>
 <li><p><strong>h</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Cut-off distance controlling smoothness. Rule of thumb:
 <code class="docutils literal notranslate"><span class="pre">h</span></code> ~= noise level (sigma). Higher values produce more
-smoothing. Default: 0.5.</p></li>
+smoothing. Both <code class="docutils literal notranslate"><span class="pre">h</span></code> and <code class="docutils literal notranslate"><span class="pre">sigma</span></code> retarget to 1.0 when
+<code class="docutils literal notranslate"><span class="pre">use_gat=True</span></code>. Default: 0.5.</p></li>
 <li><p><strong>fast_mode</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, use faster variant with uniform spatial
 weighting. If <code class="docutils literal notranslate"><span class="pre">False</span></code> (default), use original algorithm
 with Gaussian spatial weighting.</p></li>
 <li><p><strong>sigma</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Expected noise standard deviation. Values &gt; 0 improve
 patch weighting by accounting for expected noise variance.
-Default: 0.0 (disabled).</p></li>
+Retargets to 1.0 when <code class="docutils literal notranslate"><span class="pre">use_gat=True</span></code>. Default: 0.0.</p></li>
+<li><p><strong>use_gat</strong> – Wrap denoising in the Generalized Anscombe Transform.
+Default: <code class="docutils literal notranslate"><span class="pre">False</span></code>. See
+<code class="xref py py-class docutils literal notranslate"><span class="pre">phenotypic.tools_.mixin._GATSupportMixin</span></code>.</p></li>
+<li><p><strong>gat_gain</strong> – GAT parameters.</p></li>
+<li><p><strong>gat_mu</strong> – GAT parameters.</p></li>
+<li><p><strong>gat_read_sigma</strong> – GAT parameters.</p></li>
+<li><p><strong>gat_scale_factor</strong> – GAT parameters.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -970,6 +977,9 @@ loss of detail.</p></li>
 <li><p>Preserving colony texture and morphology during speckle and dust
 removal.</p></li>
 <li><p>Pre-filtering before edge detection to avoid amplifying noise.</p></li>
+<li><p>Poisson-Gaussian noise via <code class="docutils literal notranslate"><span class="pre">use_gat=True</span></code> (Deledalle et al.
+2010 demonstrate that NLM benefits from variance stabilization
+for moderate-to-high photon counts).</p></li>
 </ul>
 </dd>
 <dt>Consider Also:</dt><dd><ul class="simple">
@@ -1006,24 +1016,23 @@ and other denoising strategies on low-light plate images.</p>
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.enhance.NonLocalMeansDenoiser.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">patch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">11</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">h</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fast_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/enhance/_non_local_means.html#NonLocalMeansDenoiser.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.NonLocalMeansDenoiser.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">patch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">11</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">h</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fast_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/enhance/_non_local_means.html#NonLocalMeansDenoiser.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.NonLocalMeansDenoiser.__init__" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>patch_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Size of patches used for comparison. Larger patches capture
-more structure but are slower. Start with 5-7 for agar plates; increase to 11-15
-for heavily noisy images. Default: 7.</p></li>
-<li><p><strong>search_dist</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Maximal distance in pixels to search for similar patches.
-Larger values find more candidates at higher cost. Default: 11.</p></li>
-<li><p><strong>h</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Cut-off distance controlling smoothness. Typical rule of thumb:
-h ≈ sigma (noise level). Increase to ~1.5*sigma for more smoothing.
-Default: 0.1.</p></li>
-<li><p><strong>fast_mode</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, use faster variant with uniform spatial weighting.
-If False, use original algorithm with Gaussian spatial weighting (slower but
-potentially better quality). Default: False.</p></li>
-<li><p><strong>sigma</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Noise standard deviation. If provided (&gt; 0), improves patch weighting
-by accounting for expected noise variance. Start with estimate_sigma() output.
-Default: 0.0 (disabled).</p></li>
+<li><p><strong>patch_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Size of patches used for comparison.
+Default: 5.</p></li>
+<li><p><strong>search_dist</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Maximal distance in pixels to search for
+similar patches. Default: 11.</p></li>
+<li><p><strong>h</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Cut-off distance controlling smoothness. Rule of
+thumb: <code class="docutils literal notranslate"><span class="pre">h</span></code> ≈ <code class="docutils literal notranslate"><span class="pre">sigma</span></code>. Default: 0.5. Retargets to 1.0
+when <code class="docutils literal notranslate"><span class="pre">use_gat=True</span></code>.</p></li>
+<li><p><strong>fast_mode</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, use faster variant with uniform
+spatial weighting. Default: False.</p></li>
+<li><p><strong>sigma</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Noise standard deviation. If provided (&gt; 0),
+improves patch weighting. Default: 0.0. Retargets to 1.0
+when <code class="docutils literal notranslate"><span class="pre">use_gat=True</span></code>.</p></li>
+<li><p><strong>**kwargs</strong> – Forwarded to <code class="xref py py-class docutils literal notranslate"><span class="pre">_GATSupportMixin</span></code>.</p></li>
 </ul>
 </dd>
 </dl>
