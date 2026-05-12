@@ -103,7 +103,7 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
           filamentous growth that violates the round-colony assumption.
         * :class:`OtsuDetector` when a simple binary mask is sufficient and
           per-cell assignment is not needed.
-        * :class:`ManualGridDetector` when colony positions are known a
+        * :class:`ManualGridPointDetector` when colony positions are known a
           priori from robotic spotting coordinates.
 
     References:
@@ -277,8 +277,8 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
 
         # Assign colonies to grid cells using selection strategy
         objmap = self._assign_grid_objects(
-            labeled, row_edges, col_edges, self.selection_mode, image._OBJMAP_DTYPE,
-            intensity=enh_matrix, split_merged=self.split_merged,
+                labeled, row_edges, col_edges, self.selection_mode, image._OBJMAP_DTYPE,
+                intensity=enh_matrix, split_merged=self.split_merged,
         )
 
         # Fallback if no regions were labeled (e.g., grid inference failed)

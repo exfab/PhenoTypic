@@ -195,12 +195,11 @@ class TestPointPickerMarker:
         assert blur.point_picker_param is None
 
     def test_threshold_based_manual_detector_is_not_pickable(self, registry):
-        """ManualDetector takes a scalar threshold, not points — not flagged."""
-        man = registry.get("ManualDetector")
+        """UserThreshold takes a scalar threshold, not points — not flagged."""
+        man = registry.get("UserThreshold")
         assert man is not None
         assert man.is_point_pickable is False
         assert man.point_picker_param is None
-
 
 
 class TestColumnRefDetection:
@@ -213,23 +212,23 @@ class TestColumnRefDetection:
         return reg
 
     @pytest.mark.parametrize(
-        "cls_name,param_name,expected_multi",
-        [
-            ("EdgeCorrector", "on", False),
-            ("EdgeCorrector", "groupby", True),
-            ("EdgeCorrector", "time_label", False),
-            ("TukeyOutlierRemover", "on", False),
-            ("TukeyOutlierRemover", "groupby", True),
-            ("LogGrowthModel", "on", False),
-            ("LogGrowthModel", "groupby", True),
-            ("LogGrowthModel", "time_label", False),
-            ("LinearSoftplusModel", "on", False),
-            ("LinearSoftplusModel", "groupby", True),
-            ("LinearSoftplusModel", "time_label", False),
-        ],
+            "cls_name,param_name,expected_multi",
+            [
+                ("EdgeCorrector", "on", False),
+                ("EdgeCorrector", "groupby", True),
+                ("EdgeCorrector", "time_label", False),
+                ("TukeyOutlierRemover", "on", False),
+                ("TukeyOutlierRemover", "groupby", True),
+                ("LogGrowthModel", "on", False),
+                ("LogGrowthModel", "groupby", True),
+                ("LogGrowthModel", "time_label", False),
+                ("LinearSoftplusModel", "on", False),
+                ("LinearSoftplusModel", "groupby", True),
+                ("LinearSoftplusModel", "time_label", False),
+            ],
     )
     def test_column_ref_populated(
-        self, registry, cls_name, param_name, expected_multi
+            self, registry, cls_name, param_name, expected_multi
     ):
         info = registry.get(cls_name)
         assert info is not None, f"{cls_name} not registered"
