@@ -18,12 +18,12 @@ class SetAnalyzer(abc.ABC):
         groupby: ColumnRefList,
         agg_func: Callable | str | list | dict | None = "mean",
         *,
-        num_workers=1,
+        n_jobs: int = 1,
     ):
         self.groupby = groupby
         self.agg_func = agg_func
         self.on = on
-        self.n_jobs = num_workers
+        self.n_jobs = n_jobs
         self._latest_measurements: pd.DataFrame = pd.DataFrame()
 
     @abc.abstractmethod

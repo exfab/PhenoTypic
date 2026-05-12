@@ -84,13 +84,13 @@ class ModelFitter(SetAnalyzer, ABC):
             time_label: ColumnRef = "Metadata_Time",
             agg_func: Callable | str | list | dict | None = "mean",
             *,
-            num_workers: int = 1,
+            n_jobs: int = 1,
             loss: LossKind = "huber",
             f_scale: float = 1.0,
             verbose: bool = False,
     ):
         super().__init__(
-                on=on, groupby=groupby, agg_func=agg_func, num_workers=num_workers
+                on=on, groupby=groupby, agg_func=agg_func, n_jobs=n_jobs
         )
         if not np.isfinite(f_scale) or f_scale <= 0:
             raise ValueError(

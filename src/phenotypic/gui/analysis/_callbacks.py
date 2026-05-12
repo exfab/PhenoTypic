@@ -465,8 +465,8 @@ def _filter_kwargs_to_signature(cls: type, kwargs: dict[str, Any]) -> dict[str, 
     """Return only ``kwargs`` entries that ``cls.__init__`` accepts.
 
     Reuses :data:`SerializablePipeline._ANALYZER_INIT_ALIASES` so the
-    GUI's per-edit reconstruction follows the same name-mapping
-    (``n_jobs`` -> ``num_workers``) the JSON deserializer uses.
+    GUI's per-edit reconstruction follows the same name-mapping (legacy
+    ``num_workers`` -> ``n_jobs``) the JSON deserializer uses.
     """
     import inspect
 

@@ -67,7 +67,7 @@ class EdgeCorrector(SetAnalyzer):
             pvalue: float = 0.05,
             connectivity: int = 4,
             agg_func: str = "mean",
-            num_workers: int = 1,
+            n_jobs: int = 1,
     ):
         """Initialize EdgeCorrector with grid layout and correction parameters.
 
@@ -97,7 +97,7 @@ class EdgeCorrector(SetAnalyzer):
                 diagonal neighbors. Affects how strictly "surrounded" is defined.
             agg_func (str, optional): Aggregation function for multiple measurements per
                 section (well). Defaults to "mean". See pandas.DataFrame.agg for options.
-            num_workers (int, optional): Number of parallel workers for group processing.
+            n_jobs (int, optional): Number of parallel workers for group processing.
                 Defaults to 1 (serial). Use -1 for all CPU cores via joblib.Parallel.
 
         Raises:
@@ -126,7 +126,7 @@ class EdgeCorrector(SetAnalyzer):
             ...     ncols=24,
             ...     top_n=3,
             ...     connectivity=8,  # Include diagonal neighbors
-            ...     num_workers=4
+            ...     n_jobs=4
             ... )
 
             Aggressive correction (no statistical test):
@@ -139,7 +139,7 @@ class EdgeCorrector(SetAnalyzer):
             ... )
         """
         super().__init__(
-                on=on, groupby=groupby, agg_func=agg_func, num_workers=num_workers
+                on=on, groupby=groupby, agg_func=agg_func, n_jobs=n_jobs
         )
 
         if connectivity not in (4, 8):
@@ -363,7 +363,7 @@ class EdgeCorrector(SetAnalyzer):
         Notes:
             - Stores original data in self._original_data for later visualization
             - Stores corrected data in self._latest_measurements for retrieval via results()
-            - Groups are processed independently via joblib.Parallel if num_workers > 1
+            - Groups are processed independently via joblib.Parallel if n_jobs > 1
             - Aggregation (default: mean) is applied to multiple measurements per well
             - Edge correction is only applied if permutation test p-value < self.pvalue
             - If pvalue=0.0, correction is applied to all groups regardless of statistics
@@ -413,7 +413,7 @@ class EdgeCorrector(SetAnalyzer):
             ...     on='Area',
             ...     groupby=['Plate', 'Condition'],  # 4 independent corrections
             ...     nrows=8, ncols=12,
-            ...     num_workers=4
+            ...     n_jobs=4
             ... )
             >>> corrected = corrector.analyze(data)  # doctest: +SKIP
             >>> # Each plate-condition combo gets its own threshold

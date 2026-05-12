@@ -98,7 +98,7 @@ class DoubleSoftplus(_LinearSoftplusBase):
             s0_prior_sigma: float | None = None,
             s0_prior_groupby: List[str] | None = None,
             shoulder_slope_ratio: float = 0.05,
-            num_workers: int = 1,
+            n_jobs: int = 1,
             loss: LossKind = "huber",
             f_scale: float = 1.0,
             verbose: bool = False,
@@ -137,7 +137,7 @@ class DoubleSoftplus(_LinearSoftplusBase):
             shoulder_slope_ratio: Fraction of peak ``ds/dt`` below
                 which the curve is considered to show a saturation
                 shoulder for mode dispatch. Defaults to ``0.05``.
-            num_workers: Number of parallel workers for per-group fits.
+            n_jobs: Number of parallel workers for per-group fits.
             loss: Loss method for :func:`scipy.optimize.least_squares`.
             f_scale: Soft margin between inlier and outlier residuals.
             verbose: If ``True``, enables optimizer verbose output.
@@ -151,7 +151,7 @@ class DoubleSoftplus(_LinearSoftplusBase):
                 s0_prior_cv=s0_prior_cv,
                 s0_prior_sigma=s0_prior_sigma,
                 s0_prior_groupby=s0_prior_groupby,
-                num_workers=num_workers,
+                n_jobs=n_jobs,
                 loss=loss,
                 f_scale=f_scale,
                 verbose=verbose,

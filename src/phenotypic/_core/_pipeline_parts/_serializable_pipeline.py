@@ -691,17 +691,18 @@ class SerializablePipeline(NapariPipelineViewer):
     # parameters — so they cannot be reconstructed via the empty-constructor
     # + setattr pattern used for ``ImageOperation`` / ``MeasureFeatures``
     # entries above. Instead we introspect ``cls.__init__`` and reconstruct
-    # via ``cls(**kwargs)``. The base ``SetAnalyzer.__init__`` stores
-    # ``num_workers`` as ``self.n_jobs`` for legacy reasons, and
-    # ``LogGrowthModel.__init__`` happens to spell its arg ``n_jobs`` while
-    # other subclasses spell it ``num_workers`` — the alias map below makes
-    # both shapes round-trip cleanly.
+    # via ``cls(**kwargs)``. The alias map below carries forward
+    # backward-compat with JSON written before the ``num_workers`` →
+    # ``n_jobs`` standardization: legacy payloads serialized with
+    # ``num_workers`` are translated to the current constructor's
+    # ``n_jobs`` parameter. Newly written JSON uses ``n_jobs`` directly
+    # (matching ``self.n_jobs`` on every analyzer) and doesn't need the
+    # alias.
 
     _ANALYZER_INIT_ALIASES: Dict[str, str] = {
-        # ``__dict__`` key -> constructor arg name candidates (in order of
-        # preference). Used when an attribute is stored under a different
-        # name than its constructor parameter.
-        "n_jobs": "num_workers",
+        # Serialized-payload key -> constructor arg name. Used when a
+        # legacy JSON file spells a parameter under its pre-rename name.
+        "num_workers": "n_jobs",
     }
 
     @staticmethod
@@ -746,8 +747,9 @@ class SerializablePipeline(NapariPipelineViewer):
         """Reconstruct one analyzer instance from a ``{class, params}`` dict.
 
         Introspects the target class's constructor signature, picks matching
-        keys from ``params``, applies known aliases (e.g. ``n_jobs`` ->
-        ``num_workers``), then constructs via ``cls(**kwargs)``. Any leftover
+        keys from ``params``, applies known aliases (e.g. legacy
+        ``num_workers`` -> ``n_jobs``), then constructs via
+        ``cls(**kwargs)``. Any leftover
         keys are restored via ``setattr`` so internal attributes (e.g. fitted
         results that were JSON-serializable) survive the round-trip.
         """

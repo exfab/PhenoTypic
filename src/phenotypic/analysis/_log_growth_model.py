@@ -114,7 +114,7 @@ class LogGrowthModel(ModelFitter):
             groupby=groupby,
             time_label=time_label,
             agg_func=agg_func,
-            num_workers=n_jobs,
+            n_jobs=n_jobs,
             loss=loss,
             f_scale=f_scale,
             verbose=verbose,

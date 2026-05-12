@@ -285,11 +285,11 @@ class TestTukeyOutlierRemover:
     def test_parallel_processing(self, sample_data_multiple_groups):
         """Test parallel processing produces same results as sequential."""
         detector_parallel = TukeyOutlierRemover(
-            on="Area", groupby=["Plate", "ImageName"], num_workers=2
+            on="Area", groupby=["Plate", "ImageName"], n_jobs=2
         )
 
         detector_sequential = TukeyOutlierRemover(
-            on="Area", groupby=["Plate", "ImageName"], num_workers=1
+            on="Area", groupby=["Plate", "ImageName"], n_jobs=1
         )
 
         filtered_parallel = detector_parallel.analyze(sample_data_multiple_groups)

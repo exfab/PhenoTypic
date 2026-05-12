@@ -23,13 +23,13 @@ class TukeyOutlierRemover(SetAnalyzer):
         groupby: List of column names to group by (e.g., ['StrainID', 'Time']).
         k: IQR multiplier for fence calculation. Default is 1.5 (standard outliers).
             Use 3.0 for extreme outliers only.
-        num_workers: Number of parallel workers. Default is 1.
+        n_jobs: Number of parallel workers. Default is 1.
 
     Attributes:
         groupby: List of column names to group by.
         on: Column to test for outliers.
         k: IQR multiplier used for fence calculation.
-        num_workers: Number of parallel workers. Default is 1.
+        n_jobs: Number of parallel workers. Default is 1.
 
     Examples:
         Remove outliers and visualize results:
@@ -63,7 +63,7 @@ class TukeyOutlierRemover(SetAnalyzer):
     """
 
     def __init__(
-            self, on: ColumnRef, groupby: ColumnRefList, k: float = 1.5, num_workers: int = 1
+            self, on: ColumnRef, groupby: ColumnRefList, k: float = 1.5, n_jobs: int = 1
     ):
         """Initialize TukeyOutlierRemover with test parameters.
 
@@ -73,12 +73,12 @@ class TukeyOutlierRemover(SetAnalyzer):
             measurement_col: Name of measurement column to test for outliers.
             k: IQR multiplier for fence calculation. Default is 1.5.
             agg_func: Aggregation function. Default is 'mean'.
-            num_workers: Number of workers. Default is 1.
+            n_jobs: Number of workers. Default is 1.
 
         Raises:
             ValueError: If k is not positive.
         """
-        super().__init__(on=on, groupby=groupby, agg_func=None, num_workers=num_workers)
+        super().__init__(on=on, groupby=groupby, agg_func=None, n_jobs=n_jobs)
 
         if k <= 0:
             raise ValueError(f"k must be positive, got {k}")

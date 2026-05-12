@@ -224,17 +224,42 @@ class TestJSONRoundTrip:
             ImagePipeline.from_json(bad)
 
     def test_linear_softplus_round_trip(self):
-        # LinearSoftplus uses ``num_workers`` (not ``n_jobs``) at the
-        # constructor; SetAnalyzer stores it as ``n_jobs``. The alias map
-        # must round-trip both shapes.
+        # Forward-compat: every analyzer now takes ``n_jobs`` directly
+        # and stores it as ``self.n_jobs``, so JSON written today carries
+        # the ``n_jobs`` key and round-trips without consulting the alias
+        # map.
         model = LinearSoftplus(
             on="Shape_Area",
             groupby=["Metadata_Plate"],
             time_label="Metadata_Time",
-            num_workers=2,
+            n_jobs=2,
         )
         pipe = ImagePipeline(model=model)
         loaded = ImagePipeline.from_json(pipe.to_json())
         loaded_model = loaded.get_model()
         assert isinstance(loaded_model, LinearSoftplus)
         assert loaded_model.n_jobs == 2
+
+    def test_legacy_num_workers_json_loads_as_n_jobs(self):
+        # Backward-compat: JSON written before the ``num_workers`` →
+        # ``n_jobs`` rename used ``num_workers`` as the param key.
+        # ``_ANALYZER_INIT_ALIASES`` must translate it to ``n_jobs`` so
+        # such payloads still load.
+        seed_model = LinearSoftplus(
+            on="Shape_Area",
+            groupby=["Metadata_Plate"],
+            time_label="Metadata_Time",
+            n_jobs=1,
+        )
+        pipe = ImagePipeline(model=seed_model)
+        payload = json.loads(pipe.to_json())
+        # Surgically rewrite the model entry to the legacy shape.
+        model_entry = payload["model"]
+        params = model_entry["params"]
+        params.pop("n_jobs", None)
+        params["num_workers"] = 3
+
+        loaded = ImagePipeline.from_json(json.dumps(payload))
+        loaded_model = loaded.get_model()
+        assert isinstance(loaded_model, LinearSoftplus)
+        assert loaded_model.n_jobs == 3
