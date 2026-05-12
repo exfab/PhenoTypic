@@ -167,7 +167,7 @@ class ModelFitter(SetAnalyzer, ABC):
         model (e.g. ``r``, ``K``, ``N0``, ``µmax`` for log-growth). May also
         include per-group bounds that should be preserved in results
         (e.g. ``K_max``), or string-valued diagnostic fields (e.g. the
-        per-group fit mode emitted by :class:`LinearSoftplusModel`).
+        per-group fit mode emitted by :class:`DoubleSoftplus`).
         """
         pass
 
@@ -178,9 +178,7 @@ class ModelFitter(SetAnalyzer, ABC):
         ``row`` is any mapping keyed by MeasurementInfo members — a dict
         produced by ``_unpack_params`` at fit time, or a ``pd.Series``
         drawn from the results DataFrame at plot time. Values may be
-        ``None`` for optional model kwargs (e.g. ``smax=None`` to
-        disable the saturation ceiling in
-        :class:`LinearSoftplusModel`).
+        ``None`` for optional model kwargs.
         """
         pass
 
@@ -378,7 +376,7 @@ class ModelFitter(SetAnalyzer, ABC):
 
         Samples ``[0, upper]`` with ``2 * upper`` points (floor 2) so
         that sharp model transitions (e.g. the softplus lag/saturation
-        in :class:`LinearSoftplusModel`) render smoothly rather than as
+        in :class:`DoubleSoftplus`) render smoothly rather than as
         a polyline sampled at the observed timepoints.
         """
         upper = float(timepoints.max() if tmax is None else tmax)

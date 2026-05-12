@@ -11,8 +11,6 @@ enhancement, and more for clean plates. All operate on copies of the grayscale v
 raw data intact.
 """
 
-from ._anscombe_forward import AnscombeForward
-from ._anscombe_inverse import AnscombeInverse
 from ._bilateral_denoise import BilateralDenoise
 from ._bayesshrink_enhancer import BayesShrinkEnhancer
 from ._bm3d_denoiser import BM3DDenoiser
@@ -44,8 +42,6 @@ from ._multiscale_log_enhancer import MultiscaleLoGEnhancer
 from ._set_detect_mode import SetDetectMode
 
 __all__ = [
-    "AnscombeForward",
-    "AnscombeInverse",
     "BayesShrinkEnhancer",
     "BilateralDenoise",
     "BM3DDenoiser",

@@ -212,23 +212,26 @@ class TestColumnRefDetection:
         return reg
 
     @pytest.mark.parametrize(
-            "cls_name,param_name,expected_multi",
-            [
-                ("EdgeCorrector", "on", False),
-                ("EdgeCorrector", "groupby", True),
-                ("EdgeCorrector", "time_label", False),
-                ("TukeyOutlierRemover", "on", False),
-                ("TukeyOutlierRemover", "groupby", True),
-                ("LogGrowthModel", "on", False),
-                ("LogGrowthModel", "groupby", True),
-                ("LogGrowthModel", "time_label", False),
-                ("LinearSoftplusModel", "on", False),
-                ("LinearSoftplusModel", "groupby", True),
-                ("LinearSoftplusModel", "time_label", False),
-            ],
+        "cls_name,param_name,expected_multi",
+        [
+            ("EdgeCorrector", "on", False),
+            ("EdgeCorrector", "groupby", True),
+            ("EdgeCorrector", "time_label", False),
+            ("TukeyOutlierRemover", "on", False),
+            ("TukeyOutlierRemover", "groupby", True),
+            ("LogGrowthModel", "on", False),
+            ("LogGrowthModel", "groupby", True),
+            ("LogGrowthModel", "time_label", False),
+            ("LinearSoftplus", "on", False),
+            ("LinearSoftplus", "groupby", True),
+            ("LinearSoftplus", "time_label", False),
+            ("DoubleSoftplus", "on", False),
+            ("DoubleSoftplus", "groupby", True),
+            ("DoubleSoftplus", "time_label", False),
+        ],
     )
     def test_column_ref_populated(
-            self, registry, cls_name, param_name, expected_multi
+        self, registry, cls_name, param_name, expected_multi
     ):
         info = registry.get(cls_name)
         assert info is not None, f"{cls_name} not registered"

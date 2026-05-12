@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -9,9 +9,10 @@ import numpy as np
 from skimage.restoration import denoise_wavelet
 
 from ..abc_ import ImageCorrector
+from ..tools_.mixin import _GATSupportMixin
 
 
-class VisuShrinkCorrector(ImageCorrector):
+class VisuShrinkCorrector(_GATSupportMixin, ImageCorrector):
     """Denoise all image components using a universal VisuShrink wavelet threshold.
 
     Apply VisuShrink wavelet denoising to RGB (if present), grayscale, and
@@ -23,8 +24,9 @@ class VisuShrinkCorrector(ImageCorrector):
 
     Args:
         sigma: Noise standard deviation. ``None`` auto-estimates from
-            the image. For RGB, internal channel scaling is handled
-            automatically. Default: ``None``.
+            the image. Retargeted to 1.0 when ``use_gat=True`` (applies
+            only to gray and detect_mat passes; RGB stays out of GAT).
+            Default: ``None``.
         wavelet: Wavelet family name. ``'db2'`` is general-purpose;
             ``'db4'`` preserves finer detail. Default: ``'db2'``.
         mode: Thresholding mode. ``'soft'`` produces smoother results;
@@ -34,6 +36,12 @@ class VisuShrinkCorrector(ImageCorrector):
         convert2ycbcr: Denoise RGB in YCbCr space so luminance and
             chrominance are handled separately, preserving colony color.
             Only applies when RGB data is present. Default: ``True``.
+        rescale_sigma: skimage flag controlling internal sigma rescaling.
+            Default: ``True``. Auto-deferred for the gray/detect_mat
+            passes when ``use_gat=True``.
+        use_gat: Wrap gray and detect_mat denoising in the Generalized
+            Anscombe Transform. RGB is not transformed. Default: ``False``.
+        gat_gain, gat_mu, gat_read_sigma, gat_scale_factor: GAT parameters.
 
     Returns:
         Image: Input image with all components (RGB, gray, detect_mat)
@@ -60,6 +68,9 @@ class VisuShrinkCorrector(ImageCorrector):
         denoising with color correction workflows.
     """
 
+    _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"sigma": 1.0}
+    _GAT_DEFER_ATTRS: ClassVar[tuple[str, ...]] = ("rescale_sigma", "clip")
+
     def __init__(
         self,
         sigma: float | None = None,
@@ -67,46 +78,55 @@ class VisuShrinkCorrector(ImageCorrector):
         mode: Literal["soft", "hard"] = "soft",
         wavelet_levels: int | None = None,
         convert2ycbcr: bool = True,
+        rescale_sigma: bool = True,
+        clip: bool = True,
+        **kwargs,
     ):
         """Initialize VisuShrink corrector for all image components.
 
         Parameters:
             sigma (float | None): Noise level. None (default) auto-estimates.
-                For RGB, denoise_wavelet handles internal scaling.
-            wavelet (str): Wavelet type. 'db2' (default) is general-purpose.
-            mode (Literal['soft', 'hard']): 'soft' (default) for smoothness.
-            wavelet_levels (int | None): Levels. None = max-3.
-            convert2ycbcr (bool): Denoise RGB in YCbCr space (True, default)
-                for better color preservation. Only applies if RGB exists.
+                Retargeted to 1.0 when ``use_gat=True``.
+            wavelet (str): Wavelet type. 'db2' (default).
+            mode (Literal['soft', 'hard']): 'soft' (default) or 'hard'.
+            wavelet_levels (int | None): None = max-3.
+            convert2ycbcr (bool): Denoise RGB in YCbCr (default True).
+            rescale_sigma (bool): skimage internal flag. Default True.
+                Auto-deferred during GAT.
+            **kwargs: Forwarded to :class:`_GATSupportMixin`.
         """
+        super().__init__(**kwargs)
         self.sigma = sigma
         self.wavelet = wavelet
         self.mode = mode
         self.wavelet_levels = wavelet_levels
         self.convert2ycbcr = convert2ycbcr
+        self.rescale_sigma = rescale_sigma
+        self.clip = clip
 
     def _operate(self, image: Image) -> Image:
-        """Apply VisuShrink wavelet denoising to all image components.
-
-        Returns:
-            Modified Image with all components denoised
-        """
-        # Denoise RGB if present
+        """Apply VisuShrink wavelet denoising to all image components."""
         if not image.rgb.isempty():
-            denoised_rgb = denoise_wavelet(
-                image=image.rgb[:],
-                sigma=self.sigma,
-                wavelet=self.wavelet,
-                mode=self.mode,
-                wavelet_levels=self.wavelet_levels,
-                method="VisuShrink",
-                convert2ycbcr=self.convert2ycbcr,
-                channel_axis=-1,
-                rescale_sigma=True,
-            )
-            image._data.rgb = denoised_rgb.clip(0, 255).astype(np.uint8)
+            self._denoise_rgb(image)
+        self._gat_apply(image, "gray", self._denoise_gray)
+        self._gat_apply(image, "detect_mat", self._denoise_detect_mat)
+        return image
 
-        # Always denoise gray (luminance grayscale)
+    def _denoise_rgb(self, image: Image) -> None:
+        denoised_rgb = denoise_wavelet(
+            image=image.rgb[:],
+            sigma=self.sigma,
+            wavelet=self.wavelet,
+            mode=self.mode,
+            wavelet_levels=self.wavelet_levels,
+            method="VisuShrink",
+            convert2ycbcr=self.convert2ycbcr,
+            channel_axis=-1,
+            rescale_sigma=self.rescale_sigma,
+        )
+        image._data.rgb = denoised_rgb.clip(0, 255).astype(np.uint8)
+
+    def _denoise_gray(self, image: Image) -> None:
         denoised_gray = denoise_wavelet(
             image=image.gray[:],
             sigma=self.sigma,
@@ -115,11 +135,13 @@ class VisuShrinkCorrector(ImageCorrector):
             wavelet_levels=self.wavelet_levels,
             method="VisuShrink",
             channel_axis=None,
-            rescale_sigma=True,
+            rescale_sigma=self.rescale_sigma,
         )
-        image._data.gray = denoised_gray.clip(0.0, 1.0)
+        if self.clip:
+            denoised_gray = denoised_gray.clip(0.0, 1.0)
+        image._data.gray = denoised_gray
 
-        # Always denoise detect_mat
+    def _denoise_detect_mat(self, image: Image) -> None:
         denoised_enh = denoise_wavelet(
             image=image.detect_mat[:],
             sigma=self.sigma,
@@ -128,8 +150,8 @@ class VisuShrinkCorrector(ImageCorrector):
             wavelet_levels=self.wavelet_levels,
             method="VisuShrink",
             channel_axis=None,
-            rescale_sigma=True,
+            rescale_sigma=self.rescale_sigma,
         )
-        image._data.detect_mat = denoised_enh.clip(0.0, 1.0)
-
-        return image
+        if self.clip:
+            denoised_enh = denoised_enh.clip(0.0, 1.0)
+        image._data.detect_mat = denoised_enh

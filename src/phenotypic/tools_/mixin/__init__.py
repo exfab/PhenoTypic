@@ -10,9 +10,12 @@ Available mixins:
 - ClipControlMixin: Control output clipping behavior in composite operations
 - PointPickerMixin: Marker + shared plumbing for operations that take user-picked
   ``(y, x)`` coordinates as a primary parameter
+- _GATSupportMixin: Optional Generalized Anscombe Transform variance
+  stabilization for noise-driven enhancers and correctors
 """
 
 from ._footprint_mixin import FootprintMixin
+from ._gat_support_mixin import _GATSupportMixin
 from ._grid_inference_mixin import GridInferenceMixin
 from ._lazy_widget_mixin import LazyWidgetMixin
 from ._clip_control_mixin import ClipControlMixin
@@ -24,4 +27,5 @@ __all__ = [
     "LazyWidgetMixin",
     "ClipControlMixin",
     "PointPickerMixin",
+    "_GATSupportMixin",
 ]

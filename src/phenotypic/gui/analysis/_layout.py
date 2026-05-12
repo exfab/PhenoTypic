@@ -41,7 +41,7 @@ ColumnsProvider = Callable[[str], list[str]]
 
 # Class names for analysis filter / model registries (v1 fixed list).
 _FILTER_CHOICES = ["EdgeCorrector", "TukeyOutlierRemover"]
-_MODEL_CHOICES = ["LogGrowthModel", "LinearSoftplusModel"]
+_MODEL_CHOICES = ["LogGrowthModel", "LinearSoftplus", "DoubleSoftplus"]
 _POST_CHOICES = ["PrependString", "AppendString", "ExpandMetadata", "MergeMetadata"]
 
 

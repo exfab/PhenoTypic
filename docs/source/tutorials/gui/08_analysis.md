@@ -38,13 +38,13 @@ long-running fits where you don't need the rest of the hub:
 - **Author the filter chain**: pick a class from the "Add filter…"
   dropdown (`EdgeCorrector`, `TukeyOutlierRemover`). Filters reshape the
   aggregate measurements during analysis — they don't touch the master.
-- **Pick the endpoint model**: `LogGrowthModel` or `LinearSoftplusModel`.
-  Only one model can be configured at a time; selecting `(no model)`
-  clears it and disables the run button.
+- **Pick the endpoint model**: `LogGrowthModel`, `LinearSoftplus`, or
+  `DoubleSoftplus`. Only one model can be configured at a time;
+  selecting `(no model)` clears it and disables the run button.
 - **Tune params inline**: every section card hosts an editable form
   generated from the analyzer's constructor signature. Bools become
   switches, numerics become number inputs, `Literal[...]` becomes a
-  dropdown, and multi-type unions (e.g. `LinearSoftplusModel.s0_prior`)
+  dropdown, and multi-type unions (e.g. `LinearSoftplus.s0_prior`)
   render as a small type-tag dropdown plus an adaptive value input.
   Edits save to `<output>/pipeline.json` automatically.
 - **Run analysis**: click `Run analysis`. The sub-app reads

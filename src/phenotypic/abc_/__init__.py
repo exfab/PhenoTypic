@@ -11,6 +11,7 @@ from phenotypic.tools_ import FootprintMixin
 from ._measure_features import MeasureFeatures
 from ._image_operation import ImageOperation
 from ._image_enhancer import ImageEnhancer
+from ._image_denoiser import ImageDenoiser
 from ._image_corrector import ImageCorrector
 from ._object_detector import ObjectDetector
 from ._object_refiner import ObjectRefiner
@@ -34,6 +35,7 @@ __all__ = [
     "MeasureFeatures",
     "ImageOperation",
     "ImageEnhancer",
+    "ImageDenoiser",
     "ImageCorrector",
     "ObjectDetector",
     "ObjectRefiner",

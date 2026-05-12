@@ -1,16 +1,17 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from skimage.restoration import denoise_nl_means
 
-from ..abc_ import ImageEnhancer
+from ..abc_ import ImageDenoiser
+from ..tools_.mixin import _GATSupportMixin
 
 
-class NonLocalMeansDenoiser(ImageEnhancer):
+class NonLocalMeansDenoiser(_GATSupportMixin, ImageDenoiser):
     """Denoise ``detect_mat`` with non-local means patch-based filtering.
 
     Compares patches across the image to identify similar structures and
@@ -29,13 +30,18 @@ class NonLocalMeansDenoiser(ImageEnhancer):
             range: 5--21. Default: 11.
         h: Cut-off distance controlling smoothness. Rule of thumb:
             ``h`` ~= noise level (sigma). Higher values produce more
-            smoothing. Default: 0.5.
+            smoothing. Both ``h`` and ``sigma`` retarget to 1.0 when
+            ``use_gat=True``. Default: 0.5.
         fast_mode: If ``True``, use faster variant with uniform spatial
             weighting. If ``False`` (default), use original algorithm
             with Gaussian spatial weighting.
         sigma: Expected noise standard deviation. Values > 0 improve
             patch weighting by accounting for expected noise variance.
-            Default: 0.0 (disabled).
+            Retargets to 1.0 when ``use_gat=True``. Default: 0.0.
+        use_gat: Wrap denoising in the Generalized Anscombe Transform.
+            Default: ``False``. See
+            :class:`phenotypic.tools_.mixin._GATSupportMixin`.
+        gat_gain, gat_mu, gat_read_sigma, gat_scale_factor: GAT parameters.
 
     Returns:
         Image: Input image with ``detect_mat`` denoised via non-local
@@ -49,6 +55,9 @@ class NonLocalMeansDenoiser(ImageEnhancer):
         - Preserving colony texture and morphology during speckle and dust
           removal.
         - Pre-filtering before edge detection to avoid amplifying noise.
+        - Poisson-Gaussian noise via ``use_gat=True`` (Deledalle et al.
+          2010 demonstrate that NLM benefits from variance stabilization
+          for moderate-to-high photon counts).
 
     Consider Also:
         - :class:`BM3DDenoiser` for state-of-the-art structured noise
@@ -65,6 +74,9 @@ class NonLocalMeansDenoiser(ImageEnhancer):
         and other denoising strategies on low-light plate images.
     """
 
+    _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"h": 1.0, "sigma": 1.0}
+    _GAT_DEFER_ATTRS: ClassVar[tuple[str, ...]] = ()
+
     def __init__(
             self,
             patch_size: int = 5,
@@ -73,24 +85,25 @@ class NonLocalMeansDenoiser(ImageEnhancer):
             *,
             fast_mode: bool = False,
             sigma: float = 0.0,
+            **kwargs,
     ):
         """
         Parameters:
-            patch_size (int): Size of patches used for comparison. Larger patches capture
-                more structure but are slower. Start with 5-7 for agar plates; increase to 11-15
-                for heavily noisy images. Default: 7.
-            search_dist (int): Maximal distance in pixels to search for similar patches.
-                Larger values find more candidates at higher cost. Default: 11.
-            h (float): Cut-off distance controlling smoothness. Typical rule of thumb:
-                h ≈ sigma (noise level). Increase to ~1.5*sigma for more smoothing.
-                Default: 0.1.
-            fast_mode (bool): If True, use faster variant with uniform spatial weighting.
-                If False, use original algorithm with Gaussian spatial weighting (slower but
-                potentially better quality). Default: False.
-            sigma (float): Noise standard deviation. If provided (> 0), improves patch weighting
-                by accounting for expected noise variance. Start with estimate_sigma() output.
-                Default: 0.0 (disabled).
+            patch_size (int): Size of patches used for comparison.
+                Default: 5.
+            search_dist (int): Maximal distance in pixels to search for
+                similar patches. Default: 11.
+            h (float): Cut-off distance controlling smoothness. Rule of
+                thumb: ``h`` ≈ ``sigma``. Default: 0.5. Retargets to 1.0
+                when ``use_gat=True``.
+            fast_mode (bool): If True, use faster variant with uniform
+                spatial weighting. Default: False.
+            sigma (float): Noise standard deviation. If provided (> 0),
+                improves patch weighting. Default: 0.0. Retargets to 1.0
+                when ``use_gat=True``.
+            **kwargs: Forwarded to :class:`_GATSupportMixin`.
         """
+        super().__init__(**kwargs)
         self.patch_size = int(patch_size)
         self.search_dist = int(search_dist)
         self.h = float(h)
@@ -99,6 +112,10 @@ class NonLocalMeansDenoiser(ImageEnhancer):
 
     def _operate(self, image: Image) -> Image:
         """Apply non-local means denoising to detection matrix."""
+        self._gat_apply(image, "detect_mat", self._denoise_detect_mat)
+        return image
+
+    def _denoise_detect_mat(self, image: Image) -> None:
         denoised = denoise_nl_means(
                 image=image.detect_mat[:],
                 patch_size=self.patch_size,
@@ -109,4 +126,3 @@ class NonLocalMeansDenoiser(ImageEnhancer):
                 preserve_range=True,
         )
         image.detect_mat[:] = denoised
-        return image
