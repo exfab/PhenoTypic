@@ -115,7 +115,7 @@ STORE_IMAGE_PATH = ids.STORE_IMAGE_PATH
 # the same long literal on every early-return branch.
 #
 # Layout: state, breadcrumb, canvas, inspector, popover, 4 toast outputs.
-_NOOP_FAN_IN: Tuple[Any, ...] = (no_update,) * 9
+_NOOP_FAN_IN: Tuple[Any, ...] = (no_update,) * 10
 
 
 def _trigger_kind_path(triggered: Any, expected_type: str) -> Optional[Tuple[str, str]]:
@@ -331,12 +331,19 @@ def _commit_param_segments(
     singleton scope into a normal operation marker stored at
     ``parent.params[param_name]``.
 
+    Aux-slot segments (``{"target_node_id", "param", "slot"}``) are skipped
+    — the wired aux already lives persistently inside
+    ``consumer.aux_ports[param][slot]``, so nothing needs to be mirrored
+    back when drilling out.
+
     The scope dict under ``__op_param_scope__`` is preserved so re-entering
     the slot keeps the same node ids and incidental UI state.
     """
 
     for raw in dropped:
         seg = _normalize_segment(raw)
+        if "target_node_id" in seg:
+            continue
         if seg["param"] is None:
             continue
         # Walk fresh from root to find the parent node.
@@ -849,15 +856,21 @@ def _dispatch_state_update(
         if param_info is not None and not param_info.is_list and not slots:
             slots.append(None)
 
-        # Clear focus if it pointed at a slot that's been shifted off the
-        # end (defensive: most slot-remove flows clear focus implicitly).
+        # Clear focus when the removed slot's index is at or before the
+        # focused index. Removing slot `slot` shifts every higher index
+        # down by 1, so the focused aux is no longer the same StepNode
+        # unless focused on an earlier slot. The previous condition
+        # ``focus["slot"] >= len(slots)`` only caught the case where the
+        # last slot was removed; removing slot 0 from a 2-slot list left
+        # focus pointing at slot 0, which now silently aliased to what
+        # was slot 1.
         focus = out.get("inspector_focus_aux") or {}
         if (
             isinstance(focus, dict)
             and focus.get("target_node_id") == node_id
             and focus.get("param") == param
             and isinstance(focus.get("slot"), int)
-            and focus["slot"] >= len(slots)
+            and focus["slot"] >= slot
         ):
             out["inspector_focus_aux"] = None
         return out
@@ -1118,17 +1131,19 @@ def _popover_style_for(contents: Any) -> Dict[str, Any]:
 
 def _state_replacement_payload(
     pipeline: Any,
-) -> Tuple[Dict[str, Any], Any, Any, Any, Any]:
+) -> Tuple[Dict[str, Any], Any, Any, Any, Any, Dict[str, Any]]:
     """Build the full re-render tuple for a freshly-loaded pipeline.
 
     Both the JSON-load and prefab-load callbacks blow away the current
     builder state and replace it with one derived from a freshly-built
-    :class:`ImagePipeline`. Both then need the same five output values;
+    :class:`ImagePipeline`. Both then need the same six output values;
     this helper centralises the conversion + view rendering.
 
     Returns:
         Tuple ``(state_dict, breadcrumb, canvas, inspector,
-        popover_contents)``.
+        popover_contents, popover_style)``. The ``popover_style`` mirrors
+        ``_popover_style_for(popover_contents)`` so the container's
+        ``display`` flips in lock-step with the children.
     """
 
     scope = from_pipeline(pipeline)
@@ -1145,6 +1160,7 @@ def _state_replacement_payload(
         canvas,
         inspector,
         popover_contents,
+        _popover_style_for(popover_contents),
     )
 
 
@@ -1198,6 +1214,13 @@ def register_callbacks(app: dash.Dash) -> None:
         Output("canvas-cytoscape-wrapper", "children"),
         Output(ids.INSPECTOR_CONTAINER, "children"),
         Output(ids.POPOVER_CONTAINER, "children"),
+        # ``style`` output keeps display:block/display:none in lock-step
+        # with the children list. Without it, state mutations that cause
+        # ``build_popover_contents`` to return ``[]`` (e.g. deleting a
+        # node with an open popover, drilling, breadcrumb navigation)
+        # clear the popover children but leave a stale visible empty
+        # box anchored where the popover used to be.
+        Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
         # Toast outputs surface mutation errors to the user; success path leaves
         # them as ``no_update`` so they don't clobber other callbacks' toasts.
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
@@ -1432,6 +1455,7 @@ def register_callbacks(app: dash.Dash) -> None:
                 canvas,
                 inspector,
                 popover_contents,
+                _popover_style_for(popover_contents),
                 no_update,
                 no_update,
                 no_update,
@@ -1470,6 +1494,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output("canvas-cytoscape-wrapper", "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
@@ -1492,7 +1517,7 @@ def register_callbacks(app: dash.Dash) -> None:
     ) -> Tuple[Any, ...]:
         """Write a picker store's list-of-pairs into the matching node's params."""
 
-        noop = (no_update,) * 9
+        noop = (no_update,) * 10
 
         if state_data is None or ctx.triggered_id is None:
             return noop
@@ -1549,6 +1574,7 @@ def register_callbacks(app: dash.Dash) -> None:
                 canvas,
                 inspector,
                 popover_contents,
+                _popover_style_for(popover_contents),
                 no_update,
                 no_update,
                 no_update,
@@ -1642,12 +1668,14 @@ def register_callbacks(app: dash.Dash) -> None:
             )
             # Auto-focus the first wired slot when one exists so the
             # inspector mirrors the wired aux's params. When the port
-            # is empty, fall through to slot 0 so the popover anchors
-            # at the right port without setting an inspector banner
-            # (the dispatch's set_inspector_focus validator rejects
-            # empty slots, so we sidestep it and write the focus dict
-            # directly — the inspector renderer detects the empty slot
-            # and renders the canvas-selected consumer's params).
+            # has NO wired slots, leave ``inspector_focus_aux`` as
+            # ``None`` — writing a slot=0 sentinel would pollute the
+            # store with a focus dict pointing at a non-existent slot,
+            # which other callbacks (e.g. ``run_preview``, save handler)
+            # may read without going through ``_render_views``'s
+            # empty-slot fallback. The popover anchor is determined by
+            # the cytoscape tap event, not by ``inspector_focus_aux``,
+            # so we don't need a sentinel to "remember" the active port.
             new_state_dict = deepcopy(state_data)
             if first_wired is not None:
                 new_state_dict["inspector_focus_aux"] = {
@@ -1656,11 +1684,7 @@ def register_callbacks(app: dash.Dash) -> None:
                     "slot": first_wired,
                 }
             else:
-                new_state_dict["inspector_focus_aux"] = {
-                    "target_node_id": target_node_id,
-                    "param": param,
-                    "slot": 0,
-                }
+                new_state_dict["inspector_focus_aux"] = None
 
             new_state = state_from_json(new_state_dict)
             breadcrumb, canvas, inspector, popover_contents = _render_views(
@@ -1782,8 +1806,10 @@ def register_callbacks(app: dash.Dash) -> None:
 
         try:
             new_state_dict: Dict[str, Any] = state_data
-            popover_override: Any = no_update
-            popover_style_override: Any = no_update
+            # Set by the ``drill`` branch to force-dismiss the popover; the
+            # other actions leave them as ``None`` so the renderer-derived
+            # ``popover_contents`` / style apply.
+            drill_dismiss = False
             if action == "pick_class":
                 if not isinstance(class_name, str) or not class_name:
                     return noop
@@ -1820,8 +1846,7 @@ def register_callbacks(app: dash.Dash) -> None:
                 )
                 # Drill dismisses the popover — the new canvas scope
                 # belongs to a different consumer.
-                popover_override = []
-                popover_style_override = {"display": "none"}
+                drill_dismiss = True
             elif action == "disconnect":
                 new_state_dict = _dispatch_state_update(
                     state_data,
@@ -1848,15 +1873,19 @@ def register_callbacks(app: dash.Dash) -> None:
             breadcrumb, canvas, inspector, popover_contents = _render_views(
                 new_state
             )
+            if drill_dismiss:
+                popover_children: Any = []
+                popover_style: Dict[str, Any] = {"display": "none"}
+            else:
+                popover_children = popover_contents
+                popover_style = _popover_style_for(popover_contents)
             return (
                 new_state_dict,
                 breadcrumb,
                 canvas,
                 inspector,
-                popover_override if popover_override is not no_update
-                else popover_contents,
-                popover_style_override if popover_style_override is not no_update
-                else _popover_style_for(popover_contents),
+                popover_children,
+                popover_style,
                 no_update,
                 no_update,
                 no_update,
@@ -2415,6 +2444,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output("canvas-cytoscape-wrapper", "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
         Output(ids.MODAL_LOAD_PICKER, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -2463,6 +2493,7 @@ def register_callbacks(app: dash.Dash) -> None:
                     canvas,
                     inspector,
                     popover_contents,
+                    popover_style,
                 ) = _state_replacement_payload(pipeline)
                 return (
                     no_update,
@@ -2471,16 +2502,17 @@ def register_callbacks(app: dash.Dash) -> None:
                     canvas,
                     inspector,
                     popover_contents,
+                    popover_style,
                     False,
                     *_toast(f"Loaded {Path(path_str).name}", ok=True),
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.exception("Load JSON failed")
                 return (
-                    (no_update,) * 7 + _toast(_format_exception(exc), ok=False)
+                    (no_update,) * 8 + _toast(_format_exception(exc), ok=False)
                 )
 
-        return (no_update,) * 11
+        return (no_update,) * 12
 
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
@@ -2488,6 +2520,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output("canvas-cytoscape-wrapper", "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
         Output(ids.MODAL_LOAD_PICKER, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -2518,12 +2551,12 @@ def register_callbacks(app: dash.Dash) -> None:
         """
         triggered = ctx.triggered_id
         if not isinstance(triggered, dict) or triggered.get("type") != "prefab-card":
-            return (no_update,) * 10
+            return (no_update,) * 11
         if not ctx.triggered or not ctx.triggered[0].get("value"):
-            return (no_update,) * 10
+            return (no_update,) * 11
         class_name = triggered.get("class_name")
         if not class_name:
-            return (no_update,) * 10
+            return (no_update,) * 11
 
         try:
             import phenotypic.prefab as prefab_module
@@ -2535,6 +2568,7 @@ def register_callbacks(app: dash.Dash) -> None:
                 canvas,
                 inspector,
                 popover_contents,
+                popover_style,
             ) = _state_replacement_payload(pipeline)
             return (
                 state_dict,
@@ -2542,12 +2576,13 @@ def register_callbacks(app: dash.Dash) -> None:
                 canvas,
                 inspector,
                 popover_contents,
+                popover_style,
                 False,
                 *_toast(f"Loaded prefab {class_name}", ok=True),
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception("Load prefab failed")
-            return (no_update,) * 6 + _toast(_format_exception(exc), ok=False)
+            return (no_update,) * 7 + _toast(_format_exception(exc), ok=False)
 
     # ----------------------------------------------------------------------
     # 7. Load Image modal — open / dir-nav / file pick / synthetic shortcut

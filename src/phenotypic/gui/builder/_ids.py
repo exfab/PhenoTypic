@@ -503,10 +503,15 @@ def _decode_aux_port_id(encoded: str) -> Optional[tuple[str, str]]:
     if not encoded.startswith(_AUX_PORT_PREFIX + _PORT_ID_SEP):
         return None
     parts = encoded.split(_PORT_ID_SEP)
-    # Expected shape: [_AUX_PORT_PREFIX, target_node_id, param]
-    if len(parts) != 3:
+    # Expected shape: [_AUX_PORT_PREFIX, target_node_id, *param_parts].
+    # Param names CAN contain the separator (legitimately though uncommon),
+    # so we re-join everything past the node_id rather than strictly requiring
+    # len(parts) == 3. Mirrors the JS-side decoder in ``aux_popover.js`` which
+    # uses ``parts.slice(2).join("__")``.
+    if len(parts) < 3:
         return None
-    _, target_node_id, param = parts
+    target_node_id = parts[1]
+    param = _PORT_ID_SEP.join(parts[2:])
     return target_node_id, param
 
 

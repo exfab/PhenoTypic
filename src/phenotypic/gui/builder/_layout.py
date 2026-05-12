@@ -651,11 +651,8 @@ def build_canvas(
             x_offset = int((i - (n_aux - 1) / 2) * _AUX_PORT_X_SPACING)
             slots = consumer.aux_ports.get(param_name) or []
             wired_count = sum(1 for slot in slots if slot is not None)
-            total_count = len(slots)
             wired = wired_count > 0
-            port_classes = "aux-port"
-            if wired:
-                port_classes = f"{port_classes} aux-port--wired"
+            port_classes = "aux-port aux-port--wired" if wired else "aux-port"
             elements.append(
                 {
                     "data": {
@@ -666,7 +663,7 @@ def build_canvas(
                         "param": param_name,
                         "wired": wired,
                         "wired_count": wired_count,
-                        "total_count": total_count,
+                        "total_count": len(slots),
                     },
                     "classes": port_classes,
                     "selectable": True,
@@ -1170,9 +1167,13 @@ def build_inspector(
         ),
     ]
 
+    # Prepended only when an aux-focus override is active; empty otherwise so
+    # the canvas-consumer rendering path stays unchanged.
+    banner_prefix: List[Any] = [banner] if banner is not None else []
+
     if render_node.class_name == PIPELINE_CLASS_NAME:
         body_children: List[Any] = [
-            *(([banner] if banner is not None else [])),
+            *banner_prefix,
             *header_children,
             html.Div(
                 [
@@ -1225,7 +1226,7 @@ def build_inspector(
         )
 
     body_children = [
-        *(([banner] if banner is not None else [])),
+        *banner_prefix,
         *header_children,
         # Documentation section is collapsed by default; emits hidden
         # placeholders carrying the same ids when ``op_info.docstring`` is
@@ -1594,7 +1595,7 @@ def build_popover_contents(
     else:
         # Scalar port: a length-1 list, so a single slot at index 0.
         slots = consumer.aux_ports.get(param) or [None]
-        slot_value = slots[0] if slots else None
+        slot_value = slots[0]
         if slot_value is None:
             children.append(
                 _popover_palette(
