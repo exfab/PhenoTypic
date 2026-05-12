@@ -37,9 +37,6 @@ class AsymmetricSpurTrimmer(ObjectRefiner):
       ``R_sym`` lands further from the inoculum core.
     * Per-CC segmentation localizes the decision — trimming one noisy spur
       never touches a legitimate branch on the other side of the colony.
-    * A safety cap (``max_trim_fraction``) aborts trimming for any colony
-      where the proposal would remove more than the given fraction of its
-      pixels, protecting uniformly asymmetric morphologies.
 
     Args:
         symmetry_threshold: Minimum angular coverage (fraction of
@@ -63,10 +60,6 @@ class AsymmetricSpurTrimmer(ObjectRefiner):
             CC past ``R_sym`` is trimmed — the "pure R_sym" mode. When a
             float, CCs with ``(1 - euler_number) / area`` below the threshold
             are kept as legitimate linear branches.
-        max_trim_fraction: Safety cap on the fraction of a colony's pixels
-            that may be removed in a single application. If the proposal
-            exceeds this fraction, trimming is aborted for that colony.
-            Defaults to 0.25.
         min_cc_area: Minimum candidate-CC area (pixels) required to make a
             topological decision. Smaller CCs are kept unchanged because
             Euler statistics are unreliable on tiny regions. Defaults to 50.
@@ -125,7 +118,6 @@ class AsymmetricSpurTrimmer(ObjectRefiner):
             smoothing_window: int = 3,
             method: Literal["distance", "intensity"] = "distance",
             beehive_threshold: float | None = None,
-            max_trim_fraction: float = 0.25,
             min_cc_area: int = 50,
             min_object_area: int = 100,
     ):
@@ -144,11 +136,6 @@ class AsymmetricSpurTrimmer(ObjectRefiner):
                     "beehive_threshold must be non-negative or None; "
                     f"got {beehive_threshold}."
             )
-        if not 0.0 < max_trim_fraction <= 1.0:
-            raise ValueError(
-                    "max_trim_fraction must be in (0, 1]; "
-                    f"got {max_trim_fraction}."
-            )
 
         self.symmetry_threshold = symmetry_threshold
         self.n_angular_bins = n_angular_bins
@@ -157,7 +144,6 @@ class AsymmetricSpurTrimmer(ObjectRefiner):
         self.smoothing_window = smoothing_window
         self.method = method
         self.beehive_threshold = beehive_threshold
-        self.max_trim_fraction = max_trim_fraction
         self.min_cc_area = min_cc_area
         self.min_object_area = min_object_area
 
@@ -220,8 +206,7 @@ class AsymmetricSpurTrimmer(ObjectRefiner):
         Returns:
             A boolean array the same shape as ``obj_mask`` with ``True``
             at pixels to remove, or ``None`` when the colony is ineligible
-            (no asymmetric region, degenerate geometry, or proposal trips
-            the safety cap).
+            (no asymmetric region or degenerate geometry).
         """
         # 1. Centroid (local bbox coords). Distance-transform peak is a safe
         # fallback; intensity mode uses it when the intensity is all zero and
@@ -328,19 +313,6 @@ class AsymmetricSpurTrimmer(ObjectRefiner):
                 to_remove |= cc_mask
 
         if not to_remove.any():
-            return None
-
-        # 6. Safety cap.
-        total_area = int(obj_mask.sum())
-        if total_area <= 0:
-            return None
-        trim_fraction = to_remove.sum() / float(total_area)
-        if trim_fraction > self.max_trim_fraction:
-            _log.debug(
-                    "AsymmetricSpurTrimmer aborted label %d: trim fraction "
-                    "%.3f exceeds max_trim_fraction %.3f.",
-                    prop.label, trim_fraction, self.max_trim_fraction,
-            )
             return None
 
         return to_remove

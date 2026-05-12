@@ -41,7 +41,7 @@ class TriangleDetector(ThresholdDetector):
           equal histogram areas (balanced bimodal distribution).
         * :class:`HysteresisDetector` when colony brightness varies across
           the plate and a single threshold under-segments faint regions.
-        * :class:`ManualDetector` when an empirically determined threshold is
+        * :class:`UserThreshold` when an empirically determined threshold is
           known to outperform automatic methods for your plate type.
 
     References:
@@ -74,9 +74,9 @@ class TriangleDetector(ThresholdDetector):
         Returns:
             Image: The modified image object with an updated output mask (`omask`).
         """
-        nbins = 2**image.bit_depth
+        nbins = 2 ** image.bit_depth
         image.objmask[:] = image.detect_mat[:] >= threshold_triangle(
-            image.detect_mat[:], nbins=nbins
+                image.detect_mat[:], nbins=nbins
         )
         return image
 

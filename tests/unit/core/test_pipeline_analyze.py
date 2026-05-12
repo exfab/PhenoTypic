@@ -13,7 +13,7 @@ import pytest
 from phenotypic import ImagePipeline
 from phenotypic.analysis import (
     EdgeCorrector,
-    LinearSoftplusModel,
+    LinearSoftplus,
     LogGrowthModel,
     TukeyOutlierRemover,
 )
@@ -223,11 +223,11 @@ class TestJSONRoundTrip:
         with pytest.raises(TypeError, match="ModelFitter"):
             ImagePipeline.from_json(bad)
 
-    def test_linear_softplus_model_round_trip(self):
-        # LinearSoftplusModel uses ``num_workers`` (not ``n_jobs``) at the
+    def test_linear_softplus_round_trip(self):
+        # LinearSoftplus uses ``num_workers`` (not ``n_jobs``) at the
         # constructor; SetAnalyzer stores it as ``n_jobs``. The alias map
         # must round-trip both shapes.
-        model = LinearSoftplusModel(
+        model = LinearSoftplus(
             on="Shape_Area",
             groupby=["Metadata_Plate"],
             time_label="Metadata_Time",
@@ -236,5 +236,5 @@ class TestJSONRoundTrip:
         pipe = ImagePipeline(model=model)
         loaded = ImagePipeline.from_json(pipe.to_json())
         loaded_model = loaded.get_model()
-        assert isinstance(loaded_model, LinearSoftplusModel)
+        assert isinstance(loaded_model, LinearSoftplus)
         assert loaded_model.n_jobs == 2

@@ -462,7 +462,7 @@ def _multi_union_widget(
     """Render a type-tag dropdown plus an adaptive value input for multi-unions.
 
     Used for parameters whose annotation is a union of 2+ non-None types
-    (e.g. ``LinearSoftplusModel.s0_prior: bool | float | int | str | None``).
+    (e.g. ``LinearSoftplus.s0_prior: bool | float | int | str | None``).
     The dropdown picks the active branch; the input adapts type accordingly.
     A pattern-matching callback fans the (tag, value) pair back into
     :func:`parse_widget_value` which dispatches on the tag.

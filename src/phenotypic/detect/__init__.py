@@ -14,8 +14,8 @@ from ._mad_hysteresis_detector import MadHysteresisDetector
 from ._round_peaks_detector import RoundPeaksDetector
 from ._isodata_detector import IsodataDetector
 from ._li_detector import LiDetector
-from ._manual_detector import ManualDetector
-from ._manual_grid_detector import ManualGridDetector
+from ._user_threshold import UserThreshold
+from ._manual_grid_point_detector import ManualGridPointDetector
 from ._manual_point_detector import ManualPointDetector
 from ._mean_detector import MeanDetector
 from ._minimum_detector import MinimumDetector
@@ -40,8 +40,8 @@ __all__ = [
     "MadHysteresisDetector",
     "IsodataDetector",
     "LiDetector",
-    "ManualDetector",
-    "ManualGridDetector",
+    "UserThreshold",
+    "ManualGridPointDetector",
     "ManualPointDetector",
     "MeanDetector",
     "MinimumDetector",

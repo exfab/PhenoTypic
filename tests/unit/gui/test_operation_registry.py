@@ -200,12 +200,11 @@ class TestPointPickerMarker:
         assert blur.point_picker_param is None
 
     def test_threshold_based_manual_detector_is_not_pickable(self, registry):
-        """ManualDetector takes a scalar threshold, not points — not flagged."""
-        man = registry.get("ManualDetector")
+        """UserThreshold takes a scalar threshold, not points — not flagged."""
+        man = registry.get("UserThreshold")
         assert man is not None
         assert man.is_point_pickable is False
         assert man.point_picker_param is None
-
 
 
 class TestColumnRefDetection:
@@ -228,9 +227,12 @@ class TestColumnRefDetection:
             ("LogGrowthModel", "on", False),
             ("LogGrowthModel", "groupby", True),
             ("LogGrowthModel", "time_label", False),
-            ("LinearSoftplusModel", "on", False),
-            ("LinearSoftplusModel", "groupby", True),
-            ("LinearSoftplusModel", "time_label", False),
+            ("LinearSoftplus", "on", False),
+            ("LinearSoftplus", "groupby", True),
+            ("LinearSoftplus", "time_label", False),
+            ("DoubleSoftplus", "on", False),
+            ("DoubleSoftplus", "groupby", True),
+            ("DoubleSoftplus", "time_label", False),
         ],
     )
     def test_column_ref_populated(
