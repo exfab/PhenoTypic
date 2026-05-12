@@ -699,7 +699,7 @@
 <span class="sd">        model (e.g. ``r``, ``K``, ``N0``, ``µmax`` for log-growth). May also</span>
 <span class="sd">        include per-group bounds that should be preserved in results</span>
 <span class="sd">        (e.g. ``K_max``), or string-valued diagnostic fields (e.g. the</span>
-<span class="sd">        per-group fit mode emitted by :class:`LinearSoftplusModel`).</span>
+<span class="sd">        per-group fit mode emitted by :class:`DoubleSoftplus`).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span>
 
@@ -710,9 +710,7 @@
 <span class="sd">        ``row`` is any mapping keyed by MeasurementInfo members — a dict</span>
 <span class="sd">        produced by ``_unpack_params`` at fit time, or a ``pd.Series``</span>
 <span class="sd">        drawn from the results DataFrame at plot time. Values may be</span>
-<span class="sd">        ``None`` for optional model kwargs (e.g. ``smax=None`` to</span>
-<span class="sd">        disable the saturation ceiling in</span>
-<span class="sd">        :class:`LinearSoftplusModel`).</span>
+<span class="sd">        ``None`` for optional model kwargs.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span>
 
@@ -916,7 +914,7 @@
 
 <span class="sd">        Samples ``[0, upper]`` with ``2 * upper`` points (floor 2) so</span>
 <span class="sd">        that sharp model transitions (e.g. the softplus lag/saturation</span>
-<span class="sd">        in :class:`LinearSoftplusModel`) render smoothly rather than as</span>
+<span class="sd">        in :class:`DoubleSoftplus`) render smoothly rather than as</span>
 <span class="sd">        a polyline sampled at the observed timepoints.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">upper</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">timepoints</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="k">if</span> <span class="n">tmax</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">tmax</span><span class="p">)</span>

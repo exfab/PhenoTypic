@@ -566,9 +566,6 @@
 <span class="sd">      ``R_sym`` lands further from the inoculum core.</span>
 <span class="sd">    * Per-CC segmentation localizes the decision — trimming one noisy spur</span>
 <span class="sd">      never touches a legitimate branch on the other side of the colony.</span>
-<span class="sd">    * A safety cap (``max_trim_fraction``) aborts trimming for any colony</span>
-<span class="sd">      where the proposal would remove more than the given fraction of its</span>
-<span class="sd">      pixels, protecting uniformly asymmetric morphologies.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        symmetry_threshold: Minimum angular coverage (fraction of</span>
@@ -592,10 +589,6 @@
 <span class="sd">            CC past ``R_sym`` is trimmed — the &quot;pure R_sym&quot; mode. When a</span>
 <span class="sd">            float, CCs with ``(1 - euler_number) / area`` below the threshold</span>
 <span class="sd">            are kept as legitimate linear branches.</span>
-<span class="sd">        max_trim_fraction: Safety cap on the fraction of a colony&#39;s pixels</span>
-<span class="sd">            that may be removed in a single application. If the proposal</span>
-<span class="sd">            exceeds this fraction, trimming is aborted for that colony.</span>
-<span class="sd">            Defaults to 0.25.</span>
 <span class="sd">        min_cc_area: Minimum candidate-CC area (pixels) required to make a</span>
 <span class="sd">            topological decision. Smaller CCs are kept unchanged because</span>
 <span class="sd">            Euler statistics are unreliable on tiny regions. Defaults to 50.</span>
@@ -654,7 +647,6 @@
             <span class="n">smoothing_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
             <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;distance&quot;</span><span class="p">,</span> <span class="s2">&quot;intensity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;distance&quot;</span><span class="p">,</span>
             <span class="n">beehive_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-            <span class="n">max_trim_fraction</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span>
             <span class="n">min_cc_area</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
             <span class="n">min_object_area</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
     <span class="p">):</span>
@@ -673,11 +665,6 @@
                     <span class="s2">&quot;beehive_threshold must be non-negative or None; &quot;</span>
                     <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">beehive_threshold</span><span class="si">}</span><span class="s2">.&quot;</span>
             <span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="mf">0.0</span> <span class="o">&lt;</span> <span class="n">max_trim_fraction</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="s2">&quot;max_trim_fraction must be in (0, 1]; &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">max_trim_fraction</span><span class="si">}</span><span class="s2">.&quot;</span>
-            <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">symmetry_threshold</span> <span class="o">=</span> <span class="n">symmetry_threshold</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">n_angular_bins</span> <span class="o">=</span> <span class="n">n_angular_bins</span>
@@ -686,7 +673,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">smoothing_window</span> <span class="o">=</span> <span class="n">smoothing_window</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="n">method</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">beehive_threshold</span> <span class="o">=</span> <span class="n">beehive_threshold</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">max_trim_fraction</span> <span class="o">=</span> <span class="n">max_trim_fraction</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">min_cc_area</span> <span class="o">=</span> <span class="n">min_cc_area</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">min_object_area</span> <span class="o">=</span> <span class="n">min_object_area</span>
 
@@ -749,8 +735,7 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            A boolean array the same shape as ``obj_mask`` with ``True``</span>
 <span class="sd">            at pixels to remove, or ``None`` when the colony is ineligible</span>
-<span class="sd">            (no asymmetric region, degenerate geometry, or proposal trips</span>
-<span class="sd">            the safety cap).</span>
+<span class="sd">            (no asymmetric region or degenerate geometry).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># 1. Centroid (local bbox coords). Distance-transform peak is a safe</span>
         <span class="c1"># fallback; intensity mode uses it when the intensity is all zero and</span>
@@ -857,19 +842,6 @@
                 <span class="n">to_remove</span> <span class="o">|=</span> <span class="n">cc_mask</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">to_remove</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
-            <span class="k">return</span> <span class="kc">None</span>
-
-        <span class="c1"># 6. Safety cap.</span>
-        <span class="n">total_area</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">obj_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
-        <span class="k">if</span> <span class="n">total_area</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">None</span>
-        <span class="n">trim_fraction</span> <span class="o">=</span> <span class="n">to_remove</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">total_area</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">trim_fraction</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_trim_fraction</span><span class="p">:</span>
-            <span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-                    <span class="s2">&quot;AsymmetricSpurTrimmer aborted label </span><span class="si">%d</span><span class="s2">: trim fraction &quot;</span>
-                    <span class="s2">&quot;</span><span class="si">%.3f</span><span class="s2"> exceeds max_trim_fraction </span><span class="si">%.3f</span><span class="s2">.&quot;</span><span class="p">,</span>
-                    <span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="n">trim_fraction</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_trim_fraction</span><span class="p">,</span>
-            <span class="p">)</span>
             <span class="k">return</span> <span class="kc">None</span>
 
         <span class="k">return</span> <span class="n">to_remove</span></div>

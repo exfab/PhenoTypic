@@ -21,8 +21,9 @@
       :template: class.rst
       :nosignatures:
    
+      DoubleSoftplus
       EdgeCorrector
-      LinearSoftplusModel
+      LinearSoftplus
       LogGrowthModel
       TukeyOutlierRemover
    

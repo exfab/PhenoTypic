@@ -5041,6 +5041,687 @@ which category it belongs to without explicitly referencing the class.</p>
 </dd></dl>
 
 <dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.measurement_info.</span></span><span class="sig-name descname"><span class="pre">DOUBLE_SOFTPLUS_MODEL</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/measurement_info/_double_softplus_model.html#DOUBLE_SOFTPLUS_MODEL"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo" title="phenotypic.abc_._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
+<p>An enumeration.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.__format__">
+<span class="sig-name descname"><span class="pre">__format__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">format_spec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.__format__" title="Link to this definition">#</a></dt>
+<dd><p>Returns format using actual value type unless __str__ has been overridden.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.__new_member__">
+<span class="sig-name descname"><span class="pre">__new_member__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">desc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.__new_member__" title="Link to this definition">#</a></dt>
+<dd><p>Create a new measurement enumeration member with prefixed name.</p>
+<p>Converts the input label and description into an enumeration member whose string
+value is automatically prefixed with the category name. The label and description
+are stored as instance attributes for convenient access.</p>
+<p>This method is called automatically by Python’s Enum machinery when defining enum
+members. The enum member’s value becomes the full prefixed name (e.g.,
+‘Shape_Area’), while the label and description are stored separately as instance
+attributes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>label</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The short label for the measurement without category prefix
+(e.g., ‘Area’). This will be combined with the category name to create
+the full enumeration value.</p></li>
+<li><p><strong>desc</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – The description of what the measurement represents. If
+not provided, defaults to an empty string. This should briefly explain
+what the measurement measures.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>An enumeration member that behaves as a string with the value</dt><dd><p>’{category}_{label}’ (e.g., ‘Shape_Area’). The instance also has label,
+desc, and pair attributes set.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo" title="phenotypic.abc_.MeasurementInfo">MeasurementInfo</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.__str__">
+<span class="sig-name descname"><span class="pre">__str__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.__str__" title="Link to this definition">#</a></dt>
+<dd><p>Return the string representation of this measurement as the prefixed name.</p>
+<p>Returns the full enumeration value, which is the category-prefixed label
+(e.g., ‘Shape_Area’). This is used when the measurement is converted to a string
+or used in string formatting.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The full prefixed name of the measurement (e.g., ‘{category}_{label}’).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.append_rst_to_doc">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.append_rst_to_doc" title="Link to this definition">#</a></dt>
+<dd><p>Append the measurement documentation table to a module or class docstring.</p>
+<p>Generates the RST documentation table for this measurement enumeration and appends
+it to the provided module’s or class’s existing docstring. This is useful for
+automatically documenting which measurements a class produces or uses.</p>
+<p>If the input is a string, it is treated as the docstring itself. If it is an object
+(class, function, module), its __doc__ attribute is used.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>module</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><em>object</em></a>) – Either a docstring string or an object (class, function,
+module) whose __doc__ attribute contains the docstring. The existing
+docstring is preserved, and the measurement table is appended with a blank
+line separator.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The original docstring (or string) with the RST measurement table appended,</dt><dd><p>separated by two blank lines. The returned string is ready to be assigned back
+to the target’s __doc__ attribute.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.capitalize">
+<span class="sig-name descname"><span class="pre">capitalize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.capitalize" title="Link to this definition">#</a></dt>
+<dd><p>Return a capitalized version of the string.</p>
+<p>More specifically, make the first character have upper case and the rest lower
+case.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.casefold">
+<span class="sig-name descname"><span class="pre">casefold</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.casefold" title="Link to this definition">#</a></dt>
+<dd><p>Return a version of the string suitable for caseless comparisons.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.category">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">category</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/tools_/measurement_info/_double_softplus_model.html#DOUBLE_SOFTPLUS_MODEL.category"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.category" title="Link to this definition">#</a></dt>
+<dd><p>Return the category name for this measurement enumeration.</p>
+<p>Subclasses must implement this method to provide a category name that will be used
+to prefix all measurement labels. This ensures consistent naming conventions across
+the codebase.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>The category name (e.g., ‘Shape’, ‘Color’, ‘Texture’). This string is</dt><dd><p>prepended to each measurement label with an underscore separator to form
+the full header name (e.g., ‘Shape_Area’).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – If not implemented by a subclass.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.center">
+<span class="sig-name descname"><span class="pre">center</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.center" title="Link to this definition">#</a></dt>
+<dd><p>Return a centered string of length width.</p>
+<p>Padding is done using the specified fill character (default is a space).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.count">
+<span class="sig-name descname"><span class="pre">count</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.count" title="Link to this definition">#</a></dt>
+<dd><p>Return the number of non-overlapping occurrences of substring sub in
+string S[start:end].  Optional arguments start and end are
+interpreted as in slice notation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.encode">
+<span class="sig-name descname"><span class="pre">encode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">encoding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'utf-8'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">errors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'strict'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.encode" title="Link to this definition">#</a></dt>
+<dd><p>Encode the string using the codec registered for encoding.</p>
+<dl class="simple">
+<dt>encoding</dt><dd><p>The encoding in which to encode the string.</p>
+</dd>
+<dt>errors</dt><dd><p>The error handling scheme to use for encoding errors.
+The default is ‘strict’ meaning that encoding errors raise a
+UnicodeEncodeError.  Other possible values are ‘ignore’, ‘replace’ and
+‘xmlcharrefreplace’ as well as any other name registered with
+codecs.register_error that can handle UnicodeEncodeErrors.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.endswith">
+<span class="sig-name descname"><span class="pre">endswith</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">suffix</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.endswith" title="Link to this definition">#</a></dt>
+<dd><p>Return True if S ends with the specified suffix, False otherwise.
+With optional start, test S beginning at that position.
+With optional end, stop comparing S at that position.
+suffix can also be a tuple of strings to try.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.expandtabs">
+<span class="sig-name descname"><span class="pre">expandtabs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tabsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.expandtabs" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy where all tab characters are expanded using spaces.</p>
+<p>If tabsize is not given, a tab size of 8 characters is assumed.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.find">
+<span class="sig-name descname"><span class="pre">find</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.find" title="Link to this definition">#</a></dt>
+<dd><p>Return the lowest index in S where substring sub is found,
+such that sub is contained within S[start:end].  Optional
+arguments start and end are interpreted as in slice notation.</p>
+<p>Return -1 on failure.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.format">
+<span class="sig-name descname"><span class="pre">format</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.format" title="Link to this definition">#</a></dt>
+<dd><p>Return a formatted version of S, using substitutions from args and kwargs.
+The substitutions are identified by braces (‘{’ and ‘}’).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.format_map">
+<span class="sig-name descname"><span class="pre">format_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mapping</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.format_map" title="Link to this definition">#</a></dt>
+<dd><p>Return a formatted version of S, using substitutions from mapping.
+The substitutions are identified by braces (‘{’ and ‘}’).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.get_headers">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_headers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.get_headers" title="Link to this definition">#</a></dt>
+<dd><p>Get all measurement headers with category prefix.</p>
+<p>Returns a list of the full enumeration values (with category prefix) for all
+measurements defined in this enumeration. These strings are suitable for use as
+DataFrame column names, dictionary keys, or in any context where the full
+categorized name is needed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>List of prefixed measurement names in enumeration order</dt><dd><p>(e.g., [‘Shape_Area’, ‘Shape_Perimeter’]). Each header includes the
+category prefix separated by an underscore.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.get_labels">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_labels</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.get_labels" title="Link to this definition">#</a></dt>
+<dd><p>Get all measurement labels without category prefix.</p>
+<p>Returns a list of the short labels (without category prefix) for all measurements
+defined in this enumeration. These are the first element of each enum value tuple.
+Useful for creating human-readable lists or column names when the category context
+is already established.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>List of measurement labels in enumeration order (e.g.,</dt><dd><p>[‘Area’, ‘Perimeter’]). Does not include the category prefix; to get
+prefixed names, use get_headers().</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.index">
+<span class="sig-name descname"><span class="pre">index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.index" title="Link to this definition">#</a></dt>
+<dd><p>Return the lowest index in S where substring sub is found,
+such that sub is contained within S[start:end].  Optional
+arguments start and end are interpreted as in slice notation.</p>
+<p>Raises ValueError when the substring is not found.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isalnum">
+<span class="sig-name descname"><span class="pre">isalnum</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isalnum" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is an alpha-numeric string, False otherwise.</p>
+<p>A string is alpha-numeric if all characters in the string are alpha-numeric and
+there is at least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isalpha">
+<span class="sig-name descname"><span class="pre">isalpha</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isalpha" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is an alphabetic string, False otherwise.</p>
+<p>A string is alphabetic if all characters in the string are alphabetic and there
+is at least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isascii">
+<span class="sig-name descname"><span class="pre">isascii</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isascii" title="Link to this definition">#</a></dt>
+<dd><p>Return True if all characters in the string are ASCII, False otherwise.</p>
+<p>ASCII characters have code points in the range U+0000-U+007F.
+Empty string is ASCII too.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isdecimal">
+<span class="sig-name descname"><span class="pre">isdecimal</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isdecimal" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is a decimal string, False otherwise.</p>
+<p>A string is a decimal string if all characters in the string are decimal and
+there is at least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isdigit">
+<span class="sig-name descname"><span class="pre">isdigit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isdigit" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is a digit string, False otherwise.</p>
+<p>A string is a digit string if all characters in the string are digits and there
+is at least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isidentifier">
+<span class="sig-name descname"><span class="pre">isidentifier</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isidentifier" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is a valid Python identifier, False otherwise.</p>
+<p>Call keyword.iskeyword(s) to test whether string s is a reserved identifier,
+such as “def” or “class”.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.islower">
+<span class="sig-name descname"><span class="pre">islower</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.islower" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is a lowercase string, False otherwise.</p>
+<p>A string is lowercase if all cased characters in the string are lowercase and
+there is at least one cased character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isnumeric">
+<span class="sig-name descname"><span class="pre">isnumeric</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isnumeric" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is a numeric string, False otherwise.</p>
+<p>A string is numeric if all characters in the string are numeric and there is at
+least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isprintable">
+<span class="sig-name descname"><span class="pre">isprintable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isprintable" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is printable, False otherwise.</p>
+<p>A string is printable if all of its characters are considered printable in
+repr() or if it is empty.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isspace">
+<span class="sig-name descname"><span class="pre">isspace</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isspace" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is a whitespace string, False otherwise.</p>
+<p>A string is whitespace if all characters in the string are whitespace and there
+is at least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.istitle">
+<span class="sig-name descname"><span class="pre">istitle</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.istitle" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is a title-cased string, False otherwise.</p>
+<p>In a title-cased string, upper- and title-case characters may only
+follow uncased characters and lowercase characters only cased ones.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isupper">
+<span class="sig-name descname"><span class="pre">isupper</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isupper" title="Link to this definition">#</a></dt>
+<dd><p>Return True if the string is an uppercase string, False otherwise.</p>
+<p>A string is uppercase if all cased characters in the string are uppercase and
+there is at least one cased character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.join">
+<span class="sig-name descname"><span class="pre">join</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.join" title="Link to this definition">#</a></dt>
+<dd><p>Concatenate any number of strings.</p>
+<p>The string whose method is called is inserted in between each given string.
+The result is returned as a new string.</p>
+<p>Example: ‘.’.join([‘ab’, ‘pq’, ‘rs’]) -&gt; ‘ab.pq.rs’</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.ljust">
+<span class="sig-name descname"><span class="pre">ljust</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.ljust" title="Link to this definition">#</a></dt>
+<dd><p>Return a left-justified string of length width.</p>
+<p>Padding is done using the specified fill character (default is a space).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.lower">
+<span class="sig-name descname"><span class="pre">lower</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.lower" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy of the string converted to lowercase.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.lstrip">
+<span class="sig-name descname"><span class="pre">lstrip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.lstrip" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy of the string with leading whitespace removed.</p>
+<p>If chars is given and not None, remove characters in chars instead.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.maketrans">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">maketrans</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.maketrans" title="Link to this definition">#</a></dt>
+<dd><p>Return a translation table usable for str.translate().</p>
+<p>If there is only one argument, it must be a dictionary mapping Unicode
+ordinals (integers) or characters to Unicode ordinals, strings or None.
+Character keys will be then converted to ordinals.
+If there are two arguments, they must be strings of equal length, and
+in the resulting dictionary, each character in x will be mapped to the
+character at the same position in y. If there is a third argument, it
+must be a string, whose characters will be mapped to None in the result.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.partition">
+<span class="sig-name descname"><span class="pre">partition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.partition" title="Link to this definition">#</a></dt>
+<dd><p>Partition the string into three parts using the given separator.</p>
+<p>This will search for the separator in the string.  If the separator is found,
+returns a 3-tuple containing the part before the separator, the separator
+itself, and the part after it.</p>
+<p>If the separator is not found, returns a 3-tuple containing the original string
+and two empty strings.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.removeprefix">
+<span class="sig-name descname"><span class="pre">removeprefix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prefix</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.removeprefix" title="Link to this definition">#</a></dt>
+<dd><p>Return a str with the given prefix string removed if present.</p>
+<p>If the string starts with the prefix string, return string[len(prefix):].
+Otherwise, return a copy of the original string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.removesuffix">
+<span class="sig-name descname"><span class="pre">removesuffix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">suffix</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.removesuffix" title="Link to this definition">#</a></dt>
+<dd><p>Return a str with the given suffix string removed if present.</p>
+<p>If the string ends with the suffix string and that suffix is not empty,
+return string[:-len(suffix)]. Otherwise, return a copy of the original
+string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.replace">
+<span class="sig-name descname"><span class="pre">replace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">old</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.replace" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy with all occurrences of substring old replaced by new.</p>
+<blockquote>
+<div><dl class="simple">
+<dt>count</dt><dd><p>Maximum number of occurrences to replace.
+-1 (the default value) means replace all occurrences.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>If the optional argument count is given, only the first count occurrences are
+replaced.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.rfind">
+<span class="sig-name descname"><span class="pre">rfind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.rfind" title="Link to this definition">#</a></dt>
+<dd><p>Return the highest index in S where substring sub is found,
+such that sub is contained within S[start:end].  Optional
+arguments start and end are interpreted as in slice notation.</p>
+<p>Return -1 on failure.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.rindex">
+<span class="sig-name descname"><span class="pre">rindex</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.rindex" title="Link to this definition">#</a></dt>
+<dd><p>Return the highest index in S where substring sub is found,
+such that sub is contained within S[start:end].  Optional
+arguments start and end are interpreted as in slice notation.</p>
+<p>Raises ValueError when the substring is not found.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.rjust">
+<span class="sig-name descname"><span class="pre">rjust</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.rjust" title="Link to this definition">#</a></dt>
+<dd><p>Return a right-justified string of length width.</p>
+<p>Padding is done using the specified fill character (default is a space).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.rpartition">
+<span class="sig-name descname"><span class="pre">rpartition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.rpartition" title="Link to this definition">#</a></dt>
+<dd><p>Partition the string into three parts using the given separator.</p>
+<p>This will search for the separator in the string, starting at the end. If
+the separator is found, returns a 3-tuple containing the part before the
+separator, the separator itself, and the part after it.</p>
+<p>If the separator is not found, returns a 3-tuple containing two empty strings
+and the original string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.rsplit">
+<span class="sig-name descname"><span class="pre">rsplit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxsplit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.rsplit" title="Link to this definition">#</a></dt>
+<dd><p>Return a list of the substrings in the string, using sep as the separator string.</p>
+<blockquote>
+<div><dl>
+<dt>sep</dt><dd><p>The separator used to split the string.</p>
+<p>When set to None (the default value), will split on any whitespace
+character (including \n \r \t \f and spaces) and will discard
+empty strings from the result.</p>
+</dd>
+<dt>maxsplit</dt><dd><p>Maximum number of splits (starting from the left).
+-1 (the default value) means no limit.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>Splitting starts at the end of the string and works to the front.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.rst_table">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rst_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">('Name',</span> <span class="pre">'Description')</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.rst_table" title="Link to this definition">#</a></dt>
+<dd><p>Generate an RST (reStructuredText) table documenting the measurements.</p>
+<p>Creates a formatted list-table in reStructuredText format that documents all
+measurements in this enumeration, including their labels and descriptions. This
+is useful for generating API documentation, parameter guides, or measurement
+reference tables that will be rendered in Sphinx documentation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – The title for the RST table. Defaults to the class name
+(e.g., ‘SHAPE’). The title is formatted as “Category: <strong>{title}</strong>” in the
+output.</p></li>
+<li><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em><em>, </em><em>optional</em>) – A tuple of (left_column, right_column)
+header names. Defaults to (“Name”, “Description”). The left column typically
+contains measurement labels and the right column contains their descriptions.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl>
+<dt>A formatted reStructuredText list-table string. The output includes:</dt><dd><ul class="simple">
+<li><p>RST list-table directive with the title</p></li>
+<li><p>Column headers (Name and Description by default)</p></li>
+<li><p>One row per measurement with label and description</p></li>
+</ul>
+<p>The returned string is ready to be embedded in Sphinx documentation files
+or appended to docstrings.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.rstrip">
+<span class="sig-name descname"><span class="pre">rstrip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.rstrip" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy of the string with trailing whitespace removed.</p>
+<p>If chars is given and not None, remove characters in chars instead.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.split">
+<span class="sig-name descname"><span class="pre">split</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxsplit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.split" title="Link to this definition">#</a></dt>
+<dd><p>Return a list of the substrings in the string, using sep as the separator string.</p>
+<blockquote>
+<div><dl>
+<dt>sep</dt><dd><p>The separator used to split the string.</p>
+<p>When set to None (the default value), will split on any whitespace
+character (including \n \r \t \f and spaces) and will discard
+empty strings from the result.</p>
+</dd>
+<dt>maxsplit</dt><dd><p>Maximum number of splits (starting from the left).
+-1 (the default value) means no limit.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>Note, str.split() is mainly useful for data that has been intentionally
+delimited.  With natural text that includes punctuation, consider using
+the regular expression module.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.splitlines">
+<span class="sig-name descname"><span class="pre">splitlines</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">keepends</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.splitlines" title="Link to this definition">#</a></dt>
+<dd><p>Return a list of the lines in the string, breaking at line boundaries.</p>
+<p>Line breaks are not included in the resulting list unless keepends is given and
+true.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.startswith">
+<span class="sig-name descname"><span class="pre">startswith</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prefix</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.startswith" title="Link to this definition">#</a></dt>
+<dd><p>Return True if S starts with the specified prefix, False otherwise.
+With optional start, test S beginning at that position.
+With optional end, stop comparing S at that position.
+prefix can also be a tuple of strings to try.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.strip">
+<span class="sig-name descname"><span class="pre">strip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.strip" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy of the string with leading and trailing whitespace removed.</p>
+<p>If chars is given and not None, remove characters in chars instead.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.swapcase">
+<span class="sig-name descname"><span class="pre">swapcase</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.swapcase" title="Link to this definition">#</a></dt>
+<dd><p>Convert uppercase characters to lowercase and lowercase characters to uppercase.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.title">
+<span class="sig-name descname"><span class="pre">title</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.title" title="Link to this definition">#</a></dt>
+<dd><p>Return a version of the string where each word is titlecased.</p>
+<p>More specifically, words start with uppercased characters and all remaining
+cased characters have lower case.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.translate">
+<span class="sig-name descname"><span class="pre">translate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.translate" title="Link to this definition">#</a></dt>
+<dd><p>Replace each character in the string using the given translation table.</p>
+<blockquote>
+<div><dl class="simple">
+<dt>table</dt><dd><p>Translation table, which must be a mapping of Unicode ordinals to
+Unicode ordinals, strings, or None.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>The table must implement lookup/indexing via __getitem__, for instance a
+dictionary or list.  If this operation raises LookupError, the character is
+left untouched.  Characters mapped to None are deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.upper">
+<span class="sig-name descname"><span class="pre">upper</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.upper" title="Link to this definition">#</a></dt>
+<dd><p>Return a copy of the string converted to uppercase.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.zfill">
+<span class="sig-name descname"><span class="pre">zfill</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.zfill" title="Link to this definition">#</a></dt>
+<dd><p>Pad a numeric string with zeros on the left, to fill a field of the given width.</p>
+<p>The string is never truncated.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.CATEGORY">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">CATEGORY</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.CATEGORY" title="Link to this definition">#</a></dt>
+<dd><p>Get the category name for this measurement instance.</p>
+<p>Provides instance-level access to the category name defined by the category()
+classmethod. This is useful when you have a measurement instance and need to know
+which category it belongs to without explicitly referencing the class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The category name from the enum class’s category() method.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.alpha">
+<span class="sig-name descname"><span class="pre">alpha</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DoubleSoftplus_alpha'</span></em><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.alpha" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.beta">
+<span class="sig-name descname"><span class="pre">beta</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DoubleSoftplus_beta'</span></em><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.beta" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.lam">
+<span class="sig-name descname"><span class="pre">lam</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DoubleSoftplus_lambda'</span></em><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.lam" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.mode">
+<span class="sig-name descname"><span class="pre">mode</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DoubleSoftplus_mode'</span></em><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.mode" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.s0">
+<span class="sig-name descname"><span class="pre">s0</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DoubleSoftplus_s0'</span></em><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.s0" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.smax">
+<span class="sig-name descname"><span class="pre">smax</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DoubleSoftplus_smax'</span></em><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.smax" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.v">
+<span class="sig-name descname"><span class="pre">v</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DoubleSoftplus_v'</span></em><a class="headerlink" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.v" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.EDGE_CORRECTION">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.measurement_info.</span></span><span class="sig-name descname"><span class="pre">EDGE_CORRECTION</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/measurement_info/_edge_correction.html#EDGE_CORRECTION"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.measurement_info.EDGE_CORRECTION" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo" title="phenotypic.abc_._measurement_info.MeasurementInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code></a></p>
@@ -9758,37 +10439,22 @@ which category it belongs to without explicitly referencing the class.</p>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.alpha">
-<span class="sig-name descname"><span class="pre">alpha</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'LinearSoftplusModel_alpha'</span></em><a class="headerlink" href="#phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.alpha" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.beta">
-<span class="sig-name descname"><span class="pre">beta</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'LinearSoftplusModel_beta'</span></em><a class="headerlink" href="#phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.beta" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">alpha</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'LinearSoftplus_alpha'</span></em><a class="headerlink" href="#phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.alpha" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.lam">
-<span class="sig-name descname"><span class="pre">lam</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'LinearSoftplusModel_lambda'</span></em><a class="headerlink" href="#phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.lam" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.mode">
-<span class="sig-name descname"><span class="pre">mode</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'LinearSoftplusModel_mode'</span></em><a class="headerlink" href="#phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.mode" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">lam</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'LinearSoftplus_lambda'</span></em><a class="headerlink" href="#phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.lam" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.s0">
-<span class="sig-name descname"><span class="pre">s0</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'LinearSoftplusModel_s0'</span></em><a class="headerlink" href="#phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.s0" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.smax">
-<span class="sig-name descname"><span class="pre">smax</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'LinearSoftplusModel_smax'</span></em><a class="headerlink" href="#phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.smax" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">s0</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'LinearSoftplus_s0'</span></em><a class="headerlink" href="#phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.s0" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.v">
-<span class="sig-name descname"><span class="pre">v</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'LinearSoftplusModel_v'</span></em><a class="headerlink" href="#phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.v" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">v</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'LinearSoftplus_v'</span></em><a class="headerlink" href="#phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.v" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -15150,6 +15816,72 @@ which category it belongs to without explicitly referencing the class.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.Colorxy.y_STDDEV"><code class="docutils literal notranslate"><span class="pre">Colorxy.y_STDDEV</span></code></a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.__format__"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.__format__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.__new_member__"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.__new_member__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.__str__"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.__str__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.append_rst_to_doc"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.append_rst_to_doc()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.capitalize"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.capitalize()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.casefold"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.casefold()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.category"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.category()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.center"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.center()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.count"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.count()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.encode"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.encode()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.endswith"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.endswith()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.expandtabs"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.expandtabs()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.find"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.find()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.format"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.format()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.format_map"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.format_map()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.get_headers"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.get_headers()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.get_labels"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.get_labels()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.index"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.index()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isalnum"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.isalnum()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isalpha"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.isalpha()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isascii"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.isascii()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isdecimal"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.isdecimal()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isdigit"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.isdigit()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isidentifier"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.isidentifier()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.islower"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.islower()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isnumeric"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.isnumeric()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isprintable"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.isprintable()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isspace"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.isspace()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.istitle"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.istitle()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.isupper"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.isupper()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.join"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.join()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.ljust"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.ljust()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.lower"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.lower()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.lstrip"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.lstrip()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.maketrans"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.maketrans()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.partition"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.partition()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.removeprefix"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.removeprefix()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.removesuffix"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.removesuffix()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.replace"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.replace()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.rfind"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.rfind()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.rindex"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.rindex()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.rjust"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.rjust()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.rpartition"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.rpartition()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.rsplit"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.rsplit()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.rst_table"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.rst_table()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.rstrip"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.rstrip()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.split"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.split()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.splitlines"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.splitlines()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.startswith"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.startswith()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.strip"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.strip()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.swapcase"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.swapcase()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.title"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.title()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.translate"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.translate()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.upper"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.upper()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.zfill"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.zfill()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.CATEGORY"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.CATEGORY</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.alpha"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.alpha</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.beta"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.beta</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.lam"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.lam</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.mode"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.mode</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.s0"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.s0</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.smax"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.smax</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.DOUBLE_SOFTPLUS_MODEL.v"><code class="docutils literal notranslate"><span class="pre">DOUBLE_SOFTPLUS_MODEL.v</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.EDGE_CORRECTION"><code class="docutils literal notranslate"><span class="pre">EDGE_CORRECTION</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.EDGE_CORRECTION.__format__"><code class="docutils literal notranslate"><span class="pre">EDGE_CORRECTION.__format__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.EDGE_CORRECTION.__new_member__"><code class="docutils literal notranslate"><span class="pre">EDGE_CORRECTION.__new_member__()</span></code></a></li>
@@ -15600,11 +16332,8 @@ which category it belongs to without explicitly referencing the class.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.zfill"><code class="docutils literal notranslate"><span class="pre">LINEAR_SOFTPLUS_MODEL.zfill()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.CATEGORY"><code class="docutils literal notranslate"><span class="pre">LINEAR_SOFTPLUS_MODEL.CATEGORY</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.alpha"><code class="docutils literal notranslate"><span class="pre">LINEAR_SOFTPLUS_MODEL.alpha</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.beta"><code class="docutils literal notranslate"><span class="pre">LINEAR_SOFTPLUS_MODEL.beta</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.lam"><code class="docutils literal notranslate"><span class="pre">LINEAR_SOFTPLUS_MODEL.lam</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.mode"><code class="docutils literal notranslate"><span class="pre">LINEAR_SOFTPLUS_MODEL.mode</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.s0"><code class="docutils literal notranslate"><span class="pre">LINEAR_SOFTPLUS_MODEL.s0</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.smax"><code class="docutils literal notranslate"><span class="pre">LINEAR_SOFTPLUS_MODEL.smax</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.measurement_info.LINEAR_SOFTPLUS_MODEL.v"><code class="docutils literal notranslate"><span class="pre">LINEAR_SOFTPLUS_MODEL.v</span></code></a></li>
 </ul>
 </li>

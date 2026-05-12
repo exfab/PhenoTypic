@@ -1,0 +1,30 @@
+phenotypic.analysis.DoubleSoftplus
+==================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autoclass:: DoubleSoftplus
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~DoubleSoftplus.__init__
+      ~DoubleSoftplus.analyze
+      ~DoubleSoftplus.dash
+      ~DoubleSoftplus.model_func
+      ~DoubleSoftplus.results
+      ~DoubleSoftplus.show
+   
+   
+
+   
+   
+   
