@@ -1,0 +1,6 @@
+phenotypic.tools\_.panel\_.ensure\_panel\_extension
+===================================================
+
+.. currentmodule:: phenotypic.tools_.panel_
+
+.. autofunction:: ensure_panel_extension

@@ -1,0 +1,910 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.abc_._grid_object_refiner &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=fb952d1c"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/abc_/_grid_object_refiner';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.15.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.15.1/_modules/phenotypic/abc_/_grid_object_refiner.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.15.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.abc_._grid_object_refiner</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.abc_._grid_object_refiner</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectRefiner</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridOperation</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.exceptions_</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImageInputError</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.funcs_</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_operation_integrity</span>
+
+
+<div class="viewcode-block" id="GridObjectRefiner">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.GridObjectRefiner">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GridObjectRefiner</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">,</span> <span class="n">GridOperation</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract base class for post-detection refinement operations on grid-aligned plate images.</span>
+
+<span class="sd">    GridObjectRefiner is the grid-aware variant of ObjectRefiner, combining object mask refinement</span>
+<span class="sd">    with grid structure awareness. It refines detected objects (colony masks and labeled maps) while</span>
+<span class="sd">    respecting well boundaries and grid-aligned regions in arrayed plate images (96-well, 384-well,</span>
+<span class="sd">    etc.). Like ObjectRefiner, it protects original image data (RGB, grayscale, detection matrix)</span>
+<span class="sd">    and modifies only detection results.</span>
+
+<span class="sd">    **Quick Decision Guide: GridObjectRefiner vs ObjectRefiner**</span>
+
+<span class="sd">    - **Use GridObjectRefiner if:** Refining detections on GridImage where well structure or grid</span>
+<span class="sd">      position affects refinement logic (per-well filtering, boundary enforcement, position-aware cleanup).</span>
+<span class="sd">    - **Use ObjectRefiner if:** Refining on plain Image without grid, or using global algorithms that</span>
+<span class="sd">      don&#39;t need grid awareness (size filtering, shape filtering, general morphology).</span>
+<span class="sd">    - **GridImage requirement:** GridObjectRefiner only accepts GridImage input; plain Image raises</span>
+<span class="sd">      GridImageInputError at runtime.</span>
+<span class="sd">    - **Grid-aware refinement:** Access well positions, row/column boundaries, and grid metadata via</span>
+<span class="sd">      image.grid to make position-aware decisions (e.g., filter colonies oversized for their well).</span>
+<span class="sd">    - **Oversized colonies:** [GridOversizedObjectRemover](src/phenotypic/refine/_grid_oversized_object_remover.py)</span>
+<span class="sd">      removes objects spanning nearly entire well (merged colonies, segmentation spillover).</span>
+<span class="sd">    - **Per-well largest:** [GridSectionLargest](src/phenotypic/refine/_grid_section_largest.py) keeps</span>
+<span class="sd">      only the largest object per grid cell (one colony per well).</span>
+<span class="sd">    - **Multi-well reducer:** [ReduceMultipleGridObjects](src/phenotypic/refine/_min_residual_error_reducer.py)</span>
+<span class="sd">      merges multiple objects per well into single representative region.</span>
+<span class="sd">    - **Border handling:** Grid structure enables identifying and filtering objects near plate/well</span>
+<span class="sd">      edges that may be incomplete or distorted.</span>
+<span class="sd">    - **Grid registration:** When grid detection is imperfect, grid-aware refinement helps filter</span>
+<span class="sd">      mis-assigned or boundary-adjacent objects by position.</span>
+<span class="sd">    - **When to chain:** Combine grid refiners in ImagePipeline (e.g., global size filter, then</span>
+<span class="sd">      per-well filtering) for comprehensive cleanup respecting array structure.</span>
+
+<span class="sd">    **What is GridObjectRefiner?**</span>
+
+<span class="sd">    GridObjectRefiner is the specialized version of ObjectRefiner for GridImage objects, adding grid-aware</span>
+<span class="sd">    refinement to the core post-detection cleanup workflow:</span>
+
+<span class="sd">    - **Grid-structure awareness:** Unlike ObjectRefiner (which operates globally), GridObjectRefiner can</span>
+<span class="sd">      access grid boundaries, well positions, row/column indices, and per-cell metadata via ``image.grid``.</span>
+<span class="sd">      This enables refinement logic that respects array structure.</span>
+
+<span class="sd">    - **GridImage requirement:** Accepts only GridImage input (with detected grid structure), enforced</span>
+<span class="sd">      at runtime via ``GridImageInputError``. Passing a plain Image raises an error.</span>
+
+<span class="sd">    - **Grid access interface:** Within ``_operate()``, call ``image.grid.get_row_edges()``,</span>
+<span class="sd">      ``image.grid.get_col_edges()``, and ``image.grid.info()`` to retrieve grid metadata and make</span>
+<span class="sd">      position-aware refinement decisions.</span>
+
+<span class="sd">    - **Detection-only modification:** Like ObjectRefiner, modifies only ``image.objmask[:]`` and</span>
+<span class="sd">      ``image.objmap[:]``. Original image components (RGB, grayscale, detection matrix) are protected</span>
+<span class="sd">      via ``@validate_operation_integrity`` decorator.</span>
+
+<span class="sd">    - **Array phenotyping:** Well-suited for high-throughput plate analysis where grid structure matters</span>
+<span class="sd">      for biology (one colony per well expected, oversized objects indicate merging, boundary objects</span>
+<span class="sd">      may be incomplete or distorted).</span>
+
+<span class="sd">    **When to use GridObjectRefiner vs ObjectRefiner**</span>
+
+<span class="sd">    - **ObjectRefiner:** Use when refining detections on a plain Image without grid structure.</span>
+<span class="sd">      Examples: general-purpose size filtering, morphological cleanup, shape filtering (applies</span>
+<span class="sd">      globally regardless of position).</span>
+
+<span class="sd">    - **GridObjectRefiner:** Use when refining detections on a GridImage where well structure matters.</span>
+<span class="sd">      Examples: removing objects larger than their grid cell (``GridOversizedObjectRemover``),</span>
+<span class="sd">      per-well filtering, grid-aligned edge removal. The grid structure enables position-aware</span>
+<span class="sd">      refinement that improves array phenotyping accuracy.</span>
+
+<span class="sd">    **Typical Use Cases**</span>
+
+<span class="sd">    GridObjectRefiner is useful for addressing grid-specific artifacts:</span>
+
+<span class="sd">    - **Oversized colonies:** Objects spanning nearly an entire well (merged colonies, agar edges,</span>
+<span class="sd">      segmentation spillover). Filtering improves per-well consistency.</span>
+
+<span class="sd">    - **Inter-well artifacts:** Detections touching or bridging grid cell boundaries from uneven</span>
+<span class="sd">      lighting or thresholding errors.</span>
+
+<span class="sd">    - **Boundary contamination:** Colonies near plate edges that are incomplete or distorted.</span>
+<span class="sd">      Grid structure allows identifying and filtering boundary-adjacent objects.</span>
+
+<span class="sd">    - **Grid registration errors:** When grid detection is imperfect, some objects may be mis-assigned</span>
+<span class="sd">      to wells; grid-aware refinement can filter or relocate based on position.</span>
+
+<span class="sd">    **Implementing a Custom GridObjectRefiner**</span>
+
+<span class="sd">    Subclass GridObjectRefiner and implement ``_operate()``. Use this template:</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        from phenotypic.abc_ import GridObjectRefiner</span>
+<span class="sd">        from phenotypic import GridImage</span>
+<span class="sd">        import numpy as np</span>
+
+<span class="sd">        class MyGridRefiner(GridObjectRefiner):</span>
+<span class="sd">            def __init__(self, max_width_fraction: float = 0.9):</span>
+<span class="sd">                super().__init__()</span>
+<span class="sd">                self.max_width_fraction = max_width_fraction</span>
+
+<span class="sd">            @staticmethod</span>
+<span class="sd">            def _operate(image: GridImage, max_width_fraction: float = 0.9) -&gt; GridImage:</span>
+<span class="sd">                # Get grid structure information</span>
+<span class="sd">                col_edges = image.grid.get_col_edges()      # x-coordinates of column boundaries</span>
+<span class="sd">                row_edges = image.grid.get_row_edges()      # y-coordinates of row boundaries</span>
+<span class="sd">                nrows, ncols = image.grid.nrows, image.grid.ncols</span>
+
+<span class="sd">                # Get per-object grid metadata (label, row, column, position)</span>
+<span class="sd">                grid_info = image.grid.info()  # pd.DataFrame</span>
+
+<span class="sd">                # Measure object properties</span>
+<span class="sd">                objmap = image.objmap[:]</span>
+<span class="sd">                from skimage.measure import regionprops_table</span>
+<span class="sd">                props = regionprops_table(objmap, properties=[&#39;label&#39;, &#39;bbox&#39;, &#39;area&#39;])</span>
+
+<span class="sd">                # Make position-aware refinement decisions</span>
+<span class="sd">                # Example: filter objects by grid position or size relative to well</span>
+<span class="sd">                max_width = (col_edges[1:] - col_edges[:-1]).max()</span>
+<span class="sd">                # ... implement your grid-aware logic ...</span>
+
+<span class="sd">                return image</span>
+
+<span class="sd">    **Key Rules**</span>
+
+<span class="sd">    1. ``_operate()`` must be an instance method (access parameters via ``self``).</span>
+<span class="sd">    2. All parameters except ``image`` must exist as instance attributes.</span>
+<span class="sd">    3. Only modify ``image.objmask[:]`` and ``image.objmap[:]``.</span>
+<span class="sd">    4. Access grid via ``image.grid`` methods: get_row_edges(), get_col_edges(), info().</span>
+<span class="sd">    5. Return the modified GridImage object.</span>
+
+<span class="sd">    **Per-Well Filtering Patterns**</span>
+
+<span class="sd">    Common grid-aware refinement strategies:</span>
+
+<span class="sd">    - **Remove oversized objects:** Filter objects larger than well dimensions (merged colonies, segmentation</span>
+<span class="sd">      spillover). Compare object bounding box to max_width and max_height of grid cells.</span>
+
+<span class="sd">    - **Keep largest per well:** Select only the largest object per grid cell (assumes one colony per well).</span>
+<span class="sd">      Use grid_info to group objects by row and column, then keep max-area object per group.</span>
+
+<span class="sd">    - **Remove boundary objects:** Filter objects touching or near well edges (incomplete detections).</span>
+<span class="sd">      Use grid_info&#39;s boundary flags or compute distance to nearest grid boundary.</span>
+
+<span class="sd">    - **Per-row/column filtering:** Apply different thresholds by row or column position (accounts for</span>
+<span class="sd">      uneven illumination across plate). Use grid_info to stratify objects by position.</span>
+
+<span class="sd">    **Grid Access Interface**</span>
+
+<span class="sd">    Within ``_operate()``, use the GridImage accessor to retrieve grid metadata:</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        # Grid structure information</span>
+<span class="sd">        nrows, ncols = image.grid.nrows, image.grid.ncols</span>
+<span class="sd">        row_edges = image.grid.get_row_edges()          # Row boundary positions (y-coordinates)</span>
+<span class="sd">        col_edges = image.grid.get_col_edges()          # Col boundary positions (x-coordinates)</span>
+<span class="sd">        grid_info = image.grid.info()                   # DataFrame with per-object grid metadata</span>
+
+<span class="sd">        # grid_info columns (example):</span>
+<span class="sd">        # [&#39;label&#39;, &#39;row&#39;, &#39;col&#39;, &#39;row_edge_min&#39;, &#39;row_edge_max&#39;, &#39;col_edge_min&#39;, &#39;col_edge_max&#39;, ...]</span>
+
+<span class="sd">        # Per-well cell dimensions</span>
+<span class="sd">        cell_heights = row_edges[1:] - row_edges[:-1]</span>
+<span class="sd">        cell_widths = col_edges[1:] - col_edges[:-1]</span>
+
+<span class="sd">    Notes:</span>
+<span class="sd">        - **GridImage input required:** ``apply()`` enforces GridImage type at runtime.</span>
+<span class="sd">          Passing a plain Image raises ``GridImageInputError``.</span>
+
+<span class="sd">        - **Protected components:** The ``@validate_operation_integrity`` decorator ensures</span>
+<span class="sd">          ``image.rgb``, ``image.gray``, ``image.detect_mat`` cannot be modified.</span>
+<span class="sd">          Only ``image.objmask`` and ``image.objmap`` can be refined.</span>
+
+<span class="sd">        - **Immutability by default:** ``apply(image)`` returns a modified copy. Set</span>
+<span class="sd">          ``inplace=True`` for memory-efficient in-place modification.</span>
+
+<span class="sd">        - **Grid structure assumption:** Your algorithm should assume a valid, registered grid.</span>
+<span class="sd">          If grid metadata is unreliable, refinement may fail or produce wrong results.</span>
+
+<span class="sd">        - **Instance _operate() method:** ``_operate()`` is an instance method; access parameters via ``self``.</span>
+
+<span class="sd">        - **Parameter matching:** All ``_operate()`` parameters except ``image`` must exist</span>
+<span class="sd">          as instance attributes for automatic parameter matching.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Remove objects larger than their grid cell width:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic.abc_ import GridObjectRefiner</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic import GridImage</span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; class OversizedObjectRemover(GridObjectRefiner):</span>
+<span class="sd">        ...     &#39;&#39;&#39;Remove objects exceeding cell dimensions.&#39;&#39;&#39;</span>
+<span class="sd">        ...</span>
+<span class="sd">        ...     def __init__(self):</span>
+<span class="sd">        ...         super().__init__()</span>
+<span class="sd">        ...</span>
+<span class="sd">        ...     @staticmethod</span>
+<span class="sd">        ...     def _operate(image: GridImage) -&gt; GridImage:</span>
+<span class="sd">        ...         # Get grid boundaries</span>
+<span class="sd">        ...         col_edges = image.grid.get_col_edges()</span>
+<span class="sd">        ...         row_edges = image.grid.get_row_edges()</span>
+<span class="sd">        ...         max_width = (col_edges[1:] - col_edges[:-1]).max()</span>
+<span class="sd">        ...         max_height = (row_edges[1:] - row_edges[:-1]).max()</span>
+<span class="sd">        ...         # Measure objects</span>
+<span class="sd">        ...         objmap = image.objmap[:]</span>
+<span class="sd">        ...         from skimage.measure import regionprops_table</span>
+<span class="sd">        ...         props = regionprops_table(objmap, properties=[&#39;label&#39;, &#39;bbox&#39;])</span>
+<span class="sd">        ...         # Filter oversized</span>
+<span class="sd">        ...         import pandas as pd</span>
+<span class="sd">        ...         df = pd.DataFrame(props)</span>
+<span class="sd">        ...         df[&#39;width&#39;] = df[&#39;bbox-2&#39;] - df[&#39;bbox-0&#39;]</span>
+<span class="sd">        ...         df[&#39;height&#39;] = df[&#39;bbox-3&#39;] - df[&#39;bbox-1&#39;]</span>
+<span class="sd">        ...         keep = df[(df[&#39;width&#39;] &lt; max_width) &amp;</span>
+<span class="sd">        ...                   (df[&#39;height&#39;] &lt; max_height)][&#39;label&#39;].values</span>
+<span class="sd">        ...         # Refine map</span>
+<span class="sd">        ...         refined = np.where(np.isin(objmap, keep), objmap, 0)</span>
+<span class="sd">        ...         image.objmap[:] = refined</span>
+<span class="sd">        ...         return image</span>
+<span class="sd">        &gt;&gt;&gt; # Usage on gridded plate image</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        &gt;&gt;&gt; image = GridImage.imread(&#39;plate.jpg&#39;, nrows=8, ncols=12)</span>
+<span class="sd">        &gt;&gt;&gt; detected = OtsuDetector().apply(image)</span>
+<span class="sd">        &gt;&gt;&gt; cleaned = OversizedObjectRemover().apply(detected)</span>
+
+<span class="sd">        Per-well filtering: remove colonies oversized for their well:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic.abc_ import GridObjectRefiner</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic import GridImage</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
+<span class="sd">        &gt;&gt;&gt; class PerWellOversizedRemover(GridObjectRefiner):</span>
+<span class="sd">        ...     &#39;&#39;&#39;Remove objects that exceed size threshold relative to their well.&#39;&#39;&#39;</span>
+<span class="sd">        ...</span>
+<span class="sd">        ...     def __init__(self, max_area_fraction: float = 0.8):</span>
+<span class="sd">        ...         super().__init__()</span>
+<span class="sd">        ...         self.max_area_fraction = max_area_fraction</span>
+<span class="sd">        ...</span>
+<span class="sd">        ...     @staticmethod</span>
+<span class="sd">        ...     def _operate(image: GridImage, max_area_fraction: float = 0.8) -&gt; GridImage:</span>
+<span class="sd">        ...         # Get grid structure</span>
+<span class="sd">        ...         col_edges = image.grid.get_col_edges()</span>
+<span class="sd">        ...         row_edges = image.grid.get_row_edges()</span>
+<span class="sd">        ...         # Compute well area (assume uniform grid cells)</span>
+<span class="sd">        ...         cell_width = (col_edges[1:] - col_edges[:-1]).mean()</span>
+<span class="sd">        ...         cell_height = (row_edges[1:] - row_edges[:-1]).mean()</span>
+<span class="sd">        ...         max_cell_area = cell_width * cell_height</span>
+<span class="sd">        ...         # Get grid info and measure object areas</span>
+<span class="sd">        ...         objmap = image.objmap[:]</span>
+<span class="sd">        ...         grid_info = image.grid.info()</span>
+<span class="sd">        ...         from skimage.measure import regionprops_table</span>
+<span class="sd">        ...         props = regionprops_table(objmap, properties=[&#39;label&#39;, &#39;area&#39;])</span>
+<span class="sd">        ...         props_df = pd.DataFrame(props)</span>
+<span class="sd">        ...         # Filter: keep objects smaller than max_area_fraction of their well</span>
+<span class="sd">        ...         max_allowed_area = max_cell_area * max_area_fraction</span>
+<span class="sd">        ...         keep = props_df[props_df[&#39;area&#39;] &lt; max_allowed_area][&#39;label&#39;].values</span>
+<span class="sd">        ...         # Refine map</span>
+<span class="sd">        ...         refined = np.where(np.isin(objmap, keep), objmap, 0)</span>
+<span class="sd">        ...         image.objmap[:] = refined</span>
+<span class="sd">        ...         return image</span>
+<span class="sd">        &gt;&gt;&gt; # Usage: remove merged colonies and artifacts spanning most of well</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        &gt;&gt;&gt; image = load_synth_yeast_plate()  # Returns GridImage</span>
+<span class="sd">        &gt;&gt;&gt; detected = OtsuDetector().apply(image)</span>
+<span class="sd">        &gt;&gt;&gt; # Remove colonies &gt; 80% of well area (likely merged or segmentation error)</span>
+<span class="sd">        &gt;&gt;&gt; cleaner = PerWellOversizedRemover(max_area_fraction=0.8)</span>
+<span class="sd">        &gt;&gt;&gt; refined = cleaner.apply(detected)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Removed oversized: {detected.objmap[:].max()} -&gt; {refined.objmap[:].max()}&quot;)</span>
+
+<span class="sd">        Chaining grid and non-grid refinements:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic import GridImage, ImagePipeline</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.refine import SmallObjectRemover, GridOversizedObjectRemover</span>
+<span class="sd">        &gt;&gt;&gt; # Create detection pipeline with mixed refinements</span>
+<span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline()</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(OtsuDetector())                        # Detect colonies</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(SmallObjectRemover(min_size=100))      # Global size filter</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(GridOversizedObjectRemover())          # Grid-aware filter</span>
+<span class="sd">        &gt;&gt;&gt; # Apply to gridded plate</span>
+<span class="sd">        &gt;&gt;&gt; image = GridImage.imread(&#39;plate.jpg&#39;, nrows=8, ncols=12)</span>
+<span class="sd">        &gt;&gt;&gt; results = pipeline.operate([image])</span>
+<span class="sd">        &gt;&gt;&gt; refined_image = results[0]</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Refined: {refined_image.objmap[:].max()} colonies&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GridObjectRefiner.apply">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.GridObjectRefiner.apply">[docs]</a>
+    <span class="nd">@validate_operation_integrity</span><span class="p">(</span><span class="s2">&quot;image.rgb&quot;</span><span class="p">,</span> <span class="s2">&quot;image.gray&quot;</span><span class="p">,</span> <span class="s2">&quot;image.detect_mat&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">GridImageInputError</span><span class="p">()</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">output</span></div>
+
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span>  <span class="c1"># type: ignore[override]</span>
+        <span class="k">return</span> <span class="n">image</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

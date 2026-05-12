@@ -1,0 +1,6 @@
+phenotypic.tools\_.task\_status\_path
+=====================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: task_status_path

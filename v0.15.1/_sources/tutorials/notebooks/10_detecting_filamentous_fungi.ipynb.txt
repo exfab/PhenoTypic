@@ -1,0 +1,349 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Tutorial 10: Detecting Filamentous Fungi\n",
+    "\n",
+    "Filamentous fungi like *Neurospora* grow as branching networks of hyphae,\n",
+    "not compact round colonies. Standard threshold detectors struggle with\n",
+    "this morphology because hyphae are thin and have varying intensity.\n",
+    "PhenoTypic includes a specialized pipeline for exactly this scenario.\n",
+    "\n",
+    "**What you will learn:**\n",
+    "\n",
+    "1. Load a filamentous fungi plate image\n",
+    "2. See why standard detectors miss thin hyphae\n",
+    "3. Use `FilamentousFungiPipeline` for end-to-end processing\n",
+    "4. Visualize fungal detection results"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Load the Fungi Plate\n",
+    "\n",
+    "PhenoTypic ships a *Neurospora* filamentous fungi plate image. Let's\n",
+    "take a look at the spreading hyphal morphology."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-04-30T07:57:04.529220Z",
+     "start_time": "2026-04-30T07:57:04.395411Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "from phenotypic.data import load_fungi_plate\n",
+    "\n",
+    "plate = load_fungi_plate()\n",
+    "plate.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Notice the spreading mycelium thin, branching filaments radiating from\n",
+    "each inoculation point. This is very different from the compact round\n",
+    "yeast colonies we have worked with so far."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Protocol Prerequisite: Inoculum Density\n",
+    "\n",
+    "The detection algorithm anchors every colony from its inoculation centre\n",
+    "(see [How It Works](../../explanation/filamentous_fungi_algorithm.md)).\n",
+    "For this to succeed, **the spore density of the inoculum must be high\n",
+    "enough to produce a strong, well-defined signal** that the blob detector\n",
+    "and downstream branch calculations can work from. A faint or sparse\n",
+    "deposit will not generate sufficient contrast for reliable detection, and\n",
+    "if the inoculum step fails, all downstream assignment fails with it.\n",
+    "\n",
+    "Ideally, the inoculum should be **uniformly bright**. Non-uniform\n",
+    "deposits can sometimes be compensated by preprocessing steps for\n",
+    "example, `HomomorphicFilter` for illumination gradients or the\n",
+    "detector's built-in GMM core extraction for fuzzy edges but severe\n",
+    "patchiness may still cause detection failures or split a single inoculum\n",
+    "into multiple detections."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Noise impacts branch detection much more than with yeast"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-04-30T07:57:12.385880Z",
+     "start_time": "2026-04-30T07:57:04.531611Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "from phenotypic.correction import StableDenoise\n",
+    "\n",
+    "denoised = StableDenoise().apply(plate)\n",
+    "denoised.detect_mat.dash()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-04-30T07:57:12.513822Z",
+     "start_time": "2026-04-30T07:57:12.407194Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "from phenotypic.enhance import ContrastStretching\n",
+    "\n",
+    "enh = ContrastStretching().apply(denoised)\n",
+    "enh.detect_mat.dash()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We're looking for very fine structures in the image, 2 to 4 px wide branches. This makes detection very sensitive to noise."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Why Standard Detectors Struggle\n",
+    "\n",
+    "Let's see what happens when we apply `OtsuDetector` to this plate."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-04-30T07:57:12.711348Z",
+     "start_time": "2026-04-30T07:57:12.516673Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "from phenotypic.detect import OtsuDetector\n",
+    "from phenotypic.correction import StableDenoise\n",
+    "\n",
+    "test = OtsuDetector(ignore_borders=False).apply(plate)\n",
+    "test.gray.dash(show_grid=False)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The Otsu threshold fails to capture a lot of the structure due to the noise. Also\n",
+    "\n",
+    "Note: Because this is a center crop of a larger plate, some of the branches touch the border, hence we set `ignore_borders=False`. Usually this is on by default."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Use FilamentousFungiPipeline\n",
+    "\n",
+    "`FilamentousFungiPipeline` is specifically designed for branching fungal\n",
+    "morphology. It chains:\n",
+    "\n",
+    "1. **BM3D denoising** removes noise while preserving thin filaments\n",
+    "2. **Homomorphic filtering** corrects uneven illumination\n",
+    "3. **FilamentousFungiDetector** two-stage detection with Dijkstra\n",
+    "   reconnection to capture fragmented hyphal branches"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-04-30T07:57:24.986947Z",
+     "start_time": "2026-04-30T07:57:12.713880Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "from phenotypic.prefab import FilamentousFungiPipeline\n",
+    "from phenotypic.detect import ManualGridPointDetector, FilamentousFungiDetector\n",
+    "\n",
+    "plate = load_fungi_plate()\n",
+    "\n",
+    "fungi_pipeline = FilamentousFungiPipeline(\n",
+    "        inoculum_detector=ManualGridPointDetector(coord1=(230, 240),\n",
+    "                                                  coord2=(630, 640),\n",
+    "                                                  shape=\"disk\",\n",
+    "                                                  width=100),\n",
+    "        ignore_borders=False\n",
+    ")\n",
+    "plate = fungi_pipeline.apply(plate)\n",
+    "\n",
+    "fig = plate.detect_mat.dash(overlay=True)\n",
+    "fig.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Much better! The specialized pipeline captures the full extent of the\n",
+    "mycelium, including thin outer branches that the Otsu detector missed. Most importantly, it reconnects those missed fragments from before"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-04-30T07:57:25.517139Z",
+     "start_time": "2026-04-30T07:57:24.999419Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "from phenotypic.refine import AsymmetricSpurTrimmer\n",
+    "\n",
+    "trimmer = AsymmetricSpurTrimmer()\n",
+    "trimmed_plate = trimmer.apply(plate)\n",
+    "trimmed_plate.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Using radial expansion as a metric of growth"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-04-30T07:57:26.227274Z",
+     "start_time": "2026-04-30T07:57:25.530097Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "from phenotypic.measure import MeasureSymmetricZones\n",
+    "\n",
+    "symmetric_radius = MeasureSymmetricZones()\n",
+    "meas = symmetric_radius.measure(plate)\n",
+    "\n",
+    "symmetric_radius.inspect()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## A Note on FrangiVesselness\n",
+    "\n",
+    "If you want to build a custom pipeline for filamentous organisms, the\n",
+    "`FrangiVesselness` enhancer is a useful building block. It enhances\n",
+    "tubular structures (hyphae, branches) in `detect_mat` using Hessian-based\n",
+    "vesselness filtering.\n",
+    "\n",
+    "```python\n",
+    "from phenotypic.enhance import FrangiVesselness\n",
+    "\n",
+    "frangi = FrangiVesselness(sigmas=(0.5, 1.0, 1.5), black_ridges=False)\n",
+    "```\n",
+    "\n",
+    "The `FilamentousFungiPipeline` uses a similar approach internally, combined\n",
+    "with phase congruency and minimum-cost path reconnection."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Summary\n",
+    "\n",
+    "You have detected filamentous fungi using PhenoTypic's specialized pipeline:\n",
+    "\n",
+    "- **Standard detectors** (like `OtsuDetector`) miss thin hyphae because a single\n",
+    "  threshold cannot capture varying filament intensities.\n",
+    "- **`FilamentousFungiPipeline`** handles this with BM3D denoising, homomorphic\n",
+    "  filtering, and a two-stage detector with Dijkstra reconnection.\n",
+    "- **`FrangiVesselness`** is available for custom pipeline building.\n",
+    "\n",
+    "---\n",
+    "\n",
+    "**Congratulations you have completed the tutorial series!** You now know\n",
+    "how to:\n",
+    "\n",
+    "1. Load and inspect plate images\n",
+    "2. Detect colonies with thresholding and specialized detectors\n",
+    "3. Enhance images before detection\n",
+    "4. Build reusable pipelines\n",
+    "5. Work with grid plates\n",
+    "6. Batch-process many plates from the CLI\n",
+    "7. Measure and export colony features\n",
+    "8. Use prefab pipelines for common scenarios\n",
+    "9. Assess image quality\n",
+    "10. Handle filamentous fungi\n",
+    "\n",
+    "For task-specific recipes, head to the [How-To Guides](../../how_to/index.rst).\n",
+    "For deeper understanding, see the [Explanation](../../explanation/index.rst) pages."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-04-30T07:57:26.250308Z",
+     "start_time": "2026-04-30T07:57:26.242230Z"
+    }
+   },
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.11.13"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}

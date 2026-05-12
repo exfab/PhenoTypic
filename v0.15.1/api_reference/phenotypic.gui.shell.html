@@ -1,0 +1,1040 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>phenotypic.gui.shell package &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=fb952d1c"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/phenotypic.gui.shell';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.15.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.15.1/api_reference/phenotypic.gui.shell.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.15.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item current active">
+        <a class="nav-link nav-internal" href="index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item current active">
+        <a class="nav-link nav-internal" href="index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"></div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.gui.shell package</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="module-phenotypic.gui.shell">
+<span id="phenotypic-gui-shell-package"></span><h1>phenotypic.gui.shell package<a class="headerlink" href="#module-phenotypic.gui.shell" title="Link to this heading">#</a></h1>
+<p>Unified GUI shell — Dash hub composer.</p>
+<p>The shell mounts <code class="docutils literal notranslate"><span class="pre">builder</span></code>, <code class="docutils literal notranslate"><span class="pre">results_viewer</span></code>, and <code class="docutils literal notranslate"><span class="pre">run_console</span></code> under one
+URL via <code class="docutils literal notranslate"><span class="pre">werkzeug.middleware.dispatcher.DispatcherMiddleware</span></code> and registers
+the sandbox JSON API + <code class="docutils literal notranslate"><span class="pre">/runs/</span></code> static blueprint on its own Flask server.
+See <code class="docutils literal notranslate"><span class="pre">GUI_SPEC_V1.md</span></code> and <code class="docutils literal notranslate"><span class="pre">docs/source/user_guide/gui.rst</span></code> (Phase 8).</p>
+<dl class="simple">
+<dt>Public API:</dt><dd><ul class="simple">
+<li><p><a class="reference internal" href="#phenotypic.gui.shell.SandboxRoot" title="phenotypic.gui.shell.SandboxRoot"><code class="xref py py-class docutils literal notranslate"><span class="pre">SandboxRoot</span></code></a> — sandbox primitive (Phase 1).</p></li>
+<li><p><a class="reference internal" href="#phenotypic.gui.shell.ToolSession" title="phenotypic.gui.shell.ToolSession"><code class="xref py py-class docutils literal notranslate"><span class="pre">ToolSession</span></code></a> — lifecycle wrapper (Phase 1).</p></li>
+<li><p><a class="reference internal" href="#phenotypic.gui.shell.create_app" title="phenotypic.gui.shell.create_app"><code class="xref py py-func docutils literal notranslate"><span class="pre">create_app()</span></code></a> — composed shell app factory (Phase 3 standalone;
+Phase 5 will compose sub-apps via <code class="docutils literal notranslate"><span class="pre">DispatcherMiddleware</span></code>).</p></li>
+<li><p><a class="reference internal" href="#phenotypic.gui.shell.launch_gui" title="phenotypic.gui.shell.launch_gui"><code class="xref py py-func docutils literal notranslate"><span class="pre">launch_gui()</span></code></a> — convenience launcher (Phase 3).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.gui.shell.SandboxRoot">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.gui.shell.</span></span><span class="sig-name descname"><span class="pre">SandboxRoot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/gui/shell/_sandbox.html#SandboxRoot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.gui.shell.SandboxRoot" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Frozen-at-launch sandbox containment primitive.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>root</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.gui.shell.SandboxRoot.root">
+<span class="sig-name descname"><span class="pre">root</span></span><a class="headerlink" href="#phenotypic.gui.shell.SandboxRoot.root" title="Link to this definition">#</a></dt>
+<dd><p>Absolute, fully-resolved directory the GUI is allowed to read
+from. Symlinks in the path are resolved at construction time so
+<code class="docutils literal notranslate"><span class="pre">contains</span></code> / <code class="docutils literal notranslate"><span class="pre">resolve</span></code> comparisons are stable for the lifetime
+of the process.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)">pathlib.Path</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.gui.shell.SandboxRoot.contains">
+<span class="sig-name descname"><span class="pre">contains</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">candidate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/os.html#os.PathLike" title="(in Python v3.14)"><span class="pre">PathLike</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/gui/shell/_sandbox.html#SandboxRoot.contains"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.gui.shell.SandboxRoot.contains" title="Link to this definition">#</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">True</span></code> iff <code class="docutils literal notranslate"><span class="pre">candidate</span></code> resolves inside the sandbox.</p>
+<p>Convenience predicate that wraps <code class="docutils literal notranslate"><span class="pre">resolve</span></code> and swallows the
+<code class="docutils literal notranslate"><span class="pre">ValueError</span></code> raised on escapes. Useful for “should I render this
+at all?” checks where raising would be inconvenient.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>candidate</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/os.html#os.PathLike" title="(in Python v3.14)"><em>PathLike</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.gui.shell.SandboxRoot.from_path">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/os.html#os.PathLike" title="(in Python v3.14)"><span class="pre">PathLike</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.gui.shell.SandboxRoot" title="phenotypic.gui.shell._sandbox.SandboxRoot"><span class="pre">SandboxRoot</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/gui/shell/_sandbox.html#SandboxRoot.from_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.gui.shell.SandboxRoot.from_path" title="Link to this definition">#</a></dt>
+<dd><p>Construct a sandbox from a user-supplied root path.</p>
+<p>Resolves symlinks and verifies the root exists and is a directory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>root</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/os.html#os.PathLike" title="(in Python v3.14)"><em>PathLike</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em>) – A directory path. May be relative; will be resolved.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <code class="docutils literal notranslate"><span class="pre">SandboxRoot</span></code> with <code class="docutils literal notranslate"><span class="pre">.root</span></code> fully resolved and absolute.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#FileNotFoundError" title="(in Python v3.14)"><strong>FileNotFoundError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">root</span></code> does not exist.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotADirectoryError" title="(in Python v3.14)"><strong>NotADirectoryError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">root</span></code> exists but is not a directory.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">root</span></code> resolution encounters a symlink loop
+    (CPython’s <code class="xref py py-meth docutils literal notranslate"><span class="pre">Path.resolve()</span></code> raises <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code> for
+    cycles, not <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#OSError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">OSError</span></code></a>). The launcher catches and
+    re-presents this as a startup error rather than a stack
+    trace.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#phenotypic.gui.shell.SandboxRoot" title="phenotypic.gui.shell._sandbox.SandboxRoot"><em>SandboxRoot</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.gui.shell.SandboxRoot.list_children">
+<span class="sig-name descname"><span class="pre">list_children</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/os.html#os.PathLike" title="(in Python v3.14)"><span class="pre">PathLike</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_hidden</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_external_symlinks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterator" title="(in Python v3.14)"><span class="pre">Iterator</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/phenotypic/gui/shell/_sandbox.html#SandboxRoot.list_children"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.gui.shell.SandboxRoot.list_children" title="Link to this definition">#</a></dt>
+<dd><p>Yield direct children of <code class="docutils literal notranslate"><span class="pre">directory</span></code> (default: <code class="docutils literal notranslate"><span class="pre">self.root</span></code>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>directory</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/os.html#os.PathLike" title="(in Python v3.14)"><em>PathLike</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>] </em><em>| </em><em>None</em>) – Path to list. Defaults to the sandbox root. Validated
+via <code class="docutils literal notranslate"><span class="pre">resolve</span></code> first; out-of-root paths raise <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>.</p></li>
+<li><p><strong>include_hidden</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Yield dotfiles when <code class="docutils literal notranslate"><span class="pre">True</span></code>. Default <code class="docutils literal notranslate"><span class="pre">False</span></code>
+matches the sidebar’s “Hidden files” toggle (off by default).</p></li>
+<li><p><strong>include_external_symlinks</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Yield symlinks whose targets escape
+<code class="docutils literal notranslate"><span class="pre">self.root</span></code> when <code class="docutils literal notranslate"><span class="pre">True</span></code>. Default <code class="docutils literal notranslate"><span class="pre">False</span></code> matches the
+sidebar’s “External symlinks” toggle. Non-symlink children
+are unaffected.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Yields<span class="colon">:</span></dt>
+<dd class="field-even"><p>Absolute <code class="docutils literal notranslate"><span class="pre">Path</span></code> objects, one per child. Symlinks are yielded
+unless they target outside the sandbox and the toggle is off.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">directory</span></code> resolves outside the sandbox.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#PermissionError" title="(in Python v3.14)"><strong>PermissionError</strong></a> – If the directory cannot be listed; callers may
+    choose to swallow this and surface the <code class="docutils literal notranslate"><span class="pre">bad_perms</span></code> capability
+    badge instead.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterator" title="(in Python v3.14)"><em>Iterator</em></a>[<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.gui.shell.SandboxRoot.resolve">
+<span class="sig-name descname"><span class="pre">resolve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">candidate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/os.html#os.PathLike" title="(in Python v3.14)"><span class="pre">PathLike</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/gui/shell/_sandbox.html#SandboxRoot.resolve"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.gui.shell.SandboxRoot.resolve" title="Link to this definition">#</a></dt>
+<dd><p>Resolve <code class="docutils literal notranslate"><span class="pre">candidate</span></code> to an absolute path inside the sandbox.</p>
+<p><code class="docutils literal notranslate"><span class="pre">candidate</span></code> may be absolute or relative. Relative paths are joined
+against <code class="docutils literal notranslate"><span class="pre">self.root</span></code>. Symlinks are followed; the resulting absolute
+path is verified to be inside <code class="docutils literal notranslate"><span class="pre">self.root</span></code>. This catches both
+<code class="docutils literal notranslate"><span class="pre">..</span></code>-style traversal and symlinks pointing outside the sandbox.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>candidate</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/os.html#os.PathLike" title="(in Python v3.14)"><em>PathLike</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em>) – A path supplied by an untrusted source (URL, query
+string, JSON body).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Absolute, fully-resolved <code class="docutils literal notranslate"><span class="pre">Path</span></code> guaranteed to be inside (or
+equal to) <code class="docutils literal notranslate"><span class="pre">self.root</span></code>.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">candidate</span></code> resolves outside <code class="docutils literal notranslate"><span class="pre">self.root</span></code> or
+    follows a symlink that escapes <code class="docutils literal notranslate"><span class="pre">self.root</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">root</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></em><a class="headerlink" href="#id0" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.gui.shell.ToolSession">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.gui.shell.</span></span><span class="sig-name descname"><span class="pre">ToolSession</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">build</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">T</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">teardown</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">T</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/gui/shell/_session.html#ToolSession"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.gui.shell.ToolSession" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Generic" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Generic</span></code></a>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">T</span></code>]</p>
+<p>Lazy, releasable wrapper around a heavy tool’s state object.</p>
+<p><code class="docutils literal notranslate"><span class="pre">ToolSession</span></code> is generic over the state type <code class="docutils literal notranslate"><span class="pre">T</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">dash.Dash</span></code>
+for the viewer, <code class="docutils literal notranslate"><span class="pre">OutputRoot</span></code> for measurement loading). The shell
+constructs a session at boot but does NOT call <code class="docutils literal notranslate"><span class="pre">build</span></code> — that happens
+on first <code class="docutils literal notranslate"><span class="pre">get()</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Human-readable label for log lines and <code class="docutils literal notranslate"><span class="pre">__repr__</span></code>.</p></li>
+<li><p><strong>build</strong> (<em>Callable</em><em>[</em><em>[</em><em>]</em><em>, </em><em>T</em><em>]</em>) – Zero-argument callable that constructs the heavy state. Called
+once per release cycle, under <code class="docutils literal notranslate"><span class="pre">self._lock</span></code>.</p></li>
+<li><p><strong>teardown</strong> (<em>Callable</em><em>[</em><em>[</em><em>T</em><em>]</em><em>, </em><em>None</em><em>] </em><em>| </em><em>None</em>) – Optional cleanup callable invoked with the
+(now-detached) state <strong>after</strong> the session has cleared its
+reference. Runs outside the session’s lock; concurrent <code class="docutils literal notranslate"><span class="pre">get</span></code>
+calls may have already triggered a rebuild before <code class="docutils literal notranslate"><span class="pre">teardown</span></code>
+returns. Therefore <code class="docutils literal notranslate"><span class="pre">teardown</span></code> must only touch state owned by
+the released object, never shared global state that the rebuild
+repopulates — e.g. clearing keys on the <em>released</em>
+<code class="docutils literal notranslate"><span class="pre">viewer_app.server.config</span></code> is fine, but clearing keys on a
+process-wide singleton (<code class="docutils literal notranslate"><span class="pre">shell_app.server.config</span></code>) is a bug
+because the rebuild re-installs them. Defaults to a no-op.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._session</span><span class="w"> </span><span class="kn">import</span> <span class="n">ToolSession</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">def</span><span class="w"> </span><span class="nf">_build</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;big_dataframe&quot;</span><span class="p">:</span> <span class="s2">&quot;loaded&quot;</span><span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">session</span> <span class="o">=</span> <span class="n">ToolSession</span><span class="p">(</span><span class="s2">&quot;viewer&quot;</span><span class="p">,</span> <span class="n">build</span><span class="o">=</span><span class="n">_build</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>  <span class="c1"># triggers _build()</span>
+<span class="go">{&#39;big_dataframe&#39;: &#39;loaded&#39;}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">session</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>  <span class="c1"># _build() runs again</span>
+<span class="go">{&#39;big_dataframe&#39;: &#39;loaded&#39;}</span>
+</pre></div>
+</div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.gui.shell.ToolSession.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">T</span></span></span><a class="reference internal" href="../_modules/phenotypic/gui/shell/_session.html#ToolSession.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.gui.shell.ToolSession.get" title="Link to this definition">#</a></dt>
+<dd><p>Return the live state, building it on first access.</p>
+<p>Acquires <code class="docutils literal notranslate"><span class="pre">self._lock</span></code> so concurrent first-access calls don’t both
+run <code class="docutils literal notranslate"><span class="pre">build</span></code>. Updates <code class="docutils literal notranslate"><span class="pre">_last_access</span></code> to the current monotonic
+time <strong>before</strong> invoking <code class="docutils literal notranslate"><span class="pre">build</span></code> so that the idle daemon (which
+reads <code class="docutils literal notranslate"><span class="pre">_last_access</span></code> lock-free) cannot observe a freshly-set
+<code class="docutils literal notranslate"><span class="pre">_state</span></code> paired with a stale <code class="docutils literal notranslate"><span class="pre">_last_access</span></code> and spuriously
+decide to release.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>T</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.gui.shell.ToolSession.idle_seconds">
+<span class="sig-name descname"><span class="pre">idle_seconds</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/gui/shell/_session.html#ToolSession.idle_seconds"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.gui.shell.ToolSession.idle_seconds" title="Link to this definition">#</a></dt>
+<dd><p>Seconds since the last <code class="docutils literal notranslate"><span class="pre">get</span></code> or <code class="docutils literal notranslate"><span class="pre">touch</span></code>.</p>
+<p>Returns 0.0 when the session is unbuilt — there is nothing to
+release. Reading <code class="docutils literal notranslate"><span class="pre">_state</span></code> without the lock is intentional; a
+race only changes the answer by one polling cycle.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.gui.shell.ToolSession.is_built">
+<span class="sig-name descname"><span class="pre">is_built</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/gui/shell/_session.html#ToolSession.is_built"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.gui.shell.ToolSession.is_built" title="Link to this definition">#</a></dt>
+<dd><p>True iff the session currently holds built state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.gui.shell.ToolSession.release">
+<span class="sig-name descname"><span class="pre">release</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/gui/shell/_session.html#ToolSession.release"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.gui.shell.ToolSession.release" title="Link to this definition">#</a></dt>
+<dd><p>Drop the in-memory state. Idempotent.</p>
+<p>Runs <code class="docutils literal notranslate"><span class="pre">teardown(state)</span></code> first, then drops the reference and calls
+<code class="docutils literal notranslate"><span class="pre">gc.collect()</span></code>. The next <code class="docutils literal notranslate"><span class="pre">get</span></code> will rebuild from scratch. Held
+under <code class="docutils literal notranslate"><span class="pre">self._lock</span></code> so an in-flight <code class="docutils literal notranslate"><span class="pre">get</span></code> cannot observe a
+torn-down state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.gui.shell.ToolSession.set_build">
+<span class="sig-name descname"><span class="pre">set_build</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">build</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">T</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/gui/shell/_session.html#ToolSession.set_build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.gui.shell.ToolSession.set_build" title="Link to this definition">#</a></dt>
+<dd><p>Replace the build callable and drop any existing state.</p>
+<p>Used by hand-off endpoints (e.g. the viewer’s
+<code class="docutils literal notranslate"><span class="pre">/sandbox/api/viewer/output-root</span></code>) that need the next <code class="docutils literal notranslate"><span class="pre">get</span></code> to
+construct the heavy state with new arguments. The swap and the
+release are performed under <code class="docutils literal notranslate"><span class="pre">self._lock</span></code> so an in-flight <code class="docutils literal notranslate"><span class="pre">get</span></code>
+cannot observe a half-swapped state, and the next <code class="docutils literal notranslate"><span class="pre">get</span></code> is
+guaranteed to call the freshly-installed <code class="docutils literal notranslate"><span class="pre">build</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">teardown</span></code> runs outside the lock with the previously-held state,
+following the same contract as <a class="reference internal" href="#phenotypic.gui.shell.ToolSession.release" title="phenotypic.gui.shell.ToolSession.release"><code class="xref py py-meth docutils literal notranslate"><span class="pre">release()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>build</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><em>Callable</em></a><em>[</em><em>[</em><em>]</em><em>, </em><em>T</em><em>]</em>) – The new zero-argument constructor for the heavy state.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.gui.shell.ToolSession.touch">
+<span class="sig-name descname"><span class="pre">touch</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/gui/shell/_session.html#ToolSession.touch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.gui.shell.ToolSession.touch" title="Link to this definition">#</a></dt>
+<dd><p>Bump activity timestamp without forcing a build.</p>
+<p>Called by Flask blueprints (<code class="docutils literal notranslate"><span class="pre">/runs/...</span></code>, <code class="docutils literal notranslate"><span class="pre">/sandbox/api/...</span></code>)
+whose hits indicate the user is actively using the tool. Without
+<code class="docutils literal notranslate"><span class="pre">touch</span></code> the idle daemon would release tools while the user is
+reading an iframed dashboard (the dashboard polls files via the
+<code class="docutils literal notranslate"><span class="pre">/runs/</span></code> blueprint, NOT through Dash callbacks).</p>
+<p>Lock-free by design — the only mutation is a 64-bit float write.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="phenotypic.gui.shell.create_app">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.gui.shell.</span></span><span class="sig-name descname"><span class="pre">create_app</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sandbox</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#phenotypic.gui.shell.SandboxRoot" title="phenotypic.gui.shell._sandbox.SandboxRoot"><span class="pre">SandboxRoot</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">url_prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'/'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">viewer_session</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#phenotypic.gui.shell.ToolSession" title="phenotypic.gui.shell._session.ToolSession"><span class="pre">ToolSession</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idle_release_seconds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">900.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_idle_thread</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dash</span></span></span><a class="reference internal" href="../_modules/phenotypic/gui/shell/_app.html#create_app"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.gui.shell.create_app" title="Link to this definition">#</a></dt>
+<dd><p>Build the unified GUI hub Dash app.</p>
+<p>Phase 5 default: composes the full hub (shell + builder + viewer
+via <a class="reference internal" href="#phenotypic.gui.shell.ToolSession" title="phenotypic.gui.shell.ToolSession"><code class="xref py py-class docutils literal notranslate"><span class="pre">ToolSession</span></code></a> + run console) and returns the shell’s
+Dash app with its <code class="docutils literal notranslate"><span class="pre">server.wsgi_app</span></code> replaced by a
+<code class="xref py py-class docutils literal notranslate"><span class="pre">DispatcherMiddleware</span></code>. Tests can hit any HTTP route through
+<code class="docutils literal notranslate"><span class="pre">app.server.test_client()</span></code> (which goes through <code class="docutils literal notranslate"><span class="pre">wsgi_app</span></code>).</p>
+<p>Backwards-compat for Phase 3 tests: passing <code class="docutils literal notranslate"><span class="pre">viewer_session</span></code>
+explicitly opts out of full composition — the call returns just
+the shell Dash app with the API + runs blueprints registered
+against the supplied session. Phase 3 lifecycle tests rely on this
+to inject a stub session and assert <code class="docutils literal notranslate"><span class="pre">touch()</span></code> is called.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sandbox</strong> (<a class="reference internal" href="#phenotypic.gui.shell.SandboxRoot" title="phenotypic.gui.shell._sandbox.SandboxRoot"><em>SandboxRoot</em></a>) – Frozen-at-launch sandbox root.</p></li>
+<li><p><strong>url_prefix</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Reserved for future composer nesting. Hub keeps
+it at <code class="docutils literal notranslate"><span class="pre">&quot;/&quot;</span></code> since the shell Dash is itself the dispatcher’s
+fallback. Standalone shell launches accept any value.</p></li>
+<li><p><strong>viewer_session</strong> (<a class="reference internal" href="#phenotypic.gui.shell.ToolSession" title="phenotypic.gui.shell._session.ToolSession"><em>ToolSession</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>] </em><em>| </em><em>None</em>) – Phase 3 escape hatch — pass to test the shell
+in isolation against a specific session. When set,
+<code class="docutils literal notranslate"><span class="pre">create_app</span></code> returns just the shell Dash without composing
+the sub-apps. <code class="docutils literal notranslate"><span class="pre">None</span></code> (default) triggers the full hub
+composition.</p></li>
+<li><p><strong>idle_release_seconds</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Forwarded to <code class="xref py py-func docutils literal notranslate"><span class="pre">compose_hub()</span></code>.</p></li>
+<li><p><strong>start_idle_thread</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em> | </em><em>None</em>) – Forwarded to <code class="xref py py-func docutils literal notranslate"><span class="pre">compose_hub()</span></code>. When
+<code class="docutils literal notranslate"><span class="pre">None</span></code> (default) the daemon is started under production
+launch but skipped under pytest (<code class="docutils literal notranslate"><span class="pre">PYTEST_CURRENT_TEST</span></code>
+in env). Tests that want the daemon explicitly should
+pass <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Configured <code class="xref py py-class docutils literal notranslate"><span class="pre">dash.Dash</span></code> instance. <code class="docutils literal notranslate"><span class="pre">app.run()</span></code> (or
+Werkzeug <code class="docutils literal notranslate"><span class="pre">run_simple</span></code>) starts the unified server.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>Dash</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="phenotypic.gui.shell.launch_gui">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.gui.shell.</span></span><span class="sig-name descname"><span class="pre">launch_gui</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">PosixPath('/home/runner/work/PhenoTypic/PhenoTypic/docs')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">host</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'127.0.0.1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8050</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/gui/shell/_launcher.html#launch_gui"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.gui.shell.launch_gui" title="Link to this definition">#</a></dt>
+<dd><p>Boot the unified PhenoTypic GUI shell.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>root</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Sandbox root. Strings accepted for ergonomics. Resolved to an
+absolute <a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pathlib.Path</span></code></a> and frozen for the lifetime of
+the process. Defaults to the current working directory.</p></li>
+<li><p><strong>host</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Interface to bind. <code class="xref py py-data docutils literal notranslate"><span class="pre">DEFAULT_HOST</span></code> keeps the server
+loopback-only — pair with SSH port forwarding for remote
+access. <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> exposes it on the network (not recommended
+without authentication; cloud mode is a non-goal in v1).</p></li>
+<li><p><strong>port</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – TCP port. Defaults to <code class="xref py py-data docutils literal notranslate"><span class="pre">DEFAULT_PORT</span></code>.</p></li>
+<li><p><strong>debug</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Run Dash in debug mode (auto-reload + verbose tracebacks).
+Defaults to <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#FileNotFoundError" title="(in Python v3.14)"><strong>FileNotFoundError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">root</span></code> does not exist.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotADirectoryError" title="(in Python v3.14)"><strong>NotADirectoryError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">root</span></code> exists but is not a directory.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – On a symlink loop encountered while resolving root.</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="phenotypic.gui.shell.main">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.gui.shell.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">argv</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/gui/shell/_launcher.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.gui.shell.main" title="Link to this definition">#</a></dt>
+<dd><p>Console-script entry point.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Process exit code (0 = clean shutdown, non-zero = startup failure).</p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>argv</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Sequence" title="(in Python v3.14)"><em>Sequence</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>] </em><em>| </em><em>None</em>)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.gui.shell.SandboxRoot"><code class="docutils literal notranslate"><span class="pre">SandboxRoot</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.gui.shell.SandboxRoot.root"><code class="docutils literal notranslate"><span class="pre">SandboxRoot.root</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.gui.shell.SandboxRoot.contains"><code class="docutils literal notranslate"><span class="pre">SandboxRoot.contains()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.gui.shell.SandboxRoot.from_path"><code class="docutils literal notranslate"><span class="pre">SandboxRoot.from_path()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.gui.shell.SandboxRoot.list_children"><code class="docutils literal notranslate"><span class="pre">SandboxRoot.list_children()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.gui.shell.SandboxRoot.resolve"><code class="docutils literal notranslate"><span class="pre">SandboxRoot.resolve()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id0"><code class="docutils literal notranslate"><span class="pre">SandboxRoot.root</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.gui.shell.ToolSession"><code class="docutils literal notranslate"><span class="pre">ToolSession</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.gui.shell.ToolSession.get"><code class="docutils literal notranslate"><span class="pre">ToolSession.get()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.gui.shell.ToolSession.idle_seconds"><code class="docutils literal notranslate"><span class="pre">ToolSession.idle_seconds()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.gui.shell.ToolSession.is_built"><code class="docutils literal notranslate"><span class="pre">ToolSession.is_built()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.gui.shell.ToolSession.release"><code class="docutils literal notranslate"><span class="pre">ToolSession.release()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.gui.shell.ToolSession.set_build"><code class="docutils literal notranslate"><span class="pre">ToolSession.set_build()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.gui.shell.ToolSession.touch"><code class="docutils literal notranslate"><span class="pre">ToolSession.touch()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.gui.shell.create_app"><code class="docutils literal notranslate"><span class="pre">create_app()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.gui.shell.launch_gui"><code class="docutils literal notranslate"><span class="pre">launch_gui()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.gui.shell.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api_reference/phenotypic.gui.shell.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

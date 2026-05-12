@@ -1,0 +1,27 @@
+phenotypic.enhance.HomomorphicFilter
+====================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: HomomorphicFilter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~HomomorphicFilter.__init__
+      ~HomomorphicFilter.apply
+      ~HomomorphicFilter.widget
+   
+   
+
+   
+   
+   

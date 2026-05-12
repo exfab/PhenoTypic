@@ -1,0 +1,37 @@
+phenotypic.correction.ColorCheckerProfile
+=========================================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: ColorCheckerProfile
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ColorCheckerProfile.__init__
+      ~ColorCheckerProfile.dashboard
+      ~ColorCheckerProfile.fit
+      ~ColorCheckerProfile.from_dict
+      ~ColorCheckerProfile.to_dict
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ColorCheckerProfile.correction_matrix
+      ~ColorCheckerProfile.diagnostics
+      ~ColorCheckerProfile.is_fitted
+   
+   

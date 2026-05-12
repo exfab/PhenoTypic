@@ -1,0 +1,44 @@
+phenotypic.tools\_.ProcessingStateKey
+=====================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autoclass:: ProcessingStateKey
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ProcessingStateKey.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ProcessingStateKey.COMPLETED
+      ~ProcessingStateKey.CONFIG
+      ~ProcessingStateKey.DATASETS
+      ~ProcessingStateKey.ERRORS
+      ~ProcessingStateKey.EXECUTION_MODE
+      ~ProcessingStateKey.FAILED
+      ~ProcessingStateKey.INITIAL_IMAGES
+      ~ProcessingStateKey.INPUT_PATH
+      ~ProcessingStateKey.LAST_UPDATED
+      ~ProcessingStateKey.OUTPUT_DIR
+      ~ProcessingStateKey.PIPELINE_PATH
+      ~ProcessingStateKey.STARTED
+      ~ProcessingStateKey.TIMESTAMP
+      ~ProcessingStateKey.VERSION
+   
+   

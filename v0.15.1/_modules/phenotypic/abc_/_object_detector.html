@@ -1,0 +1,950 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.abc_._object_detector &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=fb952d1c"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/abc_/_object_detector';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.15.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.15.1/_modules/phenotypic/abc_/_object_detector.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.15.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.abc_._object_detector</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.abc_._object_detector</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">overload</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._image_operation</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageOperation</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.funcs_</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_operation_integrity</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+
+
+<span class="c1"># &lt;&lt;Interface&gt;&gt;</span>
+<div class="viewcode-block" id="ObjectDetector">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ObjectDetector">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ObjectDetector</span><span class="p">(</span><span class="n">ImageOperation</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract base class for colony detection operations on agar plate images.</span>
+
+<span class="sd">    ObjectDetector defines the interface for algorithms that identify and label microbial</span>
+<span class="sd">    colonies (or other objects) in image data. Detection is a critical step in the PhenoTypic</span>
+<span class="sd">    image processing pipeline: it bridges image preprocessing (enhancement) and downstream</span>
+<span class="sd">    analysis (measurement, refinement, and statistical analysis).</span>
+
+<span class="sd">    **Quick Decision Guide**</span>
+
+<span class="sd">    Use this guide to choose the right operation for your task:</span>
+
+<span class="sd">    - **ObjectDetector:** Implementing a novel detection algorithm? Produces both objmask</span>
+<span class="sd">      (binary) and objmap (labeled).</span>
+<span class="sd">    - **ThresholdDetector:** Your algorithm converts intensity to binary via thresholding?</span>
+<span class="sd">      Subclass ThresholdDetector for specialized threshold strategies.</span>
+<span class="sd">    - **ImageEnhancer:** Need to preprocess image data (blur, contrast, denoise) before</span>
+<span class="sd">      detection? Use enhancement to prepare detect_mat for better detection.</span>
+<span class="sd">    - **ObjectRefiner:** Need to clean up *existing* masks (size filter, morphology, merge)?</span>
+<span class="sd">      Refiner operates on objmask/objmap without analyzing image data.</span>
+<span class="sd">    - **Threshold vs Edge vs Peak:** Threshold works when intensity separates colonies from</span>
+<span class="sd">      background; edge-based (Canny) finds boundaries; peak-based assumes circular shapes.</span>
+<span class="sd">    - **Grid-aware analysis:** Processing arrayed plates? Use GridObjectRefiner or</span>
+<span class="sd">      GridFinder for well-plate-specific logic.</span>
+
+<span class="sd">    **What does ObjectDetector do?**</span>
+
+<span class="sd">    ObjectDetector subclasses analyze image data and produce two outputs that describe detected</span>
+<span class="sd">    colonies:</span>
+
+<span class="sd">    - **image.objmask** (binary mask): A 2D boolean array where True indicates colony pixels</span>
+<span class="sd">      and False indicates background. Each True pixel belongs to *some* colony but the mask</span>
+<span class="sd">      does not distinguish which colony each pixel belongs to—that is the role of objmap.</span>
+
+<span class="sd">    - **image.objmap** (labeled map): A 2D integer array where each pixel value identifies the</span>
+<span class="sd">      colony it belongs to. Background is 0, and each unique positive integer (1, 2, 3, ...,</span>
+<span class="sd">      N) represents a distinct labeled colony. This enables accessing individual colonies</span>
+<span class="sd">      via ``image.objects`` after detection.</span>
+
+<span class="sd">    **Key principle: ObjectDetector is READ-ONLY for image data**</span>
+
+<span class="sd">    ObjectDetector operations:</span>
+
+<span class="sd">    - **Read** ``image.detect_mat[:]`` (detection matrix), ``image.rgb[:]``, and optionally</span>
+<span class="sd">      other image data to inform detection.</span>
+<span class="sd">    - **Write** only ``image.objmask[:]`` and ``image.objmap[:]``.</span>
+<span class="sd">    - **Protect** ``image.rgb``, ``image.gray``, and ``image.detect_mat`` via automatic integrity</span>
+<span class="sd">      validation (``@validate_operation_integrity`` decorator).</span>
+
+<span class="sd">    Any attempt to modify protected image components raises ``OperationIntegrityError`` when</span>
+<span class="sd">    ``VALIDATE_OPS=True`` in the environment (enabled during development/testing).</span>
+
+<span class="sd">    **Why is detection central to the pipeline?**</span>
+
+<span class="sd">    Detection enables:</span>
+
+<span class="sd">    1. **Object identification:** Distinguishes individual colonies from background and from</span>
+<span class="sd">       each other.</span>
+<span class="sd">    2. **Downstream analysis:** Once colonies are labeled, ``image.objects`` provides access</span>
+<span class="sd">       to properties (area, intensity, centroid, morphology) for each colony.</span>
+<span class="sd">    3. **Refinement:** ObjectRefiner operations clean up detection masks/maps post-detection</span>
+<span class="sd">       (e.g., removing spurious objects, merging fragments, filtering by size).</span>
+<span class="sd">    4. **Phenotyping:** Measurement operations (MeasureFeatures) extract colony features</span>
+<span class="sd">       (color, morphology, growth) for statistical analysis.</span>
+
+<span class="sd">    **Differences: objmask vs objmap**</span>
+
+<span class="sd">    - **objmask (binary):** Answers &quot;is this pixel part of *any* colony?&quot; Simple, useful for</span>
+<span class="sd">      visualization or as input to further processing (e.g., morphological operations).</span>
+<span class="sd">      Generated by most detectors via thresholding or edge detection.</span>
+
+<span class="sd">    - **objmap (labeled):** Answers &quot;which colony does this pixel belong to?&quot; Enables per-object</span>
+<span class="sd">      analysis. Each colony has a unique integer label, and connected-component labeling</span>
+<span class="sd">      (usually ``scipy.ndimage.label``) assigns these labels.</span>
+
+<span class="sd">    Both are typically set together in ``_operate()`` via::</span>
+
+<span class="sd">        image.objmask[:] = binary_mask</span>
+<span class="sd">        image.objmap[:] = labeled_map</span>
+
+<span class="sd">    **When to use ObjectDetector vs ThresholdDetector vs ObjectRefiner**</span>
+
+<span class="sd">    - **ObjectDetector (this class):** Implement when you have a novel algorithm that produces</span>
+<span class="sd">      both objmask and objmap from image data. Examples: [OtsuDetector](src/phenotypic/detect/_otsu_detector.py),</span>
+<span class="sd">      [CannyDetector](src/phenotypic/detect/_canny_detector.py), [RoundPeaksDetector](src/phenotypic/detect/_round_peaks_detector.py),</span>
+<span class="sd">      [WatershedDetector](src/phenotypic/detect/_watershed_detector.py).</span>
+
+<span class="sd">    - **ThresholdDetector (ObjectDetector subclass):** Inherit from this if your detection</span>
+<span class="sd">      relies on a threshold value. Provides common patterns and signals intent. Examples:</span>
+<span class="sd">      [OtsuDetector](src/phenotypic/detect/_otsu_detector.py), [LiDetector](src/phenotypic/detect/_li_detector.py),</span>
+<span class="sd">      [YenDetector](src/phenotypic/detect/_yen_detector.py), [TriangleDetector](src/phenotypic/detect/_triangle_detector.py).</span>
+
+<span class="sd">    - **ObjectRefiner (different ABC):** Use when modifying existing masks/maps without</span>
+<span class="sd">      analyzing image data. Examples: size filtering, morphological cleanup, erosion/dilation,</span>
+<span class="sd">      merging nearby objects, removing objects near borders.</span>
+
+<span class="sd">    **How to implement a custom ObjectDetector**</span>
+
+<span class="sd">    1. **Create the class:**</span>
+
+<span class="sd">       .. code-block:: python</span>
+
+<span class="sd">           from phenotypic.abc_ import ObjectDetector</span>
+<span class="sd">           from phenotypic import Image</span>
+
+<span class="sd">           class MyDetector(ObjectDetector):</span>
+<span class="sd">               def __init__(self, param1: float, param2: int = 10):</span>
+<span class="sd">                   super().__init__()</span>
+<span class="sd">                   self.param1 = param1</span>
+<span class="sd">                   self.param2 = param2</span>
+
+<span class="sd">               @staticmethod</span>
+<span class="sd">               def _operate(image: Image, param1: float, param2: int = 10) -&gt; Image:</span>
+<span class="sd">                   # Detection logic here</span>
+<span class="sd">                   return image</span>
+
+<span class="sd">    2. **Within _operate(), read image data carefully:**</span>
+
+<span class="sd">       - Access via accessors: ``image.detect_mat[:]``, ``image.gray[:]``, ``image.rgb[:]``</span>
+<span class="sd">       - Never modify these; integrity validation will catch it</span>
+<span class="sd">       - Consider the data type and range (uint8, uint16, float, etc.)</span>
+
+<span class="sd">    3. **Perform detection:** Use your algorithm to create a binary mask and labeled map.</span>
+<span class="sd">       Typical approaches:</span>
+
+<span class="sd">       - **Thresholding-based:** Global or local threshold → binary mask → label (see [OtsuDetector](src/phenotypic/detect/_otsu_detector.py))</span>
+<span class="sd">       - **Edge-based:** Edge detector (Canny) → invert edges → label regions (see [CannyDetector](src/phenotypic/detect/_canny_detector.py))</span>
+<span class="sd">       - **Peak-based:** Detect intensity peaks → grow regions → label (see [RoundPeaksDetector](src/phenotypic/detect/_round_peaks_detector.py))</span>
+<span class="sd">       - **Region-based:** Watershed or morphological operations (see [WatershedDetector](src/phenotypic/detect/_watershed_detector.py))</span>
+
+<span class="sd">    4. **Create and set the binary mask and labeled map:**</span>
+
+<span class="sd">       .. code-block:: python</span>
+
+<span class="sd">           from scipy import ndimage</span>
+<span class="sd">           import numpy as np</span>
+
+<span class="sd">           # Example: simple Otsu thresholding</span>
+<span class="sd">           enh = image.detect_mat[:]</span>
+<span class="sd">           threshold = skimage.filters.threshold_otsu(enh)</span>
+<span class="sd">           binary_mask = enh &gt; threshold</span>
+
+<span class="sd">           # Remove small noise</span>
+<span class="sd">           binary_mask = skimage.morphology.remove_small_objects(binary_mask, min_size=20)</span>
+
+<span class="sd">           # Label connected components</span>
+<span class="sd">           labeled_map, num_objects = ndimage.label(binary_mask)</span>
+
+<span class="sd">           # Set both outputs</span>
+<span class="sd">           image.objmask[:] = binary_mask</span>
+<span class="sd">           image.objmap[:] = labeled_map</span>
+
+<span class="sd">           return image</span>
+
+<span class="sd">    5. **Post-processing (optional):** Some detectors include additional cleanup:</span>
+
+<span class="sd">       - **Morphological operations:** Apply erosion, dilation, opening, or closing to refine</span>
+<span class="sd">         mask topology (remove noise, bridge fragments, smooth boundaries).</span>
+<span class="sd">       - **Clear borders:** Use ``skimage.segmentation.clear_border()`` to remove objects</span>
+<span class="sd">         touching image edges.</span>
+<span class="sd">       - **Remove small/large objects:** Use ``skimage.morphology.remove_small_objects()`` or</span>
+<span class="sd">         ``skimage.morphology.remove_large_objects()`` to filter by area.</span>
+<span class="sd">       - **Relabel:** Call ``image.objmap.relabel(connectivity=...)`` to ensure consecutive</span>
+<span class="sd">         labels.</span>
+
+<span class="sd">    **Helper functions from scipy and scikit-image**</span>
+
+<span class="sd">    Common utilities for ObjectDetector implementations:</span>
+
+<span class="sd">    - **scipy.ndimage.label():** Assigns unique integers to connected components in a binary</span>
+<span class="sd">      mask. Returns (labeled_array, num_features). Specify ``structure`` for connectivity</span>
+<span class="sd">      (default 3x3 with all 8 neighbors; use ``generate_binary_structure(2, 1)`` for</span>
+<span class="sd">      4-connectivity).</span>
+
+<span class="sd">    - **skimage.morphology.remove_small_objects():** Removes binary regions smaller than</span>
+<span class="sd">      min_size pixels. Helpful for filtering noise or spurious detections.</span>
+
+<span class="sd">    - **skimage.morphology.remove_large_objects():** Removes regions larger than a threshold.</span>
+<span class="sd">      Useful for excluding large artefacts or plate boundaries.</span>
+
+<span class="sd">    - **skimage.segmentation.clear_border():** Sets pixels on the image border to False,</span>
+<span class="sd">      eliminating objects that touch the edge (common in arrayed imaging where wells at</span>
+<span class="sd">      plate boundaries may be partially cut off).</span>
+
+<span class="sd">    - **skimage.morphology.binary_opening():** Erosion followed by dilation; removes small</span>
+<span class="sd">      noise while preserving larger objects. Use with a suitable shape (disk, square, or</span>
+<span class="sd">      diamond).</span>
+
+<span class="sd">    - **scipy.ndimage.binary_dilation() / binary_erosion():** Expand or shrink objects</span>
+<span class="sd">      morphologically. Useful for bridging fragmented colonies or removing small protrusions.</span>
+
+<span class="sd">    - **skimage.feature.canny():** Multi-stage edge detection (Gaussian → gradient → non-max</span>
+<span class="sd">      suppression → hysteresis). Robust but requires threshold tuning.</span>
+
+<span class="sd">    **Reference implementations in PhenoTypic**</span>
+
+<span class="sd">    Study these implementations to learn detection patterns:</span>
+
+<span class="sd">    - [OtsuDetector](src/phenotypic/detect/_otsu_detector.py): Simple thresholding with global</span>
+<span class="sd">      Otsu method</span>
+<span class="sd">    - [HysteresisDetector](src/phenotypic/detect/_hysteresis_detector.py): Advanced dual-threshold</span>
+<span class="sd">      with edge tracking (excellent reference for complex detection)</span>
+<span class="sd">    - [CannyDetector](src/phenotypic/detect/_canny_detector.py): Edge-based detection with</span>
+<span class="sd">      connectivity cleanup</span>
+<span class="sd">    - [RoundPeaksDetector](src/phenotypic/detect/_round_peaks_detector.py): Peak-based approach</span>
+<span class="sd">      for round colonies</span>
+<span class="sd">    - [WatershedDetector](src/phenotypic/detect/_watershed_detector.py): Region-based segmentation</span>
+
+<span class="sd">    **When and how to refine detections (post-processing)**</span>
+
+<span class="sd">    Raw detections often need cleanup:</span>
+
+<span class="sd">    - **Remove small noise:** Spurious single-pixel detections or tiny salt-and-pepper artifacts.</span>
+<span class="sd">      Use ObjectRefiner + remove_small_objects.</span>
+
+<span class="sd">    - **Clean borders:** Colonies at plate edges may be incomplete. Use ObjectRefiner or</span>
+<span class="sd">      clear_border() in detector.</span>
+
+<span class="sd">    - **Merge fragments:** Noise or uneven lighting can fragment a single colony into multiple</span>
+<span class="sd">      labels. Use ObjectRefiner with morphological dilation or connected-component merging.</span>
+
+<span class="sd">    - **Remove large objects:** Plate edges, dust on the scanner, or agar artifacts appear</span>
+<span class="sd">      as large regions. Use ObjectRefiner + remove_large_objects.</span>
+
+<span class="sd">    - **Grid-aware filtering:** In arrayed formats (96-well, 384-well), one object per grid</span>
+<span class="sd">      cell is expected. Use GridObjectRefiner to enforce this constraint or GridRefiner to</span>
+<span class="sd">      assign dominant objects to grid positions.</span>
+
+<span class="sd">    Example pipeline with detection + refinement::</span>
+
+<span class="sd">        from phenotypic import Image, ImagePipeline</span>
+<span class="sd">        from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        from phenotypic.refine import RemoveSmallObjectsRefiner, ClearBorderRefiner</span>
+
+<span class="sd">        pipeline = ImagePipeline()</span>
+<span class="sd">        pipeline.add(OtsuDetector())  # Initial detection</span>
+<span class="sd">        pipeline.add(ClearBorderRefiner())  # Remove edge-touching objects</span>
+<span class="sd">        pipeline.add(RemoveSmallObjectsRefiner(min_size=100))  # Filter noise</span>
+
+<span class="sd">        image = Image(&quot;plate.jpg&quot;)</span>
+<span class="sd">        result = pipeline.operate([image])[0]</span>
+<span class="sd">        # result now has clean, labeled colonies ready for measurement</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        None (all operation parameters are stored in subclass instances).</span>
+
+<span class="sd">    Methods:</span>
+<span class="sd">        apply(image, inplace=False): User-facing method to apply detection to an image.</span>
+<span class="sd">            Handles copy/inplace logic and parameter matching.</span>
+<span class="sd">        _operate(image, **kwargs): Abstract instance method implemented by subclasses</span>
+<span class="sd">            with detection logic. Must set image.objmask and image.objmap.</span>
+
+<span class="sd">    Notes:</span>
+<span class="sd">        - **Integrity protection:** The @validate_operation_integrity decorator on apply()</span>
+<span class="sd">          ensures image.rgb, image.gray, and image.detect_mat are not modified. Violations</span>
+<span class="sd">          raise OperationIntegrityError during development (VALIDATE_OPS=True).</span>
+
+<span class="sd">        - **Binary mask is often intermediate:** Many implementations create objmask first,</span>
+<span class="sd">          then derive objmap via connected-component labeling. Both must be set for</span>
+<span class="sd">          downstream code to work correctly.</span>
+
+<span class="sd">        - **Label consistency:** Use image.objmap.relabel() after manipulating the labeled</span>
+<span class="sd">          map to ensure labels are consecutive (1, 2, 3, ..., N) and to update objmask.</span>
+
+<span class="sd">        - **Memory efficiency:** Large images and detailed segmentations consume memory.</span>
+<span class="sd">          Consider inplace=True in pipelines processing many images, or use sparse</span>
+<span class="sd">          representations (objmap uses scipy.sparse internally).</span>
+
+<span class="sd">        - **Instance _operate() method:** Access parameters via ``self`` attributes.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Detect colonies in a plate image and access results:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        &gt;&gt;&gt; # Load a plate image</span>
+<span class="sd">        &gt;&gt;&gt; plate = Image(&quot;agar_plate.jpg&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; # Apply detection</span>
+<span class="sd">        &gt;&gt;&gt; detector = OtsuDetector()</span>
+<span class="sd">        &gt;&gt;&gt; detected = detector.apply(plate)</span>
+<span class="sd">        &gt;&gt;&gt; # Access binary mask</span>
+<span class="sd">        &gt;&gt;&gt; mask = detected.objmask[:]  # numpy array</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Mask shape: {mask.shape}, True pixels: {mask.sum()}&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; # Access labeled map</span>
+<span class="sd">        &gt;&gt;&gt; objmap = detected.objmap[:]</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Detected {objmap.max()} colonies&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; # Iterate over colonies and measure properties</span>
+<span class="sd">        &gt;&gt;&gt; for colony in detected.objects:</span>
+<span class="sd">        ...     print(f&quot;Colony area: {colony.area} px, &quot;</span>
+<span class="sd">        ...           f&quot;centroid: {colony.centroid}&quot;)</span>
+
+<span class="sd">        Detection in a full pipeline with enhancement and refinement:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic import Image, ImagePipeline</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import CannyDetector</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.refine import RemoveSmallObjectsRefiner</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.measure import MeasureColor</span>
+<span class="sd">        &gt;&gt;&gt; # Create a processing pipeline</span>
+<span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline()</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(GaussianBlur(sigma=2.0))  # Preprocessing</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(CannyDetector(sigma=1.5))  # Detection</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(RemoveSmallObjectsRefiner(min_size=50))  # Cleanup</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(MeasureColor())  # Downstream analysis</span>
+<span class="sd">        &gt;&gt;&gt; # Load image and process</span>
+<span class="sd">        &gt;&gt;&gt; image = Image(&quot;plate.jpg&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; result = pipeline.operate([image])[0]</span>
+<span class="sd">        &gt;&gt;&gt; # Results include enhanced image, detected/refined colonies, and measurements</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Colonies: {result.objmap[:].max()}&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Measurements: {result.measurements.shape}&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span> <span class="o">...</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span> <span class="o">...</span>
+
+<div class="viewcode-block" id="ObjectDetector.apply">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ObjectDetector.apply">[docs]</a>
+    <span class="nd">@validate_operation_integrity</span><span class="p">(</span><span class="s2">&quot;image.rgb&quot;</span><span class="p">,</span> <span class="s2">&quot;image.gray&quot;</span><span class="p">,</span> <span class="s2">&quot;image.detect_mat&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span></div>
+
+
+    <span class="nd">@overload</span>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span> <span class="o">...</span>
+
+    <span class="nd">@overload</span>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span> <span class="o">...</span>
+
+<div class="viewcode-block" id="ObjectDetector._operate">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ObjectDetector._operate">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">image</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

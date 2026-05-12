@@ -1,0 +1,27 @@
+phenotypic.enhance.BayesShrinkEnhancer
+======================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: BayesShrinkEnhancer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~BayesShrinkEnhancer.__init__
+      ~BayesShrinkEnhancer.apply
+      ~BayesShrinkEnhancer.widget
+   
+   
+
+   
+   
+   

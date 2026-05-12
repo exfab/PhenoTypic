@@ -1,0 +1,6 @@
+phenotypic.tools\_.panel\_.in\_ipython
+======================================
+
+.. currentmodule:: phenotypic.tools_.panel_
+
+.. autofunction:: in_ipython

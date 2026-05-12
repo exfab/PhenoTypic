@@ -1,0 +1,6 @@
+phenotypic.tools\_.shard\_parquet\_filename
+===========================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: shard_parquet_filename

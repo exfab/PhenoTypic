@@ -1,0 +1,28 @@
+phenotypic.detect.ManualGridPointDetector
+=========================================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: ManualGridPointDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ManualGridPointDetector.__init__
+      ~ManualGridPointDetector.apply
+      ~ManualGridPointDetector.napari
+      ~ManualGridPointDetector.widget
+   
+   
+
+   
+   
+   

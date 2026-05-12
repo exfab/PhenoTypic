@@ -1,0 +1,61 @@
+﻿phenotypic.abc\_
+================
+
+.. automodule:: phenotypic.abc_
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :nosignatures:
+   
+      register_detection_mode
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      MeasureFeatures
+      ImageOperation
+      ImageEnhancer
+      ImageDenoiser
+      ImageCorrector
+      ObjectDetector
+      ObjectRefiner
+      ThresholdDetector
+      GpuDetector
+      GridOperation
+      GridFinder
+      GridCorrector
+      GridObjectRefiner
+      GridMeasureFeatures
+      BaseOperation
+      MeasurementInfo
+      GridObjectDetector
+      PrefabPipeline
+      FootprintMixin
+      PostMeasurement
+      DetectionMode
+   
+   
+
+   
+   
+   
+
+
+

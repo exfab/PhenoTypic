@@ -1,0 +1,27 @@
+phenotypic.enhance.CoherenceEnhancingDiffusion
+==============================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: CoherenceEnhancingDiffusion
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~CoherenceEnhancingDiffusion.__init__
+      ~CoherenceEnhancingDiffusion.apply
+      ~CoherenceEnhancingDiffusion.widget
+   
+   
+
+   
+   
+   

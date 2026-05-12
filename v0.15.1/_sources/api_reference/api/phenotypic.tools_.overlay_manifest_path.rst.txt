@@ -1,0 +1,6 @@
+phenotypic.tools\_.overlay\_manifest\_path
+==========================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: overlay_manifest_path

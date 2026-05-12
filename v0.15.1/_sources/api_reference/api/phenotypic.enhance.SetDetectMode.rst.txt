@@ -1,0 +1,27 @@
+phenotypic.enhance.SetDetectMode
+================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: SetDetectMode
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SetDetectMode.__init__
+      ~SetDetectMode.apply
+      ~SetDetectMode.widget
+   
+   
+
+   
+   
+   

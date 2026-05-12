@@ -1,0 +1,1140 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.enhance._phase_congruency &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=fb952d1c"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/enhance/_phase_congruency';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.15.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.15.1/_modules/phenotypic/enhance/_phase_congruency.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.15.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.enhance._phase_congruency</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.enhance._phase_congruency</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Phase congruency enhancement for contrast-invariant edge detection.</span>
+
+<span class="sd">Implementation follows Kovesi&#39;s phasecong3 algorithm using oriented log-Gabor wavelets.</span>
+<span class="sd">Algorithm details from ImagePhaseCongruency.jl (Julia reference implementation).</span>
+
+<span class="sd">References:</span>
+<span class="sd">    Peter Kovesi&#39;s ImagePhaseCongruency.jl: https://github.com/peterkovesi/ImagePhaseCongruency.jl</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Literal</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">numpy.fft</span><span class="w"> </span><span class="kn">import</span> <span class="n">fft2</span><span class="p">,</span> <span class="n">ifft2</span><span class="p">,</span> <span class="n">ifftshift</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageEnhancer</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">_PhaseCong3Result</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Internal container for phasecong3 results.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        M: Maximum moment of phase congruency covariance (edge strength).</span>
+<span class="sd">        m: Minimum moment of phase congruency covariance (corner strength).</span>
+<span class="sd">        orientation: Feature orientation in radians [-pi/2, pi/2]. 0 corresponds</span>
+<span class="sd">            to a vertical edge, pi/2 is horizontal. Positive is anticlockwise.</span>
+<span class="sd">        feature_type: Local weighted mean phase angle. pi/2 corresponds to a</span>
+<span class="sd">            bright line, 0 to a step edge, -pi/2 to a dark line.</span>
+<span class="sd">        T: Calculated noise threshold.</span>
+<span class="sd">        pc_sum: Mean phase congruency across all orientations (normalized).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">M</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">m</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">orientation</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">feature_type</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">T</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">pc_sum</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+
+
+<div class="viewcode-block" id="PhaseCongruencyEnhancer">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.PhaseCongruencyEnhancer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PhaseCongruencyEnhancer</span><span class="p">(</span><span class="n">ImageEnhancer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enhance colony edges in ``detect_mat`` with contrast-invariant phase congruency.</span>
+
+<span class="sd">    Detects features where Fourier components are maximally in phase,</span>
+<span class="sd">    regardless of amplitude. This makes the response invariant to image</span>
+<span class="sd">    contrast and illumination changes, making it ideal for plates with</span>
+<span class="sd">    uneven lighting, scanner vignetting, or varying colony opacity.</span>
+
+<span class="sd">    For algorithm details, see :doc:`/explanation/what_enhancement_does`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        n_scale: Number of wavelet scales. Typical range: 3--6. More</span>
+<span class="sd">            scales capture a wider range of feature sizes. Default: 4.</span>
+<span class="sd">        n_orient: Number of filter orientations. 6 gives 30-degree</span>
+<span class="sd">            angular spacing. Default: 6.</span>
+<span class="sd">        min_wavelength: Wavelength of smallest scale filter in pixels.</span>
+<span class="sd">            Match to minimum expected colony edge width. Default: 3.0.</span>
+<span class="sd">        mult: Scaling factor between successive wavelengths. Controls</span>
+<span class="sd">            spectral overlap. Default: 2.1.</span>
+<span class="sd">        sigma_onf: Log-Gabor bandwidth parameter. 0.55 gives ~2 octave</span>
+<span class="sd">            bandwidth; 0.75 gives ~1 octave. Default: 0.55.</span>
+<span class="sd">        k: Noise threshold multiplier. Higher values (5--20) increase</span>
+<span class="sd">            noise rejection but may miss faint edges. Default: 2.0.</span>
+<span class="sd">        cutoff: Frequency spread penalty threshold. Default: 0.5.</span>
+<span class="sd">        g: Sigmoid sharpness for frequency spread weighting. Default: 10.</span>
+<span class="sd">        noise_method: Noise estimation method. ``-1`` (default) uses</span>
+<span class="sd">            median-based estimation; ``-2`` uses mode-based (Rayleigh);</span>
+<span class="sd">            values &gt;= 0 set a fixed noise threshold.</span>
+<span class="sd">        output: Result to store in ``detect_mat``. ``&#39;pc_sum&#39;`` (default)</span>
+<span class="sd">            for scalar phase congruency, ``&#39;M&#39;`` for edge strength,</span>
+<span class="sd">            ``&#39;m&#39;`` for corner strength.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``detect_mat`` replaced by the phase</span>
+<span class="sd">        congruency map (clipped to [0, 1]). ``rgb`` and ``gray`` are</span>
+<span class="sd">        unchanged.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - Colony boundaries independent of colony color or opacity.</span>
+<span class="sd">        - Images with uneven illumination or scanner vignetting.</span>
+<span class="sd">        - Faint colony edges that gradient-based methods miss.</span>
+<span class="sd">        - Translucent or low-contrast colonies on agar.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`LaplaceEnhancer` for simpler edge detection when</span>
+<span class="sd">          illumination is uniform.</span>
+<span class="sd">        - :class:`HessianFilter` for multi-scale ridge and edge detection</span>
+<span class="sd">          with blob sensitivity control.</span>
+<span class="sd">        - :class:`UnsharpMask` for edge sharpening that preserves the</span>
+<span class="sd">          original intensity profile.</span>
+
+<span class="sd">    References:</span>
+<span class="sd">        [1] P. Kovesi, &quot;Image features from phase congruency,&quot; *Videre:</span>
+<span class="sd">        J. Comput. Vis. Res.*, vol. 1, no. 3, pp. 1--26, 1999.</span>
+
+<span class="sd">    See Also:</span>
+<span class="sd">        :doc:`/tutorials/notebooks/03_enhancing_before_detection` for a</span>
+<span class="sd">        visual walkthrough of contrast-invariant enhancement on plate</span>
+<span class="sd">        images.</span>
+<span class="sd">        :doc:`/explanation/what_enhancement_does` for background on</span>
+<span class="sd">        phase congruency and the Local Energy Model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="PhaseCongruencyEnhancer.__init__">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.enhance.html#phenotypic.enhance.PhaseCongruencyEnhancer.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">n_scale</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
+            <span class="n">n_orient</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
+            <span class="n">min_wavelength</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">3.0</span><span class="p">,</span>
+            <span class="n">mult</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.1</span><span class="p">,</span>
+            <span class="n">sigma_onf</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.55</span><span class="p">,</span>
+            <span class="n">k</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span>
+            <span class="n">cutoff</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
+            <span class="n">g</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10.0</span><span class="p">,</span>
+            <span class="n">noise_method</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">output</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;m&quot;</span><span class="p">,</span> <span class="s2">&quot;pc_sum&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pc_sum&quot;</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize phase congruency enhancer.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            n_scale: Number of wavelet scales. Range [3, 6] typical.</span>
+<span class="sd">            n_orient: Number of filter orientations. 6 gives 30 degree spacing.</span>
+<span class="sd">            min_wavelength: Wavelength of smallest scale filter in pixels.</span>
+<span class="sd">                Should match minimum expected feature width (default 3.0).</span>
+<span class="sd">            mult: Scaling factor between successive filter wavelengths.</span>
+<span class="sd">                Controls spectral overlap between scales (default 2.1).</span>
+<span class="sd">            sigma_onf: Ratio of Gaussian standard deviation to filter center</span>
+<span class="sd">                frequency. Controls filter bandwidth. 0.55 gives ~2 octave</span>
+<span class="sd">                bandwidth; 0.75 gives ~1 octave (default 0.55).</span>
+<span class="sd">            k: Number of noise standard deviations for threshold. Higher values</span>
+<span class="sd">                increase noise rejection (default 2.0, range [2, 20]).</span>
+<span class="sd">            cutoff: Frequency spread measure below which PC values are penalized</span>
+<span class="sd">                (default 0.5).</span>
+<span class="sd">            g: Sharpness of sigmoid transition for frequency spread weighting</span>
+<span class="sd">                (default 10.0).</span>
+<span class="sd">            noise_method: Method for noise statistics estimation. -1 uses median</span>
+<span class="sd">                of smallest scale responses (default), -2 uses mode (Rayleigh),</span>
+<span class="sd">                values &gt;= 0 are used as fixed noise threshold.</span>
+<span class="sd">            output: Which result to store in detect_mat. &quot;pc_sum&quot; for scalar phase</span>
+<span class="sd">                congruency (default), &quot;M&quot; for edge strength, &quot;m&quot; for corners.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="c1"># Validate parameters</span>
+        <span class="k">if</span> <span class="n">n_scale</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;n_scale must be &gt;= 1, got </span><span class="si">{</span><span class="n">n_scale</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">n_orient</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;n_orient must be &gt;= 1, got </span><span class="si">{</span><span class="n">n_orient</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">min_wavelength</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;min_wavelength must be &gt;= 2, got </span><span class="si">{</span><span class="n">min_wavelength</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">mult</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;mult must be &gt; 1, got </span><span class="si">{</span><span class="n">mult</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="mf">0.1</span> <span class="o">&lt;=</span> <span class="n">sigma_onf</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;sigma_onf must be in [0.1, 1.0], got </span><span class="si">{</span><span class="n">sigma_onf</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;k must be &gt;= 0, got </span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">cutoff</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;cutoff must be in (0, 1), got </span><span class="si">{</span><span class="n">cutoff</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">g</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;g must be &gt; 0, got </span><span class="si">{</span><span class="n">g</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">output</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;m&quot;</span><span class="p">,</span> <span class="s2">&quot;pc_sum&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;output must be &#39;M&#39;, &#39;m&#39;, or &#39;pc_sum&#39;, got </span><span class="si">{</span><span class="n">output</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_scale</span> <span class="o">=</span> <span class="n">n_scale</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_orient</span> <span class="o">=</span> <span class="n">n_orient</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_wavelength</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">min_wavelength</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mult</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">mult</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_onf</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">sigma_onf</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">k</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cutoff</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">cutoff</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">g</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">g</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">noise_method</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">noise_method</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output</span> <span class="o">=</span> <span class="n">output</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply phase congruency enhancement to the detection matrix channel.&quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_phasecong3</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:])</span>
+
+        <span class="c1"># Select output based on configuration</span>
+        <span class="n">output_map</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;M&quot;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">M</span><span class="p">,</span> <span class="s2">&quot;m&quot;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">m</span><span class="p">,</span> <span class="s2">&quot;pc_sum&quot;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">pc_sum</span><span class="p">}</span>
+        <span class="n">selected</span> <span class="o">=</span> <span class="n">output_map</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">output</span><span class="p">]</span>
+
+        <span class="c1"># Ensure output is in [0, 1] range for detect_mat compatibility</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">selected</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">image</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_phasecong3</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_PhaseCong3Result</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute phase congruency via log-Gabor filters.</span>
+
+<span class="sd">        Implementation follows Kovesi&#39;s phasecong3 algorithm with corrections</span>
+<span class="sd">        from the Julia reference implementation (ImagePhaseCongruency.jl).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img: 2D grayscale image as numpy array.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            _PhaseCong3Result containing M, m, orientation, feature_type, T, pc_sum.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">epsilon</span> <span class="o">=</span> <span class="mf">1e-5</span>  <span class="c1"># Julia uses 1e-5</span>
+
+        <span class="c1"># Construct filter grids (quadrant-shifted, DC at corners)</span>
+        <span class="n">radius</span><span class="p">,</span> <span class="n">sintheta</span><span class="p">,</span> <span class="n">costheta</span><span class="p">,</span> <span class="n">freq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_construct_filter_grids</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">)</span>
+
+        <span class="c1"># Construct radial component of log-Gabor filters</span>
+        <span class="n">log_gabor_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_construct_log_gabor_filters</span><span class="p">(</span><span class="n">radius</span><span class="p">)</span>
+
+        <span class="c1"># Construct angular components using cosine filter (Julia reference)</span>
+        <span class="n">angular_spread</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_angular_spread</span><span class="p">(</span><span class="n">sintheta</span><span class="p">,</span> <span class="n">costheta</span><span class="p">)</span>
+
+        <span class="c1"># Get FFT of image</span>
+        <span class="n">image_fft</span> <span class="o">=</span> <span class="n">fft2</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+
+        <span class="c1"># Initialize accumulators</span>
+        <span class="n">cov_x2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">cov_y2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">cov_xy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">energy_v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">pc_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+        <span class="c1"># Per-scale real/imag storage, reused each orientation (replaces</span>
+        <span class="c1"># n_scale x n_orient complex128 EO list — saves ~3.8 GB at 3000x4000)</span>
+        <span class="n">eo_real</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n_scale</span><span class="p">,</span> <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">eo_imag</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n_scale</span><span class="p">,</span> <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+        <span class="c1"># Noise threshold estimation</span>
+        <span class="n">T</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="c1"># Process each orientation</span>
+        <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_orient</span><span class="p">):</span>
+            <span class="n">angle</span> <span class="o">=</span> <span class="n">o</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_orient</span>
+
+            <span class="c1"># Accumulators for this orientation</span>
+            <span class="n">sum_even</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="n">sum_odd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="n">sum_amplitude</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="n">max_amplitude</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+            <span class="c1"># Initialize tau for this orientation (matches Julia logic)</span>
+            <span class="n">tau</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+            <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_scale</span><span class="p">):</span>
+                <span class="c1"># Combined filter: log-Gabor radial * angular spread</span>
+                <span class="n">filter_combined</span> <span class="o">=</span> <span class="n">log_gabor_list</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">*</span> <span class="n">angular_spread</span><span class="p">[</span><span class="n">o</span><span class="p">]</span>
+
+                <span class="c1"># Apply filter in frequency domain</span>
+                <span class="n">filtered_fft</span> <span class="o">=</span> <span class="n">image_fft</span> <span class="o">*</span> <span class="n">filter_combined</span>
+
+                <span class="c1"># Transform back to spatial domain — store real/imag separately</span>
+                <span class="c1"># to avoid retaining complex128 arrays across orientations</span>
+                <span class="n">eo_complex</span> <span class="o">=</span> <span class="n">ifft2</span><span class="p">(</span><span class="n">filtered_fft</span><span class="p">)</span>
+                <span class="n">amplitude</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">eo_complex</span><span class="p">)</span>
+                <span class="n">eo_real</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="n">eo_complex</span><span class="o">.</span><span class="n">real</span>
+                <span class="n">eo_imag</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="n">eo_complex</span><span class="o">.</span><span class="n">imag</span>
+
+                <span class="c1"># Accumulate responses</span>
+                <span class="n">sum_even</span> <span class="o">+=</span> <span class="n">eo_real</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
+                <span class="n">sum_odd</span> <span class="o">+=</span> <span class="n">eo_imag</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
+                <span class="n">sum_amplitude</span> <span class="o">+=</span> <span class="n">amplitude</span>
+                <span class="n">max_amplitude</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">max_amplitude</span><span class="p">,</span> <span class="n">amplitude</span><span class="p">)</span>
+
+                <span class="c1"># Noise estimation from smallest scale (s=0), per orientation</span>
+                <span class="k">if</span> <span class="n">s</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">noise_method</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">noise_method</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">epsilon</span><span class="p">:</span>
+                        <span class="c1"># Median-based estimation</span>
+                        <span class="n">tau</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">amplitude</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">4</span><span class="p">)))</span>
+                    <span class="k">elif</span> <span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">noise_method</span> <span class="o">+</span> <span class="mi">2</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">epsilon</span><span class="p">:</span>
+                        <span class="c1"># Mode-based Rayleigh estimation</span>
+                        <span class="n">tau</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rayleigh_mode</span><span class="p">(</span><span class="n">amplitude</span><span class="p">)</span>
+
+            <span class="c1"># Compute noise threshold T for this orientation</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">noise_method</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">noise_method</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Total tau across scales (geometric series)</span>
+                <span class="k">if</span> <span class="n">tau</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">total_tau</span> <span class="o">=</span> <span class="n">tau</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">mult</span><span class="p">)</span> <span class="o">**</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_scale</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span>
+                            <span class="mi">1</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">mult</span>
+                    <span class="p">)</span>
+                    <span class="c1"># Expected noise energy from Rayleigh distribution</span>
+                    <span class="n">mean_energy</span> <span class="o">=</span> <span class="n">total_tau</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+                    <span class="n">sigma_energy</span> <span class="o">=</span> <span class="n">total_tau</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="mi">4</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+                    <span class="n">T</span> <span class="o">=</span> <span class="n">mean_energy</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span> <span class="o">*</span> <span class="n">sigma_energy</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">T</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+            <span class="c1"># Compute unit-normalized mean direction (Julia reference: XEnergy normalization)</span>
+            <span class="c1"># MeanE and MeanO form a unit vector pointing in mean phase direction</span>
+            <span class="n">x_energy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">sum_even</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">sum_odd</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">epsilon</span>
+            <span class="n">mean_even</span> <span class="o">=</span> <span class="n">sum_even</span> <span class="o">/</span> <span class="n">x_energy</span>
+            <span class="n">mean_odd</span> <span class="o">=</span> <span class="n">sum_odd</span> <span class="o">/</span> <span class="n">x_energy</span>
+
+            <span class="c1"># Compute energy with cross-term subtraction (Julia reference)</span>
+            <span class="c1"># Sequential loop avoids large temporaries from vectorized sum</span>
+            <span class="n">energy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_scale</span><span class="p">):</span>
+                <span class="n">even</span> <span class="o">=</span> <span class="n">eo_real</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
+                <span class="n">odd</span> <span class="o">=</span> <span class="n">eo_imag</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
+                <span class="n">energy</span> <span class="o">+=</span> <span class="p">(</span>
+                    <span class="n">even</span> <span class="o">*</span> <span class="n">mean_even</span> <span class="o">+</span> <span class="n">odd</span> <span class="o">*</span> <span class="n">mean_odd</span>
+                    <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">even</span> <span class="o">*</span> <span class="n">mean_odd</span> <span class="o">-</span> <span class="n">odd</span> <span class="o">*</span> <span class="n">mean_even</span><span class="p">)</span>
+                <span class="p">)</span>
+
+            <span class="c1"># Accumulate energy vectors for orientation/feature_type (Julia reference)</span>
+            <span class="n">energy_v</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="n">sum_even</span>
+            <span class="n">energy_v</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">*</span> <span class="n">sum_odd</span>
+            <span class="n">energy_v</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">*</span> <span class="n">sum_odd</span>
+
+            <span class="c1"># Frequency spread weighting (Julia reference)</span>
+            <span class="c1"># Width measures how spread out the frequency responses are</span>
+            <span class="n">width</span> <span class="o">=</span> <span class="p">(</span><span class="n">sum_amplitude</span> <span class="o">/</span> <span class="p">(</span><span class="n">max_amplitude</span> <span class="o">+</span> <span class="n">epsilon</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_scale</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">weight</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">cutoff</span> <span class="o">-</span> <span class="n">width</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">g</span><span class="p">))</span>
+
+            <span class="c1"># Phase congruency for this orientation (local variable, not stored</span>
+            <span class="c1"># in a 3D array — saves ~0.58 GB at 3000x4000)</span>
+            <span class="n">pc_o</span> <span class="o">=</span> <span class="n">weight</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">energy</span> <span class="o">-</span> <span class="n">T</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">sum_amplitude</span> <span class="o">+</span> <span class="n">epsilon</span><span class="p">)</span>
+
+            <span class="c1"># Accumulate covariance tensor components</span>
+            <span class="n">cos_angle</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span>
+            <span class="n">sin_angle</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span>
+            <span class="n">pc_sum</span> <span class="o">+=</span> <span class="n">pc_o</span>
+
+            <span class="c1"># Square pc_o for covariance (matches Julia PCo^2)</span>
+            <span class="n">pc_sq</span> <span class="o">=</span> <span class="n">pc_o</span> <span class="o">**</span> <span class="mi">2</span>
+            <span class="n">cov_x2</span> <span class="o">+=</span> <span class="n">pc_sq</span> <span class="o">*</span> <span class="n">cos_angle</span> <span class="o">*</span> <span class="n">cos_angle</span>
+            <span class="n">cov_y2</span> <span class="o">+=</span> <span class="n">pc_sq</span> <span class="o">*</span> <span class="n">sin_angle</span> <span class="o">*</span> <span class="n">sin_angle</span>
+            <span class="n">cov_xy</span> <span class="o">+=</span> <span class="n">pc_sq</span> <span class="o">*</span> <span class="n">cos_angle</span> <span class="o">*</span> <span class="n">sin_angle</span>
+
+        <span class="c1"># Normalize covariance (Julia reference)</span>
+        <span class="n">cov_x2</span> <span class="o">/=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_orient</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">cov_y2</span> <span class="o">/=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_orient</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">cov_xy</span> <span class="o">*=</span> <span class="mf">4.0</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_orient</span>
+
+        <span class="c1"># Eigenvalue analysis of covariance tensor</span>
+        <span class="n">denom</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">cov_xy</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">cov_x2</span> <span class="o">-</span> <span class="n">cov_y2</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">epsilon</span>
+
+        <span class="c1"># Maximum and minimum moments</span>
+        <span class="n">M</span> <span class="o">=</span> <span class="p">(</span><span class="n">cov_x2</span> <span class="o">+</span> <span class="n">cov_y2</span> <span class="o">+</span> <span class="n">denom</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="p">(</span><span class="n">cov_x2</span> <span class="o">+</span> <span class="n">cov_y2</span> <span class="o">-</span> <span class="n">denom</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+
+        <span class="c1"># Ensure non-negative</span>
+        <span class="n">M</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Orientation (Julia reference: atan(-EnergyV[:,:,3]./EnergyV[:,:,2]))</span>
+        <span class="c1"># Julia uses single-argument atan which gives [-pi/2, pi/2] range.</span>
+        <span class="c1"># We use arctan for consistency, with safe division handling.</span>
+        <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">divide</span><span class="o">=</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="n">invalid</span><span class="o">=</span><span class="s2">&quot;ignore&quot;</span><span class="p">):</span>
+            <span class="n">orientation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan</span><span class="p">(</span><span class="o">-</span><span class="n">energy_v</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">/</span> <span class="n">energy_v</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="c1"># Handle NaN/Inf from division by zero (vertical edges)</span>
+        <span class="n">orientation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">orientation</span><span class="p">,</span> <span class="n">nan</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">posinf</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span>
+                                    <span class="n">neginf</span><span class="o">=-</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Feature type (Julia reference)</span>
+        <span class="n">odd_v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">energy_v</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">energy_v</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">feature_type</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">energy_v</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">odd_v</span><span class="p">)</span>
+
+        <span class="c1"># Note: pc_sum normalization by n_orient is a Python-specific addition.</span>
+        <span class="c1"># Julia&#39;s phasecong3 doesn&#39;t return pc_sum. Normalizing keeps values</span>
+        <span class="c1"># in [0,1] range regardless of n_orient, making it suitable for detect_mat.</span>
+        <span class="k">return</span> <span class="n">_PhaseCong3Result</span><span class="p">(</span>
+                <span class="n">M</span><span class="o">=</span><span class="n">M</span><span class="p">,</span>
+                <span class="n">m</span><span class="o">=</span><span class="n">m</span><span class="p">,</span>
+                <span class="n">orientation</span><span class="o">=</span><span class="n">orientation</span><span class="p">,</span>
+                <span class="n">feature_type</span><span class="o">=</span><span class="n">feature_type</span><span class="p">,</span>
+                <span class="n">T</span><span class="o">=</span><span class="n">T</span><span class="p">,</span>
+                <span class="n">pc_sum</span><span class="o">=</span><span class="n">pc_sum</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_orient</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_construct_filter_grids</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">rows</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">cols</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Construct frequency domain grids for filter construction.</span>
+
+<span class="sd">        Grids are quadrant-shifted so DC component is at [0, 0].</span>
+<span class="sd">        Follows Julia filtergrids() implementation for odd/even handling.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            rows: Number of rows in image.</span>
+<span class="sd">            cols: Number of columns in image.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple of (radius, sintheta, costheta, freq) where:</span>
+<span class="sd">            - radius: Radial frequency normalized [0, 0.5] with DC=1 to avoid div/0</span>
+<span class="sd">            - sintheta: fx/freq grid for angular filter (Julia gridangles)</span>
+<span class="sd">            - costheta: fy/freq grid for angular filter (Julia gridangles)</span>
+<span class="sd">            - freq: Original radial frequency with DC=0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Frequency coordinates - Julia handles odd/even differently</span>
+        <span class="k">if</span> <span class="n">cols</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># odd</span>
+            <span class="n">fx_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">cols</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="n">cols</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">cols</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># even</span>
+            <span class="n">fx_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="n">cols</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">cols</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">cols</span>
+
+        <span class="k">if</span> <span class="n">rows</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># odd</span>
+            <span class="n">fy_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">rows</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="n">rows</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">rows</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># even</span>
+            <span class="n">fy_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="n">rows</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">rows</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">rows</span>
+
+        <span class="c1"># Quadrant shift so DC is at [0,0]</span>
+        <span class="n">fx_range</span> <span class="o">=</span> <span class="n">ifftshift</span><span class="p">(</span><span class="n">fx_range</span><span class="p">)</span>
+        <span class="n">fy_range</span> <span class="o">=</span> <span class="n">ifftshift</span><span class="p">(</span><span class="n">fy_range</span><span class="p">)</span>
+
+        <span class="n">fx</span><span class="p">,</span> <span class="n">fy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">fx_range</span><span class="p">,</span> <span class="n">fy_range</span><span class="p">)</span>
+
+        <span class="c1"># Radial frequency</span>
+        <span class="n">freq</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">fx</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">fy</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># For log-Gabor, need radius with DC=1 to avoid log(0)</span>
+        <span class="n">radius</span> <span class="o">=</span> <span class="n">freq</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">radius</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+        <span class="c1"># Compute sintheta and costheta for angular filters (Julia gridangles)</span>
+        <span class="c1"># Temporarily set freq DC to 1 to avoid divide by zero</span>
+        <span class="n">freq_safe</span> <span class="o">=</span> <span class="n">freq</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">freq_safe</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="n">sintheta</span> <span class="o">=</span> <span class="n">fx</span> <span class="o">/</span> <span class="n">freq_safe</span>
+        <span class="n">costheta</span> <span class="o">=</span> <span class="n">fy</span> <span class="o">/</span> <span class="n">freq_safe</span>
+
+        <span class="c1"># Restore DC values</span>
+        <span class="n">sintheta</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">costheta</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="k">return</span> <span class="n">radius</span><span class="p">,</span> <span class="n">sintheta</span><span class="p">,</span> <span class="n">costheta</span><span class="p">,</span> <span class="n">freq</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_construct_log_gabor_filters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Construct log-Gabor filters for each scale.</span>
+
+<span class="sd">        Log-Gabor filters have Gaussian transfer functions on a logarithmic</span>
+<span class="sd">        frequency scale, providing constant shape ratio across scales.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            radius: Radial frequency grid.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of n_scale log-Gabor filter arrays.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">log_gabor_list</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Lowpass filter depends only on radius, not scale — compute once</span>
+        <span class="n">lowpass</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="p">(</span><span class="n">radius</span> <span class="o">/</span> <span class="mf">0.45</span><span class="p">)</span> <span class="o">**</span> <span class="mi">30</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_scale</span><span class="p">):</span>
+            <span class="n">wavelength</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_wavelength</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mult</span> <span class="o">**</span> <span class="n">s</span><span class="p">)</span>
+            <span class="n">f0</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">wavelength</span>  <span class="c1"># Center frequency</span>
+
+            <span class="c1"># Log-Gabor transfer function</span>
+            <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">divide</span><span class="o">=</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="n">invalid</span><span class="o">=</span><span class="s2">&quot;ignore&quot;</span><span class="p">):</span>
+                <span class="n">log_rad_over_f0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">radius</span> <span class="o">/</span> <span class="n">f0</span><span class="p">)</span>
+
+            <span class="n">log_gabor</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span>
+                    <span class="o">-</span><span class="p">(</span><span class="n">log_rad_over_f0</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma_onf</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Zero out DC component</span>
+            <span class="n">log_gabor</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+            <span class="n">log_gabor_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">log_gabor</span> <span class="o">*</span> <span class="n">lowpass</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">log_gabor_list</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_angular_spread</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">sintheta</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">costheta</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute angular spreading functions using cosine filter (Julia reference).</span>
+
+<span class="sd">        Uses cosineangularfilter from Julia ImagePhaseCongruency.jl which computes</span>
+<span class="sd">        angular distance via atan2 of sin/cos differences for proper wrap-around.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sintheta: fx/freq grid from _construct_filter_grids.</span>
+<span class="sd">            costheta: fy/freq grid from _construct_filter_grids.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of n_orient angular spread arrays.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">angular_spread_list</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Wavelength for cosine window function (Julia reference: 4*pi/norient)</span>
+        <span class="n">wavelen</span> <span class="o">=</span> <span class="mf">4.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_orient</span>
+
+        <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_orient</span><span class="p">):</span>
+            <span class="n">angle</span> <span class="o">=</span> <span class="n">o</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_orient</span>
+            <span class="n">sinangl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span>
+            <span class="n">cosangl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span>
+
+            <span class="c1"># Angular distance using sin/cos difference (Julia cosineangularfilter)</span>
+            <span class="c1"># This handles wrap-around correctly via atan2</span>
+            <span class="n">ds</span> <span class="o">=</span> <span class="n">sintheta</span> <span class="o">*</span> <span class="n">cosangl</span> <span class="o">-</span> <span class="n">costheta</span> <span class="o">*</span> <span class="n">sinangl</span>  <span class="c1"># Difference in sine</span>
+            <span class="n">dc</span> <span class="o">=</span> <span class="n">costheta</span> <span class="o">*</span> <span class="n">cosangl</span> <span class="o">+</span> <span class="n">sintheta</span> <span class="o">*</span> <span class="n">sinangl</span>  <span class="c1"># Difference in cosine</span>
+            <span class="n">dtheta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">dc</span><span class="p">))</span>  <span class="c1"># Absolute angular distance</span>
+
+            <span class="c1"># Scale theta for cosine window and clamp to pi</span>
+            <span class="n">dtheta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">dtheta</span> <span class="o">*</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="n">wavelen</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+
+            <span class="c1"># Cosine window: (cos(dtheta) + 1) / 2 gives values in [0, 1]</span>
+            <span class="n">spread</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">dtheta</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
+
+            <span class="n">angular_spread_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">spread</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">angular_spread_list</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_rayleigh_mode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">amplitude</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Estimate Rayleigh distribution parameter from amplitude data.</span>
+
+<span class="sd">        For filter responses to Gaussian noise, amplitudes follow a Rayleigh</span>
+<span class="sd">        distribution. The mode of a Rayleigh distribution equals sigma.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            amplitude: Array of amplitude values.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Estimated Rayleigh sigma parameter.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Flatten and remove zeros</span>
+        <span class="n">amp_flat</span> <span class="o">=</span> <span class="n">amplitude</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+        <span class="n">amp_flat</span> <span class="o">=</span> <span class="n">amp_flat</span><span class="p">[</span><span class="n">amp_flat</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">amp_flat</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+
+        <span class="c1"># Histogram-based mode estimation</span>
+        <span class="c1"># Match Julia: uses 50 bins</span>
+        <span class="n">n_bins</span> <span class="o">=</span> <span class="mi">50</span>
+        <span class="n">hist</span><span class="p">,</span> <span class="n">bin_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">amp_flat</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">n_bins</span><span class="p">)</span>
+        <span class="n">bin_centers</span> <span class="o">=</span> <span class="p">(</span><span class="n">bin_edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">bin_edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="o">/</span> <span class="mi">2</span>
+
+        <span class="c1"># Find mode (peak of histogram)</span>
+        <span class="n">mode_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">hist</span><span class="p">)</span>
+        <span class="n">mode_value</span> <span class="o">=</span> <span class="n">bin_centers</span><span class="p">[</span><span class="n">mode_idx</span><span class="p">]</span>
+
+        <span class="c1"># For Rayleigh distribution, mode = sigma</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">mode_value</span><span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,6 @@
+phenotypic.tools\_.register.get\_plotter
+========================================
+
+.. currentmodule:: phenotypic.tools_.register
+
+.. autofunction:: get_plotter

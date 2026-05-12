@@ -1,0 +1,27 @@
+phenotypic.refine.SineAlignmentRefiner
+======================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: SineAlignmentRefiner
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SineAlignmentRefiner.__init__
+      ~SineAlignmentRefiner.apply
+      ~SineAlignmentRefiner.widget
+   
+   
+
+   
+   
+   

@@ -1,0 +1,27 @@
+phenotypic.refine.MaskDilator
+=============================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: MaskDilator
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MaskDilator.__init__
+      ~MaskDilator.apply
+      ~MaskDilator.widget
+   
+   
+
+   
+   
+   

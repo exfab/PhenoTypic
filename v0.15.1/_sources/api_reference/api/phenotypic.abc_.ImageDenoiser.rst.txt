@@ -1,0 +1,27 @@
+phenotypic.abc\_.ImageDenoiser
+==============================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: ImageDenoiser
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ImageDenoiser.__init__
+      ~ImageDenoiser.apply
+      ~ImageDenoiser.widget
+   
+   
+
+   
+   
+   

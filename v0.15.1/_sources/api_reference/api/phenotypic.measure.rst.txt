@@ -1,0 +1,42 @@
+﻿phenotypic.measure
+==================
+
+.. automodule:: phenotypic.measure
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      MeasureBounds
+      MeasureColor
+      MeasureIntensity
+      MeasureShape
+      MeasureSize
+      MeasureSymmetricZones
+      MeasureTexture
+      MeasureGridSpread
+      MeasureGridLinRegStats
+      MeasureGridSpatial
+   
+   
+
+   
+   
+   
+
+
+

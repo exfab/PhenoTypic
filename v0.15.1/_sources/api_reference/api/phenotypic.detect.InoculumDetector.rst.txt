@@ -1,0 +1,27 @@
+phenotypic.detect.InoculumDetector
+==================================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: InoculumDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~InoculumDetector.__init__
+      ~InoculumDetector.apply
+      ~InoculumDetector.widget
+   
+   
+
+   
+   
+   

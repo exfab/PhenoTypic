@@ -1,0 +1,1110 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>ImageOperation Docstring Style Guide &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=fb952d1c"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'contrib_guide/docstring_style';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.15.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.15.1/contrib_guide/docstring_style.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Downloads" href="../downloads.html" />
+    <link rel="prev" title="Documentation Writing Guide" href="documentation.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.15.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Developer Guide Topics</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing Guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="extending.html">Extending Phenotypic</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documentation.html">Documentation Writing Guide</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">ImageOperation Docstring Style Guide</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">Developer Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">ImageOperation Docstring Style Guide</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="imageoperation-docstring-style-guide">
+<h1>ImageOperation Docstring Style Guide<a class="headerlink" href="#imageoperation-docstring-style-guide" title="Link to this heading">#</a></h1>
+<p>This guide defines the docstring template for all <code class="docutils literal notranslate"><span class="pre">ImageOperation</span></code> subclasses in
+PhenoTypic. The goal is a <strong>layered, progressive disclosure</strong> structure: readers
+can stop early and still get value, while those who need depth can continue.</p>
+<p>Detailed algorithm discussion belongs in <a class="reference internal" href="#../explanation/"><span class="xref myst">Explanation pages</span></a>,
+not in docstrings. Docstrings answer “what does this do and when should I use
+it?” – Explanation pages answer “how and why does it work?”</p>
+<section id="target-length">
+<h2>Target Length<a class="headerlink" href="#target-length" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Operation complexity</p></th>
+<th class="head"><p>Target lines</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Simple (1-3 params)</p></td>
+<td><p>25–40</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">GaussianBlur</span></code>, <code class="docutils literal notranslate"><span class="pre">MaskDilator</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Moderate (4-8 params)</p></td>
+<td><p>40–60</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OtsuDetector</span></code>, <code class="docutils literal notranslate"><span class="pre">CLAHE</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Complex (8+ params)</p></td>
+<td><p>60–90</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">FilamentousFungiDetector</span></code>, <code class="docutils literal notranslate"><span class="pre">RoundPeaksDetector</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>These are guidelines, not hard limits. Prefer clarity over brevity, but respect
+the reader’s time – every line should earn its place.</p>
+</section>
+<section id="template">
+<h2>Template<a class="headerlink" href="#template" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ExampleDetector</span><span class="p">(</span><span class="n">ObjectDetector</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;One-line summary in imperative mood, stating what the operation does.</span>
+
+<span class="sd">    Extended summary: 2-3 sentences describing the mechanism and expected</span>
+<span class="sd">    output. Frame in terms of what the user will observe, not the internal</span>
+<span class="sd">    algorithm. Link to an Explanation page for algorithm details.</span>
+
+<span class="sd">    For algorithm details, see :doc:`/explanation/detection_strategies`.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - Scenario where this operation excels.</span>
+<span class="sd">        - Another ideal use case.</span>
+<span class="sd">        - Characteristic of images where this works well.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`AlternativeOp` when [scenario where it is better suited].</span>
+<span class="sd">        - :class:`AnotherOp` for [different scenario].</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        param1: Description. Typical range: X--Y. Default: Z.</span>
+<span class="sd">        param2: Description. Higher values produce [effect].</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Description of what changed on the returned image.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: When [condition].</span>
+
+<span class="sd">    References:</span>
+<span class="sd">        [1] A. Author, &quot;Paper title,&quot; *Journal*, vol. X, no. Y,</span>
+<span class="sd">        pp. Z--Z, Month Year.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="section-by-section-rules">
+<h2>Section-by-Section Rules<a class="headerlink" href="#section-by-section-rules" title="Link to this heading">#</a></h2>
+<section id="one-line-summary">
+<h3>One-Line Summary<a class="headerlink" href="#one-line-summary" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Imperative mood: “Detect colonies using…” not “Detects colonies using…”</p></li>
+<li><p>State the mechanism, not just the category: “Detect colonies by finding an
+optimal intensity threshold” not “Detect colonies”</p></li>
+<li><p>Do not repeat the class name</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Good</span>
+<span class="sd">&quot;&quot;&quot;Detect colonies by minimizing intra-class variance of the intensity histogram.&quot;&quot;&quot;</span>
+
+<span class="c1"># Bad</span>
+<span class="sd">&quot;&quot;&quot;OtsuDetector detects things.&quot;&quot;&quot;</span>
+<span class="sd">&quot;&quot;&quot;A detector that uses Otsu&#39;s method to detect colonies in images.&quot;&quot;&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="extended-summary">
+<h3>Extended Summary<a class="headerlink" href="#extended-summary" title="Link to this heading">#</a></h3>
+<p>2-3 sentences maximum. Describe:</p>
+<ol class="arabic simple">
+<li><p>What the operation does to the image (observable effect)</p></li>
+<li><p>What kind of result the user should expect</p></li>
+<li><p>Link to the Explanation page for the underlying algorithm</p></li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="sd">&quot;&quot;&quot;Detect colonies by minimizing intra-class variance of the intensity histogram.</span>
+
+<span class="sd">Computes a single global threshold that separates colony pixels from background.</span>
+<span class="sd">Works best when the image histogram has two distinct peaks. Returns an image with</span>
+<span class="sd">objmask set to the thresholded binary mask and objmap set to labeled connected</span>
+<span class="sd">components.</span>
+
+<span class="sd">For a comparison of thresholding strategies, see</span>
+<span class="sd">:doc:`/explanation/detection_strategies`.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+</pre></div>
+</div>
+<p>Do <strong>not</strong> explain the algorithm here. “Minimizing intra-class variance” is
+sufficient – the reader who wants to know how that works follows the link.</p>
+</section>
+<section id="best-for">
+<h3>Best For<a class="headerlink" href="#best-for" title="Link to this heading">#</a></h3>
+<p>Positive framing only. Describe the scenarios, image characteristics, or
+experimental setups where this operation excels.</p>
+<p><strong>Rules:</strong></p>
+<ul class="simple">
+<li><p>3-5 bullet points</p></li>
+<li><p>Use concrete, observable characteristics: “plates with uniform illumination”
+not “well-conditioned inputs”</p></li>
+<li><p>Use microbiology context: “dense yeast colonies” not “many small objects”</p></li>
+<li><p>Do not qualify with “only” or “exclusively” – these are ideal scenarios, not
+the only valid ones</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Best</span> <span class="n">For</span><span class="p">:</span>
+    <span class="o">-</span> <span class="n">Plates</span> <span class="k">with</span> <span class="n">uniform</span> <span class="n">illumination</span> <span class="ow">and</span> <span class="n">clean</span> <span class="n">backgrounds</span><span class="o">.</span>
+    <span class="o">-</span> <span class="n">Yeast</span> <span class="n">colonies</span> <span class="n">that</span> <span class="n">appear</span> <span class="k">as</span> <span class="n">bright</span> <span class="n">spots</span> <span class="n">on</span> <span class="n">dark</span> <span class="n">agar</span><span class="o">.</span>
+    <span class="o">-</span> <span class="n">Images</span> <span class="n">where</span> <span class="n">the</span> <span class="n">intensity</span> <span class="n">histogram</span> <span class="n">shows</span> <span class="n">two</span> <span class="n">distinct</span> <span class="n">peaks</span><span class="o">.</span>
+    <span class="o">-</span> <span class="n">Quick</span> <span class="n">prototyping</span> <span class="n">before</span> <span class="n">tuning</span> <span class="n">a</span> <span class="n">more</span> <span class="n">specialized</span> <span class="n">detector</span><span class="o">.</span>
+</pre></div>
+</div>
+</section>
+<section id="consider-also">
+<h3>Consider Also<a class="headerlink" href="#consider-also" title="Link to this heading">#</a></h3>
+<p>Suggest alternatives without discouraging use. This section helps the reader
+discover operations they may not know about and navigate to the right tool.</p>
+<p><strong>Rules:</strong></p>
+<ul class="simple">
+<li><p>2-4 bullet points</p></li>
+<li><p>Always name a specific class with a Sphinx cross-reference</p></li>
+<li><p>Describe <em>when</em> the alternative is better suited, not <em>why</em> the current
+operation fails</p></li>
+<li><p>Use “when” or “for” phrasing, never “don’t use” or “avoid”</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Consider</span> <span class="n">Also</span><span class="p">:</span>
+    <span class="o">-</span> <span class="p">:</span><span class="n">class</span><span class="p">:</span><span class="err">`</span><span class="n">HysteresisDetector</span><span class="err">`</span> <span class="n">when</span> <span class="n">colonies</span> <span class="n">have</span> <span class="n">soft</span> <span class="n">edges</span> <span class="n">that</span> <span class="n">a</span> <span class="n">single</span>
+      <span class="n">threshold</span> <span class="n">misses</span><span class="o">.</span>
+    <span class="o">-</span> <span class="p">:</span><span class="n">class</span><span class="p">:</span><span class="err">`</span><span class="n">RoundPeaksDetector</span><span class="err">`</span> <span class="k">for</span> <span class="n">dense</span> <span class="n">grid</span> <span class="n">plates</span> <span class="k">with</span> <span class="n">known</span> <span class="n">colony</span>
+      <span class="n">spacing</span><span class="o">.</span>
+    <span class="o">-</span> <span class="p">:</span><span class="n">class</span><span class="p">:</span><span class="err">`</span><span class="n">WatershedDetector</span><span class="err">`</span> <span class="n">when</span> <span class="n">touching</span> <span class="n">colonies</span> <span class="n">need</span> <span class="n">to</span> <span class="n">be</span> <span class="n">separated</span><span class="o">.</span>
+</pre></div>
+</div>
+<p><strong>What not to write:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Bad -- falsely prescriptive</span>
+<span class="n">Consider</span> <span class="n">Also</span><span class="p">:</span>
+    <span class="o">-</span> <span class="n">Don</span><span class="s1">&#39;t use this on noisy images; use HysteresisDetector instead.</span>
+    <span class="o">-</span> <span class="n">This</span> <span class="n">will</span> <span class="n">fail</span> <span class="n">on</span> <span class="n">filamentous</span> <span class="n">fungi</span><span class="o">.</span>
+
+<span class="c1"># Bad -- no cross-reference, no context</span>
+<span class="n">Consider</span> <span class="n">Also</span><span class="p">:</span>
+    <span class="o">-</span> <span class="n">HysteresisDetector</span>
+    <span class="o">-</span> <span class="n">WatershedDetector</span>
+</pre></div>
+</div>
+</section>
+<section id="args">
+<h3>Args<a class="headerlink" href="#args" title="Link to this heading">#</a></h3>
+<p>Google-style [1]. Each parameter gets a one-line description followed by
+practical guidance.</p>
+<p><strong>Rules:</strong></p>
+<ul class="simple">
+<li><p>Include the default value if not obvious from the signature</p></li>
+<li><p>Include the typical range or meaningful values for numeric parameters</p></li>
+<li><p>Group related parameters with a blank line and a comment if there are more
+than 8 parameters</p></li>
+<li><p>Inline tuning guidance replaces a separate “Parameter Effects” section</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Args</span><span class="p">:</span>
+    <span class="n">sigma</span><span class="p">:</span> <span class="n">Standard</span> <span class="n">deviation</span> <span class="n">of</span> <span class="n">the</span> <span class="n">Gaussian</span> <span class="n">kernel</span> <span class="ow">in</span> <span class="n">pixels</span><span class="o">.</span> <span class="n">Controls</span>
+        <span class="n">blur</span> <span class="n">strength</span><span class="o">.</span> <span class="n">Typical</span> <span class="nb">range</span><span class="p">:</span> <span class="mf">0.5</span><span class="o">--</span><span class="mf">5.0</span><span class="o">.</span> <span class="n">Default</span><span class="p">:</span> <span class="mf">1.0</span><span class="o">.</span>
+    <span class="n">ignore_zeros</span><span class="p">:</span> <span class="n">Exclude</span> <span class="n">zero</span><span class="o">-</span><span class="n">valued</span> <span class="n">pixels</span> <span class="kn">from</span><span class="w"> </span><span class="nn">threshold</span> <span class="n">computation</span><span class="o">.</span>
+        <span class="n">Enable</span> <span class="k">for</span> <span class="n">images</span> <span class="k">with</span> <span class="n">black</span> <span class="n">borders</span> <span class="ow">or</span> <span class="n">padding</span><span class="o">.</span> <span class="n">Default</span><span class="p">:</span> <span class="kc">False</span><span class="o">.</span>
+
+    <span class="c1"># Reconnection parameters (advanced)</span>
+    <span class="n">tile_size</span><span class="p">:</span> <span class="n">Side</span> <span class="n">length</span> <span class="n">of</span> <span class="n">square</span> <span class="n">tiles</span> <span class="k">for</span> <span class="n">tiled</span> <span class="n">processing</span><span class="o">.</span>
+        <span class="n">Larger</span> <span class="n">tiles</span> <span class="n">use</span> <span class="n">more</span> <span class="n">memory</span><span class="o">.</span> <span class="n">Default</span><span class="p">:</span> <span class="mf">1200.</span>
+</pre></div>
+</div>
+<p>For parameters that accept string method names, list the accepted values:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Args</span><span class="p">:</span>
+    <span class="n">method</span><span class="p">:</span> <span class="n">Threshold</span> <span class="n">selection</span> <span class="n">strategy</span><span class="o">.</span> <span class="n">Accepted</span> <span class="n">values</span><span class="p">:</span> <span class="err">``</span><span class="s1">&#39;otsu&#39;</span><span class="err">``</span><span class="p">,</span>
+        <span class="err">``</span><span class="s1">&#39;triangle&#39;</span><span class="err">``</span><span class="p">,</span> <span class="err">``</span><span class="s1">&#39;li&#39;</span><span class="err">``</span><span class="p">,</span> <span class="err">``</span><span class="s1">&#39;yen&#39;</span><span class="err">``</span><span class="p">,</span> <span class="err">``</span><span class="s1">&#39;isodata&#39;</span><span class="err">``</span><span class="p">,</span> <span class="err">``</span><span class="s1">&#39;mean&#39;</span><span class="err">``</span><span class="p">,</span>
+        <span class="err">``</span><span class="s1">&#39;minimum&#39;</span><span class="err">``</span><span class="o">.</span> <span class="n">Default</span><span class="p">:</span> <span class="err">``</span><span class="s1">&#39;otsu&#39;</span><span class="err">``</span><span class="o">.</span>
+</pre></div>
+</div>
+</section>
+<section id="returns">
+<h3>Returns<a class="headerlink" href="#returns" title="Link to this heading">#</a></h3>
+<p>Brief description of what changed on the returned <code class="docutils literal notranslate"><span class="pre">Image</span></code>. Specify which
+components were modified.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Returns</span><span class="p">:</span>
+    <span class="n">Image</span><span class="p">:</span> <span class="n">Input</span> <span class="n">image</span> <span class="k">with</span> <span class="err">``</span><span class="n">objmask</span><span class="err">``</span> <span class="nb">set</span> <span class="n">to</span> <span class="n">the</span> <span class="n">thresholded</span> <span class="n">binary</span> <span class="n">mask</span>
+    <span class="ow">and</span> <span class="err">``</span><span class="n">objmap</span><span class="err">``</span> <span class="nb">set</span> <span class="n">to</span> <span class="n">labeled</span> <span class="n">connected</span> <span class="n">components</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>For enhancers:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Returns</span><span class="p">:</span>
+    <span class="n">Image</span><span class="p">:</span> <span class="n">Input</span> <span class="n">image</span> <span class="k">with</span> <span class="err">``</span><span class="n">detect_mat</span><span class="err">``</span> <span class="n">smoothed</span> <span class="n">by</span> <span class="n">the</span> <span class="n">Gaussian</span> <span class="n">kernel</span><span class="o">.</span>
+    <span class="err">``</span><span class="n">rgb</span><span class="err">``</span> <span class="ow">and</span> <span class="err">``</span><span class="n">gray</span><span class="err">``</span> <span class="n">are</span> <span class="n">unchanged</span><span class="o">.</span>
+</pre></div>
+</div>
+</section>
+<section id="raises">
+<h3>Raises<a class="headerlink" href="#raises" title="Link to this heading">#</a></h3>
+<p>Only document exceptions the user can trigger through parameter choices or input
+characteristics. Do not document internal assertion errors.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Raises</span><span class="p">:</span>
+    <span class="ne">ValueError</span><span class="p">:</span> <span class="n">If</span> <span class="err">``</span><span class="n">sigma</span><span class="err">``</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">positive</span><span class="o">.</span>
+    <span class="ne">TypeError</span><span class="p">:</span> <span class="n">If</span> <span class="err">``</span><span class="n">detector</span><span class="err">``</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">an</span> <span class="n">ObjectDetector</span> <span class="ow">or</span> <span class="n">ImagePipeline</span><span class="o">.</span>
+</pre></div>
+</div>
+</section>
+<section id="examples">
+<h3>Examples<a class="headerlink" href="#examples" title="Link to this heading">#</a></h3>
+<p>Do <strong>not</strong> include usage examples in docstrings. Image processing operations
+produce visual results that cannot be meaningfully demonstrated in text-only
+doctest output. Instead, link to the relevant user guide page where interactive
+Plotly visualizations show the operation in context.</p>
+<p>Use the <code class="docutils literal notranslate"><span class="pre">See</span> <span class="pre">Also</span></code> section to point readers to tutorials, how-to guides, or
+example notebooks where the operation is demonstrated visually:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">See</span> <span class="n">Also</span><span class="p">:</span>
+    <span class="p">:</span><span class="n">doc</span><span class="p">:</span><span class="err">`</span><span class="o">/</span><span class="n">tutorials</span><span class="o">/</span><span class="n">notebooks</span><span class="o">/</span><span class="n">detecting_colonies</span><span class="err">`</span> <span class="k">for</span> <span class="n">a</span> <span class="n">visual</span> <span class="n">walkthrough</span>
+    <span class="n">of</span> <span class="n">this</span> <span class="n">detector</span> <span class="n">on</span> <span class="n">real</span> <span class="n">plate</span> <span class="n">images</span><span class="o">.</span>
+    <span class="p">:</span><span class="n">doc</span><span class="p">:</span><span class="err">`</span><span class="o">/</span><span class="n">explanation</span><span class="o">/</span><span class="n">detection_strategies</span><span class="err">`</span> <span class="k">for</span> <span class="n">a</span> <span class="n">comparison</span> <span class="n">of</span> <span class="n">thresholding</span>
+    <span class="n">methods</span> <span class="ow">and</span> <span class="n">their</span> <span class="n">failure</span> <span class="n">modes</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>If a minimal smoke-test doctest is needed for automated testing purposes (not
+documentation), place it in the test suite, not the docstring.</p>
+</section>
+<section id="references">
+<h3>References<a class="headerlink" href="#references" title="Link to this heading">#</a></h3>
+<p>IEEE citation style [2]. Include when the docstring names a specific published
+method. Place at the end of the docstring, after Examples.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">References</span><span class="p">:</span>
+    <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="n">N</span><span class="o">.</span> <span class="n">Otsu</span><span class="p">,</span> <span class="s2">&quot;A threshold selection method from gray-level histograms,&quot;</span>
+    <span class="o">*</span><span class="n">IEEE</span> <span class="n">Trans</span><span class="o">.</span> <span class="n">Syst</span><span class="o">.</span><span class="p">,</span> <span class="n">Man</span><span class="p">,</span> <span class="n">Cybern</span><span class="o">.*</span><span class="p">,</span> <span class="n">vol</span><span class="o">.</span> <span class="mi">9</span><span class="p">,</span> <span class="n">no</span><span class="o">.</span> <span class="mi">1</span><span class="p">,</span> <span class="n">pp</span><span class="o">.</span> <span class="mi">62</span><span class="o">--</span><span class="mi">66</span><span class="p">,</span>
+    <span class="n">Jan</span><span class="o">.</span> <span class="mf">1979.</span>
+</pre></div>
+</div>
+<p><strong>When to include references:</strong></p>
+<ul class="simple">
+<li><p>The operation implements a named algorithm (Otsu, Frangi, BM3D, CLAHE, etc.)</p></li>
+<li><p>The operation references a specific paper’s formulation or parameters</p></li>
+<li><p>The operation uses a domain-specific technique from published literature</p></li>
+</ul>
+<p><strong>When to omit:</strong></p>
+<ul class="simple">
+<li><p>Generic operations (Gaussian blur, median filter, morphological open/close) –
+these are standard and do not require citation</p></li>
+<li><p>Compositions of other operations (prefab pipelines)</p></li>
+</ul>
+</section>
+<section id="see-also">
+<h3>See Also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h3>
+<p>Link to relevant user guide pages and Explanation pages. This section replaces
+in-docstring examples and algorithm descriptions by directing readers to
+interactive visual demonstrations and conceptual deep-dives.</p>
+<p><strong>Rules:</strong></p>
+<ul class="simple">
+<li><p>Include at least one link: either a user guide page (tutorial or how-to) or an
+Explanation page</p></li>
+<li><p>User guide links point to pages where the operation is demonstrated with
+interactive Plotly output</p></li>
+<li><p>Explanation links point to pages covering the underlying algorithm or theory</p></li>
+<li><p>Order: user guide links first (practical), then explanation links (conceptual)</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">See</span> <span class="n">Also</span><span class="p">:</span>
+    <span class="p">:</span><span class="n">doc</span><span class="p">:</span><span class="err">`</span><span class="o">/</span><span class="n">tutorials</span><span class="o">/</span><span class="n">notebooks</span><span class="o">/</span><span class="n">detecting_colonies</span><span class="err">`</span> <span class="k">for</span> <span class="n">a</span> <span class="n">visual</span> <span class="n">walkthrough</span>
+    <span class="n">of</span> <span class="n">this</span> <span class="n">detector</span> <span class="n">on</span> <span class="n">real</span> <span class="n">plate</span> <span class="n">images</span><span class="o">.</span>
+    <span class="p">:</span><span class="n">doc</span><span class="p">:</span><span class="err">`</span><span class="o">/</span><span class="n">explanation</span><span class="o">/</span><span class="n">detection_strategies</span><span class="err">`</span> <span class="k">for</span> <span class="n">a</span> <span class="n">comparison</span> <span class="n">of</span> <span class="n">thresholding</span>
+    <span class="n">methods</span> <span class="ow">and</span> <span class="n">their</span> <span class="n">failure</span> <span class="n">modes</span><span class="o">.</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="adapting-the-template-by-abc-type">
+<h2>Adapting the Template by ABC Type<a class="headerlink" href="#adapting-the-template-by-abc-type" title="Link to this heading">#</a></h2>
+<p>The template above is the general form. Each ABC type has slight variations in
+emphasis.</p>
+<section id="imageenhancer">
+<h3>ImageEnhancer<a class="headerlink" href="#imageenhancer" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><strong>Extended summary</strong> should describe the visual effect on <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code></p></li>
+<li><p><strong>Best For</strong> focuses on image quality problems the enhancer solves</p></li>
+<li><p><strong>Returns</strong> always notes that <code class="docutils literal notranslate"><span class="pre">rgb</span></code> and <code class="docutils literal notranslate"><span class="pre">gray</span></code> are unchanged</p></li>
+<li><p><strong>Consider Also</strong> points to other enhancers, not detectors</p></li>
+</ul>
+</section>
+<section id="objectdetector-thresholddetector">
+<h3>ObjectDetector / ThresholdDetector<a class="headerlink" href="#objectdetector-thresholddetector" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><strong>Extended summary</strong> should describe what the resulting mask looks like</p></li>
+<li><p><strong>Best For</strong> focuses on plate/image characteristics</p></li>
+<li><p><strong>Consider Also</strong> points to other detectors with different strategies</p></li>
+</ul>
+</section>
+<section id="objectrefiner">
+<h3>ObjectRefiner<a class="headerlink" href="#objectrefiner" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><strong>Extended summary</strong> should describe what mask artifacts it fixes</p></li>
+<li><p><strong>Best For</strong> focuses on detection artifacts (fragmentation, noise, oversized
+objects)</p></li>
+<li><p><strong>Consider Also</strong> points to refiners that address related but different
+artifacts</p></li>
+</ul>
+</section>
+<section id="imagecorrector">
+<h3>ImageCorrector<a class="headerlink" href="#imagecorrector" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><strong>Extended summary</strong> should describe the geometric or radiometric
+transformation</p></li>
+<li><p><strong>Best For</strong> focuses on acquisition artifacts (vignetting, rotation, cropping)</p></li>
+<li><p><strong>Returns</strong> notes that all image components are transformed</p></li>
+</ul>
+</section>
+<section id="measurefeatures">
+<h3>MeasureFeatures<a class="headerlink" href="#measurefeatures" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><strong>Extended summary</strong> should describe what columns appear in the output
+DataFrame</p></li>
+<li><p><strong>Best For</strong> focuses on the biological questions the measurements answer</p></li>
+<li><p><strong>Returns</strong> describes the DataFrame structure, not an Image</p></li>
+</ul>
+</section>
+<section id="prefabpipeline">
+<h3>PrefabPipeline<a class="headerlink" href="#prefabpipeline" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><strong>Extended summary</strong> should list the pipeline steps as a numbered sequence</p></li>
+<li><p><strong>Best For</strong> focuses on the organism type and imaging conditions</p></li>
+<li><p><strong>Consider Also</strong> points to other prefab pipelines for different organisms</p></li>
+<li><p>Include a <strong>Steps</strong> section listing each operation in order</p></li>
+</ul>
+</section>
+</section>
+<section id="common-mistakes">
+<h2>Common Mistakes<a class="headerlink" href="#common-mistakes" title="Link to this heading">#</a></h2>
+<p><strong>Writing algorithm explanations in the docstring.</strong> Move these to an Explanation
+page and link to it. The docstring says “minimizes intra-class variance” – the
+Explanation page explains what intra-class variance is and why minimizing it
+works.</p>
+<p><strong>Listing every possible use case.</strong> “Best For” should have 3-5 representative
+bullets, not an exhaustive list. The reader infers applicability from the
+described characteristics.</p>
+<p><strong>Using negative framing in “Consider Also.”</strong> Never write “don’t use this
+when…” or “this fails on…” – frame as a positive recommendation of an
+alternative. Image processing is empirical; an operation may work in cases you
+would not predict.</p>
+<p><strong>Duplicating parameter documentation.</strong> Args appear in the class docstring, not
+in <code class="docutils literal notranslate"><span class="pre">__init__</span></code>. Sphinx’s <code class="docutils literal notranslate"><span class="pre">autodoc</span></code> will render the class docstring as the primary
+documentation.</p>
+<p><strong>Omitting practical tuning guidance from Args.</strong> A bare “sigma: Standard
+deviation” is insufficient. Include the typical range and the effect of adjusting
+the parameter.</p>
+<p><strong>Putting usage examples in the docstring.</strong> Image processing operations produce
+visual results that text-only doctest output cannot convey. Link to user guide
+tutorials and how-to notebooks where the operation is demonstrated with
+interactive Plotly visualizations instead.</p>
+</section>
+<section id="worked-example-otsudetector">
+<h2>Worked Example: OtsuDetector<a class="headerlink" href="#worked-example-otsudetector" title="Link to this heading">#</a></h2>
+<p>Below is a complete docstring following this template, for reference.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">OtsuDetector</span><span class="p">(</span><span class="n">ThresholdDetector</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect colonies by minimizing intra-class variance of the intensity histogram.</span>
+
+<span class="sd">    Computes a single global threshold that separates colony pixels from</span>
+<span class="sd">    background. Works best when the image histogram has two distinct peaks</span>
+<span class="sd">    (bimodal distribution). Returns an image with objmask set to the thresholded</span>
+<span class="sd">    binary mask and objmap set to labeled connected components.</span>
+
+<span class="sd">    For a comparison of thresholding strategies, see</span>
+<span class="sd">    :doc:`/explanation/detection_strategies`.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - Plates with uniform illumination and clean backgrounds.</span>
+<span class="sd">        - Yeast colonies that appear as distinct spots against agar.</span>
+<span class="sd">        - Images where the intensity histogram shows two clear peaks.</span>
+<span class="sd">        - Quick initial detection before refining with specialized operations.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`HysteresisDetector` when colonies have soft or noisy edges</span>
+<span class="sd">          that a single threshold misses.</span>
+<span class="sd">        - :class:`RoundPeaksDetector` for dense grid plates with known colony</span>
+<span class="sd">          spacing.</span>
+<span class="sd">        - :class:`TriangleDetector` when one peak is much larger than the</span>
+<span class="sd">          other (e.g., few colonies on a large plate).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        ignore_zeros: Exclude zero-valued pixels from the histogram before</span>
+<span class="sd">            computing the threshold. Enable when images have black borders</span>
+<span class="sd">            or padding regions. Default: False.</span>
+<span class="sd">        ignore_borders: Exclude a 1-pixel border from the threshold</span>
+<span class="sd">            computation. Default: False.</span>
+<span class="sd">        connectivity: Pixel connectivity for labeling connected components</span>
+<span class="sd">            after thresholding. ``1`` for 4-connectivity, ``2`` for</span>
+<span class="sd">            8-connectivity. Default: 2.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmask`` set to the thresholded binary</span>
+<span class="sd">        mask and ``objmap`` set to labeled connected components.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If the threshold computation fails on a uniform image.</span>
+
+<span class="sd">    References:</span>
+<span class="sd">        [1] N. Otsu, &quot;A threshold selection method from gray-level</span>
+<span class="sd">        histograms,&quot; *IEEE Trans. Syst., Man, Cybern.*, vol. 9, no. 1,</span>
+<span class="sd">        pp. 62--66, Jan. 1979.</span>
+
+<span class="sd">    See Also:</span>
+<span class="sd">        :doc:`/tutorials/notebooks/detecting_colonies` for a visual</span>
+<span class="sd">        walkthrough of threshold-based detection on real plate images.</span>
+<span class="sd">        :doc:`/explanation/detection_strategies` for a comparison of</span>
+<span class="sd">        thresholding methods and their failure modes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="id1">
+<h2>References<a class="headerlink" href="#id1" title="Link to this heading">#</a></h2>
+<p>[1] Google, “Google Python style guide: docstrings,” 2024. [Online]. Available:
+https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings</p>
+<p>[2] IEEE, “IEEE reference guide,” 2024. [Online]. Available:
+https://ieee-dataport.org/sites/default/files/analysis/27/IEEE%20Citation%20Guidelines.pdf</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#target-length">Target Length</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#template">Template</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#section-by-section-rules">Section-by-Section Rules</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#one-line-summary">One-Line Summary</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#extended-summary">Extended Summary</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#best-for">Best For</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#consider-also">Consider Also</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#args">Args</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#returns">Returns</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#raises">Raises</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#examples">Examples</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#references">References</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#adapting-the-template-by-abc-type">Adapting the Template by ABC Type</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#imageenhancer">ImageEnhancer</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#objectdetector-thresholddetector">ObjectDetector / ThresholdDetector</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#objectrefiner">ObjectRefiner</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#imagecorrector">ImageCorrector</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#measurefeatures">MeasureFeatures</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#prefabpipeline">PrefabPipeline</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#common-mistakes">Common Mistakes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#worked-example-otsudetector">Worked Example: OtsuDetector</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">References</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/contrib_guide/docstring_style.md.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

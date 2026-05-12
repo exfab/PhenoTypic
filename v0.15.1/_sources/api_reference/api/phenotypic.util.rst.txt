@@ -1,0 +1,47 @@
+﻿phenotypic.util
+===============
+
+.. automodule:: phenotypic.util
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :nosignatures:
+   
+      geometric_median
+      decode_well_position
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      ImageMetricsCalculator
+      NoiseMetrics
+      ContrastMetrics
+      StructureMetrics
+      BackgroundMetrics
+      QualityScores
+   
+   
+
+   
+   
+   
+
+
+

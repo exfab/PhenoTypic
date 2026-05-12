@@ -1,0 +1,7 @@
+phenotypic.tools\_.slurm\_ module
+=================================
+
+.. automodule:: phenotypic.tools_.slurm_
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,932 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.abc_._prefab_pipeline &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=fb952d1c"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/abc_/_prefab_pipeline';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.15.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.15.1/_modules/phenotypic/abc_/_prefab_pipeline.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.15.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.abc_._prefab_pipeline</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.abc_._prefab_pipeline</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Union</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._core._image_pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
+
+
+<div class="viewcode-block" id="PrefabPipeline">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.PrefabPipeline">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PrefabPipeline</span><span class="p">(</span><span class="n">ImagePipeline</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Marker class for pre-built, validated image processing pipelines from the PhenoTypic team.</span>
+
+<span class="sd">    PrefabPipeline is a specialized subclass of ImagePipeline that distinguishes &quot;official&quot; pre-built</span>
+<span class="sd">    pipelines maintained by the PhenoTypic development team from user-created custom pipelines. It</span>
+<span class="sd">    serves as a marker class (no additional functionality) that signals &quot;this pipeline is validated,</span>
+<span class="sd">    documented, and recommended for specific use cases in microbe colony phenotyping.&quot;</span>
+
+<span class="sd">    **What is PrefabPipeline?**</span>
+
+<span class="sd">    PrefabPipeline is NOT an operation ABC and does NOT inherit from BaseOperation. Instead, it&#39;s a</span>
+<span class="sd">    subclass of ImagePipeline that:</span>
+
+<span class="sd">    - **Is a marker class:** Inherits all ImagePipeline functionality unchanged; no new methods.</span>
+<span class="sd">    - **Indicates official status:** Subclasses of PrefabPipeline are pre-built, validated pipelines</span>
+<span class="sd">      with documented performance, parameter settings, and recommended use cases.</span>
+<span class="sd">    - **Enables classification:** Code can distinguish official pipelines (``isinstance(obj, PrefabPipeline)``)</span>
+<span class="sd">      from user-defined pipelines for documentation, discovery, or defaulting.</span>
+<span class="sd">    - **Provides templates:** Each PrefabPipeline subclass is a complete processing workflow (enhancement,</span>
+<span class="sd">      detection, refinement, measurement) ready to use out-of-the-box.</span>
+
+<span class="sd">    **Quick Decision Guide: PrefabPipeline vs Custom ImagePipeline**</span>
+
+<span class="sd">    - Use PrefabPipeline for standard colony phenotyping on agar plates with validated workflows</span>
+<span class="sd">    - Use custom ImagePipeline for novel imaging scenarios, optimization experiments, or specialized workflows</span>
+<span class="sd">    - Start with PrefabPipeline to understand the pipeline structure, then customize via parameter tuning</span>
+<span class="sd">    - Clone and modify a PrefabPipeline subclass when you need significant algorithm changes</span>
+<span class="sd">    - Combine multiple PrefabPipelines sequentially for complex multi-stage workflows</span>
+
+<span class="sd">    **Available PrefabPipeline Subclasses**</span>
+
+<span class="sd">    The PhenoTypic team maintains several pre-built pipelines optimized for different imaging scenarios:</span>
+
+<span class="sd">    1. **[HeavyOtsuPipeline](src/phenotypic/prefab/_heavy_otsu_pipeline.py):** Multi-layer Otsu detection with aggressive refinement.</span>
+<span class="sd">       Robust detection on challenging images (uneven lighting, varied sizes). Computationally expensive.</span>
+
+<span class="sd">    2. **[HeavyWatershedPipeline](src/phenotypic/prefab/_heavy_watershed_pipeline.py):** Watershed segmentation for separated colonies.</span>
+<span class="sd">       Handles closely-spaced or merged colonies. Very expensive; for small batches or deep analysis.</span>
+
+<span class="sd">    3. **[RoundPeaksPipeline](src/phenotypic/prefab/_round_peaks_pipeline.py):** Peak detection for circular, well-separated colonies.</span>
+<span class="sd">       Fast and suitable for high-throughput screening of early-time-point growth.</span>
+
+<span class="sd">    4. **[GridSectionPipeline](src/phenotypic/prefab/_grid_section_pipeline.py):** Per-well section extraction and fine-grained analysis.</span>
+<span class="sd">       Moderate cost; enables per-well quality control and segmentation.</span>
+
+<span class="sd">    5. **[FilamentousFungiPipeline](src/phenotypic/prefab/_filamentous_fungi_pipeline.py):** Two-stage filamentous fungi detection</span>
+<span class="sd">       with optional Dijkstra branch reconnection. For irregular spreading colonies.</span>
+
+<span class="sd">    **When to use PrefabPipeline vs Custom ImagePipeline**</span>
+
+<span class="sd">    - **Use PrefabPipeline if:**</span>
+<span class="sd">      - You&#39;re analyzing colony growth on agar plates (the intended use case).</span>
+<span class="sd">      - You want an immediately usable, tested workflow without configuration.</span>
+<span class="sd">      - You want to reproduce results matching published benchmarks or team documentation.</span>
+<span class="sd">      - You need a baseline for custom extensions (subclass or copy and modify).</span>
+
+<span class="sd">    - **Create a custom ImagePipeline if:**</span>
+<span class="sd">      - Your imaging scenario is novel (unusual plate format, different organisms, special preparation).</span>
+<span class="sd">      - You want to experiment with different detector/refiner/measurement combinations.</span>
+<span class="sd">      - You have labeled ground truth and want to optimize parameters for your specific images.</span>
+<span class="sd">      - You need pipeline extensions (custom operations not in standard library).</span>
+
+<span class="sd">    **Using a PrefabPipeline**</span>
+
+<span class="sd">    PrefabPipeline subclasses are used exactly like ImagePipeline:</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        from phenotypic import Image, GridImage</span>
+<span class="sd">        from phenotypic.prefab import HeavyOtsuPipeline</span>
+
+<span class="sd">        # Load image(s)</span>
+<span class="sd">        image = GridImage.imread(&#39;plate.jpg&#39;, nrows=8, ncols=12)</span>
+
+<span class="sd">        # Instantiate and apply pipeline</span>
+<span class="sd">        pipeline = HeavyOtsuPipeline()</span>
+<span class="sd">        result = pipeline.apply(image)  # or .operate([image])</span>
+
+<span class="sd">        # Access results</span>
+<span class="sd">        colonies = result.objects</span>
+<span class="sd">        measurements = result.measurements</span>
+<span class="sd">        print(f&quot;Detected: {len(colonies)} colonies&quot;)</span>
+<span class="sd">        print(f&quot;Measurements shape: {measurements.shape}&quot;)</span>
+
+<span class="sd">    **Customizing a PrefabPipeline**</span>
+
+<span class="sd">    PrefabPipelines accept tunable parameters in ``__init__()`` to adapt to your images without</span>
+<span class="sd">    rebuilding the pipeline structure:</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        from phenotypic.prefab import HeavyOtsuPipeline</span>
+
+<span class="sd">        # Use defaults (recommended for most cases)</span>
+<span class="sd">        pipeline1 = HeavyOtsuPipeline()</span>
+
+<span class="sd">        # Tune for noisier images</span>
+<span class="sd">        pipeline2 = HeavyOtsuPipeline(</span>
+<span class="sd">            gaussian_sigma=7,                    # Stronger blur</span>
+<span class="sd">            small_object_min_size=150,           # More aggressive noise removal</span>
+<span class="sd">            border_remover_size=2                # Remove more edge objects</span>
+<span class="sd">        )</span>
+
+<span class="sd">        # Parameters are typically named after the algorithm or parameter they control.</span>
+<span class="sd">        # See pipeline docstring for available parameters and typical values.</span>
+
+<span class="sd">    **When Parameters Fail: Creating a Custom Pipeline**</span>
+
+<span class="sd">    If PrefabPipeline parameter tuning doesn&#39;t solve your problem:</span>
+
+<span class="sd">    1. **Analyze failures:** Which step fails (detection, refinement, measurement)?</span>
+<span class="sd">      - Use ``pipeline.benchmark=True, verbose=True`` to trace execution.</span>
+<span class="sd">      - Visually inspect intermediate results (detection masks, refined masks).</span>
+
+<span class="sd">    2. **Create a custom pipeline:**</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        from phenotypic import ImagePipeline</span>
+<span class="sd">        from phenotypic.enhance import GaussianBlur, CLAHE</span>
+<span class="sd">        from phenotypic.detect import CannyDetector  # Different detector</span>
+<span class="sd">        from phenotypic.refine import SmallObjectRemover, MaskFill</span>
+<span class="sd">        from phenotypic.measure import MeasureShape, MeasureColor</span>
+
+<span class="sd">        # Custom pipeline for your specific use case</span>
+<span class="sd">        custom = ImagePipeline()</span>
+<span class="sd">        custom.add(GaussianBlur(sigma=3))</span>
+<span class="sd">        custom.add(CLAHE())</span>
+<span class="sd">        custom.add(CannyDetector(sigma=1.5, low_threshold=0.1, high_threshold=0.4))</span>
+<span class="sd">        custom.add(SmallObjectRemover(min_size=100))</span>
+<span class="sd">        custom.add(MaskFill())</span>
+<span class="sd">        custom.add(MeasureShape())</span>
+<span class="sd">        custom.add(MeasureColor())</span>
+
+<span class="sd">        # Test and iterate</span>
+<span class="sd">        result = custom.operate([image])</span>
+
+<span class="sd">    3. **Share successful custom pipelines:** If you develop a successful custom pipeline for a new</span>
+<span class="sd">       imaging scenario, consider contributing it as a PrefabPipeline subclass to the project.</span>
+
+<span class="sd">    **Pipeline Composition Pattern**</span>
+
+<span class="sd">    Combine multiple PrefabPipelinesor mix PrefabPipeline with custom operations:</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        from phenotypic import ImagePipeline</span>
+<span class="sd">        from phenotypic.prefab import HeavyOtsuPipeline, RoundPeaksPipeline</span>
+<span class="sd">        from phenotypic.refine import SmallObjectRemover</span>
+<span class="sd">        from phenotypic.measure import MeasureIntensity</span>
+
+<span class="sd">        # Combine different detection strategies with shared refinement</span>
+<span class="sd">        pipeline = ImagePipeline()</span>
+<span class="sd">        pipeline.add(HeavyOtsuPipeline())  # First detection attempt</span>
+<span class="sd">        pipeline.add(SmallObjectRemover(min_size=100))  # Noise removal</span>
+<span class="sd">        pipeline.add(MeasureIntensity())  # Measurement</span>
+
+<span class="sd">        # Apply to image</span>
+<span class="sd">        result = pipeline.apply(image)</span>
+
+<span class="sd">    **Pipeline Serialization Pattern**</span>
+
+<span class="sd">    Save and load pipelines for reproducible batch processing:</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        from phenotypic.prefab import HeavyOtsuPipeline</span>
+
+<span class="sd">        # Create, configure, and save</span>
+<span class="sd">        pipeline = HeavyOtsuPipeline(gaussian_sigma=2.0, small_object_min_size=150)</span>
+<span class="sd">        pipeline.to_json(&#39;my_colony_pipeline.json&#39;)  # Save configuration</span>
+<span class="sd">        # pipeline.to_yaml(&#39;my_colony_pipeline.yaml&#39;)  # Alternative format</span>
+
+<span class="sd">        # Load for batch processing (reproducible results)</span>
+<span class="sd">        loaded = HeavyOtsuPipeline.from_json(&#39;my_colony_pipeline.json&#39;)</span>
+<span class="sd">        results = loaded.operate([image1, image2, image3])</span>
+
+<span class="sd">    **Extending PrefabPipeline**</span>
+
+<span class="sd">    To create a new official PrefabPipeline subclass:</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        from phenotypic.abc_ import PrefabPipeline</span>
+<span class="sd">        from phenotypic.enhance import GaussianBlur, CLAHE</span>
+<span class="sd">        from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        from phenotypic.refine import SmallObjectRemover</span>
+<span class="sd">        from phenotypic.measure import MeasureShape</span>
+
+<span class="sd">        class MyCustomPrefabPipeline(PrefabPipeline):</span>
+<span class="sd">            &#39;&#39;&#39;Brief description of when to use this pipeline.&#39;&#39;&#39;</span>
+
+<span class="sd">            def __init__(self, param1: int = 100, param2: float = 1.5,</span>
+<span class="sd">                         benchmark: bool = False, verbose: bool = False):</span>
+<span class="sd">                &#39;&#39;&#39;Initialize with tunable parameters.&#39;&#39;&#39;</span>
+<span class="sd">                pipe_cfgs = [</span>
+<span class="sd">                    GaussianBlur(sigma=param2),</span>
+<span class="sd">                    CLAHE(),</span>
+<span class="sd">                    OtsuDetector(),</span>
+<span class="sd">                    SmallObjectRemover(min_size=param1),</span>
+<span class="sd">                ]</span>
+<span class="sd">                meas = [MeasureShape()]</span>
+<span class="sd">                super().__init__(pipe_cfgs=pipe_cfgs, meas=meas, benchmark=benchmark,</span>
+<span class="sd">                               verbose=verbose)</span>
+
+<span class="sd">    Notes:</span>
+<span class="sd">        - **Is a marker, not an operation:** PrefabPipeline does not inherit from BaseOperation.</span>
+<span class="sd">          It&#39;s a convenient subclass of ImagePipeline for classification and discovery.</span>
+
+<span class="sd">        - **Inheritance of ImagePipeline features:** PrefabPipeline inherits all ImagePipeline</span>
+<span class="sd">          functionality: sequential operation chaining, benchmarking, verbose logging, batch</span>
+<span class="sd">          processing via ``.operate()``, and serialization via ``.to_yaml()`` / ``.from_yaml()``.</span>
+
+<span class="sd">        - **Parameter tuning via __init__():** Most PrefabPipeline subclasses expose key algorithm</span>
+<span class="sd">          parameters in ``__init__()`` (e.g., detection threshold, smoothing sigma, refinement</span>
+<span class="sd">          shape). Adjust these for your specific images before scaling to large batches.</span>
+
+<span class="sd">        - **Benchmarking for profiling:** Set ``benchmark=True`` when instantiating to track</span>
+<span class="sd">          execution time and memory usage per operation. Useful for identifying bottlenecks in</span>
+<span class="sd">          large batch runs.</span>
+
+<span class="sd">        - **Documentation and examples:** Each PrefabPipeline subclass is documented with use cases,</span>
+<span class="sd">          typical parameters, performance characteristics, and example code. Check the subclass</span>
+<span class="sd">          docstring for guidance.</span>
+
+<span class="sd">        - **Not for operations:** Use PrefabPipeline only for complete pipelines. For individual</span>
+<span class="sd">          operations (detection, enhancement, measurement), use operation ABCs directly.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Quick start: Detect colonies with HeavyOtsuPipeline:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic import GridImage</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.prefab import HeavyOtsuPipeline</span>
+<span class="sd">        &gt;&gt;&gt; # Load a 96-well plate image</span>
+<span class="sd">        &gt;&gt;&gt; image = GridImage.imread(&#39;agar_plate.jpg&#39;, nrows=8, ncols=12)</span>
+<span class="sd">        &gt;&gt;&gt; # Use the pre-built, validated pipeline</span>
+<span class="sd">        &gt;&gt;&gt; pipeline = HeavyOtsuPipeline()</span>
+<span class="sd">        &gt;&gt;&gt; result = pipeline.apply(image)</span>
+<span class="sd">        &gt;&gt;&gt; # Access results</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Detected {len(result.objects)} colonies&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Measurements: {result.measurements.columns.tolist()}&quot;)</span>
+
+<span class="sd">        Batch processing multiple plates with a PrefabPipeline:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic import GridImage</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.prefab import HeavyOtsuPipeline</span>
+<span class="sd">        &gt;&gt;&gt; import glob</span>
+<span class="sd">        &gt;&gt;&gt; # Load multiple plate images</span>
+<span class="sd">        &gt;&gt;&gt; image_paths = glob.glob(&#39;batch_*.jpg&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; images = [GridImage.imread(p, nrows=8, ncols=12)</span>
+<span class="sd">        ...           for p in image_paths]</span>
+<span class="sd">        &gt;&gt;&gt; # Create pipeline (reusable for all images)</span>
+<span class="sd">        &gt;&gt;&gt; pipeline = HeavyOtsuPipeline(benchmark=True)</span>
+<span class="sd">        &gt;&gt;&gt; # Batch process</span>
+<span class="sd">        &gt;&gt;&gt; results = pipeline.operate(images)</span>
+<span class="sd">        &gt;&gt;&gt; # Collect results</span>
+<span class="sd">        &gt;&gt;&gt; for i, result in enumerate(results):</span>
+<span class="sd">        ...     print(f&quot;Image {i}: {len(result.objects)} colonies&quot;)</span>
+<span class="sd">        ...     print(f&quot;Measurements shape: {result.measurements.shape}&quot;)</span>
+
+<span class="sd">        Customizing pipeline parameters for difficult images:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic import GridImage</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.prefab import HeavyOtsuPipeline</span>
+<span class="sd">        &gt;&gt;&gt; image = GridImage.imread(&#39;noisy_plate.jpg&#39;, nrows=8, ncols=12)</span>
+<span class="sd">        &gt;&gt;&gt; # Increase smoothing and noise removal for difficult images</span>
+<span class="sd">        &gt;&gt;&gt; pipeline = HeavyOtsuPipeline(</span>
+<span class="sd">        ...     gaussian_sigma=8,                      # Stronger blur</span>
+<span class="sd">        ...     small_object_min_size=200,             # Aggressive noise removal</span>
+<span class="sd">        ...     border_remover_size=2                  # More border filtering</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; result = pipeline.apply(image)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Robust detection: {len(result.objects)} colonies&quot;)</span>
+
+<span class="sd">        Comparing PrefabPipeline vs custom pipeline:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic import GridImage, ImagePipeline</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.prefab import HeavyOtsuPipeline</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import CannyDetector</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.refine import SmallObjectRemover</span>
+<span class="sd">        &gt;&gt;&gt; image = GridImage.imread(&#39;plate.jpg&#39;, nrows=8, ncols=12)</span>
+<span class="sd">        &gt;&gt;&gt; # Option 1: Use pre-built validated pipeline</span>
+<span class="sd">        &gt;&gt;&gt; prefab = HeavyOtsuPipeline()</span>
+<span class="sd">        &gt;&gt;&gt; result1 = prefab.apply(image)</span>
+<span class="sd">        &gt;&gt;&gt; # Option 2: Create custom pipeline for comparison</span>
+<span class="sd">        &gt;&gt;&gt; custom = ImagePipeline()</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur</span>
+<span class="sd">        &gt;&gt;&gt; custom.add(GaussianBlur(sigma=2))</span>
+<span class="sd">        &gt;&gt;&gt; custom.add(CannyDetector(sigma=1.5, low_threshold=0.1, high_threshold=0.4))</span>
+<span class="sd">        &gt;&gt;&gt; custom.add(SmallObjectRemover(min_size=100))</span>
+<span class="sd">        &gt;&gt;&gt; result2 = custom.apply(image)</span>
+<span class="sd">        &gt;&gt;&gt; # Compare results</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Prefab: {len(result1.objects)}, Custom: {len(result2.objects)}&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="PrefabPipeline.from_json">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.PrefabPipeline.from_json">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_json</span><span class="p">(</span>
+            <span class="bp">cls</span><span class="p">,</span>
+            <span class="n">json_data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">,</span> <span class="nb">dict</span><span class="p">],</span>
+            <span class="n">benchmark</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+            <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PrefabPipeline</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Deserialize a PrefabPipeline from JSON.</span>
+
+<span class="sd">        PrefabPipeline subclasses build their ops/meas inside ``__init__``,</span>
+<span class="sd">        so the base ``from_json`` (which passes ``ops=`` directly) would</span>
+<span class="sd">        conflict.  This override deserializes via ``ImagePipeline`` and</span>
+<span class="sd">        re-tags the instance as the correct PrefabPipeline subclass.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            json_data: A JSON string, path to a JSON file, or a pre-parsed dict.</span>
+<span class="sd">            benchmark: Whether to enable benchmarking for the pipeline.</span>
+<span class="sd">            verbose: Whether to enable verbose output.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A PrefabPipeline (or subclass) instance with the loaded</span>
+<span class="sd">            configuration.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">instance</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span>
+                <span class="n">json_data</span><span class="p">,</span> <span class="n">benchmark</span><span class="o">=</span><span class="n">benchmark</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">instance</span><span class="o">.</span><span class="vm">__class__</span> <span class="o">=</span> <span class="bp">cls</span>
+        <span class="k">return</span> <span class="n">instance</span>  <span class="c1"># type: ignore[return-value]</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

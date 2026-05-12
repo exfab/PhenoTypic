@@ -1,0 +1,53 @@
+phenotypic.abc\_.PrefabPipeline
+===============================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: PrefabPipeline
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~PrefabPipeline.__init__
+      ~PrefabPipeline.analyze
+      ~PrefabPipeline.apply
+      ~PrefabPipeline.apply_and_measure
+      ~PrefabPipeline.apply_napari
+      ~PrefabPipeline.apply_with_intermediates
+      ~PrefabPipeline.benchmark_results
+      ~PrefabPipeline.from_json
+      ~PrefabPipeline.get_filters
+      ~PrefabPipeline.get_meas
+      ~PrefabPipeline.get_model
+      ~PrefabPipeline.get_ops
+      ~PrefabPipeline.get_post
+      ~PrefabPipeline.measure
+      ~PrefabPipeline.set_filters
+      ~PrefabPipeline.set_meas
+      ~PrefabPipeline.set_model
+      ~PrefabPipeline.set_ops
+      ~PrefabPipeline.set_post
+      ~PrefabPipeline.to_json
+      ~PrefabPipeline.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~PrefabPipeline.desc
+      ~PrefabPipeline.ncols
+      ~PrefabPipeline.nrows
+   
+   

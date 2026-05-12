@@ -1,0 +1,27 @@
+phenotypic.refine.Thinning
+==========================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: Thinning
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~Thinning.__init__
+      ~Thinning.apply
+      ~Thinning.widget
+   
+   
+
+   
+   
+   

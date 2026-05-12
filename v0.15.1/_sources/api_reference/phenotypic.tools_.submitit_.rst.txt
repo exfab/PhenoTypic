@@ -1,0 +1,7 @@
+phenotypic.tools\_.submitit\_ module
+====================================
+
+.. automodule:: phenotypic.tools_.submitit_
+   :members:
+   :undoc-members:
+   :show-inheritance:

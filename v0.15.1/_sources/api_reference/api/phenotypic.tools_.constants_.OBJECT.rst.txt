@@ -1,0 +1,31 @@
+phenotypic.tools\_.constants\_.OBJECT
+=====================================
+
+.. currentmodule:: phenotypic.tools_.constants_
+
+.. autoclass:: OBJECT
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~OBJECT.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~OBJECT.LABEL
+   
+   

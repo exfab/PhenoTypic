@@ -1,0 +1,30 @@
+phenotypic.analysis.LinearSoftplus
+==================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autoclass:: LinearSoftplus
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~LinearSoftplus.__init__
+      ~LinearSoftplus.analyze
+      ~LinearSoftplus.dash
+      ~LinearSoftplus.model_func
+      ~LinearSoftplus.results
+      ~LinearSoftplus.show
+   
+   
+
+   
+   
+   

@@ -1,0 +1,53 @@
+phenotypic.prefab.RoundPeaksPipeline
+====================================
+
+.. currentmodule:: phenotypic.prefab
+
+.. autoclass:: RoundPeaksPipeline
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~RoundPeaksPipeline.__init__
+      ~RoundPeaksPipeline.analyze
+      ~RoundPeaksPipeline.apply
+      ~RoundPeaksPipeline.apply_and_measure
+      ~RoundPeaksPipeline.apply_napari
+      ~RoundPeaksPipeline.apply_with_intermediates
+      ~RoundPeaksPipeline.benchmark_results
+      ~RoundPeaksPipeline.from_json
+      ~RoundPeaksPipeline.get_filters
+      ~RoundPeaksPipeline.get_meas
+      ~RoundPeaksPipeline.get_model
+      ~RoundPeaksPipeline.get_ops
+      ~RoundPeaksPipeline.get_post
+      ~RoundPeaksPipeline.measure
+      ~RoundPeaksPipeline.set_filters
+      ~RoundPeaksPipeline.set_meas
+      ~RoundPeaksPipeline.set_model
+      ~RoundPeaksPipeline.set_ops
+      ~RoundPeaksPipeline.set_post
+      ~RoundPeaksPipeline.to_json
+      ~RoundPeaksPipeline.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RoundPeaksPipeline.desc
+      ~RoundPeaksPipeline.ncols
+      ~RoundPeaksPipeline.nrows
+   
+   

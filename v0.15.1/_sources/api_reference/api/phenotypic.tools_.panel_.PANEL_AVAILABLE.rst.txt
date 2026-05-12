@@ -1,0 +1,6 @@
+phenotypic.tools\_.panel\_.PANEL\_AVAILABLE
+===========================================
+
+.. currentmodule:: phenotypic.tools_.panel_
+
+.. autodata:: PANEL_AVAILABLE

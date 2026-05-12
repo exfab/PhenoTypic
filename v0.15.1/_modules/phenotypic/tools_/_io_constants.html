@@ -1,0 +1,1575 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.tools_._io_constants &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=fb952d1c"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/tools_/_io_constants';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.15.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.15.1/_modules/phenotypic/tools_/_io_constants.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.15.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.tools_._io_constants</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.tools_._io_constants</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Shared CLI ↔ GUI artifact-layout constants.</span>
+
+<span class="sd">Single source of truth for everything written to disk by the forward CLI,</span>
+<span class="sd">the SLURM recompile worker, and the chunk writer — and read back by the</span>
+<span class="sd">GUI viewer / analysis sub-app. Both subpackages should import from here</span>
+<span class="sd">rather than re-spelling. This module replaces the scattered inline</span>
+<span class="sd">``&quot;master_measurements.parquet&quot;`` / ``&quot;progress&quot;`` / etc. literals that</span>
+<span class="sd">previously lived as private constants in ~10 different files.</span>
+
+<span class="sd">Module layout</span>
+<span class="sd">-------------</span>
+<span class="sd">* **Filenames** (`MASTER_MEASUREMENTS_*`, `PIPELINE_JSON`, …) — bare strings</span>
+<span class="sd">  written/read by both producer (CLI) and consumer (GUI).</span>
+<span class="sd">* **Directory names** (`DIR_*`) — same.</span>
+<span class="sd">* **Templated filenames** — private ``_FOO_TEMPLATE: Final[str]``</span>
+<span class="sd">  constants paired with public ``foo_filename(...)`` render functions.</span>
+<span class="sd">  The render function&#39;s typed signature is the public API; the template</span>
+<span class="sd">  itself is private. This is the project&#39;s first deployment of the</span>
+<span class="sd">  CLAUDE.md &quot;parameterized strings are not enumerations&quot; pattern.</span>
+<span class="sd">* **Path helpers** — `progress_dir(output)`, `event_log_path(output)`,</span>
+<span class="sd">  etc. Take a base ``output_dir: Path`` and return the canonical</span>
+<span class="sd">  artifact path. Replace ``output_dir / &quot;literal&quot;`` constructions</span>
+<span class="sd">  scattered across the CLI. Two parameter conventions are used:</span>
+
+<span class="sd">    - **`output_dir: Path`** — the run output root (e.g. ``./out``).</span>
+<span class="sd">      Use these from any caller that has the run root in scope:</span>
+<span class="sd">      ``master_measurements_csv_path``, ``manifest_json_path``,</span>
+<span class="sd">      ``job_metadata_path``, ``pipeline_json_path``, ``task_status_path``,</span>
+<span class="sd">      ``logs_dir``, ``slurm_scripts_dir``, ``analysis_html_path``,</span>
+<span class="sd">      ``processing_report_html_path``, ``measurements_by_feature_dir``,</span>
+<span class="sd">      etc.</span>
+<span class="sd">    - **`progress_dir_: Path`** — the already-resolved progress dir</span>
+<span class="sd">      (i.e. ``output_dir / &quot;progress&quot;``). Used for helpers that produce</span>
+<span class="sd">      paths to *internal mid-run artifacts* the SLURM sentinel + chunk</span>
+<span class="sd">      writer hand around between each other:</span>
+<span class="sd">      ``analysis_full_parquet_path``, ``analysis_scatter_json_path``,</span>
+<span class="sd">      ``sentinel_resubmitted_path``, ``chunk_lock_path``, ``chunks_dir``,</span>
+<span class="sd">      ``chunk_parquet_path``, ``checkpoint_lock_path``, ``recompile_dir``,</span>
+<span class="sd">      ``recompile_status_dir``. The trailing underscore on the parameter</span>
+<span class="sd">      name disambiguates it from the ``progress_dir(output_dir)``</span>
+<span class="sd">      function.</span>
+
+<span class="sd">  When in doubt, prefer the ``output_dir``-rooted form — it composes</span>
+<span class="sd">  cleanly with ``progress_dir(output_dir)`` if you need the progress</span>
+<span class="sd">  directory separately. Helpers that take ``progress_dir_`` are noted</span>
+<span class="sd">  in their individual docstrings.</span>
+<span class="sd">* **Reader helpers** — `read_run_manifest`, `load_master_measurements`,</span>
+<span class="sd">  `resolve_execution_mode` consolidate three high-frequency duplicates.</span>
+<span class="sd">* **JSON contract keys** (`JobMetadataKey`, `DashboardManifestKey`,</span>
+<span class="sd">  `ChunkStateKey`, `ChunkManifestKey`, `HdfAttr`) — namespace classes</span>
+<span class="sd">  whose class-level ``Final[str]`` attributes are the keys writers and</span>
+<span class="sd">  readers must reference instead of bare strings. Keeps the contract</span>
+<span class="sd">  on-disk format mechanically discoverable.</span>
+<span class="sd">* **`ModulePath`** — importable module paths used in ``importlib.import_module``</span>
+<span class="sd">  dispatch by the analysis GUI&#39;s recipe loader.</span>
+<span class="sd">* **`EnvVar`** — environment variable names read by the CLI (SLURM /</span>
+<span class="sd">  scratch).</span>
+
+<span class="sd">See also</span>
+<span class="sd">--------</span>
+<span class="sd">:mod:`phenotypic.tools_.constants_`</span>
+<span class="sd">    Image-data and measurement enums (``IMAGE_MODE``, ``IMAGE_TYPES``,</span>
+<span class="sd">    ``GAMMA_ENCODINGS``, ``METADATA``, ``PIPE_STATUS``).</span>
+<span class="sd">:mod:`phenotypic.tools_.typing_`</span>
+<span class="sd">    Literal aliases for closed value sets used at public boundaries</span>
+<span class="sd">    (``ExecutionMode``, ``ImageTypeName``, …).</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Final</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">CheckpointType</span><span class="p">,</span>
+    <span class="n">ExecutionMode</span><span class="p">,</span>
+    <span class="n">ImageTypeName</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>  <span class="c1"># type: ignore[import-not-found]</span>
+
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span> <span class="k">as</span> <span class="n">_GridImage</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span> <span class="k">as</span> <span class="n">_Image</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># CLI artifact filenames</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="c1">#: Master archive of all aggregated measurements (clean, pre-post). Written by</span>
+<span class="c1">#: :func:`phenotypic._cli._cli_output_manager.aggregate_measurements` after</span>
+<span class="c1">#: every per-image Parquet has been concatenated and joined with optional</span>
+<span class="c1">#: external metadata. Treated as the authoritative source by downstream</span>
+<span class="c1">#: tooling; never edited in place.</span>
+<span class="n">MASTER_MEASUREMENTS_CSV</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;master_measurements.csv&quot;</span>
+
+<span class="c1">#: Parquet companion of :data:`MASTER_MEASUREMENTS_CSV`. Preserves dtypes the</span>
+<span class="c1">#: CSV cannot and is the format the GUI viewer prefers when present.</span>
+<span class="n">MASTER_MEASUREMENTS_PARQUET</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;master_measurements.parquet&quot;</span>
+
+<span class="c1">#: Editable curated CSV mirror seeded by the CLI as a copy of</span>
+<span class="c1">#: :data:`MASTER_MEASUREMENTS_CSV` after :func:`_apply_post_to_master`. The</span>
+<span class="c1">#: results viewer rewrites this file in place when the user removes/restores</span>
+<span class="c1">#: colonies. Re-running the CLI overwrites it with a fresh full copy.</span>
+<span class="n">MEASUREMENTS_CSV</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;measurements.csv&quot;</span>
+
+<span class="c1">#: Editable curated Parquet companion to :data:`MEASUREMENTS_CSV`. The</span>
+<span class="c1">#: parquet is the GUI&#39;s source of truth at boot (CSV is the human-readable</span>
+<span class="c1">#: mirror); both are written atomically together.</span>
+<span class="n">MEASUREMENTS_PARQUET</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;measurements.parquet&quot;</span>
+
+<span class="c1">#: Output filename of the model-fit summary written by the CLI when the</span>
+<span class="c1">#: pipeline has a ``model`` configured (and re-emitted by the analysis</span>
+<span class="c1">#: GUI&#39;s &quot;Run analysis&quot; button). Human-readable mirror of</span>
+<span class="c1">#: :data:`ANALYSIS_PARQUET`.</span>
+<span class="n">ANALYSIS_CSV</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;analysis.csv&quot;</span>
+
+<span class="c1">#: Parquet companion of :data:`ANALYSIS_CSV` — primary downstream</span>
+<span class="c1">#: artifact since it preserves dtypes the CSV cannot.</span>
+<span class="n">ANALYSIS_PARQUET</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;analysis.parquet&quot;</span>
+
+<span class="c1">#: Canonical pipeline-spec filename written into the output root by the</span>
+<span class="c1">#: CLI (and rewritten by the analysis GUI on every recipe edit). Captures</span>
+<span class="c1">#: operations, measurements, post, filters, and model — i.e. the whole</span>
+<span class="c1">#: reproducibility surface.</span>
+<span class="n">PIPELINE_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pipeline.json&quot;</span>
+
+<span class="c1">#: Resume-state JSON written by ``ProcessingState.save`` and read by</span>
+<span class="c1">#: ``ProcessingState.load`` when ``--resume`` is passed.</span>
+<span class="n">PROCESSING_STATE_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;processing_state.json&quot;</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Run-time progress sidecar files (live inside DIR_PROGRESS)</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="c1">#: Append-only JSONL event log of per-image processing transitions.</span>
+<span class="c1">#: Producers: ``_cli_update_state.append_event``. Consumers: dashboard</span>
+<span class="c1">#: generator, recompile worker. Was previously re-spelled in 10 files.</span>
+<span class="n">PROCESSING_EVENTS_LOG</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;processing_events.log&quot;</span>
+
+<span class="c1">#: SLURM job-metadata sidecar written once at job submission. Keys are</span>
+<span class="c1">#: documented in :class:`JobMetadataKey`.</span>
+<span class="n">JOB_METADATA_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;job_metadata.json&quot;</span>
+
+<span class="c1">#: Append-only JSONL of per-image failures. Each row carries a</span>
+<span class="c1">#: :data:`phenotypic.tools_.typing_.FailureSource` tag.</span>
+<span class="n">FAILURES_JSONL</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;failures.jsonl&quot;</span>
+
+<span class="c1">#: SLURM checkpoint chunk manifest (mid-run partial-result feed).</span>
+<span class="n">CHUNK_MANIFEST_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;chunk_manifest.json&quot;</span>
+
+<span class="c1">#: SLURM checkpoint chunk state (which per-image files have been chunked).</span>
+<span class="n">CHUNK_STATE_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;chunk_state.json&quot;</span>
+
+<span class="c1">#: Manifest of overlay PNGs (one entry per per-image overlay).</span>
+<span class="n">OVERLAY_MANIFEST_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;overlay_manifest.json&quot;</span>
+
+<span class="c1">#: Top-level dashboard manifest read by the dashboard HTML JS shim.</span>
+<span class="c1">#: Keys are documented in :class:`DashboardManifestKey`.</span>
+<span class="n">MANIFEST_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;manifest.json&quot;</span>
+
+<span class="c1">#: Per-dataset pre-aggregated Parquet emitted by the chunk writer for the</span>
+<span class="c1">#: GPFS-optimized aggregation path. Underscore prefix marks the file as</span>
+<span class="c1">#: an aggregator-internal intermediate (chunk-writer scan should skip).</span>
+<span class="n">DATASET_AGGREGATED_PARQUET</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;_dataset_aggregated.parquet&quot;</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Dashboard / log files</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="c1">#: Generated HTML dashboard with charts + chunked-data viewer.</span>
+<span class="n">DASHBOARD_HTML</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;dashboard.html&quot;</span>
+
+<span class="c1">#: Per-run stdout capture written by the run console&#39;s local runner.</span>
+<span class="n">STDOUT_LOG</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;stdout.log&quot;</span>
+
+<span class="c1">#: Generated standalone analysis HTML emitted alongside the dashboard.</span>
+<span class="n">ANALYSIS_HTML</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;analysis.html&quot;</span>
+
+<span class="c1">#: Top-level processing report HTML emitted by ``--recompile``.</span>
+<span class="n">PROCESSING_REPORT_HTML</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;processing_report.html&quot;</span>
+
+<span class="c1">#: Mid-run combined Parquet that the chunk writer rewrites incrementally</span>
+<span class="c1">#: as new per-image measurements arrive (lives in ``DIR_PROGRESS``).</span>
+<span class="n">ANALYSIS_FULL_PARQUET</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;analysis_full.parquet&quot;</span>
+
+<span class="c1">#: Pre-computed scatter-plot data for the dashboard analysis pane.</span>
+<span class="n">ANALYSIS_SCATTER_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;analysis_scatter.json&quot;</span>
+
+<span class="c1">#: Sentinel marker file written by the SLURM sentinel after a re-submission;</span>
+<span class="c1">#: presence prevents an infinite resubmission loop on the next checkpoint.</span>
+<span class="n">SENTINEL_RESUBMITTED_MARKER</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;sentinel_resubmitted&quot;</span>
+
+<span class="c1">#: Hidden chunk-aggregation lock file (lives in ``DIR_PROGRESS``).</span>
+<span class="n">CHUNK_LOCK</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;.chunk_lock&quot;</span>
+
+<span class="c1">#: Recompile task manifest JSON (one per recompile invocation; lives at</span>
+<span class="c1">#: ``&lt;output&gt;/progress/recompile/task_manifest.json``). Lists every per-image</span>
+<span class="c1">#: shard the recompile worker is responsible for; consumed by</span>
+<span class="c1">#: ``_cli_recompile_worker._main``.</span>
+<span class="n">RECOMPILE_TASK_MANIFEST_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;task_manifest.json&quot;</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># CLI artifact directory names</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="c1">#: ``&lt;output&gt;/results/`` — per-dataset subdirectories live below here.</span>
+<span class="n">DIR_RESULTS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;results&quot;</span>
+
+<span class="c1">#: ``&lt;output&gt;/progress/`` — sidecar JSON / JSONL state for in-flight runs.</span>
+<span class="n">DIR_PROGRESS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;progress&quot;</span>
+
+<span class="c1">#: Per-dataset measurements subdirectory: ``&lt;output&gt;/results/&lt;ds&gt;/measurements/``.</span>
+<span class="n">DIR_MEASUREMENTS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;measurements&quot;</span>
+
+<span class="c1">#: Per-feature spreadsheet split written by</span>
+<span class="c1">#: :func:`phenotypic._cli._cli_output_manager.split_master_by_feature`.</span>
+<span class="n">DIR_MEASUREMENTS_BY_FEATURE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;measurements_by_feature&quot;</span>
+
+<span class="c1">#: SLURM stdout/stderr / sbatch-script subdirectory.</span>
+<span class="n">DIR_LOGS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;logs&quot;</span>
+
+<span class="c1">#: HDF5 image-state subdirectory: ``&lt;output&gt;/results/&lt;ds&gt;/hdf/``.</span>
+<span class="n">DIR_HDF</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;hdf&quot;</span>
+
+<span class="c1">#: Overlay PNG subdirectory: ``&lt;output&gt;/results/&lt;ds&gt;/overlays/``.</span>
+<span class="n">DIR_OVERLAYS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;overlays&quot;</span>
+
+<span class="c1">#: Mid-run chunk parquet subdirectory: ``&lt;progress&gt;/chunks/``.</span>
+<span class="n">DIR_CHUNKS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;chunks&quot;</span>
+
+<span class="c1">#: Recompile-worker shard / status subdirectory: ``&lt;progress&gt;/recompile/``.</span>
+<span class="n">DIR_RECOMPILE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;recompile&quot;</span>
+
+<span class="c1">#: Per-task JSON status subdirectory: ``&lt;progress&gt;/recompile/status/``.</span>
+<span class="n">DIR_RECOMPILE_STATUS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;status&quot;</span>
+
+<span class="c1">#: Per-shard parquet subdirectory inside the recompile dir:</span>
+<span class="c1">#: ``&lt;progress&gt;/recompile/measurement_shards/``.</span>
+<span class="n">DIR_RECOMPILE_SHARDS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;measurement_shards&quot;</span>
+
+<span class="c1">#: Generated SLURM script subdirectory: ``&lt;output&gt;/slurm_scripts/``.</span>
+<span class="n">DIR_SLURM_SCRIPTS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;slurm_scripts&quot;</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Templated filenames — Final[str] template + typed render function</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Pattern: keep the raw ``&quot;…{x}…&quot;`` template private as ``_FOO_TEMPLATE``,</span>
+<span class="c1"># expose a typed render function whose parameters are the public API.</span>
+<span class="c1"># Callers must reach the template through the function — never .format() it</span>
+<span class="c1"># directly. This is the project&#39;s first deployment of CLAUDE.md&#39;s</span>
+<span class="c1"># &quot;parameterized strings are not enumerations&quot; rule.</span>
+
+<span class="n">_TASK_STATUS_FILENAME_TEMPLATE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;task_</span><span class="si">{task_index}</span><span class="s2">.json&quot;</span>
+
+
+<div class="viewcode-block" id="task_status_filename">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.task_status_filename">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">task_status_filename</span><span class="p">(</span><span class="n">task_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Filename of a per-task SLURM-recompile status JSON.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        task_index: Zero-based recompile task index.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Filename relative to ``&lt;progress&gt;/recompile/status/``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_TASK_STATUS_FILENAME_TEMPLATE</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">task_index</span><span class="o">=</span><span class="n">task_index</span><span class="p">)</span></div>
+
+
+
+<span class="n">_SHARD_PARQUET_FILENAME_TEMPLATE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;shard_</span><span class="si">{shard_id}</span><span class="s2">.parquet&quot;</span>
+
+
+<div class="viewcode-block" id="shard_parquet_filename">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.shard_parquet_filename">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">shard_parquet_filename</span><span class="p">(</span><span class="n">shard_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Filename of a per-shard Parquet inside the recompile worker.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        shard_id: Zero-based shard index.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Filename relative to the recompile shard directory.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_SHARD_PARQUET_FILENAME_TEMPLATE</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">shard_id</span><span class="o">=</span><span class="n">shard_id</span><span class="p">)</span></div>
+
+
+
+<span class="n">_CHUNK_PARQUET_FILENAME_TEMPLATE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;chunk_</span><span class="si">{chunk_id:03d}</span><span class="s2">.parquet&quot;</span>
+
+
+<div class="viewcode-block" id="chunk_parquet_filename">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.chunk_parquet_filename">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">chunk_parquet_filename</span><span class="p">(</span><span class="n">chunk_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Filename of a dashboard chunk Parquet (zero-padded chunk id).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        chunk_id: Zero-based chunk index, formatted ``{chunk_id:03d}``.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Filename relative to ``&lt;progress&gt;/chunks/``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_CHUNK_PARQUET_FILENAME_TEMPLATE</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">chunk_id</span><span class="o">=</span><span class="n">chunk_id</span><span class="p">)</span></div>
+
+
+
+<span class="n">_DEFAULT_OUTPUT_DIR_NAME_TEMPLATE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;phenotypic_results_</span><span class="si">{timestamp}</span><span class="s2">&quot;</span>
+<span class="n">_DEFAULT_OUTPUT_TIMESTAMP_FORMAT</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;%Y%m</span><span class="si">%d</span><span class="s2">_%H%M%S&quot;</span>
+
+
+<div class="viewcode-block" id="default_output_dir_name">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.default_output_dir_name">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">default_output_dir_name</span><span class="p">(</span><span class="n">now</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Default name for an auto-generated output directory.</span>
+
+<span class="sd">    Used when the user runs the CLI without ``--output-dir`` and we</span>
+<span class="sd">    need to fabricate a timestamped fallback in the current working</span>
+<span class="sd">    directory.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        now: Override clock for tests; defaults to ``datetime.now()``.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``&quot;phenotypic_results_YYYYMMDD_HHMMSS&quot;``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">when</span> <span class="o">=</span> <span class="n">now</span> <span class="k">if</span> <span class="n">now</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">_DEFAULT_OUTPUT_DIR_NAME_TEMPLATE</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="n">timestamp</span><span class="o">=</span><span class="n">when</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="n">_DEFAULT_OUTPUT_TIMESTAMP_FORMAT</span><span class="p">)</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="n">_CHECKPOINT_LOCK_FILENAME_TEMPLATE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;.</span><span class="si">{checkpoint_type}</span><span class="s2">_lock&quot;</span>
+
+
+<div class="viewcode-block" id="checkpoint_lock_filename">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.checkpoint_lock_filename">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">checkpoint_lock_filename</span><span class="p">(</span><span class="n">checkpoint_type</span><span class="p">:</span> <span class="n">CheckpointType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Filename of the SLURM-sentinel exclusive lock for a checkpoint task.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        checkpoint_type: ``&quot;manifest&quot;`` or ``&quot;finalize&quot;``. Validated by</span>
+<span class="sd">            the :data:`phenotypic.tools_.typing_.CheckpointType` Literal</span>
+<span class="sd">            alias at type-check time.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Filename relative to ``&lt;progress&gt;/`` (hidden file, leading ``.``).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_CHECKPOINT_LOCK_FILENAME_TEMPLATE</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">checkpoint_type</span><span class="o">=</span><span class="n">checkpoint_type</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Path-builder helpers — replace inline ``output / &quot;literal&quot;`` constructions</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="progress_dir">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.progress_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/progress/``.</span>
+
+<span class="sd">    Pure path expression; callers are responsible for ``mkdir`` when they</span>
+<span class="sd">    intend to write into it.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_PROGRESS</span></div>
+
+
+
+<div class="viewcode-block" id="results_dir">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.results_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">results_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/results/``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_RESULTS</span></div>
+
+
+
+<div class="viewcode-block" id="event_log_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.event_log_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">event_log_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/processing_events.log``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">PROCESSING_EVENTS_LOG</span></div>
+
+
+
+<div class="viewcode-block" id="processing_state_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.processing_state_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">processing_state_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/processing_state.json``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">PROCESSING_STATE_JSON</span></div>
+
+
+
+<div class="viewcode-block" id="master_measurements_csv_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.master_measurements_csv_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">master_measurements_csv_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/master_measurements.csv``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">MASTER_MEASUREMENTS_CSV</span></div>
+
+
+
+<div class="viewcode-block" id="master_measurements_parquet_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.master_measurements_parquet_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">master_measurements_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/master_measurements.parquet``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">MASTER_MEASUREMENTS_PARQUET</span></div>
+
+
+
+<div class="viewcode-block" id="measurements_csv_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.measurements_csv_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">measurements_csv_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/measurements.csv`` (post-applied mirror).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">MEASUREMENTS_CSV</span></div>
+
+
+
+<div class="viewcode-block" id="measurements_parquet_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.measurements_parquet_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">measurements_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/measurements.parquet`` (post-applied mirror).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">MEASUREMENTS_PARQUET</span></div>
+
+
+
+<div class="viewcode-block" id="pipeline_json_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.pipeline_json_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pipeline_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/pipeline.json``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">PIPELINE_JSON</span></div>
+
+
+
+<div class="viewcode-block" id="analysis_csv_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.analysis_csv_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">analysis_csv_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/analysis.csv``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">ANALYSIS_CSV</span></div>
+
+
+
+<div class="viewcode-block" id="analysis_parquet_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.analysis_parquet_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">analysis_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/analysis.parquet``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">ANALYSIS_PARQUET</span></div>
+
+
+
+<div class="viewcode-block" id="dashboard_html_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.dashboard_html_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">dashboard_html_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/dashboard.html``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DASHBOARD_HTML</span></div>
+
+
+
+<div class="viewcode-block" id="dataset_results_dir">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.dataset_results_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">dataset_results_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/results/&lt;dataset&gt;/``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">results_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">dataset</span></div>
+
+
+
+<div class="viewcode-block" id="dataset_measurements_dir">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.dataset_measurements_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">dataset_measurements_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/results/&lt;dataset&gt;/measurements/``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">dataset_results_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_MEASUREMENTS</span></div>
+
+
+
+<div class="viewcode-block" id="dataset_hdf_dir">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.dataset_hdf_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">dataset_hdf_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/results/&lt;dataset&gt;/hdf/``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">dataset_results_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_HDF</span></div>
+
+
+
+<div class="viewcode-block" id="dataset_overlays_dir">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.dataset_overlays_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">dataset_overlays_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/results/&lt;dataset&gt;/overlays/``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">dataset_results_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_OVERLAYS</span></div>
+
+
+
+<div class="viewcode-block" id="measurements_by_feature_dir">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.measurements_by_feature_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">measurements_by_feature_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/measurements_by_feature/``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_MEASUREMENTS_BY_FEATURE</span></div>
+
+
+
+<div class="viewcode-block" id="logs_dir">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.logs_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">logs_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/logs/`` (SLURM stdout/stderr + sbatch scripts).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_LOGS</span></div>
+
+
+
+<div class="viewcode-block" id="chunks_dir">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.chunks_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">chunks_dir</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/chunks/`` for the dashboard chunk parquets.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">progress_dir_</span> <span class="o">/</span> <span class="n">DIR_CHUNKS</span></div>
+
+
+
+<div class="viewcode-block" id="recompile_dir">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.recompile_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">recompile_dir</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/recompile/``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">progress_dir_</span> <span class="o">/</span> <span class="n">DIR_RECOMPILE</span></div>
+
+
+
+<div class="viewcode-block" id="recompile_status_dir">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.recompile_status_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">recompile_status_dir</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/recompile/status/``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">recompile_dir</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_RECOMPILE_STATUS</span></div>
+
+
+
+<div class="viewcode-block" id="task_status_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.task_status_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">task_status_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">task_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/recompile/status/task_&lt;idx&gt;.json``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">recompile_status_dir</span><span class="p">(</span><span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">))</span> <span class="o">/</span> <span class="n">task_status_filename</span><span class="p">(</span><span class="n">task_index</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="chunk_parquet_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.chunk_parquet_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">chunk_parquet_path</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">chunk_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/chunks/chunk_&lt;id:03d&gt;.parquet``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">chunks_dir</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">)</span> <span class="o">/</span> <span class="n">chunk_parquet_filename</span><span class="p">(</span><span class="n">chunk_id</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="checkpoint_lock_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.checkpoint_lock_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">checkpoint_lock_path</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">checkpoint_type</span><span class="p">:</span> <span class="n">CheckpointType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/.{checkpoint_type}_lock``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">progress_dir_</span> <span class="o">/</span> <span class="n">checkpoint_lock_filename</span><span class="p">(</span><span class="n">checkpoint_type</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="job_metadata_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.job_metadata_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">job_metadata_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/progress/job_metadata.json``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">JOB_METADATA_JSON</span></div>
+
+
+
+<div class="viewcode-block" id="failures_jsonl_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.failures_jsonl_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">failures_jsonl_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/progress/failures.jsonl``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">FAILURES_JSONL</span></div>
+
+
+
+<div class="viewcode-block" id="manifest_json_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.manifest_json_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">manifest_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/progress/manifest.json`` (dashboard manifest).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">MANIFEST_JSON</span></div>
+
+
+
+<div class="viewcode-block" id="chunk_manifest_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.chunk_manifest_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">chunk_manifest_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/progress/chunk_manifest.json``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">CHUNK_MANIFEST_JSON</span></div>
+
+
+
+<div class="viewcode-block" id="chunk_state_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.chunk_state_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">chunk_state_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/progress/chunk_state.json``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">CHUNK_STATE_JSON</span></div>
+
+
+
+<div class="viewcode-block" id="overlay_manifest_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.overlay_manifest_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">overlay_manifest_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/progress/overlay_manifest.json``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">OVERLAY_MANIFEST_JSON</span></div>
+
+
+
+<div class="viewcode-block" id="analysis_html_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.analysis_html_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">analysis_html_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/analysis.html``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">ANALYSIS_HTML</span></div>
+
+
+
+<div class="viewcode-block" id="processing_report_html_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.processing_report_html_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">processing_report_html_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/processing_report.html``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">PROCESSING_REPORT_HTML</span></div>
+
+
+
+<div class="viewcode-block" id="analysis_full_parquet_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.analysis_full_parquet_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">analysis_full_parquet_path</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/analysis_full.parquet`` (incremental combined frame).</span>
+
+<span class="sd">    Takes a *progress_dir* (not the run output root) since this file lives</span>
+<span class="sd">    inside ``progress/`` — it&#39;s an internal mid-run artifact, not a user-</span>
+<span class="sd">    facing output.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">progress_dir_</span> <span class="o">/</span> <span class="n">ANALYSIS_FULL_PARQUET</span></div>
+
+
+
+<div class="viewcode-block" id="analysis_scatter_json_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.analysis_scatter_json_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">analysis_scatter_json_path</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/analysis_scatter.json``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">progress_dir_</span> <span class="o">/</span> <span class="n">ANALYSIS_SCATTER_JSON</span></div>
+
+
+
+<div class="viewcode-block" id="sentinel_resubmitted_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.sentinel_resubmitted_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">sentinel_resubmitted_path</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/sentinel_resubmitted`` marker file path.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">progress_dir_</span> <span class="o">/</span> <span class="n">SENTINEL_RESUBMITTED_MARKER</span></div>
+
+
+
+<div class="viewcode-block" id="chunk_lock_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.chunk_lock_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">chunk_lock_path</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/.chunk_lock``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">progress_dir_</span> <span class="o">/</span> <span class="n">CHUNK_LOCK</span></div>
+
+
+
+<div class="viewcode-block" id="slurm_scripts_dir">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.slurm_scripts_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">slurm_scripts_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/slurm_scripts/``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_SLURM_SCRIPTS</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Loader / reader helpers (consolidate 3 duplicated read sites each)</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="read_run_manifest">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.read_run_manifest">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">read_run_manifest</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read ``&lt;output&gt;/progress/manifest.json`` if present.</span>
+
+<span class="sd">    Replaces 4 inline ``json.loads(manifest_path.read_text())`` blocks.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: Run output directory containing ``progress/``.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Parsed manifest dict, or :data:`None` when the file is missing</span>
+<span class="sd">        or unparseable (callers can decide whether absence is fatal).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">manifest_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Failed to parse </span><span class="si">%s</span><span class="s2">; treating as missing&quot;</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="load_master_measurements">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.load_master_measurements">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_master_measurements</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="s2">&quot;pl.DataFrame&quot;</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read ``&lt;output&gt;/master_measurements.csv`` into a polars DataFrame.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: Run output directory.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        DataFrame, or :data:`None` when the file is missing.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>  <span class="c1"># type: ignore[import-not-found]  # lazy</span>
+
+    <span class="n">path</span> <span class="o">=</span> <span class="n">master_measurements_csv_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">pl</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">path</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="resolve_execution_mode">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.resolve_execution_mode">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_execution_mode</span><span class="p">(</span><span class="n">job_meta</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">ExecutionMode</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract :data:`ExecutionMode` from job metadata, defaulting to ``&quot;local&quot;``.</span>
+
+<span class="sd">    Replaces a 5-site copy-paste of the</span>
+<span class="sd">    ``job_meta.get(&quot;execution_mode&quot;, &quot;local&quot;) if job_meta else &quot;local&quot;``</span>
+<span class="sd">    pattern.</span>
+
+<span class="sd">    **Silent coercion:** any value that isn&#39;t exactly ``&quot;slurm&quot;`` collapses</span>
+<span class="sd">    to ``&quot;local&quot;`` — including ``None`` (no metadata file), ``{}`` (no</span>
+<span class="sd">    key), garbage strings (e.g. ``&quot;validate&quot;``, ``&quot;&quot;``), and the literal</span>
+<span class="sd">    ``None`` value. The function never raises. Callers who need to detect</span>
+<span class="sd">    an unknown mode and warn / refuse should inspect ``job_meta`` directly</span>
+<span class="sd">    before calling this helper.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        job_meta: Parsed ``progress/job_metadata.json`` content, or</span>
+<span class="sd">            :data:`None` when the file is absent.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``&quot;local&quot;`` or ``&quot;slurm&quot;``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">job_meta</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;local&quot;</span>
+    <span class="n">raw</span> <span class="o">=</span> <span class="n">job_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">JobMetadataKey</span><span class="o">.</span><span class="n">EXECUTION_MODE</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">raw</span> <span class="o">==</span> <span class="s2">&quot;slurm&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;slurm&quot;</span>
+    <span class="k">return</span> <span class="s2">&quot;local&quot;</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Cross-file JSON contract keys</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="JobMetadataKey">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.JobMetadataKey">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">JobMetadataKey</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Keys inside ``&lt;output&gt;/progress/job_metadata.json``.</span>
+
+<span class="sd">    Writers (CLI execution strategies) and readers (recompile worker,</span>
+<span class="sd">    sentinel, checkpoint handler, GUI runs registry) must reference</span>
+<span class="sd">    these constants — never the bare string. Renaming a key here</span>
+<span class="sd">    should fail fast at every site.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">EXECUTION_MODE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;execution_mode&quot;</span>
+    <span class="n">START_TIME</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;start_time&quot;</span>
+    <span class="n">INPUT_PATH</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;input_path&quot;</span>
+    <span class="n">METADATA_CSV</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;metadata_csv&quot;</span>
+    <span class="n">SLURM_JOB_IDS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;slurm_job_ids&quot;</span>
+    <span class="n">CHUNK_JOB_IDS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;chunk_job_ids&quot;</span>
+    <span class="n">CHUNK_SCRIPTS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;chunk_scripts&quot;</span>
+    <span class="n">DATASETS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;datasets&quot;</span>
+    <span class="n">INCLUDE_DATASET_COLUMN</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;include_dataset_column&quot;</span>
+    <span class="n">IMAGE_TASK_MAPPING</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;image_task_mapping&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="DashboardManifestKey">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.DashboardManifestKey">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DashboardManifestKey</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Keys inside ``&lt;output&gt;/progress/manifest.json`` (dashboard manifest).</span>
+
+<span class="sd">    The manifest is built by :func:`_cli._dashboard._manifest_builder.build_manifest`</span>
+<span class="sd">    and consumed by both the dashboard JS and the GUI run-console&#39;s runs</span>
+<span class="sd">    registry (``_runs_registry.py``). Writers and readers must reference</span>
+<span class="sd">    these constants rather than spelling the bare string.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">VERSION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;version&quot;</span>
+    <span class="n">LAST_UPDATED</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;last_updated&quot;</span>
+    <span class="n">EXECUTION_MODE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;execution_mode&quot;</span>
+    <span class="n">TOTAL_IMAGES</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;total_images&quot;</span>
+    <span class="n">COMPLETED</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;completed&quot;</span>
+    <span class="n">FAILED</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;failed&quot;</span>
+    <span class="n">STARTED</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;started&quot;</span>
+    <span class="n">PENDING</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pending&quot;</span>
+    <span class="n">SUCCESS_RATE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;success_rate&quot;</span>
+    <span class="n">IS_COMPLETE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;is_complete&quot;</span>
+    <span class="n">START_TIME</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;start_time&quot;</span>
+    <span class="n">INPUT_PATH</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;input_path&quot;</span>
+    <span class="n">DATASETS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;datasets&quot;</span>
+    <span class="n">FAILURE_CATEGORIES</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;failure_categories&quot;</span>
+    <span class="n">ANALYSIS_DATA_VERSION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;analysis_data_version&quot;</span>
+    <span class="n">SLURM_INFO</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;slurm_info&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="DashboardManifestSlurmInfoKey">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.DashboardManifestSlurmInfoKey">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DashboardManifestSlurmInfoKey</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Keys inside the ``slurm_info`` sub-dict of the dashboard manifest.</span>
+
+<span class="sd">    Distinct from :class:`JobMetadataKey`, even when string values overlap —</span>
+<span class="sd">    these describe the *manifest* contract, not the job-metadata sidecar.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">CHUNK_SCRIPTS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;chunk_scripts&quot;</span>
+    <span class="n">TOTAL_CHUNKS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;total_chunks&quot;</span>
+    <span class="n">CHUNK_JOB_IDS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;chunk_job_ids&quot;</span>
+    <span class="n">ACTIVE_CHUNKS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;active_chunks&quot;</span>
+    <span class="n">COMPLETED_CHUNKS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;completed_chunks&quot;</span>
+    <span class="n">PENDING_CHUNKS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pending_chunks&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="ChunkStateKey">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.ChunkStateKey">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ChunkStateKey</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Keys inside ``&lt;output&gt;/progress/chunk_state.json``.&quot;&quot;&quot;</span>
+
+    <span class="n">CHUNKED_FILES</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;chunked_files&quot;</span>
+    <span class="n">NEXT_CHUNK_ID</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;next_chunk_id&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="ProcessingStateKey">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.ProcessingStateKey">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProcessingStateKey</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Keys inside ``&lt;output&gt;/processing_state.json`` (resume-state file).</span>
+
+<span class="sd">    Distinct from :class:`JobMetadataKey` even where string values overlap</span>
+<span class="sd">    (e.g. ``EXECUTION_MODE``, ``INPUT_PATH``) — these describe the</span>
+<span class="sd">    `processing_state.json` contract, not the SLURM job metadata sidecar.</span>
+<span class="sd">    Some values intentionally match across the two contracts so that a</span>
+<span class="sd">    single field (like ``execution_mode``) can be migrated atomically;</span>
+<span class="sd">    the ``test_processing_state_keys_match_job_metadata_keys`` regression</span>
+<span class="sd">    test asserts the overlap.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">VERSION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;version&quot;</span>
+    <span class="n">PIPELINE_PATH</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pipeline_path&quot;</span>
+    <span class="n">INPUT_PATH</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;input_path&quot;</span>
+    <span class="n">OUTPUT_DIR</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;output_dir&quot;</span>
+    <span class="n">TIMESTAMP</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;timestamp&quot;</span>
+    <span class="n">EXECUTION_MODE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;execution_mode&quot;</span>
+    <span class="n">LAST_UPDATED</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;last_updated&quot;</span>
+    <span class="n">DATASETS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;datasets&quot;</span>
+    <span class="n">CONFIG</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;config&quot;</span>
+    <span class="c1"># Per-dataset state-dict sub-keys</span>
+    <span class="n">COMPLETED</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;completed&quot;</span>
+    <span class="n">FAILED</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;failed&quot;</span>
+    <span class="n">STARTED</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;started&quot;</span>
+    <span class="n">ERRORS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;errors&quot;</span>
+    <span class="n">INITIAL_IMAGES</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;initial_images&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="ChunkManifestKey">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.ChunkManifestKey">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ChunkManifestKey</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Keys inside ``&lt;output&gt;/progress/chunk_manifest.json``.&quot;&quot;&quot;</span>
+
+    <span class="n">CHUNKS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;chunks&quot;</span>
+    <span class="n">ROWS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;rows&quot;</span>
+    <span class="n">DATASETS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;datasets&quot;</span>
+    <span class="n">TOTAL_ROWS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;total_rows&quot;</span>
+    <span class="n">NAME</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;name&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="HdfAttr">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.HdfAttr">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">HdfAttr</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Top-level attribute keys on per-image HDF5 files.&quot;&quot;&quot;</span>
+
+    <span class="n">PHENOTYPIC_CLASS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;phenotypic_class&quot;</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Module-path constants for importlib dispatch</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="ModulePath">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.ModulePath">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ModulePath</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Importable module paths used in dynamic ``importlib.import_module`` dispatch.</span>
+
+<span class="sd">    Spelled out here so a renamed sub-package fails at type-check time</span>
+<span class="sd">    (consumers reference ``ModulePath.POST`` — a typo there is caught</span>
+<span class="sd">    by mypy) rather than silently at runtime.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">POST</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;phenotypic.post&quot;</span>
+    <span class="n">ANALYSIS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;phenotypic.analysis&quot;</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Environment variable names</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="EnvVar">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.EnvVar">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">EnvVar</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Environment variable names read or set by the CLI.</span>
+
+<span class="sd">    SLURM injects these into batch scripts; the CLI reads them to</span>
+<span class="sd">    discover its execution context (job id, array task id, …) and</span>
+<span class="sd">    to find node-local scratch storage.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">SCRATCH</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;SCRATCH&quot;</span>
+    <span class="n">SLURM_JOB_ID</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;SLURM_JOB_ID&quot;</span>
+    <span class="n">SLURM_ARRAY_JOB_ID</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;SLURM_ARRAY_JOB_ID&quot;</span>
+    <span class="n">SLURM_ARRAY_TASK_ID</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;SLURM_ARRAY_TASK_ID&quot;</span>
+    <span class="n">SLURM_ARRAY_TASK_COUNT</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;SLURM_ARRAY_TASK_COUNT&quot;</span>
+    <span class="n">SLURM_CPUS_PER_TASK</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;SLURM_CPUS_PER_TASK&quot;</span>
+    <span class="n">SLURM_MEM_PER_NODE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;SLURM_MEM_PER_NODE&quot;</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># HDF image-class reader (eliminates 3-site duplication)</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="load_image_from_hdf">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.html#phenotypic.tools_.load_image_from_hdf">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_image_from_hdf</span><span class="p">(</span>
+    <span class="n">hdf_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">fallback</span><span class="p">:</span> <span class="n">ImageTypeName</span> <span class="o">=</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;_Image | _GridImage&quot;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Open an HDF5, read its ``phenotypic_class`` attr, dispatch to the right Image class.</span>
+
+<span class="sd">    Replaces the 3 ad-hoc ``h5py.File(...) → fh.attrs.get(&#39;phenotypic_class&#39;, &#39;Image&#39;)</span>
+<span class="sd">    → GridImage if cls_attr == &#39;GridImage&#39; else Image`` patterns in</span>
+<span class="sd">    :mod:`_cli_recompile_worker`, :mod:`_cli_execution_strategies`, and</span>
+<span class="sd">    :mod:`phenotypicCLI`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        hdf_path: Path to a per-image HDF5 file.</span>
+<span class="sd">        fallback: Image class name to use when the HDF lacks the</span>
+<span class="sd">            ``phenotypic_class`` attribute (legacy files). Type-checked</span>
+<span class="sd">            (statically) against :data:`ImageTypeName` — there is no</span>
+<span class="sd">            runtime validation; the only effect of an unrecognized</span>
+<span class="sd">            string is that the dispatch falls through to :class:`Image`.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        An :class:`Image` or :class:`GridImage` instance loaded from the HDF.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">h5py</span>  <span class="c1"># type: ignore[import-untyped]</span>
+
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span><span class="p">,</span> <span class="n">Image</span>  <span class="c1"># lazy: avoids circular import at module load</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">IMAGE_TYPES</span>
+
+    <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">hdf_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+        <span class="n">cls_attr</span> <span class="o">=</span> <span class="n">fh</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">HdfAttr</span><span class="o">.</span><span class="n">PHENOTYPIC_CLASS</span><span class="p">,</span> <span class="n">fallback</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cls_attr</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
+        <span class="n">cls_attr</span> <span class="o">=</span> <span class="n">cls_attr</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;replace&quot;</span><span class="p">)</span>
+    <span class="n">image_cls</span> <span class="o">=</span> <span class="n">GridImage</span> <span class="k">if</span> <span class="n">cls_attr</span> <span class="o">==</span> <span class="n">IMAGE_TYPES</span><span class="o">.</span><span class="n">GRID</span><span class="o">.</span><span class="n">value</span> <span class="k">else</span> <span class="n">Image</span>
+    <span class="k">return</span> <span class="n">image_cls</span><span class="o">.</span><span class="n">load_hdf5</span><span class="p">(</span><span class="n">hdf_path</span><span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

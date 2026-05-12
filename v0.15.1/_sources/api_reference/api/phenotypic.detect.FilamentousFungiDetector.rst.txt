@@ -1,0 +1,37 @@
+phenotypic.detect.FilamentousFungiDetector
+==========================================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: FilamentousFungiDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FilamentousFungiDetector.__init__
+      ~FilamentousFungiDetector.apply
+      ~FilamentousFungiDetector.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FilamentousFungiDetector.beta
+      ~FilamentousFungiDetector.delta
+      ~FilamentousFungiDetector.gamma
+      ~FilamentousFungiDetector.gauss_n_iter
+      ~FilamentousFungiDetector.pct_n_orient
+   
+   

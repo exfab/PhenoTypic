@@ -1,0 +1,27 @@
+phenotypic.detect.UserThreshold
+===============================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: UserThreshold
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~UserThreshold.__init__
+      ~UserThreshold.apply
+      ~UserThreshold.widget
+   
+   
+
+   
+   
+   

@@ -1,0 +1,896 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.abc_._measurement_info &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=fb952d1c"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/abc_/_measurement_info';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.15.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.15.1/_modules/phenotypic/abc_/_measurement_info.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.15.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.abc_._measurement_info</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.abc_._measurement_info</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Base class for creating standardized measurement information enumerations.</span>
+
+<span class="sd">This module provides infrastructure for defining measurement types with consistent naming</span>
+<span class="sd">conventions, descriptive metadata, and automatic documentation generation.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">textwrap</span><span class="w"> </span><span class="kn">import</span> <span class="n">dedent</span>
+
+
+<div class="viewcode-block" id="MeasurementInfo">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MeasurementInfo</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for creating standardized measurement information enumerations.</span>
+
+<span class="sd">    This class provides a structured way to define measurement types with consistent naming</span>
+<span class="sd">    conventions, descriptive metadata, and automatic documentation generation. By inheriting</span>
+<span class="sd">    from both str and Enum, MeasurementInfo enables measurement definitions to behave as</span>
+<span class="sd">    enumeration members while maintaining string representation. The class automatically</span>
+<span class="sd">    prefixes measurement labels with a category name, ensuring consistent naming across code</span>
+<span class="sd">    and outputs.</span>
+
+<span class="sd">    **Key Purposes:**</span>
+
+<span class="sd">    - Standardize measurement naming conventions (category_label format) to reduce errors</span>
+<span class="sd">    - Centralize measurement definitions with labels and descriptions in one place</span>
+<span class="sd">    - Automatically generate RST documentation tables from measurement definitions</span>
+<span class="sd">    - Provide easy access to headers, labels, and category information for analysis workflows</span>
+<span class="sd">    - Enable type-safe column names in measurement DataFrames</span>
+
+<span class="sd">    **Usage with MeasureFeatures Subclasses:**</span>
+
+<span class="sd">    MeasurementInfo enums are used internally by measurement operations ([MeasureSize](src/phenotypic/measure/_measure_size.py),</span>
+<span class="sd">    [MeasureShape](src/phenotypic/measure/_measure_shape.py), [MeasureColor](src/phenotypic/measure/_measure_color.py), etc.)</span>
+<span class="sd">    to define column names in output DataFrames. Each measurement class defines its own enum</span>
+<span class="sd">    and uses the enum values as DataFrame column headers.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        label (str): The short label for the measurement (without category prefix). Set</span>
+<span class="sd">            automatically by __new__ from the first element of the enum value tuple.</span>
+<span class="sd">        desc (str): The description of what the measurement represents. Set automatically</span>
+<span class="sd">            by __new__ from the second element of the enum value tuple. Defaults to empty</span>
+<span class="sd">            string if not provided.</span>
+<span class="sd">        pair (tuple[str, str]): A tuple of (label, description) for convenient access to</span>
+<span class="sd">            both pieces of information together.</span>
+<span class="sd">        CATEGORY (property): The category name returned by the category() classmethod.</span>
+<span class="sd">            Provides instance-level access to the measurement category.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Define a custom measurement enumeration:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic.abc_ import MeasurementInfo</span>
+<span class="sd">        &gt;&gt;&gt; class SHAPE(MeasurementInfo):</span>
+<span class="sd">        ...     @classmethod</span>
+<span class="sd">        ...     def category(cls):</span>
+<span class="sd">        ...         return &#39;Shape&#39;</span>
+<span class="sd">        ...</span>
+<span class="sd">        ...     AREA = (&#39;Area&#39;, &#39;Total number of pixels in the detected object&#39;)</span>
+<span class="sd">        ...     PERIMETER = (&#39;Perimeter&#39;, &#39;Total length of object boundary in pixels&#39;)</span>
+
+<span class="sd">        Access measurement information and generate headers:</span>
+
+<span class="sd">        &gt;&gt;&gt; SHAPE.AREA</span>
+<span class="sd">        &lt;Shape_Area: &#39;Shape_Area&#39;&gt;</span>
+<span class="sd">        &gt;&gt;&gt; str(SHAPE.AREA)</span>
+<span class="sd">        &#39;Shape_Area&#39;</span>
+<span class="sd">        &gt;&gt;&gt; SHAPE.AREA.label</span>
+<span class="sd">        &#39;Area&#39;</span>
+<span class="sd">        &gt;&gt;&gt; SHAPE.AREA.desc</span>
+<span class="sd">        &#39;Total number of pixels in the detected object&#39;</span>
+<span class="sd">        &gt;&gt;&gt; SHAPE.AREA.CATEGORY</span>
+<span class="sd">        &#39;Shape&#39;</span>
+<span class="sd">        &gt;&gt;&gt; SHAPE.get_labels()</span>
+<span class="sd">        [&#39;Area&#39;, &#39;Perimeter&#39;]</span>
+<span class="sd">        &gt;&gt;&gt; SHAPE.get_headers()</span>
+<span class="sd">        [&#39;Shape_Area&#39;, &#39;Shape_Perimeter&#39;]</span>
+
+<span class="sd">        Use in DataFrame column naming (as MeasureFeatures do internally):</span>
+
+<span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
+<span class="sd">        &gt;&gt;&gt; measurements = pd.DataFrame({</span>
+<span class="sd">        ...     str(SHAPE.AREA): [1024, 956, 1101],</span>
+<span class="sd">        ...     str(SHAPE.PERIMETER): [128, 120, 135]</span>
+<span class="sd">        ... })</span>
+<span class="sd">        &gt;&gt;&gt; measurements.columns.tolist()</span>
+<span class="sd">        [&#39;Shape_Area&#39;, &#39;Shape_Perimeter&#39;]</span>
+<span class="sd">        &gt;&gt;&gt; measurements[str(SHAPE.AREA)]</span>
+<span class="sd">        0    1024</span>
+<span class="sd">        1     956</span>
+<span class="sd">        2    1101</span>
+
+<span class="sd">        Generate and append RST documentation:</span>
+
+<span class="sd">        &gt;&gt;&gt; table = SHAPE.rst_table()</span>
+<span class="sd">        &gt;&gt;&gt; class MeasureShape:</span>
+<span class="sd">        ...     &#39;&#39;&#39;Measures object morphology.&#39;&#39;&#39;</span>
+<span class="sd">        ...     pass</span>
+<span class="sd">        &gt;&gt;&gt; MeasureShape.__doc__ = SHAPE.append_rst_to_doc(MeasureShape)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="MeasurementInfo.category">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.category">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the category name for this measurement enumeration.</span>
+
+<span class="sd">        Subclasses must implement this method to provide a category name that will be used</span>
+<span class="sd">        to prefix all measurement labels. This ensures consistent naming conventions across</span>
+<span class="sd">        the codebase.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            str: The category name (e.g., &#39;Shape&#39;, &#39;Color&#39;, &#39;Texture&#39;). This string is</span>
+<span class="sd">                prepended to each measurement label with an underscore separator to form</span>
+<span class="sd">                the full header name (e.g., &#39;Shape_Area&#39;).</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            NotImplementedError: If not implemented by a subclass.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">CATEGORY</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the category name for this measurement instance.</span>
+
+<span class="sd">        Provides instance-level access to the category name defined by the category()</span>
+<span class="sd">        classmethod. This is useful when you have a measurement instance and need to know</span>
+<span class="sd">        which category it belongs to without explicitly referencing the class.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            str: The category name from the enum class&#39;s category() method.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">category</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">desc</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a new measurement enumeration member with prefixed name.</span>
+
+<span class="sd">        Converts the input label and description into an enumeration member whose string</span>
+<span class="sd">        value is automatically prefixed with the category name. The label and description</span>
+<span class="sd">        are stored as instance attributes for convenient access.</span>
+
+<span class="sd">        This method is called automatically by Python&#39;s Enum machinery when defining enum</span>
+<span class="sd">        members. The enum member&#39;s value becomes the full prefixed name (e.g.,</span>
+<span class="sd">        &#39;Shape_Area&#39;), while the label and description are stored separately as instance</span>
+<span class="sd">        attributes.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            label (str): The short label for the measurement without category prefix</span>
+<span class="sd">                (e.g., &#39;Area&#39;). This will be combined with the category name to create</span>
+<span class="sd">                the full enumeration value.</span>
+<span class="sd">            desc (str, optional): The description of what the measurement represents. If</span>
+<span class="sd">                not provided, defaults to an empty string. This should briefly explain</span>
+<span class="sd">                what the measurement measures.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            MeasurementInfo: An enumeration member that behaves as a string with the value</span>
+<span class="sd">                &#39;{category}_{label}&#39; (e.g., &#39;Shape_Area&#39;). The instance also has label,</span>
+<span class="sd">                desc, and pair attributes set.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cat</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">category</span><span class="p">()</span>  <span class="c1"># use classmethod here</span>
+        <span class="n">full</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cat</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="nb">str</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">full</span><span class="p">)</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">_value_</span> <span class="o">=</span> <span class="n">full</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="n">label</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">desc</span> <span class="o">=</span> <span class="n">desc</span> <span class="k">if</span> <span class="n">desc</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">pair</span> <span class="o">=</span> <span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">obj</span><span class="o">.</span><span class="n">desc</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">obj</span>
+
+<div class="viewcode-block" id="MeasurementInfo.__str__">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.__str__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the string representation of this measurement as the prefixed name.</span>
+
+<span class="sd">        Returns the full enumeration value, which is the category-prefixed label</span>
+<span class="sd">        (e.g., &#39;Shape_Area&#39;). This is used when the measurement is converted to a string</span>
+<span class="sd">        or used in string formatting.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            str: The full prefixed name of the measurement (e.g., &#39;{category}_{label}&#39;).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_value_</span></div>
+
+
+<div class="viewcode-block" id="MeasurementInfo.get_labels">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.get_labels">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_labels</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get all measurement labels without category prefix.</span>
+
+<span class="sd">        Returns a list of the short labels (without category prefix) for all measurements</span>
+<span class="sd">        defined in this enumeration. These are the first element of each enum value tuple.</span>
+<span class="sd">        Useful for creating human-readable lists or column names when the category context</span>
+<span class="sd">        is already established.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            list[str]: List of measurement labels in enumeration order (e.g.,</span>
+<span class="sd">                [&#39;Area&#39;, &#39;Perimeter&#39;]). Does not include the category prefix; to get</span>
+<span class="sd">                prefixed names, use get_headers().</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">label</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">cls</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="MeasurementInfo.get_headers">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.get_headers">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get all measurement headers with category prefix.</span>
+
+<span class="sd">        Returns a list of the full enumeration values (with category prefix) for all</span>
+<span class="sd">        measurements defined in this enumeration. These strings are suitable for use as</span>
+<span class="sd">        DataFrame column names, dictionary keys, or in any context where the full</span>
+<span class="sd">        categorized name is needed.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            list[str]: List of prefixed measurement names in enumeration order</span>
+<span class="sd">                (e.g., [&#39;Shape_Area&#39;, &#39;Shape_Perimeter&#39;]). Each header includes the</span>
+<span class="sd">                category prefix separated by an underscore.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">cls</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="MeasurementInfo.rst_table">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.rst_table">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">rst_table</span><span class="p">(</span>
+            <span class="bp">cls</span><span class="p">,</span>
+            <span class="o">*</span><span class="p">,</span>
+            <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">header</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;Name&quot;</span><span class="p">,</span> <span class="s2">&quot;Description&quot;</span><span class="p">),</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate an RST (reStructuredText) table documenting the measurements.</span>
+
+<span class="sd">        Creates a formatted list-table in reStructuredText format that documents all</span>
+<span class="sd">        measurements in this enumeration, including their labels and descriptions. This</span>
+<span class="sd">        is useful for generating API documentation, parameter guides, or measurement</span>
+<span class="sd">        reference tables that will be rendered in Sphinx documentation.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            title (str, optional): The title for the RST table. Defaults to the class name</span>
+<span class="sd">                (e.g., &#39;SHAPE&#39;). The title is formatted as &quot;Category: **{title}**&quot; in the</span>
+<span class="sd">                output.</span>
+<span class="sd">            header (tuple[str, str], optional): A tuple of (left_column, right_column)</span>
+<span class="sd">                header names. Defaults to (&quot;Name&quot;, &quot;Description&quot;). The left column typically</span>
+<span class="sd">                contains measurement labels and the right column contains their descriptions.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            str: A formatted reStructuredText list-table string. The output includes:</span>
+<span class="sd">                - RST list-table directive with the title</span>
+<span class="sd">                - Column headers (Name and Description by default)</span>
+<span class="sd">                - One row per measurement with label and description</span>
+<span class="sd">                The returned string is ready to be embedded in Sphinx documentation files</span>
+<span class="sd">                or appended to docstrings.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">title</span> <span class="o">=</span> <span class="n">title</span> <span class="ow">or</span> <span class="bp">cls</span><span class="o">.</span><span class="n">category</span><span class="p">()</span>
+        <span class="n">left</span><span class="p">,</span> <span class="n">right</span> <span class="o">=</span> <span class="n">header</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="sa">f</span><span class="s2">&quot;.. list-table:: Category: **</span><span class="si">{</span><span class="n">title</span><span class="si">}</span><span class="s2">**&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;   :header-rows: 1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;   * - </span><span class="si">{</span><span class="n">left</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;     - </span><span class="si">{</span><span class="n">right</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">cls</span><span class="p">:</span>
+            <span class="n">lines</span> <span class="o">+=</span> <span class="p">[</span>
+                <span class="sa">f</span><span class="s2">&quot;   * - ``</span><span class="si">{</span><span class="n">m</span><span class="o">.</span><span class="n">label</span><span class="si">}</span><span class="s2">``&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;     - </span><span class="si">{</span><span class="n">m</span><span class="o">.</span><span class="n">desc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">]</span>
+        <span class="k">return</span> <span class="n">dedent</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="MeasurementInfo.append_rst_to_doc">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.append_rst_to_doc">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">append_rst_to_doc</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">module</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Append the measurement documentation table to a module or class docstring.</span>
+
+<span class="sd">        Generates the RST documentation table for this measurement enumeration and appends</span>
+<span class="sd">        it to the provided module&#39;s or class&#39;s existing docstring. This is useful for</span>
+<span class="sd">        automatically documenting which measurements a class produces or uses.</span>
+
+<span class="sd">        If the input is a string, it is treated as the docstring itself. If it is an object</span>
+<span class="sd">        (class, function, module), its __doc__ attribute is used.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            module (str | object): Either a docstring string or an object (class, function,</span>
+<span class="sd">                module) whose __doc__ attribute contains the docstring. The existing</span>
+<span class="sd">                docstring is preserved, and the measurement table is appended with a blank</span>
+<span class="sd">                line separator.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            str: The original docstring (or string) with the RST measurement table appended,</span>
+<span class="sd">                separated by two blank lines. The returned string is ready to be assigned back</span>
+<span class="sd">                to the target&#39;s __doc__ attribute.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">module</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="bp">cls</span><span class="o">.</span><span class="n">rst_table</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">doc</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="vm">__doc__</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span>
+            <span class="k">return</span> <span class="n">doc</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="bp">cls</span><span class="o">.</span><span class="n">rst_table</span><span class="p">()</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

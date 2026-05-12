@@ -1,0 +1,1094 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.gui.sweep._sweep_data_model &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=fb952d1c"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/gui/sweep/_sweep_data_model';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.15.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.15.1/_modules/phenotypic/gui/sweep/_sweep_data_model.html" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.15.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../../gui.html" class="nav-link">phenotypic.gui</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../sweep.html" class="nav-link">phenotypic.gui.sweep</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.gui.sweep._sweep_data_model</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.gui.sweep._sweep_data_model</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Data model for sweep output browsing.</span>
+
+<span class="sd">Scans a sweep output directory, parses the manifest, and indexes all result</span>
+<span class="sd">files into lookup structures for the napari viewer widgets.  This module has</span>
+<span class="sd">**no** Qt or napari dependencies.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">get_args</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._config</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChannelName</span><span class="p">,</span> <span class="n">DIR_RESULTS</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="n">_HDF5_EXTENSIONS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;.h5&quot;</span><span class="p">,</span> <span class="s2">&quot;.hdf5&quot;</span><span class="p">}</span>
+
+<span class="n">_CHANNELS</span> <span class="o">=</span> <span class="n">get_args</span><span class="p">(</span><span class="n">ChannelName</span><span class="p">)</span>  <span class="c1"># (&quot;rgb&quot;, &quot;gray&quot;, &quot;detect_mat&quot;, &quot;objmap&quot;)</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Dataclasses</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="SweepHDF5File">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.gui.sweep.html#phenotypic.gui.sweep.SweepHDF5File">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SweepHDF5File</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A single HDF5 result file in the sweep output.&quot;&quot;&quot;</span>
+
+    <span class="n">path</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">image_stem</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">pipeline_name</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+
+<div class="viewcode-block" id="IntermediateStep">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.gui.sweep.html#phenotypic.gui.sweep.IntermediateStep">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">IntermediateStep</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;An intermediate HDF5 file saved after a single pipeline operation.&quot;&quot;&quot;</span>
+
+    <span class="n">index</span><span class="p">:</span> <span class="nb">int</span>              <span class="c1"># 0, 1, 2, ...</span>
+    <span class="n">operation_name</span><span class="p">:</span> <span class="nb">str</span>     <span class="c1"># &quot;GaussianBlur&quot;</span>
+    <span class="n">h5_path</span><span class="p">:</span> <span class="n">Path</span>           <span class="c1"># absolute path to HDF5</span>
+    <span class="n">layers</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>    <span class="c1"># which datasets this file contains</span>
+    <span class="n">is_base</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>           <span class="c1"># whether this is a base snapshot</span></div>
+
+
+
+<div class="viewcode-block" id="ResolvedLayerSources">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.gui.sweep.html#phenotypic.gui.sweep.ResolvedLayerSources">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ResolvedLayerSources</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;For a given step, maps each layer name to its source HDF5 path.&quot;&quot;&quot;</span>
+
+    <span class="n">rgb</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">gray</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">detect_mat</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">objmap</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="build_layer_resolution_index">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.gui.sweep.html#phenotypic.gui.sweep.build_layer_resolution_index">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">build_layer_resolution_index</span><span class="p">(</span>
+    <span class="n">steps</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">IntermediateStep</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">ResolvedLayerSources</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a mapping from step index to resolved layer sources.</span>
+
+<span class="sd">    For each step, determines which HDF5 file contains the most recent</span>
+<span class="sd">    version of each layer by scanning forward through the step list.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        steps: Sorted list of intermediate steps.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Dict mapping step index to :class:`ResolvedLayerSources`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">steps</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="c1"># Running &quot;latest source&quot; for each layer</span>
+    <span class="n">latest</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_CHANNELS</span><span class="p">}</span>
+    <span class="n">index</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">ResolvedLayerSources</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">layer_name</span> <span class="ow">in</span> <span class="n">step</span><span class="o">.</span><span class="n">layers</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">layer_name</span> <span class="ow">in</span> <span class="n">latest</span><span class="p">:</span>
+                <span class="n">latest</span><span class="p">[</span><span class="n">layer_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">step</span><span class="o">.</span><span class="n">h5_path</span>
+        <span class="n">index</span><span class="p">[</span><span class="n">step</span><span class="o">.</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">ResolvedLayerSources</span><span class="p">(</span><span class="o">**</span><span class="n">latest</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">index</span></div>
+
+
+
+<div class="viewcode-block" id="PipelineConfig">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.gui.sweep.html#phenotypic.gui.sweep.PipelineConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PipelineConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parsed configuration for one pipeline from the sweep manifest.&quot;&quot;&quot;</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">config_group</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">operations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span>
+    <span class="n">measurements</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span>
+    <span class="n">raw_json</span><span class="p">:</span> <span class="nb">dict</span></div>
+
+
+
+<div class="viewcode-block" id="SweepOutputData">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.gui.sweep.html#phenotypic.gui.sweep.SweepOutputData">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SweepOutputData</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fully indexed sweep output ready for the viewer widgets.&quot;&quot;&quot;</span>
+
+    <span class="n">root_dir</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">manifest_raw</span><span class="p">:</span> <span class="nb">dict</span>
+    <span class="n">pipeline_configs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">PipelineConfig</span><span class="p">]</span>
+    <span class="n">hdf5_files</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">SweepHDF5File</span><span class="p">]</span>
+    <span class="n">pipeline_names</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">image_stems</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="c1"># [pipeline][stem] -&gt; SweepHDF5File</span>
+    <span class="n">by_pipeline</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">SweepHDF5File</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="c1"># [stem][pipeline] -&gt; SweepHDF5File</span>
+    <span class="n">by_image</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">SweepHDF5File</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="c1"># [stem][pipeline] -&gt; sorted list of IntermediateStep</span>
+    <span class="n">intermediates</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">IntermediateStep</span><span class="p">]]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Scanner</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="SweepOutputScanner">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.gui.sweep.html#phenotypic.gui.sweep.SweepOutputScanner">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SweepOutputScanner</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Scan and index a sweep output directory.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SweepOutputScanner.scan">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.gui.sweep.html#phenotypic.gui.sweep.SweepOutputScanner.scan">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">scan</span><span class="p">(</span><span class="n">sweep_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SweepOutputData</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Scan a sweep output directory and build lookup indexes.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sweep_dir: Root of the sweep output (contains</span>
+<span class="sd">                ``sweep_manifest.json`` and ``results/``).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Fully populated :class:`SweepOutputData`.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            FileNotFoundError: If *sweep_dir* or its manifest is missing.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sweep_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">sweep_dir</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+        <span class="n">manifest_path</span> <span class="o">=</span> <span class="n">sweep_dir</span> <span class="o">/</span> <span class="s2">&quot;sweep_manifest.json&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">manifest_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;No sweep_manifest.json found in </span><span class="si">{</span><span class="n">sweep_dir</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">manifest_raw</span><span class="p">,</span> <span class="n">pipeline_configs</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">SweepOutputScanner</span><span class="o">.</span><span class="n">_parse_manifest</span><span class="p">(</span><span class="n">manifest_path</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="n">results_dir</span> <span class="o">=</span> <span class="n">sweep_dir</span> <span class="o">/</span> <span class="n">DIR_RESULTS</span>
+        <span class="k">if</span> <span class="n">results_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+            <span class="n">hdf5_files</span> <span class="o">=</span> <span class="n">SweepOutputScanner</span><span class="o">.</span><span class="n">_scan_results</span><span class="p">(</span><span class="n">results_dir</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;Results directory not found: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">results_dir</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">hdf5_files</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Derive sorted unique lists</span>
+        <span class="n">pipeline_names</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
+            <span class="p">{</span><span class="n">f</span><span class="o">.</span><span class="n">pipeline_name</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">hdf5_files</span><span class="p">},</span>
+        <span class="p">)</span>
+        <span class="n">image_stems</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">({</span><span class="n">f</span><span class="o">.</span><span class="n">image_stem</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">hdf5_files</span><span class="p">})</span>
+
+        <span class="c1"># Build lookup indexes</span>
+        <span class="n">by_pipeline</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">SweepHDF5File</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">by_image</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">SweepHDF5File</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">hdf5_files</span><span class="p">:</span>
+            <span class="n">by_pipeline</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">pipeline_name</span><span class="p">,</span> <span class="p">{},</span>
+            <span class="p">)[</span><span class="n">f</span><span class="o">.</span><span class="n">image_stem</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span>
+
+            <span class="n">by_image</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">image_stem</span><span class="p">,</span> <span class="p">{},</span>
+            <span class="p">)[</span><span class="n">f</span><span class="o">.</span><span class="n">pipeline_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span>
+
+        <span class="c1"># Scan for intermediate HDF5 files</span>
+        <span class="k">if</span> <span class="n">results_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+            <span class="n">intermediates</span> <span class="o">=</span> <span class="n">SweepOutputScanner</span><span class="o">.</span><span class="n">_scan_intermediates</span><span class="p">(</span>
+                <span class="n">results_dir</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">intermediates</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="s2">&quot;Scan complete: </span><span class="si">%d</span><span class="s2"> HDF5 files, </span><span class="si">%d</span><span class="s2"> pipelines, </span><span class="si">%d</span><span class="s2"> stems&quot;</span><span class="p">,</span>
+            <span class="nb">len</span><span class="p">(</span><span class="n">hdf5_files</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">pipeline_names</span><span class="p">),</span>
+            <span class="nb">len</span><span class="p">(</span><span class="n">image_stems</span><span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">SweepOutputData</span><span class="p">(</span>
+            <span class="n">root_dir</span><span class="o">=</span><span class="n">sweep_dir</span><span class="p">,</span>
+            <span class="n">manifest_raw</span><span class="o">=</span><span class="n">manifest_raw</span><span class="p">,</span>
+            <span class="n">pipeline_configs</span><span class="o">=</span><span class="n">pipeline_configs</span><span class="p">,</span>
+            <span class="n">hdf5_files</span><span class="o">=</span><span class="n">hdf5_files</span><span class="p">,</span>
+            <span class="n">pipeline_names</span><span class="o">=</span><span class="n">pipeline_names</span><span class="p">,</span>
+            <span class="n">image_stems</span><span class="o">=</span><span class="n">image_stems</span><span class="p">,</span>
+            <span class="n">by_pipeline</span><span class="o">=</span><span class="n">by_pipeline</span><span class="p">,</span>
+            <span class="n">by_image</span><span class="o">=</span><span class="n">by_image</span><span class="p">,</span>
+            <span class="n">intermediates</span><span class="o">=</span><span class="n">intermediates</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SweepOutputScanner.detect_sweep_dir">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.gui.sweep.html#phenotypic.gui.sweep.SweepOutputScanner.detect_sweep_dir">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">detect_sweep_dir</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Find the sweep output directory.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            path: Explicit directory, or ``None`` to use the current working</span>
+<span class="sd">                directory.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Resolved path that contains ``sweep_manifest.json``.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            FileNotFoundError: If no manifest is found in *path*.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="k">if</span> <span class="n">path</span> <span class="k">else</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="n">manifest</span> <span class="o">=</span> <span class="n">target</span> <span class="o">/</span> <span class="s2">&quot;sweep_manifest.json&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">manifest</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;No sweep_manifest.json found in </span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s2">. &quot;</span>
+                <span class="s2">&quot;Pass the path to a sweep output directory.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">target</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Internal helpers</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_parse_manifest</span><span class="p">(</span>
+        <span class="n">manifest_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">PipelineConfig</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Parse the sweep manifest JSON into PipelineConfig objects.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            manifest_path: Path to ``sweep_manifest.json``.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple of (raw manifest dict, pipeline configs dict keyed by</span>
+<span class="sd">            pipeline name).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">manifest_raw</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">manifest_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+        <span class="n">configs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">PipelineConfig</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">cfg_name</span><span class="p">,</span> <span class="n">cfg_data</span> <span class="ow">in</span> <span class="n">manifest_raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">&quot;configs&quot;</span><span class="p">,</span> <span class="p">{},</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">pipe_name</span><span class="p">,</span> <span class="n">pipe_dict</span> <span class="ow">in</span> <span class="n">cfg_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">&quot;pipelines&quot;</span><span class="p">,</span> <span class="p">{},</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="c1"># Extract operations from pipe_cfgs</span>
+                <span class="n">operations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="n">pipe_cfgs</span> <span class="o">=</span> <span class="n">pipe_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pipe_cfgs&quot;</span><span class="p">,</span> <span class="p">{})</span>
+                <span class="k">for</span> <span class="n">op_key</span> <span class="ow">in</span> <span class="n">pipe_cfgs</span><span class="p">:</span>
+                    <span class="n">op_data</span> <span class="o">=</span> <span class="n">pipe_cfgs</span><span class="p">[</span><span class="n">op_key</span><span class="p">]</span>
+                    <span class="n">operations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="p">{</span>
+                            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">op_key</span><span class="p">,</span>
+                            <span class="s2">&quot;class&quot;</span><span class="p">:</span> <span class="n">op_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                                <span class="s2">&quot;class&quot;</span><span class="p">,</span> <span class="s2">&quot;Unknown&quot;</span><span class="p">,</span>
+                            <span class="p">),</span>
+                            <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="n">op_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;params&quot;</span><span class="p">,</span> <span class="p">{}),</span>
+                        <span class="p">}</span>
+                    <span class="p">)</span>
+
+                <span class="c1"># Extract measurement operations</span>
+                <span class="n">measurements</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="n">meas_cfgs</span> <span class="o">=</span> <span class="n">pipe_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;meas_cfgs&quot;</span><span class="p">,</span> <span class="p">{})</span>
+                <span class="k">for</span> <span class="n">meas_key</span> <span class="ow">in</span> <span class="n">meas_cfgs</span><span class="p">:</span>
+                    <span class="n">meas_data</span> <span class="o">=</span> <span class="n">meas_cfgs</span><span class="p">[</span><span class="n">meas_key</span><span class="p">]</span>
+                    <span class="n">measurements</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="p">{</span>
+                            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">meas_key</span><span class="p">,</span>
+                            <span class="s2">&quot;class&quot;</span><span class="p">:</span> <span class="n">meas_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                                <span class="s2">&quot;class&quot;</span><span class="p">,</span> <span class="s2">&quot;Unknown&quot;</span><span class="p">,</span>
+                            <span class="p">),</span>
+                            <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="n">meas_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;params&quot;</span><span class="p">,</span> <span class="p">{}),</span>
+                        <span class="p">}</span>
+                    <span class="p">)</span>
+
+                <span class="n">configs</span><span class="p">[</span><span class="n">pipe_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">PipelineConfig</span><span class="p">(</span>
+                    <span class="n">name</span><span class="o">=</span><span class="n">pipe_name</span><span class="p">,</span>
+                    <span class="n">config_group</span><span class="o">=</span><span class="n">cfg_name</span><span class="p">,</span>
+                    <span class="n">operations</span><span class="o">=</span><span class="n">operations</span><span class="p">,</span>
+                    <span class="n">measurements</span><span class="o">=</span><span class="n">measurements</span><span class="p">,</span>
+                    <span class="n">raw_json</span><span class="o">=</span><span class="n">pipe_dict</span><span class="p">,</span>
+                <span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="s2">&quot;Parsed </span><span class="si">%d</span><span class="s2"> pipeline configs from manifest&quot;</span><span class="p">,</span>
+            <span class="nb">len</span><span class="p">(</span><span class="n">configs</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">manifest_raw</span><span class="p">,</span> <span class="n">configs</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_scan_results</span><span class="p">(</span>
+        <span class="n">results_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">SweepHDF5File</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Walk ``results/&lt;image_stem&gt;/&lt;pipeline&gt;/*.h5`` for HDF5 files.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            results_dir: The ``results/`` directory inside the sweep</span>
+<span class="sd">                output.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of :class:`SweepHDF5File` entries.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">files</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">SweepHDF5File</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">stem_dir</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">results_dir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">stem_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                <span class="k">continue</span>
+            <span class="n">image_stem</span> <span class="o">=</span> <span class="n">stem_dir</span><span class="o">.</span><span class="n">name</span>
+            <span class="n">stem_file_count</span> <span class="o">=</span> <span class="mi">0</span>
+
+            <span class="k">for</span> <span class="n">pipe_dir</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">stem_dir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">pipe_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                    <span class="k">continue</span>
+                <span class="n">pipeline_name</span> <span class="o">=</span> <span class="n">pipe_dir</span><span class="o">.</span><span class="n">name</span>
+
+                <span class="k">for</span> <span class="n">h5_path</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">pipe_dir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()):</span>
+                    <span class="k">if</span> <span class="p">(</span>
+                        <span class="n">h5_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span>
+                        <span class="ow">and</span> <span class="n">h5_path</span><span class="o">.</span><span class="n">suffix</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+                        <span class="ow">in</span> <span class="n">_HDF5_EXTENSIONS</span>
+                    <span class="p">):</span>
+                        <span class="n">files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                            <span class="n">SweepHDF5File</span><span class="p">(</span>
+                                <span class="n">path</span><span class="o">=</span><span class="n">h5_path</span><span class="p">,</span>
+                                <span class="n">image_stem</span><span class="o">=</span><span class="n">image_stem</span><span class="p">,</span>
+                                <span class="n">pipeline_name</span><span class="o">=</span><span class="n">pipeline_name</span><span class="p">,</span>
+                            <span class="p">)</span>
+                        <span class="p">)</span>
+                        <span class="n">stem_file_count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="k">if</span> <span class="n">stem_file_count</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                    <span class="s2">&quot;Scanned stem </span><span class="si">%r</span><span class="s2">: </span><span class="si">%d</span><span class="s2"> HDF5 files&quot;</span><span class="p">,</span>
+                    <span class="n">image_stem</span><span class="p">,</span> <span class="n">stem_file_count</span><span class="p">,</span>
+                <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">files</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_scan_intermediates</span><span class="p">(</span>
+        <span class="n">results_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">IntermediateStep</span><span class="p">]]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Scan for intermediate HDF5 files in ``intermediates/`` subdirectories.</span>
+
+<span class="sd">        Expected structure::</span>
+
+<span class="sd">            results/&lt;image_stem&gt;/&lt;pipeline&gt;/intermediates/00_OpName.h5</span>
+<span class="sd">            results/&lt;image_stem&gt;/&lt;pipeline&gt;/intermediates/base_00.h5</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            results_dir: The ``results/`` directory inside the sweep output.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Nested dict: ``intermediates[image_stem][pipeline_name]`` -&gt; sorted</span>
+<span class="sd">            list of :class:`IntermediateStep`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">h5py</span>
+
+        <span class="n">_LAYER_KEYS</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">get_args</span><span class="p">(</span><span class="n">ChannelName</span><span class="p">))</span>
+        <span class="n">intermediates</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">IntermediateStep</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">stem_dir</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">results_dir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">stem_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                <span class="k">continue</span>
+            <span class="n">image_stem</span> <span class="o">=</span> <span class="n">stem_dir</span><span class="o">.</span><span class="n">name</span>
+
+            <span class="k">for</span> <span class="n">pipe_dir</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">stem_dir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">pipe_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                    <span class="k">continue</span>
+                <span class="n">pipeline_name</span> <span class="o">=</span> <span class="n">pipe_dir</span><span class="o">.</span><span class="n">name</span>
+
+                <span class="n">inter_dir</span> <span class="o">=</span> <span class="n">pipe_dir</span> <span class="o">/</span> <span class="s2">&quot;intermediates&quot;</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">inter_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                    <span class="k">continue</span>
+
+                <span class="n">steps</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">IntermediateStep</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">h5_path</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">inter_dir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()):</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">h5_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                        <span class="k">continue</span>
+                    <span class="k">if</span> <span class="n">h5_path</span><span class="o">.</span><span class="n">suffix</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_HDF5_EXTENSIONS</span><span class="p">:</span>
+                        <span class="k">continue</span>
+
+                    <span class="n">name_no_ext</span> <span class="o">=</span> <span class="n">h5_path</span><span class="o">.</span><span class="n">stem</span>
+                    <span class="n">is_base</span> <span class="o">=</span> <span class="kc">False</span>
+
+                    <span class="c1"># Parse base files: &quot;base_00.h5&quot;</span>
+                    <span class="k">if</span> <span class="n">name_no_ext</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;base_&quot;</span><span class="p">):</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="n">idx</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">name_no_ext</span><span class="p">[</span><span class="mi">5</span><span class="p">:])</span>
+                        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                                <span class="s2">&quot;Skipping unparseable base intermediate: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                                <span class="n">h5_path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                            <span class="p">)</span>
+                            <span class="k">continue</span>
+                        <span class="n">op_name</span> <span class="o">=</span> <span class="s2">&quot;base&quot;</span>
+                        <span class="n">is_base</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># Parse delta files: &quot;00_GaussianBlur.h5&quot;</span>
+                        <span class="n">parts</span> <span class="o">=</span> <span class="n">name_no_ext</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                                <span class="s2">&quot;Skipping unparseable intermediate: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                                <span class="n">h5_path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                            <span class="p">)</span>
+                            <span class="k">continue</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="n">idx</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                                <span class="s2">&quot;Skipping intermediate with non-integer&quot;</span>
+                                <span class="s2">&quot; index: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                                <span class="n">h5_path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                            <span class="p">)</span>
+                            <span class="k">continue</span>
+                        <span class="n">op_name</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+                    <span class="c1"># Probe HDF5 for layer datasets</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">h5_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                            <span class="n">layers</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+                                <span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">_LAYER_KEYS</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">f</span>
+                            <span class="p">)</span>
+                    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                            <span class="s2">&quot;Could not probe HDF5 file: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                            <span class="n">h5_path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                        <span class="p">)</span>
+                        <span class="n">layers</span> <span class="o">=</span> <span class="p">()</span>
+
+                    <span class="n">steps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">IntermediateStep</span><span class="p">(</span>
+                        <span class="n">index</span><span class="o">=</span><span class="n">idx</span><span class="p">,</span>
+                        <span class="n">operation_name</span><span class="o">=</span><span class="n">op_name</span><span class="p">,</span>
+                        <span class="n">h5_path</span><span class="o">=</span><span class="n">h5_path</span><span class="p">,</span>
+                        <span class="n">layers</span><span class="o">=</span><span class="n">layers</span><span class="p">,</span>
+                        <span class="n">is_base</span><span class="o">=</span><span class="n">is_base</span><span class="p">,</span>
+                    <span class="p">))</span>
+
+                <span class="k">if</span> <span class="n">steps</span><span class="p">:</span>
+                    <span class="n">steps</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+                    <span class="n">intermediates</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span>
+                        <span class="n">image_stem</span><span class="p">,</span> <span class="p">{},</span>
+                    <span class="p">)[</span><span class="n">pipeline_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">steps</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                        <span class="s2">&quot;Found </span><span class="si">%d</span><span class="s2"> intermediates for </span><span class="si">%s</span><span class="s2">/</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="nb">len</span><span class="p">(</span><span class="n">steps</span><span class="p">),</span> <span class="n">image_stem</span><span class="p">,</span> <span class="n">pipeline_name</span><span class="p">,</span>
+                    <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">intermediates</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
