@@ -546,9 +546,14 @@
 <span class="sd">    :class:`AutoGridFinder`.</span>
 
 <span class="sd">    Emitted whenever the grid fitter takes a fallback (uniform spacing,</span>
-<span class="sd">    switch to simple pipeline, span-based pitch) or overrides the</span>
-<span class="sd">    fitted offset (symmetry anchoring, pitch shrink). Use this category</span>
-<span class="sd">    to filter only AutoGridFinder diagnostics in batch runs::</span>
+<span class="sd">    switch to simple pipeline, span-based pitch), overrides geometry</span>
+<span class="sd">    (pitch shrink in :meth:`AutoGridFinder._compute_grid_edges`), or</span>
+<span class="sd">    surfaces a span-coverage decision</span>
+<span class="sd">    (``[span-coverage-low]``, ``[span-coverage-high]``,</span>
+<span class="sd">    ``[span-coverage-symmetric]`` — note that span-coverage warnings now</span>
+<span class="sd">    document the chosen anchor; they no longer indicate that the fitted</span>
+<span class="sd">    offset was overridden). Use this category to filter only</span>
+<span class="sd">    AutoGridFinder diagnostics in batch runs::</span>
 
 <span class="sd">        import warnings</span>
 <span class="sd">        from phenotypic.grid._auto_grid_finder import (</span>
@@ -585,17 +590,32 @@
 <span class="sd">            excluded from the refined fit (default 0.25).</span>
 
 <span class="sd">        warn: Whether to emit :class:`AutoGridFinderFallbackWarning`</span>
-<span class="sd">            diagnostics for fallbacks and geometry overrides. Defaults</span>
-<span class="sd">            to ``False`` (silent); set to ``True`` to surface them.</span>
+<span class="sd">            diagnostics for fallbacks, geometry overrides, and</span>
+<span class="sd">            span-coverage anchoring decisions. Defaults to ``False``</span>
+<span class="sd">            (silent); set to ``True`` to surface them.</span>
 <span class="sd">        tol: Deprecated. Accepted for backward compatibility but ignored.</span>
 <span class="sd">        max_iter: Deprecated. Accepted for backward compatibility but ignored.</span>
 
 <span class="sd">    Notes:</span>
+<span class="sd">        Span-coverage handling: when the detected span of occupied grid</span>
+<span class="sd">        indices is less than ``n_expected`` by more than</span>
+<span class="sd">        :attr:`_SPAN_TOLERANCE` (default ``1`` — a single entirely-empty</span>
+<span class="sd">        edge row/column is silently tolerated), the fitter compares the</span>
+<span class="sd">        leftmost and rightmost centroids to the fit&#39;s predicted cell-0</span>
+<span class="sd">        and cell-(n-1) centers. When one end aligns within ``pitch / 2``</span>
+<span class="sd">        of its predicted boundary cell, that side is treated as the</span>
+<span class="sd">        anchored edge and the fitted offset is preserved (no override).</span>
+<span class="sd">        The three diagnostic tags ``[span-coverage-low]`` /</span>
+<span class="sd">        ``[span-coverage-high]`` / ``[span-coverage-symmetric]`` document</span>
+<span class="sd">        which decision was made; ``warn=True`` surfaces them. To loosen</span>
+<span class="sd">        or tighten the tolerance, subclass and override</span>
+<span class="sd">        :attr:`_SPAN_TOLERANCE`.</span>
+
 <span class="sd">        Diagnostic warnings of category</span>
 <span class="sd">        :class:`AutoGridFinderFallbackWarning` are emitted at every</span>
 <span class="sd">        fallback (uniform spacing, simple-pipeline switch, span-based</span>
-<span class="sd">        pitch) and geometry override (symmetry anchoring, pitch shrink).</span>
-<span class="sd">        Suppress them in batch runs with::</span>
+<span class="sd">        pitch), geometry override (pitch shrink), and span-coverage</span>
+<span class="sd">        anchor decision. Suppress them in batch runs with::</span>
 
 <span class="sd">            import warnings</span>
 <span class="sd">            from phenotypic.grid._auto_grid_finder import (</span>
@@ -607,6 +627,11 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">_MAX_OBJECTS_PER_CELL</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">250</span>
+    <span class="c1"># Entire missing edge rows/cols tolerated before span-coverage anchoring</span>
+    <span class="c1"># fires. With the default of 1, a 96-well plate with one fully-empty</span>
+    <span class="c1"># edge column keeps its fitted offset; only ≥ 2 missing edge cells</span>
+    <span class="c1"># trigger the anchoring check.</span>
+    <span class="n">_SPAN_TOLERANCE</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>
@@ -711,8 +736,16 @@
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_fit_pitch_and_offset</span><span class="p">(</span>
             <span class="n">centers</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">indices</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">axis_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;axis&quot;</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Closed-form linear fit ``center = pitch * idx + offset``.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            centers: 1-D array of center coordinates.</span>
+<span class="sd">            indices: 1-D array of integer grid indices, same length as</span>
+<span class="sd">                ``centers``.</span>
+<span class="sd">            axis_label: Diagnostic label (``&quot;rows&quot;`` or ``&quot;cols&quot;``) used</span>
+<span class="sd">                only to disambiguate the degenerate-fit warning.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Tuple of (pitch, offset).</span>
@@ -723,9 +756,10 @@
         <span class="n">denom</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">idx_dev</span> <span class="o">@</span> <span class="n">idx_dev</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">denom</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder._fit_pitch_and_offset: degenerate indices &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;(all </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span><span class="si">}</span><span class="s2"> centers map to the same grid index); &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;pitch set to 0.0, offset to centers mean (</span><span class="si">{</span><span class="n">ctr_mean</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">).&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder [degenerate-indices] (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">): all &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span><span class="si">}</span><span class="s2"> centers map to the same grid index, so the &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;closed-form pitch/offset fit is ill-defined; pitch set to &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;0.0, offset to centers mean (</span><span class="si">{</span><span class="n">ctr_mean</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">).&quot;</span><span class="p">,</span>
                 <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span>
                 <span class="n">stacklevel</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
             <span class="p">)</span>
@@ -733,6 +767,171 @@
         <span class="n">pitch</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">idx_dev</span> <span class="o">@</span> <span class="p">(</span><span class="n">centers</span> <span class="o">-</span> <span class="n">ctr_mean</span><span class="p">))</span> <span class="o">/</span> <span class="n">denom</span>
         <span class="n">offset</span> <span class="o">=</span> <span class="n">ctr_mean</span> <span class="o">-</span> <span class="n">pitch</span> <span class="o">*</span> <span class="n">idx_mean</span>
         <span class="k">return</span> <span class="n">pitch</span><span class="p">,</span> <span class="n">offset</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_choose_seed_anchor</span><span class="p">(</span>
+            <span class="n">centers</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">pitch_seed</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+            <span class="n">n_expected</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">image_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Pick the iterative-seed offset (pixel position of cell 0)</span>
+<span class="sd">        without using image **margins**.</span>
+
+<span class="sd">        The classic ``image_pitch / 2`` anchor assumes the plate fills</span>
+<span class="sd">        the image edge-to-edge. When the plate sits inside the image</span>
+<span class="sd">        with empty margins (common with letterboxed cameras or wide</span>
+<span class="sd">        sensors), that anchor pulls the initial index assignment</span>
+<span class="sd">        inward, causing the OLS refinement to converge on a compressed</span>
+<span class="sd">        grid that mis-assigns every detection by one index. This helper</span>
+<span class="sd">        replaces that anchor with a data-driven choice that relies only</span>
+<span class="sd">        on the image **midpoint** (a structural property) and the</span>
+<span class="sd">        centroid distribution.</span>
+
+<span class="sd">        Algorithm:</span>
+
+<span class="sd">        1. ``expected_n = round((c_max - c_min) / pitch_seed) + 1`` —</span>
+<span class="sd">           how many cells the detected span implies at the seed pitch.</span>
+<span class="sd">        2. ``expected_n &gt;= n_expected``: all (or more than all) cells</span>
+<span class="sd">           appear detected → anchor at ``c_min`` (cell 0 = leftmost</span>
+<span class="sd">           centroid).</span>
+<span class="sd">        3. ``expected_n &lt; n_expected``: some edge cells are likely</span>
+<span class="sd">           undetected. Decide which side using centroid-midpoint vs</span>
+<span class="sd">           image-midpoint:</span>
+
+<span class="sd">           - ``centroid_mid &lt;= image_mid - pitch_seed/2`` (centroids</span>
+<span class="sd">             lean low): high-side cells are missing; anchor at</span>
+<span class="sd">             ``c_min``.</span>
+<span class="sd">           - ``centroid_mid &gt;= image_mid + pitch_seed/2`` (centroids</span>
+<span class="sd">             lean high): low-side cells are missing; anchor cell</span>
+<span class="sd">             ``n_expected - 1`` at ``c_max``, i.e.</span>
+<span class="sd">             ``offset = c_max - (n_expected - 1) * pitch_seed``.</span>
+<span class="sd">           - Otherwise (roughly centered): fall back to ``c_min``;</span>
+<span class="sd">             the post-fit ``_resolve_span_anchor`` check will surface</span>
+<span class="sd">             any genuine ambiguity.</span>
+
+<span class="sd">        The image **center** (``image_dim / 2``) is used only as a</span>
+<span class="sd">        midpoint reference; the image **margins** (the distance from</span>
+<span class="sd">        ``c_max`` to the right edge, etc.) are never consulted.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            centers: Sorted 1-D array of detected centroid coordinates.</span>
+<span class="sd">            pitch_seed: Seed pitch (typically from</span>
+<span class="sd">                :meth:`_estimate_pitch`).</span>
+<span class="sd">            n_expected: Number of expected grid cells.</span>
+<span class="sd">            image_dim: Image extent along this axis (used only via its</span>
+<span class="sd">                midpoint).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The pixel coordinate where cell 0 should be anchored.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">pitch_seed</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">centers</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">centers</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">centers</span><span class="p">)</span> <span class="k">else</span> <span class="mf">0.0</span>
+
+        <span class="n">c_min</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">centers</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">c_max</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">centers</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">expected_n</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">((</span><span class="n">c_max</span> <span class="o">-</span> <span class="n">c_min</span><span class="p">)</span> <span class="o">/</span> <span class="n">pitch_seed</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="n">expected_n</span> <span class="o">&gt;=</span> <span class="n">n_expected</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">c_min</span>
+
+        <span class="n">centroid_mid</span> <span class="o">=</span> <span class="p">(</span><span class="n">c_min</span> <span class="o">+</span> <span class="n">c_max</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
+        <span class="n">image_mid</span> <span class="o">=</span> <span class="n">image_dim</span> <span class="o">/</span> <span class="mf">2.0</span>
+        <span class="n">half_pitch</span> <span class="o">=</span> <span class="n">pitch_seed</span> <span class="o">/</span> <span class="mf">2.0</span>
+        <span class="k">if</span> <span class="n">centroid_mid</span> <span class="o">&gt;=</span> <span class="n">image_mid</span> <span class="o">+</span> <span class="n">half_pitch</span><span class="p">:</span>
+            <span class="c1"># Centroids skewed high → low-side cells missing.</span>
+            <span class="k">return</span> <span class="n">c_max</span> <span class="o">-</span> <span class="p">(</span><span class="n">n_expected</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">pitch_seed</span>
+        <span class="c1"># Centroids lean low or are roughly centered: anchor at c_min.</span>
+        <span class="k">return</span> <span class="n">c_min</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_span_anchor</span><span class="p">(</span>
+            <span class="n">centers</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">pitch</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+            <span class="n">offset</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+            <span class="n">n_expected</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">span</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">axis_label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+            <span class="n">span_word</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Decide how to anchor the grid when ``span &lt; n_expected``.</span>
+
+<span class="sd">        Compares the fit&#39;s predicted cell-0 and cell-(n-1) centers against the</span>
+<span class="sd">        actual centroid extremes ``c_min`` / ``c_max``. When one end of the</span>
+<span class="sd">        centroid range aligns (within ``pitch/2``) with its predicted boundary</span>
+<span class="sd">        cell and the other does not, the fit is already correctly anchored to</span>
+<span class="sd">        the populated edge — the fitted offset is preserved (Option (i)). The</span>
+<span class="sd">        empty cells simply sit at indices ``[0, idx_min - 1]`` or</span>
+<span class="sd">        ``[idx_max + 1, n_expected - 1]``.</span>
+
+<span class="sd">        When neither end aligns, the fit is uncertain; a</span>
+<span class="sd">        ``[span-coverage-symmetric]`` warning is emitted but the offset is</span>
+<span class="sd">        still preserved (no symmetric override).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            centers: Sorted 1-D array of detected centroid coordinates.</span>
+<span class="sd">            pitch: Fitted grid pitch (must be positive).</span>
+<span class="sd">            offset: Fitted grid offset (pixel position of cell 0).</span>
+<span class="sd">            n_expected: Number of expected grid cells along this axis.</span>
+<span class="sd">            span: Span of occupied grid indices (``max - min + 1``).</span>
+<span class="sd">            axis_label: ``&quot;rows&quot;`` / ``&quot;cols&quot;`` for warning text.</span>
+<span class="sd">            span_word: ``&quot;row&quot;`` / ``&quot;column&quot;`` for warning text.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The offset to use for edge computation. Under Option (i) this</span>
+<span class="sd">            equals the input ``offset`` in every branch; the branching exists</span>
+<span class="sd">            so the per-mode diagnostic warning is correct and so future</span>
+<span class="sd">            tweaks need only change the per-branch return value.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">n_missing</span> <span class="o">=</span> <span class="n">n_expected</span> <span class="o">-</span> <span class="n">span</span>
+        <span class="k">if</span> <span class="n">n_missing</span> <span class="o">&lt;=</span> <span class="n">AutoGridFinder</span><span class="o">.</span><span class="n">_SPAN_TOLERANCE</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">offset</span>
+
+        <span class="n">half_pitch</span> <span class="o">=</span> <span class="n">pitch</span> <span class="o">/</span> <span class="mf">2.0</span>
+        <span class="n">c_min</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">centers</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>     <span class="c1"># centers are pre-sorted</span>
+        <span class="n">c_max</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">centers</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">predicted_lo</span> <span class="o">=</span> <span class="n">offset</span>                              <span class="c1"># cell 0 center</span>
+        <span class="n">predicted_hi</span> <span class="o">=</span> <span class="n">offset</span> <span class="o">+</span> <span class="n">pitch</span> <span class="o">*</span> <span class="p">(</span><span class="n">n_expected</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>   <span class="c1"># cell n-1 center</span>
+        <span class="n">lower_anchored</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">c_min</span> <span class="o">-</span> <span class="n">predicted_lo</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">half_pitch</span>
+        <span class="n">upper_anchored</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">c_max</span> <span class="o">-</span> <span class="n">predicted_hi</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">half_pitch</span>
+
+        <span class="k">if</span> <span class="n">lower_anchored</span> <span class="ow">and</span> <span class="n">upper_anchored</span><span class="p">:</span>
+            <span class="c1"># span &lt; n_expected but both ends aligned → purely interior gap.</span>
+            <span class="k">return</span> <span class="n">offset</span>
+        <span class="k">if</span> <span class="n">lower_anchored</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">upper_anchored</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder [span-coverage-low] (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">): &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;detected </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> span = </span><span class="si">{</span><span class="n">span</span><span class="si">}</span><span class="s2"> cells (expected &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">n_expected</span><span class="si">}</span><span class="s2">); leftmost centroid (</span><span class="si">{</span><span class="n">c_min</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">) aligns with &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;predicted cell-0 (</span><span class="si">{</span><span class="n">predicted_lo</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">); keeping fitted &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;offset (low-anchored).&quot;</span><span class="p">,</span>
+                <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">offset</span>
+        <span class="k">if</span> <span class="n">upper_anchored</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">lower_anchored</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder [span-coverage-high] (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">): &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;detected </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> span = </span><span class="si">{</span><span class="n">span</span><span class="si">}</span><span class="s2"> cells (expected &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">n_expected</span><span class="si">}</span><span class="s2">); rightmost centroid (</span><span class="si">{</span><span class="n">c_max</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">) aligns with &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;predicted cell-</span><span class="si">{</span><span class="n">n_expected</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">predicted_hi</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">); &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;keeping fitted offset (high-anchored).&quot;</span><span class="p">,</span>
+                <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">offset</span>
+
+        <span class="c1"># Neither end anchored — fit may be poorly placed but symmetric</span>
+        <span class="c1"># override has been shown to bias densely-detected plates with one</span>
+        <span class="c1"># missing edge column. Keep the fit and surface a diagnostic.</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;AutoGridFinder [span-coverage-symmetric] (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">): &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;detected </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> span = </span><span class="si">{</span><span class="n">span</span><span class="si">}</span><span class="s2"> cells (expected &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">n_expected</span><span class="si">}</span><span class="s2">); neither end of the centroid range &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">c_min</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">c_max</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">) aligns with the fitted boundary &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;cells (</span><span class="si">{</span><span class="n">predicted_lo</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">predicted_hi</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">); keeping fit &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;(no override).&quot;</span><span class="p">,</span>
+            <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">offset</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_identify_inliers</span><span class="p">(</span>
@@ -753,6 +952,7 @@
             <span class="n">offset</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
             <span class="n">n_bins</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
             <span class="n">image_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">axis_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;axis&quot;</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute ``n_bins + 1`` edge coordinates clipped to ``[0, image_dim]``.</span>
 
@@ -764,6 +964,14 @@
 <span class="sd">        clipping.  When the fitted pitch is too large for the image,</span>
 <span class="sd">        the pitch is shrunk to ``image_dim / n_bins`` so the grid</span>
 <span class="sd">        fills the available space.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            pitch: Fitted grid pitch in pixels.</span>
+<span class="sd">            offset: Fitted grid offset in pixels.</span>
+<span class="sd">            n_bins: Number of grid cells along this axis.</span>
+<span class="sd">            image_dim: Image extent along this axis in pixels.</span>
+<span class="sd">            axis_label: Diagnostic label (``&quot;rows&quot;`` or ``&quot;cols&quot;``) used</span>
+<span class="sd">                only to disambiguate the pitch-overflow warning.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">half</span> <span class="o">=</span> <span class="n">pitch</span> <span class="o">/</span> <span class="mf">2.0</span>
         <span class="n">min_offset</span> <span class="o">=</span> <span class="n">half</span>                              <span class="c1"># first edge &gt;= 0</span>
@@ -771,10 +979,10 @@
 
         <span class="k">if</span> <span class="n">min_offset</span> <span class="o">&gt;</span> <span class="n">max_offset</span><span class="p">:</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder._compute_grid_edges: fitted pitch &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">pitch</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">) too large for image_dim=</span><span class="si">{</span><span class="n">image_dim</span><span class="si">}</span><span class="s2"> with &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder [pitch-overflow] (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">): fitted pitch &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">pitch</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> px) too large for image_dim=</span><span class="si">{</span><span class="n">image_dim</span><span class="si">}</span><span class="s2"> with &quot;</span>
                 <span class="sa">f</span><span class="s2">&quot;n_bins=</span><span class="si">{</span><span class="n">n_bins</span><span class="si">}</span><span class="s2">; shrinking pitch to &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">image_dim</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">n_bins</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> and recentering.&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">image_dim</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">n_bins</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> px and recentering.&quot;</span><span class="p">,</span>
                 <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span>
                 <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
             <span class="p">)</span>
@@ -803,6 +1011,56 @@
         <span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_indices_from_edges</span><span class="p">(</span>
+            <span class="n">centers</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Recover per-cell indices from fitted grid edges.</span>
+
+<span class="sd">        The dashboard counterpart to :meth:`_image_pitch_indices`:</span>
+<span class="sd">        instead of binning centroids using the structural prior</span>
+<span class="sd">        ``image_dim / n_expected``, this helper bins them against the</span>
+<span class="sd">        **fitted** grid edges (which reflect the actual pitch and</span>
+<span class="sd">        offset converged by the iterative pipeline). The two assign</span>
+<span class="sd">        identical indices when the plate fills the image edge-to-edge;</span>
+<span class="sd">        they disagree when the plate sits inside a wider image with</span>
+<span class="sd">        empty margins — and that disagreement is itself a useful</span>
+<span class="sd">        diagnostic.</span>
+
+<span class="sd">        Uses the median pitch and cell-0 center derived from</span>
+<span class="sd">        ``edges``::</span>
+
+<span class="sd">            pitch = median(diff(edges))</span>
+<span class="sd">            cell_0_center = edges[0] + pitch / 2</span>
+<span class="sd">            idx = round((center - cell_0_center) / pitch)</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            centers: 1-D array of centroid coordinates along one axis.</span>
+<span class="sd">            edges: ``n_bins + 1`` edge coordinates produced by</span>
+<span class="sd">                :meth:`_compute_grid_edges`.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Integer array of same length as ``centers``, clipped to</span>
+<span class="sd">            ``[0, n_bins - 1]``. Returns an empty array if ``centers``</span>
+<span class="sd">            is empty.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">centers</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="c1"># No diffs available → can&#39;t recover pitch. Defensive</span>
+            <span class="c1"># guard for the helper&#39;s documented empty-array contract;</span>
+            <span class="c1"># not reachable from _compute_grid_edges (which always emits</span>
+            <span class="c1"># n_bins + 1 ≥ 2 edges), but called directly by tests and</span>
+            <span class="c1"># potentially by future code paths.</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">centers</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">n_bins</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">pitch</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">edges</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="n">pitch</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">centers</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">cell_0_center</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">edges</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="n">pitch</span> <span class="o">/</span> <span class="mf">2.0</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">rint</span><span class="p">((</span><span class="n">centers</span> <span class="o">-</span> <span class="n">cell_0_center</span><span class="p">)</span> <span class="o">/</span> <span class="n">pitch</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="n">n_bins</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+
+    <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_image_pitch_indices</span><span class="p">(</span>
             <span class="n">centers</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">n_expected</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">image_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
@@ -820,6 +1078,141 @@
         <span class="n">anchor</span> <span class="o">=</span> <span class="n">image_pitch</span> <span class="o">/</span> <span class="mf">2.0</span>
         <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">rint</span><span class="p">((</span><span class="n">centers</span> <span class="o">-</span> <span class="n">anchor</span><span class="p">)</span> <span class="o">/</span> <span class="n">image_pitch</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">n_expected</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_axis_dashboard_stats</span><span class="p">(</span>
+            <span class="n">info_table</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+            <span class="n">axis</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">n_expected</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">image_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">edges</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute one axis&#39;s diagnostic stats in a single shot.</span>
+
+<span class="sd">        Single source of truth for every dashboard panel. All</span>
+<span class="sd">        per-axis numbers the summary table, occupancy plot, and</span>
+<span class="sd">        successive-diffs plot need are computed here exactly once, so</span>
+<span class="sd">        no panel can re-derive them inconsistently. Adding a new</span>
+<span class="sd">        diagnostic panel? Read from the returned dict; don&#39;t recompute</span>
+<span class="sd">        from ``info_table`` or ``edges``.</span>
+
+<span class="sd">        Computes BOTH:</span>
+
+<span class="sd">        - **Fitted** quantities (from the edges actually produced by</span>
+<span class="sd">          :meth:`_compute_grid_edges`) — the algorithm&#39;s decision.</span>
+<span class="sd">        - **Image-pitch** quantities (from the structural prior</span>
+<span class="sd">          ``image_dim / n_expected``) — useful as an independent</span>
+<span class="sd">          cross-check, but biased when the plate doesn&#39;t fill the</span>
+<span class="sd">          image edge-to-edge.</span>
+
+<span class="sd">        When the two disagree, ``&quot;agree&quot;`` is ``False`` — surface this</span>
+<span class="sd">        in panel titles / summary rows so the user sees the</span>
+<span class="sd">        structural-prior mismatch directly.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            info_table: ``image.objects.info(include_metadata=False)``</span>
+<span class="sd">                output (may be empty).</span>
+<span class="sd">            axis: 0 for rows, 1 for cols.</span>
+<span class="sd">            n_expected: Number of expected grid cells along this axis.</span>
+<span class="sd">            image_dim: Image extent along this axis.</span>
+<span class="sd">            edges: ``n_expected + 1`` integer edge coordinates produced</span>
+<span class="sd">                by the fitter.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict with keys::</span>
+
+<span class="sd">                axis              0 or 1</span>
+<span class="sd">                label             &quot;Row&quot; or &quot;Col&quot;</span>
+<span class="sd">                n_expected        echo</span>
+<span class="sd">                image_dim         echo</span>
+<span class="sd">                edges             echo (same array)</span>
+<span class="sd">                centers           sorted axis centroids (or empty)</span>
+<span class="sd">                image_pitch       image_dim / n_expected</span>
+<span class="sd">                fit_pitch         median(diff(edges))</span>
+<span class="sd">                fit_indices       per-centroid cell, from edges</span>
+<span class="sd">                ip_indices        per-centroid cell, from image_pitch</span>
+<span class="sd">                fit_counts        bincount(fit_indices, minlength=n)</span>
+<span class="sd">                ip_counts         bincount(ip_indices,  minlength=n)</span>
+<span class="sd">                fit_occupied      sum(fit_counts &gt; 0)</span>
+<span class="sd">                ip_occupied       sum(ip_counts  &gt; 0)</span>
+<span class="sd">                fit_span          max - min + 1 of fit_indices</span>
+<span class="sd">                ip_span           max - min + 1 of ip_indices</span>
+<span class="sd">                agree             counts/span/occupied all match</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;Row&quot;</span> <span class="k">if</span> <span class="n">axis</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;Col&quot;</span> <span class="k">if</span> <span class="n">axis</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;Axis </span><span class="si">{</span><span class="n">axis</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">empty_centers</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">empty_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">zero_counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_expected</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">fit_pitch</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">edges</span><span class="p">)))</span>
+            <span class="k">if</span> <span class="n">edges</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span> <span class="k">else</span> <span class="mf">0.0</span>
+        <span class="p">)</span>
+        <span class="n">image_pitch</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">image_dim</span> <span class="o">/</span> <span class="n">n_expected</span> <span class="k">if</span> <span class="n">n_expected</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">info_table</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s2">&quot;axis&quot;</span><span class="p">:</span> <span class="n">axis</span><span class="p">,</span>
+                <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="n">label</span><span class="p">,</span>
+                <span class="s2">&quot;n_expected&quot;</span><span class="p">:</span> <span class="n">n_expected</span><span class="p">,</span>
+                <span class="s2">&quot;image_dim&quot;</span><span class="p">:</span> <span class="n">image_dim</span><span class="p">,</span>
+                <span class="s2">&quot;edges&quot;</span><span class="p">:</span> <span class="n">edges</span><span class="p">,</span>
+                <span class="s2">&quot;centers&quot;</span><span class="p">:</span> <span class="n">empty_centers</span><span class="p">,</span>
+                <span class="s2">&quot;image_pitch&quot;</span><span class="p">:</span> <span class="n">image_pitch</span><span class="p">,</span>
+                <span class="s2">&quot;fit_pitch&quot;</span><span class="p">:</span> <span class="n">fit_pitch</span><span class="p">,</span>
+                <span class="s2">&quot;fit_indices&quot;</span><span class="p">:</span> <span class="n">empty_idx</span><span class="p">,</span>
+                <span class="s2">&quot;ip_indices&quot;</span><span class="p">:</span> <span class="n">empty_idx</span><span class="p">,</span>
+                <span class="s2">&quot;fit_counts&quot;</span><span class="p">:</span> <span class="n">zero_counts</span><span class="p">,</span>
+                <span class="s2">&quot;ip_counts&quot;</span><span class="p">:</span> <span class="n">zero_counts</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+                <span class="s2">&quot;fit_occupied&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;ip_occupied&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;fit_span&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;ip_span&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;agree&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="p">}</span>
+
+        <span class="n">centers</span> <span class="o">=</span> <span class="n">AutoGridFinder</span><span class="o">.</span><span class="n">_extract_axis_centers</span><span class="p">(</span><span class="n">info_table</span><span class="p">,</span> <span class="n">axis</span><span class="p">)</span>
+        <span class="n">fit_indices</span> <span class="o">=</span> <span class="n">AutoGridFinder</span><span class="o">.</span><span class="n">_indices_from_edges</span><span class="p">(</span><span class="n">centers</span><span class="p">,</span> <span class="n">edges</span><span class="p">)</span>
+        <span class="n">ip_indices</span> <span class="o">=</span> <span class="n">AutoGridFinder</span><span class="o">.</span><span class="n">_image_pitch_indices</span><span class="p">(</span>
+            <span class="n">centers</span><span class="p">,</span> <span class="n">n_expected</span><span class="p">,</span> <span class="n">image_dim</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">fit_counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">fit_indices</span><span class="p">,</span> <span class="n">minlength</span><span class="o">=</span><span class="n">n_expected</span><span class="p">)</span>
+        <span class="n">ip_counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">ip_indices</span><span class="p">,</span> <span class="n">minlength</span><span class="o">=</span><span class="n">n_expected</span><span class="p">)</span>
+        <span class="n">fit_occupied</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">fit_counts</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+        <span class="n">ip_occupied</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">ip_counts</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+        <span class="n">fit_span</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">int</span><span class="p">(</span><span class="n">fit_indices</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">-</span> <span class="n">fit_indices</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">fit_indices</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="p">)</span>
+        <span class="n">ip_span</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">int</span><span class="p">(</span><span class="n">ip_indices</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">-</span> <span class="n">ip_indices</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ip_indices</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="p">)</span>
+        <span class="n">agree</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">fit_counts</span><span class="p">,</span> <span class="n">ip_counts</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="n">fit_span</span> <span class="o">==</span> <span class="n">ip_span</span>
+            <span class="ow">and</span> <span class="n">fit_occupied</span> <span class="o">==</span> <span class="n">ip_occupied</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;axis&quot;</span><span class="p">:</span> <span class="n">axis</span><span class="p">,</span>
+            <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="n">label</span><span class="p">,</span>
+            <span class="s2">&quot;n_expected&quot;</span><span class="p">:</span> <span class="n">n_expected</span><span class="p">,</span>
+            <span class="s2">&quot;image_dim&quot;</span><span class="p">:</span> <span class="n">image_dim</span><span class="p">,</span>
+            <span class="s2">&quot;edges&quot;</span><span class="p">:</span> <span class="n">edges</span><span class="p">,</span>
+            <span class="s2">&quot;centers&quot;</span><span class="p">:</span> <span class="n">centers</span><span class="p">,</span>
+            <span class="s2">&quot;image_pitch&quot;</span><span class="p">:</span> <span class="n">image_pitch</span><span class="p">,</span>
+            <span class="s2">&quot;fit_pitch&quot;</span><span class="p">:</span> <span class="n">fit_pitch</span><span class="p">,</span>
+            <span class="s2">&quot;fit_indices&quot;</span><span class="p">:</span> <span class="n">fit_indices</span><span class="p">,</span>
+            <span class="s2">&quot;ip_indices&quot;</span><span class="p">:</span> <span class="n">ip_indices</span><span class="p">,</span>
+            <span class="s2">&quot;fit_counts&quot;</span><span class="p">:</span> <span class="n">fit_counts</span><span class="p">,</span>
+            <span class="s2">&quot;ip_counts&quot;</span><span class="p">:</span> <span class="n">ip_counts</span><span class="p">,</span>
+            <span class="s2">&quot;fit_occupied&quot;</span><span class="p">:</span> <span class="n">fit_occupied</span><span class="p">,</span>
+            <span class="s2">&quot;ip_occupied&quot;</span><span class="p">:</span> <span class="n">ip_occupied</span><span class="p">,</span>
+            <span class="s2">&quot;fit_span&quot;</span><span class="p">:</span> <span class="n">fit_span</span><span class="p">,</span>
+            <span class="s2">&quot;ip_span&quot;</span><span class="p">:</span> <span class="n">ip_span</span><span class="p">,</span>
+            <span class="s2">&quot;agree&quot;</span><span class="p">:</span> <span class="n">agree</span><span class="p">,</span>
+        <span class="p">}</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_classify_axis_pipeline</span><span class="p">(</span>
@@ -860,22 +1253,33 @@
 
 <span class="sd">        Uses span-based pitch estimation and fits all centers directly.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">span_word</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;row&quot;</span> <span class="k">if</span> <span class="n">axis_label</span> <span class="o">==</span> <span class="s2">&quot;rows&quot;</span>
+            <span class="k">else</span> <span class="s2">&quot;column&quot;</span> <span class="k">if</span> <span class="n">axis_label</span> <span class="o">==</span> <span class="s2">&quot;cols&quot;</span>
+            <span class="k">else</span> <span class="n">axis_label</span>
+        <span class="p">)</span>
         <span class="n">pitch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_estimate_pitch</span><span class="p">(</span><span class="n">centers</span><span class="p">,</span> <span class="n">n_expected</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">pitch</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">, simple): span-based pitch &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;&lt;= 0 (</span><span class="si">{</span><span class="n">pitch</span><span class="si">}</span><span class="s2">); falling back to uniform edges.&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder [span-pitch-degenerate] (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;simple): span-based </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> pitch estimate &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">pitch</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">) is non-positive (centers max - min collapsed); &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;falling back to uniform </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> edges.&quot;</span><span class="p">,</span>
                 <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span>
                 <span class="n">stacklevel</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_uniform_edges</span><span class="p">(</span><span class="n">n_expected</span><span class="p">,</span> <span class="n">image_dim</span><span class="p">)</span>
 
         <span class="n">indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_assign_grid_indices</span><span class="p">(</span><span class="n">centers</span><span class="p">,</span> <span class="n">pitch</span><span class="p">)</span>
-        <span class="n">pitch</span><span class="p">,</span> <span class="n">offset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fit_pitch_and_offset</span><span class="p">(</span><span class="n">centers</span><span class="p">,</span> <span class="n">indices</span><span class="p">)</span>
+        <span class="n">pitch</span><span class="p">,</span> <span class="n">offset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fit_pitch_and_offset</span><span class="p">(</span>
+            <span class="n">centers</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">axis_label</span><span class="o">=</span><span class="n">axis_label</span><span class="p">,</span>
+        <span class="p">)</span>
         <span class="k">if</span> <span class="n">pitch</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">, simple): initial fit pitch &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;&lt;= 0 (</span><span class="si">{</span><span class="n">pitch</span><span class="si">}</span><span class="s2">); falling back to uniform edges.&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder [initial-fit-degenerate] (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;simple): initial OLS </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> pitch (</span><span class="si">{</span><span class="n">pitch</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">) is &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;non-positive after fitting all centers; falling back to &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;uniform </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> edges.&quot;</span><span class="p">,</span>
                 <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span>
                 <span class="n">stacklevel</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
             <span class="p">)</span>
@@ -889,38 +1293,38 @@
         <span class="k">if</span> <span class="n">n_inliers</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
             <span class="n">pitch</span><span class="p">,</span> <span class="n">offset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fit_pitch_and_offset</span><span class="p">(</span>
                 <span class="n">centers</span><span class="p">[</span><span class="n">inlier_mask</span><span class="p">],</span> <span class="n">indices</span><span class="p">[</span><span class="n">inlier_mask</span><span class="p">],</span>
+                <span class="n">axis_label</span><span class="o">=</span><span class="n">axis_label</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">, simple): only </span><span class="si">{</span><span class="n">n_inliers</span><span class="si">}</span><span class="s2"> &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;inliers of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">centers</span><span class="p">)</span><span class="si">}</span><span class="s2"> centers within residual threshold &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">threshold</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">); skipping refit and using initial fit.&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder [insufficient-inliers] (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;simple): only </span><span class="si">{</span><span class="n">n_inliers</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">centers</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;centers fall within the residual threshold &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">threshold</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> px = pitch * </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">residual_fraction</span><span class="si">}</span><span class="s2">); &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;skipping refit and using the initial fit.&quot;</span><span class="p">,</span>
                 <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span>
                 <span class="n">stacklevel</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="k">if</span> <span class="n">pitch</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">, simple): refit pitch &lt;= 0 &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">pitch</span><span class="si">}</span><span class="s2">); falling back to uniform edges.&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder [refit-degenerate] (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">, simple): &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;refit </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> pitch (</span><span class="si">{</span><span class="n">pitch</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">) is non-positive after &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;inlier filtering; falling back to uniform </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> edges.&quot;</span><span class="p">,</span>
                 <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span>
                 <span class="n">stacklevel</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_uniform_edges</span><span class="p">(</span><span class="n">n_expected</span><span class="p">,</span> <span class="n">image_dim</span><span class="p">)</span>
 
+        <span class="c1"># Simple pipeline keeps raw (unclipped) indices, so indices.min/max</span>
+        <span class="c1"># already reflect the data faithfully.</span>
         <span class="n">span</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">indices</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">-</span> <span class="n">indices</span><span class="o">.</span><span class="n">min</span><span class="p">())</span> <span class="o">+</span> <span class="mi">1</span>
-        <span class="k">if</span> <span class="n">span</span> <span class="o">&lt;</span> <span class="n">n_expected</span><span class="p">:</span>
-            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">, simple): detected span &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">span</span><span class="si">}</span><span class="s2">) &lt; n_expected (</span><span class="si">{</span><span class="n">n_expected</span><span class="si">}</span><span class="s2">); recentering grid on &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;image (symmetry anchoring overrides fitted offset).&quot;</span><span class="p">,</span>
-                <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span>
-                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="n">image_center</span> <span class="o">=</span> <span class="n">image_dim</span> <span class="o">/</span> <span class="mf">2.0</span>
-            <span class="n">grid_center_idx</span> <span class="o">=</span> <span class="p">(</span><span class="n">n_expected</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
-            <span class="n">offset</span> <span class="o">=</span> <span class="n">image_center</span> <span class="o">-</span> <span class="n">pitch</span> <span class="o">*</span> <span class="n">grid_center_idx</span>
-
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_grid_edges</span><span class="p">(</span><span class="n">pitch</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">n_expected</span><span class="p">,</span> <span class="n">image_dim</span><span class="p">)</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_span_anchor</span><span class="p">(</span>
+            <span class="n">centers</span><span class="p">,</span> <span class="n">pitch</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">n_expected</span><span class="p">,</span> <span class="n">span</span><span class="p">,</span>
+            <span class="n">axis_label</span><span class="p">,</span> <span class="n">span_word</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_grid_edges</span><span class="p">(</span>
+            <span class="n">pitch</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">n_expected</span><span class="p">,</span> <span class="n">image_dim</span><span class="p">,</span> <span class="n">axis_label</span><span class="o">=</span><span class="n">axis_label</span><span class="p">,</span>
+        <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_fit_axis_edges_iterative</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>
@@ -929,17 +1333,35 @@
             <span class="n">image_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
             <span class="n">axis_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;axis&quot;</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Iterative cell-median refinement seeded from image-pitch indices.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Iterative cell-median refinement with a data-driven seed.</span>
 
 <span class="sd">        Each iteration: aggregate centers to one median per occupied cell,</span>
 <span class="sd">        closed-form fit ``center = pitch * idx + offset``, reassign</span>
 <span class="sd">        indices using the new fit. Terminates when index assignments</span>
 <span class="sd">        stop changing (or only a single boundary cell flickers after</span>
 <span class="sd">        an initial stabilization phase) or after ``MAX_ITER``</span>
-<span class="sd">        iterations. The image-pitch seed makes this robust to sparse</span>
-<span class="sd">        plates and within-cell fragmentation, since the initial</span>
-<span class="sd">        assignment uses only the structural prior, not the diff</span>
-<span class="sd">        distribution.</span>
+<span class="sd">        iterations.</span>
+
+<span class="sd">        Seeding (image-margin-independent):</span>
+
+<span class="sd">        - **Pitch**: :meth:`_estimate_pitch` (span-based</span>
+<span class="sd">          ``(c_max - c_min) / (n_expected - 1)``). Robust to any</span>
+<span class="sd">          number of detections per axis position (a 6×10 plate sorted</span>
+<span class="sd">          on the column axis has 6 detections at each column position;</span>
+<span class="sd">          a 1-row plate with fragmentation has K per cell; both look</span>
+<span class="sd">          identical to span-based pitch since ``c_min`` and ``c_max``</span>
+<span class="sd">          are the outermost colonies&#39; DT-maxima). Biased only when</span>
+<span class="sd">          edge cells are physically missing; the post-fit</span>
+<span class="sd">          :meth:`_resolve_span_anchor` check surfaces those cases via</span>
+<span class="sd">          ``[span-coverage-low]`` / ``[span-coverage-high]``.</span>
+<span class="sd">        - **Offset**: :meth:`_choose_seed_anchor` (``c_min`` when the</span>
+<span class="sd">          detected span looks complete; otherwise picks the anchored</span>
+<span class="sd">          side using centroid-midpoint vs image-midpoint).</span>
+
+<span class="sd">        Neither the pitch nor the offset estimate depends on image</span>
+<span class="sd">        margins (the distance from the plate to the image edge), so</span>
+<span class="sd">        plates sitting inside a wider image with letterboxing are</span>
+<span class="sd">        handled correctly.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># MAX_ITER=16 covers the empirical worst case observed on dense</span>
         <span class="c1"># plates (~1500 centers, convergence at iter 10). Each iteration</span>
@@ -953,9 +1375,26 @@
         <span class="n">STABILITY_PHASE</span> <span class="o">=</span> <span class="mi">4</span>
         <span class="n">STABILITY_TOL</span> <span class="o">=</span> <span class="mi">1</span>
 
-        <span class="n">image_pitch</span> <span class="o">=</span> <span class="n">image_dim</span> <span class="o">/</span> <span class="n">n_expected</span>
-        <span class="n">indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_image_pitch_indices</span><span class="p">(</span><span class="n">centers</span><span class="p">,</span> <span class="n">n_expected</span><span class="p">,</span> <span class="n">image_dim</span><span class="p">)</span>
-        <span class="n">pitch</span><span class="p">,</span> <span class="n">offset</span> <span class="o">=</span> <span class="n">image_pitch</span><span class="p">,</span> <span class="n">image_pitch</span> <span class="o">/</span> <span class="mf">2.0</span>
+        <span class="n">span_word</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;row&quot;</span> <span class="k">if</span> <span class="n">axis_label</span> <span class="o">==</span> <span class="s2">&quot;rows&quot;</span>
+            <span class="k">else</span> <span class="s2">&quot;column&quot;</span> <span class="k">if</span> <span class="n">axis_label</span> <span class="o">==</span> <span class="s2">&quot;cols&quot;</span>
+            <span class="k">else</span> <span class="n">axis_label</span>
+        <span class="p">)</span>
+        <span class="c1"># Data-driven seed: span-based pitch (robust to any number of</span>
+        <span class="c1"># detections per axis position — 2D grids with multiple rows</span>
+        <span class="c1"># per column, fragmentation, etc.); offset from</span>
+        <span class="c1"># _choose_seed_anchor (avoids the image-margin bias of</span>
+        <span class="c1"># image_pitch / 2). image_pitch is no longer used at seed time;</span>
+        <span class="c1"># the post-fit _resolve_span_anchor surfaces edge-missing cases</span>
+        <span class="c1"># where span-based pitch is mildly biased low.</span>
+        <span class="n">pitch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_estimate_pitch</span><span class="p">(</span><span class="n">centers</span><span class="p">,</span> <span class="n">n_expected</span><span class="p">)</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_choose_seed_anchor</span><span class="p">(</span>
+            <span class="n">centers</span><span class="p">,</span> <span class="n">pitch</span><span class="p">,</span> <span class="n">n_expected</span><span class="p">,</span> <span class="n">image_dim</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">rint</span><span class="p">((</span><span class="n">centers</span> <span class="o">-</span> <span class="n">offset</span><span class="p">)</span> <span class="o">/</span> <span class="n">pitch</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">),</span>
+            <span class="mi">0</span><span class="p">,</span> <span class="n">n_expected</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="p">)</span>
 
         <span class="n">converged</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="k">for</span> <span class="n">iter_num</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">MAX_ITER</span><span class="p">):</span>
@@ -963,13 +1402,14 @@
                 <span class="n">centers</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">new_pitch</span><span class="p">,</span> <span class="n">new_offset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fit_pitch_and_offset</span><span class="p">(</span>
-                <span class="n">medians</span><span class="p">,</span> <span class="n">unique_idx</span><span class="p">,</span>
+                <span class="n">medians</span><span class="p">,</span> <span class="n">unique_idx</span><span class="p">,</span> <span class="n">axis_label</span><span class="o">=</span><span class="n">axis_label</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="k">if</span> <span class="n">new_pitch</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;AutoGridFinder (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">, iterative): degenerate &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;fit pitch &lt;= 0 (</span><span class="si">{</span><span class="n">new_pitch</span><span class="si">}</span><span class="s2">) at iter </span><span class="si">{</span><span class="n">iter_num</span><span class="si">}</span><span class="s2">; &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;falling back to uniform edges.&quot;</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">&quot;AutoGridFinder [iter-fit-degenerate] (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">, &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;iterative): </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> pitch (</span><span class="si">{</span><span class="n">new_pitch</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">) became &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;non-positive at iter </span><span class="si">{</span><span class="n">iter_num</span><span class="si">}</span><span class="s2"> of refinement; falling &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;back to uniform </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> edges.&quot;</span><span class="p">,</span>
                     <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span>
                     <span class="n">stacklevel</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
                 <span class="p">)</span>
@@ -995,9 +1435,9 @@
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">converged</span><span class="p">:</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">, iterative): index &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;assignments did not stabilize after </span><span class="si">{</span><span class="n">MAX_ITER</span><span class="si">}</span><span class="s2"> iterations; &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;using last fit.&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder [non-convergence] (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">, iterative): &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> index assignments did not stabilize after &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">MAX_ITER</span><span class="si">}</span><span class="s2"> iterations; using the last fit (no fallback).&quot;</span><span class="p">,</span>
                 <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span>
                 <span class="n">stacklevel</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
             <span class="p">)</span>
@@ -1012,49 +1452,43 @@
         <span class="k">if</span> <span class="n">n_inliers</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
             <span class="n">pitch</span><span class="p">,</span> <span class="n">offset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fit_pitch_and_offset</span><span class="p">(</span>
                 <span class="n">medians</span><span class="p">[</span><span class="n">inlier_mask</span><span class="p">],</span> <span class="n">unique_idx</span><span class="p">[</span><span class="n">inlier_mask</span><span class="p">],</span>
+                <span class="n">axis_label</span><span class="o">=</span><span class="n">axis_label</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">, iterative): only </span><span class="si">{</span><span class="n">n_inliers</span><span class="si">}</span><span class="s2"> &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;cell-median inliers of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">medians</span><span class="p">)</span><span class="si">}</span><span class="s2"> cells within residual &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;threshold (</span><span class="si">{</span><span class="n">threshold</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">); skipping refit and using last &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;fit.&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder [insufficient-inliers] (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;iterative): only </span><span class="si">{</span><span class="n">n_inliers</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">medians</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;cell-medians fall within the residual threshold &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">threshold</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> px = pitch * </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">residual_fraction</span><span class="si">}</span><span class="s2">); &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;skipping refit and using the last fit.&quot;</span><span class="p">,</span>
                 <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span>
                 <span class="n">stacklevel</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="k">if</span> <span class="n">pitch</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">, iterative): refit pitch &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;&lt;= 0 (</span><span class="si">{</span><span class="n">pitch</span><span class="si">}</span><span class="s2">); falling back to uniform edges.&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder [refit-degenerate] (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;iterative): refit </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> pitch (</span><span class="si">{</span><span class="n">pitch</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">) is &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;non-positive after inlier filtering; falling back to &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;uniform </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> edges.&quot;</span><span class="p">,</span>
                 <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span>
                 <span class="n">stacklevel</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_uniform_edges</span><span class="p">(</span><span class="n">n_expected</span><span class="p">,</span> <span class="n">image_dim</span><span class="p">)</span>
 
-        <span class="c1"># Symmetry anchoring when detected span &lt; expected.</span>
-        <span class="c1">#</span>
-        <span class="c1"># NOTE (latent design choice): unique_idx is post-clip to</span>
-        <span class="c1"># [0, n_expected - 1], so a single spurious detection past the</span>
-        <span class="c1"># image edge inflates the span and suppresses anchoring even</span>
-        <span class="c1"># when real coverage is genuinely sparse. The deleted robust</span>
-        <span class="c1"># path had the same blind spot. Tightening this would require</span>
-        <span class="c1"># an occupancy-based gate or a pitch-drift sanity guard</span>
-        <span class="c1"># (deferred per plan; see &quot;Future enhancement&quot; in</span>
-        <span class="c1"># /Users/alex/.claude/plans/lively-baking-plum.md).</span>
-        <span class="n">span</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">unique_idx</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">-</span> <span class="n">unique_idx</span><span class="o">.</span><span class="n">min</span><span class="p">())</span> <span class="o">+</span> <span class="mi">1</span>
-        <span class="k">if</span> <span class="n">span</span> <span class="o">&lt;</span> <span class="n">n_expected</span><span class="p">:</span>
-            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">, iterative): detected span &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">span</span><span class="si">}</span><span class="s2">) &lt; n_expected (</span><span class="si">{</span><span class="n">n_expected</span><span class="si">}</span><span class="s2">); recentering grid on &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;image (symmetry anchoring overrides fitted offset).&quot;</span><span class="p">,</span>
-                <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span>
-                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="n">image_center</span> <span class="o">=</span> <span class="n">image_dim</span> <span class="o">/</span> <span class="mf">2.0</span>
-            <span class="n">grid_center_idx</span> <span class="o">=</span> <span class="p">(</span><span class="n">n_expected</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
-            <span class="n">offset</span> <span class="o">=</span> <span class="n">image_center</span> <span class="o">-</span> <span class="n">pitch</span> <span class="o">*</span> <span class="n">grid_center_idx</span>
-
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_grid_edges</span><span class="p">(</span><span class="n">pitch</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">n_expected</span><span class="p">,</span> <span class="n">image_dim</span><span class="p">)</span>
+        <span class="c1"># Compute span from raw (unclipped) indices: unique_idx is clipped</span>
+        <span class="c1"># to [0, n_expected - 1], so a spurious detection past the image</span>
+        <span class="c1"># edge would otherwise inflate the span and mask genuinely sparse</span>
+        <span class="c1"># coverage. Using round((centers - offset) / pitch) without clip</span>
+        <span class="c1"># makes the span reflect the actual data extent.</span>
+        <span class="n">raw_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">rint</span><span class="p">((</span><span class="n">centers</span> <span class="o">-</span> <span class="n">offset</span><span class="p">)</span> <span class="o">/</span> <span class="n">pitch</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">span</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">raw_indices</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">-</span> <span class="n">raw_indices</span><span class="o">.</span><span class="n">min</span><span class="p">())</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_span_anchor</span><span class="p">(</span>
+            <span class="n">centers</span><span class="p">,</span> <span class="n">pitch</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">n_expected</span><span class="p">,</span> <span class="n">span</span><span class="p">,</span>
+            <span class="n">axis_label</span><span class="p">,</span> <span class="n">span_word</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_grid_edges</span><span class="p">(</span>
+            <span class="n">pitch</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">n_expected</span><span class="p">,</span> <span class="n">image_dim</span><span class="p">,</span> <span class="n">axis_label</span><span class="o">=</span><span class="n">axis_label</span><span class="p">,</span>
+        <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_fit_axis_edges</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>
@@ -1067,18 +1501,25 @@
 
 <span class="sd">        Falls back to uniform spacing when fewer than 2 objects are found.</span>
 <span class="sd">        Uses the simple pipeline for low-count *and* low-occupancy axes;</span>
-<span class="sd">        otherwise routes to the iterative pipeline (image-pitch seed +</span>
+<span class="sd">        otherwise routes to the iterative pipeline (data-driven seed +</span>
 <span class="sd">        cell-median refinement).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">axis_label</span> <span class="o">=</span> <span class="p">(</span>
             <span class="s2">&quot;rows&quot;</span> <span class="k">if</span> <span class="n">axis</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;cols&quot;</span> <span class="k">if</span> <span class="n">axis</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;axis </span><span class="si">{</span><span class="n">axis</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span>
+        <span class="n">span_word</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;row&quot;</span> <span class="k">if</span> <span class="n">axis_label</span> <span class="o">==</span> <span class="s2">&quot;rows&quot;</span>
+            <span class="k">else</span> <span class="s2">&quot;column&quot;</span> <span class="k">if</span> <span class="n">axis_label</span> <span class="o">==</span> <span class="s2">&quot;cols&quot;</span>
+            <span class="k">else</span> <span class="n">axis_label</span>
+        <span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">centers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_axis_centers</span><span class="p">(</span><span class="n">info_table</span><span class="p">,</span> <span class="n">axis</span><span class="p">)</span>
         <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">IndexError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">): could not extract centers &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">); falling back to uniform edges.&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder [extract-centers] (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">): could not &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;read </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> centers from info_table &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">); falling back to uniform &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> edges.&quot;</span><span class="p">,</span>
                 <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span>
                 <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
             <span class="p">)</span>
@@ -1086,8 +1527,9 @@
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">centers</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">centers</span><span class="p">)</span><span class="si">}</span><span class="s2"> centers &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;available (&lt; 2); falling back to uniform edges.&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder [insufficient-centers] (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">): only &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">centers</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> centers available (need &gt;= 2 to &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;fit a pitch); falling back to uniform </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> edges.&quot;</span><span class="p">,</span>
                 <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span>
                 <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
             <span class="p">)</span>
@@ -1103,10 +1545,11 @@
                 <span class="n">centers</span><span class="p">,</span> <span class="n">n_expected</span><span class="p">,</span> <span class="n">image_dim</span><span class="p">,</span>
             <span class="p">))</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">centers</span><span class="p">)</span><span class="si">}</span><span class="s2"> centers &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder [pipeline-simple] (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">): &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">centers</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> centers &quot;</span>
                 <span class="sa">f</span><span class="s2">&quot;(&lt; 1.5 * n_expected = </span><span class="si">{</span><span class="mf">1.5</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">n_expected</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">) and &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">n_occupied</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">n_expected</span><span class="si">}</span><span class="s2"> occupied cells (&lt; 50%); using &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;simple pipeline instead of iterative pipeline.&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">n_occupied</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">n_expected</span><span class="si">}</span><span class="s2"> occupied </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> cells &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(&lt; 50%); routing to simple pipeline instead of iterative.&quot;</span><span class="p">,</span>
                 <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span>
                 <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
             <span class="p">)</span>
@@ -1117,10 +1560,11 @@
         <span class="c1"># High-N guard: skip fitting for pathological object counts</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">centers</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_MAX_OBJECTS_PER_CELL</span> <span class="o">*</span> <span class="n">n_expected</span><span class="p">:</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">): detected </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">centers</span><span class="p">)</span><span class="si">}</span><span class="s2"> &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;objects for </span><span class="si">{</span><span class="n">n_expected</span><span class="si">}</span><span class="s2"> expected grid positions &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;(&gt;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_MAX_OBJECTS_PER_CELL</span><span class="si">}</span><span class="s2"> per cell). Falling back to &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;uniform grid spacing.&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;AutoGridFinder [high-object-count] (</span><span class="si">{</span><span class="n">axis_label</span><span class="si">}</span><span class="s2">): detected &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">centers</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> centers for </span><span class="si">{</span><span class="n">n_expected</span><span class="si">}</span><span class="s2"> &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;expected </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> positions &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(&gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_MAX_OBJECTS_PER_CELL</span><span class="si">}</span><span class="s2"> per cell). Falling back to &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;uniform </span><span class="si">{</span><span class="n">span_word</span><span class="si">}</span><span class="s2"> grid spacing.&quot;</span><span class="p">,</span>
                 <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span>
                 <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
             <span class="p">)</span>
@@ -1148,8 +1592,8 @@
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_warning_filter</span><span class="p">():</span>
             <span class="k">if</span> <span class="n">image</span><span class="o">.</span><span class="n">num_objects</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                    <span class="s2">&quot;AutoGridFinder.get_row_edges: no objects detected; &quot;</span>
-                    <span class="s2">&quot;falling back to uniform row edges.&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;AutoGridFinder [no-objects] (rows): no objects detected &quot;</span>
+                    <span class="s2">&quot;in image; falling back to uniform row edges.&quot;</span><span class="p">,</span>
                     <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span>
                     <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
                 <span class="p">)</span>
@@ -1175,8 +1619,8 @@
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_warning_filter</span><span class="p">():</span>
             <span class="k">if</span> <span class="n">image</span><span class="o">.</span><span class="n">num_objects</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                    <span class="s2">&quot;AutoGridFinder.get_col_edges: no objects detected; &quot;</span>
-                    <span class="s2">&quot;falling back to uniform column edges.&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;AutoGridFinder [no-objects] (cols): no objects detected &quot;</span>
+                    <span class="s2">&quot;in image; falling back to uniform column edges.&quot;</span><span class="p">,</span>
                     <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span>
                     <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
                 <span class="p">)</span>
@@ -1200,8 +1644,9 @@
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_warning_filter</span><span class="p">():</span>
             <span class="k">if</span> <span class="n">image</span><span class="o">.</span><span class="n">num_objects</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                    <span class="s2">&quot;AutoGridFinder._operate: no objects detected; falling &quot;</span>
-                    <span class="s2">&quot;back to uniform grid edges for both axes.&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;AutoGridFinder [no-objects] (rows + cols): no objects &quot;</span>
+                    <span class="s2">&quot;detected in image; falling back to uniform grid edges &quot;</span>
+                    <span class="s2">&quot;on both axes.&quot;</span><span class="p">,</span>
                     <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span>
                     <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
                 <span class="p">)</span>
@@ -1535,16 +1980,21 @@
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_plot_successive_diffs</span><span class="p">(</span>
-        <span class="bp">cls</span><span class="p">,</span> <span class="n">info_table</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">ncols</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-        <span class="n">image_shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+        <span class="bp">cls</span><span class="p">,</span> <span class="n">row_stats</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">col_stats</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+        <span class="n">info_table_empty</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Histogram of successive center diffs with image-pitch markers.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Histogram of successive center diffs with pitch markers.</span>
 
-<span class="sd">        Two subplots (rows, cols) showing ``np.diff(sorted(centers))`` per</span>
-<span class="sd">        axis, with vertical reference lines at 1x, 2x, 3x ``image_pitch``.</span>
-<span class="sd">        A peak at 1x means dense, well-separated detections; secondary</span>
-<span class="sd">        peaks at 2x or 3x indicate sparse plates with missing cells; a</span>
-<span class="sd">        peak below 1x indicates within-cell fragmentation.</span>
+<span class="sd">        Reads ``centers``, ``image_pitch``, and ``fit_pitch`` from each</span>
+<span class="sd">        axis&#39;s stats dict (:meth:`_compute_axis_dashboard_stats`) — does</span>
+<span class="sd">        not recompute. Reference lines:</span>
+
+<span class="sd">        - **Green solid**: fitted pitch.</span>
+<span class="sd">        - **Vermilion dashed**: 1× image_pitch (structural prior).</span>
+<span class="sd">          When this disagrees with the green line, the plate doesn&#39;t</span>
+<span class="sd">          fill the image edge-to-edge.</span>
+<span class="sd">        - **Grey dashed/dotted**: 2× and 3× image_pitch for spotting</span>
+<span class="sd">          sparse-coverage peaks.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">panel</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pn</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
@@ -1552,13 +2002,13 @@
         <span class="k">with</span> <span class="n">plt</span><span class="o">.</span><span class="n">rc_context</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_dashboard_rcparams</span><span class="p">()):</span>
             <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">8.5</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">))</span>
 
-            <span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="n">axis</span><span class="p">,</span> <span class="n">n_expected</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="p">[</span>
-                <span class="p">(</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="n">nrows</span><span class="p">,</span> <span class="n">image_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;Row&quot;</span><span class="p">),</span>
-                <span class="p">(</span><span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span><span class="p">,</span> <span class="n">ncols</span><span class="p">,</span> <span class="n">image_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s2">&quot;Col&quot;</span><span class="p">),</span>
-            <span class="p">]:</span>
-                <span class="n">image_pitch</span> <span class="o">=</span> <span class="n">dim</span> <span class="o">/</span> <span class="n">n_expected</span>
+            <span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="n">stats</span> <span class="ow">in</span> <span class="p">[(</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">row_stats</span><span class="p">),</span> <span class="p">(</span><span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">col_stats</span><span class="p">)]:</span>
+                <span class="n">label</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">]</span>
+                <span class="n">image_pitch</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;image_pitch&quot;</span><span class="p">]</span>
+                <span class="n">fit_pitch</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;fit_pitch&quot;</span><span class="p">]</span>
+                <span class="n">centers</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;centers&quot;</span><span class="p">]</span>
 
-                <span class="k">if</span> <span class="n">info_table</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">info_table_empty</span><span class="p">:</span>
                     <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
                         <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;No objects detected&quot;</span><span class="p">,</span>
                         <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
@@ -1567,7 +2017,6 @@
                     <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> diffs&quot;</span><span class="p">)</span>
                     <span class="k">continue</span>
 
-                <span class="n">centers</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_extract_axis_centers</span><span class="p">(</span><span class="n">info_table</span><span class="p">,</span> <span class="n">axis</span><span class="p">)</span>
                 <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">centers</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
                     <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
                         <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;&lt;2 centers&quot;</span><span class="p">,</span>
@@ -1596,21 +2045,28 @@
                     <span class="n">color</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">_OI_NAVY</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.85</span><span class="p">,</span>
                 <span class="p">)</span>
                 <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span>
+                    <span class="n">fit_pitch</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">_OI_GREEN</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span>
+                    <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;fit (</span><span class="si">{</span><span class="n">fit_pitch</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span>
                     <span class="n">image_pitch</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">_OI_VERMILION</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">1.2</span><span class="p">,</span>
-                    <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;1x (</span><span class="si">{</span><span class="n">image_pitch</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span>
+                    <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;1x ip (</span><span class="si">{</span><span class="n">image_pitch</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span>
                 <span class="p">)</span>
                 <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span>
                     <span class="mi">2</span> <span class="o">*</span> <span class="n">image_pitch</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">_OI_GREY</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
-                    <span class="n">label</span><span class="o">=</span><span class="s2">&quot;2x&quot;</span><span class="p">,</span>
+                    <span class="n">label</span><span class="o">=</span><span class="s2">&quot;2x ip&quot;</span><span class="p">,</span>
                 <span class="p">)</span>
                 <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span>
                     <span class="mi">3</span> <span class="o">*</span> <span class="n">image_pitch</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">_OI_GREY</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
-                    <span class="n">label</span><span class="o">=</span><span class="s2">&quot;3x&quot;</span><span class="p">,</span>
+                    <span class="n">label</span><span class="o">=</span><span class="s2">&quot;3x ip&quot;</span><span class="p">,</span>
                 <span class="p">)</span>
 
                 <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Δ between adjacent centers (px)&quot;</span><span class="p">)</span>
                 <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;count&quot;</span><span class="p">)</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> diffs (image_pitch=</span><span class="si">{</span><span class="n">image_pitch</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> diffs (fit=</span><span class="si">{</span><span class="n">fit_pitch</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">, &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;image_pitch=</span><span class="si">{</span><span class="n">image_pitch</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">)&quot;</span>
+                <span class="p">)</span>
                 <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">framealpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
 
             <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
@@ -1620,14 +2076,17 @@
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_plot_axis_occupancy</span><span class="p">(</span>
-        <span class="bp">cls</span><span class="p">,</span> <span class="n">info_table</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">ncols</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-        <span class="n">image_shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+        <span class="bp">cls</span><span class="p">,</span> <span class="n">row_stats</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">col_stats</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+        <span class="n">info_table_empty</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Bar chart of detection counts per cell index per axis.</span>
 
-<span class="sd">        Cells assigned via ``_image_pitch_indices`` so the result is</span>
-<span class="sd">        independent of the fitted pitch. Empty cells (count 0) are drawn</span>
-<span class="sd">        in vermilion to make missing rows/columns visually obvious.</span>
+<span class="sd">        Reads everything from the per-axis stats dicts produced by</span>
+<span class="sd">        :meth:`_compute_axis_dashboard_stats` — does **not** recompute</span>
+<span class="sd">        indices/counts. Primary bars (navy / vermilion) use ``fit_counts``</span>
+<span class="sd">        (the algorithm&#39;s decision); when ``stats[&quot;agree&quot;]`` is False,</span>
+<span class="sd">        ``ip_counts`` is overlaid as horizontal grey markers for</span>
+<span class="sd">        comparison and the title reports both occupancies.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">panel</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pn</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
@@ -1635,11 +2094,15 @@
         <span class="k">with</span> <span class="n">plt</span><span class="o">.</span><span class="n">rc_context</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_dashboard_rcparams</span><span class="p">()):</span>
             <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">8.5</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">))</span>
 
-            <span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="n">axis</span><span class="p">,</span> <span class="n">n_expected</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="p">[</span>
-                <span class="p">(</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="n">nrows</span><span class="p">,</span> <span class="n">image_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;Row&quot;</span><span class="p">),</span>
-                <span class="p">(</span><span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span><span class="p">,</span> <span class="n">ncols</span><span class="p">,</span> <span class="n">image_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s2">&quot;Col&quot;</span><span class="p">),</span>
-            <span class="p">]:</span>
-                <span class="k">if</span> <span class="n">info_table</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="n">stats</span> <span class="ow">in</span> <span class="p">[(</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">row_stats</span><span class="p">),</span> <span class="p">(</span><span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">col_stats</span><span class="p">)]:</span>
+                <span class="n">label</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">]</span>
+                <span class="n">n_expected</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;n_expected&quot;</span><span class="p">]</span>
+                <span class="n">fit_counts</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;fit_counts&quot;</span><span class="p">]</span>
+                <span class="n">ip_counts</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;ip_counts&quot;</span><span class="p">]</span>
+                <span class="n">fit_occupied</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;fit_occupied&quot;</span><span class="p">]</span>
+                <span class="n">ip_occupied</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;ip_occupied&quot;</span><span class="p">]</span>
+
+                <span class="k">if</span> <span class="n">info_table_empty</span><span class="p">:</span>
                     <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
                         <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;No objects detected&quot;</span><span class="p">,</span>
                         <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
@@ -1648,19 +2111,15 @@
                     <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> occupancy&quot;</span><span class="p">)</span>
                     <span class="k">continue</span>
 
-                <span class="n">centers</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_extract_axis_centers</span><span class="p">(</span><span class="n">info_table</span><span class="p">,</span> <span class="n">axis</span><span class="p">)</span>
-                <span class="n">indices</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_image_pitch_indices</span><span class="p">(</span><span class="n">centers</span><span class="p">,</span> <span class="n">n_expected</span><span class="p">,</span> <span class="n">dim</span><span class="p">)</span>
-                <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="n">minlength</span><span class="o">=</span><span class="n">n_expected</span><span class="p">)</span>
-                <span class="n">occupied</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">counts</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
-
                 <span class="n">colors</span> <span class="o">=</span> <span class="p">[</span>
                     <span class="bp">cls</span><span class="o">.</span><span class="n">_OI_VERMILION</span> <span class="k">if</span> <span class="n">c</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_OI_NAVY</span>
-                    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">counts</span>
+                    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">fit_counts</span>
                 <span class="p">]</span>
                 <span class="n">bars</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span>
-                    <span class="nb">range</span><span class="p">(</span><span class="n">n_expected</span><span class="p">),</span> <span class="n">counts</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">colors</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.85</span><span class="p">,</span>
+                    <span class="nb">range</span><span class="p">(</span><span class="n">n_expected</span><span class="p">),</span> <span class="n">fit_counts</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">colors</span><span class="p">,</span>
+                    <span class="n">alpha</span><span class="o">=</span><span class="mf">0.85</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;fitted&quot;</span><span class="p">,</span>
                 <span class="p">)</span>
-                <span class="k">for</span> <span class="n">bar</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">bars</span><span class="p">,</span> <span class="n">counts</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">bar</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">bars</span><span class="p">,</span> <span class="n">fit_counts</span><span class="p">):</span>
                     <span class="k">if</span> <span class="n">c</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                         <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
                             <span class="n">bar</span><span class="o">.</span><span class="n">get_x</span><span class="p">()</span> <span class="o">+</span> <span class="n">bar</span><span class="o">.</span><span class="n">get_width</span><span class="p">()</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span>
@@ -1670,12 +2129,31 @@
                             <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#2e3a4e&quot;</span><span class="p">,</span>
                         <span class="p">)</span>
 
+                <span class="c1"># Image-pitch counts as horizontal grey markers — only</span>
+                <span class="c1"># shown when they disagree with fitted (otherwise the</span>
+                <span class="c1"># plot stays clean).</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;agree&quot;</span><span class="p">]:</span>
+                    <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
+                        <span class="nb">range</span><span class="p">(</span><span class="n">n_expected</span><span class="p">),</span> <span class="n">ip_counts</span><span class="p">,</span>
+                        <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">_OI_GREY</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.85</span><span class="p">,</span>
+                        <span class="n">label</span><span class="o">=</span><span class="s2">&quot;image-pitch&quot;</span><span class="p">,</span>
+                    <span class="p">)</span>
+                    <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">framealpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s2">&quot;upper right&quot;</span><span class="p">)</span>
+
                 <span class="n">ax</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">n_expected</span><span class="p">))</span>
                 <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> index&quot;</span><span class="p">)</span>
                 <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;# detections&quot;</span><span class="p">)</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> occupancy (</span><span class="si">{</span><span class="n">occupied</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">n_expected</span><span class="si">}</span><span class="s2"> cells)&quot;</span>
-                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;agree&quot;</span><span class="p">]:</span>
+                    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> occupancy &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">fit_occupied</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">n_expected</span><span class="si">}</span><span class="s2"> cells)&quot;</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> occupancy &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;(fit: </span><span class="si">{</span><span class="n">fit_occupied</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">n_expected</span><span class="si">}</span><span class="s2">, &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;ip: </span><span class="si">{</span><span class="n">ip_occupied</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">n_expected</span><span class="si">}</span><span class="s2">)&quot;</span>
+                    <span class="p">)</span>
 
             <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
             <span class="n">pane</span> <span class="o">=</span> <span class="n">pn</span><span class="o">.</span><span class="n">pane</span><span class="o">.</span><span class="n">Matplotlib</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">tight</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
@@ -1684,15 +2162,21 @@
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_build_inspect_summary</span><span class="p">(</span>
-        <span class="bp">cls</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">ncols</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="bp">cls</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">row_stats</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">col_stats</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
         <span class="n">image_shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
     <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Markdown summary panel with grid diagnostics.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Markdown summary panel with grid diagnostics.</span>
+
+<span class="sd">        Reads all per-axis numbers from the supplied stats dicts</span>
+<span class="sd">        (:meth:`_compute_axis_dashboard_stats`) — does not recompute.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">panel</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pn</span>
 
         <span class="n">info_table</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;info_table&quot;</span><span class="p">]</span>
         <span class="n">timings</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;timings&quot;</span><span class="p">]</span>
         <span class="n">grid_df</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;grid_df&quot;</span><span class="p">]</span>
+        <span class="n">nrows</span> <span class="o">=</span> <span class="n">row_stats</span><span class="p">[</span><span class="s2">&quot;n_expected&quot;</span><span class="p">]</span>
+        <span class="n">ncols</span> <span class="o">=</span> <span class="n">col_stats</span><span class="p">[</span><span class="s2">&quot;n_expected&quot;</span><span class="p">]</span>
 
         <span class="n">n_objects</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">info_table</span><span class="p">)</span>
         <span class="n">total_time</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">timings</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
@@ -1724,35 +2208,19 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">n_oversized</span> <span class="o">=</span> <span class="mi">0</span>
 
-        <span class="c1"># Pitch from edges</span>
-        <span class="n">row_edges</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;row_edges&quot;</span><span class="p">]</span>
-        <span class="n">col_edges</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;col_edges&quot;</span><span class="p">]</span>
-        <span class="n">row_pitch</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">row_edges</span><span class="p">)))</span>
-        <span class="n">col_pitch</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">col_edges</span><span class="p">)))</span>
-
-        <span class="c1"># Sparse-plate diagnostics: image-pitch indices give occupancy</span>
-        <span class="c1"># and span coverage independent of the fitted pitch</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">info_table</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-            <span class="n">row_centers</span> <span class="o">=</span> <span class="n">AutoGridFinder</span><span class="o">.</span><span class="n">_extract_axis_centers</span><span class="p">(</span><span class="n">info_table</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-            <span class="n">col_centers</span> <span class="o">=</span> <span class="n">AutoGridFinder</span><span class="o">.</span><span class="n">_extract_axis_centers</span><span class="p">(</span><span class="n">info_table</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-            <span class="n">row_idx</span> <span class="o">=</span> <span class="n">AutoGridFinder</span><span class="o">.</span><span class="n">_image_pitch_indices</span><span class="p">(</span>
-                <span class="n">row_centers</span><span class="p">,</span> <span class="n">nrows</span><span class="p">,</span> <span class="n">image_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">_row_pair</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">fit</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">ip</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">total</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;Render a &#39;fit / ip&#39; summary row, marking disagreements.&quot;&quot;&quot;</span>
+            <span class="n">same</span> <span class="o">=</span> <span class="n">fit</span> <span class="o">==</span> <span class="n">ip</span>
+            <span class="n">marker</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span> <span class="k">if</span> <span class="n">same</span> <span class="k">else</span> <span class="s2">&quot; ⚠&quot;</span>
+            <span class="k">if</span> <span class="n">same</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;| </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">fit</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">fit</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">total</span><span class="si">:</span><span class="s2">.0%</span><span class="si">}</span><span class="s2">) |</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;| </span><span class="si">{</span><span class="n">label</span><span class="si">}{</span><span class="n">marker</span><span class="si">}</span><span class="s2"> | fit: </span><span class="si">{</span><span class="n">fit</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="s2"> &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">fit</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">total</span><span class="si">:</span><span class="s2">.0%</span><span class="si">}</span><span class="s2">), ip: </span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="s2"> &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">ip</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">total</span><span class="si">:</span><span class="s2">.0%</span><span class="si">}</span><span class="s2">) |</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="p">)</span>
-            <span class="n">col_idx</span> <span class="o">=</span> <span class="n">AutoGridFinder</span><span class="o">.</span><span class="n">_image_pitch_indices</span><span class="p">(</span>
-                <span class="n">col_centers</span><span class="p">,</span> <span class="n">ncols</span><span class="p">,</span> <span class="n">image_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
-            <span class="p">)</span>
-            <span class="n">row_counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">row_idx</span><span class="p">,</span> <span class="n">minlength</span><span class="o">=</span><span class="n">nrows</span><span class="p">)</span>
-            <span class="n">col_counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">col_idx</span><span class="p">,</span> <span class="n">minlength</span><span class="o">=</span><span class="n">ncols</span><span class="p">)</span>
-            <span class="n">occupied_rows</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">row_counts</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
-            <span class="n">occupied_cols</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">col_counts</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
-            <span class="n">row_span</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="nb">int</span><span class="p">(</span><span class="n">row_idx</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">-</span> <span class="n">row_idx</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">row_idx</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
-            <span class="p">)</span>
-            <span class="n">col_span</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="nb">int</span><span class="p">(</span><span class="n">col_idx</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">-</span> <span class="n">col_idx</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">col_idx</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
-            <span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">occupied_rows</span> <span class="o">=</span> <span class="n">occupied_cols</span> <span class="o">=</span> <span class="n">row_span</span> <span class="o">=</span> <span class="n">col_span</span> <span class="o">=</span> <span class="mi">0</span>
 
         <span class="n">md</span> <span class="o">=</span> <span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;### Summary</span><span class="se">\n\n</span><span class="s2">&quot;</span>
@@ -1764,18 +2232,26 @@
             <span class="sa">f</span><span class="s2">&quot;| Obj/cell (min / med / max) | </span><span class="si">{</span><span class="n">min_per_cell</span><span class="si">}</span><span class="s2"> / &quot;</span>
             <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">med_per_cell</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> / </span><span class="si">{</span><span class="n">max_per_cell</span><span class="si">}</span><span class="s2"> |</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="sa">f</span><span class="s2">&quot;| Oversized objects | </span><span class="si">{</span><span class="n">n_oversized</span><span class="si">}</span><span class="s2"> |</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;| Row pitch | </span><span class="si">{</span><span class="n">row_pitch</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> px |</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;| Col pitch | </span><span class="si">{</span><span class="n">col_pitch</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> px |</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;| Row pitch | </span><span class="si">{</span><span class="n">row_stats</span><span class="p">[</span><span class="s1">&#39;fit_pitch&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> px |</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;| Col pitch | </span><span class="si">{</span><span class="n">col_stats</span><span class="p">[</span><span class="s1">&#39;fit_pitch&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> px |</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="sa">f</span><span class="s2">&quot;| Pipeline path | </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;pipeline_path&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> |</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;| Row occupancy | </span><span class="si">{</span><span class="n">occupied_rows</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">nrows</span><span class="si">}</span><span class="s2"> &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">occupied_rows</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">nrows</span><span class="si">:</span><span class="s2">.0%</span><span class="si">}</span><span class="s2">) |</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;| Col occupancy | </span><span class="si">{</span><span class="n">occupied_cols</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">ncols</span><span class="si">}</span><span class="s2"> &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">occupied_cols</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">ncols</span><span class="si">:</span><span class="s2">.0%</span><span class="si">}</span><span class="s2">) |</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;| Row span coverage | </span><span class="si">{</span><span class="n">row_span</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">nrows</span><span class="si">}</span><span class="s2"> &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">row_span</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">nrows</span><span class="si">:</span><span class="s2">.0%</span><span class="si">}</span><span class="s2">) |</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;| Col span coverage | </span><span class="si">{</span><span class="n">col_span</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">ncols</span><span class="si">}</span><span class="s2"> &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">col_span</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">ncols</span><span class="si">:</span><span class="s2">.0%</span><span class="si">}</span><span class="s2">) |</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;| Total time | </span><span class="si">{</span><span class="n">total_time</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> s |</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="o">+</span> <span class="n">_row_pair</span><span class="p">(</span>
+                <span class="s2">&quot;Row occupancy&quot;</span><span class="p">,</span> <span class="n">row_stats</span><span class="p">[</span><span class="s2">&quot;fit_occupied&quot;</span><span class="p">],</span>
+                <span class="n">row_stats</span><span class="p">[</span><span class="s2">&quot;ip_occupied&quot;</span><span class="p">],</span> <span class="n">nrows</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="o">+</span> <span class="n">_row_pair</span><span class="p">(</span>
+                <span class="s2">&quot;Col occupancy&quot;</span><span class="p">,</span> <span class="n">col_stats</span><span class="p">[</span><span class="s2">&quot;fit_occupied&quot;</span><span class="p">],</span>
+                <span class="n">col_stats</span><span class="p">[</span><span class="s2">&quot;ip_occupied&quot;</span><span class="p">],</span> <span class="n">ncols</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="o">+</span> <span class="n">_row_pair</span><span class="p">(</span>
+                <span class="s2">&quot;Row span coverage&quot;</span><span class="p">,</span> <span class="n">row_stats</span><span class="p">[</span><span class="s2">&quot;fit_span&quot;</span><span class="p">],</span>
+                <span class="n">row_stats</span><span class="p">[</span><span class="s2">&quot;ip_span&quot;</span><span class="p">],</span> <span class="n">nrows</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="o">+</span> <span class="n">_row_pair</span><span class="p">(</span>
+                <span class="s2">&quot;Col span coverage&quot;</span><span class="p">,</span> <span class="n">col_stats</span><span class="p">[</span><span class="s2">&quot;fit_span&quot;</span><span class="p">],</span>
+                <span class="n">col_stats</span><span class="p">[</span><span class="s2">&quot;ip_span&quot;</span><span class="p">],</span> <span class="n">ncols</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;| Total time | </span><span class="si">{</span><span class="n">total_time</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> s |</span><span class="se">\n</span><span class="s2">&quot;</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">pn</span><span class="o">.</span><span class="n">pane</span><span class="o">.</span><span class="n">Markdown</span><span class="p">(</span>
             <span class="n">md</span><span class="p">,</span> <span class="n">styles</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;font-family&quot;</span><span class="p">:</span> <span class="s2">&quot;&#39;DM Sans&#39;, sans-serif&quot;</span><span class="p">},</span>
@@ -1814,6 +2290,19 @@
 
         <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_timed_pipeline</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">show_progress</span><span class="o">=</span><span class="n">show_progress</span><span class="p">)</span>
 
+        <span class="c1"># Compute per-axis dashboard stats ONCE; every downstream panel</span>
+        <span class="c1"># consumes from these dicts so the numbers cannot drift between</span>
+        <span class="c1"># panels. See _compute_axis_dashboard_stats for the schema.</span>
+        <span class="n">row_stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_axis_dashboard_stats</span><span class="p">(</span>
+            <span class="n">result</span><span class="p">[</span><span class="s2">&quot;info_table&quot;</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_expected</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span>
+            <span class="n">image_dim</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">edges</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;row_edges&quot;</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="n">col_stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_axis_dashboard_stats</span><span class="p">(</span>
+            <span class="n">result</span><span class="p">[</span><span class="s2">&quot;info_table&quot;</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_expected</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span>
+            <span class="n">image_dim</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">edges</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;col_edges&quot;</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="n">info_table_empty</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;info_table&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">empty</span><span class="p">)</span>
+
         <span class="n">header</span> <span class="o">=</span> <span class="n">pn</span><span class="o">.</span><span class="n">pane</span><span class="o">.</span><span class="n">Markdown</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;## Grid Fitting Diagnostics -- </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">num_objects</span><span class="si">}</span><span class="s2"> objects, &quot;</span>
             <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="si">}</span><span class="s2">x</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="si">}</span><span class="s2"> grid&quot;</span><span class="p">,</span>
@@ -1832,13 +2321,13 @@
             <span class="n">result</span><span class="p">[</span><span class="s2">&quot;col_edges&quot;</span><span class="p">],</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">p4</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_inspect_summary</span><span class="p">(</span>
-            <span class="n">result</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+            <span class="n">result</span><span class="p">,</span> <span class="n">row_stats</span><span class="p">,</span> <span class="n">col_stats</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">p5</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plot_successive_diffs</span><span class="p">(</span>
-            <span class="n">result</span><span class="p">[</span><span class="s2">&quot;info_table&quot;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+            <span class="n">row_stats</span><span class="p">,</span> <span class="n">col_stats</span><span class="p">,</span> <span class="n">info_table_empty</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">p6</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plot_axis_occupancy</span><span class="p">(</span>
-            <span class="n">result</span><span class="p">[</span><span class="s2">&quot;info_table&quot;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+            <span class="n">row_stats</span><span class="p">,</span> <span class="n">col_stats</span><span class="p">,</span> <span class="n">info_table_empty</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">pn</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span>

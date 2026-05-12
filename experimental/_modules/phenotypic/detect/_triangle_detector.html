@@ -570,7 +570,7 @@
 <span class="sd">          equal histogram areas (balanced bimodal distribution).</span>
 <span class="sd">        * :class:`HysteresisDetector` when colony brightness varies across</span>
 <span class="sd">          the plate and a single threshold under-segments faint regions.</span>
-<span class="sd">        * :class:`ManualDetector` when an empirically determined threshold is</span>
+<span class="sd">        * :class:`UserThreshold` when an empirically determined threshold is</span>
 <span class="sd">          known to outperform automatic methods for your plate type.</span>
 
 <span class="sd">    References:</span>
@@ -603,9 +603,9 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            Image: The modified image object with an updated output mask (`omask`).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">nbins</span> <span class="o">=</span> <span class="mi">2</span><span class="o">**</span><span class="n">image</span><span class="o">.</span><span class="n">bit_depth</span>
+        <span class="n">nbins</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">**</span> <span class="n">image</span><span class="o">.</span><span class="n">bit_depth</span>
         <span class="n">image</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">&gt;=</span> <span class="n">threshold_triangle</span><span class="p">(</span>
-            <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:],</span> <span class="n">nbins</span><span class="o">=</span><span class="n">nbins</span>
+                <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:],</span> <span class="n">nbins</span><span class="o">=</span><span class="n">nbins</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">image</span></div>
 

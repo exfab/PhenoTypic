@@ -30,8 +30,8 @@
       MadHysteresisDetector
       IsodataDetector
       LiDetector
-      ManualDetector
-      ManualGridDetector
+      UserThreshold
+      ManualGridPointDetector
       ManualPointDetector
       MeanDetector
       MinimumDetector

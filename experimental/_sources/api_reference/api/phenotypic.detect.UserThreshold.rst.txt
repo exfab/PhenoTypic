@@ -1,9 +1,9 @@
-phenotypic.detect.ManualDetector
-================================
+phenotypic.detect.UserThreshold
+===============================
 
 .. currentmodule:: phenotypic.detect
 
-.. autoclass:: ManualDetector
+.. autoclass:: UserThreshold
    :members:
    :undoc-members:
    :show-inheritance:
@@ -16,9 +16,9 @@ phenotypic.detect.ManualDetector
    .. autosummary::
       :nosignatures:
    
-      ~ManualDetector.__init__
-      ~ManualDetector.apply
-      ~ManualDetector.widget
+      ~UserThreshold.__init__
+      ~UserThreshold.apply
+      ~UserThreshold.widget
    
    
 

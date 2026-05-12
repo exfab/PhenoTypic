@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>phenotypic.detect.ManualGridDetector &#8212; PhenoTypic</title>
+    <title>phenotypic.detect.ManualGridPointDetector &#8212; PhenoTypic</title>
   
   
   
@@ -52,7 +52,7 @@
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/api/phenotypic.detect.ManualGridDetector';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/api/phenotypic.detect.ManualGridPointDetector';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
@@ -60,11 +60,11 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
-    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/api_reference/api/phenotypic.detect.ManualGridDetector.html" />
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/api_reference/api/phenotypic.detect.ManualGridPointDetector.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="phenotypic.detect.ManualPointDetector" href="phenotypic.detect.ManualPointDetector.html" />
-    <link rel="prev" title="phenotypic.detect.ManualDetector" href="phenotypic.detect.ManualDetector.html" />
+    <link rel="prev" title="phenotypic.detect.UserThreshold" href="phenotypic.detect.UserThreshold.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="0.15.0" />
@@ -582,8 +582,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.MadHysteresisDetector.html">phenotypic.detect.MadHysteresisDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.IsodataDetector.html">phenotypic.detect.IsodataDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.LiDetector.html">phenotypic.detect.LiDetector</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.ManualDetector.html">phenotypic.detect.ManualDetector</a></li>
-<li class="toctree-l2 current active"><a class="current reference internal" href="#">phenotypic.detect.ManualGridDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.UserThreshold.html">phenotypic.detect.UserThreshold</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">phenotypic.detect.ManualGridPointDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.ManualPointDetector.html">phenotypic.detect.ManualPointDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.MeanDetector.html">phenotypic.detect.MeanDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.MinimumDetector.html">phenotypic.detect.MinimumDetector</a></li>
@@ -904,7 +904,7 @@
     
     <li class="breadcrumb-item"><a href="phenotypic.detect.html" class="nav-link">phenotypic.detect</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.detect.ManualGridDetector</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.detect.ManualGridPointDetector</span></li>
   </ul>
 </nav>
 </div>
@@ -921,11 +921,11 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="phenotypic-detect-manualgriddetector">
-<h1>phenotypic.detect.ManualGridDetector<a class="headerlink" href="#phenotypic-detect-manualgriddetector" title="Link to this heading">#</a></h1>
+  <section id="phenotypic-detect-manualgridpointdetector">
+<h1>phenotypic.detect.ManualGridPointDetector<a class="headerlink" href="#phenotypic-detect-manualgridpointdetector" title="Link to this heading">#</a></h1>
 <dl class="py class">
-<dt class="sig sig-object py" id="phenotypic.detect.ManualGridDetector">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.detect.</span></span><span class="sig-name descname"><span class="pre">ManualGridDetector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coord1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(0,</span> <span class="pre">0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coord2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'square'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'diamond'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'disk'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'disk'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">15</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/detect/_manual_grid_detector.html#ManualGridDetector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.detect.ManualGridDetector" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.detect.ManualGridPointDetector">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.detect.</span></span><span class="sig-name descname"><span class="pre">ManualGridPointDetector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coord1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(0,</span> <span class="pre">0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coord2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'square'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'diamond'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'disk'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'disk'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">15</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/detect/_manual_grid_point_detector.html#ManualGridPointDetector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.detect.ManualGridPointDetector" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GridObjectDetector" title="phenotypic.abc_._grid_object_detector.GridObjectDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">GridObjectDetector</span></code></a>, <a class="reference internal" href="../phenotypic.tools_.mixin.html#phenotypic.tools_.mixin.FootprintMixin" title="phenotypic.tools_.mixin._footprint_mixin.FootprintMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">FootprintMixin</span></code></a></p>
 <p>Detect colonies by stamping footprint masks at evenly-spaced grid positions derived from reference coordinates.</p>
 <p>Compute a regular grid of colony positions from one or two user-supplied
@@ -1014,21 +1014,21 @@ from image content rather than geometric templates.</p></li>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.detect.html#phenotypic.detect.ManualGridDetector.apply" title="phenotypic.detect.ManualGridDetector.apply"><code class="xref py py-obj docutils literal notranslate"><span class="pre">apply</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.detect.html#phenotypic.detect.ManualGridPointDetector.apply" title="phenotypic.detect.ManualGridPointDetector.apply"><code class="xref py py-obj docutils literal notranslate"><span class="pre">apply</span></code></a></p></td>
 <td><p>Detect colonies using sinusoidal cross-correlation grid estimation.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.detect.html#phenotypic.detect.ManualGridDetector.napari" title="phenotypic.detect.ManualGridDetector.napari"><code class="xref py py-obj docutils literal notranslate"><span class="pre">napari</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.detect.html#phenotypic.detect.ManualGridPointDetector.napari" title="phenotypic.detect.ManualGridPointDetector.napari"><code class="xref py py-obj docutils literal notranslate"><span class="pre">napari</span></code></a></p></td>
 <td><p>Interactively pick 1--2 anchor coordinates using a napari viewer.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.detect.html#phenotypic.detect.ManualGridDetector.widget" title="phenotypic.detect.ManualGridDetector.widget"><code class="xref py py-obj docutils literal notranslate"><span class="pre">widget</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.detect.html#phenotypic.detect.ManualGridPointDetector.widget" title="phenotypic.detect.ManualGridPointDetector.widget"><code class="xref py py-obj docutils literal notranslate"><span class="pre">widget</span></code></a></p></td>
 <td><p>Return (and optionally display) the root widget.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
 <dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.detect.ManualGridDetector.napari">
-<span class="sig-name descname"><span class="pre">napari</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">GridImage</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.detect.html#phenotypic.detect.ManualGridDetector" title="phenotypic.detect.ManualGridDetector"><span class="pre">ManualGridDetector</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/detect/_manual_grid_detector.html#ManualGridDetector.napari"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.detect.ManualGridDetector.napari" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.detect.ManualGridPointDetector.napari">
+<span class="sig-name descname"><span class="pre">napari</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">GridImage</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.detect.html#phenotypic.detect.ManualGridPointDetector" title="phenotypic.detect.ManualGridPointDetector"><span class="pre">ManualGridPointDetector</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/detect/_manual_grid_point_detector.html#ManualGridPointDetector.napari"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.detect.ManualGridPointDetector.napari" title="Link to this definition">#</a></dt>
 <dd><p>Interactively pick 1–2 anchor coordinates using a napari viewer.</p>
 <p>Opens a blocking napari viewer displaying the plate image layers
 (RGB, grayscale, detection matrix). Click up to two points to
@@ -1043,20 +1043,20 @@ dock widget. The picked coordinates update <em>coord1</em> and
 <dd class="field-even"><p>Self, for method chaining.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="../phenotypic.detect.html#phenotypic.detect.ManualGridDetector" title="phenotypic.detect.ManualGridDetector">ManualGridDetector</a></p>
+<dd class="field-odd"><p><a class="reference internal" href="../phenotypic.detect.html#phenotypic.detect.ManualGridPointDetector" title="phenotypic.detect.ManualGridPointDetector">ManualGridPointDetector</a></p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.detect.ManualGridDetector.__del__">
-<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.detect.ManualGridDetector.__del__" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.detect.ManualGridPointDetector.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.detect.ManualGridPointDetector.__del__" title="Link to this definition">#</a></dt>
 <dd><p>Automatically stop tracemalloc when the object is deleted.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.detect.ManualGridDetector.__getstate__">
-<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.detect.ManualGridDetector.__getstate__" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.detect.ManualGridPointDetector.__getstate__">
+<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.detect.ManualGridPointDetector.__getstate__" title="Link to this definition">#</a></dt>
 <dd><p>Prepare the object for pickling by disposing of any widgets.</p>
 <p>This ensures that UI components (which may contain unpickleable objects like
 input functions or thread locks) are cleaned up before serialization.</p>
@@ -1068,8 +1068,8 @@ Any active widgets will be detached from the object.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.detect.ManualGridDetector.apply">
-<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.detect.ManualGridDetector.apply" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.detect.ManualGridPointDetector.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.detect.ManualGridPointDetector.apply" title="Link to this definition">#</a></dt>
 <dd><p>Detect colonies using sinusoidal cross-correlation grid estimation.</p>
 <p>This method performs the core detection workflow:
 1. Extract grid dimensions (if GridImage)
@@ -1093,8 +1093,8 @@ Any active widgets will be detached from the object.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.detect.ManualGridDetector.widget">
-<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.detect.ManualGridDetector.widget" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.detect.ManualGridPointDetector.widget">
+<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.detect.ManualGridPointDetector.widget" title="Link to this definition">#</a></dt>
 <dd><p>Return (and optionally display) the root widget.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1143,12 +1143,12 @@ visualization controls will be added to the widget.</p></li>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridDetector"><code class="docutils literal notranslate"><span class="pre">ManualGridDetector</span></code></a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridDetector.napari"><code class="docutils literal notranslate"><span class="pre">ManualGridDetector.napari()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridDetector.__del__"><code class="docutils literal notranslate"><span class="pre">ManualGridDetector.__del__()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridDetector.__getstate__"><code class="docutils literal notranslate"><span class="pre">ManualGridDetector.__getstate__()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridDetector.apply"><code class="docutils literal notranslate"><span class="pre">ManualGridDetector.apply()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridDetector.widget"><code class="docutils literal notranslate"><span class="pre">ManualGridDetector.widget()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridPointDetector"><code class="docutils literal notranslate"><span class="pre">ManualGridPointDetector</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridPointDetector.napari"><code class="docutils literal notranslate"><span class="pre">ManualGridPointDetector.napari()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridPointDetector.__del__"><code class="docutils literal notranslate"><span class="pre">ManualGridPointDetector.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridPointDetector.__getstate__"><code class="docutils literal notranslate"><span class="pre">ManualGridPointDetector.__getstate__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridPointDetector.apply"><code class="docutils literal notranslate"><span class="pre">ManualGridPointDetector.apply()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridPointDetector.widget"><code class="docutils literal notranslate"><span class="pre">ManualGridPointDetector.widget()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -1158,7 +1158,7 @@ visualization controls will be added to the widget.</p></li>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
-      <li><a href="../../_sources/api_reference/api/phenotypic.detect.ManualGridDetector.rst.txt"
+      <li><a href="../../_sources/api_reference/api/phenotypic.detect.ManualGridPointDetector.rst.txt"
             rel="nofollow">Show Source</a></li>
     </ul>
    </div></div>

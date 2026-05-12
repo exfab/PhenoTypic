@@ -546,7 +546,7 @@
 
 <span class="sd">    Place a morphological footprint at each explicitly provided ``(y, x)``</span>
 <span class="sd">    centre coordinate to produce ``objmask`` and ``objmap``. Unlike</span>
-<span class="sd">    :class:`ManualGridDetector`, which extrapolates a regular grid from one</span>
+<span class="sd">    :class:`ManualGridPointDetector`, which extrapolates a regular grid from one</span>
 <span class="sd">    or two anchor points, this class requires an explicit list of *every*</span>
 <span class="sd">    colony centre. This makes it suitable for plates without regular</span>
 <span class="sd">    geometry, sparse or irregular layouts, and manual annotation workflows</span>
@@ -585,7 +585,7 @@
 <span class="sd">          automatic detection.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        * :class:`ManualGridDetector` when colonies lie on a regular grid</span>
+<span class="sd">        * :class:`ManualGridPointDetector` when colonies lie on a regular grid</span>
 <span class="sd">          and only one or two anchor coordinates are needed.</span>
 <span class="sd">        * :class:`RoundPeaksDetector` when colony centres can be inferred</span>
 <span class="sd">          automatically from intensity profiles.</span>
@@ -600,10 +600,10 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">centers</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="nb">list</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">shape</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">,</span> <span class="s2">&quot;disk&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;disk&quot;</span><span class="p">,</span>
-        <span class="n">width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">15</span><span class="p">,</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">centers</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="nb">list</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">shape</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">,</span> <span class="s2">&quot;disk&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;disk&quot;</span><span class="p">,</span>
+            <span class="n">width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">15</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">centers</span> <span class="o">=</span> <span class="n">centers</span>
@@ -624,8 +624,8 @@
 
         <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="p">(</span><span class="n">cy</span><span class="p">,</span> <span class="n">cx</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">centers</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_stamp_footprint</span><span class="p">(</span>
-                <span class="n">mask</span><span class="p">,</span> <span class="n">labeled</span><span class="p">,</span> <span class="n">fp_mask</span><span class="p">,</span>
-                <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">cy</span><span class="p">)),</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">cx</span><span class="p">)),</span> <span class="n">idx</span><span class="p">,</span>
+                    <span class="n">mask</span><span class="p">,</span> <span class="n">labeled</span><span class="p">,</span> <span class="n">fp_mask</span><span class="p">,</span>
+                    <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">cy</span><span class="p">)),</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">cx</span><span class="p">)),</span> <span class="n">idx</span><span class="p">,</span>
             <span class="p">)</span>
 
         <span class="n">image</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">mask</span>

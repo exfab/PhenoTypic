@@ -632,7 +632,7 @@
 <span class="sd">          filamentous growth that violates the round-colony assumption.</span>
 <span class="sd">        * :class:`OtsuDetector` when a simple binary mask is sufficient and</span>
 <span class="sd">          per-cell assignment is not needed.</span>
-<span class="sd">        * :class:`ManualGridDetector` when colony positions are known a</span>
+<span class="sd">        * :class:`ManualGridPointDetector` when colony positions are known a</span>
 <span class="sd">          priori from robotic spotting coordinates.</span>
 
 <span class="sd">    References:</span>
@@ -809,8 +809,8 @@
 
         <span class="c1"># Assign colonies to grid cells using selection strategy</span>
         <span class="n">objmap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_assign_grid_objects</span><span class="p">(</span>
-            <span class="n">labeled</span><span class="p">,</span> <span class="n">row_edges</span><span class="p">,</span> <span class="n">col_edges</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">selection_mode</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">_OBJMAP_DTYPE</span><span class="p">,</span>
-            <span class="n">intensity</span><span class="o">=</span><span class="n">enh_matrix</span><span class="p">,</span> <span class="n">split_merged</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">split_merged</span><span class="p">,</span>
+                <span class="n">labeled</span><span class="p">,</span> <span class="n">row_edges</span><span class="p">,</span> <span class="n">col_edges</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">selection_mode</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">_OBJMAP_DTYPE</span><span class="p">,</span>
+                <span class="n">intensity</span><span class="o">=</span><span class="n">enh_matrix</span><span class="p">,</span> <span class="n">split_merged</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">split_merged</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="c1"># Fallback if no regions were labeled (e.g., grid inference failed)</span>

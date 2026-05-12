@@ -45,7 +45,7 @@ both physical connectivity and spatial proximity.
 Identify the dense colony centres first. These are the high-confidence
 anchors around which the rest of the algorithm operates — they determine
 both the Voronoi seeds and the Dijkstra source pixels. It's recommended if your
-image is uniform enough to instead use `ManualGridDetector`, as it provides
+image is uniform enough to instead use `ManualGridPointDetector`, as it provides
 guaranteed detection where you expect. InoculumDetector generally works, but can
 fail depending on noise in your scene
 

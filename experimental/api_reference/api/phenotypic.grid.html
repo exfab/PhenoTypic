@@ -582,8 +582,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.MadHysteresisDetector.html">phenotypic.detect.MadHysteresisDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.IsodataDetector.html">phenotypic.detect.IsodataDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.LiDetector.html">phenotypic.detect.LiDetector</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.ManualDetector.html">phenotypic.detect.ManualDetector</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.ManualGridDetector.html">phenotypic.detect.ManualGridDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.UserThreshold.html">phenotypic.detect.UserThreshold</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.ManualGridPointDetector.html">phenotypic.detect.ManualGridPointDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.ManualPointDetector.html">phenotypic.detect.ManualPointDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.MeanDetector.html">phenotypic.detect.MeanDetector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.MinimumDetector.html">phenotypic.detect.MinimumDetector</a></li>
@@ -963,18 +963,32 @@ residual_fraction: Outlier threshold as a fraction of pitch. Centers</p>
 excluded from the refined fit (default 0.25).</p>
 </div></blockquote>
 <dl class="simple">
-<dt>warn: Whether to emit <code class="xref py py-class docutils literal notranslate"><span class="pre">AutoGridFinderFallbackWarning</span></code></dt><dd><p>diagnostics for fallbacks and geometry overrides. Defaults
-to <code class="docutils literal notranslate"><span class="pre">False</span></code> (silent); set to <code class="docutils literal notranslate"><span class="pre">True</span></code> to surface them.</p>
+<dt>warn: Whether to emit <code class="xref py py-class docutils literal notranslate"><span class="pre">AutoGridFinderFallbackWarning</span></code></dt><dd><p>diagnostics for fallbacks, geometry overrides, and
+span-coverage anchoring decisions. Defaults to <code class="docutils literal notranslate"><span class="pre">False</span></code>
+(silent); set to <code class="docutils literal notranslate"><span class="pre">True</span></code> to surface them.</p>
 </dd>
 </dl>
 <p>tol: Deprecated. Accepted for backward compatibility but ignored.
 max_iter: Deprecated. Accepted for backward compatibility but ignored.</p>
 </dd>
-<dt>Notes:</dt><dd><p>Diagnostic warnings of category
+<dt>Notes:</dt><dd><p>Span-coverage handling: when the detected span of occupied grid
+indices is less than <code class="docutils literal notranslate"><span class="pre">n_expected</span></code> by more than
+<code class="xref py py-attr docutils literal notranslate"><span class="pre">_SPAN_TOLERANCE</span></code> (default <code class="docutils literal notranslate"><span class="pre">1</span></code> — a single entirely-empty
+edge row/column is silently tolerated), the fitter compares the
+leftmost and rightmost centroids to the fit’s predicted cell-0
+and cell-(n-1) centers. When one end aligns within <code class="docutils literal notranslate"><span class="pre">pitch</span> <span class="pre">/</span> <span class="pre">2</span></code>
+of its predicted boundary cell, that side is treated as the
+anchored edge and the fitted offset is preserved (no override).
+The three diagnostic tags <code class="docutils literal notranslate"><span class="pre">[span-coverage-low]</span></code> /
+<code class="docutils literal notranslate"><span class="pre">[span-coverage-high]</span></code> / <code class="docutils literal notranslate"><span class="pre">[span-coverage-symmetric]</span></code> document
+which decision was made; <code class="docutils literal notranslate"><span class="pre">warn=True</span></code> surfaces them. To loosen
+or tighten the tolerance, subclass and override
+<code class="xref py py-attr docutils literal notranslate"><span class="pre">_SPAN_TOLERANCE</span></code>.</p>
+<p>Diagnostic warnings of category
 <code class="xref py py-class docutils literal notranslate"><span class="pre">AutoGridFinderFallbackWarning</span></code> are emitted at every
 fallback (uniform spacing, simple-pipeline switch, span-based
-pitch) and geometry override (symmetry anchoring, pitch shrink).
-Suppress them in batch runs with:</p>
+pitch), geometry override (pitch shrink), and span-coverage
+anchor decision. Suppress them in batch runs with:</p>
 <div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.grid._auto_grid_finder</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">AutoGridFinderFallbackWarning</span><span class="p">,</span>

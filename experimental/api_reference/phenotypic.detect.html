@@ -2027,153 +2027,8 @@ visualization controls will be added to the widget.</p></li>
 </dd></dl>
 
 <dl class="py class">
-<dt class="sig sig-object py" id="phenotypic.detect.ManualDetector">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.detect.</span></span><span class="sig-name descname"><span class="pre">ManualDetector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_zeros</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_borders</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/detect/_manual_detector.html#ManualDetector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.detect.ManualDetector" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.ThresholdDetector" title="phenotypic.abc_._threshold_detector.ThresholdDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">ThresholdDetector</span></code></a></p>
-<p>Detect colonies by applying a user-specified intensity threshold.</p>
-<p>Apply a fixed intensity cutoff to the plate detection matrix, producing a
-binary colony mask without any automatic threshold computation. This
-gives explicit control over detection sensitivity and is the preferred
-approach when empirical testing has identified an optimal threshold for a
-specific imaging setup. For a full comparison see
-<a class="reference internal" href="../explanation/detection_strategies_compared.html"><span class="doc">Detection Strategies Compared</span></a>.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>threshold</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Intensity cutoff for binary segmentation. Pixels with
-intensity &gt;= <em>threshold</em> become colony (True), others become
-background (False). For 8-bit images the valid range is
-0–255; for 16-bit images 0–65535; for float images 0.0–1.0.
-Higher values are more conservative (fewer colonies detected);
-lower values are more sensitive (more colonies, more noise).
-Default 0.5. Start by inspecting the image histogram to find
-the valley between background and colony peaks.</p></li>
-<li><p><strong>ignore_zeros</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True (default), exclude zero-intensity pixels from
-processing. Enable for plates with black borders or masked
-regions.</p></li>
-<li><p><strong>ignore_borders</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True (default), remove colonies touching image
-edges via <code class="docutils literal notranslate"><span class="pre">clear_border()</span></code>. Recommended for grid-based colony
-counting.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Input image with <code class="docutils literal notranslate"><span class="pre">objmask</span></code> set to a binary colony mask
-(True = colony, False = background). <code class="docutils literal notranslate"><span class="pre">objmap</span></code> is not modified.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Image</p>
-</dd>
-<dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <em>threshold</em> is negative.</p>
-</dd>
-</dl>
-<dl class="simple">
-<dt>Best For:</dt><dd><ul class="simple">
-<li><p>Standardised imaging setups where the optimal threshold has been
-determined empirically and remains stable across plates.</p></li>
-<li><p>Overriding automatic methods (Otsu, triangle, etc.) that
-consistently over- or under-segment on a particular plate type.</p></li>
-<li><p>High-contrast plates where colonies are uniformly bright or dark
-relative to background and a single cutoff cleanly separates
-foreground from background.</p></li>
-<li><p>Reproducibility-critical workflows where a fixed numeric threshold
-eliminates variability introduced by automatic selection.</p></li>
-</ul>
-</dd>
-<dt>Consider Also:</dt><dd><ul class="simple">
-<li><p><a class="reference internal" href="#phenotypic.detect.OtsuDetector" title="phenotypic.detect.OtsuDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">OtsuDetector</span></code></a> when an automatic, parameter-free threshold
-is preferred and the histogram is bimodal.</p></li>
-<li><p><a class="reference internal" href="#phenotypic.detect.HysteresisDetector" title="phenotypic.detect.HysteresisDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">HysteresisDetector</span></code></a> when colony intensity varies across
-the plate and a single threshold cannot capture all colonies.</p></li>
-<li><p><a class="reference internal" href="#phenotypic.detect.TriangleDetector" title="phenotypic.detect.TriangleDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">TriangleDetector</span></code></a> when colonies are sparse and the
-histogram is skewed toward background.</p></li>
-</ul>
-</dd>
-</dl>
-<div class="admonition seealso">
-<p class="admonition-title">See also</p>
-<dl class="simple">
-<dt><a class="reference internal" href="../tutorials/notebooks/02_detecting_colonies.html"><span class="doc">Tutorial 2: Detecting Colonies</span></a></dt><dd><p>Step-by-step tutorial for basic colony detection.</p>
-</dd>
-<dt><a class="reference internal" href="../how_to/notebooks/choose_detection_algorithm.html"><span class="doc">How To: Choose a Detection Algorithm</span></a></dt><dd><p>Guide for selecting the right detector for your plate images.</p>
-</dd>
-<dt><a class="reference internal" href="../explanation/detection_strategies_compared.html"><span class="doc">Detection Strategies Compared</span></a></dt><dd><p>In-depth comparison of all detection strategies.</p>
-</dd>
-</dl>
-</div>
-<dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.detect.ManualDetector.__del__">
-<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.detect.ManualDetector.__del__" title="Link to this definition">#</a></dt>
-<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.detect.ManualDetector.__getstate__">
-<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.detect.ManualDetector.__getstate__" title="Link to this definition">#</a></dt>
-<dd><p>Prepare the object for pickling by disposing of any widgets.</p>
-<p>This ensures that UI components (which may contain unpickleable objects like
-input functions or thread locks) are cleaned up before serialization.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>This method modifies the object state by calling dispose_widgets().
-Any active widgets will be detached from the object.</p>
-</div>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.detect.ManualDetector.apply">
-<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.detect.ManualDetector.apply" title="Link to this definition">#</a></dt>
-<dd><p>Detect colonies using sinusoidal cross-correlation grid estimation.</p>
-<p>This method performs the core detection workflow:
-1. Extract grid dimensions (if GridImage)
-2. Threshold the detection matrix with adaptive kernel sizing
-3. Remove noise if requested
-4. Label connected components
-5. Determine or estimate grid edges (via sinusoidal cross-correlation)
-6. Assign dominant colonies to grid cells
-7. Create final object map</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>image</strong> – Image object to process. Can be a regular Image or GridImage.</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The processed image with updated objmask and objmap.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Image</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.detect.ManualDetector.widget">
-<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.detect.ManualDetector.widget" title="Link to this definition">#</a></dt>
-<dd><p>Return (and optionally display) the root widget.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>image</strong> (<em>Image</em><em> | </em><em>None</em>) – Optional image to visualize. If provided,
-visualization controls will be added to the widget.</p></li>
-<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to display the widget immediately. Defaults to False.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The root widget.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>ipywidgets.Widget</p>
-</dd>
-<dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If ipywidgets or IPython are not installed.</p>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="phenotypic.detect.ManualGridDetector">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.detect.</span></span><span class="sig-name descname"><span class="pre">ManualGridDetector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coord1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(0,</span> <span class="pre">0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coord2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'square'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'diamond'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'disk'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'disk'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">15</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/detect/_manual_grid_detector.html#ManualGridDetector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.detect.ManualGridDetector" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.detect.ManualGridPointDetector">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.detect.</span></span><span class="sig-name descname"><span class="pre">ManualGridPointDetector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coord1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(0,</span> <span class="pre">0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coord2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'square'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'diamond'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'disk'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'disk'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">15</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/detect/_manual_grid_point_detector.html#ManualGridPointDetector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.detect.ManualGridPointDetector" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.GridObjectDetector" title="phenotypic.abc_._grid_object_detector.GridObjectDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">GridObjectDetector</span></code></a>, <a class="reference internal" href="phenotypic.tools_.mixin.html#phenotypic.tools_.mixin.FootprintMixin" title="phenotypic.tools_.mixin._footprint_mixin.FootprintMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">FootprintMixin</span></code></a></p>
 <p>Detect colonies by stamping footprint masks at evenly-spaced grid positions derived from reference coordinates.</p>
 <p>Compute a regular grid of colony positions from one or two user-supplied
@@ -2257,14 +2112,14 @@ from image content rather than geometric templates.</p></li>
 </dl>
 </div>
 <dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.detect.ManualGridDetector.__del__">
-<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.detect.ManualGridDetector.__del__" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.detect.ManualGridPointDetector.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.detect.ManualGridPointDetector.__del__" title="Link to this definition">#</a></dt>
 <dd><p>Automatically stop tracemalloc when the object is deleted.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.detect.ManualGridDetector.__getstate__">
-<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.detect.ManualGridDetector.__getstate__" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.detect.ManualGridPointDetector.__getstate__">
+<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.detect.ManualGridPointDetector.__getstate__" title="Link to this definition">#</a></dt>
 <dd><p>Prepare the object for pickling by disposing of any widgets.</p>
 <p>This ensures that UI components (which may contain unpickleable objects like
 input functions or thread locks) are cleaned up before serialization.</p>
@@ -2276,8 +2131,8 @@ Any active widgets will be detached from the object.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.detect.ManualGridDetector.apply">
-<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.detect.ManualGridDetector.apply" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.detect.ManualGridPointDetector.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.detect.ManualGridPointDetector.apply" title="Link to this definition">#</a></dt>
 <dd><p>Detect colonies using sinusoidal cross-correlation grid estimation.</p>
 <p>This method performs the core detection workflow:
 1. Extract grid dimensions (if GridImage)
@@ -2301,8 +2156,8 @@ Any active widgets will be detached from the object.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.detect.ManualGridDetector.napari">
-<span class="sig-name descname"><span class="pre">napari</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">GridImage</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.detect.ManualGridDetector" title="phenotypic.detect.ManualGridDetector"><span class="pre">ManualGridDetector</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/detect/_manual_grid_detector.html#ManualGridDetector.napari"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.detect.ManualGridDetector.napari" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.detect.ManualGridPointDetector.napari">
+<span class="sig-name descname"><span class="pre">napari</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">GridImage</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.detect.ManualGridPointDetector" title="phenotypic.detect.ManualGridPointDetector"><span class="pre">ManualGridPointDetector</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/detect/_manual_grid_point_detector.html#ManualGridPointDetector.napari"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.detect.ManualGridPointDetector.napari" title="Link to this definition">#</a></dt>
 <dd><p>Interactively pick 1–2 anchor coordinates using a napari viewer.</p>
 <p>Opens a blocking napari viewer displaying the plate image layers
 (RGB, grayscale, detection matrix). Click up to two points to
@@ -2317,14 +2172,14 @@ dock widget. The picked coordinates update <em>coord1</em> and
 <dd class="field-even"><p>Self, for method chaining.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="#phenotypic.detect.ManualGridDetector" title="phenotypic.detect.ManualGridDetector">ManualGridDetector</a></p>
+<dd class="field-odd"><p><a class="reference internal" href="#phenotypic.detect.ManualGridPointDetector" title="phenotypic.detect.ManualGridPointDetector">ManualGridPointDetector</a></p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.detect.ManualGridDetector.widget">
-<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.detect.ManualGridDetector.widget" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.detect.ManualGridPointDetector.widget">
+<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.detect.ManualGridPointDetector.widget" title="Link to this definition">#</a></dt>
 <dd><p>Return (and optionally display) the root widget.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -2355,7 +2210,7 @@ visualization controls will be added to the widget.</p></li>
 <p>Detect objects by stamping footprint masks at user-specified coordinates.</p>
 <p>Place a morphological footprint at each explicitly provided <code class="docutils literal notranslate"><span class="pre">(y,</span> <span class="pre">x)</span></code>
 centre coordinate to produce <code class="docutils literal notranslate"><span class="pre">objmask</span></code> and <code class="docutils literal notranslate"><span class="pre">objmap</span></code>. Unlike
-<a class="reference internal" href="#phenotypic.detect.ManualGridDetector" title="phenotypic.detect.ManualGridDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">ManualGridDetector</span></code></a>, which extrapolates a regular grid from one
+<a class="reference internal" href="#phenotypic.detect.ManualGridPointDetector" title="phenotypic.detect.ManualGridPointDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">ManualGridPointDetector</span></code></a>, which extrapolates a regular grid from one
 or two anchor points, this class requires an explicit list of <em>every</em>
 colony centre. This makes it suitable for plates without regular
 geometry, sparse or irregular layouts, and manual annotation workflows
@@ -2400,7 +2255,7 @@ automatic detection.</p></li>
 </ul>
 </dd>
 <dt>Consider Also:</dt><dd><ul class="simple">
-<li><p><a class="reference internal" href="#phenotypic.detect.ManualGridDetector" title="phenotypic.detect.ManualGridDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">ManualGridDetector</span></code></a> when colonies lie on a regular grid
+<li><p><a class="reference internal" href="#phenotypic.detect.ManualGridPointDetector" title="phenotypic.detect.ManualGridPointDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">ManualGridPointDetector</span></code></a> when colonies lie on a regular grid
 and only one or two anchor coordinates are needed.</p></li>
 <li><p><a class="reference internal" href="#phenotypic.detect.RoundPeaksDetector" title="phenotypic.detect.RoundPeaksDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">RoundPeaksDetector</span></code></a> when colony centres can be inferred
 automatically from intensity profiles.</p></li>
@@ -3159,7 +3014,7 @@ touching but not arranged on a regular grid.</p></li>
 filamentous growth that violates the round-colony assumption.</p></li>
 <li><p><a class="reference internal" href="#phenotypic.detect.OtsuDetector" title="phenotypic.detect.OtsuDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">OtsuDetector</span></code></a> when a simple binary mask is sufficient and
 per-cell assignment is not needed.</p></li>
-<li><p><a class="reference internal" href="#phenotypic.detect.ManualGridDetector" title="phenotypic.detect.ManualGridDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">ManualGridDetector</span></code></a> when colony positions are known a
+<li><p><a class="reference internal" href="#phenotypic.detect.ManualGridPointDetector" title="phenotypic.detect.ManualGridPointDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">ManualGridPointDetector</span></code></a> when colony positions are known a
 priori from robotic spotting coordinates.</p></li>
 </ul>
 </dd>
@@ -3673,7 +3528,7 @@ colonies.</p></li>
 equal histogram areas (balanced bimodal distribution).</p></li>
 <li><p><a class="reference internal" href="#phenotypic.detect.HysteresisDetector" title="phenotypic.detect.HysteresisDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">HysteresisDetector</span></code></a> when colony brightness varies across
 the plate and a single threshold under-segments faint regions.</p></li>
-<li><p><a class="reference internal" href="#phenotypic.detect.ManualDetector" title="phenotypic.detect.ManualDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">ManualDetector</span></code></a> when an empirically determined threshold is
+<li><p><a class="reference internal" href="#phenotypic.detect.UserThreshold" title="phenotypic.detect.UserThreshold"><code class="xref py py-class docutils literal notranslate"><span class="pre">UserThreshold</span></code></a> when an empirically determined threshold is
 known to outperform automatic methods for your plate type.</p></li>
 </ul>
 </dd>
@@ -3742,6 +3597,151 @@ Any active widgets will be detached from the object.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.detect.TriangleDetector.widget">
 <span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.detect.TriangleDetector.widget" title="Link to this definition">#</a></dt>
+<dd><p>Return (and optionally display) the root widget.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<em>Image</em><em> | </em><em>None</em>) – Optional image to visualize. If provided,
+visualization controls will be added to the widget.</p></li>
+<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to display the widget immediately. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The root widget.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ipywidgets.Widget</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If ipywidgets or IPython are not installed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.detect.UserThreshold">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.detect.</span></span><span class="sig-name descname"><span class="pre">UserThreshold</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_zeros</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_borders</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/detect/_user_threshold.html#UserThreshold"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.detect.UserThreshold" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.ThresholdDetector" title="phenotypic.abc_._threshold_detector.ThresholdDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">ThresholdDetector</span></code></a></p>
+<p>Detect colonies by applying a user-specified intensity threshold.</p>
+<p>Apply a fixed intensity cutoff to the plate detection matrix, producing a
+binary colony mask without any automatic threshold computation. This
+gives explicit control over detection sensitivity and is the preferred
+approach when empirical testing has identified an optimal threshold for a
+specific imaging setup. For a full comparison see
+<a class="reference internal" href="../explanation/detection_strategies_compared.html"><span class="doc">Detection Strategies Compared</span></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>threshold</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Intensity cutoff for binary segmentation. Pixels with
+intensity &gt;= <em>threshold</em> become colony (True), others become
+background (False). For 8-bit images the valid range is
+0–255; for 16-bit images 0–65535; for float images 0.0–1.0.
+Higher values are more conservative (fewer colonies detected);
+lower values are more sensitive (more colonies, more noise).
+Default 0.5. Start by inspecting the image histogram to find
+the valley between background and colony peaks.</p></li>
+<li><p><strong>ignore_zeros</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True (default), exclude zero-intensity pixels from
+processing. Enable for plates with black borders or masked
+regions.</p></li>
+<li><p><strong>ignore_borders</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True (default), remove colonies touching image
+edges via <code class="docutils literal notranslate"><span class="pre">clear_border()</span></code>. Recommended for grid-based colony
+counting.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Input image with <code class="docutils literal notranslate"><span class="pre">objmask</span></code> set to a binary colony mask
+(True = colony, False = background). <code class="docutils literal notranslate"><span class="pre">objmap</span></code> is not modified.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Image</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <em>threshold</em> is negative.</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Best For:</dt><dd><ul class="simple">
+<li><p>Standardised imaging setups where the optimal threshold has been
+determined empirically and remains stable across plates.</p></li>
+<li><p>Overriding automatic methods (Otsu, triangle, etc.) that
+consistently over- or under-segment on a particular plate type.</p></li>
+<li><p>High-contrast plates where colonies are uniformly bright or dark
+relative to background and a single cutoff cleanly separates
+foreground from background.</p></li>
+<li><p>Reproducibility-critical workflows where a fixed numeric threshold
+eliminates variability introduced by automatic selection.</p></li>
+</ul>
+</dd>
+<dt>Consider Also:</dt><dd><ul class="simple">
+<li><p><a class="reference internal" href="#phenotypic.detect.OtsuDetector" title="phenotypic.detect.OtsuDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">OtsuDetector</span></code></a> when an automatic, parameter-free threshold
+is preferred and the histogram is bimodal.</p></li>
+<li><p><a class="reference internal" href="#phenotypic.detect.HysteresisDetector" title="phenotypic.detect.HysteresisDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">HysteresisDetector</span></code></a> when colony intensity varies across
+the plate and a single threshold cannot capture all colonies.</p></li>
+<li><p><a class="reference internal" href="#phenotypic.detect.TriangleDetector" title="phenotypic.detect.TriangleDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">TriangleDetector</span></code></a> when colonies are sparse and the
+histogram is skewed toward background.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="../tutorials/notebooks/02_detecting_colonies.html"><span class="doc">Tutorial 2: Detecting Colonies</span></a></dt><dd><p>Step-by-step tutorial for basic colony detection.</p>
+</dd>
+<dt><a class="reference internal" href="../how_to/notebooks/choose_detection_algorithm.html"><span class="doc">How To: Choose a Detection Algorithm</span></a></dt><dd><p>Guide for selecting the right detector for your plate images.</p>
+</dd>
+<dt><a class="reference internal" href="../explanation/detection_strategies_compared.html"><span class="doc">Detection Strategies Compared</span></a></dt><dd><p>In-depth comparison of all detection strategies.</p>
+</dd>
+</dl>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.detect.UserThreshold.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.detect.UserThreshold.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.detect.UserThreshold.__getstate__">
+<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.detect.UserThreshold.__getstate__" title="Link to this definition">#</a></dt>
+<dd><p>Prepare the object for pickling by disposing of any widgets.</p>
+<p>This ensures that UI components (which may contain unpickleable objects like
+input functions or thread locks) are cleaned up before serialization.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method modifies the object state by calling dispose_widgets().
+Any active widgets will be detached from the object.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.detect.UserThreshold.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.detect.UserThreshold.apply" title="Link to this definition">#</a></dt>
+<dd><p>Detect colonies using sinusoidal cross-correlation grid estimation.</p>
+<p>This method performs the core detection workflow:
+1. Extract grid dimensions (if GridImage)
+2. Threshold the detection matrix with adaptive kernel sizing
+3. Remove noise if requested
+4. Label connected components
+5. Determine or estimate grid edges (via sinusoidal cross-correlation)
+6. Assign dominant colonies to grid cells
+7. Create final object map</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>image</strong> – Image object to process. Can be a regular Image or GridImage.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The processed image with updated objmask and objmap.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Image</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.detect.UserThreshold.widget">
+<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.detect.UserThreshold.widget" title="Link to this definition">#</a></dt>
 <dd><p>Return (and optionally display) the root widget.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -4164,19 +4164,12 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.MadHysteresisDetector.widget"><code class="docutils literal notranslate"><span class="pre">MadHysteresisDetector.widget()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualDetector"><code class="docutils literal notranslate"><span class="pre">ManualDetector</span></code></a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualDetector.__del__"><code class="docutils literal notranslate"><span class="pre">ManualDetector.__del__()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualDetector.__getstate__"><code class="docutils literal notranslate"><span class="pre">ManualDetector.__getstate__()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualDetector.apply"><code class="docutils literal notranslate"><span class="pre">ManualDetector.apply()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualDetector.widget"><code class="docutils literal notranslate"><span class="pre">ManualDetector.widget()</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridDetector"><code class="docutils literal notranslate"><span class="pre">ManualGridDetector</span></code></a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridDetector.__del__"><code class="docutils literal notranslate"><span class="pre">ManualGridDetector.__del__()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridDetector.__getstate__"><code class="docutils literal notranslate"><span class="pre">ManualGridDetector.__getstate__()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridDetector.apply"><code class="docutils literal notranslate"><span class="pre">ManualGridDetector.apply()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridDetector.napari"><code class="docutils literal notranslate"><span class="pre">ManualGridDetector.napari()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridDetector.widget"><code class="docutils literal notranslate"><span class="pre">ManualGridDetector.widget()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridPointDetector"><code class="docutils literal notranslate"><span class="pre">ManualGridPointDetector</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridPointDetector.__del__"><code class="docutils literal notranslate"><span class="pre">ManualGridPointDetector.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridPointDetector.__getstate__"><code class="docutils literal notranslate"><span class="pre">ManualGridPointDetector.__getstate__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridPointDetector.apply"><code class="docutils literal notranslate"><span class="pre">ManualGridPointDetector.apply()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridPointDetector.napari"><code class="docutils literal notranslate"><span class="pre">ManualGridPointDetector.napari()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualGridPointDetector.widget"><code class="docutils literal notranslate"><span class="pre">ManualGridPointDetector.widget()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.ManualPointDetector"><code class="docutils literal notranslate"><span class="pre">ManualPointDetector</span></code></a><ul class="visible nav section-nav flex-column">
@@ -4243,6 +4236,13 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.TriangleDetector.__getstate__"><code class="docutils literal notranslate"><span class="pre">TriangleDetector.__getstate__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.TriangleDetector.apply"><code class="docutils literal notranslate"><span class="pre">TriangleDetector.apply()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.TriangleDetector.widget"><code class="docutils literal notranslate"><span class="pre">TriangleDetector.widget()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.UserThreshold"><code class="docutils literal notranslate"><span class="pre">UserThreshold</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.UserThreshold.__del__"><code class="docutils literal notranslate"><span class="pre">UserThreshold.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.UserThreshold.__getstate__"><code class="docutils literal notranslate"><span class="pre">UserThreshold.__getstate__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.UserThreshold.apply"><code class="docutils literal notranslate"><span class="pre">UserThreshold.apply()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.UserThreshold.widget"><code class="docutils literal notranslate"><span class="pre">UserThreshold.widget()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.detect.WatershedDetector"><code class="docutils literal notranslate"><span class="pre">WatershedDetector</span></code></a><ul class="visible nav section-nav flex-column">
