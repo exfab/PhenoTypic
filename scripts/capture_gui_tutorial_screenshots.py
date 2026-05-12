@@ -624,47 +624,53 @@ def _capture_pick_points(context, base_url: str) -> None:
 
 
 def _capture_aux_ports(context, base_url: str) -> None:
-    """Drive the aux-port wiring workflow and capture five PNGs.
+    """Drive the aux-port popover workflow and capture six PNGs.
 
-    The shots demonstrate the Galaxy-style aux-port flow described in
-    ``docs/source/tutorials/gui/09_aux_ports.md``:
+    The shots demonstrate the canvas-anchored aux popover flow described
+    in ``docs/source/tutorials/gui/09_aux_ports.md`` (Wave 6-A):
 
-    1. Empty builder canvas (the starting point).
-    2. ``FilamentousFungiDetector`` on the main ribbon — its
-       ``inoculum_detector`` aux port handle is rendered on the
-       consumer's left edge.
-    3. An ``OtsuDetector`` aux node added to the dock; no wire yet.
-    4. Click-then-click wire from the aux node to the port handle —
-       the purple dashed ``aux-wire`` cytoscape edge is rendered.
-    5. Inspector showing the wired-slot row with the "Disconnect" button
-       (the "Connected from canvas" treatment) for the
-       ``inoculum_detector`` parameter.
+    1. ``01_initial.png`` — empty builder canvas with the palette visible.
+    2. ``02_main_pipeline.png`` — four ribbon ops (``GaussianBlur`` →
+       ``ContrastStretching`` → ``FilamentousFungiDetector`` →
+       ``MeasureSize``) wired left-to-right; the FFD node carries a
+       hollow purple ``aux-port`` square on its bottom edge.
+    3. ``03_popover_empty.png`` — the FFD aux port has been tapped; the
+       canvas-anchored popover is open in palette mode listing every
+       compatible ``ObjectDetector`` / ``ImagePipeline`` class.
+    4. ``04_popover_wired.png`` — ``OtsuDetector`` picked from the
+       palette; popover transitions to its wired-row state (class label
+       plus ``Edit`` / ``Drill in`` / ``Disconnect`` actions). Aux port
+       marker flips to the filled ``aux-port--wired`` variant.
+    5. ``05_drill_in.png`` — ``Drill in →`` clicked; canvas swaps to the
+       drilled aux scope (single-op ribbon with just ``OtsuDetector``)
+       and the breadcrumb shows the drill path.
+    6. ``06_drill_out.png`` — first breadcrumb crumb clicked; canvas
+       restores to the original 4-step main ribbon with the aux port
+       still in its wired (filled-purple) state.
 
     Implementation notes
     --------------------
-    The capture leans on the same palette-button DOM selector pattern
-    used by :func:`_capture_pick_points`: each palette button carries a
-    pattern-matching id of the form
-    ``{"type": "palette-add", "class_name": "<name>"}`` and Dash
-    serializes that dict to a stable JSON string in the rendered ``id``
-    attribute.
+    Aux ports are rendered as cytoscape *nodes* (not DOM elements) with
+    flat ids of the form ``"aux-port__<target_node_id>__<param>"`` (see
+    :func:`phenotypic.gui.builder._ids._encode_aux_port_id`). Because
+    cytoscape paints to a single ``<canvas>`` element, the only reliable
+    way to click an aux port from Playwright is to emit a ``tap`` event
+    on the node via the live cy instance — exposed by
+    ``window.phenoGetCy()`` from ``assets/builder.js`` and bound by
+    ``assets/aux_popover.js`` on every cy refresh.
 
-    For the click-then-click wire creation flow, the port handle's
-    pattern-matching id is
-    ``{"type": "port-handle", "node_id": ..., "param": "inoculum_detector",
-    "slot": 0}`` and the aux node tap fires the cytoscape ``tapNode``
-    event — both surfaces are wired into the same
-    ``store-pending-wire`` Dash store; the second click in the pair
-    creates the wire.
+    The popover container itself (id ``cy-popover-container``, class
+    ``cy-popover``) IS a DOM element, so its action buttons can be
+    located with normal CSS selectors. Each action button's id is a
+    Dash pattern-matching dict serialised to JSON:
+    ``{"type": "popover-action", "action": "pick_class" | "edit" |
+    "drill" | "disconnect" | "add_slot", "target_node_id": ...,
+    "param": ..., "slot": ..., "class_name": ...}``.
 
-    TODO(v1.x): if any of the selectors below drift (e.g. the
-    ``aux-palette-add`` button moves or the port-handle id schema
-    changes) the corresponding ``page.click(...)`` call falls through
-    silently and that step's screenshot becomes a no-op duplicate of
-    the previous one. The walkthrough page calls this out as
-    "developer-workstation regenerated" rather than CI-baked, so
-    drift is caught at PR review time when the committed PNG no
-    longer matches the documented state.
+    Wait-target selectors used below:
+      * ``.cy-popover-palette`` — palette-mode popover body.
+      * ``.cy-popover-wired-row`` — wired-mode popover body.
+      * ``.pheno-breadcrumb`` — scope breadcrumb nav (always present).
     """
     print("[shot] workflow=aux_ports")
     page = _new_page(context, base_url, "/builder/")
@@ -676,10 +682,14 @@ def _capture_aux_ports(context, base_url: str) -> None:
     # 1) Empty canvas — same starting point as the Build Pipeline tutorial.
     _save(page, "aux_ports", "01_initial.png")
 
-    # Open every Operations accordion section so palette buttons for ops
-    # in any category are reachable. ``always_open=True`` only sets the
-    # first item active — clicking the headers expands the rest.
-    for header_text in ("Corrector", "Detector", "Enhancer", "Refiner"):
+    # Open every Operations / Measurements accordion section so palette
+    # buttons for ops in any category are reachable.
+    # ``always_open=True`` only auto-expands the first item — clicking
+    # the headers expands the rest. The Measure palette ("Measurements")
+    # lives in a separate accordion (``palette-meas``) from the image-
+    # ops palette (``palette``); a single accordion-button header
+    # selector covers both.
+    for header_text in ("Corrector", "Detector", "Enhancer", "Refiner", "Measure"):
         header = page.locator(
             f'button.accordion-button:has-text("{header_text}")'
         ).first
@@ -702,115 +712,150 @@ def _capture_aux_ports(context, base_url: str) -> None:
         loc = page.locator(sel)
         if loc.count() > 0:
             loc.first.click()
-            page.wait_for_timeout(500)
+            page.wait_for_timeout(600)
 
-    # 2) Add FilamentousFungiDetector to the main ribbon — its aux port
-    #    handle for ``inoculum_detector`` should appear on the consumer's
-    #    left edge once the layout module emits the port-handle node.
-    _add_op("FilamentousFungiDetector")
-    page.wait_for_timeout(600)
-    _save(page, "aux_ports", "02_filamentous_added.png")
+    # Helper: tap an aux port via the live cytoscape instance.
+    # Aux port nodes have ids of the form
+    # ``aux-port__<target_node_id>__<param>`` and the popover's
+    # clientside glue (``aux_popover.js``) binds ``cy.on('tap', 'node[id
+    # ^= "aux-port__"]', ...)``. Emitting a ``tap`` event programmatically
+    # exercises the same code path as a real click.
+    def _click_aux_port(target_node_id: str, param: str) -> None:
+        page.evaluate(
+            f"""
+            () => {{
+                const cy = window.phenoGetCy && window.phenoGetCy();
+                if (!cy) return;
+                const port = cy.getElementById(
+                    'aux-port__{target_node_id}__{param}'
+                );
+                if (port && port.length > 0) {{
+                    port.emit('tap');
+                }}
+            }}
+            """
+        )
+        page.wait_for_timeout(500)
 
-    # 3) Add an OtsuDetector aux node. In v1 the click-an-aux-palette
-    #    button creates a free-floating aux node in the dock; an
-    #    explicit aux palette accordion or "Add aux..." inspector control
-    #    can also drive this. The standard palette-add button creates a
-    #    main-ribbon node, so we trigger aux insertion via the inspector
-    #    palette / aux-palette button if one is rendered. If the v1
-    #    builder lacks a one-click aux palette button (the spec defers
-    #    that to the inspector "Add aux..." path), this falls through
-    #    and screenshot 03 documents the canvas without the aux node —
-    #    the tutorial copy describes the intended end-state regardless.
-    aux_palette_btn_sel = (
-        'button[id*="\\"type\\":\\"aux-palette-add\\""]'
+    # Helper: resolve the node id of the most recently-added ribbon op
+    # for *class_name*. Dash assigns each StepNode a fresh 8-char hex id
+    # at construction time, so screenshots can't hardcode it.
+    def _last_main_node_id(class_name: str) -> str:
+        return page.evaluate(
+            f"""
+            () => {{
+                const cy = window.phenoGetCy && window.phenoGetCy();
+                if (!cy) return '';
+                const nodes = cy.nodes('[class_name = "{class_name}"]');
+                if (!nodes || nodes.length === 0) return '';
+                return nodes.last().id();
+            }}
+            """
+        )
+
+    # 2) Build the 4-step main pipeline. Order matters — the screenshot
+    #    is taken after all four are wired left-to-right so the image-
+    #    flow edges are visible.
+    for cls in (
+        "GaussianBlur",
+        "ContrastStretching",
+        "FilamentousFungiDetector",
+        "MeasureSize",
+    ):
+        _add_op(cls)
+    page.wait_for_timeout(800)
+    _save(page, "aux_ports", "02_main_pipeline.png")
+
+    # 3) Resolve the FFD consumer node id, tap its aux port, and wait
+    #    for the popover palette to mount.
+    ffd_node_id = _last_main_node_id("FilamentousFungiDetector")
+    if not ffd_node_id:
+        # Defensive: if cy isn't ready or class_name lookup misses,
+        # skip the popover-driven shots rather than emit duplicates.
+        print(
+            "[shot]   aux_ports: could not resolve FFD node id — "
+            "popover screenshots skipped"
+        )
+        page.close()
+        return
+    _click_aux_port(ffd_node_id, "inoculum_detector")
+    try:
+        page.wait_for_selector(
+            "#cy-popover-container .cy-popover-palette",
+            timeout=5_000,
+        )
+    except Exception:  # pragma: no cover - best-effort
+        page.wait_for_timeout(800)
+    _save(page, "aux_ports", "03_popover_empty.png")
+
+    # 4) Click the ``OtsuDetector`` palette button in the popover.
+    #    The popover action button ids are pattern-matching dicts of the
+    #    form {"type": "popover-action", "action": "pick_class",
+    #    "target_node_id": ..., "param": ..., "slot": 0,
+    #    "class_name": "OtsuDetector"}. Match by the two id segments
+    #    most likely to be unique on this popover.
+    pick_btn_sel = (
+        '#cy-popover-container '
+        'button[id*="\\"type\\":\\"popover-action\\""]'
+        '[id*="\\"action\\":\\"pick_class\\""]'
         '[id*="\\"class_name\\":\\"OtsuDetector\\""]'
     )
-    aux_btn = page.locator(aux_palette_btn_sel)
-    if aux_btn.count() > 0:
-        aux_btn.first.click()
-        page.wait_for_timeout(600)
-    else:
-        # Fallback: dispatch the ``aux_add`` mutation via the existing
-        # ``store-builder-state`` setter. This path keeps the screenshot
-        # representative even if the click affordance shifts between
-        # waves; the cytoscape canvas re-renders on the resulting
-        # state-store change. We swallow exceptions so a missing global
-        # doesn't kill the whole capture run.
+    pick_btn = page.locator(pick_btn_sel)
+    if pick_btn.count() > 0:
+        pick_btn.first.click()
         try:
-            page.evaluate(
-                """
-                () => {
-                    const d = window.dash_clientside;
-                    if (!d || !d.set_props) return;
-                    // No-op fallback: the layout module derives aux nodes
-                    // from BuilderState; without a clientside dispatch
-                    // path we leave this to the developer to wire
-                    // through the inspector palette manually.
-                }
-                """
+            page.wait_for_selector(
+                "#cy-popover-container .cy-popover-wired-row",
+                timeout=8_000,
             )
         except Exception:  # pragma: no cover - best-effort
-            pass
-    _save(page, "aux_ports", "03_aux_added.png")
+            page.wait_for_timeout(1000)
+    else:
+        # Popover container might have been wiped by an earlier callback
+        # (see ``test_aux_port_e2e`` Wave 3 bug note). The screenshot
+        # will document whatever state the GUI is in.
+        page.wait_for_timeout(800)
+    _save(page, "aux_ports", "04_popover_wired.png")
 
-    # 4) Click-then-click wire creation:
-    #    First, click the inoculum_detector port handle (pattern-matching
-    #    id type=port-handle, param=inoculum_detector, slot=0). Then,
-    #    click the aux node — completes the pending wire. Cytoscape
-    #    nodes are canvas-rendered, so we route the second click through
-    #    the cy instance for reliability.
-    port_handle_sel = (
-        'button[id*="\\"type\\":\\"port-handle\\""]'
-        '[id*="\\"param\\":\\"inoculum_detector\\""]'
+    # 5) Drill in via the popover's drill action button. The canvas
+    #    re-renders to the drilled aux scope and the popover dismisses.
+    drill_btn_sel = (
+        '#cy-popover-container '
+        'button[id*="\\"type\\":\\"popover-action\\""]'
+        '[id*="\\"action\\":\\"drill\\""]'
     )
-    handle = page.locator(port_handle_sel)
-    if handle.count() > 0:
+    drill_btn = page.locator(drill_btn_sel)
+    if drill_btn.count() > 0:
+        drill_btn.first.click()
+        # Drill-in fires a scope swap; the breadcrumb is always rendered
+        # but the canvas takes a tick to re-layout. Wait for the
+        # popover to dismiss as the scope-swap signal.
         try:
-            handle.first.click(timeout=2000)
-            page.wait_for_timeout(400)
+            page.wait_for_function(
+                """
+                () => {
+                    const el = document.getElementById('cy-popover-container');
+                    if (!el) return true;
+                    return getComputedStyle(el).display === 'none';
+                }
+                """,
+                timeout=5_000,
+            )
         except Exception:  # pragma: no cover - best-effort
-            pass
-    # Second click: tap the aux node via cytoscape (the canvas backend
-    # has no per-node DOM, so we trigger the tap event programmatically).
-    page.evaluate(
-        """
-        () => {
-            const cy = window.cy || (window._cy_instances && window._cy_instances[0]);
-            if (!cy) return;
-            const aux = cy.nodes('[class_name = "OtsuDetector"]').filter(
-                n => (n.data('node_kind') || '').includes('aux')
-            );
-            if (aux && aux.length > 0) {
-                aux[0].emit('tap');
-            }
-        }
-        """
-    )
-    page.wait_for_timeout(800)
-    _save(page, "aux_ports", "04_wire_created.png")
+            page.wait_for_timeout(800)
+        page.wait_for_timeout(600)
+    _save(page, "aux_ports", "05_drill_in.png")
 
-    # 5) Inspector wired-state: tap the consumer node so the Dash
-    #    ``tapNodeData`` callback fires and updates ``selected_node_id``,
-    #    which re-renders the inspector with the wired-slot row's
-    #    "Connected from canvas" treatment + Disconnect button.
-    #    ``select()`` only updates cytoscape-local state; ``emit('tap')``
-    #    is what propagates to Dash.
-    page.evaluate(
-        """
-        () => {
-            const cy = window.cy || (window._cy_instances && window._cy_instances[0]);
-            if (!cy) return;
-            const consumer = cy.nodes('[class_name = "FilamentousFungiDetector"]').filter(
-                n => (n.data('node_kind') || '').toLowerCase() !== 'aux'
-            );
-            if (consumer && consumer.length > 0) {
-                consumer[0].emit('tap');
-            }
-        }
-        """
-    )
-    page.wait_for_timeout(1200)
-    _save(page, "aux_ports", "05_inspector_wired.png")
+    # 6) Drill back out by clicking the first breadcrumb crumb. The
+    #    breadcrumb's non-leaf segments are rendered as ``dbc.Button``s
+    #    with a ``{"type": "breadcrumb-link", "depth": N}`` pattern-
+    #    matching id; ``.pheno-breadcrumb button`` is a deliberately
+    #    schema-agnostic selector that survives future id renames.
+    crumbs = page.locator(".pheno-breadcrumb button")
+    if crumbs.count() > 0:
+        crumbs.first.click()
+        page.wait_for_timeout(800)
+    _save(page, "aux_ports", "06_drill_out.png")
 
     page.close()
 

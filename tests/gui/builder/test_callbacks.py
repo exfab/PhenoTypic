@@ -46,7 +46,7 @@ def test_render_views_returns_breadcrumb_children_not_nested_nav() -> None:
     state = BuilderState()
 
     with app.server.app_context():
-        breadcrumb_children, _canvas, _inspector = _render_views(state)
+        breadcrumb_children, _canvas, _inspector, _popover = _render_views(state)
 
     assert isinstance(breadcrumb_children, list)
     assert not any(isinstance(child, html.Nav) for child in breadcrumb_children)
@@ -79,7 +79,7 @@ def test_render_views_drilled_in_breadcrumb_returns_button_children() -> None:
     )
 
     with app.server.app_context():
-        breadcrumb_children, _canvas, _inspector = _render_views(state)
+        breadcrumb_children, _canvas, _inspector, _popover = _render_views(state)
 
     assert isinstance(breadcrumb_children, list)
     assert not any(isinstance(child, html.Nav) for child in breadcrumb_children)

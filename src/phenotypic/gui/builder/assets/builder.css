@@ -516,176 +516,191 @@ code, pre, .text-monospace, .font-monospace {
 }
 
 /* ===========================================================================
- * Aux input ports & wires
+ * Aux input ports — popover-anchored design
  * ===========================================================================
  *
- * Galaxy-style auxiliary input ports surface op-as-config dependencies
- * (e.g. ``FilamentousFungiDetector.inoculum_detector``) as wired aux nodes
- * in a dock area below the main image-flow ribbon.
+ * Op-typed parameters (e.g. ``FilamentousFungiDetector.inoculum_detector``,
+ * ``CompositeDetector.detectors``) surface as small purple squares on the
+ * BOTTOM edge of consumer nodes (one square per op-typed param, regardless
+ * of slot cardinality). Clicking a port opens a canvas-anchored popover
+ * (positioned via ``cytoscape-popper`` + ``@popperjs/core`` — see
+ * ``aux_popover.js``) that hosts the class palette, wired-class actions,
+ * and per-slot rows for list-typed ports.
  *
- * These rules style the DOM-side affordances: inspector port rows,
- * port-label badges, the pending-wire indicator, orphan aux nodes, and
- * the per-slot +/× controls. The cytoscape canvas itself (sub-nodes,
- * aux wires, aux-node tiles) is styled in Python via ``_canvas_stylesheet``
- * — these CSS rules do NOT apply to cytoscape elements.
+ * Main image-flow I/O ports (small blue circles on left/right edges of
+ * every operation node) are styled inside the cytoscape stylesheet
+ * (Python ``_canvas_stylesheet`` in ``_layout.py``). These DOM-side rules
+ * cover only the popover overlay, the inspector focus-override hint, and
+ * a cursor affordance for cytoscape-anchored DOM overlays.
  *
- * Color choice: ``--color-interactive`` (already aliased to ``--oi-purple``
- * for the point-picker mixin) is the project's "purple UI accent" token.
- * It is the closest existing semantic token for an "auxiliary flow"
- * indicator. ``--color-bg`` and ``--color-rule`` provide the muted
- * background tones for wired/empty rows. Adding a new dedicated
- * --color-info token would be a ``_design.py`` change (out of Wave 1
- * scope). */
+ * Color choice: ``--color-interactive`` (aliased to ``--oi-purple`` for
+ * the point-picker mixin in the :root override above) is the project's
+ * "purple UI accent" token and the natural fit for the aux semantic —
+ * an op-typed parameter is conceptually an "interactive configuration
+ * input", in the same family as the point-picker capability. */
 
-/* ─── Aux input ports & wires ─────────────── */
+/* ─── Canvas-anchored popover ───────────────────────────────────────── */
 
-/* Port handle pill shown in inspector rows / DOM badges. Renders as an
- * inline-flex pill: a small colored shape (square = ImageOperation,
- * circle = ImagePipeline) followed by the parameter label. */
-.port-handle {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--sp-1);
-    padding: 0.15rem 0.5rem;
-    background: var(--color-bg);
-    border: 1px solid var(--color-rule);
+/* The popover root is a DOM card positioned by ``cytoscape-popper``
+ * (via popper.js) so it tracks its anchor aux port through canvas
+ * pan/zoom. ``position: absolute`` lets popper.js own the coords;
+ * we just style the card. */
+.cy-popover {
+    position: absolute;
+    z-index: 200;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius);
-    font-family: var(--font-mono);
-    font-size: var(--font-size-caption);
-    color: var(--color-muted);
-    line-height: 1.2;
-    transition: var(--transition);
-}
-
-.port-handle::before {
-    content: "";
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    background: transparent;
-    border: 1.5px solid var(--color-border);
-    flex-shrink: 0;
-}
-
-/* Operation-typed port: square handle (rounded corners on the dot) */
-.port-handle--operation::before {
-    border-radius: 2px;
-    border-color: var(--color-interactive);
-}
-
-/* Pipeline-typed port: circular handle */
-.port-handle--pipeline::before {
-    border-radius: 50%;
-    border-color: var(--color-interactive);
-}
-
-/* Wired modifier: dot fills solid, label saturates */
-.port-handle--wired {
-    color: var(--color-heading);
-    border-color: var(--color-interactive);
-}
-.port-handle--wired::before {
-    background: var(--color-interactive);
-    border-color: var(--color-interactive);
-}
-
-/* Aux wire indicator for non-cytoscape DOM elements that mirror wire
- * state (e.g. an inline note "wired from canvas" in the inspector).
- * Cytoscape aux wires themselves are styled in the cytoscape stylesheet
- * (Python). This class is a CSS-only mirror affordance. */
-.aux-wire {
-    display: inline-block;
-    padding-left: var(--sp-2);
-    border-left: 2px dashed var(--color-interactive);
-    color: var(--color-interactive);
-    font-family: var(--font-mono);
-    font-size: var(--font-size-caption);
-}
-
-/* Pending-wire source: the inspector port row currently selected as
- * the source of a click-then-click wire. Pulses to signal "click a
- * complementary endpoint to complete the wire". */
-@keyframes pheno-pending-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(204, 121, 167, 0.55); }
-    50%      { box-shadow: 0 0 0 4px rgba(204, 121, 167, 0); }
-}
-
-.pending-wire-source {
-    cursor: pointer;
-    border-color: var(--color-interactive);
-    animation: pheno-pending-pulse 1.4s var(--ease-out) infinite;
-}
-
-/* Orphan aux row: aux node that has no consumer wires.
- * Layout code appends "(orphan)" to the row label; this rule styles
- * the surrounding container. */
-.aux-orphan {
-    border: 1px dashed var(--color-border);
-    border-radius: var(--radius);
-    padding: var(--sp-2) var(--sp-3);
-    opacity: 0.6;
-    color: var(--color-muted);
-    font-family: var(--font-mono);
-    font-size: var(--font-size-label);
-    transition: var(--transition);
-}
-.aux-orphan:hover { opacity: 0.85; }
-
-/* Inspector port row: wired -- gray background + accent left border to
- * indicate "Connected from canvas" (read-only-ish; users disconnect
- * via the per-row × button rather than editing inline). */
-.inspector-port-row--wired {
-    background: var(--color-bg);
-    border-left: 3px solid var(--color-interactive);
-    border-radius: var(--radius-sm);
-    padding: var(--sp-2) var(--sp-3);
-    color: var(--color-muted);
+    box-shadow: var(--shadow-md);
+    padding: var(--sp-2);
+    min-width: 220px;
+    max-width: 320px;
     font-family: var(--font-body);
-    font-size: var(--font-size-label);
-    margin-bottom: var(--sp-1);
-}
-
-/* Inspector port row: empty slot prompting "Click to connect…". Dashed
- * border + lighter text to distinguish from wired rows. */
-.inspector-port-row--empty {
-    background: transparent;
-    border: 1px dashed var(--color-border);
-    border-radius: var(--radius-sm);
-    padding: var(--sp-2) var(--sp-3);
-    color: var(--color-muted);
-    font-family: var(--font-body);
-    font-size: var(--font-size-label);
-    margin-bottom: var(--sp-1);
-    cursor: pointer;
-    transition: var(--transition);
-}
-.inspector-port-row--empty:hover {
-    border-color: var(--color-interactive);
+    font-size: var(--font-size-body);
     color: var(--color-body);
 }
 
-/* Per-row controls (× remove + slot index label). Right-aligned via
- * margin-left auto so the row label stays left while controls cluster
- * at the row tail. */
-.inspector-port-slot-controls {
-    display: inline-flex;
+/* Header row: monospace param-name label on the left, close button
+ * (×) on the right. */
+.cy-popover-header {
+    display: flex;
     align-items: center;
-    gap: var(--sp-1);
-    margin-left: auto;
+    justify-content: space-between;
+    gap: var(--sp-2);
+    padding-bottom: var(--sp-1);
+    margin-bottom: var(--sp-2);
+    border-bottom: 1px solid var(--color-rule);
+}
+
+.cy-popover-header__title {
     font-family: var(--font-mono);
     font-size: var(--font-size-caption);
     color: var(--color-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-/* + button to spawn a new slot under the last row of a list-typed aux
- * port. Styled as a small outline button matching the existing
- * .btn-outline-primary palette. */
-.inspector-port-add-slot {
+.cy-popover-header__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--color-muted);
+    font-family: var(--font-body);
+    font-size: var(--font-size-body);
+    line-height: 1;
+    cursor: pointer;
+    transition: var(--transition);
+}
+.cy-popover-header__close:hover,
+.cy-popover-header__close:focus {
+    background: var(--color-bg);
+    color: var(--color-heading);
+    outline: none;
+}
+
+/* Class palette for empty (unwired) ports: a wrapping grid of compatible
+ * concrete classes that satisfy the port's type contract. */
+.cy-popover-palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-1);
+    padding: var(--sp-1) 0;
+}
+
+.cy-popover-palette-button {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.6rem;
+    background: transparent;
+    color: var(--color-interactive);
+    border: 1.5px solid var(--color-interactive);
+    border-radius: var(--radius);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    cursor: pointer;
+    transition: var(--transition);
+}
+.cy-popover-palette-button:hover,
+.cy-popover-palette-button:focus {
+    background: var(--color-interactive);
+    color: var(--color-white);
+    outline: none;
+}
+
+/* Wired-row variant for a scalar (or single-slot) port: the wired class
+ * name on the left, the per-row action buttons (Edit / Drill / Disconnect)
+ * on the right. */
+.cy-popover-wired-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-2);
+    background: var(--color-bg);
+    border-left: 3px solid var(--color-interactive);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--sp-1);
+}
+
+.cy-popover-wired-row__class-name {
+    flex: 1 1 auto;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-body);
+    color: var(--color-heading);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cy-popover-wired-row__actions {
     display: inline-flex;
     align-items: center;
     gap: var(--sp-1);
-    padding: 0.2rem 0.6rem;
+    flex-shrink: 0;
+}
+
+/* Slot-row container for list-typed ports: each slot (wired or empty)
+ * is one row of this kind, prefixed by a slot-index label. */
+.cy-popover-slot-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-1) var(--sp-2);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--sp-1);
+}
+.cy-popover-slot-row + .cy-popover-slot-row {
+    border-top: 1px solid var(--color-rule);
+}
+
+.cy-popover-slot-row__index {
+    flex-shrink: 0;
+    min-width: 3.5rem;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+/* "+ Add slot" affordance under the last slot row of a list-typed
+ * popover. Dashed outline mirrors the empty-slot inspector affordance
+ * removed in this redesign. */
+.cy-popover-add-slot {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
     margin-top: var(--sp-1);
+    padding: 0.2rem 0.6rem;
     background: transparent;
     color: var(--color-muted);
     border: 1px dashed var(--color-border);
@@ -697,52 +712,76 @@ code, pre, .text-monospace, .font-monospace {
     cursor: pointer;
     transition: var(--transition);
 }
-.inspector-port-add-slot:hover, .inspector-port-add-slot:focus {
+.cy-popover-add-slot:hover,
+.cy-popover-add-slot:focus {
     color: var(--color-interactive);
     border-color: var(--color-interactive);
     border-style: solid;
     background: rgba(204, 121, 167, 0.04);
+    outline: none;
 }
 
-/* ─── Canvas swim-lane chrome ───────────────────────────────────────── */
-/* Two-row lane labels rendered as overlay spans on top of the
- * cytoscape canvas (z-index above the canvas). They live outside
- * cytoscape's element graph so they don't perturb its ``fit``
- * bounding-box calc; they're static chrome that names the swim
- * lanes ("MAIN IMAGE FLOW" / "AUX OPERATIONS") regardless of
- * canvas zoom/pan. */
-.pheno-canvas-lane-chrome {
+/* Triangle arrow pointing at the anchor port. Popper.js manages
+ * placement via the ``data-popper-arrow`` attribute; this rule just
+ * styles the wedge. */
+.cy-popover-arrow {
     position: absolute;
-    inset: 0;
-    pointer-events: none;
-    z-index: 100;
-    font-family: var(--font-mono);
-    font-size: var(--font-size-caption);
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    color: var(--color-muted);
-}
-.pheno-canvas-lane-label {
-    position: absolute;
-    left: var(--sp-2);
-    padding: 2px 8px;
+    width: 10px;
+    height: 10px;
     background: var(--color-surface);
     border: 1px solid var(--color-border);
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg);
+}
+
+/* Small breadcrumb shown when the inspector is mirroring this aux's
+ * params (i.e. ``inspector_focus_aux`` is pointing at this port). */
+.cy-popover__inspector-focused-hint {
+    margin-top: var(--sp-1);
+    padding: var(--sp-1) var(--sp-2);
+    background: var(--color-bg);
+    border-left: 3px solid var(--color-interactive);
     border-radius: var(--radius-sm);
-    text-transform: uppercase;
-    line-height: 1.3;
-    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
 }
-/* Top label sits just inside the canvas's top-left corner. */
-.pheno-canvas-lane-label--main {
-    top: var(--sp-1);
+
+/* ─── Inspector focus-override hint ─────────────────────────────────── */
+
+/* Small breadcrumb header that appears at the top of the inspector pane
+ * when it's temporarily showing a wired aux's params instead of the
+ * canvas-selected consumer's params (i.e.
+ * ``inspector_focus_aux = {focus: "aux", ...}``). The ← back link
+ * dispatches ``set_inspector_focus(focus="consumer", ...)`` to revert. */
+.inspector-focus-aux-banner {
+    background: var(--color-bg);
+    border-left: 3px solid var(--color-interactive);
+    padding: var(--sp-1) var(--sp-2);
+    margin-bottom: var(--sp-2);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
 }
-/* Bottom label sits roughly mid-canvas — that's where ``_AUX_DOCK_Y``
- * (cytoscape coord 240, vs the ribbon at 80) lands after the canvas
- * viewport's intrinsic top padding. ``45%`` is a stable proxy that
- * tracks the slot height regardless of viewport size. */
-.pheno-canvas-lane-label--aux {
-    top: 45%;
+
+.inspector-focus-aux-banner__back {
     color: var(--color-interactive);
-    border-color: var(--color-interactive);
+    cursor: pointer;
+    text-decoration: none;
+}
+.inspector-focus-aux-banner__back:hover,
+.inspector-focus-aux-banner__back:focus {
+    text-decoration: underline;
+    outline: none;
+}
+
+/* ─── Cytoscape-anchored DOM overlays (cursor affordance) ──────────── */
+
+/* Main I/O port + bottom aux port visuals are driven by the cytoscape
+ * stylesheet in ``_layout.py``. The only DOM-side concern is that any
+ * overlay anchor (e.g. the invisible popper-target wrapper around an
+ * aux port) should advertise that it's clickable. */
+.aux-port-clickable {
+    cursor: pointer;
 }

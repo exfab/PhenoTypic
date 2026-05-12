@@ -103,7 +103,6 @@ def param_form(
     current_values: dict[str, Any],
     *,
     form_id_prefix: str,
-    wired_slots: dict[str, list[str | None]] | None = None,
 ) -> dbc.Form:
     """Builder-flavoured ``param_form`` that injects the point picker.
 
@@ -112,25 +111,28 @@ def param_form(
     (analysis sub-app) call the shared function directly without the
     picker injection.
 
+    In the popover-anchored aux design, this renders the parameter form
+    for *one* node at a time — either the consumer or a wired aux node
+    that the inspector is currently focused on. The caller (the layout's
+    inspector builder) picks which node's params to render based on the
+    ``inspector_focus_aux`` field on :class:`BuilderState`. All aux-port
+    wiring affordances (palette, disconnect, slot-add) live in the
+    popover renderer, not in the inline param form.
+
     Args:
         op_info: Registry metadata for the operation being edited.
         current_values: Mapping of parameter-name → current value used to
             seed each widget.
         form_id_prefix: Prefix added to every emitted component id —
-            typically the consumer node's ``node_id``.
-        wired_slots: Optional aux-port wiring map (see
-            :func:`phenotypic.gui._param_forms.param_form` for the full
-            shape). When set, op-typed and pipeline-typed params with an
-            entry render as wired-port rows with Disconnect / ``+`` /
-            ``×`` controls; absent params still render as the standard
-            ``Edit ▸`` drill-in button.
+            typically the consumer node's ``node_id`` (or the focused
+            aux node's ``node_id`` when the inspector is focused on a
+            wired aux).
     """
     return _shared_param_form(
         op_info,
         current_values,
         form_id_prefix=form_id_prefix,
         picker_factory=_picker_widget,
-        wired_slots=wired_slots,
     )
 
 

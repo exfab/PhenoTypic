@@ -673,118 +673,6 @@ def _error_slot(p: "ParamInfo", *, form_id_prefix: str) -> Any:
     )
 
 
-def _wired_port_widget(
-    p: "ParamInfo",
-    *,
-    slot_values: list[str | None],
-    form_id_prefix: str,
-) -> Any:
-    """Render the wired/grayed branch for an aux-port-eligible parameter.
-
-    Builder-only path: rendered when ``param_form`` is invoked with a
-    ``wired_slots`` mapping that includes the parameter's name. Each slot
-    becomes a row showing the connected source class name (or an empty
-    placeholder), a port-handle badge, and — for list-typed ports — a
-    per-slot ``×`` remove button. A trailing ``+ Add slot`` button is
-    appended for list-typed ports.
-
-    The id helpers are imported locally to keep the shared param-forms
-    module free of builder dependencies on the analysis sub-app's import
-    path.
-    """
-    # Local import: the analysis sub-app must NOT pull builder ids into
-    # its import graph. ``param_form`` only calls this helper when
-    # ``wired_slots`` is non-None, which never happens on the analysis
-    # path, so the import is dead code there.
-    from phenotypic.gui.builder._ids import (
-        port_slot_add_id,
-        port_slot_remove_id,
-        wire_disconnect_id,
-    )
-
-    # Pick the badge variant from the parameter's type-flag pair.
-    # ``is_pipeline`` wins when both are set so an op-or-pipeline union
-    # advertises the pipeline aesthetic (broader receiver semantics).
-    handle_kind = "pipeline" if p.is_pipeline else "operation"
-    base_handle_class = f"port-handle port-handle--{handle_kind}"
-
-    rows: list[Any] = []
-    for slot_idx, source_name in enumerate(slot_values):
-        is_wired = source_name is not None
-        handle_class = (
-            f"{base_handle_class} port-handle--wired"
-            if is_wired
-            else base_handle_class
-        )
-        row_children: list[Any] = [
-            html.Span(className=handle_class),
-        ]
-        if p.is_list:
-            row_children.append(
-                html.Span(
-                    f"[{slot_idx}]",
-                    className="text-muted small me-2",
-                )
-            )
-        if is_wired:
-            row_children.append(
-                html.Span(str(source_name), className="fw-semibold me-2")
-            )
-            row_children.append(
-                dbc.Button(
-                    "Disconnect",
-                    id=wire_disconnect_id(form_id_prefix, p.name, slot_idx),
-                    color="secondary",
-                    size="sm",
-                    outline=True,
-                    className="ms-auto",
-                )
-            )
-        else:
-            row_children.append(
-                html.Span(
-                    "(empty — click here to wire from canvas)",
-                    className="text-muted",
-                )
-            )
-
-        # List-typed ports always get a ``×`` per-slot remove button so
-        # users can shrink the slot count (and detach in one shot for
-        # wired rows). Scalar ports never grow/shrink, so no ``×``.
-        if p.is_list:
-            row_children.append(
-                dbc.Button(
-                    "×",  # multiplication sign
-                    id=port_slot_remove_id(form_id_prefix, p.name, slot_idx),
-                    color="secondary",
-                    size="sm",
-                    outline=True,
-                    className="ms-2 inspector-port-slot-controls",
-                )
-            )
-
-        row_class = (
-            "inspector-port-row--wired"
-            if is_wired
-            else "inspector-port-row--empty"
-        )
-        rows.append(html.Div(row_children, className=row_class))
-
-    if p.is_list:
-        rows.append(
-            dbc.Button(
-                "+ Add slot",
-                id=port_slot_add_id(form_id_prefix, p.name),
-                color="secondary",
-                size="sm",
-                outline=True,
-                className="inspector-port-add-slot",
-            )
-        )
-
-    return html.Div(rows)
-
-
 def _param_row(
     p: "ParamInfo",
     *,
@@ -793,33 +681,16 @@ def _param_row(
     point_picker_param: Optional[str] = None,
     picker_factory: Optional[Callable[..., Any]] = None,
     columns_provider: Optional[Callable[[str], list[str]]] = None,
-    wired_slots: Optional[dict[str, list[str | None]]] = None,
 ) -> Any:
-    """Render one parameter as a labelled ``dbc.Row``.
-
-    When ``wired_slots`` is non-``None`` and the parameter's name appears
-    in the mapping, the row's main column is rendered via
-    :func:`_wired_port_widget` instead of the normal widget — surfacing
-    canvas-driven wires (and per-slot Disconnect / × controls) inside the
-    inspector.
-    """
-    slot_values: Optional[list[str | None]] = None
-    if wired_slots is not None and (p.is_operation or p.is_pipeline):
-        slot_values = wired_slots.get(p.name)
-
-    if slot_values is not None:
-        widget: Any = _wired_port_widget(
-            p, slot_values=slot_values, form_id_prefix=form_id_prefix
-        )
-    else:
-        widget = _widget_for_param(
-            p,
-            current_value=current_values.get(p.name),
-            form_id_prefix=form_id_prefix,
-            point_picker_param=point_picker_param,
-            picker_factory=picker_factory,
-            columns_provider=columns_provider,
-        )
+    """Render one parameter as a labelled ``dbc.Row``."""
+    widget = _widget_for_param(
+        p,
+        current_value=current_values.get(p.name),
+        form_id_prefix=form_id_prefix,
+        point_picker_param=point_picker_param,
+        picker_factory=picker_factory,
+        columns_provider=columns_provider,
+    )
 
     label_children: list[Any] = [p.name]
     label = dbc.Label(label_children, html_for=None, className="fw-semibold")
@@ -837,7 +708,7 @@ def _param_row(
         dbc.Col(label, width=4),
         dbc.Col(main_col_children, width=6),
     ]
-    if p.is_optional and p.has_default and slot_values is None:
+    if p.is_optional and p.has_default:
         cols.append(
             dbc.Col(_optional_toggle(p, form_id_prefix=form_id_prefix), width=2)
         )
@@ -854,9 +725,15 @@ def param_form(
     form_id_prefix: str,
     picker_factory: Optional[Callable[..., Any]] = None,
     columns_provider: Optional[Callable[[str], list[str]]] = None,
-    wired_slots: Optional[dict[str, list[str | None]]] = None,
 ) -> dbc.Form:
     """Generate a parameter form for an operation.
+
+    Renders the parameters of a single operation (either a consumer node
+    or, in the popover-anchored aux design, a wired aux node that the
+    inspector is currently focused on). Aux-port wiring UI is owned by
+    the popover renderer, not this function — callers decide *which*
+    node's params to render and pass them in via ``op_info`` /
+    ``current_values``.
 
     Args:
         op_info: Registry metadata for the operation being edited.
@@ -874,18 +751,6 @@ def param_form(
             type carries a ``ColumnRef`` marker render as dropdowns
             populated from the live measurements schema instead of a
             free-text input.
-        wired_slots: Builder-only mapping of aux-port-eligible parameter
-            names to per-slot source-class lists. Each entry's length
-            matches the consumer's ``aux_ports[<param>]`` list; entries
-            are aux-source class names for wired slots and ``None`` for
-            empty slots. When this argument is non-``None``, parameters
-            present in the mapping render as wired/grayed rows
-            (Disconnect button + per-slot ``+``/``×`` controls for list
-            ports) instead of the standard ``Edit ▸`` drill-in button.
-            Parameters absent from the mapping fall back to drill-in
-            even when ``wired_slots`` is set, keeping un-wired aux
-            params editable. The analysis sub-app leaves this ``None``;
-            the standard drill-in shape renders unchanged on that path.
 
     Returns:
         ``dbc.Form`` whose children are one ``dbc.Row`` per parameter.
@@ -901,7 +766,6 @@ def param_form(
                 point_picker_param=point_picker_param,
                 picker_factory=picker_factory,
                 columns_provider=columns_provider,
-                wired_slots=wired_slots,
             )
         )
     return dbc.Form(rows)

@@ -65,7 +65,12 @@ class StepNode:
         params: Raw parameter values.  Scalars are stored as-is; values
             corresponding to operation-typed parameters are stored as JSON
             dicts shaped like ``{"__type__": "operation", "class_name": ...,
-            "params": {...}}``.
+            "params": {...}}`` ONLY when nothing is wired through
+            ``aux_ports`` for that parameter.  When an aux port is wired,
+            the consumer's ``params[<port>]`` entry is absent: the
+            embedded :class:`StepNode` in ``aux_ports`` is the source of
+            truth and is folded back into a marker dict at
+            :func:`to_pipeline` time.
         label: User-editable display name.  ``None`` means the canvas should
             fall back to ``class_name``.
         nested: Inner :class:`BuilderScope` populated only when
@@ -73,14 +78,13 @@ class StepNode:
         aux_ports: Per-aux-port slot occupancy. Keys are the names of
             aux-port-eligible parameters (those with
             ``param_info.is_operation or param_info.is_pipeline``).  Values
-            are lists of aux-source ``node_id`` strings (or ``None`` for an
-            empty slot).  Non-list ports always carry a length-1 list
-            (``[aux_id]`` or ``[None]``).  List-typed ports grow/shrink via
-            UI ``+`` / ``×`` controls and may be any length ≥ 0.  When an
-            aux port is wired, the consumer's ``params[<port>]`` entry is
-            absent (or stale): the aux fold step in :func:`to_pipeline`
-            re-derives the marker dict from the aux node before
-            constructing the runtime pipeline.
+            are lists whose entries are EITHER an embedded aux
+            :class:`StepNode` (the wired aux source) OR ``None`` (empty
+            slot).  Non-list ports always carry a length-1 list
+            (``[step_node]`` or ``[None]``).  List-typed ports grow/shrink
+            via UI ``+`` / ``×`` controls and may be any length ≥ 0.
+            Recursive aux is supported: an embedded aux ``StepNode`` may
+            itself carry its own ``aux_ports`` map.
     """
 
     node_id: str
@@ -88,7 +92,7 @@ class StepNode:
     params: Dict[str, Any] = field(default_factory=dict)
     label: Optional[str] = None
     nested: Optional["BuilderScope"] = None
-    aux_ports: Dict[str, List[Optional[str]]] = field(default_factory=dict)
+    aux_ports: Dict[str, List[Optional["StepNode"]]] = field(default_factory=dict)
 
 
 @dataclass
@@ -99,6 +103,13 @@ class BuilderScope:
     converted via :func:`to_pipeline`.  Stage (ops/meas/post) is inferred per
     node from its class via the operation registry.
 
+    Aux operations (op-typed parameters of a consumer node, e.g.
+    ``FilamentousFungiDetector.inoculum_detector``) are NOT stored in this
+    scope as peer nodes. They live as embedded :class:`StepNode` instances
+    inside the consumer's ``aux_ports`` map. This eliminates the previous
+    ID-reference indirection (free-floating aux + ``aux_nodes`` list) and
+    means aux configuration only exists while wired.
+
     Attributes:
         nodes: Ordered :class:`StepNode` list.  Insertion order is the
             execution order; partitioning into ops/meas/post happens at
@@ -107,13 +118,6 @@ class BuilderScope:
         desc: Pipeline ``desc`` to assign on conversion.
         nrows: Optional grid row preset (forwarded to ``ImagePipeline``).
         ncols: Optional grid column preset (forwarded to ``ImagePipeline``).
-        aux_nodes: Free-floating aux operation/pipeline nodes that hang off
-            the dock for this scope. They are wired into consumer ports via
-            :class:`StepNode` ``aux_ports`` entries; each has a stable
-            ``node_id`` so disconnect-without-delete (Wave 4) preserves
-            identity across re-renders.  Aux nodes that no consumer wires
-            to ("orphans") are dropped silently when :func:`to_pipeline`
-            folds aux ports back into the runtime pipeline.
     """
 
     nodes: List[StepNode] = field(default_factory=list)
@@ -121,7 +125,6 @@ class BuilderScope:
     desc: str = ""
     nrows: Optional[int] = None
     ncols: Optional[int] = None
-    aux_nodes: List[StepNode] = field(default_factory=list)
 
 
 @dataclass
@@ -133,24 +136,46 @@ class BuilderState:
             the breadcrumb is empty.
         breadcrumb: Ordered list of breadcrumb segments describing how the
             user has drilled into nested scopes.  Each segment is a dict of
-            the form ``{"node_id": <id>, "param": <param_name | None>}``.
-            ``param=None`` means a regular ``ImagePipeline`` drill-in (uses
-            ``StepNode.nested``); ``param=<name>`` means drilling into an
-            operation-typed parameter slot on a non-pipeline node.  Empty
-            list means "viewing ``root``".
+            one of two shapes:
+
+            * ``{"node_id": <id>, "param": <param_name | None>}`` —
+              regular ``ImagePipeline`` drill-in when ``param=None`` (uses
+              ``StepNode.nested``); op-typed parameter drill via the
+              legacy ``_PARAM_SCOPE_KEY`` machinery when ``param=<name>``
+              (kept for back-compat; new code should prefer the aux-slot
+              form below).
+            * ``{"target_node_id": <id>, "param": <name>, "slot": <int>}``
+              — aux-slot drill: descend into the embedded aux
+              :class:`StepNode` at ``consumer.aux_ports[param][slot]``.
+
+            Empty list means "viewing ``root``".
         selected_node_id: ``node_id`` of the currently focused step in the
             visible scope, if any.
+        inspector_focus_aux: When non-``None``, the inspector pane mirrors
+            the wired aux at the given slot instead of the canvas
+            selection. Shape: ``{"target_node_id": str, "param": str,
+            "slot": int}``. Driven by the ``set_inspector_focus``
+            dispatch kind — set when the user opens a popover with a
+            wired slot (or wires a new aux), cleared when the popover
+            dismisses, when the wired aux is disconnected, or when the
+            user drills into the aux (canvas scope swap takes over).
     """
 
     root: BuilderScope = field(default_factory=BuilderScope)
     breadcrumb: List[Dict[str, Any]] = field(default_factory=list)
     selected_node_id: Optional[str] = None
+    inspector_focus_aux: Optional[Dict[str, Any]] = None
 
 
 # Sentinel key used to store synthesized singleton :class:`BuilderScope` dicts
 # inside a non-pipeline node's ``params`` while the user is editing an
-# operation-typed parameter through drill-down.  Stripped before
-# :func:`to_pipeline` so the underlying ``ImagePipeline`` never sees it.
+# operation-typed parameter through the legacy drill-down path.  Stripped
+# before :func:`to_pipeline` so the underlying ``ImagePipeline`` never sees
+# it.  LEGACY: superseded by the embedded-aux model (see
+# ``StepNode.aux_ports``); kept here because ``_callbacks.py`` and
+# ``_layout.py`` still reference it.  Will be removed once those modules
+# migrate to the popover-anchored aux flow (Wave 3/4 of the popover
+# redesign).
 _PARAM_SCOPE_KEY = "__op_param_scope__"
 
 
@@ -210,9 +235,9 @@ def _looks_like_marker(value: Any) -> bool:
     """Return ``True`` when *value* is a serialized op or pipeline marker dict.
 
     Convenience predicate used by :func:`from_pipeline` to decide whether a
-    ``_serialize_param_value`` result should be promoted into an aux node;
-    folds the operation/pipeline checks into one call so the branches at
-    extraction time stay readable.
+    ``_serialize_param_value`` result should be promoted into an embedded
+    aux :class:`StepNode`; folds the operation/pipeline checks into one
+    call so the branches at extraction time stay readable.
     """
 
     return _is_operation_param_marker(value) or _is_pipeline_param_marker(value)
@@ -336,18 +361,22 @@ def _serialize_param_value(value: Any, registry: OperationRegistry) -> Any:
 # ---------------------------------------------------------------------------
 
 
-def _aux_node_to_marker(
+def _aux_step_node_to_marker(
     aux_node: StepNode, registry: OperationRegistry
 ) -> Dict[str, Any]:
-    """Serialize an aux :class:`StepNode` into a runtime-resolvable marker.
+    """Serialize an embedded aux :class:`StepNode` into a runtime marker.
 
     Mirrors the shape produced by :func:`_serialize_param_value` for
     operation/pipeline instances so that :func:`_resolve_param_value` can
-    instantiate the value during :func:`to_pipeline`.
+    instantiate the value during :func:`to_pipeline`.  Recursively folds
+    the aux node's own ``aux_ports`` (aux-of-aux) into its params before
+    emitting the marker so nested wiring round-trips correctly.
 
     Args:
-        aux_node: An aux :class:`StepNode` to fold into a consumer's params.
-        registry: Registry used by recursive aux folds (for nested aux scopes).
+        aux_node: An aux :class:`StepNode` embedded inside a consumer's
+            ``aux_ports`` slot.
+        registry: Registry used by recursive aux folds (for nested aux
+            scopes that themselves carry op-typed parameters).
 
     Returns:
         A JSON-friendly dict of shape
@@ -363,137 +392,67 @@ def _aux_node_to_marker(
             "class_name": PIPELINE_CLASS_NAME,
             "scope": _scope_to_dict(aux_node.nested or BuilderScope()),
         }
+
+    # Recursively fold the aux's own aux_ports so aux-of-aux wiring lands
+    # in ``params`` for the runtime ``create_instance`` call.
+    folded_params = _fold_aux_ports_for_node(aux_node, registry)
     return {
         "__type__": "operation",
         "class_name": aux_node.class_name,
-        "params": {
-            k: v for k, v in aux_node.params.items() if k != _PARAM_SCOPE_KEY
-        },
+        "params": {k: v for k, v in folded_params.items() if k != _PARAM_SCOPE_KEY},
     }
 
 
-def _fold_aux_ports_into_params(
-    scope: BuilderScope, registry: OperationRegistry
-) -> BuilderScope:
-    """Return a copy of *scope* with aux-port wires folded into ``params``.
+def _fold_aux_ports_for_node(
+    node: StepNode, registry: OperationRegistry
+) -> Dict[str, Any]:
+    """Collapse a node's embedded ``aux_ports`` into a ``params`` dict.
 
-    Walks each main-ribbon node's ``aux_ports`` map, looks up the wired aux
-    nodes in ``scope.aux_nodes`` by id, and writes the equivalent op /
-    pipeline marker dict into ``params[<port>]`` so that the existing
-    :func:`_resolve_param_value` path can instantiate the value.  Scalar
-    ports collapse to a single marker (or ``None`` when the slot is empty);
-    list-typed ports collapse to a Python list of markers, skipping ``None``
-    slots.  The folded scope's ``aux_nodes`` list is dropped so the runtime
-    pipeline never sees orphan aux nodes — this is also how aux nodes that
-    no consumer wires to are silently dropped on save.
+    Each slot's embedded :class:`StepNode` is serialised into a marker dict
+    via :func:`_aux_step_node_to_marker` (which recurses, so aux-of-aux
+    is supported).  Scalar ports collapse to a single marker (or ``None``
+    when the slot is empty); list-typed ports collapse to a Python list of
+    markers, skipping ``None`` slots.
 
     Args:
-        scope: The edit-time :class:`BuilderScope`.
-        registry: Registry used to resolve nested aux-of-aux folds.
+        node: The :class:`StepNode` whose ``aux_ports`` should be folded.
+        registry: Registry used to inspect the consumer class so we know
+            which params are list-typed.
 
     Returns:
-        A fresh :class:`BuilderScope` shaped exactly like the legacy
-        edit-time representation (no ``aux_nodes``, all op-typed params
-        carry inline markers).  Suitable to feed back into the existing
-        :func:`to_pipeline` body.
+        A ``params``-shaped dict mirroring ``node.params`` but with each
+        aux-eligible port overlaid with the wired marker(s).
     """
 
-    aux_index: Dict[str, StepNode] = {n.node_id: n for n in scope.aux_nodes}
-
-    folded_nodes: List[StepNode] = []
-    for node in scope.nodes:
-        folded_nodes.append(_fold_node(node, aux_index, registry))
-
-    return BuilderScope(
-        nodes=folded_nodes,
-        name=scope.name,
-        desc=scope.desc,
-        nrows=scope.nrows,
-        ncols=scope.ncols,
-        aux_nodes=[],  # orphans dropped silently
-    )
-
-
-def _fold_node(
-    node: StepNode,
-    aux_index: Dict[str, StepNode],
-    registry: OperationRegistry,
-) -> StepNode:
-    """Return a copy of *node* with its aux-port wires folded into ``params``.
-
-    Args:
-        node: The consumer :class:`StepNode` whose ``aux_ports`` should be
-            collapsed into inline marker values.
-        aux_index: Map from aux ``node_id`` to the corresponding aux
-            :class:`StepNode` in the same scope.
-        registry: Registry used to recurse into aux nodes that themselves
-            carry aux ports / nested scopes.
-
-    Returns:
-        A fresh :class:`StepNode` whose ``params`` mirror the runtime view.
-    """
-
-    # Recurse into a nested ImagePipeline scope so aux wires inside it are
-    # folded too.  Non-pipeline nodes don't carry a ``nested`` scope today,
-    # but we keep the recursion symmetric in case future work changes that.
-    folded_nested: Optional[BuilderScope] = (
-        _fold_aux_ports_into_params(node.nested, registry)
-        if node.nested is not None
-        else None
-    )
-
-    new_params = dict(node.params)
+    folded = dict(node.params)
+    info = registry.get(node.class_name)
 
     for port_name, slots in node.aux_ports.items():
         if not slots:
             # Empty list-typed port: emit an empty list value so
             # ``_resolve_param_value`` returns ``[]`` after instantiation.
-            new_params[port_name] = []
+            folded[port_name] = []
             continue
 
-        # Resolve each slot to its aux node (if any).  Folding aux-of-aux
-        # recursively requires the aux node itself to have its own
-        # aux_ports collapsed before we marker-ize it.
         resolved_slots: List[Optional[Dict[str, Any]]] = []
-        for aux_id in slots:
-            if aux_id is None:
+        for embedded in slots:
+            if embedded is None:
                 resolved_slots.append(None)
                 continue
-            aux_node = aux_index.get(aux_id)
-            if aux_node is None:
-                # Stale wire (the aux node was deleted but the wire wasn't
-                # cleaned up): treat as an empty slot for fold-time purposes.
-                resolved_slots.append(None)
-                continue
-            # Aux-of-aux: collapse the aux node's own aux_ports into its
-            # params before marker-izing it.  We feed it through
-            # ``_fold_node`` with an empty index because aux nodes only
-            # reference siblings in the same scope; nested aux scopes ride
-            # along inside ``aux_node.nested`` and are folded above.
-            collapsed = _fold_node(aux_node, {}, registry)
-            resolved_slots.append(_aux_node_to_marker(collapsed, registry))
+            resolved_slots.append(_aux_step_node_to_marker(embedded, registry))
 
         # Decide whether the port is list-typed: ask the registry.  Fall
-        # back to "list when len > 1 or empty list" if the registry has no
-        # info (unknown class).
-        info = registry.get(node.class_name)
+        # back to scalar handling (slot 0) when the registry has no info.
         param_info = info.parameters.get(port_name) if info is not None else None
         is_list_port = bool(param_info and param_info.is_list)
 
         if is_list_port:
-            new_params[port_name] = [m for m in resolved_slots if m is not None]
+            folded[port_name] = [m for m in resolved_slots if m is not None]
         else:
             # Scalar port: take slot 0, falling back to None.
-            new_params[port_name] = resolved_slots[0] if resolved_slots else None
+            folded[port_name] = resolved_slots[0] if resolved_slots else None
 
-    return StepNode(
-        node_id=node.node_id,
-        class_name=node.class_name,
-        params=new_params,
-        label=node.label,
-        nested=folded_nested,
-        aux_ports={},
-    )
+    return folded
 
 
 def to_pipeline(scope: BuilderScope) -> ImagePipeline:
@@ -501,9 +460,10 @@ def to_pipeline(scope: BuilderScope) -> ImagePipeline:
 
     Each :class:`StepNode` is instantiated through the operation registry;
     nested :class:`BuilderScope` references recurse to produce inner
-    :class:`ImagePipeline` instances.  Aux-port wires (Galaxy-style edit-time
-    representation) are folded back into inline op markers via
-    :func:`_fold_aux_ports_into_params` so the runtime pipeline never sees
+    :class:`ImagePipeline` instances.  Aux-port wires (embedded
+    :class:`StepNode` instances in each consumer's ``aux_ports`` map) are
+    folded back into inline op markers via
+    :func:`_fold_aux_ports_for_node` so the runtime pipeline never sees
     them.  The resulting instance list is partitioned by ``isinstance``
     against :class:`~phenotypic.abc_.MeasureFeatures` /
     :class:`~phenotypic.abc_.PostMeasurement` (everything else falls into
@@ -515,23 +475,22 @@ def to_pipeline(scope: BuilderScope) -> ImagePipeline:
 
     Returns:
         A fresh :class:`ImagePipeline` with ``ops``/``meas``/``post``
-        populated in the order implied by ``scope.nodes``.  Aux nodes that
-        no consumer port references are dropped silently.
+        populated in the order implied by ``scope.nodes``.
     """
 
     registry = get_registry()
-    folded_scope = _fold_aux_ports_into_params(scope, registry)
     instances: List[Any] = []
 
-    for node in folded_scope.nodes:
+    for node in scope.nodes:
         if node.class_name == PIPELINE_CLASS_NAME:
             inner_scope = node.nested or BuilderScope()
             instances.append(to_pipeline(inner_scope))
             continue
 
+        folded_params = _fold_aux_ports_for_node(node, registry)
         resolved_params = {
             name: _resolve_param_value(value, registry)
-            for name, value in node.params.items()
+            for name, value in folded_params.items()
             if name != _PARAM_SCOPE_KEY
         }
         instance = registry.create_instance(node.class_name, **resolved_params)
@@ -553,20 +512,22 @@ def to_pipeline(scope: BuilderScope) -> ImagePipeline:
         ops=ops_list,
         meas=meas_list,
         post=post_list,
-        name=folded_scope.name,
-        desc=folded_scope.desc,
-        nrows=folded_scope.nrows,
-        ncols=folded_scope.ncols,
+        name=scope.name,
+        desc=scope.desc,
+        nrows=scope.nrows,
+        ncols=scope.ncols,
     )
 
 
-def _marker_to_aux_node(marker: Dict[str, Any]) -> StepNode:
-    """Materialize a serialized op/pipeline marker into a fresh aux :class:`StepNode`.
+def _marker_to_aux_step_node(marker: Dict[str, Any]) -> StepNode:
+    """Materialise a serialised op/pipeline marker into an embedded aux node.
 
-    Mirror of :func:`_aux_node_to_marker`.  Used by :func:`from_pipeline`
-    when extracting op-typed parameter values from a runtime
-    :class:`~phenotypic.ImagePipeline` so they can be displayed as
-    Galaxy-style aux source nodes on the canvas.
+    Mirror of :func:`_aux_step_node_to_marker`.  Used by
+    :func:`from_pipeline` when extracting op-typed parameter values from a
+    runtime :class:`~phenotypic.ImagePipeline` so they can be embedded in
+    the consumer's ``aux_ports`` map.  Recursively extracts any nested
+    op-typed params on the aux node itself into its own ``aux_ports``
+    (aux-of-aux).
 
     Args:
         marker: A dict produced by :func:`_serialize_param_value` /
@@ -576,8 +537,8 @@ def _marker_to_aux_node(marker: Dict[str, Any]) -> StepNode:
             (``{"__type__": "pipeline", "scope": {...}}``).
 
     Returns:
-        A fresh :class:`StepNode` ready to be appended to a
-        :class:`BuilderScope` ``aux_nodes`` list.
+        A fresh :class:`StepNode` ready to be stored inline in a
+        consumer's ``aux_ports[<param>][<slot>]`` entry.
     """
 
     node_id = _new_node_id()
@@ -593,12 +554,71 @@ def _marker_to_aux_node(marker: Dict[str, Any]) -> StepNode:
         )
 
     class_name = str(marker.get("class_name") or marker.get("class"))
-    inner_params = dict(marker.get("params") or {})
+    inner_params_raw = dict(marker.get("params") or {})
+
+    # Recursively pull aux-eligible params out of the marker into this aux
+    # node's own aux_ports map so aux-of-aux preserves its wired structure.
+    registry = get_registry()
+    info = registry.get(class_name)
+
+    if info is None:
+        return StepNode(
+            node_id=node_id,
+            class_name=class_name,
+            params=inner_params_raw,
+            label=class_name,
+        )
+
+    own_params: Dict[str, Any] = {}
+    own_aux_ports: Dict[str, List[Optional[StepNode]]] = {}
+
+    for param_name, param_info in info.parameters.items():
+        if param_name not in inner_params_raw:
+            continue
+        current = inner_params_raw[param_name]
+        aux_eligible = param_info.is_operation or param_info.is_pipeline
+
+        if not aux_eligible:
+            own_params[param_name] = current
+            continue
+
+        if current is None:
+            own_aux_ports[param_name] = [] if param_info.is_list else [None]
+            continue
+
+        if param_info.is_list:
+            seq = current if isinstance(current, (list, tuple)) else []
+            slot_steps: List[Optional[StepNode]] = []
+            for item in seq:
+                if _looks_like_marker(item):
+                    slot_steps.append(_marker_to_aux_step_node(item))
+                else:
+                    # Non-marker inside a list-typed aux port — defensively
+                    # fall back to storing inline so we don't lose data.
+                    own_params.setdefault(param_name, []).append(item)
+            own_aux_ports[param_name] = slot_steps
+            continue
+
+        # Scalar aux port with a value.
+        if _looks_like_marker(current):
+            own_aux_ports[param_name] = [_marker_to_aux_step_node(current)]
+        else:
+            own_params[param_name] = current
+
+    # Preserve any params that exist on the marker but aren't enumerated
+    # by the registry (defensive against schema drift).
+    for k, v in inner_params_raw.items():
+        if k not in own_params and k not in own_aux_ports and (
+            info.parameters.get(k) is None
+        ):
+            own_params[k] = v
+
     return StepNode(
         node_id=node_id,
         class_name=class_name,
-        params=inner_params,
+        params=own_params,
         label=class_name,
+        aux_ports=own_aux_ports,
     )
 
 
@@ -608,24 +628,24 @@ def from_pipeline(pipeline: ImagePipeline) -> BuilderScope:
     Walks ``pipeline.get_ops()`` then ``get_meas()`` then ``get_post()`` to
     preserve execution order and produces one :class:`StepNode` per entry.
     Nested :class:`ImagePipeline` values inside ``_ops`` recurse via this
-    function; operation-typed parameters (per the registry) are captured as
-    Galaxy-style aux nodes appended to ``BuilderScope.aux_nodes`` and wired
-    into the consumer's ``aux_ports`` map.  The marker dict is stripped from
-    the consumer's ``params`` after extraction so the runtime ``params``
-    dict no longer carries it — the ``aux_ports`` map is the source of
-    truth at edit time.
+    function; operation-typed parameters (per the registry) are captured
+    as embedded aux :class:`StepNode` instances directly inside the
+    consumer's ``aux_ports`` map.  The marker dict is stripped from the
+    consumer's ``params`` after extraction so the runtime ``params`` dict
+    no longer carries it — the ``aux_ports`` map is the source of truth at
+    edit time.
 
     Args:
         pipeline: The pipeline to mirror.
 
     Returns:
         A :class:`BuilderScope` whose ``nodes`` reproduce the pipeline's
-        contents in execution order, with aux-port wires extracted.
+        contents in execution order, with aux-port wires extracted into
+        each consumer's ``aux_ports``.
     """
 
     registry = get_registry()
     nodes: List[StepNode] = []
-    aux_nodes: List[StepNode] = []
 
     pairs: List[tuple[str, Any]] = []
     pairs.extend(pipeline.get_ops().items())
@@ -650,7 +670,7 @@ def from_pipeline(pipeline: ImagePipeline) -> BuilderScope:
         class_name = type(op).__name__
         info = registry.get(class_name)
         params: Dict[str, Any] = {}
-        node_aux_ports: Dict[str, List[Optional[str]]] = {}
+        node_aux_ports: Dict[str, List[Optional[StepNode]]] = {}
 
         if info is None:
             # Unknown to the registry: fall back to ``vars`` introspection.
@@ -679,29 +699,29 @@ def from_pipeline(pipeline: ImagePipeline) -> BuilderScope:
                     continue
 
                 if param_info.is_list:
-                    slot_aux_ids: List[Optional[str]] = []
+                    slot_steps: List[Optional[StepNode]] = []
                     seq = current if isinstance(current, (list, tuple)) else []
                     for item in seq:
                         serialized = _serialize_param_value(item, registry)
                         if _looks_like_marker(serialized):
-                            aux = _marker_to_aux_node(serialized)
-                            aux_nodes.append(aux)
-                            slot_aux_ids.append(aux.node_id)
+                            slot_steps.append(
+                                _marker_to_aux_step_node(serialized)
+                            )
                         else:
                             # Non-op item in a list-typed aux port — should
                             # not happen for aux-eligible params, but stay
                             # defensive: store inline so the legacy path
                             # still resolves it.
                             params.setdefault(param_name, []).append(serialized)
-                    node_aux_ports[param_name] = slot_aux_ids
+                    node_aux_ports[param_name] = slot_steps
                     continue
 
                 # Scalar aux port with a value.
                 serialized = _serialize_param_value(current, registry)
                 if _looks_like_marker(serialized):
-                    aux = _marker_to_aux_node(serialized)
-                    aux_nodes.append(aux)
-                    node_aux_ports[param_name] = [aux.node_id]
+                    node_aux_ports[param_name] = [
+                        _marker_to_aux_step_node(serialized)
+                    ]
                 else:
                     # Defensive: keep as-is if it doesn't look like a
                     # marker (shouldn't happen, but don't lose data).
@@ -724,7 +744,6 @@ def from_pipeline(pipeline: ImagePipeline) -> BuilderScope:
         desc=pipeline._desc if pipeline._desc is not None else "",
         nrows=pipeline.nrows,
         ncols=pipeline.ncols,
-        aux_nodes=aux_nodes,
     )
 
 
@@ -733,26 +752,32 @@ def _normalize_breadcrumb_segment(seg: Any) -> Dict[str, Any]:
 
     Three shapes are accepted:
 
-    * Legacy plain-string ``"<node_id>"`` → ``{"node_id": <id>, "param": None}``
+    * Legacy plain-string ``"<node_id>"`` →
+      ``{"node_id": <id>, "param": None}``.
     * Dict with ``node_id`` key (regular drill into a main-ribbon node):
-      ``{"node_id": ..., "param": ... | None}``
-    * Dict with ``aux_id`` key (Galaxy-style drill into an aux node):
-      ``{"aux_id": <id>, "param": ... | None}`` — preserved verbatim so
-      :func:`current_scope` can branch on its presence.
+      ``{"node_id": ..., "param": ... | None}``.
+    * Dict with ``target_node_id`` key (aux-slot drill into an embedded
+      aux :class:`StepNode`):
+      ``{"target_node_id": <id>, "param": <name>, "slot": <int>}``.
 
     Args:
         seg: A breadcrumb entry, either a string (legacy) or a dict.
 
     Returns:
-        A normalised dict.  Either ``node_id`` or ``aux_id`` is present
-        (never both); ``param`` defaults to ``None`` if absent.
+        A normalised dict.  Either ``node_id`` or ``target_node_id`` is
+        present (never both); ``param`` defaults to ``None`` for
+        ``node_id`` segments.
     """
 
     if isinstance(seg, str):
         return {"node_id": seg, "param": None}
     if isinstance(seg, dict):
-        if "aux_id" in seg:
-            return {"aux_id": seg["aux_id"], "param": seg.get("param")}
+        if "target_node_id" in seg:
+            return {
+                "target_node_id": seg["target_node_id"],
+                "param": seg.get("param"),
+                "slot": seg.get("slot", 0),
+            }
         if "node_id" in seg:
             return {"node_id": seg["node_id"], "param": seg.get("param")}
     raise ValueError(f"unrecognised breadcrumb segment: {seg!r}")
@@ -761,11 +786,17 @@ def _normalize_breadcrumb_segment(seg: Any) -> Dict[str, Any]:
 def _ensure_param_scope(node: StepNode, param_name: str) -> BuilderScope:
     """Return (creating if absent) the synthesized scope for an op-typed param.
 
-    The scope lives under ``node.params[_PARAM_SCOPE_KEY][param_name]`` as a
-    dict produced by :func:`_scope_to_dict` so it round-trips through JSON
-    cleanly.  This helper rehydrates it into a :class:`BuilderScope` and
-    seeds it from any existing operation-marker stored in
-    ``node.params[param_name]``.
+    LEGACY: predates the embedded-aux model.  The scope lives under
+    ``node.params[_PARAM_SCOPE_KEY][param_name]`` as a dict produced by
+    :func:`_scope_to_dict` so it round-trips through JSON cleanly.  This
+    helper rehydrates it into a :class:`BuilderScope` and seeds it from
+    any existing operation-marker stored in ``node.params[param_name]``.
+
+    Kept here because ``_layout.py`` and ``_callbacks.py`` still call this
+    function via the old ``param`` breadcrumb segment shape.  New code
+    should prefer the aux-slot drill (``{"target_node_id", "param",
+    "slot"}`` segment) which descends directly into the embedded
+    ``StepNode`` in ``aux_ports``.
 
     Args:
         node: Parent step node that owns the parameter slot.
@@ -808,9 +839,11 @@ def _ensure_param_scope(node: StepNode, param_name: str) -> BuilderScope:
 def _commit_param_scope(node: StepNode, param_name: str) -> None:
     """Mirror the singleton scope back into ``node.params[param_name]``.
 
-    Called when the user drills out of an operation-typed-parameter scope so
-    that the canonical serialized form (an operation marker dict) reflects
-    whatever the user assembled inside the singleton.
+    LEGACY: pairs with :func:`_ensure_param_scope`.  Called when the user
+    drills out of an operation-typed-parameter scope so the canonical
+    serialised form (an operation marker dict) reflects whatever the user
+    assembled inside the singleton.  Kept here because the legacy
+    breadcrumb drill machinery in ``_callbacks.py`` still relies on it.
 
     Args:
         node: Parent step node owning the param slot.
@@ -851,19 +884,19 @@ def current_scope(state: BuilderState) -> BuilderScope:
 
     * For a regular pipeline drill (``node_id=<id>``, ``param=None``),
       descends into ``match.nested``.
-    * For an op-typed parameter drill (``node_id=<id>``, ``param=<name>``),
-      descends into the synthesised singleton scope stored under
-      ``match.params[_PARAM_SCOPE_KEY][param]`` (created lazily on first
-      visit, seeded from any existing operation-marker dict at
-      ``match.params[param]``).
-    * For a Galaxy-style aux drill (``aux_id=<id>``), looks the aux node up
-      in the current scope's ``aux_nodes``.  If the aux node is itself a
-      pipeline (``class_name == "ImagePipeline"``), descends into its
-      ``nested`` scope.  Otherwise — for a non-pipeline aux node — an
-      ``param`` segment field selects which of the aux node's own
-      op-typed params to drill into via the existing ``_ensure_param_scope``
-      machinery; without ``param`` the walker treats the aux's ``params``
-      dict as the editable scope by synthesising an internal scope shell.
+    * For the LEGACY op-typed parameter drill (``node_id=<id>``,
+      ``param=<name>``), descends into the synthesised singleton scope
+      stored under ``match.params[_PARAM_SCOPE_KEY][param]`` (created
+      lazily on first visit, seeded from any existing operation-marker
+      dict at ``match.params[param]``).  Kept for back-compat; new code
+      should prefer the aux-slot form below.
+    * For an aux-slot drill (``target_node_id=<id>``, ``param=<name>``,
+      ``slot=<int>``), descends into the embedded aux :class:`StepNode`
+      stored at ``consumer.aux_ports[param][slot]``.  If that aux node
+      has ``nested`` (it's an ImagePipeline aux), descends into
+      ``nested``.  Otherwise (single-op aux), synthesises a single-node
+      :class:`BuilderScope` wrapping the aux node so the canvas can
+      render it as a 1-step ribbon.
 
     Args:
         state: The full :class:`BuilderState`.
@@ -872,46 +905,58 @@ def current_scope(state: BuilderState) -> BuilderScope:
         The :class:`BuilderScope` referenced by the breadcrumb.
 
     Raises:
-        KeyError: If a ``node_id`` / ``aux_id`` in the breadcrumb cannot be
-            located in its parent scope, or if the matching pipeline node
-            has no nested scope.
+        KeyError: If a ``node_id`` / ``target_node_id`` in the breadcrumb
+            cannot be located in its parent scope, if the matching
+            pipeline node has no nested scope, or if the aux slot is
+            empty or out of range.
     """
 
     scope = state.root
     for raw in state.breadcrumb:
         seg = _normalize_breadcrumb_segment(raw)
-        param = seg.get("param")
 
-        if "aux_id" in seg:
-            aux_id = seg["aux_id"]
-            aux_match = next(
-                (n for n in scope.aux_nodes if n.node_id == aux_id), None
+        if "target_node_id" in seg:
+            target_id = seg["target_node_id"]
+            param = seg["param"]
+            slot = int(seg.get("slot") or 0)
+            consumer = next(
+                (n for n in scope.nodes if n.node_id == target_id), None
             )
-            if aux_match is None:
+            if consumer is None:
                 raise KeyError(
-                    f"breadcrumb aux_id {aux_id!r} not found in current scope"
+                    f"breadcrumb target_node_id {target_id!r} not found in "
+                    f"current scope"
                 )
             if param is None:
-                if aux_match.nested is not None:
-                    scope = aux_match.nested
-                    continue
-                # Non-pipeline aux without a ``param`` selector: synthesise
-                # a wrapper scope that exposes the aux node itself for
-                # editing.  This keeps the walker total — callers will
-                # typically only push ``aux_id`` segments for pipeline aux
-                # nodes (where ``nested`` exists), but defensively allow
-                # the no-param shape so the tests covering the breadcrumb
-                # round-trip don't choke on it.
-                scope = BuilderScope(
-                    nodes=[aux_match],
-                    name=aux_match.label or aux_match.class_name,
+                raise KeyError(
+                    f"breadcrumb aux-slot segment missing 'param': {seg!r}"
                 )
-                continue
-            # Drilling into an op-typed param ON the aux node itself.
-            scope = _ensure_param_scope(aux_match, param)
+            slots = consumer.aux_ports.get(str(param)) or []
+            if slot < 0 or slot >= len(slots):
+                raise KeyError(
+                    f"breadcrumb aux-slot {slot} out of range for "
+                    f"{target_id!r}.{param!r} (len={len(slots)})"
+                )
+            aux_step = slots[slot]
+            if aux_step is None:
+                raise KeyError(
+                    f"breadcrumb aux-slot {target_id!r}.{param!r}[{slot}] "
+                    f"is empty (no aux wired)"
+                )
+            if aux_step.nested is not None:
+                # Pipeline aux: descend into its inner scope.
+                scope = aux_step.nested
+            else:
+                # Single-op aux: wrap it as a 1-step scope so the canvas
+                # renders a 1-step ribbon.
+                scope = BuilderScope(
+                    nodes=[aux_step],
+                    name=aux_step.label or aux_step.class_name,
+                )
             continue
 
         node_id = seg["node_id"]
+        param = seg.get("param")
         match = next((n for n in scope.nodes if n.node_id == node_id), None)
         if match is None:
             raise KeyError(
@@ -924,7 +969,7 @@ def current_scope(state: BuilderState) -> BuilderScope:
                 )
             scope = match.nested
         else:
-            scope = _ensure_param_scope(match, param)
+            scope = _ensure_param_scope(match, str(param))
     return scope
 
 
@@ -973,7 +1018,9 @@ def _scope_to_dict(scope: BuilderScope) -> Dict[str, Any]:
         scope: The scope to serialize.
 
     Returns:
-        A nested dict mirroring the :class:`BuilderScope` shape.
+        A nested dict mirroring the :class:`BuilderScope` shape.  Aux
+        operations are serialised inline inside each consumer's
+        ``aux_ports`` entry (no separate ``aux_nodes`` list).
     """
 
     return {
@@ -982,20 +1029,27 @@ def _scope_to_dict(scope: BuilderScope) -> Dict[str, Any]:
         "desc": scope.desc,
         "nrows": scope.nrows,
         "ncols": scope.ncols,
-        "aux_nodes": [_node_to_dict(n) for n in scope.aux_nodes],
     }
 
 
 def _node_to_dict(node: StepNode) -> Dict[str, Any]:
     """Recursively dump a :class:`StepNode` to a JSON-friendly dict.
 
+    Aux ports' embedded :class:`StepNode` slots recurse via this same
+    function so the entire aux subtree round-trips through JSON.
+
     Args:
         node: The node to serialize.
 
     Returns:
-        A dict mirroring the :class:`StepNode` shape, with ``nested``
-        recursed via :func:`_scope_to_dict``.
+        A dict mirroring the :class:`StepNode` shape.
     """
+
+    aux_ports_serialised: Dict[str, List[Optional[Dict[str, Any]]]] = {}
+    for port_name, slots in node.aux_ports.items():
+        aux_ports_serialised[port_name] = [
+            _node_to_dict(s) if s is not None else None for s in slots
+        ]
 
     return {
         "node_id": node.node_id,
@@ -1003,7 +1057,7 @@ def _node_to_dict(node: StepNode) -> Dict[str, Any]:
         "params": node.params,
         "label": node.label,
         "nested": _scope_to_dict(node.nested) if node.nested is not None else None,
-        "aux_ports": {k: list(v) for k, v in node.aux_ports.items()},
+        "aux_ports": aux_ports_serialised,
     }
 
 
@@ -1019,33 +1073,37 @@ def _scope_from_dict(data: Dict[str, Any]) -> BuilderScope:
     """
 
     nodes = [_node_from_dict(n) for n in data.get("nodes", [])]
-    aux_nodes = [_node_from_dict(n) for n in (data.get("aux_nodes") or [])]
     return BuilderScope(
         nodes=nodes,
         name=data.get("name", "Pipeline"),
         desc=data.get("desc", ""),
         nrows=data.get("nrows"),
         ncols=data.get("ncols"),
-        aux_nodes=aux_nodes,
     )
 
 
 def _node_from_dict(data: Dict[str, Any]) -> StepNode:
     """Inverse of :func:`_node_to_dict`.
 
+    Recursively reconstructs embedded aux :class:`StepNode` slots from
+    their serialised form so the full aux subtree survives JSON round-trip.
+
     Args:
         data: Dict previously produced by :func:`_node_to_dict`.
 
     Returns:
-        A reconstructed :class:`StepNode` (with nested scope recursed).
+        A reconstructed :class:`StepNode` (with nested scope and embedded
+        aux slots recursed).
     """
 
     nested_data = data.get("nested")
     nested = _scope_from_dict(nested_data) if nested_data is not None else None
     raw_aux = data.get("aux_ports") or {}
-    aux_ports: Dict[str, List[Optional[str]]] = {
-        str(k): list(v) for k, v in raw_aux.items()
-    }
+    aux_ports: Dict[str, List[Optional[StepNode]]] = {}
+    for port_name, slots in raw_aux.items():
+        aux_ports[str(port_name)] = [
+            _node_from_dict(s) if isinstance(s, dict) else None for s in slots
+        ]
     return StepNode(
         node_id=data["node_id"],
         class_name=data["class_name"],
@@ -1069,13 +1127,15 @@ def state_to_json(state: BuilderState) -> Dict[str, Any]:
         state: The state to serialize.
 
     Returns:
-        Dict with ``root``, ``breadcrumb``, and ``selected_node_id`` keys.
+        Dict with ``root``, ``breadcrumb``, ``selected_node_id``, and
+        ``inspector_focus_aux`` keys.
     """
 
     return {
         "root": _scope_to_dict(state.root),
         "breadcrumb": list(state.breadcrumb),
         "selected_node_id": state.selected_node_id,
+        "inspector_focus_aux": state.inspector_focus_aux,
     }
 
 
@@ -1098,4 +1158,5 @@ def state_from_json(data: Dict[str, Any]) -> BuilderState:
         root=root,
         breadcrumb=crumbs,
         selected_node_id=data.get("selected_node_id"),
+        inspector_focus_aux=data.get("inspector_focus_aux"),
     )
