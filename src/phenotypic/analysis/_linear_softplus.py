@@ -98,7 +98,7 @@ class LinearSoftplus(_LinearSoftplusBase):
             s0_prior_sigma: float | None = None,
             s0_prior_groupby: List[str] | None = None,
             prune_saturated: bool = True,
-            num_workers: int = 1,
+            n_jobs: int = 1,
             loss: LossKind = "huber",
             f_scale: float = 1.0,
             verbose: bool = False,
@@ -141,7 +141,7 @@ class LinearSoftplus(_LinearSoftplusBase):
                 at ``analyze`` time.
             prune_saturated: Whether to drop post-saturation timepoints
                 before fitting. Defaults to ``True``.
-            num_workers: Number of parallel workers for per-group fits.
+            n_jobs: Number of parallel workers for per-group fits.
             loss: Loss method passed through to
                 :func:`scipy.optimize.least_squares`. One of
                 ``"linear"``, ``"soft_l1"``, ``"huber"``, ``"cauchy"``,
@@ -166,7 +166,7 @@ class LinearSoftplus(_LinearSoftplusBase):
                 s0_prior_cv=s0_prior_cv,
                 s0_prior_sigma=s0_prior_sigma,
                 s0_prior_groupby=s0_prior_groupby,
-                num_workers=num_workers,
+                n_jobs=n_jobs,
                 loss=loss,
                 f_scale=f_scale,
                 verbose=verbose,
