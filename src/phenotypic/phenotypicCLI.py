@@ -186,7 +186,7 @@ from phenotypic.tools_ import (
     DIR_RECOMPILE,
     JOB_METADATA_JSON,
     PROCESSING_STATE_JSON,
-    MASTER_MEASUREMENTS_CSV,
+    MEASUREMENTS_PARQUET,
     RECOMPILE_TASK_MANIFEST_JSON,
     JobMetadataKey,
     dashboard_html_path,
@@ -1740,13 +1740,18 @@ def _handle_recompile(
     try:
         import polars as pl
 
+        # Plugins consume the post-applied mirror (which carries the
+        # external metadata join) so dashboard sidecars match what the
+        # GUI viewer and per-feature splits see. The master archive is
+        # intentionally metadata-free.
+        mirror_path = output_dir / MEASUREMENTS_PARQUET
         merged_df: Optional[pl.DataFrame] = None
-        if master_path and Path(master_path).exists():
+        if mirror_path.exists():
             try:
-                merged_df = pl.read_csv(master_path)
+                merged_df = pl.read_parquet(mirror_path)
             except Exception:
                 logger.warning(
-                    "Failed to read master CSV for analysis plugins",
+                    "Failed to read measurements mirror for analysis plugins",
                     exc_info=True,
                 )
         _run_analysis_plugins(output_dir, progress_dir, merged_df)

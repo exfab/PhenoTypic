@@ -505,6 +505,7 @@ def finalize_post_master_outputs(
     output_dir: Path,
     master_df: "pl.DataFrame",
     pipeline: Optional["ImagePipeline"],
+    metadata_csv: Optional[Path] = None,
 ) -> "pl.DataFrame":
     """Run every CLI side effect that follows a freshly written master file.
 
@@ -526,35 +527,55 @@ def finalize_post_master_outputs(
        :data:`~phenotypic.tools_.MEASUREMENTS_PARQUET`.
        When *pipeline* is ``None`` or has no post ops, ``post_df`` is the
        clean master unchanged.
-    2. :func:`_seed_measurements` writes the post-applied frame.
-    3. When *pipeline* is provided: persist ``pipeline.json``, run
+    2. If *metadata_csv* is provided, inner-join its rows onto ``post_df``
+       via :func:`join_metadata`. The join lands here — not on the master —
+       so ``master_measurements.{csv,parquet}`` stays a clean, op-free
+       archive of what the workers measured, and every downstream artifact
+       derived from ``post_df`` (mirror, per-feature splits,
+       ``analysis.{csv,parquet}``) inherits the external metadata columns.
+    3. :func:`_seed_measurements` writes the post-applied (and optionally
+       metadata-joined) frame.
+    4. When *pipeline* is provided: persist ``pipeline.json``, run
        :func:`_emit_analysis_outputs` against ``post_df`` (so analysis sees
        post-applied data), and split the post-applied frame into
        per-feature spreadsheets so users see post-derived columns
        (e.g. ``Metadata_Strain`` from ``ExpandMetadata``) in
        ``measurements_by_feature/<feature>.{csv,parquet}``.
 
-    Failures inside split or analysis are logged at WARNING and never raise;
-    the master files remain authoritative regardless of what happens here.
+    Failures inside metadata-join, split, or analysis are logged at WARNING
+    and never raise; the master files remain authoritative regardless of
+    what happens here.
 
     Args:
         output_dir: Output root that already contains
             :data:`~phenotypic.tools_.MASTER_MEASUREMENTS_PARQUET` (and the
             CSV counterpart).
-        master_df: The clean (post-free) aggregated master.
+        master_df: The clean (post-free, metadata-free) aggregated master.
         pipeline: Recovered pipeline, or ``None`` when it can't be
             located (the SLURM sentinel may run before any pipeline.json
             is persisted).
+        metadata_csv: Optional external metadata CSV. When provided, its
+            columns are inner-joined onto the post-applied frame before
+            seeding the mirror, so only the mirror (and its derivatives)
+            carry external metadata — never the master archive.
 
     Returns:
-        The post-applied frame. Callers that run additional side effects
-        downstream (e.g. analysis-plugin dispatch in the recompile
+        The post-applied frame (with external metadata joined when
+        *metadata_csv* is provided). Callers that run additional side
+        effects downstream (e.g. analysis-plugin dispatch in the recompile
         worker) should pass this to those steps so plugins see the same
         post-applied data the GUI viewer and analysis chain see, rather
         than the clean master. Equal to *master_df* when no post ops
-        are configured.
+        are configured and no metadata CSV is supplied.
     """
     post_df = _apply_post_to_master(master_df, pipeline)
+    if metadata_csv is not None:
+        try:
+            post_df = join_metadata(post_df, metadata_csv)
+        except Exception as e:
+            logger.warning(
+                "Failed to join metadata CSV: %s: %s", type(e).__name__, e
+            )
     _seed_measurements(output_dir, post_df)
 
     if pipeline is None:
@@ -773,13 +794,6 @@ def aggregate_measurements(
     if "filename" in master_df.columns:
         master_df = master_df.drop("filename")
 
-    # -- Join metadata -------------------------------------------------
-    if metadata_csv is not None:
-        try:
-            master_df = join_metadata(master_df, metadata_csv)
-        except Exception as e:
-            logger.warning("Failed to join metadata CSV: %s: %s", type(e).__name__, e)
-
     # -- Write master CSV and Parquet ----------------------------------
     master_csv_path = output_dir / MASTER_MEASUREMENTS_CSV
     master_pq_path = output_dir / MASTER_MEASUREMENTS_PARQUET
@@ -808,7 +822,9 @@ def aggregate_measurements(
     )
 
     resolved_pipeline = pipeline if pipeline is not None else _load_pipeline_from_output_dir(output_dir)
-    finalize_post_master_outputs(output_dir, master_df, resolved_pipeline)
+    finalize_post_master_outputs(
+        output_dir, master_df, resolved_pipeline, metadata_csv=metadata_csv
+    )
 
     return master_csv_path
 

@@ -18,7 +18,7 @@ from ._cli_file_locking import FileLockTimeout, file_lock
 from ._cli_utils import load_job_metadata
 from phenotypic.tools_ import (
     DIR_PROGRESS,
-    MASTER_MEASUREMENTS_CSV,
+    MEASUREMENTS_PARQUET,
     PROCESSING_EVENTS_LOG,
     JobMetadataKey,
     checkpoint_lock_filename,
@@ -157,13 +157,17 @@ def _run_finalize(output_dir: Path, progress_dir: Path) -> None:
 
     import polars as pl
 
-    master_path = output_dir / MASTER_MEASUREMENTS_CSV
+    # Analysis plugins consume the post-applied mirror (which carries the
+    # external metadata join) so dashboard sidecars match what the GUI
+    # viewer and per-feature splits see. The master archive is intentionally
+    # metadata-free and would regress plugin grouping if used here.
+    mirror_path = output_dir / MEASUREMENTS_PARQUET
     merged_df: Optional[pl.DataFrame] = None
-    if master_path.exists():
+    if mirror_path.exists():
         try:
-            merged_df = pl.read_csv(master_path)
+            merged_df = pl.read_parquet(mirror_path)
         except Exception:
-            logger.warning("Failed to read master CSV for analysis plugins")
+            logger.warning("Failed to read measurements mirror for analysis plugins")
     _run_analysis_plugins(output_dir, progress_dir, merged_df)
 
     # Regenerate dashboard

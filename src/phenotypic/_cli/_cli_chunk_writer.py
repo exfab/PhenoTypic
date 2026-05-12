@@ -136,24 +136,30 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
         job_meta = load_job_metadata(progress_dir)
         csv_str = job_meta.get(JobMetadataKey.METADATA_CSV) if job_meta else None
         metadata_csv = Path(csv_str) if csv_str else None
+        # External metadata is intentionally kept out of the master archive,
+        # which stays a clean snapshot of what the workers measured. The
+        # join is computed in memory only for mid-run analysis-plugin
+        # dispatch so dashboard sidecars can still group by metadata
+        # columns; the on-disk mirror with the join lands at final
+        # aggregation via ``finalize_post_master_outputs``.
         combined_with_metadata = combined
         if metadata_csv is not None:
             try:
                 combined_with_metadata = join_metadata(combined, metadata_csv)
             except Exception:
                 logger.warning(
-                    "Metadata join failed, writing CSV without metadata",
+                    "Metadata join failed; analysis plugins will run without metadata",
                     exc_info=True,
                 )
                 combined_with_metadata = combined
 
         _atomic_write(
             output_dir / MASTER_MEASUREMENTS_CSV,
-            lambda p: combined_with_metadata.write_csv(p),  # type: ignore[union-attr]
+            lambda p: combined.write_csv(p),
         )
         _atomic_write(
             output_dir / MASTER_MEASUREMENTS_PARQUET,
-            lambda p: combined_with_metadata.write_parquet(  # type: ignore[union-attr]
+            lambda p: combined.write_parquet(
                 p, compression="zstd", compression_level=3
             ),
         )

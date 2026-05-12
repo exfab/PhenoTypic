@@ -1028,9 +1028,10 @@ def _build_body(execution_mode: str, logo_data_uri: str = "",
 
         <input type="hidden" id="dl-cutdirs" value="N">
 
-        <p class="download-section-title">1. Master measurements (CSV)</p>
+        <p class="download-section-title">1. Measurements (CSV)</p>
         <p style="font-size:var(--text-sm);color:var(--color-muted)">
-          Single file with all colony measurements across datasets:</p>
+          Post-applied measurements with external metadata joined,
+          across all datasets:</p>
         <div class="download-cmd" id="cmd-csv"></div>
 
         <p class="download-section-title">2. Overlay images only</p>
@@ -1157,7 +1158,7 @@ def _build_js(execution_mode: str, plugins: list | None = None) -> str:
       if (user) auth = ' --user=' + user + (pass ? " --password='" + pass + "'" : '');
 
       document.getElementById('cmd-csv').textContent =
-        'wget' + auth + ' ' + base + 'master_measurements.csv';
+        'wget' + auth + ' ' + base + 'measurements.csv';
       document.getElementById('cmd-png').textContent =
         'wget -r -np -nH -e robots=off --cut-dirs=' + cutDirs + ' -A "*.png"' + auth + ' ' + base + 'results/';
       document.getElementById('cmd-full').textContent =
@@ -1624,7 +1625,7 @@ def _build_analysis_js(plugins: list) -> str:
     function loadSharedParquet() {
       if (sharedParquetState.loaded) return Promise.resolve();
       if (sharedParquetState.loading) return sharedParquetState.loading;
-      sharedParquetState.loading = _loadParquetFile('master_measurements.parquet')
+      sharedParquetState.loading = _loadParquetFile('measurements.parquet')
         .then(function() {
           sharedParquetState.loaded = true;
           sharedParquetState.loading = null;
