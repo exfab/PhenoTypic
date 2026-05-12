@@ -850,6 +850,7 @@
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">phenotypic.util</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.geometric_median.html">phenotypic.util.geometric_median</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.decode_well_position.html">phenotypic.util.decode_well_position</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.ImageMetricsCalculator.html">phenotypic.util.ImageMetricsCalculator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.NoiseMetrics.html">phenotypic.util.NoiseMetrics</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.ContrastMetrics.html">phenotypic.util.ContrastMetrics</a></li>
@@ -926,6 +927,9 @@
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.geometric_median" title="phenotypic.util.geometric_median"><code class="xref py py-obj docutils literal notranslate"><span class="pre">geometric_median</span></code></a></p></td>
 <td><p>Compute geometric median of a set of points.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.decode_well_position" title="phenotypic.util.decode_well_position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">decode_well_position</span></code></a></p></td>
+<td><p>Decode microplate well identifiers to 0-based linear indices.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1702,6 +1706,57 @@ In either case, this is followed by: for k in F:  D[k] = F[k]</p>
 <span class="sig-name descname"><span class="pre">scales</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></em></dt>
 <dd></dd></dl>
 
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.util.</span></span><span class="sig-name descname"><span class="pre">decode_well_position</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">well</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_rows</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'column'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><span class="pre">ndarray</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/util/_well_pos_decoder.html#decode_well_position"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Decode microplate well identifiers to 0-based linear indices.</p>
+<p>Supports scalar strings, Python lists, NumPy arrays, Pandas Series, and
+Polars Series as input. Output is always a NumPy int32 array of the same
+length, or a scalar int32 for scalar input. The well position is distinct from
+the <cite>GRID</cite> labels. These are in relation to the actual original well plate, and
+may have an offset in comparison to the <cite>GRID</cite> positions from a <cite>GridImage</cite></p>
+<p>Row encoding follows the ANSI/SBS microplate convention:
+single letters A-Z map to rows 0-25; double letters AA-AZ to 26-51, etc.
+This covers 96-well (A-H), 384-well (A-P), and 1536-well (A-AF) formats.</p>
+<p>Column-major index formula: <code class="docutils literal notranslate"><span class="pre">(col</span> <span class="pre">-</span> <span class="pre">1)</span> <span class="pre">*</span> <span class="pre">n_rows</span> <span class="pre">+</span> <span class="pre">row_idx</span></code> (0-based).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>well</strong> – Well label(s) of the form <code class="docutils literal notranslate"><span class="pre">&lt;letter(s)&gt;&lt;digits&gt;</span></code>, e.g. <code class="docutils literal notranslate"><span class="pre">&quot;A1&quot;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">&quot;B11&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;AA3&quot;</span></code>. Case-insensitive. Leading/trailing whitespace
+is stripped. Accepts <code class="docutils literal notranslate"><span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">list[str]</span></code>, <code class="docutils literal notranslate"><span class="pre">np.ndarray</span></code>,
+<code class="docutils literal notranslate"><span class="pre">pandas.Series</span></code>, or <code class="docutils literal notranslate"><span class="pre">polars.Series</span></code>.</p></li>
+<li><p><strong>n_rows</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of rows in the plate. Defaults to 8 (96-well).
+Use 16 for 384-well, 32 for 1536-well.</p></li>
+<li><p><strong>order</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Linear indexing order. <code class="docutils literal notranslate"><span class="pre">&quot;column&quot;</span></code> (default) uses column-major
+(Fortran) order. <code class="docutils literal notranslate"><span class="pre">&quot;row&quot;</span></code> is reserved but not yet implemented.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>np.ndarray of dtype int32 containing 0-based linear indices.
+Invalid or unparseable labels produce <code class="docutils literal notranslate"><span class="pre">-1</span></code>. Returns a scalar
+int32 when a single string is passed.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">order=&quot;row&quot;</span></code> is requested.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>ndarray</em></a></p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">decode_well_position</span><span class="p">(</span><span class="s2">&quot;A1&quot;</span><span class="p">)</span>
+<span class="go">array(0, dtype=int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">decode_well_position</span><span class="p">([</span><span class="s2">&quot;A1&quot;</span><span class="p">,</span> <span class="s2">&quot;B1&quot;</span><span class="p">,</span> <span class="s2">&quot;A2&quot;</span><span class="p">],</span> <span class="n">n_rows</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+<span class="go">array([ 0,  1,  8], dtype=int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">decode_well_position</span><span class="p">([</span><span class="s2">&quot;A11&quot;</span><span class="p">,</span> <span class="s2">&quot;H12&quot;</span><span class="p">],</span> <span class="n">n_rows</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+<span class="go">array([80, 95], dtype=int32)</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="py function">

@@ -17,6 +17,7 @@
       :nosignatures:
    
       geometric_median
+      decode_well_position
    
    
 
