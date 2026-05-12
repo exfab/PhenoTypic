@@ -516,6 +516,13 @@ class AutoGridFinder(GridFinder):
         """
         if len(centers) == 0:
             return np.empty(0, dtype=int)
+        if len(edges) < 2:
+            # No diffs available → can't recover pitch. Defensive
+            # guard for the helper's documented empty-array contract;
+            # not reachable from _compute_grid_edges (which always emits
+            # n_bins + 1 ≥ 2 edges), but called directly by tests and
+            # potentially by future code paths.
+            return np.zeros(len(centers), dtype=int)
         n_bins = len(edges) - 1
         pitch = float(np.median(np.diff(edges)))
         if pitch <= 0:
@@ -965,7 +972,7 @@ class AutoGridFinder(GridFinder):
 
         Falls back to uniform spacing when fewer than 2 objects are found.
         Uses the simple pipeline for low-count *and* low-occupancy axes;
-        otherwise routes to the iterative pipeline (image-pitch seed +
+        otherwise routes to the iterative pipeline (data-driven seed +
         cell-median refinement).
         """
         axis_label = (
