@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=52d5597a"></script>
+    <script src="../../_static/documentation_options.js?v=fb952d1c"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -67,7 +67,7 @@
     <link rel="prev" title="Analysis sub-app" href="08_analysis.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.15.0" />
+  <meta name="docsearch:version" content="0.15.1" />
   </head>
   
   
@@ -578,8 +578,15 @@ e.g. <code class="docutils literal notranslate"><span class="pre">FilamentousFun
 as small <strong>aux ports</strong> on the consumer node. Clicking an aux port
 opens a <strong>popover</strong> to pick a class, edit a wired aux’s params, or
 drill into a multi-step aux pipeline.</p>
-<p>This tutorial walks a 4-step main pipeline that wires a single-op aux
-into a detector.</p>
+<p>This tutorial covers three flavours of aux wiring:</p>
+<ol class="arabic simple">
+<li><p><strong>Scalar aux</strong> — a single-slot op param (<code class="docutils literal notranslate"><span class="pre">FilamentousFungiDetector.inoculum_detector</span></code>).</p></li>
+<li><p><strong>Drill-in + extend</strong> — turning a wired scalar aux into a
+multi-step inline pipeline.</p></li>
+<li><p><strong>List-typed aux</strong> — multi-slot ports
+(<code class="docutils literal notranslate"><span class="pre">CompositeDetector.detectors</span></code>) with per-slot wire / drill /
+disconnect actions.</p></li>
+</ol>
 <section id="step-1-empty-canvas">
 <h2>Step 1 — Empty canvas<a class="headerlink" href="#step-1-empty-canvas" title="Link to this heading">#</a></h2>
 <p>Open the <code class="docutils literal notranslate"><span class="pre">Builder</span></code> tab (or navigate to <code class="docutils literal notranslate"><span class="pre">/builder/</span></code>):</p>
@@ -624,19 +631,23 @@ stays on <code class="docutils literal notranslate"><span class="pre">Filamentou
 edited slot is unambiguous. The aux port on the consumer flips to
 <strong>filled purple</strong>.</p>
 </section>
-<section id="step-5-drill-in-and-extend">
-<h2>Step 5 — Drill in and extend<a class="headerlink" href="#step-5-drill-in-and-extend" title="Link to this heading">#</a></h2>
+<section id="step-5-drill-in-to-inspect-the-aux-scope">
+<h2>Step 5 — Drill in to inspect the aux scope<a class="headerlink" href="#step-5-drill-in-to-inspect-the-aux-scope" title="Link to this heading">#</a></h2>
 <p>Click <code class="docutils literal notranslate"><span class="pre">Drill</span> <span class="pre">in</span> <span class="pre">→</span></code> in the popover:</p>
 <p><img alt="Canvas drilled into the aux scope — one-node OtsuDetector ribbon; top-of-builder breadcrumb shows Pipeline / FilamentousFungiDetector / inoculum_detector / slot 0." src="../../_images/05_drill_in.png" /></p>
 <p>The popover dismisses and the canvas swaps to a one-step ribbon of
-just <code class="docutils literal notranslate"><span class="pre">OtsuDetector</span></code>. Every aux is a 1-step pipeline by default, so
-drilling in lets you extend it like any other pipeline. The builder
-breadcrumb shows the drilled path:
-<code class="docutils literal notranslate"><span class="pre">Pipeline</span> <span class="pre">/</span> <span class="pre">FilamentousFungiDetector</span> <span class="pre">/</span> <span class="pre">inoculum_detector</span> <span class="pre">/</span> <span class="pre">slot</span> <span class="pre">0</span></code>.</p>
-<p>Add more ops before or after <code class="docutils literal notranslate"><span class="pre">OtsuDetector</span></code> to extend the aux into a
-multi-step pipeline — e.g. prepend a <code class="docutils literal notranslate"><span class="pre">GaussianBlur</span></code> to smooth the
-inoculum spot before Otsu thresholds it:</p>
-<p><img alt="Two-step aux pipeline with GaussianBlur feeding OtsuDetector." src="_static/gui_images/aux_ports/05b_drill_extended.png" /></p>
+just <code class="docutils literal notranslate"><span class="pre">OtsuDetector</span></code>. The builder breadcrumb shows the drilled path:
+<code class="docutils literal notranslate"><span class="pre">Pipeline</span> <span class="pre">/</span> <span class="pre">FilamentousFungiDetector</span> <span class="pre">/</span> <span class="pre">inoculum_detector</span> <span class="pre">/</span> <span class="pre">slot</span> <span class="pre">0</span></code>.
+The inspector now edits the aux’s params directly (every aux is
+surfaced as a 1-step ribbon for visual continuity even when it’s a
+single op).</p>
+<p>To <strong>extend</strong> an aux into a multi-step inline pipeline, pick
+<code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code> from the popover palette in step 4 instead of a
+concrete detector class. Drilling into an <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code> aux opens a
+<em>writable</em> nested scope where the palette can append ops; the same
+breadcrumb / drill-in mechanics apply. Single-op auxes (like the
+<code class="docutils literal notranslate"><span class="pre">OtsuDetector</span></code> here) are surfaced read-only — replacing the wired
+class via <code class="docutils literal notranslate"><span class="pre">⨯</span> <span class="pre">Disconnect</span> <span class="pre">→</span> <span class="pre">pick</span> <span class="pre">new</span> <span class="pre">class</span></code> is the way to swap them.</p>
 </section>
 <section id="step-6-drill-out-and-save">
 <h2>Step 6 — Drill out and save<a class="headerlink" href="#step-6-drill-out-and-save" title="Link to this heading">#</a></h2>
@@ -647,6 +658,40 @@ filled purple and now carries a small <code class="docutils literal notranslate"
 slot. Saving (<code class="docutils literal notranslate"><span class="pre">Pipeline</span> <span class="pre">I/O</span> <span class="pre">→</span> <span class="pre">Save</span></code>) preserves the wired aux as a
 standard <code class="docutils literal notranslate"><span class="pre">__op_param_scope__</span></code> marker inside the consumer’s params —
 the JSON round-trips byte-identically.</p>
+</section>
+<section id="step-7-multi-slot-aux-list-typed-params">
+<h2>Step 7 — Multi-slot aux: list-typed params<a class="headerlink" href="#step-7-multi-slot-aux-list-typed-params" title="Link to this heading">#</a></h2>
+<p>Some consumers accept a <em>list</em> of ops, not just one. <code class="docutils literal notranslate"><span class="pre">CompositeDetector</span></code>
+takes <code class="docutils literal notranslate"><span class="pre">detectors:</span> <span class="pre">list[ObjectDetector</span> <span class="pre">|</span> <span class="pre">ImagePipeline]</span></code> so a single
+detection step can vote across several detectors. Add a
+<code class="docutils literal notranslate"><span class="pre">CompositeDetector</span></code> to the ribbon (it appears as a 5th main node), then
+click its bottom-edge aux port:</p>
+<p><img alt="Popover open over the CompositeDetector aux port in list mode; &quot;No slots yet&quot; placeholder above a &quot;+ Add slot&quot; button." src="../../_images/07_list_port_popover.png" /></p>
+<p>The popover renders in <strong>list mode</strong>: there are no slots yet, so the
+body shows a muted “No slots yet — add one to start wiring.” line plus
+a <code class="docutils literal notranslate"><span class="pre">+</span> <span class="pre">Add</span> <span class="pre">slot</span></code> button. Adding the first slot mounts an empty row with
+its own class palette — list ports are scalar-popovers stacked
+vertically.</p>
+</section>
+<section id="step-8-wire-two-slots">
+<h2>Step 8 — Wire two slots<a class="headerlink" href="#step-8-wire-two-slots" title="Link to this heading">#</a></h2>
+<p>Click <code class="docutils literal notranslate"><span class="pre">+</span> <span class="pre">Add</span> <span class="pre">slot</span></code>, pick <code class="docutils literal notranslate"><span class="pre">OtsuDetector</span></code> for slot 0; click <code class="docutils literal notranslate"><span class="pre">+</span> <span class="pre">Add</span> <span class="pre">slot</span></code>
+again, pick <code class="docutils literal notranslate"><span class="pre">WatershedDetector</span></code> for slot 1:</p>
+<p><img alt="Popover with two stacked wired-rows — slot 0 shows OtsuDetector with Edit / Drill / Disconnect actions, slot 1 shows WatershedDetector with the same actions; the &quot;+ Add slot&quot; button is still at the bottom for adding a third detector." src="../../_images/08_list_port_two_wired.png" /></p>
+<p>Both slots are independent: each carries its own
+<code class="docutils literal notranslate"><span class="pre">✎</span> <span class="pre">Edit</span> <span class="pre">/</span> <span class="pre">Drill</span> <span class="pre">in</span> <span class="pre">→</span> <span class="pre">/</span> <span class="pre">⨯</span> <span class="pre">Disconnect</span></code> actions, and clicking <code class="docutils literal notranslate"><span class="pre">Drill</span> <span class="pre">in</span> <span class="pre">→</span></code>
+on either drills into THAT slot’s scope. The <code class="docutils literal notranslate"><span class="pre">+</span> <span class="pre">Add</span> <span class="pre">slot</span></code> button stays
+at the bottom for adding more.</p>
+</section>
+<section id="step-9-per-slot-disconnect">
+<h2>Step 9 — Per-slot disconnect<a class="headerlink" href="#step-9-per-slot-disconnect" title="Link to this heading">#</a></h2>
+<p>Click <code class="docutils literal notranslate"><span class="pre">⨯</span> <span class="pre">Disconnect</span></code> on slot 1’s row only:</p>
+<p><img alt="Popover after per-slot disconnect — slot 0's OtsuDetector wired-row stays at the top while slot 1 has reverted to the class palette below." src="../../_images/09_per_slot_disconnect.png" /></p>
+<p>Slot 0 stays wired to <code class="docutils literal notranslate"><span class="pre">OtsuDetector</span></code> (compact wired-row at the top of
+the popover); slot 1 reverts to its palette state ready to accept a
+different class. The slot order survives the disconnect — slot 1 is
+still slot 1, just empty again — so any drill / edit references to
+slot 0 stay valid.</p>
 </section>
 <section id="reference">
 <h2>Reference<a class="headerlink" href="#reference" title="Link to this heading">#</a></h2>
@@ -703,8 +748,11 @@ every panel, store, and admonition in the hub.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-2-add-the-main-pipeline">Step 2 — Add the main pipeline</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-3-open-the-aux-popover">Step 3 — Open the aux popover</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-4-pick-a-class">Step 4 — Pick a class</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-5-drill-in-and-extend">Step 5 — Drill in and extend</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-5-drill-in-to-inspect-the-aux-scope">Step 5 — Drill in to inspect the aux scope</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-6-drill-out-and-save">Step 6 — Drill out and save</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-7-multi-slot-aux-list-typed-params">Step 7 — Multi-slot aux: list-typed params</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-8-wire-two-slots">Step 8 — Wire two slots</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-9-per-slot-disconnect">Step 9 — Per-slot disconnect</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reference">Reference</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#where-to-next">Where to next</a></li>
 </ul>
