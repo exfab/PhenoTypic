@@ -225,7 +225,14 @@ class TestParamFormViaRegistry:
         assert "loss" in info.parameters
 
     def test_linear_softplus_has_multi_union(self, registry):
-        info = registry.get("LinearSoftplusModel")
+        info = registry.get("LinearSoftplus")
+        assert info is not None
+        sp = info.parameters.get("s0_prior")
+        assert sp is not None
+        assert _is_multi_union(sp.type_hint)
+
+    def test_double_softplus_has_multi_union(self, registry):
+        info = registry.get("DoubleSoftplus")
         assert info is not None
         sp = info.parameters.get("s0_prior")
         assert sp is not None

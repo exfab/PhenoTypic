@@ -19,6 +19,7 @@ from ._grid import GRID
 from ._grid_linreg_stats import GRID_LINREG_STATS
 from ._grid_spatial import GRID_SPATIAL
 from ._grid_spread import GRID_SPREAD
+from ._double_softplus_model import DOUBLE_SOFTPLUS_MODEL
 from ._intensity import INTENSITY
 from ._linear_softplus_model import LINEAR_SOFTPLUS_MODEL
 from ._log_growth_model import LOG_GROWTH_MODEL
@@ -36,6 +37,7 @@ __all__ = [
     "ColorLab",
     "Colorxy",
     "ColorXYZ",
+    "DOUBLE_SOFTPLUS_MODEL",
     "EDGE_CORRECTION",
     "GRID",
     "GRID_LINREG_STATS",
