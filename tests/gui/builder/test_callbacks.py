@@ -46,7 +46,7 @@ def test_render_views_returns_breadcrumb_children_not_nested_nav() -> None:
     state = BuilderState()
 
     with app.server.app_context():
-        breadcrumb_children, _canvas, _inspector = _render_views(state)
+        breadcrumb_children, _canvas, _inspector, _popover = _render_views(state)
 
     assert isinstance(breadcrumb_children, list)
     assert not any(isinstance(child, html.Nav) for child in breadcrumb_children)
@@ -79,7 +79,7 @@ def test_render_views_drilled_in_breadcrumb_returns_button_children() -> None:
     )
 
     with app.server.app_context():
-        breadcrumb_children, _canvas, _inspector = _render_views(state)
+        breadcrumb_children, _canvas, _inspector, _popover = _render_views(state)
 
     assert isinstance(breadcrumb_children, list)
     assert not any(isinstance(child, html.Nav) for child in breadcrumb_children)
@@ -227,3 +227,73 @@ def test_drill_in_param_round_trip() -> None:
     assert marker is not None
     assert marker["__type__"] == "operation"
     assert marker["class_name"] == "OtsuDetector"
+
+
+def test_breadcrumb_to_pops_aux_slot_segment() -> None:
+    """``breadcrumb_to`` pops aux-slot segments without crashing.
+
+    Regression cover for a ``KeyError 'node_id'`` raised by
+    ``_commit_param_segments`` when an aux-slot breadcrumb segment
+    (``{"target_node_id", "param", "slot"}``) is popped. The legacy
+    ``drill_in_param`` mechanism stores synthesized scopes that need to be
+    folded back into ``parent.params[name]`` on drill-out, but aux-slot
+    drills (``drill_in_aux``) embed their aux ``StepNode`` directly inside
+    ``consumer.aux_ports[param][slot]`` — those segments must be skipped
+    here, not commit-back-walked.
+    """
+
+    state = state_to_json(
+        BuilderState(
+            root=BuilderScope(
+                nodes=[
+                    StepNode(
+                        node_id="consumer",
+                        class_name="FilamentousFungiDetector",
+                        aux_ports={
+                            "inoculum_detector": [
+                                StepNode(
+                                    node_id="aux1",
+                                    class_name="OtsuDetector",
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+            ),
+        )
+    )
+
+    after_drill = _dispatch_state_update(
+        state,
+        "drill_in_aux",
+        {
+            "target_node_id": "consumer",
+            "param": "inoculum_detector",
+            "slot": 0,
+        },
+    )
+    assert after_drill["breadcrumb"] == [
+        {
+            "target_node_id": "consumer",
+            "param": "inoculum_detector",
+            "slot": 0,
+        }
+    ]
+
+    after_out = _dispatch_state_update(
+        after_drill, "breadcrumb_to", {"depth": 0}
+    )
+    assert after_out["breadcrumb"] == []
+    # The wired aux survives the drill-out — it lives inside the consumer's
+    # ``aux_ports`` slot list, not under ``params``.
+    consumer = after_out["root"]["nodes"][0]
+    slots = consumer["aux_ports"]["inoculum_detector"]
+    assert slots[0]["class_name"] == "OtsuDetector"
+
+    # ``drill_out`` (the single-step variant) takes the same code path.
+    after_step_out = _dispatch_state_update(
+        after_drill, "drill_out", {}
+    )
+    assert after_step_out["breadcrumb"] == []
+    slots = after_step_out["root"]["nodes"][0]["aux_ports"]["inoculum_detector"]
+    assert slots[0]["class_name"] == "OtsuDetector"

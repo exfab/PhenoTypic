@@ -728,6 +728,13 @@ def param_form(
 ) -> dbc.Form:
     """Generate a parameter form for an operation.
 
+    Renders the parameters of a single operation (either a consumer node
+    or, in the popover-anchored aux design, a wired aux node that the
+    inspector is currently focused on). Aux-port wiring UI is owned by
+    the popover renderer, not this function — callers decide *which*
+    node's params to render and pass them in via ``op_info`` /
+    ``current_values``.
+
     Args:
         op_info: Registry metadata for the operation being edited.
         current_values: Mapping of parameter-name → current value used to

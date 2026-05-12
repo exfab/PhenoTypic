@@ -58,6 +58,12 @@ class ParamInfo:
         is_operation: True if parameter accepts ImageOperation subclass
         is_pipeline: True if parameter accepts ImagePipeline
         is_optional: True if Union[..., None] (parameter can be None)
+        is_list: True if the (possibly-Optional-wrapped) annotation is a
+            list type — i.e. ``list[T]`` / ``List[T]`` /
+            ``Optional[List[T]]`` / bare ``list``. Drives the multi-port
+            ``+``/``×`` controls on aux input ports in the GUI builder
+            so list-typed slots can hold an ordered set of values while
+            scalar slots still render a single connection.
         description: Parameter description from docstring (None if not available)
         column_ref: Populated when the annotation carries a
             :class:`~phenotypic.tools_._column_ref._ColumnRefMarker`.
@@ -72,6 +78,7 @@ class ParamInfo:
     is_operation: bool
     is_pipeline: bool
     is_optional: bool
+    is_list: bool = False
     description: Optional[str] = None
     column_ref: Optional[ColumnRefSpec] = None
 
@@ -398,7 +405,9 @@ class OperationRegistry:
             has_default = p.default is not inspect.Parameter.empty
 
             # Detect operation/pipeline types (enhanced for forward refs)
-            is_operation, is_pipeline, is_optional = self._detect_operation_types(hint)
+            is_operation, is_pipeline, is_optional, is_list = (
+                self._detect_operation_types(hint)
+            )
 
             column_ref = _detect_column_ref(hint)
 
@@ -410,6 +419,7 @@ class OperationRegistry:
                 is_operation=is_operation,
                 is_pipeline=is_pipeline,
                 is_optional=is_optional,
+                is_list=is_list,
                 description=param_descriptions.get(name),
                 column_ref=column_ref,
             )
@@ -418,23 +428,78 @@ class OperationRegistry:
 
     def _detect_operation_types(
         self, hint: Any
-    ) -> tuple[bool, bool, bool]:
-        """Detect if type hint is operation/pipeline, handling forward refs.
+    ) -> tuple[bool, bool, bool, bool]:
+        """Detect if type hint is operation/pipeline/list, handling forward refs.
+
+        Unwraps ``Optional[T]`` and ``list[T]`` / ``List[T]`` so that
+        list-typed parameters (including ``Optional[List[T]]``) carry an
+        ``is_list=True`` flag and the inner ``T`` is still inspected for
+        operation/pipeline membership. A bare ``list`` annotation with no
+        type argument is reported as ``is_list=True`` with op/pipeline
+        flags both ``False``. Unresolved string annotations (e.g. when a
+        class lives behind ``TYPE_CHECKING``) are also matched: a
+        substring scan recognises ``List[`` / ``list[`` carriers and the
+        ``Optional[...]`` / ``... | None`` wrappers around them.
 
         Args:
             hint: Type hint to analyze
 
         Returns:
-            Tuple of (is_operation, is_pipeline, is_optional)
+            Tuple of (is_operation, is_pipeline, is_optional, is_list)
         """
         is_operation = False
         is_pipeline = False
         is_optional = False
+        is_list = False
 
+        # Step 1: peel an Optional/Union wrapper. If the union contains
+        # exactly one non-None branch we recurse into it so callers see the
+        # inner annotation's flags (e.g. Optional[List[T]] -> List[T]).
         origin = get_origin(hint)
+        inner: Any = hint
         if _is_union_origin(origin):
             args = get_args(hint)
             is_optional = type(None) in args
+            non_none = [a for a in args if a is not type(None)]
+            if len(non_none) == 1:
+                inner = non_none[0]
+                origin = get_origin(inner)
+            else:
+                # Multi-branch union (e.g. Union[Op, Pipeline, None]) — fall
+                # through to the union-scanning logic below; ``inner``
+                # stays as the original union for that branch.
+                inner = hint
+
+        # Step 2: if the (possibly-unwrapped) hint is a list, mark it and
+        # recurse into the element type for op/pipeline detection.
+        if origin is list or inner is list:
+            is_list = True
+            element_args = get_args(inner) if inner is not list else ()
+            if element_args:
+                inner_op, inner_pipe, _, _ = self._detect_operation_types(
+                    element_args[0]
+                )
+                is_operation = inner_op
+                is_pipeline = inner_pipe
+            return is_operation, is_pipeline, is_optional, is_list
+
+        # Step 2b: ``get_type_hints`` falls back to raw string annotations
+        # when forward refs cannot be resolved (e.g. ``ImagePipeline`` lives
+        # behind ``TYPE_CHECKING``). Walk the string to recover the same
+        # is_list / is_optional flags. Operation/pipeline keyword detection
+        # still happens in step 3 against the same string.
+        if isinstance(inner, str):
+            string_optional, string_is_list = _scan_string_list_optional(inner)
+            if string_optional:
+                is_optional = True
+            if string_is_list:
+                is_list = True
+
+        # Step 3: original union-scan path — when the wrapper still resolves
+        # to a Union (multi-branch unions like ``Union[Op, Pipeline, None]``
+        # never get peeled in step 1).
+        if _is_union_origin(get_origin(inner)):
+            args = get_args(inner)
             for arg in args:
                 if arg is type(None):
                     continue
@@ -466,25 +531,25 @@ class OperationRegistry:
                         for kw in ("Enhancer", "Detector", "Operation", "Refiner")
                     ):
                         is_operation = True
-        elif isinstance(hint, type):
+        elif isinstance(inner, type):
             try:
-                if issubclass(hint, ImageOperation):
+                if issubclass(inner, ImageOperation):
                     is_operation = True
-                elif issubclass(hint, ImagePipeline):
+                elif issubclass(inner, ImagePipeline):
                     is_pipeline = True
             except TypeError:
                 pass  # Not a class
         # Handle string annotations (from __annotations__ without resolution)
-        elif isinstance(hint, str):
-            if "ImagePipeline" in hint or "Pipeline" in hint:
+        elif isinstance(inner, str):
+            if "ImagePipeline" in inner or "Pipeline" in inner:
                 is_pipeline = True
             if any(
-                kw in hint
+                kw in inner
                 for kw in ("Enhancer", "Detector", "Operation", "Refiner")
             ):
                 is_operation = True
 
-        return is_operation, is_pipeline, is_optional
+        return is_operation, is_pipeline, is_optional, is_list
 
     def get_categories(self) -> List[str]:
         """Get list of all operation categories.
@@ -543,6 +608,43 @@ class OperationRegistry:
             raise KeyError(f"Operation '{name}' not found in registry")
 
         return info.cls(**kwargs)
+
+
+def _scan_string_list_optional(annotation: str) -> tuple[bool, bool]:
+    """Recover ``(is_optional, is_list)`` from an unresolved string annotation.
+
+    Used when ``typing.get_type_hints`` falls back to raw strings because a
+    forward-referenced class (e.g. one guarded by ``TYPE_CHECKING``) cannot
+    be resolved at runtime. Returns a flag tuple via simple substring tests
+    rather than parsing — sufficient for the project's annotations and far
+    cheaper than dragging in ``ast`` for what is purely a UI hint.
+
+    Recognises the common shapes:
+
+    * ``"Optional[T]"`` and ``"T | None"`` -> ``is_optional=True``
+    * ``"List[T]"`` / ``"list[T]"`` carriers (anywhere in the string) ->
+      ``is_list=True``
+    """
+    is_optional = False
+    is_list = False
+    stripped = annotation.strip()
+
+    if stripped.startswith("Optional[") or stripped.endswith(
+        "| None"
+    ) or stripped.endswith("|None"):
+        is_optional = True
+    if " | None" in stripped or "|None" in stripped:
+        is_optional = True
+
+    if (
+        "List[" in stripped
+        or "list[" in stripped
+        or stripped == "list"
+        or stripped == "List"
+    ):
+        is_list = True
+
+    return is_optional, is_list
 
 
 def _detect_column_ref(hint: Any) -> Optional[ColumnRefSpec]:

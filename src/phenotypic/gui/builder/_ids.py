@@ -15,7 +15,7 @@ Notes:
 
 from __future__ import annotations
 
-from typing import Any, Dict, Literal
+from typing import Any, Dict, Literal, Optional
 
 #: Closed set of page tokens for the Load Picker modal.
 LoadPickerPage = Literal["chooser", "json", "prefab"]
@@ -36,6 +36,32 @@ STORE_SESSION_ID = "store-session-id"
 
 #: List of ``node_id`` values that have a cached intermediate this session.
 STORE_INTERMEDIATE_KEYS = "store-intermediate-keys"
+
+#: ``dcc.Store`` written by the clientside ``aux_popover.js`` glue when the
+#: user taps an aux port on the canvas. Server-side callbacks read this to
+#: figure out which port was tapped and open the popover. Data shape:
+#: ``{"target_node_id": str, "param": str, "ts": float}`` where ``ts`` is a
+#: monotonic timestamp so repeat clicks on the same port still trigger
+#: change detection. ``None`` while no port is selected.
+PORT_CLICK_STORE = "store-port-click"
+
+#: DOM id of the popover's anchor element — a ``html.Div`` that
+#: ``cytoscape-popper`` positions relative to the aux port. Lives inside the
+#: canvas wrapper so the popover pans/zooms with the cytoscape view.
+POPOVER_CONTAINER = "cy-popover-container"
+
+#: ``dcc.Store`` written by the clientside ``aux_popover.js`` glue when the
+#: popover should dismiss (click-outside / Escape / cytoscape pan). Holds a
+#: monotonic timestamp; server-side callbacks read it to clear popover state.
+POPOVER_DISMISS_STORE = "store-popover-dismiss"
+
+#: ``dcc.Store`` written by the clientside ``aux_popover.js`` glue when the
+#: user clicks an action button inside the popover (wire / disconnect /
+#: drill / pick-class). Server-side callbacks read this to dispatch the
+#: corresponding action. Data shape:
+#: ``{"kind": "wire"|"disconnect"|"drill"|"pick_class", "target_node_id": str,
+#: "param": str, "slot": int, "class_name": str | None, "ts": float}``.
+POPOVER_ACTION_STORE = "store-popover-action"
 
 
 # ---------------------------------------------------------------------------
@@ -96,6 +122,9 @@ BTN_NEW_PIPELINE_NODE = "btn-new-pipeline-node"
 
 #: Removes the currently selected node from the visible scope.
 BTN_DELETE_NODE = "btn-delete-node"
+
+#: Toolbar button next to "Delete selected" for deleting the selected aux wire.
+BTN_DELETE_WIRE = "btn-delete-wire"
 
 #: Pops the breadcrumb (returns to the parent scope).
 BTN_DRILL_OUT = "btn-drill-out"
@@ -340,24 +369,216 @@ def prefab_card_id(class_name: str) -> Dict[str, Any]:
     return {"type": "prefab-card", "class_name": class_name}
 
 
+# ---------------------------------------------------------------------------
+# Aux-port / main-port pattern-matching helpers
+# ---------------------------------------------------------------------------
+#
+# Cytoscape elements require flat string ids (cytoscape rejects dict ids
+# outside the Dash pattern-matching layer). We mangle the structured
+# components into delimited strings so callbacks reading ``tapNodeData`` can
+# recover the structured form via the decoder helpers without a lookup
+# table. Choice of ``__`` as separator avoids collision with single
+# underscores in realistic class/param names.
+#
+# These id concerns previously lived in ``_layout.py`` alongside legacy
+# port-handle helpers, but in the popover-driven design the cytoscape ids
+# are written by both the layout (when emitting nodes) and the callbacks
+# (when dispatching against tap events), so they belong here.
+
+
+#: Prefix for cytoscape bottom-edge aux port node ids.
+_AUX_PORT_PREFIX: str = "aux-port"
+
+#: Prefix for cytoscape main-input port node ids.
+_MAIN_INPUT_PREFIX: str = "main-input"
+
+#: Prefix for cytoscape main-output port node ids.
+_MAIN_OUTPUT_PREFIX: str = "main-output"
+
+#: Separator used to delimit fields inside the encoded flat string ids.
+#: Mirrors the convention previously used for ``port-handle__...`` ids.
+_PORT_ID_SEP: str = "__"
+
+
+def aux_port_id(target_node_id: str, param: str) -> Dict[str, Any]:
+    """Build the pattern-matching id for a bottom-edge aux-port marker.
+
+    Each consumer node renders exactly one aux port marker per op-typed
+    parameter (regardless of slot cardinality — list-typed params still
+    use a single bottom-edge square; slot management happens inside the
+    popover). Tapping the marker opens the canvas-anchored popover.
+
+    Args:
+        target_node_id: ``node_id`` of the consumer operation the port
+            attaches to.
+        param: Name of the consumer's op-typed parameter the port
+            represents.
+
+    Returns:
+        Dict of shape ``{"type": "aux-port", "target_node_id":
+        target_node_id, "param": param}``. Phase 4 callbacks should match
+        ``Input({"type": "aux-port", "target_node_id": ALL, "param": ALL},
+        "n_clicks")``.
+    """
+
+    return {
+        "type": "aux-port",
+        "target_node_id": target_node_id,
+        "param": param,
+    }
+
+
+def main_input_port_id(node_id: str) -> str:
+    """Build the cytoscape element id for a node's main-input port.
+
+    Each ribbon operation renders a small blue circle on its LEFT edge
+    representing the image-flow input. Image-flow edges connect the
+    upstream node's main-output port to this main-input port.
+
+    Args:
+        node_id: ``node_id`` of the operation the port attaches to.
+
+    Returns:
+        Flat string ``"main-input__<node_id>"`` suitable as a cytoscape
+        element id. Use :func:`_decode_main_port_id` in callbacks reading
+        ``tapNodeData`` to recover the ``node_id``.
+    """
+
+    return _encode_main_port_id(_MAIN_INPUT_PREFIX, node_id)
+
+
+def main_output_port_id(node_id: str) -> str:
+    """Build the cytoscape element id for a node's main-output port.
+
+    Each ribbon operation renders a small blue circle on its RIGHT edge
+    representing the image-flow output. Image-flow edges connect this
+    main-output port to the downstream node's main-input port.
+
+    Args:
+        node_id: ``node_id`` of the operation the port attaches to.
+
+    Returns:
+        Flat string ``"main-output__<node_id>"`` suitable as a cytoscape
+        element id. Use :func:`_decode_main_port_id` in callbacks reading
+        ``tapNodeData`` to recover the ``node_id``.
+    """
+
+    return _encode_main_port_id(_MAIN_OUTPUT_PREFIX, node_id)
+
+
+def _encode_aux_port_id(target_node_id: str, param: str) -> str:
+    """Mangle (target_node_id, param) into a flat cytoscape id.
+
+    The clientside ``aux_popover.js`` glue and any callbacks reading
+    cytoscape ``tapNodeData`` can use :func:`_decode_aux_port_id` to
+    recover the structured pair. The matching dict id for Dash
+    pattern-matched callbacks is :func:`aux_port_id`.
+
+    Args:
+        target_node_id: Consumer node identifier the aux port attaches to.
+        param: Name of the consumer's op-typed parameter the port
+            represents.
+
+    Returns:
+        Flat string ``"aux-port__<target_node_id>__<param>"``.
+    """
+
+    return _PORT_ID_SEP.join([_AUX_PORT_PREFIX, target_node_id, param])
+
+
+def _decode_aux_port_id(encoded: str) -> Optional[tuple[str, str]]:
+    """Reverse of :func:`_encode_aux_port_id`.
+
+    Returns ``None`` for any string that doesn't match the encoding (e.g.
+    a tap on a ribbon node or a main-I/O port).
+
+    Args:
+        encoded: Cytoscape element id string.
+
+    Returns:
+        ``(target_node_id, param)`` tuple when *encoded* is an aux-port id,
+        otherwise ``None``.
+    """
+
+    if not encoded.startswith(_AUX_PORT_PREFIX + _PORT_ID_SEP):
+        return None
+    parts = encoded.split(_PORT_ID_SEP)
+    # Expected shape: [_AUX_PORT_PREFIX, target_node_id, *param_parts].
+    # Param names CAN contain the separator (legitimately though uncommon),
+    # so we re-join everything past the node_id rather than strictly requiring
+    # len(parts) == 3. Mirrors the JS-side decoder in ``aux_popover.js`` which
+    # uses ``parts.slice(2).join("__")``.
+    if len(parts) < 3:
+        return None
+    target_node_id = parts[1]
+    param = _PORT_ID_SEP.join(parts[2:])
+    return target_node_id, param
+
+
+def _encode_main_port_id(prefix: str, node_id: str) -> str:
+    """Mangle (prefix, node_id) into a flat cytoscape id for a main port.
+
+    Used by :func:`main_input_port_id` and :func:`main_output_port_id`;
+    callbacks decode via :func:`_decode_main_port_id`.
+
+    Args:
+        prefix: Either :data:`_MAIN_INPUT_PREFIX` or
+            :data:`_MAIN_OUTPUT_PREFIX`.
+        node_id: Ribbon node identifier the port attaches to.
+
+    Returns:
+        Flat string ``"<prefix>__<node_id>"``.
+    """
+
+    return _PORT_ID_SEP.join([prefix, node_id])
+
+
+def _decode_main_port_id(encoded: str) -> Optional[tuple[str, str]]:
+    """Reverse of :func:`_encode_main_port_id`.
+
+    Returns ``None`` for any string that doesn't match the main-input or
+    main-output encoding (e.g. an aux port or a ribbon node).
+
+    Args:
+        encoded: Cytoscape element id string.
+
+    Returns:
+        ``(side, node_id)`` tuple where ``side`` is either
+        ``"main-input"`` or ``"main-output"``, otherwise ``None``.
+    """
+
+    for prefix in (_MAIN_INPUT_PREFIX, _MAIN_OUTPUT_PREFIX):
+        head = prefix + _PORT_ID_SEP
+        if encoded.startswith(head):
+            return prefix, encoded[len(head):]
+    return None
+
+
 __all__ = [
     "LoadPickerPage",
     "StageName",
     "STORE_BUILDER_STATE",
     "STORE_SESSION_ID",
     "STORE_INTERMEDIATE_KEYS",
+    "PORT_CLICK_STORE",
+    "POPOVER_CONTAINER",
+    "POPOVER_DISMISS_STORE",
+    "POPOVER_ACTION_STORE",
     "BREADCRUMB_CONTAINER",
     "PALETTE_CONTAINER",
     "CANVAS_CYTOSCAPE",
     "INSPECTOR_CONTAINER",
     "INSPECTOR_PARAM_FORM",
     "INSPECTOR_PREVIEW",
+    "INSPECTOR_DOC_TOGGLE",
+    "INSPECTOR_DOC_COLLAPSE",
     "FOOTER_CONTAINER",
     "BTN_RUN_PREVIEW",
     "BTN_SAVE",
     "BTN_LOAD",
     "BTN_NEW_PIPELINE_NODE",
     "BTN_DELETE_NODE",
+    "BTN_DELETE_WIRE",
     "BTN_DRILL_OUT",
     "BTN_DRILL_IN",
     "BTN_CANVAS_FIT",
@@ -415,4 +636,11 @@ __all__ = [
     "palette_button_id",
     "breadcrumb_link_id",
     "prefab_card_id",
+    "aux_port_id",
+    "main_input_port_id",
+    "main_output_port_id",
+    "_encode_aux_port_id",
+    "_decode_aux_port_id",
+    "_encode_main_port_id",
+    "_decode_main_port_id",
 ]

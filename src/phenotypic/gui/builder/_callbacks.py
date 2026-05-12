@@ -9,11 +9,12 @@ Architecture notes:
 
 * **Single fan-in mutation callback** — every trigger that mutates the
   builder state (palette adds, deletes, drill-in/out, breadcrumb jumps,
-  reorders, drag, parameter edits, label edits) feeds one callback that
-  resolves the trigger via :data:`dash.callback_context.triggered_id` and
-  returns a fresh ``STORE_BUILDER_STATE`` plus a re-rendered canvas /
-  inspector / breadcrumb.  This keeps ``allow_duplicate=True`` out of the
-  store contract.
+  reorders, drag, parameter edits, label edits, aux-port wiring) feeds one
+  callback that resolves the trigger via
+  :data:`dash.callback_context.triggered_id` and returns a fresh
+  ``STORE_BUILDER_STATE`` plus a re-rendered canvas / inspector /
+  breadcrumb.  This keeps ``allow_duplicate=True`` out of the store
+  contract.
 * **Stateless helpers** — :func:`_dispatch_state_update` is a pure function
   taking a serialized state dict + a kind tag + a payload and returning the
   new dict.  Tests can exercise the full mutation surface without booting
@@ -29,6 +30,16 @@ Architecture notes:
   ``current_scope(state).nodes`` to match.  Reorder is a no-op while no node
   has a ``position`` (cytoscape's grid layout fills positions on the second
   render).
+* **Popover-driven wire flow** — Wave 4 replaces the click-then-click model
+  with a canvas-anchored popover. Tapping an aux port writes a structured
+  payload to ``PORT_CLICK_STORE`` (driven by ``aux_popover.js``); the
+  server-side callback then renders the popover's contents based on the
+  port's current state (empty / wired / list-of-slots) and routes the
+  user's action button click to one of the dispatch kinds: ``wire_create``
+  (pick a class), ``wire_delete`` (disconnect), ``port_slot_add``
+  (extend a list-typed port), ``drill_in_aux`` (descend into a wired
+  aux), or ``set_inspector_focus`` (edit a wired aux's params in the
+  inspector pane without leaving the consumer's canvas selection).
 
 Every state-mutating callback uses ``prevent_initial_call=True`` and wraps
 its body in ``try / except`` so a callback can never crash the running app
@@ -51,7 +62,7 @@ from flask import current_app
 
 from phenotypic.gui._config import CFG_IMAGE_ROOT, CFG_OPERATION_REGISTRY
 from phenotypic.gui.builder import _ids as ids
-from phenotypic.gui.builder._ids import LoadPickerPage, StageName
+from phenotypic.gui.builder._ids import LoadPickerPage
 from phenotypic.gui.builder._directory_browser import (
     IMAGE_EXTS,
     PIPELINE_EXTS,
@@ -65,9 +76,11 @@ from phenotypic.gui.builder._image_renderer import (
     render_node_preview,
 )
 from phenotypic.gui.builder._layout import (
+    INSPECTOR_FOCUS_AUX_BANNER_ID,
     build_breadcrumb,
-    build_canvas,
+    build_canvas_elements,
     build_inspector,
+    build_popover_contents,
 )
 from phenotypic.gui.builder._modal_browser import (
     no_root_placeholder,
@@ -100,7 +113,9 @@ STORE_IMAGE_PATH = ids.STORE_IMAGE_PATH
 # Pre-built ``no_update`` tuples for the long-output callbacks.  Building them
 # once at import time keeps the callback bodies readable and avoids re-emitting
 # the same long literal on every early-return branch.
-_NOOP_FAN_IN: Tuple[Any, ...] = (no_update,) * 8
+#
+# Layout: state, breadcrumb, canvas_elements, inspector, popover, 4 toast outputs.
+_NOOP_FAN_IN: Tuple[Any, ...] = (no_update,) * 10
 
 
 def _trigger_kind_path(triggered: Any, expected_type: str) -> Optional[Tuple[str, str]]:
@@ -140,15 +155,33 @@ def _trigger_kind_path(triggered: Any, expected_type: str) -> Optional[Tuple[str
 
 
 def _normalize_segment(seg: Any) -> Dict[str, Any]:
-    """Return *seg* as a ``{"node_id": ..., "param": ...}`` dict.
+    """Return *seg* as a normalized breadcrumb-segment dict.
 
-    Accepts both legacy plain-string entries (older saved state) and the
-    new dict form so dispatch logic can be agnostic to the storage format.
+    Accepts:
+        * legacy plain-string entries (older saved state) — treated as a
+          ``node_id``;
+        * the standard ``{"node_id": ..., "param": ...}`` form (descends
+          into a main-ribbon node's ``nested`` scope or, when ``param`` is
+          set, into the legacy synthesized op-param scope under
+          ``_PARAM_SCOPE_KEY``);
+        * the aux-slot drill form ``{"target_node_id": ..., "param": ...,
+          "slot": ...}`` pushed by ``drill_in_aux`` (Wave 4). Mirrors the
+          state-side walker ``_normalize_breadcrumb_segment`` in
+          ``_state.py``.
     """
 
     if isinstance(seg, str):
         return {"node_id": seg, "param": None}
-    return {"node_id": seg["node_id"], "param": seg.get("param")}
+    if isinstance(seg, dict):
+        if "target_node_id" in seg:
+            return {
+                "target_node_id": seg["target_node_id"],
+                "param": seg.get("param"),
+                "slot": seg.get("slot", 0),
+            }
+        if "node_id" in seg:
+            return {"node_id": seg["node_id"], "param": seg.get("param")}
+    return {"node_id": None, "param": None}
 
 
 def _scope_at_breadcrumb(
@@ -156,31 +189,76 @@ def _scope_at_breadcrumb(
 ) -> Dict[str, Any]:
     """Walk *state_dict* ``root`` → ``breadcrumb`` and return that scope dict.
 
-    For pipeline drill segments the walker descends into ``node["nested"]``;
-    for op-typed-parameter segments it descends into the synthesised scope
-    dict stored under ``node["params"]["__op_param_scope__"][param_name]``,
-    seeding it from any existing operation marker dict if absent.
+    Three breadcrumb-segment shapes are handled:
+
+    * Regular main-ribbon drill (``{"node_id": <id>, "param": None}``):
+      descend into ``node["nested"]``.
+    * Legacy op-typed parameter drill (``{"node_id": <id>, "param":
+      <name>}``): descend into the synthesised scope under
+      ``node["params"]["__op_param_scope__"][param_name]``, seeding from
+      any existing operation marker dict if absent. Kept for back-compat;
+      new code should use the aux-slot form below.
+    * Aux-slot drill (``{"target_node_id": <id>, "param": <name>,
+      "slot": <int>}``): descend into the embedded aux ``StepNode`` dict
+      at ``consumer["aux_ports"][param][slot]``. If that aux has
+      ``nested``, descend into it; otherwise surface the aux node as a
+      single-node wrapper scope (mirroring ``_state.current_scope``).
 
     Args:
         state_dict: ``state_to_json`` output.
-        breadcrumb: List of breadcrumb segments (string ids or
-            ``{"node_id", "param"}`` dicts).
+        breadcrumb: List of breadcrumb segments.
 
     Returns:
-        The nested scope dict (``{"nodes": [...], ...}``).  Returns the root
-        scope when ``breadcrumb`` is empty.
+        The nested scope dict (``{"nodes": [...], ...}``).  Returns the
+        root scope when ``breadcrumb`` is empty.
     """
 
     scope = state_dict["root"]
     for raw in breadcrumb:
         seg = _normalize_segment(raw)
+        if "target_node_id" in seg:
+            target_id = seg["target_node_id"]
+            param = seg.get("param")
+            slot = int(seg.get("slot") or 0)
+            consumer = next(
+                (n for n in scope["nodes"] if n.get("node_id") == target_id),
+                None,
+            )
+            if consumer is None:
+                return scope
+            if not isinstance(param, str):
+                return scope
+            aux_ports = consumer.get("aux_ports") or {}
+            slot_list = aux_ports.get(param)
+            if not isinstance(slot_list, list) or slot < 0 or slot >= len(slot_list):
+                return scope
+            aux = slot_list[slot]
+            if not isinstance(aux, dict):
+                return scope
+            nested = aux.get("nested")
+            if isinstance(nested, dict):
+                scope = nested
+                continue
+            # Single-op aux: surface as a one-node wrapper scope so
+            # dispatch can address it.
+            scope = {
+                "nodes": [aux],
+                "name": aux.get("label") or aux.get("class_name") or "aux",
+                "desc": "",
+                "nrows": None,
+                "ncols": None,
+            }
+            continue
+        node_id = seg.get("node_id")
+        if not isinstance(node_id, str):
+            return scope
         node = next(
-            (n for n in scope["nodes"] if n["node_id"] == seg["node_id"]),
+            (n for n in scope["nodes"] if n["node_id"] == node_id),
             None,
         )
         if node is None:
             return scope
-        if seg["param"] is None:
+        if seg.get("param") is None:
             if node.get("nested") is None:
                 return scope
             scope = node["nested"]
@@ -253,12 +331,19 @@ def _commit_param_segments(
     singleton scope into a normal operation marker stored at
     ``parent.params[param_name]``.
 
+    Aux-slot segments (``{"target_node_id", "param", "slot"}``) are skipped
+    — the wired aux already lives persistently inside
+    ``consumer.aux_ports[param][slot]``, so nothing needs to be mirrored
+    back when drilling out.
+
     The scope dict under ``__op_param_scope__`` is preserved so re-entering
     the slot keeps the same node ids and incidental UI state.
     """
 
     for raw in dropped:
         seg = _normalize_segment(raw)
+        if "target_node_id" in seg:
+            continue
         if seg["param"] is None:
             continue
         # Walk fresh from root to find the parent node.
@@ -319,6 +404,24 @@ def _find_node_by_id(scope: Dict[str, Any], node_id: str) -> Optional[Dict[str, 
     return None
 
 
+def _find_in_scope(
+    scope: Dict[str, Any], node_id: str
+) -> Optional[Dict[str, Any]]:
+    """Return the main-ribbon node matching *node_id* in *scope* (one level).
+
+    Aux StepNodes are now embedded inside their consumer's ``aux_ports``
+    slot list (see Wave 1-A) so this helper only inspects the visible
+    main ribbon. Callers that need to address an embedded aux must drill
+    into it first (push an aux-slot breadcrumb segment) so the aux
+    becomes the current scope.
+    """
+
+    return next(
+        (n for n in scope.get("nodes", []) or [] if n.get("node_id") == node_id),
+        None,
+    )
+
+
 def _default_params_for(class_name: str) -> Dict[str, Any]:
     """Return a JSON-friendly default-param dict for *class_name*.
 
@@ -353,6 +456,61 @@ def _default_params_for(class_name: str) -> Dict[str, Any]:
             continue
         out[name] = p.default
     return out
+
+
+def _build_fresh_aux_node(
+    class_name: str, registry: Any
+) -> Optional[Dict[str, Any]]:
+    """Build a JSON-shaped :class:`StepNode` dict for a freshly-wired aux.
+
+    Mirrors the per-node dict structure that ``state_to_json`` produces
+    (``node_id``, ``class_name``, ``params``, ``label``, ``nested``,
+    ``aux_ports``). Used by ``wire_create`` to materialise an embedded
+    aux on demand without dragging in the live ``StepNode`` dataclass —
+    state mutations operate on dicts so the result survives the
+    ``dcc.Store`` round-trip.
+
+    Args:
+        class_name: Registry key (or :data:`PIPELINE_CLASS_NAME` for a
+            pipeline-typed aux).
+        registry: ``OperationRegistry`` singleton (only consulted for the
+            non-pipeline branch; the pipeline sentinel is built without
+            registry lookup).
+
+    Returns:
+        A node dict ready for insertion into a consumer's
+        ``aux_ports[<param>][<slot>]``, or ``None`` when the class is
+        unknown to the registry and not the pipeline sentinel.
+    """
+
+    is_pipeline_aux = class_name == PIPELINE_CLASS_NAME
+    if not is_pipeline_aux and (
+        registry is None or registry.get(class_name) is None
+    ):
+        return None
+
+    nested: Optional[Dict[str, Any]]
+    if is_pipeline_aux:
+        nested = {
+            "nodes": [],
+            "name": "Subpipeline",
+            "desc": "",
+            "nrows": None,
+            "ncols": None,
+        }
+        params: Dict[str, Any] = {}
+    else:
+        nested = None
+        params = _default_params_for(class_name)
+
+    return {
+        "node_id": _new_node_id(),
+        "class_name": class_name,
+        "params": params,
+        "label": None,
+        "nested": nested,
+        "aux_ports": {},
+    }
 
 
 def _dispatch_state_update(
@@ -391,6 +549,42 @@ def _dispatch_state_update(
                 Set or delete ``params[name]`` on a specific node.
             ``"edit_label"`` (payload: ``node_id``, ``label``)
                 Update the node label.
+            ``"wire_create"`` (payload: ``target_node_id``, ``param``,
+            ``slot``, ``class_name``)
+                Materialise a fresh aux :class:`StepNode` for
+                *class_name* and embed it at
+                ``consumer.aux_ports[param][slot]``. Validates type
+                compatibility against the registry; rejects mismatches by
+                returning the unmodified state. Auto-focuses the new aux
+                in the inspector via ``inspector_focus_aux``.
+            ``"wire_delete"`` (payload: ``target_node_id``, ``param``,
+            ``slot``)
+                Set the consumer's slot to ``None`` so the embedded aux
+                is dropped (gc collects it). For list-typed ports the
+                slot remains as a ``None`` placeholder; scalar ports
+                keep the single slot at ``[None]``. Clears any
+                ``inspector_focus_aux`` that was pointing at the cleared
+                slot.
+            ``"port_slot_add"`` (payload: ``node_id``, ``param``)
+                Append a ``None`` slot to the consumer's ``aux_ports``
+                list for a list-typed param. No-op for scalar ports.
+            ``"port_slot_remove"`` (payload: ``node_id``, ``param``,
+            ``slot``)
+                Remove the slot at ``slot`` from the consumer's
+                ``aux_ports`` list and reindex remaining slots.
+            ``"drill_in_aux"`` (payload: ``target_node_id``, ``param``,
+            ``slot``)
+                Push a ``{"target_node_id", "param", "slot"}`` segment
+                onto the breadcrumb so the user can edit a wired aux's
+                nested content. Clears ``inspector_focus_aux`` because
+                the canvas scope swap takes over.
+            ``"set_inspector_focus"`` (payload: ``focus``,
+            ``target_node_id``?, ``param``?, ``slot``?)
+                Set or clear the ``inspector_focus_aux`` override.
+                ``focus == "aux"`` validates the target slot exists and
+                writes the focus dict; any other ``focus`` value clears
+                it (returning the inspector to the canvas-selected
+                consumer's params).
 
         payload: kind-specific data (see above).
 
@@ -531,7 +725,275 @@ def _dispatch_state_update(
         node["label"] = payload.get("label") or None
         return out
 
+    if kind == "wire_create":
+        target_node_id = payload["target_node_id"]
+        param = payload["param"]
+        slot = payload.get("slot")
+        class_name = payload.get("class_name")
+
+        if not isinstance(slot, int) or slot < 0:
+            return out
+        if not isinstance(class_name, str) or not class_name:
+            return out
+
+        consumer = _find_in_scope(scope, target_node_id)
+        if consumer is None:
+            return out
+
+        registry = _registry()
+        if registry is None:
+            return out
+        consumer_info = registry.get(consumer.get("class_name", ""))
+        if consumer_info is None:
+            return out
+        param_info = consumer_info.parameters.get(param)
+        if param_info is None:
+            return out
+        if not (param_info.is_operation or param_info.is_pipeline):
+            return out
+
+        # Type compatibility: the chosen class must satisfy the port's type.
+        if not _source_satisfies_port(class_name, param_info, registry):
+            return out
+
+        # Slot validation: scalar ports allow only slot 0.
+        if not param_info.is_list and slot != 0:
+            return out
+
+        aux_node = _build_fresh_aux_node(class_name, registry)
+        if aux_node is None:
+            return out
+
+        aux_ports = consumer.setdefault("aux_ports", {})
+        slot_list = aux_ports.get(param)
+        if not isinstance(slot_list, list):
+            slot_list = [None] if not param_info.is_list else []
+            aux_ports[param] = slot_list
+        while len(slot_list) <= slot:
+            slot_list.append(None)
+        slot_list[slot] = aux_node
+
+        # Auto-focus the new aux in the inspector so the user can edit
+        # its params without leaving the consumer's canvas selection.
+        out["inspector_focus_aux"] = {
+            "target_node_id": target_node_id,
+            "param": param,
+            "slot": slot,
+        }
+        return out
+
+    if kind == "wire_delete":
+        target_node_id = payload["target_node_id"]
+        param = payload["param"]
+        slot = payload.get("slot")
+
+        if not isinstance(slot, int) or slot < 0:
+            return out
+
+        consumer = _find_in_scope(scope, target_node_id)
+        if consumer is None:
+            return out
+        slot_list = (consumer.get("aux_ports") or {}).get(param)
+        if not isinstance(slot_list, list) or slot >= len(slot_list):
+            return out
+        slot_list[slot] = None
+
+        # If we were focused on this aux, clear the focus override so
+        # the inspector falls back to the consumer's params.
+        focus = out.get("inspector_focus_aux") or {}
+        if (
+            isinstance(focus, dict)
+            and focus.get("target_node_id") == target_node_id
+            and focus.get("param") == param
+            and focus.get("slot") == slot
+        ):
+            out["inspector_focus_aux"] = None
+        return out
+
+    if kind == "port_slot_add":
+        node_id = payload["node_id"]
+        param = payload["param"]
+
+        node = _find_in_scope(scope, node_id)
+        if node is None:
+            return out
+
+        registry = _registry()
+        if registry is None:
+            return out
+        info = registry.get(node.get("class_name", ""))
+        if info is None:
+            return out
+        param_info = info.parameters.get(param)
+        if param_info is None or not param_info.is_list:
+            return out
+
+        aux_ports = node.setdefault("aux_ports", {})
+        slots = aux_ports.setdefault(param, [])
+        slots.append(None)
+        return out
+
+    if kind == "port_slot_remove":
+        node_id = payload["node_id"]
+        param = payload["param"]
+        slot = payload.get("slot")
+
+        if not isinstance(slot, int) or slot < 0:
+            return out
+
+        node = _find_in_scope(scope, node_id)
+        if node is None:
+            return out
+        slots = (node.get("aux_ports") or {}).get(param)
+        if not isinstance(slots, list) or slot >= len(slots):
+            return out
+        slots.pop(slot)
+
+        # Scalar ports must always carry exactly one slot ([None] when empty).
+        registry = _registry()
+        info = registry.get(node.get("class_name", "")) if registry else None
+        param_info = info.parameters.get(param) if info else None
+        if param_info is not None and not param_info.is_list and not slots:
+            slots.append(None)
+
+        # Clear focus when the removed slot's index is at or before the
+        # focused index. Removing slot `slot` shifts every higher index
+        # down by 1, so the focused aux is no longer the same StepNode
+        # unless focused on an earlier slot. The previous condition
+        # ``focus["slot"] >= len(slots)`` only caught the case where the
+        # last slot was removed; removing slot 0 from a 2-slot list left
+        # focus pointing at slot 0, which now silently aliased to what
+        # was slot 1.
+        focus = out.get("inspector_focus_aux") or {}
+        if (
+            isinstance(focus, dict)
+            and focus.get("target_node_id") == node_id
+            and focus.get("param") == param
+            and isinstance(focus.get("slot"), int)
+            and focus["slot"] >= slot
+        ):
+            out["inspector_focus_aux"] = None
+        return out
+
+    if kind == "drill_in_aux":
+        target_node_id = payload["target_node_id"]
+        param = payload["param"]
+        slot = payload.get("slot")
+
+        if not isinstance(slot, int) or slot < 0:
+            return out
+
+        consumer = _find_in_scope(scope, target_node_id)
+        if consumer is None:
+            return out
+        slot_list = (consumer.get("aux_ports") or {}).get(param)
+        if (
+            not isinstance(slot_list, list)
+            or slot >= len(slot_list)
+            or slot_list[slot] is None
+        ):
+            return out
+
+        breadcrumb.append(
+            {
+                "target_node_id": target_node_id,
+                "param": param,
+                "slot": slot,
+            }
+        )
+        out["breadcrumb"] = breadcrumb
+        out["selected_node_id"] = None
+        # Canvas scope swap takes over — the popover (and any aux focus)
+        # belong to the parent scope, not the new one.
+        out["inspector_focus_aux"] = None
+        return out
+
+    if kind == "set_inspector_focus":
+        focus_kind = payload.get("focus")
+        if focus_kind == "aux":
+            target_node_id = payload.get("target_node_id")
+            param = payload.get("param")
+            raw_slot = payload.get("slot")
+            if (
+                not isinstance(target_node_id, str)
+                or not isinstance(param, str)
+                or not isinstance(raw_slot, int)
+                or raw_slot < 0
+            ):
+                return out
+            consumer = _find_in_scope(scope, target_node_id)
+            if consumer is None:
+                return out
+            slot_list = (consumer.get("aux_ports") or {}).get(param) or []
+            if (
+                raw_slot >= len(slot_list)
+                or slot_list[raw_slot] is None
+            ):
+                return out
+            out["inspector_focus_aux"] = {
+                "target_node_id": target_node_id,
+                "param": param,
+                "slot": raw_slot,
+            }
+            return out
+        # Any other focus value clears the override.
+        out["inspector_focus_aux"] = None
+        return out
+
     return out
+
+
+def _source_satisfies_port(
+    source_class: Optional[str], param_info: Any, registry: Any
+) -> bool:
+    """Return ``True`` if an aux of *source_class* may wire into *param_info*.
+
+    Type-compatibility rules (mirroring the plan):
+
+    * If the target port is pipeline-eligible (``param_info.is_pipeline``)
+      and the source is the :data:`PIPELINE_CLASS_NAME` sentinel, the wire
+      is allowed.
+    * If the target port is op-eligible (``param_info.is_operation``) and
+      the source is registered as an :class:`ImageOperation` subclass,
+      the wire is allowed.
+    * If the port is a Union of both (``is_operation and is_pipeline``),
+      either source kind is accepted.
+    * Otherwise the wire is rejected (returns ``False``).
+
+    Args:
+        source_class: The aux node's ``class_name``.  Either the sentinel
+            ``"ImagePipeline"`` or a registry key.
+        param_info: The :class:`ParamInfo` for the target port.
+        registry: The :class:`OperationRegistry` singleton.
+
+    Returns:
+        ``True`` if the wire passes type validation, else ``False``.
+    """
+
+    if source_class is None:
+        return False
+
+    if source_class == PIPELINE_CLASS_NAME:
+        return bool(param_info.is_pipeline)
+
+    info = registry.get(source_class)
+    if info is None:
+        return False
+
+    # Lazy import to avoid a hard dependency at module import time.
+    from phenotypic.abc_ import ImageOperation
+
+    if param_info.is_operation:
+        try:
+            if issubclass(info.cls, ImageOperation):
+                return True
+        except TypeError:
+            return False
+    if param_info.is_pipeline:
+        # Source class is not the sentinel; pipeline-only ports require
+        # the sentinel.
+        return False
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -616,17 +1078,25 @@ def _render_tree_body(
     )
 
 
-def _render_views(state: BuilderState) -> Tuple[Any, Any, Any]:
-    """Re-render breadcrumb, canvas, and inspector for a given state.
+def _render_views(state: BuilderState) -> Tuple[Any, List[dict], Any, Any]:
+    """Re-render breadcrumb, canvas, inspector, and popover for a given state.
 
     Args:
         state: Live :class:`BuilderState` object.
 
     Returns:
-        Tuple of ``(breadcrumb_children, canvas, inspector)`` Dash component
-        subtrees. The breadcrumb callback target is the existing nav's
-        ``children`` property, so returning a full nav here would nest the
-        breadcrumb inside itself on every update.
+        Tuple ``(breadcrumb_children, canvas_elements, inspector,
+        popover_contents)``. ``canvas_elements`` is the raw cytoscape
+        elements list — callers wire it to
+        ``Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True)``
+        so dash-cytoscape applies the diff against the live cytoscape.js
+        instance (mounted once by :func:`build_canvas_section`). The
+        breadcrumb callback target is the existing nav's ``children``
+        property, so returning a full nav here would nest the breadcrumb
+        inside itself on every update. The popover contents are an empty
+        list when no aux focus is active — the popover container's
+        ``display`` is toggled by Wave 4 callbacks (see
+        :func:`register_callbacks`).
     """
 
     registry = _registry()
@@ -635,29 +1105,73 @@ def _render_views(state: BuilderState) -> Tuple[Any, Any, Any]:
     except KeyError:
         # Stale breadcrumb — fall back to the root.
         state = BuilderState(
-            root=state.root, breadcrumb=[], selected_node_id=None
+            root=state.root,
+            breadcrumb=[],
+            selected_node_id=None,
+            inspector_focus_aux=None,
         )
         scope = state.root
 
-    canvas = build_canvas(scope, state.selected_node_id)
+    canvas_elements = build_canvas_elements(scope, state.selected_node_id)
     inspector = build_inspector(state, registry)
     breadcrumb = build_breadcrumb(state).children
-    return breadcrumb, canvas, inspector
+    popover_contents = build_popover_contents(state, registry)
+    return breadcrumb, canvas_elements, inspector, popover_contents
 
 
-def _state_replacement_payload(pipeline: Any) -> Tuple[Dict[str, Any], Any, Any, Any]:
-    """Build ``(state_dict, breadcrumb, canvas, inspector)`` for a fresh pipeline.
+def _popover_style_for(contents: Any) -> Dict[str, Any]:
+    """Return the popover container's inline ``style`` for a given children list.
+
+    The popover hides itself entirely when ``build_popover_contents``
+    returns an empty list. Wave 4 callbacks call this helper so the
+    container's ``display`` flips back and forth in lock-step with the
+    rendered contents (otherwise an emptied popover would leave a stale
+    visible chrome).
+    """
+
+    if not contents:
+        return {"display": "none"}
+    return {"display": "block"}
+
+
+def _state_replacement_payload(
+    pipeline: Any,
+) -> Tuple[Dict[str, Any], Any, List[dict], Any, Any, Dict[str, Any]]:
+    """Build the full re-render tuple for a freshly-loaded pipeline.
 
     Both the JSON-load and prefab-load callbacks blow away the current
     builder state and replace it with one derived from a freshly-built
-    :class:`ImagePipeline`. Both then need the same four output values; this
-    helper centralises the conversion + view rendering.
+    :class:`ImagePipeline`. Both then need the same six output values;
+    this helper centralises the conversion + view rendering.
+
+    Returns:
+        Tuple ``(state_dict, breadcrumb, canvas_elements, inspector,
+        popover_contents, popover_style)``. ``canvas_elements`` is the
+        cytoscape elements list applied via
+        ``Output(ids.CANVAS_CYTOSCAPE, "elements")``. The
+        ``popover_style`` mirrors ``_popover_style_for(popover_contents)``
+        so the container's ``display`` flips in lock-step with the
+        children.
     """
 
     scope = from_pipeline(pipeline)
-    new_state = BuilderState(root=scope, breadcrumb=[], selected_node_id=None)
-    breadcrumb, canvas, inspector = _render_views(new_state)
-    return state_to_json(new_state), breadcrumb, canvas, inspector
+    new_state = BuilderState(
+        root=scope,
+        breadcrumb=[],
+        selected_node_id=None,
+        inspector_focus_aux=None,
+    )
+    breadcrumb, canvas_elements, inspector, popover_contents = _render_views(
+        new_state
+    )
+    return (
+        state_to_json(new_state),
+        breadcrumb,
+        canvas_elements,
+        inspector,
+        popover_contents,
+        _popover_style_for(popover_contents),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -707,8 +1221,16 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data"),
         Output(ids.BREADCRUMB_CONTAINER, "children"),
-        Output("canvas-cytoscape-wrapper", "children"),  # set below
+        Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children"),
+        Output(ids.POPOVER_CONTAINER, "children"),
+        # ``style`` output keeps display:block/display:none in lock-step
+        # with the children list. Without it, state mutations that cause
+        # ``build_popover_contents`` to return ``[]`` (e.g. deleting a
+        # node with an open popover, drilling, breadcrumb navigation)
+        # clear the popover children but leave a stale visible empty
+        # box anchored where the popover used to be.
+        Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
         # Toast outputs surface mutation errors to the user; success path leaves
         # them as ``no_update`` so they don't clobber other callbacks' toasts.
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
@@ -813,6 +1335,14 @@ def register_callbacks(app: dash.Dash) -> None:
                         {"class_name": triggered["class_name"]},
                     )
                 elif t_type == "breadcrumb-link":
+                    # Pattern-matched Inputs fire on initial render of newly
+                    # added matching components — e.g. drilling pushes a new
+                    # breadcrumb-link button (depth=0) onto the nav, and Dash
+                    # fires this callback once with n_clicks=0. Without this
+                    # guard, ``breadcrumb_to(depth=0)`` would immediately undo
+                    # the drill by truncating the breadcrumb back to root.
+                    if not ctx.triggered[0]["value"]:
+                        return _NOOP_FAN_IN
                     new_state_dict = _dispatch_state_update(
                         state_data,
                         "breadcrumb_to",
@@ -879,10 +1409,23 @@ def register_callbacks(app: dash.Dash) -> None:
                 if trigger_prop == "tapNodeData":
                     if not tap_node_data:
                         return _NOOP_FAN_IN
+                    tapped_id = tap_node_data.get("id")
+                    if not isinstance(tapped_id, str):
+                        return _NOOP_FAN_IN
+                    # Aux-port taps are handled clientside (write to
+                    # ``PORT_CLICK_STORE``); they should never reach this
+                    # callback. Defensive: ignore any tap that decodes as
+                    # an aux port so we don't accidentally re-select an
+                    # invisible port element.
+                    if ids._decode_aux_port_id(tapped_id) is not None:
+                        return _NOOP_FAN_IN
+                    if ids._decode_main_port_id(tapped_id) is not None:
+                        # Main I/O port taps are cosmetic; ignore.
+                        return _NOOP_FAN_IN
                     new_state_dict = _dispatch_state_update(
                         state_data,
                         "select_node",
-                        {"node_id": tap_node_data.get("id")},
+                        {"node_id": tapped_id},
                     )
                 elif trigger_prop == "elements":
                     new_state_dict = _maybe_reorder_from_elements(
@@ -921,12 +1464,16 @@ def register_callbacks(app: dash.Dash) -> None:
 
             # --- Render ----------------------------------------------
             new_state = state_from_json(new_state_dict)
-            breadcrumb, canvas, inspector = _render_views(new_state)
+            breadcrumb, canvas_elements, inspector, popover_contents = _render_views(
+                new_state
+            )
             return (
                 new_state_dict,
                 breadcrumb,
-                canvas,
+                canvas_elements,
                 inspector,
+                popover_contents,
+                _popover_style_for(popover_contents),
                 no_update,
                 no_update,
                 no_update,
@@ -938,6 +1485,7 @@ def register_callbacks(app: dash.Dash) -> None:
             # surface the failure via the toast instead.
             logger.exception("fan_in_state_mutation failed")
             return (
+                no_update,
                 no_update,
                 no_update,
                 no_update,
@@ -961,8 +1509,10 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output("canvas-cytoscape-wrapper", "children", allow_duplicate=True),
+        Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
@@ -985,7 +1535,7 @@ def register_callbacks(app: dash.Dash) -> None:
     ) -> Tuple[Any, ...]:
         """Write a picker store's list-of-pairs into the matching node's params."""
 
-        noop = (no_update,) * 8
+        noop = (no_update,) * 10
 
         if state_data is None or ctx.triggered_id is None:
             return noop
@@ -1033,12 +1583,16 @@ def register_callbacks(app: dash.Dash) -> None:
             if new_state_dict == state_data:
                 return noop
             new_state = state_from_json(new_state_dict)
-            breadcrumb, canvas, inspector = _render_views(new_state)
+            breadcrumb, canvas_elements, inspector, popover_contents = _render_views(
+                new_state
+            )
             return (
                 new_state_dict,
                 breadcrumb,
-                canvas,
+                canvas_elements,
                 inspector,
+                popover_contents,
+                _popover_style_for(popover_contents),
                 no_update,
                 no_update,
                 no_update,
@@ -1051,11 +1605,363 @@ def register_callbacks(app: dash.Dash) -> None:
                 no_update,
                 no_update,
                 no_update,
+                no_update,
                 True,
                 _format_exception(exc),
                 "danger",
                 "Update failed",
             )
+
+    # ----------------------------------------------------------------------
+    # 2c. Popover wiring (port-click → popover, dismiss, action buttons,
+    # inspector-focus banner)
+    # ----------------------------------------------------------------------
+    #
+    # The canvas-anchored popover replaces the old inspector aux-palette
+    # controls. The clientside ``aux_popover.js`` glue handles positioning
+    # the popover (via popper.js) and writes three stores:
+    #
+    #   * ``PORT_CLICK_STORE`` — fires when the user taps an aux port; the
+    #     server-side callback re-renders ``POPOVER_CONTAINER`` and may
+    #     auto-focus the first wired slot in the inspector.
+    #   * ``POPOVER_DISMISS_STORE`` — fires on click-outside / Escape /
+    #     canvas pan; the server-side callback clears
+    #     ``inspector_focus_aux`` and hides the popover.
+    #   * ``POPOVER_ACTION_STORE`` — written when a popover button is
+    #     clicked. Today we listen to the pattern-matched action buttons
+    #     directly (one ``Input`` per ``action`` value) so the dispatch
+    #     stays pure Python, but ``POPOVER_ACTION_STORE`` is reserved for
+    #     future cross-cutting needs (e.g. close-on-action).
+
+    @app.callback(
+        Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
+        Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
+        Input(ids.PORT_CLICK_STORE, "data"),
+        State(ids.STORE_BUILDER_STATE, "data"),
+        prevent_initial_call=True,
+    )
+    def open_popover_from_port_click(
+        port_click: Optional[Dict[str, Any]],
+        state_data: Dict[str, Any],
+    ) -> Tuple[Any, ...]:
+        """Render the popover (and inspector) when an aux port is tapped.
+
+        Reads the structured payload written by ``aux_popover.js`` to
+        ``PORT_CLICK_STORE``, auto-focuses the first wired slot (when
+        any) so the inspector mirrors the wired aux, then re-renders the
+        popover contents + inspector. The cytoscape canvas is rebuilt as
+        well so it can paint the matching ``aux-port--wired`` state if
+        the focus dispatch changed slot occupancy.
+        """
+
+        noop = (no_update,) * 6
+        if not isinstance(port_click, dict) or state_data is None:
+            return noop
+
+        target_node_id = port_click.get("target_node_id")
+        param = port_click.get("param")
+        if not isinstance(target_node_id, str) or not isinstance(param, str):
+            return noop
+
+        try:
+            scope = _scope_at_breadcrumb(
+                state_data, state_data.get("breadcrumb", []) or []
+            )
+            consumer = _find_in_scope(scope, target_node_id)
+            if consumer is None:
+                return noop
+
+            slot_list = (consumer.get("aux_ports") or {}).get(param) or []
+            first_wired = next(
+                (
+                    i
+                    for i, val in enumerate(slot_list)
+                    if isinstance(val, dict)
+                ),
+                None,
+            )
+            # Auto-focus the first wired slot when one exists so the
+            # inspector mirrors the wired aux's params. When the port has
+            # NO wired slots we still need a focus entry (with a ``slot=0``
+            # placeholder) so ``build_popover_contents`` knows which port
+            # is active — without it the popover would render empty for
+            # empty ports. ``_resolve_inspector_focus_target`` defensively
+            # returns ``None`` when the focused slot is empty/out-of-bounds,
+            # so the inspector cleanly falls back to its canvas-selected
+            # consumer view (no slot-0 pollution downstream).
+            new_state_dict = deepcopy(state_data)
+            new_state_dict["inspector_focus_aux"] = {
+                "target_node_id": target_node_id,
+                "param": param,
+                "slot": first_wired if first_wired is not None else 0,
+            }
+
+            new_state = state_from_json(new_state_dict)
+            breadcrumb, canvas_elements, inspector, popover_contents = _render_views(
+                new_state
+            )
+            return (
+                new_state_dict,
+                breadcrumb,
+                canvas_elements,
+                inspector,
+                popover_contents,
+                _popover_style_for(popover_contents),
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("open_popover_from_port_click failed")
+            return noop
+
+    @app.callback(
+        Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
+        Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
+        Input(ids.POPOVER_DISMISS_STORE, "data"),
+        State(ids.STORE_BUILDER_STATE, "data"),
+        prevent_initial_call=True,
+    )
+    def dismiss_popover(
+        _ts: Any, state_data: Dict[str, Any]
+    ) -> Tuple[Any, ...]:
+        """Clear ``inspector_focus_aux`` and hide the popover on dismiss."""
+
+        noop = (no_update,) * 6
+        if state_data is None:
+            return noop
+        try:
+            new_state_dict = _dispatch_state_update(
+                state_data,
+                "set_inspector_focus",
+                {"focus": "consumer"},
+            )
+            if new_state_dict == state_data:
+                # Already cleared — just hide the popover container.
+                return (
+                    no_update,
+                    no_update,
+                    no_update,
+                    no_update,
+                    [],
+                    {"display": "none"},
+                )
+            new_state = state_from_json(new_state_dict)
+            breadcrumb, canvas_elements, inspector, popover_contents = _render_views(
+                new_state
+            )
+            return (
+                new_state_dict,
+                breadcrumb,
+                canvas_elements,
+                inspector,
+                popover_contents,
+                _popover_style_for(popover_contents),
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("dismiss_popover failed")
+            return noop
+
+    @app.callback(
+        Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
+        Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "header", allow_duplicate=True),
+        Input(
+            {
+                "type": "popover-action",
+                "action": ALL,
+                "target_node_id": ALL,
+                "param": ALL,
+                "slot": ALL,
+                "class_name": ALL,
+            },
+            "n_clicks",
+        ),
+        State(ids.STORE_BUILDER_STATE, "data"),
+        prevent_initial_call=True,
+    )
+    def handle_popover_action(  # noqa: C901, PLR0912
+        _clicks: List[Any], state_data: Dict[str, Any]
+    ) -> Tuple[Any, ...]:
+        """Dispatch the popover button action keyed by the trigger ``action``."""
+
+        noop = (no_update,) * 10
+        if state_data is None or ctx.triggered_id is None:
+            return noop
+        triggered = ctx.triggered_id
+        if not isinstance(triggered, dict):
+            return noop
+        if triggered.get("type") != "popover-action":
+            return noop
+        if not ctx.triggered or not ctx.triggered[0].get("value"):
+            return noop
+
+        action = triggered.get("action")
+        target_node_id = triggered.get("target_node_id")
+        param = triggered.get("param")
+        raw_slot = triggered.get("slot")
+        class_name = triggered.get("class_name") or None
+        try:
+            slot = int(raw_slot) if raw_slot is not None else 0
+        except (TypeError, ValueError):
+            return noop
+
+        try:
+            new_state_dict: Dict[str, Any] = state_data
+            # Set by the ``drill`` branch to force-dismiss the popover; the
+            # other actions leave them as ``None`` so the renderer-derived
+            # ``popover_contents`` / style apply.
+            drill_dismiss = False
+            if action == "pick_class":
+                if not isinstance(class_name, str) or not class_name:
+                    return noop
+                new_state_dict = _dispatch_state_update(
+                    state_data,
+                    "wire_create",
+                    {
+                        "target_node_id": target_node_id,
+                        "param": param,
+                        "slot": slot,
+                        "class_name": class_name,
+                    },
+                )
+            elif action == "edit":
+                new_state_dict = _dispatch_state_update(
+                    state_data,
+                    "set_inspector_focus",
+                    {
+                        "focus": "aux",
+                        "target_node_id": target_node_id,
+                        "param": param,
+                        "slot": slot,
+                    },
+                )
+            elif action == "drill":
+                new_state_dict = _dispatch_state_update(
+                    state_data,
+                    "drill_in_aux",
+                    {
+                        "target_node_id": target_node_id,
+                        "param": param,
+                        "slot": slot,
+                    },
+                )
+                # Drill dismisses the popover — the new canvas scope
+                # belongs to a different consumer.
+                drill_dismiss = True
+            elif action == "disconnect":
+                new_state_dict = _dispatch_state_update(
+                    state_data,
+                    "wire_delete",
+                    {
+                        "target_node_id": target_node_id,
+                        "param": param,
+                        "slot": slot,
+                    },
+                )
+            elif action == "add_slot":
+                new_state_dict = _dispatch_state_update(
+                    state_data,
+                    "port_slot_add",
+                    {
+                        "node_id": target_node_id,
+                        "param": param,
+                    },
+                )
+            else:
+                return noop
+
+            new_state = state_from_json(new_state_dict)
+            breadcrumb, canvas_elements, inspector, popover_contents = _render_views(
+                new_state
+            )
+            if drill_dismiss:
+                popover_children: Any = []
+                popover_style: Dict[str, Any] = {"display": "none"}
+            else:
+                popover_children = popover_contents
+                popover_style = _popover_style_for(popover_contents)
+            return (
+                new_state_dict,
+                breadcrumb,
+                canvas_elements,
+                inspector,
+                popover_children,
+                popover_style,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("handle_popover_action failed")
+            return (
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                True,
+                _format_exception(exc),
+                "danger",
+                "Update failed",
+            )
+
+    @app.callback(
+        Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
+        Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
+        Input(INSPECTOR_FOCUS_AUX_BANNER_ID, "n_clicks"),
+        State(ids.STORE_BUILDER_STATE, "data"),
+        prevent_initial_call=True,
+    )
+    def revert_inspector_focus(
+        n_clicks: Optional[int], state_data: Dict[str, Any]
+    ) -> Tuple[Any, ...]:
+        """Clear ``inspector_focus_aux`` when the inspector banner is clicked."""
+
+        noop = (no_update,) * 6
+        if not n_clicks or state_data is None:
+            return noop
+        try:
+            new_state_dict = _dispatch_state_update(
+                state_data,
+                "set_inspector_focus",
+                {"focus": "consumer"},
+            )
+            if new_state_dict == state_data:
+                return noop
+            new_state = state_from_json(new_state_dict)
+            breadcrumb, canvas_elements, inspector, popover_contents = _render_views(
+                new_state
+            )
+            return (
+                new_state_dict,
+                breadcrumb,
+                canvas_elements,
+                inspector,
+                popover_contents,
+                _popover_style_for(popover_contents),
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("revert_inspector_focus failed")
+            return noop
 
     # ----------------------------------------------------------------------
     # 3. Run preview
@@ -1333,6 +2239,11 @@ def register_callbacks(app: dash.Dash) -> None:
             return (no_update, *_toast("Provide a filename first", ok=False))
 
         try:
+            # Aux nodes are now embedded inside each consumer's
+            # ``aux_ports`` map (Wave 1-A onward), so "orphan aux" is
+            # structurally impossible — an aux only exists while wired.
+            # The pre-save orphan walk that used to live here has been
+            # removed.
             state = state_from_json(state_data)
             pipeline = to_pipeline(state.root)
             target = (Path(dir_value).expanduser() / filename_value).resolve()
@@ -1544,8 +2455,10 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BROWSE_DIR_JSON, "data", allow_duplicate=True),
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output("canvas-cytoscape-wrapper", "children", allow_duplicate=True),
+        Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
         Output(ids.MODAL_LOAD_PICKER, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -1570,17 +2483,18 @@ def register_callbacks(app: dash.Dash) -> None:
                 with type :data:`ids.DIR_ENTRY_TYPE_JSON`.
 
         Returns:
-            Ten-tuple ``(browse_dir, state_data, breadcrumb, canvas,
-            inspector, modal_is_open, toast_is_open, toast_msg, toast_icon,
-            toast_header)``. Directory clicks populate only the first element;
-            file clicks populate elements 2–10.
+            Twelve-tuple ``(browse_dir, state_data, breadcrumb,
+            canvas_elements, inspector, popover, popover_style,
+            modal_is_open, toast_is_open, toast_msg, toast_icon,
+            toast_header)``. Directory clicks populate only the first
+            element; file clicks populate elements 2–12.
         """
         match = _trigger_kind_path(ctx.triggered_id, ids.DIR_ENTRY_TYPE_JSON)
         if match is None:
-            return (no_update,) * 10
+            return (no_update,) * 11
         kind, path_str = match
         if kind in {"dir", "parent"}:
-            return (path_str, *((no_update,) * 9))
+            return (path_str, *((no_update,) * 10))
 
         if kind == "file":
             try:
@@ -1588,31 +2502,40 @@ def register_callbacks(app: dash.Dash) -> None:
 
                 with open(Path(path_str).expanduser(), encoding="utf-8") as fh:
                     pipeline = ImagePipeline.from_json(fh.read())
-                state_dict, breadcrumb, canvas, inspector = _state_replacement_payload(
-                    pipeline
-                )
+                (
+                    state_dict,
+                    breadcrumb,
+                    canvas_elements,
+                    inspector,
+                    popover_contents,
+                    popover_style,
+                ) = _state_replacement_payload(pipeline)
                 return (
                     no_update,
                     state_dict,
                     breadcrumb,
-                    canvas,
+                    canvas_elements,
                     inspector,
+                    popover_contents,
+                    popover_style,
                     False,
                     *_toast(f"Loaded {Path(path_str).name}", ok=True),
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.exception("Load JSON failed")
                 return (
-                    (no_update,) * 6 + _toast(_format_exception(exc), ok=False)
+                    (no_update,) * 8 + _toast(_format_exception(exc), ok=False)
                 )
 
-        return (no_update,) * 10
+        return (no_update,) * 12
 
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output("canvas-cytoscape-wrapper", "children", allow_duplicate=True),
+        Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
         Output(ids.MODAL_LOAD_PICKER, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -1637,37 +2560,44 @@ def register_callbacks(app: dash.Dash) -> None:
             _clicks: Pattern-matched click counts from prefab-card items.
 
         Returns:
-            Nine-tuple ``(state_data, breadcrumb, canvas, inspector,
-            modal_is_open, toast_is_open, toast_msg, toast_icon,
-            toast_header)``.
+            Eleven-tuple ``(state_data, breadcrumb, canvas_elements,
+            inspector, popover, popover_style, modal_is_open,
+            toast_is_open, toast_msg, toast_icon, toast_header)``.
         """
         triggered = ctx.triggered_id
         if not isinstance(triggered, dict) or triggered.get("type") != "prefab-card":
-            return (no_update,) * 9
+            return (no_update,) * 11
         if not ctx.triggered or not ctx.triggered[0].get("value"):
-            return (no_update,) * 9
+            return (no_update,) * 11
         class_name = triggered.get("class_name")
         if not class_name:
-            return (no_update,) * 9
+            return (no_update,) * 11
 
         try:
             import phenotypic.prefab as prefab_module
 
             pipeline = getattr(prefab_module, class_name)()
-            state_dict, breadcrumb, canvas, inspector = _state_replacement_payload(
-                pipeline
-            )
+            (
+                state_dict,
+                breadcrumb,
+                canvas_elements,
+                inspector,
+                popover_contents,
+                popover_style,
+            ) = _state_replacement_payload(pipeline)
             return (
                 state_dict,
                 breadcrumb,
-                canvas,
+                canvas_elements,
                 inspector,
+                popover_contents,
+                popover_style,
                 False,
                 *_toast(f"Loaded prefab {class_name}", ok=True),
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception("Load prefab failed")
-            return (no_update,) * 5 + _toast(_format_exception(exc), ok=False)
+            return (no_update,) * 7 + _toast(_format_exception(exc), ok=False)
 
     # ----------------------------------------------------------------------
     # 7. Load Image modal — open / dir-nav / file pick / synthetic shortcut
@@ -1897,6 +2827,42 @@ def register_callbacks(app: dash.Dash) -> None:
         "const z = cy.zoom() / 1.25;"
         " const c = {x: cy.width() / 2, y: cy.height() / 2};"
         " cy.zoom({level: z, renderedPosition: c});",
+    )
+
+    # ----------------------------------------------------------------------
+    # 8b. Force-apply canvas elements via cytoscape.js API on scope swap
+    # ----------------------------------------------------------------------
+    # dash-cytoscape 1.0.2 ``componentDidUpdate`` patches in-place attribute
+    # changes (e.g. ``aux-port--wired`` class flip) but does not reliably
+    # add / remove elements when the ``elements`` prop changes to a list
+    # with different ids — drilling into an aux scope leaves the parent
+    # scope's nodes stranded in the live canvas. When the id set differs
+    # from what cytoscape.js currently holds, mirror the new list via
+    # ``cy.json({elements})`` and re-fit; when the id set is unchanged
+    # (same-scope update such as a wired-class flip), bail out so the
+    # in-place patch path applies and the user's pan/zoom is preserved.
+    app.clientside_callback(
+        """
+        function(elements, prev) {
+            const cy = window.phenoGetCy && window.phenoGetCy();
+            if (!cy || !elements) return window.dash_clientside.no_update;
+            const newIds = elements.map(e => e.data.id).sort().join('|');
+            const liveIds = cy.elements().map(e => e.id()).sort().join('|');
+            if (newIds === liveIds) return window.dash_clientside.no_update;
+            try {
+                cy.json({elements: elements});
+                cy.fit(undefined, 24);
+            } catch (err) {
+                // cy may be mid-mount or disposed; non-fatal.
+                return window.dash_clientside.no_update;
+            }
+            return (prev || 0) + 1;
+        }
+        """,
+        Output(ids.STORE_CANVAS_CONTROL, "data", allow_duplicate=True),
+        Input(ids.CANVAS_CYTOSCAPE, "elements"),
+        State(ids.STORE_CANVAS_CONTROL, "data"),
+        prevent_initial_call=True,
     )
 
     # ----------------------------------------------------------------------
@@ -2302,5 +3268,7 @@ def _lookup_in_state(
 __all__ = [
     "register_callbacks",
     "_dispatch_state_update",
+    "_build_fresh_aux_node",
+    "_source_satisfies_port",
     "STORE_IMAGE_PATH",
 ]

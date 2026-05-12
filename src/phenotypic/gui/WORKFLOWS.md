@@ -41,6 +41,7 @@ without a matching defined+dispatched `_capture_<id>` (or a
 | view_results   | View results         | Empty-state hub mount + populated standalone viewer + measurement table.   | `_capture_view_results`   | `gui/06_view_results.md`     | ✅ shipping |
 | pick_points    | Manual point picker  | Pickable badge, picker modal, RGB / Input channel toggle, confirm round trip. | `_capture_pick_points`    | `gui/07_pick_points.md`      | ✅ shipping |
 | analysis       | Analysis sub-app     | `/analysis/` mount, pipeline header, post / filter / model section authoring, run button emitting `analysis.{csv,parquet}`. | `_capture_analysis` | `gui/08_analysis.md` | ✅ shipping |
+| aux_ports      | Wiring aux op params | Aux input ports on the bottom edge of consumer nodes; click an aux port to open a canvas-anchored popover showing the class palette (empty slot) or wired-row with `Edit / Drill in / Disconnect` actions (wired slot). `Drill in →` swaps the main canvas to the aux's scope (every aux is treated as a 1-step pipeline minimum). Inspector mirrors the wired aux's params when the popover is open. Main I/O ports are now explicit blue circles on every operation node. | `_capture_aux_ports` | `gui/09_aux_ports.md`     | ✅ shipping |
 
 > **`view_results` note.** The empty-state screenshot
 > (`view_results/01_viewer_empty.png`) is captured by

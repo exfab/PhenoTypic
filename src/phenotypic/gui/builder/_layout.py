@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import inspect
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 import dash_cytoscape as cyto  # type: ignore[import-untyped]
@@ -35,6 +35,7 @@ from phenotypic.gui._design import (
     COLOR_NAVY,
     FONT_FAMILY_MONO,
     FONT_SIZE_LABEL,
+    OI_PURPLE,
 )
 from phenotypic.gui._shared import SHARED_LOGO_PATH
 from phenotypic.gui.builder import _ids as ids
@@ -50,6 +51,7 @@ from phenotypic.gui.builder._state import (
     PIPELINE_CLASS_NAME,
     BuilderScope,
     BuilderState,
+    StepNode,
     _ensure_param_scope,
     current_scope,
     stage_of,
@@ -284,8 +286,26 @@ def build_post_palette(registry: "OperationRegistry") -> dbc.Accordion:
 def _canvas_stylesheet() -> List[dict]:
     """Cytoscape stylesheet used by :func:`build_canvas`.
 
-    Phase 3 may extend this list (e.g. to highlight nodes with hot
-    intermediates), so we keep it as a function for easy reuse.
+    The popover-anchored aux design renders two extra visible markers per
+    consumer node:
+
+    * **Main I/O ports** — small blue circles on the left (input) and
+      right (output) edges of every ribbon node. Image-flow edges connect
+      the previous node's main-output port to the next node's main-input
+      port (the wire visibly *enters* and *exits* each operation rather
+      than routing through node centers).
+    * **Aux ports** — small purple rounded-square markers on the
+      BOTTOM edge of every consumer that has op-typed parameters. One
+      marker per param (regardless of slot cardinality); list-typed
+      params still show a single marker. Tapping the marker opens the
+      canvas-anchored popover which then handles slot management.
+
+    These markers live as additional cytoscape *nodes* (not edges) so
+    they're positionable independently and the popover's clientside JS
+    glue can target them by ``id`` prefix. The cytoscape side intentionally
+    references ``OI_PURPLE`` directly (the value behind
+    ``--color-interactive`` / ``--oi-purple``) because cytoscape's canvas
+    renderer cannot resolve CSS custom properties.
     """
 
     return [
@@ -296,18 +316,21 @@ def _canvas_stylesheet() -> List[dict]:
                 "label": "data(label)",
                 "text-valign": "center",
                 "text-halign": "center",
+                "text-wrap": "ellipsis",
+                "text-max-width": 160,
                 "background-color": "data(bg)",
                 "border-color": COLOR_BORDER,
                 "border-width": 1,
-                "padding": "12px",
+                "padding": "8px",
                 "font-family": FONT_FAMILY_MONO,
                 # Cytoscape canvas-renders labels and only accepts pixel
                 # values for font-size; rem units silently fall back.
                 "font-size": "12px",
                 "font-weight": "500",
-                "width": "label",
-                "height": 40,
-                "min-width": 80,
+                # Fixed-width ribbon nodes so I/O port placement is
+                # predictable (text-wrap kicks in for long class names).
+                "width": 180,
+                "height": 54,
                 "color": COLOR_NAVY,
             },
         },
@@ -328,33 +351,231 @@ def _canvas_stylesheet() -> List[dict]:
                 "width": 1.5,
             },
         },
+        # Image-flow edges between consecutive main-ribbon nodes. Endpoints
+        # are the upstream node's main-output port and the downstream
+        # node's main-input port (small blue circles) — the wire visibly
+        # exits the upstream op on its right and enters the downstream
+        # op on its left. ``outside-to-node`` keeps the endpoint clean
+        # against the port marker rather than routing through it.
+        {
+            "selector": "edge.image-flow",
+            "style": {
+                "curve-style": "bezier",
+                "target-arrow-shape": "triangle",
+                "target-arrow-color": COLOR_MUTED,
+                "line-color": COLOR_MUTED,
+                "width": 1.5,
+                "source-endpoint": "outside-to-node",
+                "target-endpoint": "outside-to-node",
+            },
+        },
+        # Main I/O port: small blue circle on the LEFT (input) or RIGHT
+        # (output) edge of every ribbon node. Always filled — wired state
+        # for the image flow lives in the edge, not in the port itself.
+        # No label and no padding so the marker reads as a discrete dot
+        # rather than a tiny rectangle.
+        {
+            "selector": "node.main-port",
+            "style": {
+                "shape": "ellipse",
+                "label": "",
+                "width": 10,
+                "height": 10,
+                "background-color": COLOR_BLUE,
+                "border-color": COLOR_BLUE,
+                "border-width": 1,
+                "padding": 0,
+            },
+        },
+        # Bottom-edge aux port: small purple rounded-square marker. One
+        # per op-typed parameter on the consumer (regardless of slot
+        # cardinality). Empty (no slot wired) renders hollow — gray fill
+        # with a purple border — so users can scan a dense canvas and
+        # tell at a glance which consumers still need an aux configured.
+        {
+            "selector": "node.aux-port",
+            "style": {
+                "shape": "round-rectangle",
+                "label": "",
+                "width": 10,
+                "height": 10,
+                "background-color": COLOR_BORDER,
+                "border-color": OI_PURPLE,
+                "border-width": 1.5,
+                "padding": 0,
+            },
+        },
+        # Wired aux port: solid purple fill. Any slot non-empty flips the
+        # marker from hollow to filled so the canvas state mirrors the
+        # popover state without needing the popover to be open.
+        {
+            "selector": "node.aux-port.aux-port--wired",
+            "style": {
+                "background-color": OI_PURPLE,
+            },
+        },
     ]
 
 
-def build_canvas(
+# ---------------------------------------------------------------------------
+# Preset-layout positioning
+# ---------------------------------------------------------------------------
+#
+# Cytoscape's ``preset`` layout requires explicit ``(x, y)`` for every node;
+# the constants below pin the geometry of the main ribbon and its
+# attached I/O / aux port markers so callbacks can stay layout-agnostic.
+# Numbers are tuned against the ~700px canvas slot configured in
+# ``build_app_layout``.
+
+#: Horizontal step between consecutive main-ribbon nodes (px).
+_RIBBON_X_STEP: int = 180
+
+#: Left padding before the first ribbon node (px).
+_RIBBON_X_OFFSET: int = 24
+
+#: Y position of every main-ribbon node (px).
+_RIBBON_Y: int = 80
+
+#: Half-width of a ribbon operation node (px). The cytoscape stylesheet
+#: pins ``width: 180`` so the consumer's left edge is at
+#: ``ribbon_x - _RIBBON_HALF_WIDTH`` and its right edge at
+#: ``ribbon_x + _RIBBON_HALF_WIDTH``.
+_RIBBON_HALF_WIDTH: int = 90
+
+#: Half-height of a ribbon operation node (px). The cytoscape stylesheet
+#: pins ``height: 54`` so the consumer's bottom edge sits at
+#: ``_RIBBON_Y + _RIBBON_HALF_HEIGHT``.
+_RIBBON_HALF_HEIGHT: int = 27
+
+#: Gap between the consumer's bottom edge and the aux-port marker's
+#: center (px). The aux marker is 10px tall so a small offset keeps it
+#: visually attached to the consumer without overlapping its bottom
+#: border.
+_AUX_PORT_Y_OFFSET: int = 8
+
+#: Horizontal spacing between adjacent aux ports on the same consumer
+#: (px). When a consumer has multiple op-typed parameters (e.g.
+#: ``CompositeDetector.detectors`` + ``CompositeDetector.shape_detector``),
+#: their markers spread across the bottom edge centered on the consumer.
+_AUX_PORT_X_SPACING: int = 40
+
+
+def _aux_param_names(
+    node: StepNode, registry: "OperationRegistry"
+) -> List[str]:
+    """Return the op-typed parameter names a consumer node exposes.
+
+    Walks the registry's parameter metadata (which preserves declaration
+    order via :class:`inspect.Signature`) and returns the subset of
+    parameter names whose annotation is operation- or pipeline-typed —
+    the canvas renders one bottom-edge aux port marker per such param.
+
+    Parameters not in the registry are skipped silently; the node may
+    have a stale ``aux_ports`` map for a class that was renamed/removed,
+    and the canvas should degrade gracefully rather than render markers
+    for parameters that no longer exist.
+
+    Args:
+        node: The consumer :class:`StepNode` being rendered.
+        registry: Operation registry consulted for parameter metadata.
+
+    Returns:
+        Ordered list of aux-eligible parameter names (preserves the
+        order they were declared on the class).
+    """
+
+    info = registry.get(node.class_name)
+    if info is None:
+        return []
+
+    return [
+        param_name
+        for param_name, p in info.parameters.items()
+        if p.is_operation or p.is_pipeline
+    ]
+
+
+def build_canvas_elements(
     scope: BuilderScope,
     selected_node_id: Optional[str],
-) -> cyto.Cytoscape:
-    """Render the linear chain for *scope* as a cytoscape canvas.
+) -> List[dict]:
+    """Compute the cytoscape ``elements`` list for *scope*.
 
-    Each :class:`StepNode` becomes one cytoscape node; consecutive nodes are
-    joined by directed edges. Nested ``ImagePipeline`` nodes get a folder
-    glyph in their label so the user can tell drillable nodes apart.
+    Returned list is wired straight to
+    ``Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True)``
+    by every state-mutation callback; the ``Cytoscape`` component itself
+    is mounted once at initial paint (see :func:`build_canvas`).
+
+    Each :class:`StepNode` becomes one cytoscape node; consecutive
+    main-ribbon nodes are joined by ``image-flow`` edges that route
+    through the upstream node's main-output port and the downstream
+    node's main-input port (small blue circles attached to each
+    ribbon node's left/right edges). Nested ``ImagePipeline`` nodes
+    get a folder glyph in their label so the user can tell drillable
+    nodes apart.
+
+    Popover-anchored aux additions:
+
+    * Every ribbon node renders two main I/O ports as additional
+      cytoscape elements — a blue circle on the LEFT edge (input) and
+      one on the RIGHT edge (output). Image-flow edges connect upstream
+      output to downstream input so the wire visibly enters and exits
+      each operation.
+    * Consumer nodes with op-typed parameters (e.g.
+      ``FilamentousFungiDetector.inoculum_detector``) render one small
+      purple aux-port marker per param on their BOTTOM edge. Tapping a
+      marker opens the canvas-anchored popover where the user picks /
+      edits / disconnects the wired aux. Aux StepNodes themselves are
+      NOT rendered on the main canvas — they live embedded inside their
+      consumer's ``aux_ports`` slot list and only render when the user
+      drills into them.
 
     Args:
         scope: The :class:`BuilderScope` currently in view.
-        selected_node_id: If set, the matching node gets the ``"selected"``
-            class so the stylesheet highlights it.
+        selected_node_id: If set, the matching node gets the
+            ``"selected"`` class so the stylesheet highlights it.
 
     Returns:
-        A :class:`dash_cytoscape.Cytoscape` component populated with elements
-        for *scope*. Layout is ``"grid"`` with one row to keep the chain
-        horizontal.
+        Ordered list of cytoscape element dicts (nodes + edges + port
+        markers). Layout is ``"preset"`` — Python computes ``(x, y)``
+        for every element so callbacks can stay layout-agnostic.
     """
 
-    elements: List[dict] = []
-    prev_id: Optional[str] = None
+    # Local import so the module's top-level import graph stays Dash-only.
+    # ``get_registry`` walks every operation module; calling it once per
+    # render is fine because the registry is a process-wide singleton.
+    from phenotypic.gui._operation_registry import get_registry
 
+    registry = get_registry()
+
+    elements: List[dict] = []
+
+    # ── 1. Compute positions for the main ribbon. ────────────────────────
+    ribbon_x_by_id: Dict[str, int] = {}
+    for i, node in enumerate(scope.nodes):
+        ribbon_x_by_id[node.node_id] = _RIBBON_X_OFFSET + i * _RIBBON_X_STEP
+
+    # ── 2. Image-flow edges (drawn first so they sit underneath nodes).
+    #      Endpoints are the upstream output port and the downstream
+    #      input port — the wire visibly enters/exits each operation
+    #      through its port markers rather than routing through node
+    #      centers. ──────────────────────────────────────────────────────
+    prev_id: Optional[str] = None
+    for node in scope.nodes:
+        if prev_id is not None:
+            elements.append(
+                {
+                    "data": {
+                        "id": f"{prev_id}__{node.node_id}",
+                        "source": ids.main_output_port_id(prev_id),
+                        "target": ids.main_input_port_id(node.node_id),
+                    },
+                    "classes": "image-flow",
+                }
+            )
+        prev_id = node.node_id
+
+    # ── 3. Main-ribbon nodes. ───────────────────────────────────────────
     for node in scope.nodes:
         stage = _safe_stage(node.class_name)
         label = node.label or node.class_name
@@ -374,27 +595,116 @@ def build_canvas(
                 "classes": node_classes,
                 "selectable": True,
                 "grabbable": True,
+                "position": {
+                    "x": ribbon_x_by_id[node.node_id],
+                    "y": _RIBBON_Y,
+                },
             }
         )
-        if prev_id is not None:
+
+    # ── 4. Main I/O ports (small blue circles on left/right edges). ─────
+    # Emitted as cytoscape nodes (not edges) so they're positionable
+    # independently; image-flow edges target their ids so the wires
+    # visibly attach to the port markers rather than node centers.
+    for node in scope.nodes:
+        consumer_x = ribbon_x_by_id[node.node_id]
+        elements.append(
+            {
+                "data": {
+                    "id": ids.main_input_port_id(node.node_id),
+                    "parent_node_id": node.node_id,
+                    "side": "input",
+                },
+                "classes": "main-port main-port--input",
+                "selectable": False,
+                "grabbable": False,
+                "position": {
+                    "x": consumer_x - _RIBBON_HALF_WIDTH,
+                    "y": _RIBBON_Y,
+                },
+            }
+        )
+        elements.append(
+            {
+                "data": {
+                    "id": ids.main_output_port_id(node.node_id),
+                    "parent_node_id": node.node_id,
+                    "side": "output",
+                },
+                "classes": "main-port main-port--output",
+                "selectable": False,
+                "grabbable": False,
+                "position": {
+                    "x": consumer_x + _RIBBON_HALF_WIDTH,
+                    "y": _RIBBON_Y,
+                },
+            }
+        )
+
+    # ── 5. Bottom-edge aux ports (one per op-typed param). ──────────────
+    # Multiple aux params spread evenly across the bottom edge centered
+    # on the consumer's x. Wired state (any slot non-empty) flips the
+    # marker class to ``aux-port--wired`` so the stylesheet fills it.
+    for consumer in scope.nodes:
+        aux_param_names = _aux_param_names(consumer, registry)
+        if not aux_param_names:
+            continue
+        n_aux = len(aux_param_names)
+        consumer_x = ribbon_x_by_id[consumer.node_id]
+        aux_y = _RIBBON_Y + _RIBBON_HALF_HEIGHT + _AUX_PORT_Y_OFFSET
+        for i, param_name in enumerate(aux_param_names):
+            x_offset = int((i - (n_aux - 1) / 2) * _AUX_PORT_X_SPACING)
+            slots = consumer.aux_ports.get(param_name) or []
+            wired_count = sum(1 for slot in slots if slot is not None)
+            wired = wired_count > 0
+            port_classes = "aux-port aux-port--wired" if wired else "aux-port"
             elements.append(
                 {
                     "data": {
-                        "id": f"{prev_id}__{node.node_id}",
-                        "source": prev_id,
-                        "target": node.node_id,
+                        "id": ids._encode_aux_port_id(
+                            consumer.node_id, param_name
+                        ),
+                        "parent_node_id": consumer.node_id,
+                        "param": param_name,
+                        "wired": wired,
+                        "wired_count": wired_count,
+                        "total_count": len(slots),
+                    },
+                    "classes": port_classes,
+                    "selectable": True,
+                    "grabbable": False,
+                    "position": {
+                        "x": consumer_x + x_offset,
+                        "y": aux_y,
                     },
                 }
             )
-        prev_id = node.node_id
+
+    return elements
+
+
+def build_canvas(
+    scope: BuilderScope,
+    selected_node_id: Optional[str],
+) -> cyto.Cytoscape:
+    """Mount the ``Cytoscape`` component with initial elements + stable props.
+
+    Only used by :func:`build_canvas_section` at initial paint — every
+    subsequent mutation updates ``Output(ids.CANVAS_CYTOSCAPE, "elements")``
+    directly, so the same cytoscape.js instance persists for the session.
+    Layout / stylesheet / interaction flags are set once here.
+
+    ``_canvas_stylesheet()`` is parameterless and takes no state input;
+    if a future change makes it state-dependent (theme switch, view modes),
+    introduce a dedicated ``Output(ids.CANVAS_CYTOSCAPE, "stylesheet",
+    allow_duplicate=True)`` callback rather than rebuilding this component.
+    """
 
     return cyto.Cytoscape(
         id=ids.CANVAS_CYTOSCAPE,
-        elements=elements,
+        elements=build_canvas_elements(scope, selected_node_id),
         layout={
-            "name": "grid",
-            "rows": 1,
-            "cols": max(len(scope.nodes), 1),
+            "name": "preset",
             "fit": True,
             "padding": 24,
         },
@@ -416,6 +726,12 @@ def build_canvas(
         userPanningEnabled=True,
         userZoomingEnabled=True,
         boxSelectionEnabled=False,
+        # Cap auto-fit zoom so a sparse canvas (1-2 nodes) doesn't
+        # balloon the consumer to fill the viewport. 1.0 keeps the
+        # absolute Python-computed positions intact; the user can still
+        # zoom in further via the toolbar.
+        maxZoom=1.0,
+        minZoom=0.25,
     )
 
 
@@ -476,6 +792,7 @@ def build_canvas_section(
         ],
         className="d-flex justify-content-between align-items-center mb-2",
     )
+
     # Cytoscape (``height: 100%``) needs a flex-grown sibling slot so the
     # browser can resolve its percentage height. The header has natural
     # height; the cytoscape wrapper takes the remaining flex space via
@@ -484,10 +801,29 @@ def build_canvas_section(
     # container would force its child's width to its content size, which
     # is 0 for a cytoscape (no intrinsic content), collapsing the canvas to
     # zero width.
-    # The slot doubles as the swappable ``canvas-cytoscape-wrapper`` whose
-    # ``children`` callbacks rewrite to mount a fresh cytoscape after a state
-    # mutation (avoids fighting dash-cytoscape's prop diffing). The id also
-    # gives ``window.phenoGetCy()`` a reliable anchor for the React fiber walk.
+    # The slot has a stable id so ``window.phenoGetCy()`` can anchor its
+    # React fiber walk to find the live cytoscape.js instance. The
+    # ``Cytoscape`` component is mounted once at initial paint and
+    # persists for the session; mutation callbacks update its
+    # ``elements`` prop directly via
+    # ``Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True)``,
+    # with a clientside callback in ``_callbacks.py`` mirroring the new
+    # list into the live cytoscape via ``cy.json({elements})``.
+    #
+    # The popover container is a SIBLING of the cytoscape slot inside the
+    # same relative-positioned outer Div so ``cytoscape-popper`` (via
+    # popper.js) can position it relative to the tapped aux port and
+    # pan / zoom along with the canvas. The container is hidden by
+    # default; ``aux_popover.js`` toggles its ``display`` on tap and
+    # writes the structured tap data to :data:`PORT_CLICK_STORE` so
+    # server-side callbacks fill in its children based on
+    # ``state.inspector_focus_aux`` + the active port click.
+    popover_container = html.Div(
+        id=ids.POPOVER_CONTAINER,
+        className="cy-popover",
+        style={"display": "none"},
+        children=[],
+    )
     cytoscape_slot = html.Div(
         build_canvas(scope, selected_node_id),
         id="canvas-cytoscape-wrapper",
@@ -498,12 +834,13 @@ def build_canvas_section(
         },
     )
     return html.Div(
-        [header, cytoscape_slot],
+        [header, cytoscape_slot, popover_container],
         style={
             "display": "flex",
             "flexDirection": "column",
             "height": "100%",
             "minHeight": 0,
+            "position": "relative",  # establish stacking context for popover
         },
     )
 
@@ -639,27 +976,164 @@ def _empty_inspector_div() -> html.Div:
     )
 
 
+def _compatible_classes_for_port(
+    param_info: Any, registry: "OperationRegistry"
+) -> List[str]:
+    """Return registry classes that satisfy a given aux-port type.
+
+    Used by :func:`build_popover_contents` to filter the popover's class
+    palette down to ops/pipelines that the consumer's port will actually
+    accept (the ``wire_create`` dispatch validates the same contract;
+    pre-filtering here saves the user a useless click).
+
+    Args:
+        param_info: ``ParamInfo`` for the consumer's aux-port-eligible
+            parameter; expected ``is_operation`` or ``is_pipeline`` true.
+        registry: Operation registry to enumerate.
+
+    Returns:
+        Sorted list of class-name strings. The
+        :data:`PIPELINE_CLASS_NAME` sentinel appears when the port accepts
+        an :class:`~phenotypic.ImagePipeline`.
+    """
+
+    from phenotypic.abc_ import ImageOperation
+
+    classes: List[str] = []
+    if param_info.is_operation:
+        for cls_name, info in registry.get_all().items():
+            cls = getattr(info, "cls", None)
+            if isinstance(cls, type) and issubclass(cls, ImageOperation):
+                classes.append(cls_name)
+    if param_info.is_pipeline:
+        classes.append(PIPELINE_CLASS_NAME)
+    return sorted(set(classes))
+
+
+def _resolve_inspector_focus_target(
+    state: BuilderState, scope: BuilderScope
+) -> Optional[tuple[StepNode, StepNode, str, int]]:
+    """Resolve ``state.inspector_focus_aux`` to a concrete consumer + aux.
+
+    The inspector focus override lets the user edit a wired aux's params
+    without leaving the canvas-selected consumer's context. This helper
+    walks ``state.inspector_focus_aux`` (shape ``{"target_node_id",
+    "param", "slot"}``), locates the consumer in *scope*, and resolves
+    the embedded aux ``StepNode`` at ``consumer.aux_ports[param][slot]``.
+
+    Returns ``None`` when the focus is unset or unresolvable (e.g. the
+    consumer was deleted, the slot is empty, or the param doesn't exist
+    anymore). Callers should fall back to rendering the canvas-selected
+    consumer's params in that case.
+
+    Args:
+        state: Full :class:`BuilderState`.
+        scope: The current :class:`BuilderScope` (already resolved via
+            :func:`current_scope`).
+
+    Returns:
+        Tuple ``(consumer_node, aux_node, param_name, slot_idx)`` when
+        focus resolves cleanly; ``None`` otherwise.
+    """
+
+    focus = state.inspector_focus_aux
+    if focus is None:
+        return None
+
+    target_node_id = focus.get("target_node_id")
+    param = focus.get("param")
+    raw_slot = focus.get("slot", 0)
+    if not isinstance(target_node_id, str) or not isinstance(param, str):
+        return None
+    try:
+        slot = int(raw_slot)
+    except (TypeError, ValueError):
+        return None
+
+    consumer = next(
+        (n for n in scope.nodes if n.node_id == target_node_id), None
+    )
+    if consumer is None:
+        return None
+
+    slots = consumer.aux_ports.get(param) or []
+    if slot < 0 or slot >= len(slots):
+        return None
+
+    aux_node = slots[slot]
+    if aux_node is None:
+        return None
+    return consumer, aux_node, param, slot
+
+
+#: DOM id of the inspector's aux-focus banner. The banner is rendered
+#: only when ``state.inspector_focus_aux`` is set, so Wave 4 callbacks
+#: must use ``allow_optional`` / ``suppress_callback_exceptions`` when
+#: wiring it as an Input.
+INSPECTOR_FOCUS_AUX_BANNER_ID: str = "inspector-focus-aux-banner"
+
+
+def _inspector_focus_aux_banner(
+    consumer: StepNode, param: str, slot: int
+) -> html.Div:
+    """Build the breadcrumb-style banner shown when the inspector mirrors an aux.
+
+    The banner sits at the top of the inspector pane when
+    ``state.inspector_focus_aux`` is set. Clicking it dispatches
+    ``set_inspector_focus(focus="consumer", ...)`` (handled by a Wave 4
+    callback) so the user can revert to the consumer's params.
+
+    Args:
+        consumer: The canvas-selected consumer node whose param is being
+            mirrored.
+        param: Name of the consumer's op-typed parameter whose wired aux
+            is currently displayed.
+        slot: Zero-based slot index inside that param's slot list.
+
+    Returns:
+        A ``html.Div`` styled by ``.inspector-focus-aux-banner`` in
+        ``builder.css``. The container carries the
+        :data:`INSPECTOR_FOCUS_AUX_BANNER_ID` id so Wave 4 callbacks can
+        listen for ``n_clicks`` to clear the focus override.
+    """
+
+    label = consumer.label or consumer.class_name
+    return html.Div(
+        [
+            html.Span("← ", className="me-1"),
+            html.Span(f"{label}.{param}", className="fw-semibold"),
+            html.Span(f" / slot {slot}", className="text-muted ms-1"),
+        ],
+        id=INSPECTOR_FOCUS_AUX_BANNER_ID,
+        className="inspector-focus-aux-banner",
+        title="Click to return to the consumer's params",
+        n_clicks=0,
+    )
+
+
 def build_inspector(
     state: BuilderState,
     registry: "OperationRegistry",
 ) -> html.Div:
     """Render the inspector pane for the current selection.
 
-    When ``state.selected_node_id`` matches a node in
-    :func:`current_scope`, the inspector renders:
+    The inspector mirrors one node's parameters at a time. In the
+    popover-anchored aux design two distinct modes are possible:
 
-    1. A label-text input (id :data:`INPUT_NODE_LABEL`) for renaming.
-    2. The auto-generated :func:`param_form` from
-       :mod:`phenotypic.gui.builder._param_form` — except for the
-       ``ImagePipeline`` sentinel, where a "Drill in" button is shown
-       instead so Phase 3 can push the breadcrumb.
-    3. A placeholder :data:`INSPECTOR_PREVIEW` div — Phase 3 fills it with a
-       channel thumbnail (via :func:`to_data_uri`) for image-stage nodes or a
-       :class:`dash_table.DataTable` for measurement steps.
+    * **Consumer mode** (default): renders the canvas-selected node's
+      param form. This is the path used whenever
+      ``state.inspector_focus_aux`` is ``None``.
+    * **Aux-focus mode**: triggered when the user opens the popover for
+      a wired aux (or wires a new one). ``state.inspector_focus_aux``
+      carries ``{"target_node_id", "param", "slot"}``; the inspector
+      looks up the embedded aux :class:`StepNode` at that slot and
+      renders ITS params instead, prefixed by a clickable breadcrumb
+      banner that reverts to consumer mode.
 
     Args:
-        state: The full builder state (used to resolve the active scope and
-            selection via :func:`current_scope`).
+        state: The full builder state (used to resolve the active scope,
+            selection, and aux focus via :func:`current_scope` +
+            :func:`_resolve_inspector_focus_target`).
         registry: Operation registry consulted for parameter metadata.
 
     Returns:
@@ -675,16 +1149,30 @@ def build_inspector(
     except KeyError:
         return _empty_inspector_div()
 
-    node = next(
+    consumer = next(
         (n for n in scope.nodes if n.node_id == state.selected_node_id),
         None,
     )
-    if node is None:
+    if consumer is None:
         return _empty_inspector_div()
 
-    label_value = node.label or node.class_name
+    # Decide which node's params the inspector should mirror — the
+    # canvas-selected consumer, or a wired aux it points at via the
+    # ``inspector_focus_aux`` override. The aux-focus path falls back
+    # to the consumer when the focus can't be resolved (slot empty,
+    # param gone, etc.) so a stale override never silently swallows
+    # the inspector.
+    focus_target = _resolve_inspector_focus_target(state, scope)
+    banner: Optional[Any] = None
+    if focus_target is not None:
+        consumer, render_node, focus_param, focus_slot = focus_target
+        banner = _inspector_focus_aux_banner(consumer, focus_param, focus_slot)
+    else:
+        render_node = consumer
+
+    label_value = render_node.label or render_node.class_name
     header_children: List[Any] = [
-        html.H5(node.class_name, className="card-title mb-3"),
+        html.H5(render_node.class_name, className="card-title mb-3"),
         dbc.InputGroup(
             [
                 dbc.InputGroupText("Label"),
@@ -699,8 +1187,13 @@ def build_inspector(
         ),
     ]
 
-    if node.class_name == PIPELINE_CLASS_NAME:
+    # Prepended only when an aux-focus override is active; empty otherwise so
+    # the canvas-consumer rendering path stays unchanged.
+    banner_prefix: List[Any] = [banner] if banner is not None else []
+
+    if render_node.class_name == PIPELINE_CLASS_NAME:
         body_children: List[Any] = [
+            *banner_prefix,
             *header_children,
             html.Div(
                 [
@@ -733,24 +1226,27 @@ def build_inspector(
             id=ids.INSPECTOR_CONTAINER,
         )
 
-    op_info = registry.get(node.class_name)
+    op_info = registry.get(render_node.class_name)
     if op_info is None:
         form: Any = html.Div(
-            f"Unknown operation '{node.class_name}'. "
+            f"Unknown operation '{render_node.class_name}'. "
             "It may have been removed from the registry.",
             className="text-warning",
         )
     else:
+        # The popover renderer owns aux-port slot management now; the
+        # inspector form just renders the focused node's own parameters.
         form = html.Div(
             param_form(
                 op_info,
-                current_values=node.params,
-                form_id_prefix=node.node_id,
+                current_values=render_node.params,
+                form_id_prefix=render_node.node_id,
             ),
             id=ids.INSPECTOR_PARAM_FORM,
         )
 
     body_children = [
+        *banner_prefix,
         *header_children,
         # Documentation section is collapsed by default; emits hidden
         # placeholders carrying the same ids when ``op_info.docstring`` is
@@ -773,6 +1269,373 @@ def build_inspector(
         dbc.Card(dbc.CardBody(body_children), className="h-100"),
         id=ids.INSPECTOR_CONTAINER,
     )
+
+
+# ---------------------------------------------------------------------------
+# Popover content renderer
+# ---------------------------------------------------------------------------
+
+
+#: Pattern-match ``type`` key for popover action buttons. Wave 4
+#: callbacks subscribe via ``Input({"type": _POPOVER_ACTION_TYPE,
+#: "action": ALL, ...}, "n_clicks")``. Defined here (rather than in
+#: ``_ids.py``) because the popover renderer is the sole producer; the
+#: clientside ``aux_popover.js`` glue serialises clicks into
+#: :data:`PORT_CLICK_STORE` and :data:`POPOVER_ACTION_STORE`, which is
+#: where Wave 4 picks the dispatch up.
+_POPOVER_ACTION_TYPE: str = "popover-action"
+
+
+def _popover_action_id(
+    *,
+    action: str,
+    target_node_id: str,
+    param: str,
+    slot: int,
+    class_name: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Build the pattern-matching id for a popover action button.
+
+    Args:
+        action: One of ``"edit"``, ``"drill"``, ``"disconnect"``,
+            ``"add_slot"``, ``"pick_class"``.
+        target_node_id: Consumer node id the popover is anchored to.
+        param: Name of the consumer's op-typed parameter the popover
+            edits.
+        slot: Slot index inside that param's slot list. List-typed
+            params use the explicit slot; scalar params always use ``0``;
+            "add_slot" uses ``-1`` as a synthetic sentinel because no
+            slot exists yet.
+        class_name: Class to wire (``"pick_class"`` only); ``None``
+            otherwise.
+
+    Returns:
+        Dict pattern-matching id keyed for Wave 4 callbacks.
+    """
+
+    return {
+        "type": _POPOVER_ACTION_TYPE,
+        "action": action,
+        "target_node_id": target_node_id,
+        "param": param,
+        "slot": slot,
+        "class_name": class_name or "",
+    }
+
+
+def _popover_header(param: str, *, consumer_label: str) -> html.Div:
+    """Render the popover header row (param-name title + close button).
+
+    Args:
+        param: Name of the consumer's op-typed parameter (e.g.
+            ``"inoculum_detector"``).
+        consumer_label: Human-readable consumer label for the title
+            (e.g. ``"FilamentousFungiDetector"``).
+
+    Returns:
+        Header :class:`html.Div` matching the ``.cy-popover-header``
+        rule in ``builder.css``.
+    """
+
+    return html.Div(
+        [
+            html.Span(
+                f"{consumer_label}.{param}",
+                className="cy-popover-header__title",
+            ),
+        ],
+        className="cy-popover-header",
+    )
+
+
+def _popover_palette(
+    compatible: List[str],
+    *,
+    target_node_id: str,
+    param: str,
+    slot: int,
+) -> html.Div:
+    """Render the class-pick palette grid for an empty popover slot.
+
+    Args:
+        compatible: List of class names accepted by the port's type
+            contract (already filtered via
+            :func:`_compatible_classes_for_port`).
+        target_node_id: Consumer node id the popover is anchored to.
+        param: Consumer's op-typed param name.
+        slot: Slot index inside ``param``'s slot list.
+
+    Returns:
+        A :class:`html.Div` with one button per compatible class,
+        matching the ``.cy-popover-palette`` rule in ``builder.css``.
+    """
+
+    buttons = [
+        dbc.Button(
+            cls_name,
+            id=_popover_action_id(
+                action="pick_class",
+                target_node_id=target_node_id,
+                param=param,
+                slot=slot,
+                class_name=cls_name,
+            ),
+            className="cy-popover-palette-button",
+            n_clicks=0,
+        )
+        for cls_name in compatible
+    ]
+    return html.Div(buttons, className="cy-popover-palette")
+
+
+def _popover_wired_row(
+    aux_node: StepNode,
+    *,
+    target_node_id: str,
+    param: str,
+    slot: int,
+) -> html.Div:
+    """Render the wired-aux row (class name + Edit / Drill / Disconnect).
+
+    Args:
+        aux_node: Embedded aux :class:`StepNode` at
+            ``consumer.aux_ports[param][slot]``.
+        target_node_id: Consumer node id (anchor for the action ids).
+        param: Consumer's op-typed param name.
+        slot: Slot index inside ``param``'s slot list.
+
+    Returns:
+        A :class:`html.Div` matching the ``.cy-popover-wired-row`` rule
+        in ``builder.css``.
+    """
+
+    cls_label = aux_node.label or aux_node.class_name
+    actions = [
+        dbc.Button(
+            "✎ Edit",
+            id=_popover_action_id(
+                action="edit",
+                target_node_id=target_node_id,
+                param=param,
+                slot=slot,
+            ),
+            color="secondary",
+            outline=True,
+            size="sm",
+            n_clicks=0,
+        ),
+        dbc.Button(
+            "Drill in →",
+            id=_popover_action_id(
+                action="drill",
+                target_node_id=target_node_id,
+                param=param,
+                slot=slot,
+            ),
+            color="secondary",
+            outline=True,
+            size="sm",
+            n_clicks=0,
+        ),
+        dbc.Button(
+            "⨯ Disconnect",
+            id=_popover_action_id(
+                action="disconnect",
+                target_node_id=target_node_id,
+                param=param,
+                slot=slot,
+            ),
+            color="danger",
+            outline=True,
+            size="sm",
+            n_clicks=0,
+        ),
+    ]
+    return html.Div(
+        [
+            html.Span(cls_label, className="cy-popover-wired-row__class-name"),
+            html.Div(actions, className="cy-popover-wired-row__actions"),
+        ],
+        className="cy-popover-wired-row",
+    )
+
+
+def _popover_slot_row(
+    aux_node: Optional[StepNode],
+    *,
+    compatible: List[str],
+    target_node_id: str,
+    param: str,
+    slot: int,
+) -> html.Div:
+    """Render one row inside a list-typed popover (wired or empty).
+
+    Each row is prefixed by a slot-index label and ends with either the
+    wired-row contents (when ``aux_node`` is non-None) or an inline
+    class palette (when empty).
+
+    Args:
+        aux_node: Embedded aux at this slot, or ``None`` if empty.
+        compatible: Compatible-class list for empty rows.
+        target_node_id: Consumer node id.
+        param: Consumer's op-typed param name.
+        slot: Slot index this row represents.
+
+    Returns:
+        A :class:`html.Div` matching ``.cy-popover-slot-row`` in
+        ``builder.css``.
+    """
+
+    index_label = html.Span(
+        f"slot {slot}", className="cy-popover-slot-row__index"
+    )
+    if aux_node is None:
+        body: Any = _popover_palette(
+            compatible,
+            target_node_id=target_node_id,
+            param=param,
+            slot=slot,
+        )
+    else:
+        body = _popover_wired_row(
+            aux_node,
+            target_node_id=target_node_id,
+            param=param,
+            slot=slot,
+        )
+    return html.Div([index_label, body], className="cy-popover-slot-row")
+
+
+def build_popover_contents(
+    state: BuilderState, registry: "OperationRegistry"
+) -> List[Any]:
+    """Build the children list for the canvas-anchored popover.
+
+    Reads :attr:`BuilderState.inspector_focus_aux` to decide which port
+    the popover is anchored to (the ``aux_popover.js`` clientside glue
+    keeps the focus override in sync with the active port click). The
+    contents are picked based on the param's cardinality and slot
+    occupancy:
+
+    * **Empty scalar port** (one slot, slot value is ``None``):
+      header + class palette.
+    * **Wired scalar port** (one slot, slot value is a StepNode):
+      header + wired row (class label + Edit / Drill / Disconnect).
+    * **List port** (zero or more slots): header + one slot row per
+      slot (each empty or wired with per-slot actions) + ``+ Add slot``
+      button.
+
+    The popover hides itself entirely when ``state.inspector_focus_aux``
+    is ``None`` — Wave 4 callbacks check the returned list and toggle
+    the popover container's ``display`` accordingly.
+
+    Args:
+        state: Full :class:`BuilderState`.
+        registry: Operation registry consulted for parameter metadata
+            and the compatibility filter.
+
+    Returns:
+        Ordered list of components for the popover container's
+        ``children``. Empty list when the popover should be hidden.
+    """
+
+    focus = state.inspector_focus_aux
+    if focus is None:
+        return []
+
+    target_node_id = focus.get("target_node_id")
+    param = focus.get("param")
+    if not isinstance(target_node_id, str) or not isinstance(param, str):
+        return []
+
+    try:
+        scope = current_scope(state)
+    except KeyError:
+        return []
+
+    consumer = next(
+        (n for n in scope.nodes if n.node_id == target_node_id), None
+    )
+    if consumer is None:
+        return []
+
+    op_info = registry.get(consumer.class_name)
+    if op_info is None:
+        return []
+
+    param_info = op_info.parameters.get(param)
+    if param_info is None:
+        return []
+
+    compatible = _compatible_classes_for_port(param_info, registry)
+    consumer_label = consumer.label or consumer.class_name
+    header = _popover_header(param, consumer_label=consumer_label)
+
+    children: List[Any] = [header]
+
+    if param_info.is_list:
+        # List-typed port: render every existing slot as its own row,
+        # plus an "+ Add slot" affordance at the bottom. We use
+        # ``slot=-1`` for the add-slot button so its id is distinct from
+        # any real slot's pick_class id (real slots are 0..len-1).
+        slots = consumer.aux_ports.get(param) or []
+        if not slots:
+            # Surfacing the add-slot button is the only way to bootstrap
+            # an entirely-empty list-typed port — there are no slot rows
+            # yet to host a palette.
+            children.append(
+                html.Div(
+                    "No slots yet — add one to start wiring.",
+                    className="text-muted small mb-2",
+                )
+            )
+        for slot_idx, slot_value in enumerate(slots):
+            children.append(
+                _popover_slot_row(
+                    slot_value,
+                    compatible=compatible,
+                    target_node_id=target_node_id,
+                    param=param,
+                    slot=slot_idx,
+                )
+            )
+        children.append(
+            dbc.Button(
+                "+ Add slot",
+                id=_popover_action_id(
+                    action="add_slot",
+                    target_node_id=target_node_id,
+                    param=param,
+                    slot=-1,
+                ),
+                className="cy-popover-add-slot",
+                n_clicks=0,
+            )
+        )
+    else:
+        # Scalar port: a length-1 list, so a single slot at index 0.
+        slots = consumer.aux_ports.get(param) or [None]
+        slot_value = slots[0]
+        if slot_value is None:
+            children.append(
+                _popover_palette(
+                    compatible,
+                    target_node_id=target_node_id,
+                    param=param,
+                    slot=0,
+                )
+            )
+        else:
+            children.append(
+                _popover_wired_row(
+                    slot_value,
+                    target_node_id=target_node_id,
+                    param=param,
+                    slot=0,
+                )
+            )
+
+    return children
 
 
 # ---------------------------------------------------------------------------
@@ -1213,6 +2076,25 @@ def build_app_layout(
                 id=ids.STORE_IMAGE_PATH,
                 data="",
             ),
+            # Canvas-anchored popover event channels (Wave 4 callbacks read
+            # these). ``aux_popover.js`` writes ``PORT_CLICK_STORE`` when the
+            # user taps an aux port; ``POPOVER_DISMISS_STORE`` when the
+            # popover should dismiss (click-outside / Escape / canvas pan);
+            # and ``POPOVER_ACTION_STORE`` when an action button inside the
+            # popover fires. Each store carries a monotonic timestamp so
+            # repeat events on the same port still trigger change detection.
+            dcc.Store(
+                id=ids.PORT_CLICK_STORE,
+                data=None,
+            ),
+            dcc.Store(
+                id=ids.POPOVER_DISMISS_STORE,
+                data=None,
+            ),
+            dcc.Store(
+                id=ids.POPOVER_ACTION_STORE,
+                data=None,
+            ),
         ]
     )
 
@@ -1310,8 +2192,12 @@ def build_app_layout(
 __all__ = [
     "build_palette",
     "build_canvas",
+    "build_canvas_elements",
+    "build_canvas_section",
     "build_inspector",
     "build_breadcrumb",
     "build_footer",
     "build_app_layout",
+    "build_popover_contents",
+    "INSPECTOR_FOCUS_AUX_BANNER_ID",
 ]
