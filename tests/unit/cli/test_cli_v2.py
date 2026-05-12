@@ -1689,11 +1689,16 @@ class TestAggregateMeasurements:
         )
 
         assert result is not None
+        # Master archive stays clean: no external metadata columns join here.
         master = pd.read_csv(result)
-        assert "treatment" in master.columns
+        assert "treatment" not in master.columns
         assert len(master) == 3
-        assert list(master.loc[master["plate"] == "A", "treatment"].unique()) == ["control"]
-        assert list(master.loc[master["plate"] == "B", "treatment"].unique()) == ["drug_X"]
+        # Mirror carries the joined external metadata.
+        mirror = pd.read_csv(temp_output_dir / "measurements.csv")
+        assert "treatment" in mirror.columns
+        assert len(mirror) == 3
+        assert list(mirror.loc[mirror["plate"] == "A", "treatment"].unique()) == ["control"]
+        assert list(mirror.loc[mirror["plate"] == "B", "treatment"].unique()) == ["drug_X"]
 
     def test_aggregate_measurements_metadata_no_common_columns(self, temp_output_dir):
         """No shared columns produces warning, master CSV unchanged."""
@@ -1750,12 +1755,16 @@ class TestAggregateMeasurements:
         )
 
         assert result is not None
+        # Master archive is unfiltered: all source rows preserved, no metadata.
         master = pd.read_csv(result)
-        # Plate C dropped — no matching metadata
-        assert len(master) == 2
-        assert "treatment" in master.columns
-        assert set(master["plate"].tolist()) == {"A", "B"}
-        assert master["treatment"].notna().all()
+        assert "treatment" not in master.columns
+        assert set(master["plate"].tolist()) == {"A", "B", "C"}
+        # Mirror reflects the inner join: plate C dropped, treatment present.
+        mirror = pd.read_csv(temp_output_dir / "measurements.csv")
+        assert len(mirror) == 2
+        assert "treatment" in mirror.columns
+        assert set(mirror["plate"].tolist()) == {"A", "B"}
+        assert mirror["treatment"].notna().all()
 
     def test_aggregate_measurements_metadata_duplicate_keys_warns(self, temp_output_dir, caplog):
         """Duplicate keys in metadata CSV inflate rows and produce a warning."""
@@ -1783,9 +1792,13 @@ class TestAggregateMeasurements:
             )
 
         assert result is not None
+        # Master archive stays at the original row count (no join applied).
         master = pd.read_csv(result)
-        # Row count inflated from 1 to 2
-        assert len(master) == 2
+        assert len(master) == 1
+        assert "treatment" not in master.columns
+        # Mirror reflects the duplicate-key inflation.
+        mirror = pd.read_csv(temp_output_dir / "measurements.csv")
+        assert len(mirror) == 2
         assert "duplicate keys" in caplog.text
 
     def test_aggregate_measurements_metadata_dtype_mismatch(self, temp_output_dir):
@@ -1814,11 +1827,15 @@ class TestAggregateMeasurements:
         )
 
         assert result is not None
+        # Master archive stays clean — no metadata-join side effects.
         master = pd.read_csv(result)
         assert len(master) == 2
-        assert "treatment" in master.columns
-        # Both rows should match (no NaN in treatment)
-        assert master["treatment"].notna().all()
+        assert "treatment" not in master.columns
+        # Mirror carries the join even across int/str dtype mismatch on the key.
+        mirror = pd.read_csv(temp_output_dir / "measurements.csv")
+        assert len(mirror) == 2
+        assert "treatment" in mirror.columns
+        assert mirror["treatment"].notna().all()
 
     def test_aggregate_measurements_parquet_with_duckdb(self, temp_output_dir):
         """Standard .parquet files aggregate correctly via DuckDB."""

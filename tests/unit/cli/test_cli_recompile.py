@@ -120,14 +120,23 @@ class TestRecompileCliRouting:
 class TestHandleRecompile:
     """``_handle_recompile`` uses the finalizer analysis-plugin pattern."""
 
-    def test_dispatches_run_analysis_plugins_from_master_csv(
+    def test_dispatches_run_analysis_plugins_from_mirror_parquet(
         self, tmp_path: Path
     ) -> None:
+        import polars as pl
+
         output_dir = _make_fake_results(tmp_path)
 
         def _fake_aggregate(**_kwargs: object) -> Path:
+            # ``aggregate_measurements`` writes both the clean master archive
+            # and the post-applied mirror (via ``finalize_post_master_outputs``).
+            # Analysis plugins consume the mirror so they see the post-applied
+            # frame plus any joined external metadata.
             master = output_dir / "master_measurements.csv"
             master.write_text("col_a\n1\n", encoding="utf-8")
+            pl.DataFrame({"col_a": [1], "Metadata_Strain": ["WT"]}).write_parquet(
+                output_dir / "measurements.parquet"
+            )
             return master
 
         with (
@@ -166,6 +175,9 @@ class TestHandleRecompile:
         assert merged_df is not None
         assert merged_df.height == 1
         assert "col_a" in merged_df.columns
+        # Plugins must see metadata-joined columns from the mirror, not
+        # the clean master.
+        assert "Metadata_Strain" in merged_df.columns
 
         mock_manifest.assert_called_once()
         mock_dashboard.assert_called_once()

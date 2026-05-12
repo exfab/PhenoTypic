@@ -183,14 +183,21 @@ never derive `Literal` from runtime expressions.
 - **`num_objects` is on `Image`**, not on the `objmap` accessor: use
   `image.num_objects`.
 - **Master vs. mirror outputs:** `master_measurements.{csv,parquet}` is a
-  **clean, pre-post archive** of what per-image runs measured;
-  `measurements.{csv,parquet}` is the **post-applied mirror** the GUI
-  viewer reads/curates. Per-image parquets in `results/<ds>/measurements/`
-  are also clean — the CLI calls `pipeline.measure(image, apply_post=False)`
-  on the per-image path. Post is applied once at the end of aggregation
-  against the merged master, and the post-applied frame is what
-  `analysis.{csv,parquet}` and `measurements_by_feature/<feature>.{csv,
-  parquet}` are derived from — only the master archive stays clean.
+  **clean, pre-post, metadata-free archive** of what per-image runs
+  measured; `measurements.{csv,parquet}` is the **post-applied mirror**
+  the GUI viewer reads/curates. Per-image parquets in
+  `results/<ds>/measurements/` are also clean — the CLI calls
+  `pipeline.measure(image, apply_post=False)` on the per-image path.
+  Post is applied once at the end of aggregation against the merged
+  master, and the post-applied frame is what `analysis.{csv,parquet}`
+  and `measurements_by_feature/<feature>.{csv,parquet}` are derived
+  from. The external `--metadata` CSV inner-join also lands on the
+  post-applied frame (inside `finalize_post_master_outputs`), so the
+  mirror, per-feature splits, and `analysis.{csv,parquet}` carry the
+  metadata columns while the master archive stays both post-free and
+  metadata-free. Code paths that need to feed a frame to analysis
+  plugins or dashboards should read `measurements.parquet`, not
+  `master_measurements.*`.
 - **Finalize via `finalize_post_master_outputs` for FINAL master writes:**
   any code path that writes `master_measurements.{csv,parquet}` *as the
   run's final output* must immediately call

@@ -270,7 +270,7 @@ def _run_finalizer_task(output_dir: Path, task: dict[str, Any]) -> None:
             f"{len(failed_measurements)} measurement shard task(s) failed"
         )
 
-    merged_df = _write_master_outputs_from_shards(output_dir, task)
+    merged_df = _write_master_outputs_from_shards(output_dir)
     _run_post_master_steps(output_dir, progress_dir, task, merged_df)
 
 
@@ -313,13 +313,11 @@ def _read_expected_non_finalizer_statuses(
     return statuses
 
 
-def _write_master_outputs_from_shards(
-    output_dir: Path, task: dict[str, Any]
-) -> Any | None:
+def _write_master_outputs_from_shards(output_dir: Path) -> Any | None:
     """Concatenate shard Parquets and write master CSV/Parquet outputs."""
     import polars as pl
 
-    from ._cli_output_manager import _atomic_write, join_metadata
+    from ._cli_output_manager import _atomic_write
 
     shard_dir = output_dir / DIR_PROGRESS / DIR_RECOMPILE / DIR_RECOMPILE_SHARDS
     shard_files = sorted(shard_dir.glob("shard_*.parquet"))
@@ -329,15 +327,10 @@ def _write_master_outputs_from_shards(
     frames = [pl.read_parquet(path) for path in shard_files]
     master_df = pl.concat(frames, how="diagonal_relaxed")
 
-    metadata_csv_str = task.get(JobMetadataKey.METADATA_CSV)
-    if metadata_csv_str:
-        try:
-            master_df = join_metadata(master_df, Path(str(metadata_csv_str)))
-        except Exception as exc:
-            logger.warning(
-                "Failed to join metadata CSV during recompile finalization: %s",
-                exc,
-            )
+    # External metadata join is applied to the mirror in
+    # ``finalize_post_master_outputs`` (via ``_run_post_master_steps``), not
+    # to the master archive. The master stays a clean, op-free record of
+    # what the per-image workers measured.
 
     try:
         _atomic_write(output_dir / MASTER_MEASUREMENTS_CSV, master_df.write_csv)
@@ -383,14 +376,19 @@ def _run_post_master_steps(
     plugin_df: Any | None = merged_df
     if merged_df is not None:
         # Single canonical post-master finalize: applies post to a copy of
-        # the clean master, seeds ``measurements.{csv,parquet}`` with the
-        # post-applied frame, persists ``pipeline.json``, emits analysis,
-        # and writes per-feature splits — same path the forward CLI takes.
-        # Reuse the returned post-applied frame for analysis-plugin
-        # dispatch so plugins see the same data the analysis chain and
-        # the GUI viewer see.
+        # the clean master, joins the external metadata CSV (when given)
+        # onto the post-applied frame, seeds ``measurements.{csv,parquet}``,
+        # persists ``pipeline.json``, emits analysis, and writes per-feature
+        # splits — same path the forward CLI takes. Reuse the returned
+        # post-applied (and metadata-joined) frame for analysis-plugin
+        # dispatch so plugins see the same data the analysis chain and the
+        # GUI viewer see.
         pipeline = _load_pipeline_from_output_dir(output_dir)
-        plugin_df = finalize_post_master_outputs(output_dir, merged_df, pipeline)
+        metadata_csv_str = task.get(JobMetadataKey.METADATA_CSV)
+        metadata_csv = Path(str(metadata_csv_str)) if metadata_csv_str else None
+        plugin_df = finalize_post_master_outputs(
+            output_dir, merged_df, pipeline, metadata_csv=metadata_csv
+        )
 
     try:
         _run_analysis_plugins(output_dir, progress_dir, plugin_df)
