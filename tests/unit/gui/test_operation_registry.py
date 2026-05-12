@@ -195,12 +195,11 @@ class TestPointPickerMarker:
         assert blur.point_picker_param is None
 
     def test_threshold_based_manual_detector_is_not_pickable(self, registry):
-        """ManualDetector takes a scalar threshold, not points — not flagged."""
-        man = registry.get("ManualDetector")
+        """UserThreshold takes a scalar threshold, not points — not flagged."""
+        man = registry.get("UserThreshold")
         assert man is not None
         assert man.is_point_pickable is False
         assert man.point_picker_param is None
-
 
 
 class TestColumnRefDetection:

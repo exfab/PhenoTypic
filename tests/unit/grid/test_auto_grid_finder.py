@@ -268,19 +268,128 @@ class TestFitAxisEdges:
         assert np.all(actual_diffs > 0)
         np.testing.assert_allclose(actual_diffs, expected_pitch, atol=1.5)
 
-    def test_symmetry_anchoring(self):
-        """When detected span < expected, grid should be centered in image."""
-        finder = self._make_finder()
-        # Only 4 of 8 expected rows detected, clustered in center
-        pitch = 25.0
-        row_centers = [75.0 + pitch * i for i in range(4)]
-        col_centers = list(range(4))
+    def test_span_within_tolerance_no_anchor(self):
+        """One entirely-missing edge cell (n_missing == 1) is within _SPAN_TOLERANCE.
+
+        No ``[span-coverage-*]`` warning should fire; the fitted offset
+        flows through unchanged.
+        """
+        finder = AutoGridFinder(nrows=12, ncols=12)
+        # 11 of 12 expected cells detected, missing the last one.
+        # pitch=100, offset=50; cells at 50, 150, ..., 1050.
+        row_centers = [50.0 + 100.0 * i for i in range(11)]
+        col_centers = list(range(11))
         table = _make_info_table(row_centers, col_centers)
-        edges = finder._fit_axis_edges(table, axis=0, n_expected=8, image_dim=300)
-        assert len(edges) == 9
-        # Grid should be roughly centered
-        grid_center = (edges[0] + edges[-1]) / 2
-        assert abs(grid_center - 150) < 40
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            edges = finder._fit_axis_edges(
+                table, axis=0, n_expected=12, image_dim=1200,
+            )
+        assert len(edges) == 13
+        span_warnings = [
+            x for x in w if "span-coverage" in str(x.message)
+        ]
+        assert len(span_warnings) == 0, (
+            f"Expected no span-coverage warning, got: "
+            f"{[str(x.message) for x in span_warnings]}"
+        )
+
+    def test_span_coverage_low_anchor_keeps_fit(self):
+        """Direct unit test of [span-coverage-low] branch.
+
+        After moving the iterative seed to span-based pitch
+        (:meth:`_estimate_pitch` + :meth:`_choose_seed_anchor`), the
+        fit places ``c_min`` at the predicted cell-0 center *and*
+        ``c_max`` at the predicted cell-(n-1) center by construction
+        — so the one-sided low/high anchor branches are unreachable
+        through ``_fit_axis_edges`` for in-distribution inputs. They
+        remain valid defensive code paths for post-OLS drift, so we
+        test the low branch directly: pass a synthetic fit where
+        ``c_min`` lines up with predicted cell-0 but ``c_max`` is far
+        from predicted cell-(n-1).
+        """
+        centers = np.array([50.0, 150.0, 250.0, 350.0, 450.0, 550.0])
+        pitch = 100.0
+        offset = 50.0  # predicted cell-0 at 50; predicted cell-11 at 1150
+        span = 6
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            new_offset = AutoGridFinder._resolve_span_anchor(
+                centers, pitch, offset, n_expected=12, span=span,
+                axis_label="rows", span_word="row",
+            )
+        assert new_offset == offset  # fit preserved (Option (i))
+        msgs = [str(x.message) for x in w]
+        low_count = sum("[span-coverage-low]" in m for m in msgs)
+        other_count = sum(
+            ("[span-coverage-high]" in m or "[span-coverage-symmetric]" in m)
+            for m in msgs
+        )
+        assert low_count == 1, f"Expected 1 low-anchor warning, got: {msgs}"
+        assert other_count == 0, f"Unexpected other span warning: {msgs}"
+
+    def test_span_coverage_high_anchor_keeps_fit(self):
+        """Direct unit test of [span-coverage-high] branch.
+
+        Mirror of :meth:`test_span_coverage_low_anchor_keeps_fit`: a
+        synthetic fit where ``c_max`` aligns with predicted cell-(n-1)
+        but ``c_min`` is far from predicted cell-0.
+        """
+        centers = np.array([650.0, 750.0, 850.0, 950.0, 1050.0, 1150.0])
+        pitch = 100.0
+        offset = 50.0  # predicted cell-0 at 50; predicted cell-11 at 1150
+        span = 6
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            new_offset = AutoGridFinder._resolve_span_anchor(
+                centers, pitch, offset, n_expected=12, span=span,
+                axis_label="rows", span_word="row",
+            )
+        assert new_offset == offset
+        msgs = [str(x.message) for x in w]
+        high_count = sum("[span-coverage-high]" in m for m in msgs)
+        other_count = sum(
+            ("[span-coverage-low]" in m or "[span-coverage-symmetric]" in m)
+            for m in msgs
+        )
+        assert high_count == 1, f"Expected 1 high-anchor warning, got: {msgs}"
+        assert other_count == 0, f"Unexpected other span warning: {msgs}"
+
+    def test_span_coverage_symmetric_keeps_fit(self):
+        """Direct unit test of [span-coverage-symmetric] branch.
+
+        After the iterative-seed refactor (median-diff pitch +
+        ``_choose_seed_anchor``), the iterative fit virtually always
+        lands with either ``c_min`` aligning at predicted cell-0 or
+        ``c_max`` aligning at predicted cell-(n-1), so reaching the
+        "neither end aligned" branch through ``_fit_axis_edges`` with
+        normal inputs is no longer practical. The branch is still
+        defensible code for pathological post-OLS drift, so we test it
+        directly via :meth:`AutoGridFinder._resolve_span_anchor` with
+        synthetic pitch/offset that put both predicted boundary cells
+        more than ``pitch / 2`` away from the centroid extremes.
+        """
+        centers = np.array(
+            [400.0, 500.0, 600.0, 700.0, 800.0, 900.0, 1000.0],
+        )
+        pitch = 100.0
+        offset = 0.0  # predicted cell-0 at 0, cell-11 at 1100 — both far
+        span = 7
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            new_offset = AutoGridFinder._resolve_span_anchor(
+                centers, pitch, offset, n_expected=12, span=span,
+                axis_label="rows", span_word="row",
+            )
+        assert new_offset == offset  # fit preserved (Option (i))
+        msgs = [str(x.message) for x in w]
+        sym_count = sum("[span-coverage-symmetric]" in m for m in msgs)
+        other_count = sum(
+            ("[span-coverage-low]" in m or "[span-coverage-high]" in m)
+            for m in msgs
+        )
+        assert sym_count == 1, f"Expected 1 symmetric warning, got: {msgs}"
+        assert other_count == 0, f"Unexpected other span warning: {msgs}"
 
     def test_empty_table_fallback(self):
         finder = self._make_finder()

@@ -17,7 +17,7 @@ class ManualPointDetector(ObjectDetector, PointPickerMixin, FootprintMixin):
 
     Place a morphological footprint at each explicitly provided ``(y, x)``
     centre coordinate to produce ``objmask`` and ``objmap``. Unlike
-    :class:`ManualGridDetector`, which extrapolates a regular grid from one
+    :class:`ManualGridPointDetector`, which extrapolates a regular grid from one
     or two anchor points, this class requires an explicit list of *every*
     colony centre. This makes it suitable for plates without regular
     geometry, sparse or irregular layouts, and manual annotation workflows
@@ -56,7 +56,7 @@ class ManualPointDetector(ObjectDetector, PointPickerMixin, FootprintMixin):
           automatic detection.
 
     Consider Also:
-        * :class:`ManualGridDetector` when colonies lie on a regular grid
+        * :class:`ManualGridPointDetector` when colonies lie on a regular grid
           and only one or two anchor coordinates are needed.
         * :class:`RoundPeaksDetector` when colony centres can be inferred
           automatically from intensity profiles.
@@ -71,10 +71,10 @@ class ManualPointDetector(ObjectDetector, PointPickerMixin, FootprintMixin):
     """
 
     def __init__(
-        self,
-        centers: np.ndarray | list | None = None,
-        shape: Literal["square", "diamond", "disk"] = "disk",
-        width: int = 15,
+            self,
+            centers: np.ndarray | list | None = None,
+            shape: Literal["square", "diamond", "disk"] = "disk",
+            width: int = 15,
     ):
         super().__init__()
         self.centers = centers
@@ -95,8 +95,8 @@ class ManualPointDetector(ObjectDetector, PointPickerMixin, FootprintMixin):
 
         for idx, (cy, cx) in enumerate(self.centers, start=1):
             self._stamp_footprint(
-                mask, labeled, fp_mask,
-                int(round(cy)), int(round(cx)), idx,
+                    mask, labeled, fp_mask,
+                    int(round(cy)), int(round(cx)), idx,
             )
 
         image.objmask[:] = mask

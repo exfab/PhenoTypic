@@ -9,7 +9,7 @@ from skimage.segmentation import clear_border
 from ..abc_ import ThresholdDetector
 
 
-class ManualDetector(ThresholdDetector):
+class UserThreshold(ThresholdDetector):
     """Detect colonies by applying a user-specified intensity threshold.
 
     Apply a fixed intensity cutoff to the plate detection matrix, producing a
@@ -122,4 +122,4 @@ class ManualDetector(ThresholdDetector):
 
 
 # Set the docstring so that it appears in the sphinx documentation
-ManualDetector.apply.__doc__ = ManualDetector._operate.__doc__
+UserThreshold.apply.__doc__ = UserThreshold._operate.__doc__

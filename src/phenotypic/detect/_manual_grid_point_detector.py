@@ -11,7 +11,7 @@ from phenotypic.abc_ import GridObjectDetector
 from phenotypic.tools_.mixin._footprint_mixin import FootprintMixin
 
 
-class ManualGridDetector(GridObjectDetector, FootprintMixin):
+class ManualGridPointDetector(GridObjectDetector, FootprintMixin):
     """Detect colonies by stamping footprint masks at evenly-spaced grid positions derived from reference coordinates.
 
     Compute a regular grid of colony positions from one or two user-supplied
@@ -87,11 +87,11 @@ class ManualGridDetector(GridObjectDetector, FootprintMixin):
     """
 
     def __init__(
-        self,
-        coord1: tuple[int, int] = (0, 0),
-        coord2: tuple[int, int] | None = None,
-        shape: Literal["square", "diamond", "disk"] = "disk",
-        width: int = 15,
+            self,
+            coord1: tuple[int, int] = (0, 0),
+            coord2: tuple[int, int] | None = None,
+            shape: Literal["square", "diamond", "disk"] = "disk",
+            width: int = 15,
     ):
         super().__init__()
         self.coord1 = coord1
@@ -104,7 +104,7 @@ class ManualGridDetector(GridObjectDetector, FootprintMixin):
             value = tuple(value)  # type: ignore[arg-type]
         super().__setattr__(name, value)
 
-    def napari(self, image: GridImage) -> ManualGridDetector:
+    def napari(self, image: GridImage) -> ManualGridPointDetector:
         """Interactively pick 1--2 anchor coordinates using a napari viewer.
 
         Opens a blocking napari viewer displaying the plate image layers
@@ -117,7 +117,7 @@ class ManualGridDetector(GridObjectDetector, FootprintMixin):
             image: The GridImage to display for coordinate selection.
 
         Returns:
-            ManualGridDetector: Self, for method chaining.
+            ManualGridPointDetector: Self, for method chaining.
         """
         from phenotypic.tools_.napari_ import PointPickerWidget
 
@@ -154,7 +154,7 @@ class ManualGridDetector(GridObjectDetector, FootprintMixin):
                 cy = int(round(y1 + i * row_spacing))
                 cx = int(round(x1 + j * col_spacing))
                 self._stamp_footprint(
-                    mask, labeled, fp_mask, cy, cx, i * ncols + j + 1,
+                        mask, labeled, fp_mask, cy, cx, i * ncols + j + 1,
                 )
 
         image.objmask[:] = mask
@@ -162,4 +162,4 @@ class ManualGridDetector(GridObjectDetector, FootprintMixin):
         return image
 
 
-ManualGridDetector.apply.__doc__ = ManualGridDetector._operate.__doc__
+ManualGridPointDetector.apply.__doc__ = ManualGridPointDetector._operate.__doc__
