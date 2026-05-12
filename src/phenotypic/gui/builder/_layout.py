@@ -495,11 +495,16 @@ def _aux_param_names(
     ]
 
 
-def build_canvas(
+def build_canvas_elements(
     scope: BuilderScope,
     selected_node_id: Optional[str],
-) -> cyto.Cytoscape:
-    """Render the linear chain for *scope* as a cytoscape canvas.
+) -> List[dict]:
+    """Compute the cytoscape ``elements`` list for *scope*.
+
+    Returned list is wired straight to
+    ``Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True)``
+    by every state-mutation callback; the ``Cytoscape`` component itself
+    is mounted once at initial paint (see :func:`build_canvas`).
 
     Each :class:`StepNode` becomes one cytoscape node; consecutive
     main-ribbon nodes are joined by ``image-flow`` edges that route
@@ -531,9 +536,9 @@ def build_canvas(
             ``"selected"`` class so the stylesheet highlights it.
 
     Returns:
-        A :class:`dash_cytoscape.Cytoscape` component populated with
-        elements for *scope*. Layout is ``"preset"`` — Python computes
-        ``(x, y)`` for every element so callbacks can stay layout-agnostic.
+        Ordered list of cytoscape element dicts (nodes + edges + port
+        markers). Layout is ``"preset"`` — Python computes ``(x, y)``
+        for every element so callbacks can stay layout-agnostic.
     """
 
     # Local import so the module's top-level import graph stays Dash-only.
@@ -675,9 +680,29 @@ def build_canvas(
                 }
             )
 
+    return elements
+
+
+def build_canvas(
+    scope: BuilderScope,
+    selected_node_id: Optional[str],
+) -> cyto.Cytoscape:
+    """Mount the ``Cytoscape`` component with initial elements + stable props.
+
+    Only used by :func:`build_canvas_section` at initial paint — every
+    subsequent mutation updates ``Output(ids.CANVAS_CYTOSCAPE, "elements")``
+    directly, so the same cytoscape.js instance persists for the session.
+    Layout / stylesheet / interaction flags are set once here.
+
+    ``_canvas_stylesheet()`` is parameterless and takes no state input;
+    if a future change makes it state-dependent (theme switch, view modes),
+    introduce a dedicated ``Output(ids.CANVAS_CYTOSCAPE, "stylesheet",
+    allow_duplicate=True)`` callback rather than rebuilding this component.
+    """
+
     return cyto.Cytoscape(
         id=ids.CANVAS_CYTOSCAPE,
-        elements=elements,
+        elements=build_canvas_elements(scope, selected_node_id),
         layout={
             "name": "preset",
             "fit": True,
@@ -776,28 +801,23 @@ def build_canvas_section(
     # container would force its child's width to its content size, which
     # is 0 for a cytoscape (no intrinsic content), collapsing the canvas to
     # zero width.
-    # The slot doubles as the swappable ``canvas-cytoscape-wrapper`` whose
-    # ``children`` callbacks rewrite to mount a fresh cytoscape after a state
-    # mutation (avoids fighting dash-cytoscape's prop diffing). The id also
-    # gives ``window.phenoGetCy()`` a reliable anchor for the React fiber walk.
+    # The slot has a stable id so ``window.phenoGetCy()`` can anchor its
+    # React fiber walk to find the live cytoscape.js instance. The
+    # ``Cytoscape`` component is mounted once at initial paint and
+    # persists for the session; mutation callbacks update its
+    # ``elements`` prop directly via
+    # ``Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True)``,
+    # with a clientside callback in ``_callbacks.py`` mirroring the new
+    # list into the live cytoscape via ``cy.json({elements})``.
     #
-    # The popover container is mounted as a sibling of the cytoscape canvas
-    # inside the same relative-positioned wrapper so ``cytoscape-popper``
-    # (via popper.js) can position it relative to the tapped aux port and
-    # pan/zoom along with the canvas. The container is hidden by default;
-    # the ``aux_popover.js`` clientside glue toggles its ``display`` and
-    # writes the structured tap data to :data:`PORT_CLICK_STORE` so server-
-    # side callbacks (Wave 4) can fill in its children based on
+    # The popover container is a SIBLING of the cytoscape slot inside the
+    # same relative-positioned outer Div so ``cytoscape-popper`` (via
+    # popper.js) can position it relative to the tapped aux port and
+    # pan / zoom along with the canvas. The container is hidden by
+    # default; ``aux_popover.js`` toggles its ``display`` on tap and
+    # writes the structured tap data to :data:`PORT_CLICK_STORE` so
+    # server-side callbacks fill in its children based on
     # ``state.inspector_focus_aux`` + the active port click.
-    # Popover container is a SIBLING of the cytoscape wrapper (not a
-    # child). The fan-in callback in ``_callbacks.py`` writes to
-    # ``canvas-cytoscape-wrapper.children`` on every state mutation,
-    # which would wipe the popover container if it lived inside the
-    # wrapper. By placing it as a sibling, it persists in the DOM and
-    # the popover-content callback can write to it independently
-    # without racing the wrapper-replacement. Popper.js positions it
-    # absolutely on screen relative to the tapped aux-port cytoscape
-    # node, so the DOM hierarchy doesn't matter for layout.
     popover_container = html.Div(
         id=ids.POPOVER_CONTAINER,
         className="cy-popover",
@@ -2172,6 +2192,7 @@ def build_app_layout(
 __all__ = [
     "build_palette",
     "build_canvas",
+    "build_canvas_elements",
     "build_canvas_section",
     "build_inspector",
     "build_breadcrumb",

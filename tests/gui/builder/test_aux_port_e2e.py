@@ -46,35 +46,6 @@ from playwright.sync_api import Browser, Page, expect, sync_playwright
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
-#: Marker for tests that exercise drill-in/drill-out and depend on the
-#: cytoscape canvas re-rendering when the breadcrumb scope changes.
-#:
-#: dash-cytoscape 1.0.2 keeps the same ``Cytoscape`` React instance across
-#: ``Output(canvas-cytoscape-wrapper, "children")`` updates when the wrapper
-#: receives a new ``Cytoscape`` component with the same ``id`` — the
-#: cytoscape.js instance persists and its prop-diff path does not always
-#: remove elements that disappear from the new ``elements`` list. The
-#: in-place ``aux-port--wired`` class flip and other same-scope updates
-#: work fine; only full scope swaps (e.g. drilling into an aux's nested
-#: scope) leave stale elements in the live canvas.
-#:
-#: Fixing this requires either (a) wiring ``Output(canvas-cytoscape,
-#: "elements")`` directly across all 8 mutation callbacks, or (b) routing
-#: every scope swap through a clientside callback that calls
-#: ``cy.elements().remove()`` before applying the new elements. Both are
-#: tracked separately. ``strict=False`` flips XPASS to "pass" so the
-#: suite stays green once the underlying re-render is fixed.
-_CANVAS_RESET_ON_SCOPE_SWAP = pytest.mark.xfail(
-    strict=False,
-    reason=(
-        "dash-cytoscape 1.0.2 reuses the cytoscape.js instance across "
-        "wrapper.children updates; full scope swaps (drill in/out) "
-        "leave stale elements in the live canvas. Server-side state "
-        "is correct (verified via direct dispatch unit tests) — only "
-        "the client-side render is stale."
-    ),
-)
-
 
 # ---------------------------------------------------------------------------
 # Boot helpers — reuse the dataset + GUI launcher from the screenshot script.
@@ -505,7 +476,6 @@ def test_wire_via_palette_picks_class(page: Page) -> None:
     assert _aux_port_has_class(page, port_id, "aux-port--wired") is True
 
 
-@_CANVAS_RESET_ON_SCOPE_SWAP
 def test_drill_in_changes_canvas_scope(page: Page) -> None:
     """Clicking ``Drill in →`` dismisses the popover and refocuses canvas.
 
@@ -550,7 +520,6 @@ def test_drill_in_changes_canvas_scope(page: Page) -> None:
     assert _aux_port_count_in_canvas(page) == 0
 
 
-@_CANVAS_RESET_ON_SCOPE_SWAP
 def test_drill_out_via_breadcrumb(page: Page) -> None:
     """Clicking the parent breadcrumb crumb restores the previous scope.
 

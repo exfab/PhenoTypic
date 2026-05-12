@@ -78,7 +78,7 @@ from phenotypic.gui.builder._image_renderer import (
 from phenotypic.gui.builder._layout import (
     INSPECTOR_FOCUS_AUX_BANNER_ID,
     build_breadcrumb,
-    build_canvas,
+    build_canvas_elements,
     build_inspector,
     build_popover_contents,
 )
@@ -114,7 +114,7 @@ STORE_IMAGE_PATH = ids.STORE_IMAGE_PATH
 # once at import time keeps the callback bodies readable and avoids re-emitting
 # the same long literal on every early-return branch.
 #
-# Layout: state, breadcrumb, canvas, inspector, popover, 4 toast outputs.
+# Layout: state, breadcrumb, canvas_elements, inspector, popover, 4 toast outputs.
 _NOOP_FAN_IN: Tuple[Any, ...] = (no_update,) * 10
 
 
@@ -1078,20 +1078,25 @@ def _render_tree_body(
     )
 
 
-def _render_views(state: BuilderState) -> Tuple[Any, Any, Any, Any]:
+def _render_views(state: BuilderState) -> Tuple[Any, List[dict], Any, Any]:
     """Re-render breadcrumb, canvas, inspector, and popover for a given state.
 
     Args:
         state: Live :class:`BuilderState` object.
 
     Returns:
-        Tuple ``(breadcrumb_children, canvas, inspector, popover_contents)``
-        of Dash component subtrees. The breadcrumb callback target is the
-        existing nav's ``children`` property, so returning a full nav here
-        would nest the breadcrumb inside itself on every update. The
-        popover contents are an empty list when no aux focus is active —
-        the popover container's ``display`` is toggled by Wave 4
-        callbacks (see :func:`register_callbacks`).
+        Tuple ``(breadcrumb_children, canvas_elements, inspector,
+        popover_contents)``. ``canvas_elements`` is the raw cytoscape
+        elements list — callers wire it to
+        ``Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True)``
+        so dash-cytoscape applies the diff against the live cytoscape.js
+        instance (mounted once by :func:`build_canvas_section`). The
+        breadcrumb callback target is the existing nav's ``children``
+        property, so returning a full nav here would nest the breadcrumb
+        inside itself on every update. The popover contents are an empty
+        list when no aux focus is active — the popover container's
+        ``display`` is toggled by Wave 4 callbacks (see
+        :func:`register_callbacks`).
     """
 
     registry = _registry()
@@ -1107,11 +1112,11 @@ def _render_views(state: BuilderState) -> Tuple[Any, Any, Any, Any]:
         )
         scope = state.root
 
-    canvas = build_canvas(scope, state.selected_node_id)
+    canvas_elements = build_canvas_elements(scope, state.selected_node_id)
     inspector = build_inspector(state, registry)
     breadcrumb = build_breadcrumb(state).children
     popover_contents = build_popover_contents(state, registry)
-    return breadcrumb, canvas, inspector, popover_contents
+    return breadcrumb, canvas_elements, inspector, popover_contents
 
 
 def _popover_style_for(contents: Any) -> Dict[str, Any]:
@@ -1131,7 +1136,7 @@ def _popover_style_for(contents: Any) -> Dict[str, Any]:
 
 def _state_replacement_payload(
     pipeline: Any,
-) -> Tuple[Dict[str, Any], Any, Any, Any, Any, Dict[str, Any]]:
+) -> Tuple[Dict[str, Any], Any, List[dict], Any, Any, Dict[str, Any]]:
     """Build the full re-render tuple for a freshly-loaded pipeline.
 
     Both the JSON-load and prefab-load callbacks blow away the current
@@ -1140,10 +1145,13 @@ def _state_replacement_payload(
     this helper centralises the conversion + view rendering.
 
     Returns:
-        Tuple ``(state_dict, breadcrumb, canvas, inspector,
-        popover_contents, popover_style)``. The ``popover_style`` mirrors
-        ``_popover_style_for(popover_contents)`` so the container's
-        ``display`` flips in lock-step with the children.
+        Tuple ``(state_dict, breadcrumb, canvas_elements, inspector,
+        popover_contents, popover_style)``. ``canvas_elements`` is the
+        cytoscape elements list applied via
+        ``Output(ids.CANVAS_CYTOSCAPE, "elements")``. The
+        ``popover_style`` mirrors ``_popover_style_for(popover_contents)``
+        so the container's ``display`` flips in lock-step with the
+        children.
     """
 
     scope = from_pipeline(pipeline)
@@ -1153,11 +1161,13 @@ def _state_replacement_payload(
         selected_node_id=None,
         inspector_focus_aux=None,
     )
-    breadcrumb, canvas, inspector, popover_contents = _render_views(new_state)
+    breadcrumb, canvas_elements, inspector, popover_contents = _render_views(
+        new_state
+    )
     return (
         state_to_json(new_state),
         breadcrumb,
-        canvas,
+        canvas_elements,
         inspector,
         popover_contents,
         _popover_style_for(popover_contents),
@@ -1211,7 +1221,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data"),
         Output(ids.BREADCRUMB_CONTAINER, "children"),
-        Output("canvas-cytoscape-wrapper", "children"),
+        Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children"),
         Output(ids.POPOVER_CONTAINER, "children"),
         # ``style`` output keeps display:block/display:none in lock-step
@@ -1325,6 +1335,14 @@ def register_callbacks(app: dash.Dash) -> None:
                         {"class_name": triggered["class_name"]},
                     )
                 elif t_type == "breadcrumb-link":
+                    # Pattern-matched Inputs fire on initial render of newly
+                    # added matching components — e.g. drilling pushes a new
+                    # breadcrumb-link button (depth=0) onto the nav, and Dash
+                    # fires this callback once with n_clicks=0. Without this
+                    # guard, ``breadcrumb_to(depth=0)`` would immediately undo
+                    # the drill by truncating the breadcrumb back to root.
+                    if not ctx.triggered[0]["value"]:
+                        return _NOOP_FAN_IN
                     new_state_dict = _dispatch_state_update(
                         state_data,
                         "breadcrumb_to",
@@ -1446,13 +1464,13 @@ def register_callbacks(app: dash.Dash) -> None:
 
             # --- Render ----------------------------------------------
             new_state = state_from_json(new_state_dict)
-            breadcrumb, canvas, inspector, popover_contents = _render_views(
+            breadcrumb, canvas_elements, inspector, popover_contents = _render_views(
                 new_state
             )
             return (
                 new_state_dict,
                 breadcrumb,
-                canvas,
+                canvas_elements,
                 inspector,
                 popover_contents,
                 _popover_style_for(popover_contents),
@@ -1491,7 +1509,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output("canvas-cytoscape-wrapper", "children", allow_duplicate=True),
+        Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
         Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
@@ -1565,13 +1583,13 @@ def register_callbacks(app: dash.Dash) -> None:
             if new_state_dict == state_data:
                 return noop
             new_state = state_from_json(new_state_dict)
-            breadcrumb, canvas, inspector, popover_contents = _render_views(
+            breadcrumb, canvas_elements, inspector, popover_contents = _render_views(
                 new_state
             )
             return (
                 new_state_dict,
                 breadcrumb,
-                canvas,
+                canvas_elements,
                 inspector,
                 popover_contents,
                 _popover_style_for(popover_contents),
@@ -1618,7 +1636,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output("canvas-cytoscape-wrapper", "children", allow_duplicate=True),
+        Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
         Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
@@ -1683,13 +1701,13 @@ def register_callbacks(app: dash.Dash) -> None:
             }
 
             new_state = state_from_json(new_state_dict)
-            breadcrumb, canvas, inspector, popover_contents = _render_views(
+            breadcrumb, canvas_elements, inspector, popover_contents = _render_views(
                 new_state
             )
             return (
                 new_state_dict,
                 breadcrumb,
-                canvas,
+                canvas_elements,
                 inspector,
                 popover_contents,
                 _popover_style_for(popover_contents),
@@ -1701,7 +1719,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output("canvas-cytoscape-wrapper", "children", allow_duplicate=True),
+        Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
         Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
@@ -1734,13 +1752,13 @@ def register_callbacks(app: dash.Dash) -> None:
                     {"display": "none"},
                 )
             new_state = state_from_json(new_state_dict)
-            breadcrumb, canvas, inspector, popover_contents = _render_views(
+            breadcrumb, canvas_elements, inspector, popover_contents = _render_views(
                 new_state
             )
             return (
                 new_state_dict,
                 breadcrumb,
-                canvas,
+                canvas_elements,
                 inspector,
                 popover_contents,
                 _popover_style_for(popover_contents),
@@ -1752,7 +1770,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output("canvas-cytoscape-wrapper", "children", allow_duplicate=True),
+        Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
         Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
@@ -1866,7 +1884,7 @@ def register_callbacks(app: dash.Dash) -> None:
                 return noop
 
             new_state = state_from_json(new_state_dict)
-            breadcrumb, canvas, inspector, popover_contents = _render_views(
+            breadcrumb, canvas_elements, inspector, popover_contents = _render_views(
                 new_state
             )
             if drill_dismiss:
@@ -1878,7 +1896,7 @@ def register_callbacks(app: dash.Dash) -> None:
             return (
                 new_state_dict,
                 breadcrumb,
-                canvas,
+                canvas_elements,
                 inspector,
                 popover_children,
                 popover_style,
@@ -1905,7 +1923,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output("canvas-cytoscape-wrapper", "children", allow_duplicate=True),
+        Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
         Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
@@ -1930,13 +1948,13 @@ def register_callbacks(app: dash.Dash) -> None:
             if new_state_dict == state_data:
                 return noop
             new_state = state_from_json(new_state_dict)
-            breadcrumb, canvas, inspector, popover_contents = _render_views(
+            breadcrumb, canvas_elements, inspector, popover_contents = _render_views(
                 new_state
             )
             return (
                 new_state_dict,
                 breadcrumb,
-                canvas,
+                canvas_elements,
                 inspector,
                 popover_contents,
                 _popover_style_for(popover_contents),
@@ -2437,7 +2455,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BROWSE_DIR_JSON, "data", allow_duplicate=True),
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output("canvas-cytoscape-wrapper", "children", allow_duplicate=True),
+        Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
         Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
@@ -2465,10 +2483,11 @@ def register_callbacks(app: dash.Dash) -> None:
                 with type :data:`ids.DIR_ENTRY_TYPE_JSON`.
 
         Returns:
-            Eleven-tuple ``(browse_dir, state_data, breadcrumb, canvas,
-            inspector, popover, modal_is_open, toast_is_open, toast_msg,
-            toast_icon, toast_header)``. Directory clicks populate only the
-            first element; file clicks populate elements 2–11.
+            Twelve-tuple ``(browse_dir, state_data, breadcrumb,
+            canvas_elements, inspector, popover, popover_style,
+            modal_is_open, toast_is_open, toast_msg, toast_icon,
+            toast_header)``. Directory clicks populate only the first
+            element; file clicks populate elements 2–12.
         """
         match = _trigger_kind_path(ctx.triggered_id, ids.DIR_ENTRY_TYPE_JSON)
         if match is None:
@@ -2486,7 +2505,7 @@ def register_callbacks(app: dash.Dash) -> None:
                 (
                     state_dict,
                     breadcrumb,
-                    canvas,
+                    canvas_elements,
                     inspector,
                     popover_contents,
                     popover_style,
@@ -2495,7 +2514,7 @@ def register_callbacks(app: dash.Dash) -> None:
                     no_update,
                     state_dict,
                     breadcrumb,
-                    canvas,
+                    canvas_elements,
                     inspector,
                     popover_contents,
                     popover_style,
@@ -2513,7 +2532,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output("canvas-cytoscape-wrapper", "children", allow_duplicate=True),
+        Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
         Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
@@ -2541,9 +2560,9 @@ def register_callbacks(app: dash.Dash) -> None:
             _clicks: Pattern-matched click counts from prefab-card items.
 
         Returns:
-            Ten-tuple ``(state_data, breadcrumb, canvas, inspector, popover,
-            modal_is_open, toast_is_open, toast_msg, toast_icon,
-            toast_header)``.
+            Eleven-tuple ``(state_data, breadcrumb, canvas_elements,
+            inspector, popover, popover_style, modal_is_open,
+            toast_is_open, toast_msg, toast_icon, toast_header)``.
         """
         triggered = ctx.triggered_id
         if not isinstance(triggered, dict) or triggered.get("type") != "prefab-card":
@@ -2561,7 +2580,7 @@ def register_callbacks(app: dash.Dash) -> None:
             (
                 state_dict,
                 breadcrumb,
-                canvas,
+                canvas_elements,
                 inspector,
                 popover_contents,
                 popover_style,
@@ -2569,7 +2588,7 @@ def register_callbacks(app: dash.Dash) -> None:
             return (
                 state_dict,
                 breadcrumb,
-                canvas,
+                canvas_elements,
                 inspector,
                 popover_contents,
                 popover_style,
@@ -2808,6 +2827,42 @@ def register_callbacks(app: dash.Dash) -> None:
         "const z = cy.zoom() / 1.25;"
         " const c = {x: cy.width() / 2, y: cy.height() / 2};"
         " cy.zoom({level: z, renderedPosition: c});",
+    )
+
+    # ----------------------------------------------------------------------
+    # 8b. Force-apply canvas elements via cytoscape.js API on scope swap
+    # ----------------------------------------------------------------------
+    # dash-cytoscape 1.0.2 ``componentDidUpdate`` patches in-place attribute
+    # changes (e.g. ``aux-port--wired`` class flip) but does not reliably
+    # add / remove elements when the ``elements`` prop changes to a list
+    # with different ids — drilling into an aux scope leaves the parent
+    # scope's nodes stranded in the live canvas. When the id set differs
+    # from what cytoscape.js currently holds, mirror the new list via
+    # ``cy.json({elements})`` and re-fit; when the id set is unchanged
+    # (same-scope update such as a wired-class flip), bail out so the
+    # in-place patch path applies and the user's pan/zoom is preserved.
+    app.clientside_callback(
+        """
+        function(elements, prev) {
+            const cy = window.phenoGetCy && window.phenoGetCy();
+            if (!cy || !elements) return window.dash_clientside.no_update;
+            const newIds = elements.map(e => e.data.id).sort().join('|');
+            const liveIds = cy.elements().map(e => e.id()).sort().join('|');
+            if (newIds === liveIds) return window.dash_clientside.no_update;
+            try {
+                cy.json({elements: elements});
+                cy.fit(undefined, 24);
+            } catch (err) {
+                // cy may be mid-mount or disposed; non-fatal.
+                return window.dash_clientside.no_update;
+            }
+            return (prev || 0) + 1;
+        }
+        """,
+        Output(ids.STORE_CANVAS_CONTROL, "data", allow_duplicate=True),
+        Input(ids.CANVAS_CYTOSCAPE, "elements"),
+        State(ids.STORE_CANVAS_CONTROL, "data"),
+        prevent_initial_call=True,
     )
 
     # ----------------------------------------------------------------------
