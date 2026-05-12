@@ -1618,7 +1618,7 @@ which extends ImagePipeline with multiprocessing capabilities:</p>
 <span class="n">batch_pipeline</span> <span class="o">=</span> <span class="n">ImagePipelineBatch</span><span class="p">(</span>
     <span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="n">GaussianBlur</span><span class="p">(),</span> <span class="n">OtsuDetector</span><span class="p">()],</span>
     <span class="n">meas</span><span class="o">=</span><span class="p">[</span><span class="n">MeasureShape</span><span class="p">(),</span> <span class="n">MeasureIntensity</span><span class="p">()],</span>
-    <span class="n">njobs</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>  <span class="c1"># Use 4 worker processes</span>
+    <span class="n">n_jobs</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>  <span class="c1"># Use 4 worker processes</span>
     <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span>
 <span class="p">)</span>
 

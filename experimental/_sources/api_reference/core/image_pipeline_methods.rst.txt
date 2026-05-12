@@ -484,7 +484,7 @@ which extends ImagePipeline with multiprocessing capabilities:
     batch_pipeline = ImagePipelineBatch(
         ops=[GaussianBlur(), OtsuDetector()],
         meas=[MeasureShape(), MeasureIntensity()],
-        njobs=4,  # Use 4 worker processes
+        n_jobs=4,  # Use 4 worker processes
         verbose=True
     )
     

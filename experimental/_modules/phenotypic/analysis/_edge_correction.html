@@ -598,7 +598,7 @@
             <span class="n">pvalue</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
             <span class="n">connectivity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
             <span class="n">agg_func</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span>
-            <span class="n">num_workers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="n">n_jobs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize EdgeCorrector with grid layout and correction parameters.</span>
 
@@ -628,7 +628,7 @@
 <span class="sd">                diagonal neighbors. Affects how strictly &quot;surrounded&quot; is defined.</span>
 <span class="sd">            agg_func (str, optional): Aggregation function for multiple measurements per</span>
 <span class="sd">                section (well). Defaults to &quot;mean&quot;. See pandas.DataFrame.agg for options.</span>
-<span class="sd">            num_workers (int, optional): Number of parallel workers for group processing.</span>
+<span class="sd">            n_jobs (int, optional): Number of parallel workers for group processing.</span>
 <span class="sd">                Defaults to 1 (serial). Use -1 for all CPU cores via joblib.Parallel.</span>
 
 <span class="sd">        Raises:</span>
@@ -657,7 +657,7 @@
 <span class="sd">            ...     ncols=24,</span>
 <span class="sd">            ...     top_n=3,</span>
 <span class="sd">            ...     connectivity=8,  # Include diagonal neighbors</span>
-<span class="sd">            ...     num_workers=4</span>
+<span class="sd">            ...     n_jobs=4</span>
 <span class="sd">            ... )</span>
 
 <span class="sd">            Aggressive correction (no statistical test):</span>
@@ -670,7 +670,7 @@
 <span class="sd">            ... )</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
-                <span class="n">on</span><span class="o">=</span><span class="n">on</span><span class="p">,</span> <span class="n">groupby</span><span class="o">=</span><span class="n">groupby</span><span class="p">,</span> <span class="n">agg_func</span><span class="o">=</span><span class="n">agg_func</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span>
+                <span class="n">on</span><span class="o">=</span><span class="n">on</span><span class="p">,</span> <span class="n">groupby</span><span class="o">=</span><span class="n">groupby</span><span class="p">,</span> <span class="n">agg_func</span><span class="o">=</span><span class="n">agg_func</span><span class="p">,</span> <span class="n">n_jobs</span><span class="o">=</span><span class="n">n_jobs</span>
         <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">connectivity</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">):</span>
@@ -897,7 +897,7 @@
 <span class="sd">        Notes:</span>
 <span class="sd">            - Stores original data in self._original_data for later visualization</span>
 <span class="sd">            - Stores corrected data in self._latest_measurements for retrieval via results()</span>
-<span class="sd">            - Groups are processed independently via joblib.Parallel if num_workers &gt; 1</span>
+<span class="sd">            - Groups are processed independently via joblib.Parallel if n_jobs &gt; 1</span>
 <span class="sd">            - Aggregation (default: mean) is applied to multiple measurements per well</span>
 <span class="sd">            - Edge correction is only applied if permutation test p-value &lt; self.pvalue</span>
 <span class="sd">            - If pvalue=0.0, correction is applied to all groups regardless of statistics</span>
@@ -947,7 +947,7 @@
 <span class="sd">            ...     on=&#39;Area&#39;,</span>
 <span class="sd">            ...     groupby=[&#39;Plate&#39;, &#39;Condition&#39;],  # 4 independent corrections</span>
 <span class="sd">            ...     nrows=8, ncols=12,</span>
-<span class="sd">            ...     num_workers=4</span>
+<span class="sd">            ...     n_jobs=4</span>
 <span class="sd">            ... )</span>
 <span class="sd">            &gt;&gt;&gt; corrected = corrector.analyze(data)  # doctest: +SKIP</span>
 <span class="sd">            &gt;&gt;&gt; # Each plate-condition combo gets its own threshold</span>
