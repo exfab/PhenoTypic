@@ -638,12 +638,14 @@ code, pre, .text-monospace, .font-monospace {
 }
 
 /* Wired-row variant for a scalar (or single-slot) port: the wired class
- * name on the left, the per-row action buttons (Edit / Drill / Disconnect)
- * on the right. */
+ * name stacks on its own row, with the per-row action buttons
+ * (Edit / Drill / Disconnect) on the line below. The actions can wrap
+ * onto additional rows once the popover gets too narrow to fit them. */
 .cy-popover-wired-row {
     display: flex;
-    align-items: center;
-    gap: var(--sp-2);
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sp-1);
     padding: var(--sp-2);
     background: var(--color-bg);
     border-left: 3px solid var(--color-interactive);
@@ -652,7 +654,6 @@ code, pre, .text-monospace, .font-monospace {
 }
 
 .cy-popover-wired-row__class-name {
-    flex: 1 1 auto;
     font-family: var(--font-mono);
     font-size: var(--font-size-body);
     color: var(--color-heading);
@@ -662,18 +663,22 @@ code, pre, .text-monospace, .font-monospace {
 }
 
 .cy-popover-wired-row__actions {
-    display: inline-flex;
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--sp-1);
-    flex-shrink: 0;
 }
 
 /* Slot-row container for list-typed ports: each slot (wired or empty)
- * is one row of this kind, prefixed by a slot-index label. */
+ * stacks its ``SLOT N`` index label on top with the body (palette or
+ * wired-row) on the line below, so the body has the full popover width
+ * to render its actions / palette pills without being squeezed by the
+ * fixed-width index label. */
 .cy-popover-slot-row {
     display: flex;
-    align-items: center;
-    gap: var(--sp-2);
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sp-1);
     padding: var(--sp-1) var(--sp-2);
     border-radius: var(--radius-sm);
     margin-bottom: var(--sp-1);
@@ -683,8 +688,6 @@ code, pre, .text-monospace, .font-monospace {
 }
 
 .cy-popover-slot-row__index {
-    flex-shrink: 0;
-    min-width: 3.5rem;
     font-family: var(--font-mono);
     font-size: var(--font-size-caption);
     color: var(--color-muted);
