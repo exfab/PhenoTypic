@@ -243,3 +243,4 @@ satisfy the gate without claiming new features.
 | Refactor                                              | Scope                                                                                         | User-visible change |
 | ----------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------- |
 | `refactor/cli-gui-string-literal-extraction` (PR #78) | Hoists CLI/GUI string literals to `phenotypic.tools_._io_constants`; adds Literal aliases.     | None — pure rename. |
+| `refactor/canvas-elements-output` (this branch)       | Builder canvas updates route through `Output(CANVAS_CYTOSCAPE, "elements")` + clientside `cy.json` force-apply on scope swap, replacing the previous `wrapper.children` rewrite. Unblocks drill in/out e2e tests. | None — internal plumbing. |
