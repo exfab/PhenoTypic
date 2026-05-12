@@ -520,26 +520,29 @@ def finalize_post_master_outputs(
 
     The order is:
 
-    1. Apply ``pipeline._post`` to a copy of *master_df* via
-       :func:`_apply_post_to_master`. The resulting ``post_df`` is what the
-       GUI viewer/curation layer reads from
+    1. If *metadata_csv* is provided, inner-join its rows onto a copy of
+       *master_df* via :func:`join_metadata`. The join lands here — not
+       on the master archive on disk — so
+       ``master_measurements.{csv,parquet}`` stays a clean, op-free
+       archive of what the workers measured, while the working frame
+       used for the mirror picks up the external metadata columns. The
+       join runs **before** post so :class:`PostMeasurement` ops can
+       reference joined columns (e.g.
+       ``EdgeCorrector(groupby="Metadata_Strain")``).
+    2. Apply ``pipeline._post`` to the (optionally metadata-joined)
+       working frame via :func:`_apply_post_to_master`. The resulting
+       ``post_df`` is what the GUI viewer/curation layer reads from
        :data:`~phenotypic.tools_.MEASUREMENTS_CSV` /
-       :data:`~phenotypic.tools_.MEASUREMENTS_PARQUET`.
-       When *pipeline* is ``None`` or has no post ops, ``post_df`` is the
-       clean master unchanged.
-    2. If *metadata_csv* is provided, inner-join its rows onto ``post_df``
-       via :func:`join_metadata`. The join lands here — not on the master —
-       so ``master_measurements.{csv,parquet}`` stays a clean, op-free
-       archive of what the workers measured, and every downstream artifact
-       derived from ``post_df`` (mirror, per-feature splits,
-       ``analysis.{csv,parquet}``) inherits the external metadata columns.
-    3. :func:`_seed_measurements` writes the post-applied (and optionally
-       metadata-joined) frame.
+       :data:`~phenotypic.tools_.MEASUREMENTS_PARQUET`. When *pipeline*
+       is ``None`` or has no post ops, ``post_df`` equals the working
+       frame unchanged.
+    3. :func:`_seed_measurements` writes the post-applied frame.
     4. When *pipeline* is provided: persist ``pipeline.json``, run
-       :func:`_emit_analysis_outputs` against ``post_df`` (so analysis sees
-       post-applied data), and split the post-applied frame into
-       per-feature spreadsheets so users see post-derived columns
-       (e.g. ``Metadata_Strain`` from ``ExpandMetadata``) in
+       :func:`_emit_analysis_outputs` against ``post_df`` (so analysis
+       sees both post-applied and metadata-joined data), and split
+       ``post_df`` into per-feature spreadsheets so users see
+       post-derived columns (e.g. ``Metadata_Strain`` from
+       ``ExpandMetadata``) in
        ``measurements_by_feature/<feature>.{csv,parquet}``.
 
     Failures inside metadata-join, split, or analysis are logged at WARNING
@@ -555,9 +558,11 @@ def finalize_post_master_outputs(
             located (the SLURM sentinel may run before any pipeline.json
             is persisted).
         metadata_csv: Optional external metadata CSV. When provided, its
-            columns are inner-joined onto the post-applied frame before
-            seeding the mirror, so only the mirror (and its derivatives)
-            carry external metadata — never the master archive.
+            columns are inner-joined onto an in-memory copy of *master_df*
+            before post ops run, so :class:`PostMeasurement` operations
+            can reference joined columns. Only the mirror (and its
+            derivatives) carry external metadata — never the master
+            archive on disk.
 
     Returns:
         The post-applied frame (with external metadata joined when
@@ -568,14 +573,19 @@ def finalize_post_master_outputs(
         than the clean master. Equal to *master_df* when no post ops
         are configured and no metadata CSV is supplied.
     """
-    post_df = _apply_post_to_master(master_df, pipeline)
+    # Metadata join runs first so PostMeasurement ops can reference joined
+    # columns (e.g. ``EdgeCorrector(groupby="Metadata_Strain")``). The
+    # master archive on disk is already written by the caller and stays
+    # clean — only this in-memory working frame picks up the join.
+    working_df = master_df
     if metadata_csv is not None:
         try:
-            post_df = join_metadata(post_df, metadata_csv)
+            working_df = join_metadata(master_df, metadata_csv)
         except Exception as e:
             logger.warning(
                 "Failed to join metadata CSV: %s: %s", type(e).__name__, e
             )
+    post_df = _apply_post_to_master(working_df, pipeline)
     _seed_measurements(output_dir, post_df)
 
     if pipeline is None:
