@@ -3,6 +3,7 @@ A module for useful utility operations and functions that don't fit into a speci
 """
 
 from ._geometric_median import geometric_median
+from ._well_pos_decoder import decode_well_position
 from .image_metrics import (
     BackgroundMetrics,
     ContrastMetrics,
@@ -23,4 +24,6 @@ __all__ = [
     "StructureMetrics",
     "BackgroundMetrics",
     "QualityScores",
+    # Well Decoder
+    "decode_well_position"
 ]
