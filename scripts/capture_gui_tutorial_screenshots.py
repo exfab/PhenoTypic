@@ -624,10 +624,11 @@ def _capture_pick_points(context, base_url: str) -> None:
 
 
 def _capture_aux_ports(context, base_url: str) -> None:
-    """Drive the aux-port popover workflow and capture six PNGs.
+    """Drive the aux-port popover workflow and capture nine PNGs.
 
     The shots demonstrate the canvas-anchored aux popover flow described
-    in ``docs/source/tutorials/gui/09_aux_ports.md`` (Wave 6-A):
+    in ``docs/source/tutorials/gui/09_aux_ports.md``. Eight PNGs total
+    cover the scalar-aux flow plus the list-typed multi-slot scenario:
 
     1. ``01_initial.png`` — empty builder canvas with the palette visible.
     2. ``02_main_pipeline.png`` — four ribbon ops (``GaussianBlur`` →
@@ -643,10 +644,27 @@ def _capture_aux_ports(context, base_url: str) -> None:
        marker flips to the filled ``aux-port--wired`` variant.
     5. ``05_drill_in.png`` — ``Drill in →`` clicked; canvas swaps to the
        drilled aux scope (single-op ribbon with just ``OtsuDetector``)
-       and the breadcrumb shows the drill path.
+       and the breadcrumb shows the drill path. To extend a scalar aux
+       into a multi-step inline pipeline, the user picks ``ImagePipeline``
+       from the popover palette instead of a concrete detector class —
+       drilling into an ``ImagePipeline`` aux opens a writable nested
+       scope that accepts palette adds. (Single-op auxes are surfaced
+       as a 1-step wrapper for visual continuity but are not editable
+       in place.)
     6. ``06_drill_out.png`` — first breadcrumb crumb clicked; canvas
        restores to the original 4-step main ribbon with the aux port
        still in its wired (filled-purple) state.
+    7. ``07_list_port_popover.png`` — a ``CompositeDetector`` is added
+       to the ribbon and its ``detectors`` aux port tapped; the popover
+       opens in list mode with a ``+ Add slot`` button (the empty
+       placeholder is the bootstrap affordance for a list-typed param).
+    8. ``08_list_port_two_wired.png`` — two slots wired via ``+ Add slot``
+       + class pick (``OtsuDetector`` at slot 0, ``WatershedDetector``
+       at slot 1); per-slot ``✎ / → / ⨯`` actions are visible on every
+       wired row.
+    9. ``09_per_slot_disconnect.png`` — slot 0's per-slot ⨯ Disconnect
+       clicked; that slot's row reverts to the class palette while
+       slot 1 stays wired (per-slot independence inside one popover).
 
     Implementation notes
     --------------------
@@ -857,7 +875,179 @@ def _capture_aux_ports(context, base_url: str) -> None:
         page.wait_for_timeout(800)
     _save(page, "aux_ports", "06_drill_out.png")
 
+    # 7-9) Multi-slot list-typed aux ports. ``CompositeDetector.detectors``
+    # is a ``list[ObjectDetector]`` aux — the popover renders one row per
+    # slot plus a ``+ Add slot`` button so the user can wire any number
+    # of detectors and per-slot disconnect / drill in independently.
+    _aux_ports_list_scenarios(page, _add_op, _click_aux_port, _last_main_node_id)
+
     page.close()
+
+
+def _aux_ports_list_scenarios(
+    page,
+    add_op,
+    click_aux_port,
+    last_main_node_id,
+) -> None:
+    """Capture the list-typed aux port (multi-slot) screenshots 07-09.
+
+    Continues from a builder canvas that already has the 4-step main
+    pipeline + a wired ``FilamentousFungiDetector.inoculum_detector``.
+    Adds ``CompositeDetector`` as a 5th ribbon node so its
+    ``detectors: list[ObjectDetector | ImagePipeline]`` aux port can be
+    exercised:
+
+    * Empty list port → popover renders the ``+ Add slot`` button plus a
+      "No slots yet" placeholder (one-step bootstrap affordance).
+    * Two ``+ Add slot`` + pick-class cycles wire ``OtsuDetector`` at
+      slot 0 and ``WatershedDetector`` at slot 1; both wired-rows are
+      visible inside one popover.
+    * Per-slot ⨯ Disconnect on slot 0 reverts that slot to the palette
+      while leaving slot 1 wired — demonstrates slot independence.
+
+    The selectors mirror those used in ``_capture_aux_ports`` above and
+    in the e2e suite. ``CompositeDetector`` lives in the ``Detector``
+    palette accordion, which the parent function already expanded, so
+    no extra accordion-open is needed here.
+    """
+    add_op("CompositeDetector")
+    page.wait_for_timeout(800)
+
+    composite_node_id = last_main_node_id("CompositeDetector")
+    if not composite_node_id:
+        print(
+            "[shot]   aux_ports: could not resolve CompositeDetector node id — "
+            "list-port screenshots skipped"
+        )
+        return
+
+    # 7) Tap the list-typed ``detectors`` aux port. With no slots yet,
+    #    the popover surfaces the ``+ Add slot`` affordance + a muted
+    #    "No slots yet" placeholder so the user has somewhere to start.
+    click_aux_port(composite_node_id, "detectors")
+    try:
+        page.wait_for_selector(
+            "#cy-popover-container .cy-popover-add-slot",
+            timeout=5_000,
+        )
+    except Exception:  # pragma: no cover - best-effort
+        page.wait_for_timeout(800)
+    _save(page, "aux_ports", "07_list_port_popover.png")
+
+    # Helper: click ``+ Add slot`` once and wait for a fresh empty-slot
+    # palette to mount.
+    def _add_slot_and_wait_for_palette(prev_slot_count: int) -> None:
+        add_slot_btn = page.locator(
+            "#cy-popover-container .cy-popover-add-slot"
+        )
+        if add_slot_btn.count() == 0:
+            return
+        add_slot_btn.first.click()
+        try:
+            page.wait_for_function(
+                f"""
+                () => {{
+                    const rows = document.querySelectorAll(
+                        '#cy-popover-container .cy-popover-slot-row'
+                    );
+                    return rows.length > {prev_slot_count};
+                }}
+                """,
+                timeout=5_000,
+            )
+        except Exception:  # pragma: no cover - best-effort
+            page.wait_for_timeout(800)
+
+    # Helper: pick *class_name* in the *slot_idx* slot's palette. Each
+    # slot row carries its own palette while empty, so we scope the
+    # button match to the row matching ``data-slot=<slot_idx>`` when
+    # available, falling back to the first matching pick_class button.
+    def _pick_class_for_slot(slot_idx: int, class_name: str) -> None:
+        slot_pick_sel = (
+            "#cy-popover-container "
+            'button[id*="\\"type\\":\\"popover-action\\""]'
+            '[id*="\\"action\\":\\"pick_class\\""]'
+            f'[id*="\\"slot\\":{slot_idx}"]'
+            f'[id*="\\"class_name\\":\\"{class_name}\\""]'
+        )
+        loc = page.locator(slot_pick_sel)
+        if loc.count() == 0:
+            return
+        loc.first.click()
+        # Wait for the popover to re-render with the wired-row for this
+        # slot (the row's row-class flips from palette-mode to wired).
+        try:
+            page.wait_for_function(
+                f"""
+                () => {{
+                    const wired = document.querySelectorAll(
+                        '#cy-popover-container .cy-popover-wired-row'
+                    );
+                    return wired.length > {slot_idx};
+                }}
+                """,
+                timeout=6_000,
+            )
+        except Exception:  # pragma: no cover - best-effort
+            page.wait_for_timeout(800)
+
+    # 8) Wire two slots: OtsuDetector at slot 0, WatershedDetector at
+    #    slot 1. The popover stays open between picks; only the per-slot
+    #    rows transition from palette to wired state.
+    _add_slot_and_wait_for_palette(prev_slot_count=0)
+    _pick_class_for_slot(0, "OtsuDetector")
+    _add_slot_and_wait_for_palette(prev_slot_count=1)
+    _pick_class_for_slot(1, "WatershedDetector")
+    page.wait_for_timeout(400)
+    _save(page, "aux_ports", "08_list_port_two_wired.png")
+
+    # Re-tap the aux port so the popover's inspector focus jumps to
+    # the FIRST wired slot (slot 0). Without this, the focus is still
+    # on slot 1 (it was set when we picked WatershedDetector there),
+    # and ``wire_delete`` clears the focus when it disconnects the
+    # focused slot — dismissing the popover entirely. Tapping again
+    # re-runs ``open_popover_from_port_click`` which sets focus to the
+    # first wired slot (slot 0), so the subsequent slot-1 disconnect
+    # leaves the focus unchanged and the popover stays open.
+    click_aux_port(composite_node_id, "detectors")
+    page.wait_for_timeout(400)
+
+    # 9) Disconnect slot 1 via its per-slot ⨯ button. Slot 1's row
+    #    reverts to the class palette while slot 0 stays wired —
+    #    showcases slot-level independence inside one popover.
+    #    (We disconnect the LAST slot rather than the first so that
+    #    the compact wired-row for slot 0 stays visible at the top of
+    #    the popover; the ~60-button palette that mounts in the
+    #    disconnected slot is large enough to push lower-numbered
+    #    wired-rows off-screen otherwise.)
+    disconnect_sel = (
+        "#cy-popover-container "
+        'button[id*="\\"type\\":\\"popover-action\\""]'
+        '[id*="\\"action\\":\\"disconnect\\""]'
+        '[id*="\\"slot\\":1"]'
+    )
+    disconnect_btn = page.locator(disconnect_sel)
+    if disconnect_btn.count() > 0:
+        disconnect_btn.first.click()
+        try:
+            page.wait_for_function(
+                """
+                () => {
+                    // Slot 1 should drop back to palette mode; slot 0
+                    // stays wired. We expect exactly one wired row
+                    // remaining.
+                    const wired = document.querySelectorAll(
+                        '#cy-popover-container .cy-popover-wired-row'
+                    );
+                    return wired.length === 1;
+                }
+                """,
+                timeout=5_000,
+            )
+        except Exception:  # pragma: no cover - best-effort
+            page.wait_for_timeout(600)
+    _save(page, "aux_ports", "09_per_slot_disconnect.png")
 
 
 def _capture_analysis(context, base_url: str) -> None:
