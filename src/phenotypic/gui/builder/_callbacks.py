@@ -1667,24 +1667,20 @@ def register_callbacks(app: dash.Dash) -> None:
                 None,
             )
             # Auto-focus the first wired slot when one exists so the
-            # inspector mirrors the wired aux's params. When the port
-            # has NO wired slots, leave ``inspector_focus_aux`` as
-            # ``None`` — writing a slot=0 sentinel would pollute the
-            # store with a focus dict pointing at a non-existent slot,
-            # which other callbacks (e.g. ``run_preview``, save handler)
-            # may read without going through ``_render_views``'s
-            # empty-slot fallback. The popover anchor is determined by
-            # the cytoscape tap event, not by ``inspector_focus_aux``,
-            # so we don't need a sentinel to "remember" the active port.
+            # inspector mirrors the wired aux's params. When the port has
+            # NO wired slots we still need a focus entry (with a ``slot=0``
+            # placeholder) so ``build_popover_contents`` knows which port
+            # is active — without it the popover would render empty for
+            # empty ports. ``_resolve_inspector_focus_target`` defensively
+            # returns ``None`` when the focused slot is empty/out-of-bounds,
+            # so the inspector cleanly falls back to its canvas-selected
+            # consumer view (no slot-0 pollution downstream).
             new_state_dict = deepcopy(state_data)
-            if first_wired is not None:
-                new_state_dict["inspector_focus_aux"] = {
-                    "target_node_id": target_node_id,
-                    "param": param,
-                    "slot": first_wired,
-                }
-            else:
-                new_state_dict["inspector_focus_aux"] = None
+            new_state_dict["inspector_focus_aux"] = {
+                "target_node_id": target_node_id,
+                "param": param,
+                "slot": first_wired if first_wired is not None else 0,
+            }
 
             new_state = state_from_json(new_state_dict)
             breadcrumb, canvas, inspector, popover_contents = _render_views(

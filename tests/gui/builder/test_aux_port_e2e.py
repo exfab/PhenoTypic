@@ -22,33 +22,6 @@ fresh ``page`` per test resets the canvas state by reloading the
 builder URL.
 
 Skipped when Playwright is not importable.
-
-Known limitation (Wave 3/4 bug, tracked separately)
----------------------------------------------------
-
-After the first state mutation (``palette-add`` click, drill, etc.), the
-fan-in callback's ``Output("canvas-cytoscape-wrapper", "children")``
-returns just the rebuilt cytoscape canvas — overwriting the wrapper's
-original ``[canvas, popover_container]`` children with a single canvas
-element. The popover container DOM node is wiped, so subsequent
-``Output(POPOVER_CONTAINER, "children")`` updates fail at the Dash
-client side with ``ReferenceError: A nonexistent object was used in an
-Output``.
-
-Every popover-interaction test below verifies the *intended* behaviour
-of the popover system. They are marked ``xfail(strict=False)`` so they
-will:
-
-  * Be **reported as expected failures** while the bug is live (test
-    output shows the regression-detection plumbing works).
-  * Be **reported as XPASS** the moment the underlying fan-in callback
-    is fixed to preserve the popover container — which is exactly when
-    these tests start telling us the feature is shipping correctly.
-
-The first test (``test_popover_container_mounted_on_initial_load``) does
-*not* require a state mutation and is expected to pass today; it
-verifies that the layout module emits the popover container at all so
-future regressions to the initial-load path get caught.
 """
 
 from __future__ import annotations
@@ -73,19 +46,32 @@ from playwright.sync_api import Browser, Page, expect, sync_playwright
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
-#: Marker applied to every popover-interaction test. See module docstring
-#: for the full bug explanation. ``strict=False`` flips XPASS to "pass"
-#: (not error) so the suite stays green once the underlying canvas-
-#: wrapper rewrite is fixed.
-_BUG_WAVE_3_WRAPPER_WIPE = pytest.mark.xfail(
+#: Marker for tests that exercise drill-in/drill-out and depend on the
+#: cytoscape canvas re-rendering when the breadcrumb scope changes.
+#:
+#: dash-cytoscape 1.0.2 keeps the same ``Cytoscape`` React instance across
+#: ``Output(canvas-cytoscape-wrapper, "children")`` updates when the wrapper
+#: receives a new ``Cytoscape`` component with the same ``id`` — the
+#: cytoscape.js instance persists and its prop-diff path does not always
+#: remove elements that disappear from the new ``elements`` list. The
+#: in-place ``aux-port--wired`` class flip and other same-scope updates
+#: work fine; only full scope swaps (e.g. drilling into an aux's nested
+#: scope) leave stale elements in the live canvas.
+#:
+#: Fixing this requires either (a) wiring ``Output(canvas-cytoscape,
+#: "elements")`` directly across all 8 mutation callbacks, or (b) routing
+#: every scope swap through a clientside callback that calls
+#: ``cy.elements().remove()`` before applying the new elements. Both are
+#: tracked separately. ``strict=False`` flips XPASS to "pass" so the
+#: suite stays green once the underlying re-render is fixed.
+_CANVAS_RESET_ON_SCOPE_SWAP = pytest.mark.xfail(
     strict=False,
     reason=(
-        "Wave 3 bug: fan-in callback's Output('canvas-cytoscape-wrapper', "
-        "'children') replaces the wrapper's content with just the canvas "
-        "after a state mutation, wiping the sibling popover container. "
-        "Once the callback is updated to preserve the popover container "
-        "(e.g. by returning `[canvas, popover_div]`), these tests should "
-        "pass without modification."
+        "dash-cytoscape 1.0.2 reuses the cytoscape.js instance across "
+        "wrapper.children updates; full scope swaps (drill in/out) "
+        "leave stale elements in the live canvas. Server-side state "
+        "is correct (verified via direct dispatch unit tests) — only "
+        "the client-side render is stale."
     ),
 )
 
@@ -433,7 +419,6 @@ def test_popover_container_mounted_on_initial_load(page: Page) -> None:
     assert _popover_visible(page) is False
 
 
-@_BUG_WAVE_3_WRAPPER_WIPE
 def test_empty_port_click_opens_popover(page: Page) -> None:
     """Tapping an empty scalar aux port opens the popover in palette mode.
 
@@ -471,7 +456,6 @@ def test_empty_port_click_opens_popover(page: Page) -> None:
     )
 
 
-@_BUG_WAVE_3_WRAPPER_WIPE
 def test_wire_via_palette_picks_class(page: Page) -> None:
     """Clicking a palette button wires the slot and flips the popover state.
 
@@ -521,7 +505,7 @@ def test_wire_via_palette_picks_class(page: Page) -> None:
     assert _aux_port_has_class(page, port_id, "aux-port--wired") is True
 
 
-@_BUG_WAVE_3_WRAPPER_WIPE
+@_CANVAS_RESET_ON_SCOPE_SWAP
 def test_drill_in_changes_canvas_scope(page: Page) -> None:
     """Clicking ``Drill in →`` dismisses the popover and refocuses canvas.
 
@@ -566,7 +550,7 @@ def test_drill_in_changes_canvas_scope(page: Page) -> None:
     assert _aux_port_count_in_canvas(page) == 0
 
 
-@_BUG_WAVE_3_WRAPPER_WIPE
+@_CANVAS_RESET_ON_SCOPE_SWAP
 def test_drill_out_via_breadcrumb(page: Page) -> None:
     """Clicking the parent breadcrumb crumb restores the previous scope.
 
@@ -612,7 +596,6 @@ def test_drill_out_via_breadcrumb(page: Page) -> None:
     assert _aux_port_count_in_canvas(page) >= 1
 
 
-@_BUG_WAVE_3_WRAPPER_WIPE
 def test_disconnect_drops_aux(page: Page) -> None:
     """Clicking ``⨯ Disconnect`` clears the slot and reopens the palette.
 
@@ -669,7 +652,6 @@ def test_disconnect_drops_aux(page: Page) -> None:
     assert _aux_port_has_class(page, port_id, "aux-port--wired") is False
 
 
-@_BUG_WAVE_3_WRAPPER_WIPE
 def test_list_port_shows_multiple_slots(page: Page) -> None:
     """List-typed aux ports surface slot rows + an ``+ Add slot`` button.
 
@@ -715,7 +697,6 @@ def test_list_port_shows_multiple_slots(page: Page) -> None:
     assert rows_after == rows_before + 1
 
 
-@_BUG_WAVE_3_WRAPPER_WIPE
 def test_escape_dismisses_popover(page: Page) -> None:
     """Pressing Escape closes the popover.
 
@@ -735,7 +716,6 @@ def test_escape_dismisses_popover(page: Page) -> None:
     assert _popover_visible(page) is False
 
 
-@_BUG_WAVE_3_WRAPPER_WIPE
 def test_click_outside_dismisses(page: Page) -> None:
     """Clicking outside the popover (and outside its anchor) dismisses it.
 
