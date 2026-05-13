@@ -3209,9 +3209,7 @@ def _build_container_inspector_card(
     _unused_state = state  # noqa: F841 — reserved for Phase 6 wiring.
 
     label_value = block.label if block.label else block.class_name
-    inner_block_count = 0 if nested is None else sum(
-        1 for b in nested.blocks if b.class_name != INPUT_IMAGE_CLASS_NAME
-    )
+    inner_block_count = _count_inner_ops(nested)
 
     header_children: List[Any] = [
         html.H5("Pipeline container", className="card-title mb-3"),
