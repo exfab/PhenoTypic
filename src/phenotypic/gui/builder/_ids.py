@@ -37,42 +37,14 @@ STORE_SESSION_ID = "store-session-id"
 #: List of ``node_id`` values that have a cached intermediate this session.
 STORE_INTERMEDIATE_KEYS = "store-intermediate-keys"
 
-#: ``dcc.Store`` written by the clientside ``aux_popover.js`` glue when the
-#: user taps an aux port on the canvas. Server-side callbacks read this to
-#: figure out which port was tapped and open the popover. Data shape:
-#: ``{"target_node_id": str, "param": str, "ts": float}`` where ``ts`` is a
-#: monotonic timestamp so repeat clicks on the same port still trigger
-#: change detection. ``None`` while no port is selected.
-PORT_CLICK_STORE = "store-port-click"
-
-#: DOM id of the popover's anchor element — a ``html.Div`` that
-#: ``cytoscape-popper`` positions relative to the aux port. Lives inside the
-#: canvas wrapper so the popover pans/zooms with the cytoscape view.
-POPOVER_CONTAINER = "cy-popover-container"
-
-#: ``dcc.Store`` written by the clientside ``aux_popover.js`` glue when the
-#: popover should dismiss (click-outside / Escape / cytoscape pan). Holds a
-#: monotonic timestamp; server-side callbacks read it to clear popover state.
-POPOVER_DISMISS_STORE = "store-popover-dismiss"
-
-#: ``dcc.Store`` written by the clientside ``aux_popover.js`` glue when the
-#: user clicks an action button inside the popover (wire / disconnect /
-#: drill / pick-class). Server-side callbacks read this to dispatch the
-#: corresponding action. Data shape:
-#: ``{"kind": "wire"|"disconnect"|"drill"|"pick_class", "target_node_id": str,
-#: "param": str, "slot": int, "class_name": str | None, "ts": float}``.
-POPOVER_ACTION_STORE = "store-popover-action"
-
-
 # ---------------------------------------------------------------------------
 # DAG-redesign ids (spec §6)
 # ---------------------------------------------------------------------------
 #
-# Introduced alongside the legacy popover-era ids; both sets stay in place
-# until the legacy renderer is retired. Routing between the two surfaces
-# is handled by the feature flag
-# ``phenotypic.gui.builder._state.PHENOTYPIC_GUI_DAG`` — layout / callback
-# paths select one set or the other at app boot.
+# The popover-era stores (``PORT_CLICK_STORE`` / ``POPOVER_*``) were
+# retired in Phase 7. The DAG path is now the only renderer; the feature
+# flag ``phenotypic.gui.builder._state.PHENOTYPIC_GUI_DAG`` still selects
+# between legacy and DAG state schemas until Phase 8.
 
 #: ``dcc.Store`` written by the clientside ``viewport_ops.js`` glue when the
 #: user (or a server-side callback) requests a viewport-level operation such
@@ -443,8 +415,7 @@ def block_port_id(block_id: str, port: str) -> str:
         block_id: 32-character ``BlockNode.block_id`` of the parent block.
         port: Logical port name — ``"in"`` for image-input, ``"out"`` for
             image-output, the parameter name for aux ports (with a
-            ``"[<i>]"`` suffix for list-aux slots; see
-            :func:`_encode_aux_port_id` for the legacy form).
+            ``"[<i>]"`` suffix for list-aux slots).
 
     Returns:
         Flat string ``"port__<block_id>__<port>"`` suitable as a
@@ -778,7 +749,7 @@ def prefab_card_id(class_name: str) -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Aux-port / main-port pattern-matching helpers
+# Main-port pattern-matching helpers
 # ---------------------------------------------------------------------------
 #
 # Cytoscape elements require flat string ids (cytoscape rejects dict ids
@@ -787,15 +758,7 @@ def prefab_card_id(class_name: str) -> Dict[str, Any]:
 # recover the structured form via the decoder helpers without a lookup
 # table. Choice of ``__`` as separator avoids collision with single
 # underscores in realistic class/param names.
-#
-# These id concerns previously lived in ``_layout.py`` alongside legacy
-# port-handle helpers, but in the popover-driven design the cytoscape ids
-# are written by both the layout (when emitting nodes) and the callbacks
-# (when dispatching against tap events), so they belong here.
 
-
-#: Prefix for cytoscape bottom-edge aux port node ids.
-_AUX_PORT_PREFIX: str = "aux-port"
 
 #: Prefix for cytoscape main-input port node ids.
 _MAIN_INPUT_PREFIX: str = "main-input"
@@ -806,34 +769,6 @@ _MAIN_OUTPUT_PREFIX: str = "main-output"
 #: Separator used to delimit fields inside the encoded flat string ids.
 #: Mirrors the convention previously used for ``port-handle__...`` ids.
 _PORT_ID_SEP: str = "__"
-
-
-def aux_port_id(target_node_id: str, param: str) -> Dict[str, Any]:
-    """Build the pattern-matching id for a bottom-edge aux-port marker.
-
-    Each consumer node renders exactly one aux port marker per op-typed
-    parameter (regardless of slot cardinality — list-typed params still
-    use a single bottom-edge square; slot management happens inside the
-    popover). Tapping the marker opens the canvas-anchored popover.
-
-    Args:
-        target_node_id: ``node_id`` of the consumer operation the port
-            attaches to.
-        param: Name of the consumer's op-typed parameter the port
-            represents.
-
-    Returns:
-        Dict of shape ``{"type": "aux-port", "target_node_id":
-        target_node_id, "param": param}``. Phase 4 callbacks should match
-        ``Input({"type": "aux-port", "target_node_id": ALL, "param": ALL},
-        "n_clicks")``.
-    """
-
-    return {
-        "type": "aux-port",
-        "target_node_id": target_node_id,
-        "param": param,
-    }
 
 
 def main_input_port_id(node_id: str) -> str:
@@ -874,55 +809,6 @@ def main_output_port_id(node_id: str) -> str:
     return _encode_main_port_id(_MAIN_OUTPUT_PREFIX, node_id)
 
 
-def _encode_aux_port_id(target_node_id: str, param: str) -> str:
-    """Mangle (target_node_id, param) into a flat cytoscape id.
-
-    The clientside ``aux_popover.js`` glue and any callbacks reading
-    cytoscape ``tapNodeData`` can use :func:`_decode_aux_port_id` to
-    recover the structured pair. The matching dict id for Dash
-    pattern-matched callbacks is :func:`aux_port_id`.
-
-    Args:
-        target_node_id: Consumer node identifier the aux port attaches to.
-        param: Name of the consumer's op-typed parameter the port
-            represents.
-
-    Returns:
-        Flat string ``"aux-port__<target_node_id>__<param>"``.
-    """
-
-    return _PORT_ID_SEP.join([_AUX_PORT_PREFIX, target_node_id, param])
-
-
-def _decode_aux_port_id(encoded: str) -> Optional[tuple[str, str]]:
-    """Reverse of :func:`_encode_aux_port_id`.
-
-    Returns ``None`` for any string that doesn't match the encoding (e.g.
-    a tap on a ribbon node or a main-I/O port).
-
-    Args:
-        encoded: Cytoscape element id string.
-
-    Returns:
-        ``(target_node_id, param)`` tuple when *encoded* is an aux-port id,
-        otherwise ``None``.
-    """
-
-    if not encoded.startswith(_AUX_PORT_PREFIX + _PORT_ID_SEP):
-        return None
-    parts = encoded.split(_PORT_ID_SEP)
-    # Expected shape: [_AUX_PORT_PREFIX, target_node_id, *param_parts].
-    # Param names CAN contain the separator (legitimately though uncommon),
-    # so we re-join everything past the node_id rather than strictly requiring
-    # len(parts) == 3. Mirrors the JS-side decoder in ``aux_popover.js`` which
-    # uses ``parts.slice(2).join("__")``.
-    if len(parts) < 3:
-        return None
-    target_node_id = parts[1]
-    param = _PORT_ID_SEP.join(parts[2:])
-    return target_node_id, param
-
-
 def _encode_main_port_id(prefix: str, node_id: str) -> str:
     """Mangle (prefix, node_id) into a flat cytoscape id for a main port.
 
@@ -945,7 +831,7 @@ def _decode_main_port_id(encoded: str) -> Optional[tuple[str, str]]:
     """Reverse of :func:`_encode_main_port_id`.
 
     Returns ``None`` for any string that doesn't match the main-input or
-    main-output encoding (e.g. an aux port or a ribbon node).
+    main-output encoding (e.g. a ribbon node).
 
     Args:
         encoded: Cytoscape element id string.
@@ -968,10 +854,6 @@ __all__ = [
     "STORE_BUILDER_STATE",
     "STORE_SESSION_ID",
     "STORE_INTERMEDIATE_KEYS",
-    "PORT_CLICK_STORE",
-    "POPOVER_CONTAINER",
-    "POPOVER_DISMISS_STORE",
-    "POPOVER_ACTION_STORE",
     "BREADCRUMB_CONTAINER",
     "PALETTE_CONTAINER",
     "CANVAS_CYTOSCAPE",
@@ -1044,11 +926,8 @@ __all__ = [
     "palette_button_id",
     "breadcrumb_link_id",
     "prefab_card_id",
-    "aux_port_id",
     "main_input_port_id",
     "main_output_port_id",
-    "_encode_aux_port_id",
-    "_decode_aux_port_id",
     "_encode_main_port_id",
     "_decode_main_port_id",
     # Phase 2 DAG redesign additions

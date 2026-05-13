@@ -238,9 +238,9 @@ class _DagBuilderState:
     """Top-level DAG state for the Dash builder.
 
     Mirrors the legacy :class:`_LegacyBuilderState` surface but with
-    block_ids / edge_ids instead of node_ids and without the
-    ``inspector_focus_aux`` field (the popover machinery is gone in the
-    DAG path).
+    block_ids / edge_ids instead of node_ids.  The popover-era
+    ``inspector_focus_aux`` override is gone — the DAG path edits aux
+    parameters via the inspector aux-ports section directly.
 
     Attributes:
         root: Outermost :class:`_DagBuilderScope` (what the user sees
@@ -457,9 +457,9 @@ class _LegacyBuilderState:
 
             * ``{"node_id": <id>, "param": <param_name | None>}`` —
               regular ``ImagePipeline`` drill-in when ``param=None``
-              (uses ``_LegacyStepNode.nested``); op-typed parameter
-              drill via the legacy ``_PARAM_SCOPE_KEY`` machinery when
-              ``param=<name>``.
+              (uses ``_LegacyStepNode.nested``); the popover-era
+              op-typed parameter drill (``param=<name>``) was retired
+              in Phase 7 and is now treated as a no-op by the walker.
             * ``{"target_node_id": <id>, "param": <name>, "slot":
               <int>}`` — aux-slot drill: descend into the embedded aux
               :class:`_LegacyStepNode` at
@@ -468,21 +468,11 @@ class _LegacyBuilderState:
             Empty list means "viewing ``root``".
         selected_node_id: ``node_id`` of the currently focused step in
             the visible scope, if any.
-        inspector_focus_aux: When non-``None``, the inspector pane
-            mirrors the wired aux at the given slot instead of the
-            canvas selection.  Shape: ``{"target_node_id": str,
-            "param": str, "slot": int}``.  Driven by the
-            ``set_inspector_focus`` dispatch kind — set when the user
-            opens a popover with a wired slot (or wires a new aux),
-            cleared when the popover dismisses, when the wired aux is
-            disconnected, or when the user drills into the aux (canvas
-            scope swap takes over).
     """
 
     root: _LegacyBuilderScope = field(default_factory=_LegacyBuilderScope)
     breadcrumb: List[Dict[str, Any]] = field(default_factory=list)
     selected_node_id: Optional[str] = None
-    inspector_focus_aux: Optional[Dict[str, Any]] = None
 
 
 # ---------------------------------------------------------------------------
@@ -500,18 +490,6 @@ if PHENOTYPIC_GUI_DAG:
 else:
     BuilderScope = _LegacyBuilderScope  # type: ignore[misc,assignment]
     BuilderState = _LegacyBuilderState  # type: ignore[misc,assignment]
-
-
-# Sentinel key used to store synthesized singleton :class:`_LegacyBuilderScope`
-# dicts inside a non-pipeline node's ``params`` while the user is editing an
-# operation-typed parameter through the legacy drill-down path.  Stripped
-# before :func:`to_pipeline` so the underlying ``ImagePipeline`` never sees
-# it.  LEGACY: superseded by the embedded-aux model (see
-# ``_LegacyStepNode.aux_ports``); kept here because ``_callbacks.py`` and
-# ``_layout.py`` still reference it.  Will be removed once those modules
-# migrate to the popover-anchored aux flow (Wave 3/4 of the popover
-# redesign).
-_PARAM_SCOPE_KEY = "__op_param_scope__"
 
 
 # ---------------------------------------------------------------------------
@@ -742,7 +720,7 @@ def _aux_step_node_to_marker(
     return {
         "__type__": "operation",
         "class_name": aux_node.class_name,
-        "params": {k: v for k, v in folded_params.items() if k != _PARAM_SCOPE_KEY},
+        "params": dict(folded_params),
     }
 
 
@@ -836,7 +814,6 @@ def to_pipeline(scope: _LegacyBuilderScope) -> ImagePipeline:
         resolved_params = {
             name: _resolve_param_value(value, registry)
             for name, value in folded_params.items()
-            if name != _PARAM_SCOPE_KEY
         }
         instance = registry.create_instance(node.class_name, **resolved_params)
         instances.append(instance)
@@ -1129,104 +1106,6 @@ def _normalize_breadcrumb_segment(seg: Any) -> Dict[str, Any]:
     raise ValueError(f"unrecognised breadcrumb segment: {seg!r}")
 
 
-def _ensure_param_scope(
-    node: _LegacyStepNode, param_name: str
-) -> _LegacyBuilderScope:
-    """Return (creating if absent) the synthesized scope for an op-typed param.
-
-    LEGACY: predates the embedded-aux model.  The scope lives under
-    ``node.params[_PARAM_SCOPE_KEY][param_name]`` as a dict produced by
-    :func:`_scope_to_dict` so it round-trips through JSON cleanly.  This
-    helper rehydrates it into a :class:`_LegacyBuilderScope` and seeds
-    it from any existing operation-marker stored in
-    ``node.params[param_name]``.
-
-    Kept here because ``_layout.py`` and ``_callbacks.py`` still call
-    this function via the old ``param`` breadcrumb segment shape.  New
-    code should prefer the aux-slot drill (``{"target_node_id",
-    "param", "slot"}`` segment) which descends directly into the
-    embedded ``_LegacyStepNode`` in ``aux_ports``.
-
-    Args:
-        node: Parent step node that owns the parameter slot.
-        param_name: Name of the operation-typed parameter being edited.
-
-    Returns:
-        The synthesised :class:`_LegacyBuilderScope` (one node max).
-    """
-
-    scopes = node.params.setdefault(_PARAM_SCOPE_KEY, {})
-    scope_dict = scopes.get(param_name)
-    if scope_dict is None:
-        seed_node: Optional[_LegacyStepNode] = None
-        existing = node.params.get(param_name)
-        if isinstance(existing, dict) and _is_operation_param_marker(existing):
-            class_name = existing.get("class_name") or existing.get("class")
-            seed_node = _LegacyStepNode(
-                node_id=_new_node_id(),
-                class_name=str(class_name),
-                params=dict(existing.get("params") or {}),
-                label=str(class_name),
-            )
-        elif isinstance(existing, dict) and _is_pipeline_param_marker(existing):
-            seed_node = _LegacyStepNode(
-                node_id=_new_node_id(),
-                class_name=PIPELINE_CLASS_NAME,
-                params={},
-                label=PIPELINE_CLASS_NAME,
-                nested=_scope_from_dict(existing.get("scope") or {}),
-            )
-        scope = _LegacyBuilderScope(
-            nodes=[seed_node] if seed_node is not None else [],
-            name=f"{node.label or node.class_name}.{param_name}",
-        )
-        scopes[param_name] = _scope_to_dict(scope)
-        return scope
-    return _scope_from_dict(scope_dict)
-
-
-def _commit_param_scope(node: _LegacyStepNode, param_name: str) -> None:
-    """Mirror the singleton scope back into ``node.params[param_name]``.
-
-    LEGACY: pairs with :func:`_ensure_param_scope`.  Called when the
-    user drills out of an operation-typed-parameter scope so the
-    canonical serialised form (an operation marker dict) reflects
-    whatever the user assembled inside the singleton.  Kept here
-    because the legacy breadcrumb drill machinery in ``_callbacks.py``
-    still relies on it.
-
-    Args:
-        node: Parent step node owning the param slot.
-        param_name: Operation-typed parameter being committed.
-    """
-
-    scopes = node.params.get(_PARAM_SCOPE_KEY) or {}
-    scope_dict = scopes.get(param_name)
-    if scope_dict is None:
-        return
-
-    scope = _scope_from_dict(scope_dict)
-    if not scope.nodes:
-        node.params[param_name] = None
-        return
-
-    inner = scope.nodes[0]
-    if inner.class_name == PIPELINE_CLASS_NAME:
-        node.params[param_name] = {
-            "__type__": "pipeline",
-            "class_name": PIPELINE_CLASS_NAME,
-            "scope": _scope_to_dict(inner.nested or _LegacyBuilderScope()),
-        }
-    else:
-        node.params[param_name] = {
-            "__type__": "operation",
-            "class_name": inner.class_name,
-            "params": {
-                k: v for k, v in inner.params.items() if k != _PARAM_SCOPE_KEY
-            },
-        }
-
-
 def current_scope(state: _LegacyBuilderState) -> _LegacyBuilderScope:
     """Resolve the breadcrumb to the scope the user is currently editing.
 
@@ -1234,12 +1113,10 @@ def current_scope(state: _LegacyBuilderState) -> _LegacyBuilderScope:
 
     * For a regular pipeline drill (``node_id=<id>``, ``param=None``),
       descends into ``match.nested``.
-    * For the LEGACY op-typed parameter drill (``node_id=<id>``,
-      ``param=<name>``), descends into the synthesised singleton scope
-      stored under ``match.params[_PARAM_SCOPE_KEY][param]`` (created
-      lazily on first visit, seeded from any existing operation-marker
-      dict at ``match.params[param]``).  Kept for back-compat; new
-      code should prefer the aux-slot form below.
+    * For an op-typed parameter drill (``node_id=<id>``,
+      ``param=<name>``), the legacy popover-era synthesized scope is no
+      longer supported (Phase 7 retired the popover wire flow); the
+      segment is treated as a no-op so older saved state still loads.
     * For an aux-slot drill (``target_node_id=<id>``,
       ``param=<name>``, ``slot=<int>``), descends into the embedded
       aux :class:`_LegacyStepNode` stored at
@@ -1320,7 +1197,11 @@ def current_scope(state: _LegacyBuilderState) -> _LegacyBuilderScope:
                 )
             scope = match.nested
         else:
-            scope = _ensure_param_scope(match, str(param))
+            # Op-typed parameter drill via the legacy popover-era synthesized
+            # scope is no longer supported (Phase 7 retired the popover
+            # path). Stale ``param`` segments loaded from older saved state
+            # are treated as no-ops so the walker doesn't crash.
+            continue
     return scope
 
 
@@ -1688,7 +1569,6 @@ def state_to_json(state: Any) -> Dict[str, Any]:
             "root": _scope_to_dict(state.root),
             "breadcrumb": list(state.breadcrumb),
             "selected_node_id": state.selected_node_id,
-            "inspector_focus_aux": state.inspector_focus_aux,
         }
     raise TypeError(
         f"state_to_json expects a _LegacyBuilderState or _DagBuilderState; "
@@ -1805,5 +1685,4 @@ def _state_from_json_legacy(data: Dict[str, Any]) -> _LegacyBuilderState:
         root=root,
         breadcrumb=crumbs,
         selected_node_id=data.get("selected_node_id"),
-        inspector_focus_aux=data.get("inspector_focus_aux"),
     )

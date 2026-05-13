@@ -34,7 +34,7 @@
  * Conventions:
  *   * Vanilla JS only (no jQuery / ES modules — assets/ are <script> tags).
  *   * Polls for ``window.phenoGetCy()`` returning a fresh cy instance,
- *     mirroring ``builder.js`` / ``aux_popover.js``.
+ *     mirroring ``builder.js``.
  *   * No DOM mutations outside the cytoscape container; CSS-only chrome
  *     (e.g. ``.dag-block--collapsed``) is owned by ``builder.css``.
  */
