@@ -436,6 +436,49 @@ def _canvas_stylesheet() -> List[dict]:
                 "background-color": OI_PURPLE,
             },
         },
+        # DAG-redesign wires (spec §4.3).  Image-flow wires render blue
+        # solid throughout the chain including past the measure boundary;
+        # aux wires render purple dashed.  Main-path edges (InputImage →
+        # terminal) get 3px width; aux + non-main edges stay at 2px.
+        # Selected wire stays above blocks (default below) for visibility.
+        {
+            "selector": "edge.dag-wire",
+            "style": {
+                "curve-style": "bezier",
+                "target-arrow-shape": "none",
+                "line-color": COLOR_MUTED,
+                "width": 2,
+                "z-compound-depth": "bottom",
+            },
+        },
+        {
+            "selector": "edge.dag-wire--image",
+            "style": {
+                "line-color": COLOR_BLUE,
+                "line-style": "solid",
+            },
+        },
+        {
+            "selector": "edge.dag-wire--aux",
+            "style": {
+                "line-color": OI_PURPLE,
+                "line-style": "dashed",
+            },
+        },
+        {
+            "selector": "edge.dag-wire--main",
+            "style": {
+                "width": 3,
+            },
+        },
+        {
+            "selector": "edge.dag-wire--selected",
+            "style": {
+                "width": 4,
+                "line-color": COLOR_NAVY,
+                "z-compound-depth": "top",
+            },
+        },
     ]
 
 
