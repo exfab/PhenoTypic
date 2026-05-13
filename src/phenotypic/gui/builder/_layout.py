@@ -1520,9 +1520,15 @@ def _emit_scope_elements(
             kinds = {getattr(iss, "kind", "") for iss in block_issues}
             has_stub_issue = "stub" in kinds
 
-        # For container blocks, surface inner-scope issues on the
-        # outer border so a collapsed container with internal failures
-        # still reads red (spec §4.4).
+        # Compute container inner-issue aggregate ONCE per container —
+        # the same (errors, hints) tuple feeds the outer-border severity
+        # decision below, the collapsed-title chain-glyph suffix, and
+        # the node_data ``inner_error_count`` / ``inner_hint_count``
+        # fields.  ``_collect_container_issues`` walks the entire nested
+        # subtree, so calling it three times per container (as the
+        # initial Phase 5 implementation did) wasted ~2/3 of the work.
+        inner_errors = 0
+        inner_hints = 0
         if (
             block.class_name == PIPELINE_CLASS_NAME
             and block.nested is not None
@@ -1573,11 +1579,10 @@ def _emit_scope_elements(
             # Collapsed containers append a chain-glyph suffix showing the
             # inner-op count + aggregated issue count so the user reads
             # the inner state at a glance without expanding (spec §4.4).
+            # Reuses the ``inner_errors`` / ``inner_hints`` aggregate
+            # computed above — no second walk of the nested subtree.
             if block.collapsed and block.nested is not None:
                 inner_op_count = _count_inner_ops(block.nested)
-                inner_errors_pre, inner_hints_pre = _collect_container_issues(
-                    block.nested, issue_by_block
-                )
                 suffix_parts: List[str] = []
                 # Chain glyph + op count (always rendered so the user can
                 # tell a 0-op collapsed container from a populated one).
@@ -1585,17 +1590,17 @@ def _emit_scope_elements(
                     f"⬞ {inner_op_count} op"
                     f"{'s' if inner_op_count != 1 else ''}"
                 )
-                if inner_errors_pre or inner_hints_pre:
+                if inner_errors or inner_hints:
                     bits: List[str] = []
-                    if inner_errors_pre:
+                    if inner_errors:
                         bits.append(
-                            f"{inner_errors_pre} issue"
-                            f"{'s' if inner_errors_pre != 1 else ''}"
+                            f"{inner_errors} issue"
+                            f"{'s' if inner_errors != 1 else ''}"
                         )
-                    if inner_hints_pre:
+                    if inner_hints:
                         bits.append(
-                            f"{inner_hints_pre} hint"
-                            f"{'s' if inner_hints_pre != 1 else ''}"
+                            f"{inner_hints} hint"
+                            f"{'s' if inner_hints != 1 else ''}"
                         )
                     suffix_parts.append(", ".join(bits))
                 label = f"{label}  ({' • '.join(suffix_parts)})"
@@ -1617,12 +1622,9 @@ def _emit_scope_elements(
         if block.class_name == PIPELINE_CLASS_NAME:
             node_data["is_container"] = True
             node_data["collapsed"] = block.collapsed
-            if block.nested is not None:
-                inner_errors, inner_hints = _collect_container_issues(
-                    block.nested, issue_by_block
-                )
-            else:
-                inner_errors, inner_hints = 0, 0
+            # ``inner_errors`` / ``inner_hints`` were computed once at
+            # the top of this branch (or default to 0 when nested is
+            # absent); reuse them rather than re-walking the subtree.
             node_data["inner_error_count"] = inner_errors
             node_data["inner_hint_count"] = inner_hints
         if parent_collapsed:
