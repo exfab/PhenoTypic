@@ -65,13 +65,14 @@ POPOVER_ACTION_STORE = "store-popover-action"
 
 
 # ---------------------------------------------------------------------------
-# Phase 2 DAG-redesign ids (spec §6)
+# DAG-redesign ids (spec §6)
 # ---------------------------------------------------------------------------
 #
-# These are introduced alongside the legacy popover-era ids; the legacy ids
-# stay in place until Phase 7. Routing between the two surfaces is handled by
-# the feature flag ``phenotypic.gui.builder._state.PHENOTYPIC_GUI_DAG`` —
-# layout / callback paths select one set or the other at app boot.
+# Introduced alongside the legacy popover-era ids; both sets stay in place
+# until the legacy renderer is retired. Routing between the two surfaces
+# is handled by the feature flag
+# ``phenotypic.gui.builder._state.PHENOTYPIC_GUI_DAG`` — layout / callback
+# paths select one set or the other at app boot.
 
 #: ``dcc.Store`` written by the clientside ``viewport_ops.js`` glue when the
 #: user (or a server-side callback) requests a viewport-level operation such
@@ -84,13 +85,11 @@ STORE_VIEWPORT_OP = "store-viewport-op"
 
 #: ``dcc.Store`` holding the most recent ``List[Issue]`` produced by
 #: :func:`phenotypic.gui.builder._validation.validate`.  Drives the toolbar
-#: issue badge count + tooltip rows + per-block red/yellow border decoration
-#: via Phase 6 callbacks.  Phase 2 only mounts the store and feeds it the
-#: initial validation pass; the badge UI lands in Phase 6.
+#: issue badge count + tooltip rows + per-block red/yellow border decoration.
 STORE_ISSUES = "store-issues"
 
 #: ``dcc.Store`` written by the asset-readiness polling loop in
-#: ``assets/builder.js`` (Phase 2+).  Data shape:
+#: ``assets/builder.js``.  Data shape:
 #: ``{"wire_drawing": bool, "palette_dnd": bool, "viewport_ops": bool,
 #: "dagre_missing": bool}`` — ``True`` means the asset's IIFE registered
 #: the ``window.phenotypic_<name>_ready`` sentinel within the polling
@@ -101,9 +100,9 @@ STORE_ISSUES = "store-issues"
 STORE_ASSET_STATUS = "store-asset-status"
 
 #: Toolbar button that re-runs the dagre layout pass + ``cy.fit()``.  Wired
-#: to the ``relayout`` payload in ``STORE_VIEWPORT_OP`` by Phase 5; Phase 2
-#: only renders the button + handles the asset-status gating (disabled when
-#: ``viewport_ops.js`` or the ``cytoscape-dagre`` extension is missing).
+#: to the ``relayout`` payload in ``STORE_VIEWPORT_OP``; disabled by the
+#: ``asset_status_disables`` callback when ``viewport_ops.js`` or the
+#: ``cytoscape-dagre`` extension is missing.
 BTN_RELAYOUT = "btn-relayout"
 
 #: ``html.Div`` row sitting above the canvas that surfaces missing-asset
@@ -120,7 +119,7 @@ BANNER_ASSET_STATUS = "banner-asset-status"
 CONFIRM_DELETE_MODAL_ID = "confirm-delete-modal"
 
 #: Primary action button inside :data:`CONFIRM_DELETE_MODAL_ID`.  Dispatches
-#: ``block_delete_confirm`` (Phase 5).
+#: ``block_delete_confirm``.
 BTN_CONFIRM_DELETE = "btn-confirm-delete"
 
 #: Cancel button inside :data:`CONFIRM_DELETE_MODAL_ID`.  Clears

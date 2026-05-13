@@ -779,13 +779,13 @@ code, pre, .text-monospace, .font-monospace {
     outline: none;
 }
 
-/* ─── DAG redesign canvas (Phase 2) ────────────────────────────────────
+/* ─── DAG redesign canvas (spec §5.5) ──────────────────────────────────
  *
- * Phase 2 of the Pipeline Builder DAG redesign (spec §5.5) renders every
- * block + port + wire as a first-class cytoscape element.  Cytoscape's
- * canvas renderer ignores DOM CSS for *most* visual properties — those
- * live in the cytoscape stylesheet inside ``_layout.py``.  The rules
- * below cover the DOM-side affordances:
+ * The DAG canvas renders every block + port + wire as a first-class
+ * cytoscape element.  Cytoscape's canvas renderer ignores DOM CSS for
+ * *most* visual properties — those live in the cytoscape stylesheet
+ * inside ``_layout.py``.  The rules below cover the DOM-side
+ * affordances:
  *
  *   .dag-block, .dag-port*, .dag-wire, .dag-issue cursor + outline
  *     affordances for the cytoscape-DOM hybrid layer.
@@ -816,7 +816,7 @@ code, pre, .text-monospace, .font-monospace {
 }
 .dag-port--output {
     /* Image-output port — neutral circle on the block's right edge;
-     * starts a wire drag on mousedown (Phase 4 ``wire_drawing.js``). */
+     * ``wire_drawing.js`` starts a wire drag on mousedown. */
     cursor: grab;
 }
 .dag-port--aux {
@@ -847,8 +847,8 @@ code, pre, .text-monospace, .font-monospace {
 .dag-issue {
     /* Issue badges are cytoscape sub-nodes that overlay the block's
      * top-right corner — the DOM-side rule just changes the cursor on
-     * hover so the user knows clicking is interactive (Phase 6 will
-     * dispatch ``scroll_to`` on click). */
+     * hover so the user knows clicking is interactive (the validation
+     * callback dispatches ``scroll_to`` on click). */
     cursor: pointer;
 }
 .dag-scrim {

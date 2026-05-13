@@ -720,7 +720,7 @@ def _resolve_dag_accepts_for_class_port(
     class_name: str,
     port_name: str,
     registry_id: int,
-) -> Tuple[str, ...]:
+) -> Optional[Tuple[str, ...]]:
     """Cached wrapper around :func:`_resolve_dag_accepts` keyed on
     ``(class_name, port_name, id(registry))``.
 
@@ -737,9 +737,12 @@ def _resolve_dag_accepts_for_class_port(
     callers cannot mutate the cached value.
 
     Returns:
-        Sorted tuple of accepted class names, or ``()`` when the
+        Sorted tuple of accepted class names, or ``None`` when the
         caller's registry diverges from the live registry (signals the
-        caller should fall back to the uncached path).
+        caller should fall back to the uncached path). ``None`` is used
+        instead of ``()`` because a real port may legitimately resolve
+        to zero accepts (unresolved forward reference); the caller
+        still wants that empty-answer case cached.
     """
 
     # Import lazily so the module's top-level import graph stays Dash-only.
@@ -749,9 +752,9 @@ def _resolve_dag_accepts_for_class_port(
     if id(live) != registry_id:
         # ``id(registry)`` mismatch — the caller passed a stand-in
         # registry (the test suite monkeypatches ``get_registry``).
-        # The cache cannot serve that instance, so signal a miss; the
-        # caller falls back to a direct ``_resolve_dag_accepts`` call.
-        return ()
+        # Signal a miss with ``None`` so the caller falls back to a
+        # direct ``_resolve_dag_accepts`` call.
+        return None
 
     info = live.get(class_name)
     if info is None:
@@ -769,8 +772,8 @@ def _resolve_dag_accepts(
     """Compute the list of registry class names compatible with an aux port.
 
     The DAG canvas attaches this list as ``data.accepts`` on every aux-
-    port sub-node so the clientside ``wire_drawing.js`` (Phase 4) can
-    decide which ports glow vs. dim during a drag.  The algorithm
+    port sub-node so the clientside ``wire_drawing.js`` can decide which
+    ports glow vs. dim during a drag.  The algorithm
     follows spec §5.5 ``accepts`` resolution rules:
 
     * **``is_operation`` AND ``is_pipeline``** (the annotation is
@@ -979,6 +982,8 @@ def _build_image_port_subnode(
 
     Centralises the dict shape so the per-block emission loop in
     :func:`build_canvas_elements_dag` stays focussed on layout logic.
+    The ``is_port`` flag is read by ``viewport_ops.js``'s dagre walker
+    to skip port sub-nodes during rank assignment.
     """
 
     return {
@@ -988,6 +993,7 @@ def _build_image_port_subnode(
             "block_id": block_id,
             "port": port,
             "port_kind": port_kind,
+            "is_port": True,
         },
         "classes": f"dag-port {css_class}",
         "selectable": False,
@@ -1057,13 +1063,17 @@ def build_canvas_elements_dag(
     from phenotypic.gui._operation_registry import get_registry
 
     registry = get_registry()
+    # ``registry_key`` is the cache discriminator for
+    # ``_resolve_dag_accepts_for_class_port``.  Captured once per render
+    # so the inner aux-port loop avoids repeated ``id(registry)`` calls.
+    registry_key = id(registry)
     elements: List[dict] = []
     issues = list(issues or [])
 
     # Build a per-block issue index so the renderer can decorate each
     # block once.  Issues outside the active scope are silently dropped
     # (spec §4.6: nested-scope issues surface as the container's
-    # aggregate badge — Phase 6).
+    # aggregate badge).
     issue_by_block: Dict[str, List[Any]] = {}
     for iss in issues:
         bid = getattr(iss, "block_id", None)
@@ -1115,8 +1125,8 @@ def build_canvas_elements_dag(
     # ── 1. Emit one cytoscape node per block (including the InputImage
     #       sentinel).  Container blocks have no ``parent`` field — they ARE
     #       the parent; their inner blocks get a ``data.parent = <container
-    #       block_id>`` reference when rendered.  Phase 2 renders containers
-    #       always-expanded (the collapse interaction lands in Phase 5).
+    #       block_id>`` reference when rendered.  Containers render
+    #       always-expanded until the collapse interaction ships.
     for block in scope.blocks:
         block_issues = issue_by_block.get(block.block_id, [])
         has_issue = bool(block_issues)
@@ -1175,37 +1185,19 @@ def build_canvas_elements_dag(
     #       the block_id + port name.
     for block in scope.blocks:
         if block.class_name != INPUT_IMAGE_CLASS_NAME:
-            # Image-input port (blue circle, left edge).
             elements.append(
-                {
-                    "data": {
-                        "id": ids.block_port_id(block.block_id, "in"),
-                        "parent": block.block_id,
-                        "block_id": block.block_id,
-                        "port": "in",
-                        "port_kind": "image-in",
-                    },
-                    "classes": "dag-port dag-port--input",
-                    "selectable": False,
-                    "grabbable": False,
-                }
+                _build_image_port_subnode(
+                    block.block_id, "in", "image-in",
+                    css_class="dag-port--input",
+                )
             )
-
-        # Image-output port (right edge).  The InputImage sentinel still
-        # gets one — it's the source of the main spine.
+        # The InputImage sentinel still gets an output port — it's the
+        # source of the main spine.
         elements.append(
-            {
-                "data": {
-                    "id": ids.block_port_id(block.block_id, "out"),
-                    "parent": block.block_id,
-                    "block_id": block.block_id,
-                    "port": "out",
-                    "port_kind": "image-out",
-                },
-                "classes": "dag-port dag-port--output",
-                "selectable": False,
-                "grabbable": False,
-            }
+            _build_image_port_subnode(
+                block.block_id, "out", "image-out",
+                css_class="dag-port--output",
+            )
         )
 
         # Aux ports: one per op-typed parameter on the consumer (block).
@@ -1214,19 +1206,27 @@ def build_canvas_elements_dag(
         info = registry.get(block.class_name)
         if info is None:
             continue
-        # Track per-port wired counts so the port sub-node can carry a
-        # ``data.wired_count`` flag used by Phase 4's selection styles.
-        wired_count_by_port: Dict[str, int] = {}
-        for edge in scope.edges:
-            if edge.kind == "aux" and edge.target_block_id == block.block_id:
-                wired_count_by_port[edge.target_port] = (
-                    wired_count_by_port.get(edge.target_port, 0) + 1
-                )
+        # Wired counts were bucketed in the initial ``scope.edges`` walk
+        # above (avoids the per-block O(E) re-scan that this loop used
+        # to do).
+        wired_count_by_port = aux_wired_counts.get(block.block_id, {})
         for param_name, param_info in info.parameters.items():
             if not (param_info.is_operation or param_info.is_pipeline):
                 continue
-            accepts = _resolve_dag_accepts(param_info, registry)
-            wired = wired_count_by_port.get(param_name, 0) > 0
+            cached_accepts = _resolve_dag_accepts_for_class_port(
+                block.class_name, param_name, registry_key
+            )
+            if cached_accepts is None:
+                # Cache signalled a registry-id mismatch (tests
+                # monkeypatch ``get_registry``); fall back to a direct
+                # uncached resolve.
+                accepts: List[str] = _resolve_dag_accepts(
+                    param_info, registry
+                )
+            else:
+                accepts = list(cached_accepts)
+            wired_count = wired_count_by_port.get(param_name, 0)
+            wired = wired_count > 0
             required = not param_info.has_default
             classes = _aux_port_classes(
                 wired=wired,
@@ -1241,10 +1241,13 @@ def build_canvas_elements_dag(
                         "block_id": block.block_id,
                         "port": param_name,
                         "port_kind": "aux",
+                        # ``is_port`` is read by ``viewport_ops.js`` to
+                        # skip ports during the dagre rank assignment.
+                        "is_port": True,
                         "is_list": param_info.is_list,
                         "is_required": required,
                         "accepts": accepts,
-                        "wired_count": wired_count_by_port.get(param_name, 0),
+                        "wired_count": wired_count,
                     },
                     "classes": " ".join(classes),
                     "selectable": False,
@@ -1255,8 +1258,8 @@ def build_canvas_elements_dag(
     # ── 3. Emit one cytoscape edge per :class:`Edge`.  Edges carry
     #       ``data.kind`` (image|aux) + ``data.target_slot`` so the
     #       stylesheet can pick blue-solid (image) vs purple-dashed
-    #       (aux), and Phase 4's wire-drawing can read the slot during
-    #       drag-replace gestures.
+    #       (aux); ``wire_drawing.js`` reads the slot during drag-replace
+    #       gestures.
     for edge in scope.edges:
         edge_classes = ["dag-wire"]
         if edge.kind == "image":
@@ -1289,7 +1292,7 @@ def build_canvas_elements_dag(
     # ── 4. Emit issue-badge sub-nodes.  Each block with one or more
     #       issues gets one compound child badge whose ``data`` lists
     #       the rule kind / severity / detail (badge collapses multiple
-    #       issues into one row — Phase 6's tooltip lists them all).
+    #       issues into one row — the tooltip lists them all).
     for block_id, block_issues in issue_by_block.items():
         if not block_issues:
             continue
@@ -1358,13 +1361,12 @@ def build_confirm_delete_modal() -> dbc.Modal:
     """Lightweight confirm-delete modal for non-empty container blocks.
 
     Mounted once at app boot inside ``build_app_layout``; visibility is
-    driven by ``STORE_BUILDER_STATE.pending_delete_block_id`` (Phase 5
-    callbacks: setting the field on a non-empty container opens the
-    modal; Confirm dispatches ``block_delete_confirm``; Cancel clears
-    the field).
+    driven by ``STORE_BUILDER_STATE.pending_delete_block_id`` — setting
+    the field on a non-empty container opens the modal, Confirm
+    dispatches ``block_delete_confirm``, and Cancel clears the field.
 
-    Phase 2 only mounts the modal scaffold — the body label + the
-    inner-block count are filled in by the Phase 5 callback when
+    This builder emits the modal scaffold only; the body label + the
+    inner-block count are filled in by the open-modal callback when
     ``pending_delete_block_id`` resolves.  The Confirm / Cancel
     buttons carry stable ids :data:`BTN_CONFIRM_DELETE` /
     :data:`BTN_CANCEL_DELETE`.
@@ -1381,10 +1383,10 @@ def build_confirm_delete_modal() -> dbc.Modal:
         children=[
             dbc.ModalHeader(dbc.ModalTitle("Confirm delete")),
             dbc.ModalBody(
-                # Phase 5 callback rewrites the children to:
+                # The open-modal callback rewrites the children to:
                 #   "Delete container '<label>' and its N inner block(s)?"
-                # at dispatch time.  Phase 2's empty default keeps the
-                # modal renderable as a layout scaffold.
+                # at dispatch time.  Empty default keeps the modal
+                # renderable as a layout scaffold.
                 html.Div(id=f"{ids.CONFIRM_DELETE_MODAL_ID}-body"),
             ),
             dbc.ModalFooter(

@@ -11,7 +11,8 @@
  *     ``dag-block--collapsed`` CSS class on the container block; the body's
  *     ``display: none`` is handled by ``builder.css``.
  *   * ``window.phenotypicScrollTo(...)`` and ``window.phenotypicDrillToScope(...)``
- *     are Phase-2 stubs; Phase 6 fills in the full expand-chain + scrim flow.
+ *     are stubs until the validation-badge callback ships the full
+ *     expand-chain + scrim flow.
  *
  * On completion the IIFE writes the asset-readiness sentinels expected by
  * ``builder.js``'s polling routine (spec §5.5 / §5.6):
@@ -44,6 +45,15 @@
     const DAGRE_DIRECTION = "LR";
     const ANIMATION_DURATION = 200;
     const ANIMATION_EASING = "ease-out";
+
+    /** Dagre node + rank separation (px). Tuned per spec §4.7 so short
+     *  chains stay above the fold without crowding longer ones. */
+    const DAGRE_NODE_SEP = 40;
+    const DAGRE_RANK_SEP = 80;
+    const DAGRE_EDGE_SEP = 16;
+
+    /** Padding (px) ``cy.fit()`` reserves around the final bounding box. */
+    const FIT_PADDING = 24;
 
     /** CSS class toggled on the compound parent during collapse.
      *  ``builder.css`` owns the visibility rule:
@@ -159,7 +169,7 @@
                 // Preset can't fail on a sane cy — but we swallow because
                 // the relayout path is purely cosmetic.
             }
-            cy.fit(undefined, 24);
+            cy.fit(undefined, FIT_PADDING);
             return;
         }
 
@@ -244,9 +254,9 @@
                         rankDir: DAGRE_DIRECTION,
                         animate: false,
                         ranker: "longest-path",
-                        nodeSep: 40,
-                        rankSep: 80,
-                        edgeSep: 16,
+                        nodeSep: DAGRE_NODE_SEP,
+                        rankSep: DAGRE_RANK_SEP,
+                        edgeSep: DAGRE_EDGE_SEP,
                         // ``fit: false`` keeps the *outer* scope's pan
                         // intact while we lay out an inner one — only
                         // the final root-level pass calls cy.fit().
@@ -287,7 +297,7 @@
         // Step 5/6 — Root scope animated fit. Per spec, only the final
         // pan / zoom animates; per-scope passes ran synchronously above.
         cy.animate(
-            { fit: { eles: cy.elements(), padding: 24 } },
+            { fit: { eles: cy.elements(), padding: FIT_PADDING } },
             { duration: ANIMATION_DURATION, easing: ANIMATION_EASING }
         );
 
@@ -337,7 +347,7 @@
                     }
                 );
             } else {
-                cy.fit(undefined, 24);
+                cy.fit(undefined, FIT_PADDING);
             }
         });
     }

@@ -257,7 +257,9 @@
      *  in ``_callbacks.asset_status_disables`` consumes. */
     const ASSET_READY_FLAGS = {
         viewport_ops: "phenotypic_viewport_ops_ready",
-        // Phase 3 / Phase 4 fill in palette_dnd + wire_drawing here.
+        // ``palette_dnd`` and ``wire_drawing`` are filled in as their
+        // IIFEs ship; meanwhile ``collectAssetStatus`` defaults them to
+        // true so the banner stays clear.
     };
 
     /** Auxiliary "extension missing" flags. Asset-specific: an asset
