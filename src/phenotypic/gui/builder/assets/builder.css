@@ -1026,9 +1026,9 @@ code, pre, .text-monospace, .font-monospace {
 
 .dag-block__title-bar {
     /* Reserved class for any DOM overlay that anchors to a container's
-     * title bar (Phase 5 ships the title text inside the cytoscape
-     * compound's ``label`` data field — see ``_layout.py``).  Future
-     * inline-rename glue (spec §4.4) hangs off this hook. */
+     * title bar (the title text ships inside the cytoscape compound's
+     * ``label`` data field — see ``_layout.py``).  Future inline-rename
+     * glue (spec §4.4) hangs off this hook. */
     font-family: var(--font-mono);
     font-size: var(--font-size-caption);
     font-weight: 600;
@@ -1092,17 +1092,6 @@ code, pre, .text-monospace, .font-monospace {
     font-size: var(--font-size-caption);
     color: var(--color-muted);
     letter-spacing: 0.04em;
-}
-
-.dag-block__chevron {
-    /* Generic chevron hook (alias for the encoded ▼ / ▶ text glyphs
-     * carried inside the title-bar label).  Reserved for any DOM
-     * overlay that needs to anchor to the chevron's hit target — the
-     * server-side renderer ships the chevron inside the cytoscape
-     * compound's ``data.label`` to avoid a second hit target. */
-    cursor: pointer;
-    color: var(--color-navy);
-    transition: transform var(--transition);
 }
 
 /* Inspector container card (spec §4.5).  The card holds the label /

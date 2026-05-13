@@ -1525,8 +1525,7 @@ def _emit_scope_elements(
         # decision below, the collapsed-title chain-glyph suffix, and
         # the node_data ``inner_error_count`` / ``inner_hint_count``
         # fields.  ``_collect_container_issues`` walks the entire nested
-        # subtree, so calling it three times per container (as the
-        # initial Phase 5 implementation did) wasted ~2/3 of the work.
+        # subtree, so calling it more than once per container wastes work.
         inner_errors = 0
         inner_hints = 0
         if (
@@ -1822,7 +1821,7 @@ def build_canvas_elements_dag(
       to the chain's terminal carry ``data.is_main: True`` so the
       cytoscape stylesheet can render them at ``width: 3px``; aux + non-
       main edges land at ``width: 2px``.
-    * **Container compound parents (Phase 5).** Container blocks
+    * **Container compound parents.** Container blocks
       (``class_name == PIPELINE_CLASS_NAME``) recurse into their
       ``nested`` scope; child elements carry ``data.parent =
       container_block_id`` so cytoscape's compound layout nests them
@@ -2732,10 +2731,9 @@ def _build_aux_scalar_row(
             )
         ]
         if source_block is not None and _block_is_container(source_block):
-            # Drill-in is implemented in Phase 5 (container expand/
-            # collapse + drill-in).  Mount the button so the affordance
-            # is visible but disable it until the Phase 5 callback
-            # lands, with a tooltip explaining the gating.
+            # Container drill-in from the wire card lands in a follow-up
+            # phase.  Mount the button so the affordance is visible but
+            # disable it for now, with a tooltip explaining the gating.
             action_buttons.append(
                 dbc.Button(
                     "Drill in →",
@@ -2749,7 +2747,7 @@ def _build_aux_scalar_row(
                     n_clicks=0,
                     className="ms-2",
                     disabled=True,
-                    title="Container drill-in lands in Phase 5",
+                    title="Container drill-in from wire card is not yet wired",
                 )
             )
         body = html.Div(
@@ -3179,7 +3177,8 @@ def _build_container_inspector_card(
       :data:`STORE_ISSUES` (passed through to the rendered card by the
       enclosing callback).
     * **``Drill in →`` button** carrying :data:`BTN_DRILL_IN_CONTAINER`
-      — wired by Agent 5B to dispatch ``drill_into_container``.
+      — wired in :func:`register_callbacks` to dispatch
+      ``drill_into_container``.
     * **No ``nrows`` / ``ncols`` fields** — those only make sense at
       the root scope (spec §4.5).  Hidden ``INPUT_NROWS`` / ``INPUT_NCOLS``
       placeholders are emitted by the param form for non-container
@@ -3270,8 +3269,8 @@ def _build_container_inspector_card(
             ],
             className="mb-2",
         ),
-        # Aggregated inner-issue count placeholder.  Phase 6 wires
-        # STORE_ISSUES → this row; for Phase 5 we render the zero-state
+        # Aggregated inner-issue count placeholder.  A future phase will
+        # wire STORE_ISSUES → this row; today we render the zero-state
         # text so the row is part of the visible chrome.
         html.Div(
             "0 inner issues",
@@ -3288,9 +3287,8 @@ def _build_container_inspector_card(
         ),
         # Hidden placeholder so the legacy fan-in callback's
         # ``Input(BTN_DRILL_IN)`` resolves even on the container card
-        # branch (5B can choose to reuse this id or dispatch from
-        # BTN_DRILL_IN_CONTAINER — either way the legacy id stays
-        # mounted as a hidden anchor).
+        # branch; the dispatch path uses BTN_DRILL_IN_CONTAINER while
+        # the legacy id stays mounted as a hidden anchor.
         dbc.Button(id=ids.BTN_DRILL_IN, n_clicks=0, style=_HIDDEN_STYLE),
         html.Hr(),
         html.Div(id=ids.INSPECTOR_PARAM_FORM),

@@ -171,14 +171,13 @@ BTN_CANCEL_DELETE = "btn-cancel-delete"
 #: when the selected block is a :data:`PIPELINE_CLASS_NAME` container.
 #: Distinct from :data:`BTN_DRILL_IN` (which dispatches the legacy
 #: ``drill_in`` for nested-pipeline ``StepNode`` selections) so the
-#: Phase 5 container dispatcher can subscribe without spurious triggers
-#: from the legacy path.  Agent 5B wires this to dispatch
-#: ``drill_into_container``.
+#: container dispatcher can subscribe without spurious triggers
+#: from the legacy path.  Dispatches ``drill_into_container``.
 BTN_DRILL_IN_CONTAINER = "btn-drill-in-container"
 
 #: Container-name text input inside the inspector container card.  Bound
 #: to ``BuilderScope.name`` of the selected container's nested scope
-#: (spec §4.5).  Agent 5B's dispatcher reads this to update
+#: (spec §4.5).  The dispatcher reads this to update
 #: ``block.nested.name`` on debounce.
 INPUT_CONTAINER_NAME = "input-container-name"
 

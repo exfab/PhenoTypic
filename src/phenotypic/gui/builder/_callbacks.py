@@ -215,7 +215,7 @@ def _scope_at_breadcrumb(
         The nested scope dict (``{"nodes": [...], ...}``).  Returns the
         root scope when ``breadcrumb`` is empty.
 
-    Defensive note (Phase 5 extension): when *state_dict* carries the DAG
+    Defensive note: when *state_dict* carries the DAG
     schema (``root`` is a ``{"blocks": [...], "edges": [...]}`` dict, not
     a legacy ``{"nodes": [...]}`` dict), this helper returns the root
     scope unchanged.  Every DAG dispatch kind (``block_create``,
@@ -1140,7 +1140,7 @@ DispatchKind: TypeAlias = Literal[
     "list_aux_add_empty_slot",
     "wire_select",
     "block_select",
-    # Pipeline-container dispatchers (Phase 5, spec §4.4 / §5.6).
+    # Pipeline-container dispatchers (spec §4.4 / §5.6).
     "block_reparent",
     "block_collapsed_toggle",
     "drill_into_container",
@@ -3393,7 +3393,7 @@ def register_callbacks(app: dash.Dash) -> None:
             return noop
 
     # ----------------------------------------------------------------------
-    # 2c-i. Container dispatch fan-in (spec §4.4 / §5.6, Phase 5)
+    # 2c-i. Container dispatch fan-in (spec §4.4 / §5.6)
     # ----------------------------------------------------------------------
     #
     # The DAG canvas surfaces a handful of clientside gestures that don't
@@ -3509,7 +3509,7 @@ def register_callbacks(app: dash.Dash) -> None:
             )
 
     # ----------------------------------------------------------------------
-    # 2c-ii. Container delete two-stage flow (spec §5.6, Phase 5)
+    # 2c-ii. Container delete two-stage flow (spec §5.6)
     # ----------------------------------------------------------------------
     #
     # The Delete button on a container surface emits a
@@ -3765,7 +3765,7 @@ def register_callbacks(app: dash.Dash) -> None:
 
         Distinct from the legacy ``BTN_DRILL_IN`` (which dispatches the
         ``drill_in`` kind against a legacy ``StepNode`` selection).
-        Agent 5A's inspector card mounts the dedicated
+        The inspector card mounts the dedicated
         :data:`BTN_DRILL_IN_CONTAINER` button only when the selected
         block is a Pipeline container; this callback dispatches the
         ``drill_into_container`` kind against
