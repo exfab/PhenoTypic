@@ -276,6 +276,10 @@ def _build_axis_label(value: object, *, axis: str, max_width_px: int) -> Compone
     so the wrap is robust against long unbroken tokens like dataset stems
     (``Run_12-01_29_26``).
     """
+    # Y-axis labels get extra right padding so large tile sizes don't
+    # crowd the label up against the adjacent image frame — the column
+    # `gap: 8px` alone is too tight once the tile reaches ~150px+.
+    padding = "0.25rem 0.75rem 0.25rem 0.25rem" if axis == "y" else "0.25rem"
     return html.Div(
         _format_axis_value(value),
         className=f"colony-axis-label colony-axis-label--{axis}",
@@ -285,7 +289,7 @@ def _build_axis_label(value: object, *, axis: str, max_width_px: int) -> Compone
             "color": COLOR_NAVY,
             "textAlign": "center",
             "alignSelf": "center",
-            "padding": "0.25rem",
+            "padding": padding,
             "maxWidth": f"{max_width_px}px",
             "minWidth": 0,
             "whiteSpace": "normal",

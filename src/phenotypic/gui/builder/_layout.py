@@ -1837,7 +1837,7 @@ def build_footer(image_root: Optional[Path]) -> dbc.Card:
             )
         ),
         id=ids.FOOTER_CONTAINER,
-        className="mt-3",
+        className="mb-3",
     )
 
 
@@ -1855,11 +1855,14 @@ def build_app_layout(
 ) -> html.Div:
     """Compose the top-level page layout.
 
-    Three vertical sections wrapped in a ``dbc.Container(fluid=True)``:
+    Four vertical sections wrapped in a ``dbc.Container(fluid=True)``:
 
+    * Header chrome (logo + pipeline I/O).
+    * Footer card with image source + I/O controls (sits above the
+      breadcrumb so the active-image selector and Run preview button are
+      anchored near the top of the page).
     * Breadcrumb nav (full width).
     * Three-column body — palette, canvas, inspector — sized 3/6/3.
-    * Footer card with image source + I/O controls.
 
     Mounts the three :class:`dcc.Store` instances callbacks need:
 
@@ -2182,7 +2185,7 @@ def build_app_layout(
             toast,
             modals,
             dbc.Container(
-                [header, build_breadcrumb(state), body_row, build_footer(image_root)],
+                [header, build_footer(image_root), build_breadcrumb(state), body_row],
                 fluid=True,
             ),
         ]
