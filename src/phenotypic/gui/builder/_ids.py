@@ -65,6 +65,112 @@ POPOVER_ACTION_STORE = "store-popover-action"
 
 
 # ---------------------------------------------------------------------------
+# Phase 2 DAG-redesign ids (spec §6)
+# ---------------------------------------------------------------------------
+#
+# These are introduced alongside the legacy popover-era ids; the legacy ids
+# stay in place until Phase 7. Routing between the two surfaces is handled by
+# the feature flag ``phenotypic.gui.builder._state.PHENOTYPIC_GUI_DAG`` —
+# layout / callback paths select one set or the other at app boot.
+
+#: ``dcc.Store`` written by the clientside ``viewport_ops.js`` glue when the
+#: user (or a server-side callback) requests a viewport-level operation such
+#: as ``scroll_to``, ``relayout``, ``reanchor``, ``drill_to_scope``, or
+#: ``block_collapsed_toggle``.  Server-side callbacks subscribe to it to
+#: route through ``_dispatch_state_update`` (or, for purely visual ops, to
+#: forward the payload back to the clientside).  See spec §5.5 "Clientside
+#: event contract" for the exact payload schema.
+STORE_VIEWPORT_OP = "store-viewport-op"
+
+#: ``dcc.Store`` holding the most recent ``List[Issue]`` produced by
+#: :func:`phenotypic.gui.builder._validation.validate`.  Drives the toolbar
+#: issue badge count + tooltip rows + per-block red/yellow border decoration
+#: via Phase 6 callbacks.  Phase 2 only mounts the store and feeds it the
+#: initial validation pass; the badge UI lands in Phase 6.
+STORE_ISSUES = "store-issues"
+
+#: ``dcc.Store`` written by the asset-readiness polling loop in
+#: ``assets/builder.js`` (Phase 2+).  Data shape:
+#: ``{"wire_drawing": bool, "palette_dnd": bool, "viewport_ops": bool,
+#: "dagre_missing": bool}`` — ``True`` means the asset's IIFE registered
+#: the ``window.phenotypic_<name>_ready`` sentinel within the polling
+#: window (``False`` means missing / failed to load).  Consumed by
+#: :func:`phenotypic.gui.builder._layout.build_asset_status_banner` and by
+#: the ``asset_status_disables`` callback to gate the ``Re-layout`` button
+#: and the palette ``pointer-events`` style.
+STORE_ASSET_STATUS = "store-asset-status"
+
+#: Toolbar button that re-runs the dagre layout pass + ``cy.fit()``.  Wired
+#: to the ``relayout`` payload in ``STORE_VIEWPORT_OP`` by Phase 5; Phase 2
+#: only renders the button + handles the asset-status gating (disabled when
+#: ``viewport_ops.js`` or the ``cytoscape-dagre`` extension is missing).
+BTN_RELAYOUT = "btn-relayout"
+
+#: ``html.Div`` row sitting above the canvas that surfaces missing-asset
+#: messages (one row per missing JS file).  Subscribes to
+#: :data:`STORE_ASSET_STATUS`; hidden when all assets ready.  Rendered by
+#: :func:`phenotypic.gui.builder._layout.build_asset_status_banner`.
+BANNER_ASSET_STATUS = "banner-asset-status"
+
+#: ``dbc.Modal`` housing the confirm-delete prompt shown when the user
+#: requests deletion of a non-empty :class:`~phenotypic.ImagePipeline`
+#: container block.  Mounted once at app boot; ``is_open`` driven by
+#: ``STORE_BUILDER_STATE.pending_delete_block_id``.  See spec §6
+#: "Confirm-delete modal" row.
+CONFIRM_DELETE_MODAL_ID = "confirm-delete-modal"
+
+#: Primary action button inside :data:`CONFIRM_DELETE_MODAL_ID`.  Dispatches
+#: ``block_delete_confirm`` (Phase 5).
+BTN_CONFIRM_DELETE = "btn-confirm-delete"
+
+#: Cancel button inside :data:`CONFIRM_DELETE_MODAL_ID`.  Clears
+#: ``state.pending_delete_block_id`` so the modal closes.
+BTN_CANCEL_DELETE = "btn-cancel-delete"
+
+
+def block_port_id(block_id: str, port: str) -> str:
+    """Return the cytoscape node id for a DAG block's port sub-node.
+
+    The DAG redesign renders every port (image-in, image-out, aux) as a
+    cytoscape compound child of its parent block.  Each port carries a
+    deterministic id derived from the parent ``BlockNode.block_id`` and
+    the port name so callbacks reading ``tapNodeData`` can recover the
+    structured pair via ``id.split("__")``.
+
+    Args:
+        block_id: 32-character ``BlockNode.block_id`` of the parent block.
+        port: Logical port name — ``"in"`` for image-input, ``"out"`` for
+            image-output, the parameter name for aux ports (with a
+            ``"[<i>]"`` suffix for list-aux slots; see
+            :func:`_encode_aux_port_id` for the legacy form).
+
+    Returns:
+        Flat string ``"port__<block_id>__<port>"`` suitable as a
+        cytoscape element id.
+    """
+
+    return f"port__{block_id}__{port}"
+
+
+def edge_id(eid: str) -> str:
+    """Return the cytoscape edge id for a DAG :class:`Edge`.
+
+    Cytoscape requires every edge to carry a stable string id; the DAG
+    schema generates random 32-character UUID hex strings for
+    ``Edge.edge_id`` and the canvas wraps them in a short prefix so the
+    cytoscape id namespace doesn't collide with block / port ids.
+
+    Args:
+        eid: ``Edge.edge_id`` value.
+
+    Returns:
+        Flat string ``"edge__<eid>"``.
+    """
+
+    return f"edge__{eid}"
+
+
+# ---------------------------------------------------------------------------
 # Top-level layout regions
 # ---------------------------------------------------------------------------
 
@@ -643,4 +749,15 @@ __all__ = [
     "_decode_aux_port_id",
     "_encode_main_port_id",
     "_decode_main_port_id",
+    # Phase 2 DAG redesign additions
+    "STORE_VIEWPORT_OP",
+    "STORE_ISSUES",
+    "STORE_ASSET_STATUS",
+    "BTN_RELAYOUT",
+    "BANNER_ASSET_STATUS",
+    "CONFIRM_DELETE_MODAL_ID",
+    "BTN_CONFIRM_DELETE",
+    "BTN_CANCEL_DELETE",
+    "block_port_id",
+    "edge_id",
 ]

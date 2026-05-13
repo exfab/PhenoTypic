@@ -2969,6 +2969,94 @@ def register_callbacks(app: dash.Dash) -> None:
             return is_open
         return not is_open
 
+    # ----------------------------------------------------------------------
+    # 11. Asset-status disable wiring (Phase 2 of DAG redesign — spec §6).
+    # ----------------------------------------------------------------------
+    # Subscribes to ``STORE_ASSET_STATUS`` (written by ``assets/builder.js``'s
+    # readiness-poll loop with shape
+    # ``{"wire_drawing": bool, "palette_dnd": bool, "viewport_ops": bool,
+    # "dagre_missing": bool}``).  When a JS file fails to load:
+    #
+    # * ``viewport_ops`` missing or ``dagre_missing`` True →
+    #   ``BTN_RELAYOUT`` becomes ``disabled``.
+    # * ``palette_dnd`` missing → the palette container receives a CSS
+    #   style toggling ``pointer-events: none`` so users see the palette
+    #   but cannot start an HTML5 drag.
+    # * ``wire_drawing`` missing → no server-side gate (the JS isn't there
+    #   to handle a port mousedown anyway); the banner above the canvas
+    #   surfaces the failure text.
+    #
+    # Phase 2 wires the callback in; the visible elements (``BTN_RELAYOUT``,
+    # ``PALETTE_CONTAINER``, ``BANNER_ASSET_STATUS``) are guaranteed to
+    # exist on every render path so the callback inputs always resolve.
+    @app.callback(
+        Output(ids.BTN_RELAYOUT, "disabled"),
+        Output(ids.PALETTE_CONTAINER, "style", allow_duplicate=True),
+        Output(ids.BANNER_ASSET_STATUS, "children"),
+        Output(ids.BANNER_ASSET_STATUS, "style", allow_duplicate=True),
+        Input(ids.STORE_ASSET_STATUS, "data"),
+        prevent_initial_call=True,
+    )
+    def asset_status_disables(
+        status: Optional[Dict[str, Any]],
+    ) -> Tuple[bool, Dict[str, Any], List[Any], Dict[str, Any]]:
+        """Gate the relayout button + palette on missing JS assets.
+
+        Args:
+            status: Dict written by the clientside readiness poll —
+                ``{"wire_drawing": bool, "palette_dnd": bool,
+                "viewport_ops": bool, "dagre_missing": bool}``.  ``None``
+                during the first ~500ms of page load (before the poll
+                completes).
+
+        Returns:
+            Tuple of (relayout disabled, palette style override, banner
+            children, banner style) so the relayout button and palette
+            stay in lock-step with the asset readiness signal.
+        """
+
+        status = status or {}
+        # Compute layout / palette gates.
+        viewport_ready = bool(status.get("viewport_ops", True))
+        dagre_missing = bool(status.get("dagre_missing", False))
+        palette_ready = bool(status.get("palette_dnd", True))
+        wire_ready = bool(status.get("wire_drawing", True))
+
+        relayout_disabled = (not viewport_ready) or dagre_missing
+        palette_style: Dict[str, Any]
+        if palette_ready:
+            # Default: let the palette accept HTML5 drag events again.
+            palette_style = {}
+        else:
+            # Palette JS missing: disable HTML5 drag without hiding the
+            # palette itself (the user can still focus + read buttons).
+            palette_style = {
+                "pointerEvents": "none",
+                "opacity": 0.6,
+            }
+
+        # Build the banner rows for any missing assets.
+        rows: List[Any] = []
+        if not wire_ready:
+            rows.append(html.Div("Wire drawing offline"))
+        if not palette_ready:
+            rows.append(
+                html.Div(
+                    "Block creation offline — drag from the palette is "
+                    "unavailable"
+                )
+            )
+        if not viewport_ready:
+            rows.append(html.Div("Layout offline"))
+        if dagre_missing:
+            rows.append(html.Div("Layout extension missing"))
+
+        if rows:
+            banner_style = {"display": "block"}
+            return relayout_disabled, palette_style, rows, banner_style
+
+        return relayout_disabled, palette_style, [], {"display": "none"}
+
 
 # ---------------------------------------------------------------------------
 # Helpers (private to this module)

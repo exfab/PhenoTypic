@@ -779,6 +779,118 @@ code, pre, .text-monospace, .font-monospace {
     outline: none;
 }
 
+/* ─── DAG redesign canvas (Phase 2) ────────────────────────────────────
+ *
+ * Phase 2 of the Pipeline Builder DAG redesign (spec §5.5) renders every
+ * block + port + wire as a first-class cytoscape element.  Cytoscape's
+ * canvas renderer ignores DOM CSS for *most* visual properties — those
+ * live in the cytoscape stylesheet inside ``_layout.py``.  The rules
+ * below cover the DOM-side affordances:
+ *
+ *   .dag-block, .dag-port*, .dag-wire, .dag-issue cursor + outline
+ *     affordances for the cytoscape-DOM hybrid layer.
+ *   .dag-scrim full-canvas overlay used by ``viewport_ops.js``'s
+ *     scroll-to chain to suppress interactions while expanding
+ *     collapsed containers (spec §5.6 ``scroll_to``).
+ *
+ * Color tokens come from the shared design system — never hardcode hex
+ * values; if a new accent is needed, add it to ``_design.py`` first. */
+.dag-block {
+    /* Block-level affordance: cursor changes to indicate selectability.
+     * Visual styling (background tint, border colour) is owned by the
+     * cytoscape stylesheet in ``_layout.py``. */
+    cursor: pointer;
+}
+.dag-port {
+    /* Port markers are non-selectable cytoscape sub-nodes; the DOM
+     * affordance is "show the user the port is interactive" via cursor
+     * + outline-on-focus.  Border / background colours per port kind
+     * are emitted by the cytoscape stylesheet. */
+    cursor: crosshair;
+}
+.dag-port--input {
+    /* Image-input port — blue circle on the block's left edge.  The
+     * DOM-side rule just narrows the cursor so the user knows this is
+     * a drop target during a wire drag. */
+    cursor: cell;
+}
+.dag-port--output {
+    /* Image-output port — neutral circle on the block's right edge;
+     * starts a wire drag on mousedown (Phase 4 ``wire_drawing.js``). */
+    cursor: grab;
+}
+.dag-port--aux {
+    /* Aux-input port — purple square on the block's bottom edge.
+     * Carries ``data.accepts: List[str]`` so the wire-drag JS can
+     * decide which ports glow vs. dim on dragstart. */
+    cursor: cell;
+}
+.dag-port--glow {
+    /* Set by ``wire_drawing.js`` during a drag when the dragged source
+     * is compatible with this port.  Adds a soft halo so the user can
+     * see the legal targets across the canvas at a glance. */
+    filter: drop-shadow(0 0 6px var(--oi-purple));
+    transition: filter var(--transition);
+}
+.dag-port--dim {
+    /* Set by ``wire_drawing.js`` during a drag for incompatible ports
+     * — drops to 30% opacity so the legal target set reads clearly. */
+    opacity: 0.3;
+    transition: opacity var(--transition);
+}
+.dag-wire {
+    /* Wires (edges) are cytoscape edges — most visual styling lives in
+     * the cytoscape stylesheet.  The DOM-side rule applies only to the
+     * thin DOM overlay used during wire-drag (live-wire SVG). */
+    cursor: pointer;
+}
+.dag-issue {
+    /* Issue badges are cytoscape sub-nodes that overlay the block's
+     * top-right corner — the DOM-side rule just changes the cursor on
+     * hover so the user knows clicking is interactive (Phase 6 will
+     * dispatch ``scroll_to`` on click). */
+    cursor: pointer;
+}
+.dag-scrim {
+    /* Full-canvas overlay mounted by ``viewport_ops.js`` during the
+     * ``scroll_to`` chain.  Suppresses pointer events so a user drag
+     * cannot interleave with the expand chain; the chain is typically
+     * 200-600ms for 2-3 collapsed levels (spec §5.6 ``scroll_to``).
+     * Semi-transparent surface tint mirrors the modal scrim used by
+     * dbc.Modal so the visual language is consistent. */
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.55);
+    z-index: 50;
+    pointer-events: all;
+    cursor: progress;
+}
+
+/* Asset-status banner above the canvas (spec §6 row).  Surfaces the
+ * "Wire drawing offline" / "Layout offline" / "Layout extension
+ * missing" strings when a JS file fails to register its readiness
+ * sentinel within ~1500ms.  Hidden when ``STORE_ASSET_STATUS`` reports
+ * every asset ready. */
+.builder-asset-status {
+    background: rgba(213, 94, 0, 0.08);  /* OI_VERMILION at low opacity */
+    border-left: 3px solid var(--oi-vermilion);
+    color: var(--color-body);
+    padding: var(--sp-1) var(--sp-3);
+    margin-bottom: var(--sp-2);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    border-radius: var(--radius-sm);
+}
+.builder-asset-status > div {
+    padding: var(--sp-1) 0;
+}
+.builder-asset-status > div + div {
+    border-top: 1px dashed var(--color-rule);
+}
+
 /* ─── Cytoscape-anchored DOM overlays (cursor affordance) ──────────── */
 
 /* Main I/O port + bottom aux port visuals are driven by the cytoscape

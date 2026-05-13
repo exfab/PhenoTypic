@@ -48,10 +48,14 @@ from phenotypic.gui.builder._modal_browser import (
 from phenotypic.gui.builder._param_form import param_form
 from phenotypic.gui.builder._point_picker import build_point_picker_modal
 from phenotypic.gui.builder._state import (
+    INPUT_IMAGE_CLASS_NAME,
     PIPELINE_CLASS_NAME,
+    BlockNode,
     BuilderScope,
     BuilderState,
+    Edge,
     StepNode,
+    _DagBuilderScope,
     _ensure_param_scope,
     current_scope,
     stage_of,
@@ -683,6 +687,640 @@ def build_canvas_elements(
     return elements
 
 
+# ---------------------------------------------------------------------------
+# DAG canvas elements (spec §5.5 — Phase 2 of the builder redesign)
+# ---------------------------------------------------------------------------
+#
+# The DAG canvas renders every block + every port + every edge as a
+# first-class cytoscape element.  Container blocks (``class_name ==
+# PIPELINE_CLASS_NAME``) act as cytoscape compound parents so their inner
+# scope's blocks visually nest inside the container's bounding box.
+#
+# This implementation is **layout-agnostic** — no ``position`` is emitted
+# on any element.  The clientside ``viewport_ops.js`` (Agent 2B) runs a
+# per-scope dagre pass at first paint and after every state mutation; the
+# DAG canvas's stylesheet treats compound parents as auto-sized nodes so
+# dagre's per-scope output fits inside the outer scope's pass.
+
+#: Stage tints reused for DAG block classes (spec §4.1).  Mirrors
+#: ``_STAGE_COLORS`` so a glance at the canvas tells the user which stage
+#: of the pipeline a block belongs to.
+_DAG_INPUT_IMAGE_LABEL = "Input Image"
+
+
+def _resolve_dag_accepts(
+    param_info: Any,
+    registry: "OperationRegistry",
+) -> List[str]:
+    """Compute the list of registry class names compatible with an aux port.
+
+    The DAG canvas attaches this list as ``data.accepts`` on every aux-
+    port sub-node so the clientside ``wire_drawing.js`` (Phase 4) can
+    decide which ports glow vs. dim during a drag.  The algorithm
+    follows spec §5.5 ``accepts`` resolution rules:
+
+    * **``is_operation`` AND ``is_pipeline``** (the annotation is
+      ``ImageOperation`` itself, satisfied by every op and by
+      ``ImagePipeline``) → emit every registered op class plus the
+      ``PIPELINE_CLASS_NAME`` sentinel.
+    * **``is_pipeline``** alone → emit ``PIPELINE_CLASS_NAME``.
+    * **``is_operation``** alone → walk the registry for every class
+      whose ``cls`` is a subclass of the resolved annotation type.  The
+      registry caches ``type_hint``; we walk the resolved-class subset
+      to keep the function self-contained.
+
+    The result list is sorted for deterministic test snapshots.
+
+    Args:
+        param_info: ``ParamInfo`` for the aux-eligible parameter.
+        registry: Operation registry consulted for the candidate
+            class universe.
+
+    Returns:
+        Sorted list of class-name strings (lower-case alphabetical).
+        Empty when the annotation fails to resolve (advisory
+        ``unknown_class`` surface).
+    """
+
+    from phenotypic import ImagePipeline
+
+    # Forward reference / unresolved type → empty accepts list.
+    if not (param_info.is_operation or param_info.is_pipeline):
+        return []
+
+    names: List[str] = []
+    # Both flags True → the annotation is ImageOperation itself (or a
+    # union that includes both branches); emit every registered op
+    # plus the pipeline sentinel.
+    if param_info.is_operation and param_info.is_pipeline:
+        for category in registry.get_categories():
+            for op_info in registry.get_by_category(category):
+                names.append(op_info.name)
+        names.append(PIPELINE_CLASS_NAME)
+        return sorted(set(names))
+
+    # Pipeline-only annotation.
+    if param_info.is_pipeline and not param_info.is_operation:
+        return [PIPELINE_CLASS_NAME]
+
+    # is_operation only — resolve the type hint to one or more classes
+    # and walk the registry for subclasses.  ``_unwrap_to_classes``
+    # handles Union/Optional/List/Annotated layers and yields every
+    # candidate base class.
+    type_hint = param_info.type_hint
+    target_classes = _unwrap_to_classes(type_hint)
+    if not target_classes:
+        # Couldn't resolve a class — empty accepts so all sources dim.
+        return []
+
+    for category in registry.get_categories():
+        for op_info in registry.get_by_category(category):
+            cls = op_info.cls
+            if not isinstance(cls, type):
+                continue
+            for target in target_classes:
+                try:
+                    if issubclass(cls, target):
+                        names.append(op_info.name)
+                        break
+                except TypeError:
+                    # Defensive: cls may not be a type (e.g. metaclass)
+                    continue
+    # ImagePipeline IS an ImageOperation so include it when the target is
+    # ImageOperation or a base it satisfies.
+    for target in target_classes:
+        try:
+            if issubclass(ImagePipeline, target):
+                names.append(PIPELINE_CLASS_NAME)
+                break
+        except TypeError:
+            pass
+    return sorted(set(names))
+
+
+def _unwrap_to_classes(hint: Any) -> List[Any]:
+    """Strip ``Annotated[...]`` / ``Union[..., None]`` / ``List[T]`` wrappers.
+
+    Spec §5.5 — ``Union[A, B]`` accepts the union of per-arm accept
+    sets; this helper returns every class hint discovered after
+    unwrapping the typing-construct sandwich.  Returns an empty list
+    when no class is recoverable (forward references / unresolved
+    annotations).
+
+    Args:
+        hint: Type hint pulled from ``ParamInfo.type_hint``.
+
+    Returns:
+        List of class candidates (may contain duplicates; caller
+        deduplicates).
+    """
+
+    import types as types_mod
+    import typing as t
+    from typing import Union
+
+    # Annotated[T, ...] → recurse into T
+    origin = t.get_origin(hint)
+    args = t.get_args(hint)
+    annotated_metadata = getattr(hint, "__metadata__", None)
+    if annotated_metadata is not None and args:
+        return _unwrap_to_classes(args[0])
+
+    # Union / Optional → recurse into every non-None arm
+    if origin is Union or origin is types_mod.UnionType:
+        out: List[Any] = []
+        for arg in args:
+            if arg is type(None):
+                continue
+            out.extend(_unwrap_to_classes(arg))
+        return out
+
+    # list[T] / List[T] — recurse into T (list-ness handled by is_list flag)
+    if origin is list or hint is list:
+        if args:
+            return _unwrap_to_classes(args[0])
+        return []
+
+    # Plain class
+    if isinstance(hint, type):
+        return [hint]
+
+    return []
+
+
+def _dag_block_classes(
+    block: BlockNode,
+    *,
+    is_aux_consumed: bool,
+    has_issue: bool,
+    issue_severity: str,
+    has_stub_issue: bool,
+) -> List[str]:
+    """Compute the cytoscape class list for a DAG block.
+
+    Border styling rules per spec §4.2:
+
+    * 1px stage-coloured border for main-flow ops (default).
+    * 1.5px purple border for aux-consumed blocks.
+    * 1.5px yellow border for advisory issues (stage_order_hint / unknown).
+    * 2.5px solid red border for blocking issues (Rules 1-6).
+    * 2.5px dashed red border for the stub case of Rule 2 (unreachable
+      from Input Image).
+
+    Args:
+        block: The :class:`BlockNode` being rendered.
+        is_aux_consumed: ``True`` when this block's image-out wires to an
+            aux port (so it lives outside the main spine).
+        has_issue: ``True`` when validation reports any issue against
+            this block.
+        issue_severity: ``"error"`` for blocking issues, ``"advisory"``
+            for hints; only consulted when ``has_issue`` is ``True``.
+        has_stub_issue: ``True`` for the specific Rule 2 stub case —
+            renders as a dashed red border.
+
+    Returns:
+        List of cytoscape classes (joined by the caller).
+    """
+
+    stage = _safe_stage(block.class_name)
+    classes: List[str] = ["dag-block", f"stage--{stage}"]
+    if block.class_name == INPUT_IMAGE_CLASS_NAME:
+        classes.append("dag-block--input-image")
+    if block.class_name == PIPELINE_CLASS_NAME:
+        classes.append("dag-block--container")
+    if is_aux_consumed:
+        classes.append("dag-block--aux-consumed")
+    if has_issue:
+        if issue_severity == "advisory":
+            classes.append("dag-block--advisory")
+        elif has_stub_issue:
+            classes.append("dag-block--stub")
+        else:
+            classes.append("dag-block--error")
+    return classes
+
+
+def _aux_port_classes(
+    *,
+    wired: bool,
+    required: bool,
+    is_list: bool,
+) -> List[str]:
+    """Compute the cytoscape class list for an aux-port sub-node."""
+
+    classes = ["dag-port", "dag-port--aux"]
+    if wired:
+        classes.append("dag-port--wired")
+    elif required:
+        classes.append("dag-port--required")
+    if is_list:
+        classes.append("dag-port--list")
+    return classes
+
+
+def build_canvas_elements_dag(
+    scope: "_DagBuilderScope",
+    *,
+    selected_block_id: Optional[str] = None,
+    selected_edge_id: Optional[str] = None,
+    breadcrumb: Optional[List[str]] = None,
+    issues: Optional[List[Any]] = None,
+) -> List[dict]:
+    """Compute the cytoscape ``elements`` list for a DAG-shaped scope.
+
+    Phase 2 of the builder redesign — see spec §5.5.  Renders every
+    :class:`BlockNode` as a cytoscape node, every aux/image port as a
+    cytoscape compound child of its parent block, and every
+    :class:`Edge` as a cytoscape edge.  Container blocks become
+    compound parents whose inner blocks visually nest inside the
+    container's bounding box.
+
+    Key design notes:
+
+    * **No positions emitted.** The clientside ``viewport_ops.js``
+      (Agent 2B) runs a per-scope ``cytoscape-dagre`` pass at first
+      paint and after every state mutation.  Returning positionless
+      elements lets the layout owner stay clientside without server-
+      side coordination.
+    * **Aux ports carry ``data.accepts``.**  Each op-typed param on a
+      consumer block emits one aux-port sub-node carrying
+      ``data.accepts: List[str]`` — the list of registry class names
+      whose annotation is compatible with that port (spec §5.5).
+      ``wire_drawing.js`` reads this on dragstart to decide which
+      ports glow vs. dim.
+    * **Issue badges.** Per spec §4.6, each block with an issue gets a
+      sub-node ``dag-issue`` carrying ``data: {rule_kind, severity,
+      block_id, detail}``.  Phase 2 emits the elements; Phase 6 wires
+      the click-to-pan interactions.
+    * **Main-path emphasis.**  Edges on the path from ``Input Image``
+      to the chain's terminal carry ``data.is_main: True`` so the
+      cytoscape stylesheet can render them at ``width: 3px``; aux + non-
+      main edges land at ``width: 2px``.
+
+    Args:
+        scope: The :class:`_DagBuilderScope` currently in view (root or
+            nested container).
+        selected_block_id: ``BlockNode.block_id`` of the focused block
+            (selection styling), or ``None``.
+        selected_edge_id: ``Edge.edge_id`` of the focused wire, or
+            ``None``.
+        breadcrumb: Container ``block_id``s walked from the root to the
+            current scope (reserved for cross-scope rendering; Phase 2
+            renders only the active scope).
+        issues: List of :class:`~phenotypic.gui.builder._validation.Issue`
+            instances (or anything with ``.block_id``, ``.kind``,
+            ``.severity``, ``.detail`` attributes) — drives the border
+            decoration and issue-badge sub-nodes.
+
+    Returns:
+        Ordered list of cytoscape element dicts (compound parents +
+        blocks + port sub-nodes + edges + issue badges).
+    """
+
+    # Local import keeps the module's top-level import graph dash-only.
+    from phenotypic.gui._operation_registry import get_registry
+
+    registry = get_registry()
+    elements: List[dict] = []
+    issues = list(issues or [])
+
+    # Build a per-block issue index so the renderer can decorate each
+    # block once.  Issues outside the active scope are silently dropped
+    # (spec §4.6: nested-scope issues surface as the container's
+    # aggregate badge — Phase 6).
+    issue_by_block: Dict[str, List[Any]] = {}
+    for iss in issues:
+        bid = getattr(iss, "block_id", None)
+        if bid is None:
+            continue
+        issue_by_block.setdefault(bid, []).append(iss)
+
+    # Compute the set of blocks consumed as aux (output wires to a
+    # purple aux port).  Used by the border-decoration rule.
+    aux_consumed_block_ids: set[str] = set()
+    # Compute the main-path edge set for the width: 3px emphasis.
+    main_path_edges: set[str] = set()
+
+    image_edges_by_source: Dict[str, List[Edge]] = {}
+    for edge in scope.edges:
+        if edge.kind == "aux":
+            aux_consumed_block_ids.add(edge.source_block_id)
+        elif edge.kind == "image":
+            image_edges_by_source.setdefault(edge.source_block_id, []).append(edge)
+
+    # Walk image-flow forward from the Input Image to populate the main-path.
+    input_block = next(
+        (b for b in scope.blocks if b.class_name == INPUT_IMAGE_CLASS_NAME),
+        None,
+    )
+    if input_block is not None:
+        frontier = [input_block.block_id]
+        visited: set[str] = set()
+        while frontier:
+            curr = frontier.pop()
+            if curr in visited:
+                continue
+            visited.add(curr)
+            for out_edge in image_edges_by_source.get(curr, []):
+                main_path_edges.add(out_edge.edge_id)
+                frontier.append(out_edge.target_block_id)
+
+    # ── 1. Emit one cytoscape node per block (including the InputImage
+    #       sentinel).  Container blocks have no ``parent`` field — they ARE
+    #       the parent; their inner blocks get a ``data.parent = <container
+    #       block_id>`` reference when rendered.  Phase 2 renders containers
+    #       always-expanded (the collapse interaction lands in Phase 5).
+    for block in scope.blocks:
+        block_issues = issue_by_block.get(block.block_id, [])
+        has_issue = bool(block_issues)
+        issue_severity = "error"
+        has_stub_issue = False
+        if has_issue:
+            # Pick worst severity; stub gets the dashed-border treatment.
+            severities = {getattr(iss, "severity", "error") for iss in block_issues}
+            issue_severity = "advisory" if severities == {"advisory"} else "error"
+            kinds = {getattr(iss, "kind", "") for iss in block_issues}
+            has_stub_issue = "stub" in kinds
+
+        is_aux_consumed = block.block_id in aux_consumed_block_ids
+        classes = _dag_block_classes(
+            block,
+            is_aux_consumed=is_aux_consumed,
+            has_issue=has_issue,
+            issue_severity=issue_severity,
+            has_stub_issue=has_stub_issue,
+        )
+        if block.block_id == selected_block_id:
+            classes.append("selected")
+
+        # Container blocks render an expand chevron + folder glyph in
+        # their label; regular blocks fall back to their label/class.
+        if block.class_name == PIPELINE_CLASS_NAME:
+            base_label = block.label or block.class_name
+            label = f"▼ Pipeline — {base_label}"
+        elif block.class_name == INPUT_IMAGE_CLASS_NAME:
+            label = block.label or _DAG_INPUT_IMAGE_LABEL
+        else:
+            label = block.label or block.class_name
+
+        stage = _safe_stage(block.class_name)
+        node_data: Dict[str, Any] = {
+            "id": block.block_id,
+            "label": label,
+            "block_id": block.block_id,
+            "class_name": block.class_name,
+            "stage": stage,
+            "bg": _STAGE_COLORS.get(stage, _STAGE_COLORS["ops"]),
+            "parent": None,
+        }
+        elements.append(
+            {
+                "data": node_data,
+                "classes": " ".join(classes),
+                "grabbable": True,
+                "selectable": True,
+            }
+        )
+
+    # ── 2. Emit port sub-nodes per block.  Cytoscape compound children
+    #       set ``data.parent = <parent_block_id>``.  Each port carries
+    #       structured data so callbacks reading ``tapNodeData`` recover
+    #       the block_id + port name.
+    for block in scope.blocks:
+        if block.class_name != INPUT_IMAGE_CLASS_NAME:
+            # Image-input port (blue circle, left edge).
+            elements.append(
+                {
+                    "data": {
+                        "id": ids.block_port_id(block.block_id, "in"),
+                        "parent": block.block_id,
+                        "block_id": block.block_id,
+                        "port": "in",
+                        "port_kind": "image-in",
+                    },
+                    "classes": "dag-port dag-port--input",
+                    "selectable": False,
+                    "grabbable": False,
+                }
+            )
+
+        # Image-output port (right edge).  The InputImage sentinel still
+        # gets one — it's the source of the main spine.
+        elements.append(
+            {
+                "data": {
+                    "id": ids.block_port_id(block.block_id, "out"),
+                    "parent": block.block_id,
+                    "block_id": block.block_id,
+                    "port": "out",
+                    "port_kind": "image-out",
+                },
+                "classes": "dag-port dag-port--output",
+                "selectable": False,
+                "grabbable": False,
+            }
+        )
+
+        # Aux ports: one per op-typed parameter on the consumer (block).
+        if block.class_name in (INPUT_IMAGE_CLASS_NAME, PIPELINE_CLASS_NAME):
+            continue
+        info = registry.get(block.class_name)
+        if info is None:
+            continue
+        # Track per-port wired counts so the port sub-node can carry a
+        # ``data.wired_count`` flag used by Phase 4's selection styles.
+        wired_count_by_port: Dict[str, int] = {}
+        for edge in scope.edges:
+            if edge.kind == "aux" and edge.target_block_id == block.block_id:
+                wired_count_by_port[edge.target_port] = (
+                    wired_count_by_port.get(edge.target_port, 0) + 1
+                )
+        for param_name, param_info in info.parameters.items():
+            if not (param_info.is_operation or param_info.is_pipeline):
+                continue
+            accepts = _resolve_dag_accepts(param_info, registry)
+            wired = wired_count_by_port.get(param_name, 0) > 0
+            required = not param_info.has_default
+            classes = _aux_port_classes(
+                wired=wired,
+                required=required,
+                is_list=param_info.is_list,
+            )
+            elements.append(
+                {
+                    "data": {
+                        "id": ids.block_port_id(block.block_id, param_name),
+                        "parent": block.block_id,
+                        "block_id": block.block_id,
+                        "port": param_name,
+                        "port_kind": "aux",
+                        "is_list": param_info.is_list,
+                        "is_required": required,
+                        "accepts": accepts,
+                        "wired_count": wired_count_by_port.get(param_name, 0),
+                    },
+                    "classes": " ".join(classes),
+                    "selectable": False,
+                    "grabbable": False,
+                }
+            )
+
+    # ── 3. Emit one cytoscape edge per :class:`Edge`.  Edges carry
+    #       ``data.kind`` (image|aux) + ``data.target_slot`` so the
+    #       stylesheet can pick blue-solid (image) vs purple-dashed
+    #       (aux), and Phase 4's wire-drawing can read the slot during
+    #       drag-replace gestures.
+    for edge in scope.edges:
+        edge_classes = ["dag-wire"]
+        if edge.kind == "image":
+            edge_classes.append("dag-wire--image")
+        else:
+            edge_classes.append("dag-wire--aux")
+        if edge.edge_id in main_path_edges:
+            edge_classes.append("dag-wire--main")
+        if edge.edge_id == selected_edge_id:
+            edge_classes.append("selected")
+        elements.append(
+            {
+                "data": {
+                    "id": ids.edge_id(edge.edge_id),
+                    "source": edge.source_block_id,
+                    "target": edge.target_block_id,
+                    "edge_id": edge.edge_id,
+                    "kind": edge.kind,
+                    "target_slot": edge.target_slot,
+                    "target_port": edge.target_port,
+                    "source_port": edge.source_port,
+                    "is_main": edge.edge_id in main_path_edges,
+                },
+                "classes": " ".join(edge_classes),
+                "selectable": True,
+                "grabbable": False,
+            }
+        )
+
+    # ── 4. Emit issue-badge sub-nodes.  Each block with one or more
+    #       issues gets one compound child badge whose ``data`` lists
+    #       the rule kind / severity / detail (badge collapses multiple
+    #       issues into one row — Phase 6's tooltip lists them all).
+    for block_id, block_issues in issue_by_block.items():
+        if not block_issues:
+            continue
+        first = block_issues[0]
+        severity = getattr(first, "severity", "error")
+        kind = getattr(first, "kind", "")
+        detail = getattr(first, "detail", "")
+        elements.append(
+            {
+                "data": {
+                    "id": f"issue__{block_id}",
+                    "parent": block_id,
+                    "block_id": block_id,
+                    "rule_kind": kind,
+                    "severity": severity,
+                    "detail": detail,
+                    "count": len(block_issues),
+                },
+                "classes": (
+                    "dag-issue dag-issue--advisory"
+                    if severity == "advisory"
+                    else "dag-issue dag-issue--error"
+                ),
+                "selectable": True,
+                "grabbable": False,
+            }
+        )
+
+    return elements
+
+
+def build_asset_status_banner() -> html.Div:
+    """Thin row above the canvas; surfaces missing-asset messages.
+
+    Subscribes to :data:`STORE_ASSET_STATUS` via Phase 2 callbacks.  Each
+    missing JS asset renders one row inside the banner:
+
+    * ``wire_drawing.js`` → *"Wire drawing offline"*
+    * ``palette_dnd.js`` → *"Block creation offline — drag from the
+      palette is unavailable"*
+    * ``viewport_ops.js`` → *"Layout offline"*
+    * ``cytoscape-dagre`` extension missing → *"Layout extension
+      missing"*
+
+    The row is hidden when all assets report ready.  Phase 2 mounts the
+    container with ``children=[]`` and the ``asset_status_disables``
+    callback populates / hides it within ~1500ms of page load (the
+    asset-readiness poll interval is 500ms; three poll cycles cover the
+    expected JS download window).
+
+    Returns:
+        A :class:`dash.html.Div` carrying id :data:`BANNER_ASSET_STATUS`,
+        hidden by default and replaced wholesale by the
+        ``asset_status_disables`` callback when assets are missing.
+    """
+
+    return html.Div(
+        id=ids.BANNER_ASSET_STATUS,
+        className="builder-asset-status",
+        style={"display": "none"},
+        children=[],
+    )
+
+
+def build_confirm_delete_modal() -> dbc.Modal:
+    """Lightweight confirm-delete modal for non-empty container blocks.
+
+    Mounted once at app boot inside ``build_app_layout``; visibility is
+    driven by ``STORE_BUILDER_STATE.pending_delete_block_id`` (Phase 5
+    callbacks: setting the field on a non-empty container opens the
+    modal; Confirm dispatches ``block_delete_confirm``; Cancel clears
+    the field).
+
+    Phase 2 only mounts the modal scaffold — the body label + the
+    inner-block count are filled in by the Phase 5 callback when
+    ``pending_delete_block_id`` resolves.  The Confirm / Cancel
+    buttons carry stable ids :data:`BTN_CONFIRM_DELETE` /
+    :data:`BTN_CANCEL_DELETE`.
+
+    Returns:
+        A :class:`dash_bootstrap_components.Modal` ready to embed in
+        the app's modal mount.
+    """
+
+    return dbc.Modal(
+        id=ids.CONFIRM_DELETE_MODAL_ID,
+        is_open=False,
+        size="sm",
+        children=[
+            dbc.ModalHeader(dbc.ModalTitle("Confirm delete")),
+            dbc.ModalBody(
+                # Phase 5 callback rewrites the children to:
+                #   "Delete container '<label>' and its N inner block(s)?"
+                # at dispatch time.  Phase 2's empty default keeps the
+                # modal renderable as a layout scaffold.
+                html.Div(id=f"{ids.CONFIRM_DELETE_MODAL_ID}-body"),
+            ),
+            dbc.ModalFooter(
+                [
+                    dbc.Button(
+                        "Cancel",
+                        id=ids.BTN_CANCEL_DELETE,
+                        color="secondary",
+                        outline=True,
+                        n_clicks=0,
+                    ),
+                    dbc.Button(
+                        "Delete",
+                        id=ids.BTN_CONFIRM_DELETE,
+                        color="danger",
+                        n_clicks=0,
+                    ),
+                ]
+            ),
+        ],
+    )
+
+
 def build_canvas(
     scope: BuilderScope,
     selected_node_id: Optional[str],
@@ -782,11 +1420,27 @@ def build_canvas_section(
         title="Remove the selected node from the pipeline",
     )
 
+    # Phase 2 DAG-redesign: ``Re-layout`` re-runs the dagre pass via
+    # ``viewport_ops.js``.  The button is mounted on every render path
+    # regardless of the feature flag so ``asset_status_disables``'s
+    # output always resolves.  When the flag is off, the button stays
+    # visually inert (clicks no-op because ``viewport_ops.js`` only
+    # binds its listener when ``window.phenotypicGuiDag`` is true).
+    relayout_btn = dbc.Button(
+        "Re-layout",
+        id=ids.BTN_RELAYOUT,
+        color="secondary",
+        outline=True,
+        size="sm",
+        n_clicks=0,
+        title="Re-run the dagre layout pass and fit to viewport",
+    )
+
     header = html.Div(
         [
             html.H6("Canvas", className="mb-0"),
             html.Div(
-                [controls, delete_btn],
+                [controls, delete_btn, relayout_btn],
                 className="d-flex align-items-center gap-2",
             ),
         ],
@@ -833,8 +1487,13 @@ def build_canvas_section(
             "position": "relative",
         },
     )
+    # Phase 2 asset-status banner sits between the header and the canvas
+    # slot.  Mounted on every render path so the
+    # ``asset_status_disables`` callback's Output resolves; visibility
+    # is driven by the callback (hidden when all assets ready).
+    banner = build_asset_status_banner()
     return html.Div(
-        [header, cytoscape_slot, popover_container],
+        [header, banner, cytoscape_slot, popover_container],
         style={
             "display": "flex",
             "flexDirection": "column",
@@ -2098,6 +2757,32 @@ def build_app_layout(
                 id=ids.POPOVER_ACTION_STORE,
                 data=None,
             ),
+            # Phase 2 DAG-redesign stores (spec §6).  Mounted on every
+            # render path regardless of the feature flag so the new
+            # callbacks (``asset_status_disables`` + Phase 5-6 fan-in
+            # routing) never error on missing inputs.  Until the flag
+            # is on, the stores stay at their initial values and the
+            # downstream callbacks no-op.
+            dcc.Store(
+                id=ids.STORE_VIEWPORT_OP,
+                data=None,
+            ),
+            dcc.Store(
+                id=ids.STORE_ISSUES,
+                data=[],
+            ),
+            dcc.Store(
+                id=ids.STORE_ASSET_STATUS,
+                # Default "everything ready" so the banner stays hidden
+                # until the clientside asset-poll loop knocks one of
+                # the fields to ``False``.
+                data={
+                    "wire_drawing": True,
+                    "palette_dnd": True,
+                    "viewport_ops": True,
+                    "dagre_missing": False,
+                },
+            ),
         ]
     )
 
@@ -2123,6 +2808,13 @@ def build_app_layout(
             load_picker_modal(image_root),
             load_image_modal(image_root),
             build_point_picker_modal(),
+            # Phase 2 DAG redesign: confirm-delete modal mounted once
+            # at app boot; visibility driven by
+            # ``STORE_BUILDER_STATE.pending_delete_block_id`` (Phase 5
+            # callback wires this up — Phase 2 only mounts the
+            # scaffold so the ``BTN_CONFIRM_DELETE`` / ``BTN_CANCEL_DELETE``
+            # ids resolve).
+            build_confirm_delete_modal(),
         ]
     )
 
@@ -2196,11 +2888,14 @@ __all__ = [
     "build_palette",
     "build_canvas",
     "build_canvas_elements",
+    "build_canvas_elements_dag",
     "build_canvas_section",
     "build_inspector",
     "build_breadcrumb",
     "build_footer",
     "build_app_layout",
     "build_popover_contents",
+    "build_asset_status_banner",
+    "build_confirm_delete_modal",
     "INSPECTOR_FOCUS_AUX_BANNER_ID",
 ]
