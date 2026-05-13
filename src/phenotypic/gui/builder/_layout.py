@@ -2053,10 +2053,10 @@ def build_canvas(
 #
 # The toolbar issue badge surfaces the aggregated validation findings in
 # a single chip — clicking opens a popover listing one row per issue.
-# Phase 6's revalidate_on_state_change callback feeds STORE_ISSUES; the
+# The ``revalidate_on_state_change`` callback feeds STORE_ISSUES; the
 # badge label and tooltip rows are computed from that store and drive
-# the click → scroll_to dispatch chain (consumed by 6B's
-# ``phenotypicScrollTo`` clientside chain).
+# the click → scroll_to dispatch chain (consumed by the clientside
+# ``phenotypicScrollTo`` chain in ``viewport_ops.js``).
 
 #: Display names for each :class:`Issue.kind` shown in tooltip rows.
 #: Mirrors the spec §4.6 short-name table.  Defined as a module-level
@@ -2391,7 +2391,7 @@ def build_canvas_section(
 
     # Issue badge sits at the rightmost end of the toolbar so it draws
     # the user's eye when validation flips red.  Mounted on every render
-    # path; the live count + tooltip rows are wired by Phase 6's
+    # path; the live count + tooltip rows are wired by the
     # ``revalidate_on_state_change`` → ``update_issue_badge`` callback
     # against ``STORE_ISSUES``.  An initial empty list is rendered here so
     # the badge has stable chrome (``"0 issues"``, secondary colour) on
@@ -3496,19 +3496,12 @@ def _build_input_image_card(
             ]
         ),
         # Hidden placeholders so the fan-in callback's
-        # ``Input(BTN_DRILL_IN)`` / ``Input(INPUT_NODE_LABEL)`` ids stay
-        # resolvable even though InputImage doesn't surface them.
-        dbc.Input(
-            id=ids.INPUT_NODE_LABEL,
-            type="text",
-            style=_HIDDEN_STYLE,
-        ),
-        dbc.Button(
-            id=ids.BTN_DRILL_IN,
-            n_clicks=0,
-            style=_HIDDEN_STYLE,
-        ),
-        *_doc_section_widgets(None),
+        # ``Input(BTN_DRILL_IN)`` / ``Input(INPUT_NODE_LABEL)`` /
+        # ``Input(INSPECTOR_DOC_TOGGLE)`` ids stay resolvable even
+        # though InputImage doesn't surface them.  Reuses
+        # ``_hidden_inspector_widgets`` so the placeholder set stays
+        # in sync with the other inspector branches.
+        *_hidden_inspector_widgets(),
     ]
 
     return html.Div(

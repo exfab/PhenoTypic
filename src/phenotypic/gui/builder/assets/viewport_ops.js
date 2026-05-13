@@ -603,8 +603,10 @@
                     ts: Date.now(),
                 });
                 if (!published) {
-                    // dash_clientside not ready — abort the chain.
-                    return;
+                    // dash_clientside not ready — abort the chain
+                    // and fall through to the scrim-cleanup branch so
+                    // we don't leave a pointer-blocking overlay behind.
+                    throw new Error("publishViewportOp unavailable");
                 }
                 await waitForLayoutstopOrAbort(cy);
             }
@@ -627,7 +629,10 @@
                     block_id: containerBlockId,
                     ts: Date.now(),
                 });
-                if (!published) return;
+                if (!published) {
+                    // Same scrim-leak guard as the drill_to_scope branch.
+                    throw new Error("publishViewportOp unavailable");
+                }
                 await waitForLayoutstopOrAbort(cy);
             }
 

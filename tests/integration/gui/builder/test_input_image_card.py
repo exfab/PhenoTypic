@@ -37,7 +37,7 @@ from phenotypic.gui.builder._state import (
 
 # Component-tree walking helpers shared with the other inspector
 # integration tests; see ``conftest.py`` in this directory.
-from .conftest import _collect_text, _find_by_id
+from .conftest import _collect_text, _find_by_id, _walk
 
 
 # ---------------------------------------------------------------------------
@@ -110,22 +110,9 @@ def test_input_image_card_has_re_layout_button() -> None:
 
     # Walk the component tree and look for a button carrying the
     # sentinel className.  The button has no Dash id (would clash with
-    # the toolbar's BTN_RELAYOUT).
+    # the toolbar's BTN_RELAYOUT).  Reuses ``_walk`` from the shared
+    # builder integration conftest instead of redefining it inline.
     proxy_buttons: list = []
-
-    def _walk(component):  # type: ignore[no-untyped-def]
-        yield component
-        children = getattr(component, "children", None)
-        if isinstance(children, (list, tuple)):
-            for ch in children:
-                if ch is None or isinstance(ch, (str, int, float, bool)):
-                    continue
-                yield from _walk(ch)
-        elif children is not None and not isinstance(
-            children, (str, int, float, bool)
-        ):
-            yield from _walk(children)
-
     for node in _walk(inspector):
         class_name = getattr(node, "className", None)
         if isinstance(class_name, str) and (
