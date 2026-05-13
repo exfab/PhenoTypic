@@ -1715,52 +1715,76 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_ISSUES, "data"),
         Input(ids.STORE_BUILDER_STATE, "data"),
+        State(ids.STORE_ISSUES, "data"),
         prevent_initial_call=False,
     )
     def revalidate_on_state_change(
         state_data: Optional[Dict[str, Any]],
-    ) -> List[Dict[str, Any]]:
+        prev_issues: Optional[List[Dict[str, Any]]],
+    ) -> Any:
         """Re-run :func:`validate` whenever ``STORE_BUILDER_STATE`` changes.
 
         Args:
             state_data: ``state_to_json`` payload (legacy or DAG schema).
                 ``None`` during the very first paint, before any state
                 has been written.
+            prev_issues: The previously published issue list from
+                ``STORE_ISSUES``. Used to skip the store write (return
+                ``dash.no_update``) when the freshly-computed issue list
+                is identical — avoids cascading re-renders of every
+                downstream subscriber when state mutations that don't
+                change validity fire (selection clicks, drill-in /
+                drill-out, label edits, etc.).
 
         Returns:
-            JSON-friendly list of :class:`Issue` dicts. Empty list when
-            state is ``None`` or carries the legacy schema (the DAG
-            validation suite is meaningless against legacy linear-list
-            state).
+            JSON-friendly list of :class:`Issue` dicts, or
+            :data:`dash.no_update` when the list is unchanged. Empty
+            list when state is ``None`` or carries the legacy schema
+            (the DAG validation suite is meaningless against legacy
+            linear-list state).
         """
 
         if state_data is None:
-            return []
-        try:
-            state = state_from_json(state_data)
-        except Exception:
-            logger.exception("revalidate_on_state_change: state_from_json failed")
-            return []
-        # Validation only targets the DAG schema; the legacy state shape
-        # has no ``root.blocks`` field and the validator would no-op
-        # anyway. Detect via duck-typing on the state object.
-        if not hasattr(state, "selected_block_id"):
-            return []
-        try:
-            issues = validate(state)
-        except Exception:
-            logger.exception("revalidate_on_state_change: validate raised")
-            return []
-        return [
-            {
-                "kind": issue.kind,
-                "block_id": issue.block_id,
-                "detail": issue.detail,
-                "scope_path": list(issue.scope_path),
-                "severity": issue.severity,
-            }
-            for issue in issues
-        ]
+            new_issues: List[Dict[str, Any]] = []
+        else:
+            try:
+                state = state_from_json(state_data)
+            except Exception:
+                logger.exception(
+                    "revalidate_on_state_change: state_from_json failed"
+                )
+                new_issues = []
+            else:
+                # Validation only targets the DAG schema; the legacy
+                # state shape has no ``root.blocks`` field and the
+                # validator would no-op anyway. Detect via duck-typing
+                # on the state object.
+                if not hasattr(state, "selected_block_id"):
+                    new_issues = []
+                else:
+                    try:
+                        issues = validate(state)
+                    except Exception:
+                        logger.exception(
+                            "revalidate_on_state_change: validate raised"
+                        )
+                        new_issues = []
+                    else:
+                        new_issues = [
+                            {
+                                "kind": issue.kind,
+                                "block_id": issue.block_id,
+                                "detail": issue.detail,
+                                "scope_path": list(issue.scope_path),
+                                "severity": issue.severity,
+                            }
+                            for issue in issues
+                        ]
+        # Skip the store write when nothing changed. ``prev_issues`` is
+        # ``None`` on first paint, in which case we always publish.
+        if prev_issues is not None and prev_issues == new_issues:
+            return no_update
+        return new_issues
 
     # ----------------------------------------------------------------------
     # 2b. Point-picker store fan-in

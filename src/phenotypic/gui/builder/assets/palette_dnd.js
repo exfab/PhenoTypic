@@ -64,9 +64,9 @@
      *  container may be replaced when ``elements`` re-render. */
     const CY_WRAPPER_ID = "canvas-cytoscape-wrapper";
 
-    /** Mirror of ``builder/_ids.STORE_PALETTE_DROP`` (Agent 3B). The
-     *  literal is hard-coded because ``_ids.py`` may not have shipped
-     *  the constant when this asset first loads. */
+    /** Mirror of ``builder/_ids.STORE_PALETTE_DROP``. The literal is
+     *  hard-coded because ``_ids.py`` may not have shipped the constant
+     *  when this asset first loads. */
     const STORE_PALETTE_DROP_ID = "store-palette-drop";
 
     /** Mirror of ``builder/_ids.STORE_BUILDER_STATE``. Used for the
