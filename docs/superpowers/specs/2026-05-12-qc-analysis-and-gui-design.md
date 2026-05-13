@@ -66,7 +66,9 @@ to put both new tabs inside the results-viewer Dash app rather than the
 
 - New `QualityCheck(SetAnalyzer)` ABC in `phenotypic.analysis.abc_`.
 - Two concrete subclasses: `ExpectedVsDetectedCount`, `ReplicateAgreement`.
-- New `QUALITY_CHECK`, `QUALITY_COUNT`, `QUALITY_SE` MeasurementInfo classes.
+- New `QUALITY_COUNT` and `QUALITY_SE` MeasurementInfo classes (one
+  per concrete check; no generic `QUALITY_CHECK` enum — see
+  rationale in the MeasurementInfo section).
 - QC tab inside the results viewer with configurable check cards, live
   recompute on curation, "mark flagged for removal" hand-off into the
   existing `STORE_REMOVED_KEYS` curation store.
@@ -177,7 +179,6 @@ src/phenotypic/analysis/
 └── __init__.py                     # MOD: export the new public names
 
 src/phenotypic/tools_/measurement_info/
-├── _quality_check.py               # NEW: QUALITY_CHECK MI (generic)
 ├── _quality_count.py               # NEW: QUALITY_COUNT MI (per-check)
 └── _quality_se.py                  # NEW: QUALITY_SE MI (per-check)
 ```
@@ -251,6 +252,43 @@ class QualityCheck(SetAnalyzer, ABC):
     def flag_col(cls)     -> str: return f"QC_{cls.name}_Flag"
     @classmethod
     def status_col(cls)   -> str: return f"QC_{cls.name}_Status"
+
+    # ----- SetAnalyzer abstract-method conformance ----------------------
+    # SetAnalyzer declares four abstract methods (analyze, show, results,
+    # _apply2group_func). We override analyze() above, give the rest
+    # concrete defaults so QualityCheck remains instantiable, and let
+    # subclasses override show()/dash() for check-specific plots.
+
+    def results(self) -> pd.DataFrame:
+        """Return the augmented frame stored by the most recent analyze()."""
+        return self._latest_measurements
+
+    @staticmethod
+    def _apply2group_func(group: pd.DataFrame, **kwargs) -> pd.DataFrame:
+        """Not used by QualityCheck — implement _compute on the subclass.
+
+        QualityCheck.analyze() drives group iteration directly via
+        _compute(); the abstract _apply2group_func from SetAnalyzer is
+        satisfied here purely to keep the class instantiable. Raises
+        NotImplementedError so accidental external calls fail loudly.
+        """
+        raise NotImplementedError(
+            "QualityCheck subclasses implement _compute(group), not "
+            "_apply2group_func. analyze() drives the iteration."
+        )
+
+    def show(self, *args, **kwargs):
+        """QualityCheck plots are Plotly-only — see dash().
+
+        SetAnalyzer's matplotlib show() is not implemented for QC
+        because the QC tab is Plotly-driven. Raising rather than
+        falling back to a placeholder so notebook users discover
+        the right method.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement matplotlib "
+            f"show(); use dash() for interactive output."
+        )
 ```
 
 **Status tri-state semantics:**
@@ -286,9 +324,15 @@ class ExpectedVsDetectedCount(QualityCheck):
         *,
         severity_warn: float | None = None,
         severity_fail: float | None = None,
-        agg_func: str = "first",          # unused; SetAnalyzer compat
         n_jobs: int = 1,
-    ): ...
+    ):
+        # NOTE: ExpectedVsDetectedCount does not expose agg_func — the
+        # check is a row-count, not a value aggregation. We pin
+        # super().agg_func = "first" internally and override
+        # OperationRegistry-driven param-form rendering for this class
+        # to hide the field. Passing agg_func via the GUI would
+        # silently no-op and confuse the user.
+        ...
 ```
 
 **Behavior:** for each `groupby` combination,
@@ -296,6 +340,18 @@ class ExpectedVsDetectedCount(QualityCheck):
 `detected = len(group)`,
 `delta = detected - expected`,
 `severity = abs(delta) / expected`.
+
+**Unmatched groups** (a group key in the measurement frame that doesn't
+appear in the metadata's groupby index) get
+`Expected = 0` → `Severity = inf` → `Status = "fail"`, **AND** are
+also recorded in the analyzer's `unmatched_groups` attribute (list of
+tuples). The QC tab's card-body refresh callback surfaces these in
+the per-card summary strip ("3 measurement groups had no metadata
+counterpart") so the user can tell a "real fail" apart from a
+metadata-mismatch fail. This is a fail-noisily-but-don't-crash
+choice — the alternative (raise at analyze() time) would kill the
+entire QC card with a stack-trace toast and offer no hint about
+which group caused it.
 
 **Output columns** (broadcast across every row in each group):
 
@@ -338,6 +394,7 @@ class ReplicateAgreement(QualityCheck):
         severity_warn: float | None = None,
         severity_fail: float | None = None,
         min_replicates: int = 2,
+        eps: float = 1e-9,   # |mean| below this → severity=NaN guard
         agg_func: str = "mean",
         n_jobs: int = 1,
     ): ...
@@ -346,8 +403,24 @@ class ReplicateAgreement(QualityCheck):
 **Behavior:** within each group, split by `time_label`, compute
 `SE = stddev / sqrt(n)` and `mean` across replicates per timepoint.
 `severity = abs(SE) / abs(mean)`. Broadcast back to every replicate in
-the `(group, time)` bin. Bins with `n < min_replicates` get
-`severity = NaN` and `Status = "pass"` so they never gate curation.
+the `(group, time)` bin.
+
+Three guard paths produce `severity = NaN` and `Status = "pass"` so
+under-powered or degenerate bins never gate curation:
+
+1. **`n < min_replicates`** — too few replicates for a meaningful SE.
+2. **`|mean| < eps`** (default `eps = 1e-9`) — the relative-SE ratio
+   blows up at zero mean (t=0 baselines, blank wells, true-zero
+   conditions). Without this guard, `severity = inf` would flag every
+   row in those bins.
+3. **`stddev == 0` and `mean == 0`** — degenerate bin (all replicates
+   exactly zero). The ratio is mathematically undefined; treat as
+   pass.
+
+`eps` is exposed as a constructor parameter with the default above so
+heavy-tailed datasets can tune it; the default `1e-9` is small enough
+to flag near-zero measurements that are genuinely above the
+noise floor and large enough to catch sensor-zero readouts.
 
 **Output columns** (broadcast per `(group, time)` bin):
 
@@ -367,16 +440,17 @@ colored by the worst-status timepoint in that group.
 
 ### `MeasurementInfo` classes
 
-```python
-# tools_/measurement_info/_quality_check.py
-class QUALITY_CHECK(MeasurementInfo):
-    """Generic QC output columns emitted by every QualityCheck subclass."""
-    FLAG     = ("Flag",     "True when severity >= severity_fail.")
-    SEVERITY = ("Severity", "Normalized magnitude in [0, inf). Drives Status.")
-    STATUS   = ("Status",   "Categorical: pass | warn | fail.")
-    @classmethod
-    def category(cls) -> str: return "QC"
+There is **no** `QUALITY_CHECK` enum. The generic Flag/Severity/Status
+columns are dynamically named per-subclass (`QC_<name>_Flag` etc.),
+which a static `MeasurementInfo` enum cannot express — its members
+would render as `QC_Flag`/`QC_Severity`/`QC_Status` (the wrong column
+names) and `append_rst_to_doc` would produce misleading documentation.
+The generic columns are documented in the `QualityCheck` class
+docstring as free-text, alongside the column-composition rule. Each
+concrete subclass owns its **own** per-check MeasurementInfo for its
+non-generic fields (Detected/Expected/Delta, SE/Mean/CV, …):
 
+```python
 # tools_/measurement_info/_quality_count.py
 class QUALITY_COUNT(MeasurementInfo):
     DETECTED = ("Detected", "Detected colony count in the group.")
@@ -548,24 +622,63 @@ rather than raising, so a single corrupt entry doesn't break the whole
 tab. The on-disk file is left untouched until the user takes a UI
 action that triggers a save.
 
+**Atomic write:** `save()` writes to `<path>.tmp` and `os.replace()`'s
+it over `<path>` to avoid leaving a half-written JSON if the process
+is killed mid-write. Mirrors `FilteredMeasurements._save_locked`.
+Before writing, `save()` calls
+`path.parent.mkdir(parents=True, exist_ok=True)` so the first save
+into a freshly-curated output dir doesn't fail on missing
+`.viewer_cache/`.
+
+**Corrupt-JSON load:** when `qc_recipe.json` exists but fails
+`json.loads()` (partial write from a previous crash, hand-edit typo),
+`load()` returns an empty recipe with a single
+`QcRecipeLoadWarning(instance_id="__file__", class_name="",
+reason="invalid JSON: <details>")`. The viewer boots, the user sees
+a banner explaining the problem, and the file is left untouched
+until the user takes a UI action — preserving a chance to recover
+the file from VCS or by hand.
+
+**`instance_id` collision avoidance:** generated as
+`f"qc-{name}-{secrets.token_hex(4)}"` (8 hex chars). The
+[1-in-4-billion] collision probability is negligible even under test
+harness parallelism. `time.time()`-based suffixes are rejected because
+back-to-back adds within the same second would collide and break
+pattern-matching ID uniqueness.
+
+**Staleness detection:** `QcRecipe` does **not** include the
+`is_stale()` / mtime-refusal pattern from `RecipeState`. No external
+process owns `qc_recipe.json`; the only writer is the viewer itself,
+under its `_lock`. Two viewer sessions writing to the same output dir
+concurrently is an unsupported configuration (the same is true for
+`FilteredMeasurements`), and `qc_recipe.json` is small enough that
+the standard `.tmp` + `os.replace` is sufficient protection.
+
 **App-config wiring:**
 
 ```python
 # results_viewer/_app.py — at create_app() boot
-schema = MeasurementSchema.load(output_root.root)
+schema = MeasurementSchema(output_root=output_root.root)
 app.server.config[CFG_MEASUREMENT_SCHEMA] = schema
 qc_recipe = QcRecipe.load(output_root.root)
 app.server.config[CFG_QC_RECIPE] = qc_recipe
 ```
 
+(`MeasurementSchema` is a plain dataclass — constructed directly, not
+via a `.load()` classmethod. Matches the existing analysis sub-app
+usage at `gui/analysis/_app.py`.)
+
 New `_config.py` constants:
 
 - `CFG_QC_RECIPE = "pheno_qc_recipe"` — the `QcRecipe` instance.
-- `CFG_QC_INSTANCES_CACHE = "pheno_qc_instances"` — revision-keyed
-  cached list of instantiated `QualityCheck` objects, refreshed on
-  every recipe-revision change.
-- `CFG_QC_AUGMENTED_FRAME = "pheno_qc_augmented_frame"` — the merged
-  filtered + QC-columns frame consumed by the Heatmap tab.
+- `CFG_QC_INSTANCES_CACHE = "pheno_qc_instances"` — a single dict
+  `{revision: list[QualityCheck]}` with one entry; invalidated on
+  every recipe-revision change (read-then-discard, not unbounded).
+- `CFG_QC_AUGMENTED_FRAME = "pheno_qc_augmented_frame"` — the latest
+  merged filtered + QC-columns frame consumed by the Heatmap tab.
+  Single value, overwritten on every card-body refresh; size matters
+  more than for the instances cache (~MB scale) so the cap-at-one
+  policy is enforced rather than just incidental.
 
 ### Shared augmented-frame cache
 
@@ -581,11 +694,30 @@ re-running every check, the QC tab's recompute callback writes a merged
   losing rows that fell outside any check's groupby.
 - Stash under a `(revision, removed_keys_hash)` key on the app config.
 
-The Heatmap callback reads from `CFG_QC_AUGMENTED_FRAME` when present,
-falling back to the plain filtered frame when no checks are configured.
-Cache invalidation is simple: the QC callback rewrites the cache on
-every recompute, and revision + removed_keys are the same two Inputs
-both callbacks subscribe to. No separate eviction path needed.
+**Avoiding the heatmap-read-before-QC-write race.** Both callbacks
+subscribe to `STORE_REMOVED_KEYS`; without ordering, the heatmap can
+fire first and silently fall back to the plain filtered frame
+(serving pre-curation QC severities until the next interaction). To
+fix this we introduce a third store:
+
+```python
+dcc.Store(id=ids.STORE_QC_AUGMENTED_REVISION, data=0, storage_type="memory")
+```
+
+- The QC tab callback bumps `STORE_QC_AUGMENTED_REVISION` **after**
+  it has finished writing `CFG_QC_AUGMENTED_FRAME`.
+- The Heatmap callback subscribes to `STORE_QC_AUGMENTED_REVISION` as
+  an Input (in addition to `STORE_REMOVED_KEYS`), so it only re-fires
+  once the QC writer has completed.
+- When no QC checks are configured, the QC callback bumps the store
+  with the augmented frame set to `None`, so the heatmap still
+  refreshes on curation.
+
+This makes the augmented-frame read deterministic at the cost of one
+extra store and one extra callback fire per curation tick — a fair
+trade for "no silent stale-data UX." The Heatmap callback otherwise
+falls back to the plain filtered frame when
+`CFG_QC_AUGMENTED_FRAME is None`.
 
 The color-picker option list also reads from the cached augmented
 frame: union of `MeasurementSchema.columns_for("measurements")` plus
@@ -671,19 +803,46 @@ modal.
 
 ### QC tab callbacks (sketch)
 
+The callback graph **splits card lifecycle from body refresh** to avoid
+Dash's ALL-pattern length-mismatch error when a card is added or
+removed:
+
+- **Card-list render callback** — fires on
+  `STORE_QC_RECIPE_REVISION` only. Owns the entire
+  `CARDS_CONTAINER.children` list. Atomically rebuilds every card
+  shell (root div, title bar, body shell with empty figure
+  placeholder) so the DOM card count is always in sync with the
+  recipe.
+- **Card-body refresh callback** — fires on
+  `STORE_REMOVED_KEYS` only (NOT recipe revision). Pattern-matches
+  on the existing card bodies and updates `figure` + `summary`
+  outputs. Because the recipe-revision branch above has already
+  re-rendered the card shells, this callback's `State(... ALL)` and
+  `Output(... ALL)` lists are guaranteed to have matching lengths.
+- **Augmented-frame write** lives in the card-body refresh
+  callback's body, alongside writing
+  `CFG_QC_AUGMENTED_FRAME` and bumping
+  `STORE_QC_AUGMENTED_REVISION` for the heatmap subscriber.
+
 ```python
-# Render every card. Recomputes on recipe-change OR data-change.
+# Card-body refresh. Fires only on data-change (not recipe-change),
+# so the cards already exist with the right indices.
 @app.callback(
     Output({"type": "qc-card-figure",  "index": ALL}, "figure"),
     Output({"type": "qc-card-summary", "index": ALL}, "children"),
-    Input(STORE_QC_RECIPE_REVISION, "data"),
+    Output(STORE_QC_AUGMENTED_REVISION, "data"),
     Input(STORE_REMOVED_KEYS,        "data"),
     State({"type": "qc-card-root", "index": ALL}, "id"),
+    State(STORE_QC_AUGMENTED_REVISION, "data"),
 )
-def _recompute_qc_cards(revision, removed_keys, ids):
-    recipe   = current_app.config[CFG_QC_RECIPE]
-    filtered = current_app.config[CFG_FILTERED_STATE]
-    frame    = filtered.current_view()
+def _refresh_qc_card_bodies(removed_keys, ids, aug_revision):
+    recipe      = current_app.config[CFG_QC_RECIPE]
+    filtered    = current_app.config[CFG_FILTERED_STATE]
+    output_root = current_app.config[CFG_OUTPUT_ROOT]
+    # FilteredMeasurements doesn't carry the master frame; it carries the
+    # removed-keys set. Compose the post-curation view from the master
+    # frame stashed on OutputRoot at boot.
+    frame       = filtered.filtered_df(output_root.master_df)
 
     # FilteredMeasurements is polars-backed; the analysis library is
     # pandas-native. Convert once per recompute and reuse across all
@@ -693,6 +852,7 @@ def _recompute_qc_cards(revision, removed_keys, ids):
 
     instances = dict(recipe.instantiate())
     figures, summaries = [], []
+    augmented = frame  # accumulator for the heatmap-facing frame
     for component_id in ids:
         instance_id = component_id["index"]
         check = instances.get(instance_id)
@@ -700,10 +860,30 @@ def _recompute_qc_cards(revision, removed_keys, ids):
             figures.append(_empty_figure("(removed)"))
             summaries.append("")
             continue
-        check.analyze(pandas_frame)
+        try:
+            result = check.analyze(pandas_frame)
+        except Exception as exc:
+            # Per-card error isolation: don't let one check kill the
+            # whole callback. Surface the error in the card body so the
+            # user sees what went wrong (typically: missing column, bad
+            # metadata path, NaN-only series).
+            figures.append(_error_figure(check_name=type(check).__name__,
+                                         message=str(exc)))
+            summaries.append(f"error: {exc!s}")
+            continue
         figures.append(check.dash())
         summaries.append(_render_summary_strip(check.summary()))
-    return figures, summaries
+        # Left-join this check's QC columns onto the augmented frame on
+        # (Metadata_ImageFile, ObjectLabel) so non-grouped rows are
+        # preserved with NaN QC values.
+        augmented = _left_join_qc_columns(augmented, result,
+                                          on=("Metadata_ImageFile",
+                                              "ObjectLabel"))
+
+    current_app.config[CFG_QC_AUGMENTED_FRAME] = (
+        augmented if instances else None
+    )
+    return figures, summaries, (aug_revision or 0) + 1
 
 # "Mark all flagged for removal" — pushes to STORE_REMOVED_KEYS.
 @app.callback(
@@ -715,6 +895,9 @@ def _recompute_qc_cards(revision, removed_keys, ids):
 def _mark_flagged_for_removal(n_clicks_list, current):
     # Identify which card fired via dash.callback_context, look up its
     # QualityCheck instance, take flagged_keys(), merge into current.
+    # NOTE: this writes the same store the curation callbacks own, so
+    # `allow_duplicate=True` is required. Downstream consumers (this
+    # callback's own recompute path) see the union and re-flow.
     ...
 ```
 
@@ -731,8 +914,8 @@ def _mark_flagged_for_removal(n_clicks_list, current):
 ├───────────────────────────────────────────────────────────┤
 │              ┌──────────────────────────┐                 │
 │              │  Plotly heatmap          │                 │
-│              │  rows = GridRow          │                 │
-│              │  cols = GridCol          │                 │
+│              │  rows = Grid_RowNum      │                 │
+│              │  cols = Grid_ColNum      │                 │
 │              │  removed = hatched grey  │                 │
 │              └──────────────────────────┘                 │
 │   Hover: (row, col) — value — ImageFile — ObjectLabel     │
@@ -742,15 +925,36 @@ def _mark_flagged_for_removal(n_clicks_list, current):
 - **Color column dropdown** = union of `MeasurementSchema.columns_for("measurements")`
   plus any `QC_*_Severity` columns currently emitted (recipe-revision-aware).
 - **Aggregator dropdown:** `mean / median / max / min` (polars `GroupBy.agg`).
-  Only relevant when multiple rows share a `(GridRow, GridCol, Time)` bin.
+  Applied **after** the Image picker filter, so it only fires when
+  the selected image has multiple rows sharing a
+  `(Grid_RowNum, Grid_ColNum, Metadata_Time)` bin — uncommon for a
+  single-image view (typically only happens when the pipeline emitted
+  multiple measurements per well, or when the user has not yet split
+  by ObjectLabel). For the common one-row-per-well case the aggregator
+  is a no-op and any choice yields the same heatmap.
 - **Image picker:** unique `Metadata_ImageFile` values in the filtered frame.
-- **Time slider:** hidden when only one time point exists. Marks at every
-  unique `Metadata_Time` value.
-- **Empty state:** when `Metadata_GridRow` / `Metadata_GridCol` aren't in the
-  frame, the tab renders an explanation card. No exceptions.
+- **Time slider:** hidden when only one time point exists, when the
+  column is absent, or when `Metadata_Time` is non-numeric and
+  `pd.to_numeric(..., errors="coerce")` produces all-NaN (e.g.
+  values like `"T0"`, `"baseline"`). When coercion succeeds on most
+  values but a few NaN slip through, those rows are dropped from the
+  time-axis dimension and a small "skipping N non-numeric time
+  values" caption appears below the slider. Marks are placed at every
+  unique numeric `Metadata_Time` value (not interpolated).
+- **Empty state:** when `Grid_RowNum` / `Grid_ColNum` aren't in the frame
+  (i.e. the pipeline did not run a `GridMeasureFeatures` step), the tab
+  renders an explanation card. No exceptions. These column names come
+  from `GRID.ROW_NUM` / `GRID.COL_NUM` in
+  `tools_/measurement_info/_grid.py` and are emitted by
+  `GridFinder`-aware pipelines.
 - **Removed-cell rendering:** dedicated greyed hatch overlay so the user can
   distinguish "excluded" from "low value." Implemented as a second `go.Heatmap`
-  trace at zero opacity (for hover) plus a `go.Scatter` of × markers.
+  trace at zero opacity (for hover) plus a `go.Scatter` of × markers
+  sized to scale with the cell — marker size set to
+  `min(14, max(6, cell_px * 0.5))` so the × occupies roughly half a
+  cell on 384-well plates and remains visible without obscuring
+  neighbors on small (e.g. 2×3) grids. Color is `COLOR_MUTED` from
+  `gui/_design.py` to avoid clashing with the data colormap.
 
 ### Pure figure builder (`_figure.py`)
 
@@ -763,7 +967,7 @@ def build_heatmap_figure(
     time_value: float | None,
     aggregator: Literal["mean", "median", "max", "min"],
     removed_keys: set[tuple[str, int]],
-    grid_row_col: tuple[str, str] = ("Metadata_GridRow", "Metadata_GridCol"),
+    grid_row_col: tuple[str, str] = ("Grid_RowNum", "Grid_ColNum"),
 ) -> go.Figure:
     ...
 ```
@@ -775,16 +979,26 @@ Pure function, no Dash imports — unit-testable with synthetic frames.
 ```python
 @app.callback(
     Output("heatmap-figure", "figure"),
-    Input("heatmap-color-picker",       "value"),
-    Input("heatmap-image-picker",       "value"),
-    Input("heatmap-time-slider",        "value"),
-    Input("heatmap-aggregator-picker",  "value"),
-    Input(STORE_REMOVED_KEYS,           "data"),
+    Input("heatmap-color-picker",          "value"),
+    Input("heatmap-image-picker",          "value"),
+    Input("heatmap-time-slider",           "value"),
+    Input("heatmap-aggregator-picker",     "value"),
+    Input(STORE_QC_AUGMENTED_REVISION,     "data"),  # ordering edge
+    Input(STORE_REMOVED_KEYS,              "data"),
 )
-def _render_heatmap(color, image, t, agg, removed_keys):
-    filtered = current_app.config[CFG_FILTERED_STATE]
+def _render_heatmap(color, image, t, agg, augmented_revision, removed_keys):
+    # Prefer the QC-augmented frame so the color picker can target
+    # QC_*_Severity columns. Falls back to the plain post-curation view
+    # when no checks are configured (CFG_QC_AUGMENTED_FRAME is None).
+    augmented = current_app.config.get(CFG_QC_AUGMENTED_FRAME)
+    if augmented is not None:
+        frame = augmented
+    else:
+        filtered    = current_app.config[CFG_FILTERED_STATE]
+        output_root = current_app.config[CFG_OUTPUT_ROOT]
+        frame       = filtered.filtered_df(output_root.master_df)
     return build_heatmap_figure(
-        frame=filtered.current_view(),
+        frame=frame,
         color_col=color, image_file=image, time_value=t,
         aggregator=agg,
         removed_keys=_as_key_set(removed_keys),
@@ -842,20 +1056,33 @@ tests/
 │   │                                              min_replicates NaN path.
 │   ├── gui/
 │   │   ├── test_qc_recipe.py                    # load(missing) → empty;
+│   │   │                                           load(corrupt JSON) →
+│   │   │                                           empty + load_warning;
 │   │   │                                           add/remove/update + atomic
-│   │   │                                           save; instantiate() with
+│   │   │                                           save via .tmp + os.replace;
+│   │   │                                           instantiate() with
 │   │   │                                           unresolved class →
 │   │   │                                           load_warnings; round-trip
-│   │   │                                           JSON schema.
+│   │   │                                           JSON schema; concurrent
+│   │   │                                           save from two threads
+│   │   │                                           leaves valid JSON with
+│   │   │                                           both writers' entries.
 │   │   └── test_heatmap_figure.py               # pure build_heatmap_figure:
 │   │                                              grid pivot, aggregator
-│   │                                              semantics, removed-cell
-│   │                                              overlay traces present.
+│   │                                              semantics (incl. NaN-only
+│   │                                              pivots from missing
+│   │                                              (image, row, col, time)
+│   │                                              combos), removed-cell
+│   │                                              overlay traces present,
+│   │                                              non-numeric time column
+│   │                                              → empty-state path.
 │   └── tools_/
-│       ├── test_quality_check_info.py           # QUALITY_CHECK MI category;
-│       │                                          FLAG/SEVERITY/STATUS labels.
-│       ├── test_quality_count_info.py
-│       └── test_quality_se_info.py
+│       ├── test_quality_count_info.py           # QUALITY_COUNT category +
+│       │                                          DETECTED/EXPECTED/DELTA
+│       │                                          labels & headers.
+│       └── test_quality_se_info.py              # QUALITY_SE category +
+│                                                  VALUE/MEAN/CV/NUM_REPLICATES
+│                                                  labels & headers.
 └── gui/
     ├── test_qc_tab.py                           # Dash smoke test: add a Count
     │                                              check, remove a colony,
@@ -933,55 +1160,59 @@ Each requires:
 Bottom-up; each step is independently green-able and unblocks the next.
 
 ```
-1. tools_/measurement_info/_quality_check.py    + tests
-2. tools_/measurement_info/_quality_count.py    + tests
-3. tools_/measurement_info/_quality_se.py       + tests
+1. tools_/measurement_info/_quality_count.py    + tests
+2. tools_/measurement_info/_quality_se.py       + tests
    └── gate: uv run pytest tests/unit/tools_/test_quality_*
 
-4. analysis/abc_/_quality_check.py              + tests
+3. analysis/abc_/_quality_check.py              + tests
    └── gate: uv run pytest tests/unit/analysis/abc_/test_quality_check.py
 
-5. analysis/_expected_vs_detected.py            + tests + doctest
-6. analysis/_replicate_agreement.py             + tests + doctest
+4. analysis/_expected_vs_detected.py            + tests + doctest
+5. analysis/_replicate_agreement.py             + tests + doctest
    └── gate: uv run pytest tests/unit/analysis/test_expected_vs_detected.py
               tests/unit/analysis/test_replicate_agreement.py
               --doctest-modules
 
-7. Refactor gui/analysis/_schema_cache.py → gui/_schema_cache.py
+6. Refactor gui/analysis/_schema_cache.py → gui/_schema_cache.py
    (mechanical move + 2-3 import-site updates)
    └── gate: uv run pytest tests/
 
-8. gui/_qc_recipe.py                            + tests
-9. gui/_operation_registry.py — register "quality_check" category
+7. gui/_qc_recipe.py                            + tests
+8. gui/_operation_registry.py — add an explicit
+   `elif issubclass(obj, QualityCheck): category = "quality_check"`
+   branch inside `_discover_analyzers` BEFORE the `ModelFitter` check.
+   (Without this branch, QC classes silently inherit the default
+   `"Filter"` category and the QC tab's add-check dropdown is empty.)
    └── gate: uv run pytest tests/unit/gui/test_qc_recipe.py
+              and `_discover_analyzers` discovers QC subclasses
 
-10. results_viewer/_heatmap_tab/_figure.py      + tests
-    (pure function — fastest GUI seam to land)
-    └── gate: uv run pytest tests/unit/gui/test_heatmap_figure.py
+9. results_viewer/_heatmap_tab/_figure.py      + tests
+   (pure function — fastest GUI seam to land)
+   └── gate: uv run pytest tests/unit/gui/test_heatmap_figure.py
 
-11. results_viewer/_heatmap_tab/_layout.py + _callbacks.py + _ids.py
-12. results_viewer/_layout.py — register Heatmap tab
+10. results_viewer/_heatmap_tab/_layout.py + _callbacks.py + _ids.py
+11. results_viewer/_layout.py — register Heatmap tab
     └── gate: uv run pytest tests/gui/test_heatmap_tab.py
 
-13. results_viewer/_qc_tab/_check_card.py
-14. results_viewer/_qc_tab/_layout.py
-15. results_viewer/_qc_tab/_callbacks.py
-16. results_viewer/_layout.py — register QC tab
-17. results_viewer/_app.py — stash QcRecipe + MeasurementSchema on
+12. results_viewer/_qc_tab/_check_card.py
+13. results_viewer/_qc_tab/_layout.py
+14. results_viewer/_qc_tab/_callbacks.py
+15. results_viewer/_layout.py — register QC tab
+16. results_viewer/_app.py — stash QcRecipe + MeasurementSchema on
                               app.server.config
     └── gate: uv run pytest tests/gui/test_qc_tab.py
 
-18. gui/FEATURES.md rows                        (CI gate)
-19. gui/WORKFLOWS.md rows                       (CI gate)
-20. scripts/capture_gui_tutorial_screenshots.py — _capture_qc_curation_loop,
+17. gui/FEATURES.md rows                        (CI gate)
+18. gui/WORKFLOWS.md rows                       (CI gate)
+19. scripts/capture_gui_tutorial_screenshots.py — _capture_qc_curation_loop,
                                                   _capture_heatmap_exploration
-21. docs/source/tutorials/gui/qc_curation_loop.rst
-22. docs/source/tutorials/gui/heatmap_exploration.rst
-23. uv run python scripts/capture_gui_tutorial_screenshots.py
+20. docs/source/tutorials/gui/qc_curation_loop.rst
+21. docs/source/tutorials/gui/heatmap_exploration.rst
+22. uv run python scripts/capture_gui_tutorial_screenshots.py
     + commit refreshed PNGs
     └── gate: pre-commit hook + gui-docs CI workflow
 
-24. Full integration sanity:
+23. Full integration sanity:
     uv run mypy src/phenotypic
     uv run ruff check --fix
     uv run pytest
@@ -989,18 +1220,63 @@ Bottom-up; each step is independently green-able and unblocks the next.
 
 **Order rationale:**
 
-- Steps 1–6 land a fully usable library API (`from phenotypic.analysis
+- Steps 1–5 land a fully usable library API (`from phenotypic.analysis
   import ExpectedVsDetectedCount`) before any GUI work, so the user
   can smoke-test in Jupyter while the GUI is being built.
-- Step 10 (heatmap figure builder) is a pure function — the fastest
+- Step 9 (heatmap figure builder) is a pure function — the fastest
   CI-green GUI seam, builds confidence in the Plotly approach before
   touching layout.
-- Heatmap tab (11–12) lands before QC tab (13–16) because it's
+- Heatmap tab (10–11) lands before QC tab (12–15) because it's
   simpler — one figure, no per-card pattern-matching — and surfaces
   any `_param_forms` / schema integration issues early on a low-risk
   surface.
-- Ledger + tutorials (18–23) come last because they reference the
+- Ledger + tutorials (17–22) come last because they reference the
   shipped chrome; building them earlier would invite drift.
+
+---
+
+## Design decisions resolved by plan review
+
+The plan-reviewer pass surfaced five open questions. Resolutions below
+so implementers don't re-derive them.
+
+1. **`QUALITY_CHECK` MeasurementInfo disposition.** Dropped. Static
+   enum members can't express the per-subclass column-name
+   composition (`QC_<name>_Flag`), and a placeholder enum would
+   generate misleading RST. Generic columns are documented in the
+   `QualityCheck` class docstring as free-text. Each concrete check
+   still owns its own per-check MeasurementInfo
+   (`QUALITY_COUNT`, `QUALITY_SE`).
+
+2. **Heatmap aggregator semantics — before or after image filter?**
+   After. The Image picker filters down to a single image first,
+   then the aggregator collapses any remaining multi-row
+   `(Grid_RowNum, Grid_ColNum, Metadata_Time)` bins. For the typical
+   one-row-per-well case the aggregator is a no-op.
+
+3. **`QcRecipe.add()` write semantics.** Writes the sidecar JSON
+   immediately on every `add`/`remove`/`update` (atomic via
+   `.tmp` + `os.replace`). No deferred-flush risk: if the viewer
+   crashes between an `add()` and the next event, the on-disk file
+   already reflects the addition.
+
+4. **Export QC report — what's included?** Only `enabled=True` checks
+   contribute rows to `qc.parquet`. The discriminator column is
+   `QC_Check_Instance_Id` (the recipe's `instance_id`, not the class
+   name), so the user can correlate exported rows back to specific
+   recipe entries even when multiple instances of the same class
+   exist. `qc_summary.json` includes both `instance_id` and `class`
+   per entry for the same reason.
+
+5. **`metadata` path absolute vs relative in the recipe.** Stored
+   absolute as written by the file picker. Relative paths would be
+   more portable across machines but cause the recipe to silently
+   resolve a different file when the user changes `cwd` between
+   sessions — a quiet data-mismatch failure mode worse than a loud
+   "file not found." Acknowledged limitation: if the output dir is
+   rsync'd between machines, the user re-picks the metadata path on
+   the new machine. Future-proofing: a sentinel like
+   `"{output_root}/metadata.csv"` could be supported in a follow-up.
 
 ---
 
@@ -1027,3 +1303,24 @@ Bottom-up; each step is independently green-able and unblocks the next.
   edit QC checks, the sidecar JSON migrates into `pipeline.json` and
   both apps share a `RecipeState`-style loader. Sidecar shape was
   chosen to make that migration mechanical.
+- **Threaded Dash + shared `QualityCheck` instances:** when Dash runs
+  with `threaded=True`, multiple requests on the same worker can
+  concurrently call `analyze()` on a `QualityCheck` cached in
+  `CFG_QC_INSTANCES_CACHE`, racing on
+  `self._latest_measurements`. Mitigation: the card-body refresh
+  callback is the **only** code path that calls `analyze()` on
+  cached instances, and Dash serializes callbacks per-worker, so the
+  race window is empty in practice. Documented here so a future
+  contributor doesn't move `analyze()` to another callback without
+  re-examining. Multi-process deployments (`gunicorn --workers N`)
+  give each worker its own copy of `app.server.config` — no
+  cross-worker race.
+- **`agg_func` exposure on `QualityCheck`:** the base class accepts
+  `agg_func` through its `SetAnalyzer` constructor signature, but
+  no v1 check actually aggregates values (`ExpectedVsDetectedCount`
+  counts rows; `ReplicateAgreement` builds SE/Mean/CV statistics
+  inside `_compute`). Subclasses are free to expose it if they
+  introduce true value aggregation. `OperationRegistry`'s param-form
+  rendering driver should skip `agg_func` for `QualityCheck`
+  subclasses unless they explicitly opt in via a class attribute
+  flag (`_exposes_agg_func: ClassVar[bool] = False` default).
