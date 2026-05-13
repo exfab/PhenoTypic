@@ -10,8 +10,10 @@ use in applications that require set analysis functionality. Only the
 
 from ._set_analyzer import SetAnalyzer
 from ._model_fitter import ModelFitter
+from ._quality_check import QualityCheck
 
 __all__ = [
     "SetAnalyzer",
     "ModelFitter",
+    "QualityCheck",
 ]
