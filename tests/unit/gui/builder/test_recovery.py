@@ -19,8 +19,6 @@ Three guards are covered here:
 
 from __future__ import annotations
 
-import pytest
-
 from phenotypic.gui._operation_registry import OperationInfo
 from phenotypic.gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
@@ -180,13 +178,6 @@ def test_from_pipeline_dag_shared_instance_clone():
     recovery suite stands alone.
     """
 
-    pytest.importorskip(
-        "phenotypic.gui.builder._conversion_dag",
-        reason=(
-            "Agent 1B owns _conversion_dag; defer until that module is "
-            "present.  Cross-coverage will run after orchestrator merges."
-        ),
-    )
     from phenotypic.gui.builder._conversion_dag import from_pipeline_dag
 
     from phenotypic import ImagePipeline
