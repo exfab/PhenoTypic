@@ -181,7 +181,7 @@ class Edge:
 
     def __post_init__(self) -> None:
         if not self.target_block_id:
-            raise AssertionError(
+            raise ValueError(
                 "Edge.target_block_id is mandatory (per spec §5.1); "
                 "the default keyword exists only so the dataclass field "
                 "ordering is valid."
@@ -226,14 +226,11 @@ class _DagBuilderScope:
     ncols: Optional[int] = None
 
     def __post_init__(self) -> None:
+        # Nested scopes seed themselves via their own ``__post_init__``;
+        # JSON-loaded trees also pick up the seed via
+        # :func:`_heal_dag_scope_tree`. We only need to seed *this*
+        # scope here.
         _seed_input_image(self)
-        # Nested scopes have already had their own __post_init__ run
-        # by the time they're attached to a BlockNode, so there's no
-        # need to recurse here — but we keep the iteration so future
-        # invariants can be enforced uniformly.
-        for block in self.blocks:
-            if block.nested is not None:
-                pass
 
 
 @dataclass

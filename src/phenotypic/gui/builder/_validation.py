@@ -133,6 +133,48 @@ def _validate_scope(scope: BuilderScope, scope_path: List[str]) -> List[Issue]:
     issues: List[Issue] = []
     registry = get_registry()
 
+    # Single-pass edge index reused by Rules 1/2/3/4/5/7. Building the
+    # adjacency / reverse-adjacency / counters / aux-wired map ONCE
+    # collapses the rules' total cost from O(V·E) (Rule 2's BFS used
+    # to scan ``scope.edges`` on every frontier expansion) to O(V+E).
+    image_out_count: Dict[str, int] = defaultdict(int)
+    image_in_count: Dict[Tuple[str, str], int] = defaultdict(int)
+    total_out_count: Dict[str, int] = defaultdict(int)
+    aux_wired: Dict[Tuple[str, str], int] = defaultdict(int)
+    # ``adjacency`` is the unified ``source -> [target, ...]`` map over
+    # ALL edges; consumed by the cycle detector (Rule 4).
+    adjacency: Dict[str, List[str]] = defaultdict(list)
+    # Image-flow forward edges only (Rule 2 walks image edges forward).
+    image_forward: Dict[str, List[str]] = defaultdict(list)
+    # Aux edges keyed by their consumer (target) — Rule 2 walks aux
+    # backwards from a consumer to its aux source. Each entry is the
+    # list of source block ids that feed *target* over an aux wire.
+    aux_reverse: Dict[str, List[str]] = defaultdict(list)
+    # Pipeline container left/right wiring buckets (Rule 5).
+    container_left_wired: Dict[str, bool] = {}
+    container_right_kinds: Dict[str, set] = defaultdict(set)
+
+    pipeline_block_ids: set = {
+        b.block_id for b in scope.blocks if b.class_name == PIPELINE_CLASS_NAME
+    }
+
+    for edge in scope.edges:
+        src = edge.source_block_id
+        tgt = edge.target_block_id
+        total_out_count[src] += 1
+        adjacency[src].append(tgt)
+        if edge.kind == "image":
+            image_out_count[src] += 1
+            image_in_count[(tgt, edge.target_port)] += 1
+            image_forward[src].append(tgt)
+            if tgt in pipeline_block_ids and edge.target_port == "in":
+                container_left_wired[tgt] = True
+        else:  # aux
+            aux_wired[(tgt, edge.target_port)] += 1
+            aux_reverse[tgt].append(src)
+        if src in pipeline_block_ids:
+            container_right_kinds[src].add(edge.kind)
+
     # Rule 6 — exactly one Input Image per scope.
     input_blocks = [
         b for b in scope.blocks if b.class_name == INPUT_IMAGE_CLASS_NAME
@@ -166,14 +208,6 @@ def _validate_scope(scope: BuilderScope, scope_path: List[str]) -> List[Issue]:
     #       ``image`` edge.
     #   (c) a single source has >1 outgoing wires *total* across image
     #       and aux (spec §4.2 — "at most one outgoing wire, total").
-    image_out_count: Dict[str, int] = defaultdict(int)
-    image_in_count: Dict[Tuple[str, str], int] = defaultdict(int)
-    total_out_count: Dict[str, int] = defaultdict(int)
-    for edge in scope.edges:
-        total_out_count[edge.source_block_id] += 1
-        if edge.kind == "image":
-            image_out_count[edge.source_block_id] += 1
-            image_in_count[(edge.target_block_id, edge.target_port)] += 1
     seen_fork_source: set = set()
     for block_id, n in image_out_count.items():
         if n > 1:
@@ -214,7 +248,8 @@ def _validate_scope(scope: BuilderScope, scope_path: List[str]) -> List[Issue]:
     # Rule 2 — stubs. BFS from the InputImage block. Image edges only
     # forward; aux edges traversed both forward and backward so an
     # aux-producer (sink in image flow) is still reachable from a
-    # consumer along the chain.
+    # consumer along the chain. Uses the prebuilt indices so the walk is
+    # O(V+E) instead of O(V·E).
     reachable: set = set()
     if root_id is not None:
         frontier: List[str] = [root_id]
@@ -223,11 +258,12 @@ def _validate_scope(scope: BuilderScope, scope_path: List[str]) -> List[Issue]:
             if curr in reachable:
                 continue
             reachable.add(curr)
-            for edge in scope.edges:
-                if edge.source_block_id == curr:
-                    frontier.append(edge.target_block_id)
-                if edge.target_block_id == curr and edge.kind == "aux":
-                    frontier.append(edge.source_block_id)
+            # Forward across all edges (image + aux outgoing).
+            frontier.extend(adjacency.get(curr, ()))
+            # Backward across aux edges so an aux producer (no image
+            # output, only an aux wire feeding a consumer) is still
+            # reachable from its consumer.
+            frontier.extend(aux_reverse.get(curr, ()))
     for block in scope.blocks:
         if block.block_id in reachable:
             continue
@@ -255,14 +291,8 @@ def _validate_scope(scope: BuilderScope, scope_path: List[str]) -> List[Issue]:
     # The latter is always False on a ParamInfo instance because the
     # registry replaced ``inspect.Parameter.empty`` with ``None`` before
     # it stored the value.
-    aux_wired: Dict[Tuple[str, str], int] = defaultdict(int)
-    for edge in scope.edges:
-        if edge.kind == "aux":
-            # For list-aux ports the target_port carries the param name
-            # WITHOUT the slot index in our incoming-wire bucket so that
-            # any wired slot satisfies "list port has at least one
-            # connection." The slot is in ``edge.target_slot``.
-            aux_wired[(edge.target_block_id, edge.target_port)] += 1
+    # ``aux_wired`` is the (target, port) -> count map built in the
+    # top-of-function single-pass scan; reused here as-is.
     for block in scope.blocks:
         # The InputImage sentinel never has registered params; skip it
         # so we don't emit a spurious ``unknown_class`` advisory.
@@ -310,10 +340,8 @@ def _validate_scope(scope: BuilderScope, scope_path: List[str]) -> List[Issue]:
     # iterative, no risk of recursion-limit issues even on deeply
     # nested scopes. Any node that participates in a non-trivial SCC
     # (size > 1, OR size 1 with a self-loop) is reported as
-    # ``kind="cycle"``.
-    adjacency: Dict[str, List[str]] = defaultdict(list)
-    for edge in scope.edges:
-        adjacency[edge.source_block_id].append(edge.target_block_id)
+    # ``kind="cycle"``. ``adjacency`` was built in the top-of-function
+    # single-pass scan; reused here.
     cycle_members = _find_cycle_nodes(adjacency, scope.blocks)
     for block_id in cycle_members:
         issues.append(
@@ -334,23 +362,16 @@ def _validate_scope(scope: BuilderScope, scope_path: List[str]) -> List[Issue]:
     #   * "Aux-fed" (left unwired): the container's right wire is an
     #     aux marker for a consumer; image-out is illegal.
     # Either incoherent combination raises ``kind="container_mode"``.
-    for block in scope.blocks:
-        if block.class_name != PIPELINE_CLASS_NAME:
-            continue
-        left_wired = any(
-            e.target_block_id == block.block_id
-            and e.target_port == "in"
-            and e.kind == "image"
-            for e in scope.edges
-        )
-        right_kinds = {
-            e.kind for e in scope.edges if e.source_block_id == block.block_id
-        }
+    # ``container_left_wired`` / ``container_right_kinds`` were built
+    # in the top-of-function single-pass scan; reused here.
+    for block_id in pipeline_block_ids:
+        left_wired = container_left_wired.get(block_id, False)
+        right_kinds = container_right_kinds.get(block_id, ())
         if left_wired and "aux" in right_kinds:
             issues.append(
                 Issue(
                     kind="container_mode",
-                    block_id=block.block_id,
+                    block_id=block_id,
                     detail="left wired but right wires to aux",
                     scope_path=list(scope_path),
                 )
@@ -359,7 +380,7 @@ def _validate_scope(scope: BuilderScope, scope_path: List[str]) -> List[Issue]:
             issues.append(
                 Issue(
                     kind="container_mode",
-                    block_id=block.block_id,
+                    block_id=block_id,
                     detail="right wires to image but left is unwired",
                     scope_path=list(scope_path),
                 )
@@ -371,30 +392,32 @@ def _validate_scope(scope: BuilderScope, scope_path: List[str]) -> List[Issue]:
     # stage, emit a yellow-border advisory. The runtime partitions by
     # ``isinstance`` so a misordered chain still works (each stage runs
     # in its own block), but the canvas warns the user that the visual
-    # ordering does not match the execution ordering.
+    # ordering does not match the execution ordering. ``image_forward``
+    # was built in the top-of-function single-pass scan; reused here.
     if root_id is not None:
         order_of: Dict[str, int] = {}
         for block in scope.blocks:
             stage = _safe_stage(block.class_name, registry=registry)
             order_of[block.block_id] = _STAGE_ORDER.get(stage, 0)
-        for edge in scope.edges:
-            if edge.kind != "image":
+        for source_id, targets in image_forward.items():
+            src_stage = order_of.get(source_id)
+            if src_stage is None:
                 continue
-            src = order_of.get(edge.source_block_id)
-            tgt = order_of.get(edge.target_block_id)
-            if src is not None and tgt is not None and src > tgt:
-                issues.append(
-                    Issue(
-                        kind="stage_order_hint",
-                        block_id=edge.source_block_id,
-                        detail=(
-                            "runs in a later stage than its downstream "
-                            "block; runtime partitions by isinstance."
-                        ),
-                        scope_path=list(scope_path),
-                        severity="advisory",
+            for target_id in targets:
+                tgt_stage = order_of.get(target_id)
+                if tgt_stage is not None and src_stage > tgt_stage:
+                    issues.append(
+                        Issue(
+                            kind="stage_order_hint",
+                            block_id=source_id,
+                            detail=(
+                                "runs in a later stage than its downstream "
+                                "block; runtime partitions by isinstance."
+                            ),
+                            scope_path=list(scope_path),
+                            severity="advisory",
+                        )
                     )
-                )
 
     # Recurse into containers AFTER the parent scope's rules so the
     # parent scope's issues are listed before the child scope's.

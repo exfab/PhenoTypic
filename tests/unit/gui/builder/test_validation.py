@@ -16,7 +16,6 @@ can never break this suite.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -34,60 +33,7 @@ from phenotypic.gui.builder._state import (
 )
 from phenotypic.gui.builder._validation import Issue, validate
 
-
-# ---------------------------------------------------------------------------
-# Fake registry — gives the validation suite a stable surface independent of
-# the real operation catalogue.  Every Rule-3 test injects this so behaviour
-# does not change when a real op gains/loses a required aux param.
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class _FakeRegistry:
-    """Minimal registry stand-in honouring the ``.get(name)`` contract."""
-
-    ops: Dict[str, OperationInfo] = field(default_factory=dict)
-
-    def get(self, name: str) -> Optional[OperationInfo]:
-        return self.ops.get(name)
-
-
-def _make_param(
-    name: str,
-    *,
-    has_default: bool,
-    is_operation: bool = False,
-    is_pipeline: bool = False,
-    is_list: bool = False,
-    default: Any = None,
-) -> ParamInfo:
-    """Construct a ``ParamInfo`` with as few keyword arguments as possible.
-
-    Args:
-        name: Parameter name.
-        has_default: Whether the parameter has a default; gates Rule 3.
-        is_operation: ``True`` if the type hint resolves to an
-            ``ImageOperation`` subclass.
-        is_pipeline: ``True`` if the type hint accepts ``ImagePipeline``.
-        is_list: ``True`` for list-typed parameters.
-        default: Default value to record on ``ParamInfo.default`` — the
-            registry coerces missing defaults to ``None``, so this is the
-            value field reads even when ``has_default`` is ``False``.
-
-    Returns:
-        Fully-populated :class:`ParamInfo` instance.
-    """
-
-    return ParamInfo(
-        name=name,
-        type_hint=Any,
-        default=default,
-        has_default=has_default,
-        is_operation=is_operation,
-        is_pipeline=is_pipeline,
-        is_optional=False,
-        is_list=is_list,
-    )
+from .conftest import _make_param
 
 
 def _make_op_info(
@@ -110,23 +56,6 @@ def _make_op_info(
         docstring="",
         parameters=parameters,
     )
-
-
-@pytest.fixture
-def empty_registry(monkeypatch):
-    """Monkeypatch the validation module's ``get_registry`` symbol.
-
-    Returns a fresh :class:`_FakeRegistry` so each test can mutate
-    ``registry.ops`` independently.  The validation module always reads
-    ``get_registry()`` at the top of ``_validate_scope`` so a single
-    patch suffices.
-    """
-
-    reg = _FakeRegistry()
-    monkeypatch.setattr(
-        "phenotypic.gui.builder._validation.get_registry", lambda: reg
-    )
-    return reg
 
 
 # ---------------------------------------------------------------------------

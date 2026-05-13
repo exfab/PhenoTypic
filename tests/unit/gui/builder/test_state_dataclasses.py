@@ -358,7 +358,7 @@ def test_list_slot_counts_default_is_empty_dict() -> None:
 def test_edge_target_block_id_required() -> None:
     """:class:`Edge` raises if ``target_block_id`` is left as the default."""
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError):
         Edge(edge_id=_new_block_id(), source_block_id=_new_block_id())
 
 

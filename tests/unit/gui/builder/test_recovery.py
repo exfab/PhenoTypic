@@ -19,11 +19,9 @@ Three guards are covered here:
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
-
 import pytest
 
-from phenotypic.gui._operation_registry import OperationInfo, ParamInfo
+from phenotypic.gui._operation_registry import OperationInfo
 from phenotypic.gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
     BlockNode,
@@ -34,44 +32,7 @@ from phenotypic.gui.builder._state import (
 )
 from phenotypic.gui.builder._validation import validate
 
-
-def _make_param(
-    name: str,
-    *,
-    has_default: bool,
-    is_operation: bool = False,
-    is_pipeline: bool = False,
-    is_list: bool = False,
-    default: Any = None,
-) -> ParamInfo:
-    return ParamInfo(
-        name=name,
-        type_hint=Any,
-        default=default,
-        has_default=has_default,
-        is_operation=is_operation,
-        is_pipeline=is_pipeline,
-        is_optional=False,
-        is_list=is_list,
-    )
-
-
-@pytest.fixture
-def empty_registry(monkeypatch):
-    """Inject a fake registry into the validation module."""
-
-    class _FakeRegistry:
-        def __init__(self) -> None:
-            self.ops: Dict[str, OperationInfo] = {}
-
-        def get(self, name: str) -> Optional[OperationInfo]:
-            return self.ops.get(name)
-
-    reg = _FakeRegistry()
-    monkeypatch.setattr(
-        "phenotypic.gui.builder._validation.get_registry", lambda: reg
-    )
-    return reg
+from .conftest import _make_param
 
 
 # ---------------------------------------------------------------------------
