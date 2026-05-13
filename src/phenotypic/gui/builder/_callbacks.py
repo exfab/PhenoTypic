@@ -1061,14 +1061,15 @@ def _dispatch_state_update(
         if not isinstance(class_name, str) or not class_name:
             return out
         if class_name == INPUT_IMAGE_CLASS_NAME:
+            # Spec §4.1 mandates the toast text "scope already has an
+            # Input Image" so wording stays consistent with the spec-
+            # surfaced rejection copy referenced elsewhere (e.g. docs,
+            # tutorials, screenshots).
             toast_queue = out.setdefault("toast_queue", [])
             toast_queue.append(
                 {
                     "kind": "info",
-                    "text": (
-                        "Input Image is auto-seeded per scope and cannot be "
-                        "created from the palette."
-                    ),
+                    "text": "scope already has an Input Image",
                 }
             )
             return out
