@@ -828,7 +828,10 @@ code, pre, .text-monospace, .font-monospace {
 .dag-port--glow {
     /* Set by ``wire_drawing.js`` during a drag when the dragged source
      * is compatible with this port.  Adds a soft halo so the user can
-     * see the legal targets across the canvas at a glance. */
+     * see the legal targets across the canvas at a glance.  Cytoscape
+     * canvas-rendered ports also get an inline ``border-color`` /
+     * ``border-width`` override applied by the wire-drag IIFE so the
+     * affordance survives the canvas renderer that ignores DOM CSS. */
     filter: drop-shadow(0 0 6px var(--oi-purple));
     transition: filter var(--transition);
 }
@@ -838,11 +841,44 @@ code, pre, .text-monospace, .font-monospace {
     opacity: 0.3;
     transition: opacity var(--transition);
 }
+.dag-port--red-flash {
+    /* Brief ~300ms red pulse on a port that just rejected a wire drop
+     * (spec §4.3).  Cytoscape canvas-rendered ports also receive an
+     * inline ``border-color: var(--oi-vermilion)`` override from
+     * ``wire_drawing.js`` so the user sees the rejection on the canvas
+     * surface.  The DOM-side rule keeps the affordance consistent for
+     * any future DOM overlays anchored to a rejected port. */
+    filter: drop-shadow(0 0 6px var(--oi-vermilion));
+    transition: filter var(--transition);
+}
 .dag-wire {
     /* Wires (edges) are cytoscape edges — most visual styling lives in
      * the cytoscape stylesheet.  The DOM-side rule applies only to the
-     * thin DOM overlay used during wire-drag (live-wire SVG). */
+     * thin DOM overlay used during wire-drag (live-wire SVG) plus the
+     * cursor affordance when hovering an edge for click-to-select. */
     cursor: pointer;
+}
+.dag-wire--image {
+    /* Image-flow edge — solid blue.  Cytoscape canvas-side colour comes
+     * from the ``edge.image-flow`` stylesheet rule in ``_layout.py``;
+     * this DOM rule narrows the cursor + preserves the colour token
+     * for any DOM overlay anchored to an image-flow wire. */
+    cursor: pointer;
+}
+.dag-wire--aux {
+    /* Aux edge — purple dashed.  Cytoscape canvas-side colour is
+     * driven by the cytoscape stylesheet; the DOM rule mirrors the
+     * cursor / token convention for any DOM overlay. */
+    cursor: pointer;
+}
+.dag-wire--selected {
+    /* Click-selected wire (spec §4.3): stroke widens to 4px + brightens
+     * to navy so the user sees which wire ``Delete`` will affect.
+     * Cytoscape canvas applies the actual width/colour via inline
+     * style from ``wire_drawing.js`` (the cytoscape stylesheet doesn't
+     * carry this selector); the DOM rule mirrors the affordance for
+     * any future DOM-side wire chrome. */
+    filter: drop-shadow(0 0 3px var(--color-navy));
 }
 .dag-issue {
     /* Issue badges are cytoscape sub-nodes that overlay the block's

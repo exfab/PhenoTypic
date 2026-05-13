@@ -258,9 +258,7 @@
     const ASSET_READY_FLAGS = {
         viewport_ops: "phenotypic_viewport_ops_ready",
         palette_dnd: "phenotypic_palette_dnd_ready",
-        // ``wire_drawing`` is filled in once Phase 4's IIFE ships;
-        // meanwhile ``collectAssetStatus`` defaults it to true so the
-        // banner stays clear.
+        wire_drawing: "phenotypic_wire_drawing_ready",
     };
 
     /** Auxiliary "extension missing" flags. Asset-specific: an asset
@@ -279,10 +277,6 @@
      *  ``_layout.build_app_layout``. */
     function collectAssetStatus() {
         const status = {};
-        // Default unimplemented assets to ``true`` so they don't trip
-        // the banner before their IIFE ships (wire_drawing ships in
-        // Phase 4).
-        status.wire_drawing = true;
         for (const name in ASSET_READY_FLAGS) {
             status[name] = Boolean(window[ASSET_READY_FLAGS[name]]);
         }

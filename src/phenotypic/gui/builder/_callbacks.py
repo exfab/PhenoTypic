@@ -468,6 +468,175 @@ def _find_dag_container_scope(
     return None
 
 
+def _find_block_in_tree(
+    root_scope_dict: Dict[str, Any], block_id: str
+) -> Optional[Tuple[Dict[str, Any], Dict[str, Any]]]:
+    """Locate a block dict + its containing scope dict by ``block_id``.
+
+    Depth-first search rooted at *root_scope_dict*; recurses into every
+    container's ``nested`` scope so callers can look up blocks anywhere
+    in the state tree without knowing the breadcrumb depth.  Used by
+    the Phase 4 edge dispatchers (``edge_create``, ``edge_delete``,
+    ``list_aux_reorder``, etc.) which all need the block dict plus its
+    enclosing scope (to read/write that scope's ``edges`` list and
+    enforce the spec §4.4 cross-scope rule).
+
+    Args:
+        root_scope_dict: The outermost scope dict (``state_dict["root"]``).
+        block_id: The :class:`BlockNode.block_id` to find.
+
+    Returns:
+        ``(scope_dict, block_dict)`` tuple where ``scope_dict`` is the
+        scope that directly contains *block_id* and ``block_dict`` is
+        the block entry inside that scope's ``blocks`` list, or ``None``
+        when *block_id* doesn't resolve to a block anywhere in the
+        tree.
+    """
+
+    for block in root_scope_dict.get("blocks", []) or []:
+        if block.get("block_id") == block_id:
+            return root_scope_dict, block
+        nested = block.get("nested")
+        if isinstance(nested, dict):
+            hit = _find_block_in_tree(nested, block_id)
+            if hit is not None:
+                return hit
+    return None
+
+
+def _find_edge_in_tree(
+    root_scope_dict: Dict[str, Any], edge_id: str
+) -> Optional[Tuple[Dict[str, Any], Dict[str, Any]]]:
+    """Locate an edge dict + its containing scope dict by ``edge_id``.
+
+    Mirrors :func:`_find_block_in_tree` but for edges.  Used by
+    ``edge_delete`` (which receives only an ``edge_id`` and must
+    discover the scope) and by the issue-pan helpers that pre-resolve
+    a target edge for inspector wire-cards.
+
+    Args:
+        root_scope_dict: The outermost scope dict.
+        edge_id: The :class:`Edge.edge_id` to find.
+
+    Returns:
+        ``(scope_dict, edge_dict)`` or ``None`` when not found.
+    """
+
+    for edge in root_scope_dict.get("edges", []) or []:
+        if edge.get("edge_id") == edge_id:
+            return root_scope_dict, edge
+    for block in root_scope_dict.get("blocks", []) or []:
+        nested = block.get("nested")
+        if isinstance(nested, dict):
+            hit = _find_edge_in_tree(nested, edge_id)
+            if hit is not None:
+                return hit
+    return None
+
+
+def _find_list_aux_target(
+    state_dict: Dict[str, Any], edge_id: str
+) -> Optional[Tuple[str, str, List[Optional[str]], int]]:
+    """Resolve a list-aux edge's containing ``(block_id, param)`` + slot order.
+
+    Helper for :func:`inspector_list_move_emit`'s permutation
+    computation: given just an edge_id, walk the state tree, find the
+    edge's target block + port, enumerate every list-aux edge that
+    targets the same ``(block, port)``, and return them in slot order
+    along with the moved edge's current position.
+
+    The returned ``ordered_edge_ids`` list interleaves ``None`` entries
+    for any empty slots in ``[0, list_slot_counts[param])`` so the
+    caller can swap with the right neighbour even when one of the rows
+    being swapped is empty.
+
+    Args:
+        state_dict: ``state_to_json`` JSON dump.
+        edge_id: The :class:`Edge.edge_id` of the row being moved.
+
+    Returns:
+        Tuple ``(block_id, param, ordered_edge_ids, current_idx)`` or
+        ``None`` when *edge_id* doesn't resolve to a list-aux edge.
+    """
+
+    root_scope = state_dict.get("root")
+    if not isinstance(root_scope, dict):
+        return None
+    hit = _find_edge_in_tree(root_scope, edge_id)
+    if hit is None:
+        return None
+    scope_dict, edge = hit
+    if edge.get("kind") != "aux" or edge.get("target_slot") is None:
+        return None
+    block_id = edge.get("target_block_id")
+    param = edge.get("target_port")
+    if not isinstance(block_id, str) or not isinstance(param, str):
+        return None
+
+    block_hit = _find_block_in_tree(root_scope, block_id)
+    if block_hit is None:
+        return None
+    _, block = block_hit
+
+    # Enumerate every aux edge targeting (block_id, param) and bucket
+    # by slot.  Empty slots (within ``list_slot_counts[param]``) get
+    # ``None`` entries.
+    slot_counts = block.get("list_slot_counts") or {}
+    declared = int(slot_counts.get(param, 0))
+    wired = [
+        e for e in scope_dict.get("edges", []) or []
+        if e.get("target_block_id") == block_id
+        and e.get("target_port") == param
+    ]
+    if not wired:
+        return None
+    max_slot = max(
+        int(e.get("target_slot", 0)) for e in wired
+    )
+    slot_count = max(declared, max_slot + 1)
+    ordered: List[Optional[str]] = [None] * slot_count
+    for e in wired:
+        idx = int(e.get("target_slot", 0))
+        if 0 <= idx < slot_count:
+            ordered[idx] = e.get("edge_id")
+    try:
+        current_idx = ordered.index(edge_id)
+    except ValueError:
+        return None
+    return block_id, param, ordered, current_idx
+
+
+def _resolve_target_port(
+    param_info: Any, target_port: str
+) -> Tuple[str, bool]:
+    """Return ``(canonical_param, is_list)`` for a wire's target port.
+
+    The clientside ``wire_drawing.js`` writes the *parameter name* into
+    ``target_port`` for aux wires; list-slot encoding (``"<param>[<i>]"``)
+    is not used on the dispatch payload — the server resolves the slot
+    from the consumer's ``list_slot_counts`` count.
+
+    For image-flow wires, ``target_port == "in"``.
+
+    Args:
+        param_info: :class:`ParamInfo` for the aux port (``None`` for
+            ``target_port == "in"``).
+        target_port: Raw target-port string from the payload.
+
+    Returns:
+        ``(canonical_param, is_list)``.  ``canonical_param`` is the
+        unbracketed param name; ``is_list`` is ``True`` for list-typed
+        aux ports.
+    """
+
+    if target_port == "in" or param_info is None:
+        return target_port, False
+    # Strip a legacy ``[<i>]`` suffix defensively; new clients don't
+    # send one.
+    canonical = target_port.split("[", 1)[0]
+    return canonical, bool(getattr(param_info, "is_list", False))
+
+
 def _seed_input_image_dict(scope_dict: Dict[str, Any]) -> None:
     """Idempotently add an ``InputImage`` block dict to *scope_dict*.
 
@@ -1124,6 +1293,279 @@ def _dispatch_state_update(
         out["selected_edge_id"] = None
         return out
 
+    if kind == "edge_create":
+        # Phase 4 wire-drawing dispatch (spec §5.6, §4.2, §4.3).
+        #
+        # Payload (per spec §5.5):
+        #   {"kind": "edge_create", "source_block_id": str,
+        #    "target_block_id": str, "target_port": str,
+        #    "edge_kind": "image" | "aux", "ts": int}
+        #
+        # ``edge_kind`` (not ``kind``) carries the wire kind; the top-
+        # level ``kind`` is the dispatch discriminator.  Client emits
+        # NO slot index for list-aux — slot resolution is server-side
+        # (spec §5.6 list-aux paragraph), which eliminates the
+        # concurrent-drag race condition.
+        #
+        # Algorithm:
+        #   1. Locate source + target blocks (and their scopes) in the
+        #      tree.  Both endpoints MUST live in the same scope (spec
+        #      §4.4 cross-scope rule).
+        #   2. For scalar aux + image-in: delete any existing edge
+        #      whose ``(target_block_id, target_port)`` pair matches
+        #      (replace semantics, spec §4.2 / §4.3).
+        #   3. For list aux: server-side append at
+        #      ``block.list_slot_counts.get(port, 0)`` and increment.
+        #   4. Mint a fresh :class:`Edge` dict; append to the shared
+        #      scope's ``edges`` list.
+        source_block_id = payload.get("source_block_id")
+        target_block_id = payload.get("target_block_id")
+        target_port = payload.get("target_port")
+        edge_kind = payload.get("edge_kind")
+        if (
+            not isinstance(source_block_id, str)
+            or not isinstance(target_block_id, str)
+            or not isinstance(target_port, str)
+            or edge_kind not in {"image", "aux"}
+        ):
+            return out
+        root_scope = out.get("root")
+        if not isinstance(root_scope, dict):
+            return out
+
+        source_hit = _find_block_in_tree(root_scope, source_block_id)
+        target_hit = _find_block_in_tree(root_scope, target_block_id)
+        if source_hit is None or target_hit is None:
+            return out
+        source_scope, _ = source_hit
+        target_scope_dict, target_block = target_hit
+
+        # Cross-scope rule (spec §4.4): source + target must live in
+        # the same scope.  Reject with a toast.
+        if source_scope is not target_scope_dict:
+            toast_queue = out.setdefault("toast_queue", [])
+            toast_queue.append(
+                {
+                    "kind": "warning",
+                    "text": "Cross-scope wires are not allowed",
+                }
+            )
+            return out
+
+        scope_dict = source_scope
+
+        # Resolve param info for slot logic (aux wires only).  Use the
+        # module-level ``get_registry`` rather than the Flask-context
+        # ``_registry`` helper so unit tests can monkeypatch the
+        # registry without spinning up a full Dash app.
+        from phenotypic.gui._operation_registry import get_registry
+
+        registry = get_registry()
+        param_info = None
+        if edge_kind == "aux" and registry is not None:
+            consumer_info = registry.get(target_block.get("class_name", ""))
+            if consumer_info is not None:
+                param_info = consumer_info.parameters.get(target_port)
+        canonical_port, is_list = _resolve_target_port(
+            param_info, target_port
+        )
+
+        # Single-wire rule for source ports (spec §4.2): an output port
+        # takes at most one outgoing wire total.  Replace any existing
+        # outgoing edge in the same dispatch.
+        edges_list: List[Dict[str, Any]] = scope_dict.setdefault("edges", [])
+        edges_list[:] = [
+            e for e in edges_list
+            if e.get("source_block_id") != source_block_id
+        ]
+
+        # Replace-by-deletion semantics for scalar aux + image-in
+        # targets (spec §4.2 / §4.3).  List aux skips this step and
+        # appends to the next free slot.
+        if not is_list:
+            edges_list[:] = [
+                e for e in edges_list
+                if not (
+                    e.get("target_block_id") == target_block_id
+                    and e.get("target_port") == canonical_port
+                )
+            ]
+
+        target_slot: Optional[int] = None
+        if is_list:
+            slot_counts = target_block.setdefault("list_slot_counts", {})
+            target_slot = int(slot_counts.get(canonical_port, 0))
+            slot_counts[canonical_port] = target_slot + 1
+
+        new_edge = {
+            "edge_id": _new_block_id(),
+            "source_block_id": source_block_id,
+            "source_port": "out",
+            "target_block_id": target_block_id,
+            "target_port": canonical_port,
+            "target_slot": target_slot,
+            "kind": edge_kind,
+        }
+        edges_list.append(new_edge)
+        return out
+
+    if kind == "edge_delete":
+        # Phase 4 wire-deletion dispatch (spec §5.6).
+        #
+        # Payload: ``{"kind": "edge_delete", "edge_id": str, "ts": int}``.
+        #
+        # Algorithm:
+        #   1. DFS through ``root`` + every nested scope to find the
+        #      edge's containing scope.
+        #   2. Remove the edge from that scope's ``edges`` list.
+        #   3. For list-aux edges: DO NOT renumber remaining slots
+        #      (spec §5.6 explicitly: ``list_slot_counts`` stays the
+        #      same; the freed slot becomes an empty placeholder).
+        edge_id = payload.get("edge_id")
+        if not isinstance(edge_id, str) or not edge_id:
+            return out
+        root_scope = out.get("root")
+        if not isinstance(root_scope, dict):
+            return out
+        hit = _find_edge_in_tree(root_scope, edge_id)
+        if hit is None:
+            return out
+        scope_dict, target_edge = hit
+        scope_dict["edges"] = [
+            e for e in scope_dict.get("edges", []) or []
+            if e.get("edge_id") != edge_id
+        ]
+        # If the selected edge was the one we deleted, clear the
+        # selection so the inspector doesn't try to render a stale
+        # wire card.
+        if out.get("selected_edge_id") == edge_id:
+            out["selected_edge_id"] = None
+        return out
+
+    if kind == "list_aux_reorder":
+        # Phase 4 list-aux reorder dispatch (spec §5.6).
+        #
+        # Payload: ``{"kind": "list_aux_reorder", "block_id": str,
+        # "param": str, "new_order": [edge_id_or_null, ...], "ts": int}``.
+        #
+        # Algorithm:
+        #   1. Locate block dict by DFS.
+        #   2. Validate ``new_order`` is a permutation of the wired
+        #      edge_ids targeting ``(block_id, param)`` interspersed
+        #      with ``None``s for empty slots.
+        #   3. Rebuild each edge's ``target_slot`` from its position.
+        #   4. Update ``block.list_slot_counts[param] = len(new_order)``.
+        #   5. Reject non-permutation inputs with a toast (no-op).
+        block_id = payload.get("block_id")
+        param = payload.get("param")
+        reorder_request = payload.get("new_order")
+        if (
+            not isinstance(block_id, str)
+            or not isinstance(param, str)
+            or not isinstance(reorder_request, list)
+        ):
+            return out
+        root_scope = out.get("root")
+        if not isinstance(root_scope, dict):
+            return out
+        hit = _find_block_in_tree(root_scope, block_id)
+        if hit is None:
+            return out
+        scope_dict, block = hit
+
+        # Wired edges currently targeting (block_id, param).
+        wired_edges = [
+            e for e in scope_dict.get("edges", []) or []
+            if e.get("target_block_id") == block_id
+            and e.get("target_port") == param
+        ]
+        wired_ids = {e.get("edge_id") for e in wired_edges}
+        new_order_ids = {x for x in reorder_request if x is not None}
+
+        # Validate permutation: every wired edge_id appears exactly
+        # once in new_order, and every non-null entry in new_order is
+        # a wired edge_id.
+        if new_order_ids != wired_ids or len(new_order_ids) != len(
+            [x for x in reorder_request if x is not None]
+        ):
+            toast_queue = out.setdefault("toast_queue", [])
+            toast_queue.append(
+                {
+                    "kind": "warning",
+                    "text": "Reorder rejected",
+                }
+            )
+            return out
+
+        # Rebuild target_slot from position.
+        slot_for: Dict[str, int] = {}
+        for i, entry in enumerate(reorder_request):
+            if entry is not None:
+                slot_for[entry] = i
+        for edge in scope_dict.get("edges", []) or []:
+            if (
+                edge.get("target_block_id") == block_id
+                and edge.get("target_port") == param
+                and edge.get("edge_id") in slot_for
+            ):
+                edge["target_slot"] = slot_for[edge["edge_id"]]
+
+        # Update the slot count (spec §5.6: count = len(new_order)).
+        slot_counts = block.setdefault("list_slot_counts", {})
+        slot_counts[param] = len(reorder_request)
+        return out
+
+    if kind == "list_aux_add_empty_slot":
+        # Phase 4 list-aux empty-slot dispatch (spec §5.6).
+        #
+        # Payload: ``{"kind": "list_aux_add_empty_slot", "block_id":
+        # str, "param": str, "ts": int}``.
+        #
+        # No edge is materialised — empty slots are tracked solely on
+        # ``block.list_slot_counts``.  At ``to_pipeline_dag`` time,
+        # slot indices in ``[0, count)`` not covered by an edge emit
+        # ``None`` entries.
+        block_id = payload.get("block_id")
+        param = payload.get("param")
+        if not isinstance(block_id, str) or not isinstance(param, str):
+            return out
+        root_scope = out.get("root")
+        if not isinstance(root_scope, dict):
+            return out
+        hit = _find_block_in_tree(root_scope, block_id)
+        if hit is None:
+            return out
+        _scope_dict, block = hit
+        slot_counts = block.setdefault("list_slot_counts", {})
+        slot_counts[param] = int(slot_counts.get(param, 0)) + 1
+        return out
+
+    if kind == "wire_select":
+        # Phase 4 wire-selection dispatch (spec §5.6, §4.5).
+        #
+        # Payload: ``{"kind": "wire_select", "edge_id": str | None,
+        # "ts": int}``.  ``None`` deselects.  Setting a new id clears
+        # ``selected_block_id`` (mutual exclusion, spec §4.5).
+        edge_id = payload.get("edge_id")
+        out["selected_edge_id"] = edge_id if isinstance(edge_id, str) else None
+        if out["selected_edge_id"] is not None:
+            out["selected_block_id"] = None
+        return out
+
+    if kind == "block_select":
+        # Phase 4 block-selection dispatch (spec §5.6, §4.5).
+        #
+        # Payload: ``{"kind": "block_select", "block_id": str | None,
+        # "ts": int}``.  ``None`` deselects.  Setting a new id clears
+        # ``selected_edge_id`` (mutual exclusion, spec §4.5).
+        block_id = payload.get("block_id")
+        out["selected_block_id"] = (
+            block_id if isinstance(block_id, str) else None
+        )
+        if out["selected_block_id"] is not None:
+            out["selected_edge_id"] = None
+        return out
+
     return out
 
 
@@ -1427,6 +1869,12 @@ def register_callbacks(app: dash.Dash) -> None:
         # Palette drag-and-drop: the clientside ``palette_dnd.js``
         # writes a ``block_create`` payload here on drop / keyboard fallback.
         Input(ids.STORE_PALETTE_DROP, "data"),
+        # Wire-drawing + edge mutations (Phase 4): the clientside
+        # ``wire_drawing.js`` writes here on drag-drop; the inspector
+        # (Agent 4C) writes here for keyboard / button-driven
+        # mutations.  Payload is a discriminated union routed on
+        # ``payload["kind"]`` (see ``ids.STORE_EDGE_EVENT`` docstring).
+        Input(ids.STORE_EDGE_EVENT, "data"),
         # selection
         Input(ids.CANVAS_CYTOSCAPE, "tapNodeData"),
         # drill in (visible button on pipeline-node inspector); drill-out is
@@ -1472,6 +1920,7 @@ def register_callbacks(app: dash.Dash) -> None:
         _palette_clicks: List[int],
         _new_pipe_clicks: Optional[int],
         palette_drop: Optional[Dict[str, Any]],
+        edge_event: Optional[Dict[str, Any]],
         tap_node_data: Optional[Dict[str, Any]],
         _drill_out_clicks: Optional[int],
         _crumb_clicks: List[int],
@@ -1597,6 +2046,30 @@ def register_callbacks(app: dash.Dash) -> None:
                     return _NOOP_FAN_IN
                 new_state_dict = _dispatch_state_update(
                     state_data, "block_create", palette_drop
+                )
+            elif triggered == ids.STORE_EDGE_EVENT:
+                # Phase 4 wire-drawing + edge-mutation channel.  The
+                # clientside ``wire_drawing.js`` (Agent 4A) writes
+                # ``edge_create`` / ``edge_delete`` payloads here on
+                # drop / right-click; the inspector wire / aux cards
+                # (Agent 4C) write ``list_aux_*`` / ``wire_select`` /
+                # ``block_select`` payloads through the same channel.
+                # Route on ``payload["kind"]`` to keep the JS surface
+                # tiny.
+                if not isinstance(edge_event, dict):
+                    return _NOOP_FAN_IN
+                event_kind = edge_event.get("kind")
+                if event_kind not in {
+                    "edge_create",
+                    "edge_delete",
+                    "list_aux_reorder",
+                    "list_aux_add_empty_slot",
+                    "wire_select",
+                    "block_select",
+                }:
+                    return _NOOP_FAN_IN
+                new_state_dict = _dispatch_state_update(
+                    state_data, event_kind, edge_event
                 )
             elif triggered == ids.BTN_NEW_PIPELINE_NODE:
                 new_state_dict = _dispatch_state_update(
@@ -1781,6 +2254,273 @@ def register_callbacks(app: dash.Dash) -> None:
         if prev_issues is not None and prev_issues == new_issues:
             return no_update
         return new_issues
+
+    # ----------------------------------------------------------------------
+    # 2a-i. Inspector wire / aux ports button → STORE_EDGE_EVENT (Phase 4C)
+    # ----------------------------------------------------------------------
+    #
+    # The inspector wire card + aux ports section emit pattern-matched
+    # button clicks (Disconnect, list-row ``✕`` remove, ``+ Add empty
+    # slot``, ``▲``/``▼`` arrow reorder).  Each callback builds the
+    # appropriate ``STORE_EDGE_EVENT`` payload and writes it; the
+    # existing fan-in callback (above) then routes through
+    # ``_dispatch_state_update`` so all state mutations stay in one
+    # place.  Splitting the inspector → store hop into its own
+    # pattern-match callback keeps the central fan-in's Input list
+    # short (Dash imposes O(N) signature growth per added Input pattern).
+
+    @app.callback(
+        Output(ids.STORE_EDGE_EVENT, "data", allow_duplicate=True),
+        Input(
+            {"type": ids.BTN_INSPECTOR_DISCONNECT, "edge_id": ALL},
+            "n_clicks",
+        ),
+        prevent_initial_call=True,
+    )
+    def inspector_disconnect_emit(_clicks: List[Any]) -> Any:
+        """Emit an ``edge_delete`` payload from the inspector ``Disconnect``.
+
+        Routes the wire-card's ``Disconnect`` button through
+        :data:`STORE_EDGE_EVENT` so the central fan-in mutation
+        callback handles it.  Pattern-matched against ``edge_id`` so a
+        single callback serves both the wire card and any other surface
+        that exposes the same pattern type.
+
+        Args:
+            _clicks: One entry per matched button (n_clicks).  The trigger
+                is identified via ``ctx.triggered_id``.
+
+        Returns:
+            ``STORE_EDGE_EVENT`` payload of shape
+            ``{"kind": "edge_delete", "edge_id": <id>, "ts": <int>}``;
+            :data:`dash.no_update` on initial-render fan-outs (where
+            ``n_clicks`` is still 0).
+        """
+
+        triggered = ctx.triggered_id
+        if not isinstance(triggered, dict):
+            return no_update
+        if triggered.get("type") != ids.BTN_INSPECTOR_DISCONNECT:
+            return no_update
+        if not ctx.triggered[0].get("value"):
+            return no_update
+        edge_id = triggered.get("edge_id")
+        if not isinstance(edge_id, str) or not edge_id:
+            return no_update
+        return {
+            "kind": "edge_delete",
+            "edge_id": edge_id,
+            "ts": int(time.time() * 1000),
+        }
+
+    @app.callback(
+        Output(ids.STORE_EDGE_EVENT, "data", allow_duplicate=True),
+        Input(
+            {"type": ids.BTN_INSPECTOR_LIST_REMOVE, "edge_id": ALL},
+            "n_clicks",
+        ),
+        prevent_initial_call=True,
+    )
+    def inspector_list_remove_emit(_clicks: List[Any]) -> Any:
+        """Emit an ``edge_delete`` payload for the list-aux ``✕`` button.
+
+        Mirrors :func:`inspector_disconnect_emit` but listens on the
+        list-row-specific ``BTN_INSPECTOR_LIST_REMOVE`` pattern so both
+        surfaces can co-exist in the DOM.
+        """
+
+        triggered = ctx.triggered_id
+        if not isinstance(triggered, dict):
+            return no_update
+        if triggered.get("type") != ids.BTN_INSPECTOR_LIST_REMOVE:
+            return no_update
+        if not ctx.triggered[0].get("value"):
+            return no_update
+        edge_id = triggered.get("edge_id")
+        if not isinstance(edge_id, str) or not edge_id:
+            return no_update
+        return {
+            "kind": "edge_delete",
+            "edge_id": edge_id,
+            "ts": int(time.time() * 1000),
+        }
+
+    @app.callback(
+        Output(ids.STORE_EDGE_EVENT, "data", allow_duplicate=True),
+        Input(
+            {
+                "type": ids.BTN_INSPECTOR_ADD_EMPTY_SLOT,
+                "block_id": ALL,
+                "param": ALL,
+            },
+            "n_clicks",
+        ),
+        prevent_initial_call=True,
+    )
+    def inspector_add_empty_slot_emit(_clicks: List[Any]) -> Any:
+        """Emit a ``list_aux_add_empty_slot`` payload for ``+ Add empty slot``.
+
+        Pattern-matched against ``(block_id, param)`` so a single
+        callback covers every list-aux param on whichever block is
+        currently selected.
+        """
+
+        triggered = ctx.triggered_id
+        if not isinstance(triggered, dict):
+            return no_update
+        if triggered.get("type") != ids.BTN_INSPECTOR_ADD_EMPTY_SLOT:
+            return no_update
+        if not ctx.triggered[0].get("value"):
+            return no_update
+        block_id = triggered.get("block_id")
+        param = triggered.get("param")
+        if not isinstance(block_id, str) or not isinstance(param, str):
+            return no_update
+        return {
+            "kind": "list_aux_add_empty_slot",
+            "block_id": block_id,
+            "param": param,
+            "ts": int(time.time() * 1000),
+        }
+
+    @app.callback(
+        Output(ids.STORE_EDGE_EVENT, "data", allow_duplicate=True),
+        Input(
+            {
+                "type": ids.BTN_INSPECTOR_LIST_MOVE,
+                "edge_id": ALL,
+                "direction": ALL,
+            },
+            "n_clicks",
+        ),
+        State(ids.STORE_BUILDER_STATE, "data"),
+        prevent_initial_call=True,
+    )
+    def inspector_list_move_emit(
+        _clicks: List[Any], state_data: Optional[Dict[str, Any]]
+    ) -> Any:
+        """Emit a ``list_aux_reorder`` payload for ``▲``/``▼`` clicks.
+
+        The arrow buttons are the Phase-4 drag-handle fallback (spec
+        §4.5 calls for HTML5 drag-handles; the prompt explicitly OKs
+        up/down buttons as an intermediate).  The callback resolves
+        which block/param the edge targets, swaps it with its neighbour,
+        and emits a ``list_aux_reorder`` payload whose ``new_order``
+        argument is what :func:`_dispatch_state_update` consumes.
+
+        Args:
+            _clicks: One entry per matched button (n_clicks).
+            state_data: Current ``STORE_BUILDER_STATE`` JSON dump,
+                read to resolve which block / param the edge belongs
+                to and to compute the slot permutation.
+
+        Returns:
+            ``STORE_EDGE_EVENT`` payload, or :data:`dash.no_update` when
+            the click is ignored (initial render, missing edge, edge at
+            the boundary of the list).
+        """
+
+        triggered = ctx.triggered_id
+        if not isinstance(triggered, dict):
+            return no_update
+        if triggered.get("type") != ids.BTN_INSPECTOR_LIST_MOVE:
+            return no_update
+        if not ctx.triggered[0].get("value"):
+            return no_update
+        edge_id = triggered.get("edge_id")
+        direction = triggered.get("direction")
+        if (
+            not isinstance(edge_id, str)
+            or not edge_id
+            or direction not in ("up", "down")
+            or not isinstance(state_data, dict)
+        ):
+            return no_update
+
+        # Resolve the edge's containing scope + target (block, param).
+        try:
+            target = _find_list_aux_target(state_data, edge_id)
+        except Exception:
+            logger.exception("inspector_list_move_emit: lookup failed")
+            return no_update
+        if target is None:
+            return no_update
+        block_id, param, ordered_edge_ids, current_idx = target
+
+        # Boundary checks: ▲ at slot 0 / ▼ at last slot → no-op.
+        new_idx = current_idx - 1 if direction == "up" else current_idx + 1
+        if new_idx < 0 or new_idx >= len(ordered_edge_ids):
+            return no_update
+
+        new_order = list(ordered_edge_ids)
+        new_order[current_idx], new_order[new_idx] = (
+            new_order[new_idx],
+            new_order[current_idx],
+        )
+        return {
+            "kind": "list_aux_reorder",
+            "block_id": block_id,
+            "param": param,
+            "new_order": new_order,
+            "ts": int(time.time() * 1000),
+        }
+
+    @app.callback(
+        Output(ids.STORE_EDGE_EVENT, "data", allow_duplicate=True),
+        Input(
+            {
+                "type": ids.STORE_INSPECTOR_LIST_REORDER,
+                "block_id": ALL,
+                "param": ALL,
+            },
+            "data",
+        ),
+        prevent_initial_call=True,
+    )
+    def inspector_list_reorder_emit(_payloads: List[Any]) -> Any:
+        """Emit a ``list_aux_reorder`` payload from a drag-handle store write.
+
+        Phase 4 ships the row layout with ``▲``/``▼`` arrows as the
+        primary reorder surface, but the spec calls for HTML5
+        drag-handles; mounting this callback against the hidden
+        ``dcc.Store`` family means a future phase can land the drag JS
+        glue without touching the inspector callback wiring.  Until
+        that JS lands, the store data on inspector render mirrors the
+        current state — and the central dispatcher's permutation check
+        no-ops a same-order payload.
+        """
+
+        triggered = ctx.triggered_id
+        if not isinstance(triggered, dict):
+            return no_update
+        if triggered.get("type") != ids.STORE_INSPECTOR_LIST_REORDER:
+            return no_update
+        # Find the triggered store's payload by id within the Input bucket.
+        try:
+            inputs_list = ctx.inputs_list[0]
+        except (IndexError, KeyError):
+            return no_update
+        payload: Optional[Dict[str, Any]] = None
+        for entry in inputs_list:
+            if entry.get("id") == triggered:
+                payload = entry.get("value")
+                break
+        if not isinstance(payload, dict):
+            return no_update
+        new_order = payload.get("edge_id_order")
+        if not isinstance(new_order, list):
+            return no_update
+        block_id = triggered.get("block_id")
+        param = triggered.get("param")
+        if not isinstance(block_id, str) or not isinstance(param, str):
+            return no_update
+        return {
+            "kind": "list_aux_reorder",
+            "block_id": block_id,
+            "param": param,
+            "new_order": new_order,
+            "ts": int(time.time() * 1000),
+        }
 
     # ----------------------------------------------------------------------
     # 2b. Point-picker store fan-in

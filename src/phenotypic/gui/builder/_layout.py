@@ -57,6 +57,7 @@ from phenotypic.gui.builder._state import (
     Edge,
     StepNode,
     _DagBuilderScope,
+    _DagBuilderState,
     _ensure_param_scope,
     current_scope,
     stage_of,
@@ -1868,29 +1869,872 @@ def _inspector_focus_aux_banner(
     )
 
 
+# ---------------------------------------------------------------------------
+# DAG inspector helpers (Phase 4: wire card + aux ports section)
+# ---------------------------------------------------------------------------
+
+
+def _dag_block_display_label(block: "BlockNode") -> str:
+    """Return the user-facing label for a DAG block.
+
+    Mirrors the rendering rule in :func:`build_canvas_elements_dag` (label
+    falls back to ``class_name``) so the inspector and the canvas show the
+    same identifier per block.
+
+    Args:
+        block: The :class:`BlockNode` to label.
+
+    Returns:
+        Label string.  Defaults to the class name when ``block.label`` is
+        ``None`` or empty.
+    """
+
+    return block.label if block.label else block.class_name
+
+
+def _find_dag_block_in_scope(
+    scope: "_DagBuilderScope", block_id: str
+) -> Optional["BlockNode"]:
+    """Return the block in *scope* with a matching ``block_id``.
+
+    Args:
+        scope: The :class:`_DagBuilderScope` to search.
+        block_id: Identifier to match.
+
+    Returns:
+        The matching :class:`BlockNode`, or ``None`` if no block in the
+        scope has that ``block_id``.
+    """
+
+    return next((b for b in scope.blocks if b.block_id == block_id), None)
+
+
+def _wire_target_port_label(edge: "Edge") -> str:
+    """Format the target-port label for the wire-card header.
+
+    Image-flow edges always land on ``"in"``; aux edges land on the
+    consumer's parameter name (with a ``[i]`` suffix for list-aux slots
+    so the user can spot which slot the wire targets at a glance).
+
+    Args:
+        edge: The :class:`Edge` whose target port to render.
+
+    Returns:
+        Port label string ready to slot into ``"<target>.<port>"``.
+    """
+
+    if edge.target_slot is None:
+        return edge.target_port
+    return f"{edge.target_port}[{edge.target_slot}]"
+
+
+def _build_wire_card(
+    scope: "_DagBuilderScope", edge: "Edge"
+) -> dbc.Card:
+    """Render the inspector wire card for a selected :class:`Edge`.
+
+    Spec §4.5 calls for: source label → target.port label, edge kind
+    badge (image flow vs aux assignment), and a ``Disconnect`` button.
+    The label resolution uses :func:`_dag_block_display_label` so users
+    see the same identifier as on the canvas.
+
+    Args:
+        scope: The active :class:`_DagBuilderScope`.  Used to resolve the
+            edge's source/target ``block_id``s to their ``BlockNode``
+            instances.
+        edge: The :class:`Edge` to render.  Caller is responsible for
+            ensuring ``edge`` belongs to *scope*.
+
+    Returns:
+        :class:`dbc.Card` wrapping the wire-card body.  The wrapper carries
+        :data:`INSPECTOR_WIRE_CARD` so callbacks can refresh its contents
+        on selection change; the ``Disconnect`` button carries the
+        pattern-matching id returned by
+        :func:`phenotypic.gui.builder._ids.inspector_disconnect_id`.
+    """
+
+    source_block = _find_dag_block_in_scope(scope, edge.source_block_id)
+    target_block = _find_dag_block_in_scope(scope, edge.target_block_id)
+    source_label = (
+        _dag_block_display_label(source_block)
+        if source_block is not None
+        else edge.source_block_id
+    )
+    target_label = (
+        _dag_block_display_label(target_block)
+        if target_block is not None
+        else edge.target_block_id
+    )
+    target_port_label = _wire_target_port_label(edge)
+    kind_label = "image flow" if edge.kind == "image" else "aux assignment"
+
+    return dbc.Card(
+        dbc.CardBody(
+            [
+                html.H5("Wire", className="card-title mb-2"),
+                html.Div(
+                    f"{source_label} → {target_label}.{target_port_label}",
+                    className="inspector-wire-summary mb-2",
+                    style={
+                        "fontFamily": FONT_FAMILY_MONO,
+                        "fontSize": FONT_SIZE_LABEL,
+                    },
+                ),
+                dbc.Badge(
+                    kind_label,
+                    color="primary" if edge.kind == "image" else "secondary",
+                    className="mb-3",
+                ),
+                html.Div(
+                    dbc.Button(
+                        "Disconnect",
+                        id=ids.inspector_disconnect_id(edge.edge_id),
+                        color="danger",
+                        outline=True,
+                        n_clicks=0,
+                    )
+                ),
+            ]
+        ),
+        id=ids.INSPECTOR_WIRE_CARD,
+        className="h-100",
+    )
+
+
+def _aux_typed_params(
+    info: Any,
+) -> List[Tuple[str, Any]]:
+    """Return the ``(name, ParamInfo)`` pairs of op-typed parameters.
+
+    Walks ``info.parameters`` and keeps only entries whose annotation
+    accepts an :class:`~phenotypic.abc_.ImageOperation` subclass or an
+    :class:`~phenotypic.ImagePipeline` instance — the same predicate
+    used by :func:`build_canvas_elements_dag` to decide which params get
+    aux-port sub-nodes.  Order matches the dict iteration order so the
+    inspector renders params in their signature order.
+
+    Args:
+        info: Either an :class:`OperationInfo` instance or ``None``.
+
+    Returns:
+        List of ``(name, ParamInfo)`` tuples; empty when *info* is
+        ``None`` or has no aux-typed params.
+    """
+
+    if info is None:
+        return []
+    out: List[Tuple[str, Any]] = []
+    for name, param_info in info.parameters.items():
+        if param_info.is_operation or param_info.is_pipeline:
+            out.append((name, param_info))
+    return out
+
+
+def _aux_port_required_tag(required: bool) -> dbc.Badge:
+    """Render the small required/optional badge next to an aux-port name.
+
+    Args:
+        required: ``True`` when the underlying param has no default.
+
+    Returns:
+        :class:`dbc.Badge` styled as ``danger`` for required ports and
+        ``secondary`` for optional ones.
+    """
+
+    label = "required" if required else "optional"
+    color = "danger" if required else "secondary"
+    return dbc.Badge(label, color=color, className="ms-2", pill=True)
+
+
+def _format_param_type_hint(param_info: Any) -> str:
+    """Format an op-typed param's annotation for the aux-port row header.
+
+    The full ``typing`` repr is verbose (e.g.
+    ``typing.Optional[typing.List[phenotypic.abc_.ImageOperation]]``);
+    the inspector instead shows the friendlier ``list[op]`` /
+    ``op | None`` shorthand so the section stays scannable.
+
+    Args:
+        param_info: A :class:`ParamInfo` instance.
+
+    Returns:
+        Short annotation label.  Returns ``""`` when nothing useful can
+        be derived (defensive).
+    """
+
+    base = "op" if param_info.is_operation else ""
+    if param_info.is_pipeline:
+        base = "pipeline" if not base else f"{base} | pipeline"
+    if not base:
+        return ""
+    if param_info.is_list:
+        base = f"list[{base}]"
+    if param_info.is_optional:
+        base = f"{base} | None"
+    return base
+
+
+def _block_is_container(block: Optional["BlockNode"]) -> bool:
+    """Return ``True`` when *block* is a :data:`PIPELINE_CLASS_NAME` container.
+
+    Used by the aux ports section to decide whether to show a ``Drill in
+    →`` affordance next to a wired source.  Container blocks own a
+    nested scope and can be drilled into; ordinary op sources cannot.
+    """
+
+    return (
+        block is not None
+        and block.class_name == PIPELINE_CLASS_NAME
+        and block.nested is not None
+    )
+
+
+def _build_aux_scalar_row(
+    *,
+    param_name: str,
+    param_info: Any,
+    wired_edges: List["Edge"],
+    scope: "_DagBuilderScope",
+) -> html.Div:
+    """Render one scalar aux-port row inside the aux ports section.
+
+    The scalar variant shows either:
+
+    * **Empty** placeholder when the param has no incoming edge.
+    * **Wired** row: the source block's class label, a ``Disconnect``
+      button (matching ``BTN_INSPECTOR_DISCONNECT``), and a ``Drill in
+      →`` button when the source is a container.
+
+    Args:
+        param_name: Parameter name (also the edge ``target_port``).
+        param_info: :class:`ParamInfo` for *param_name*.
+        wired_edges: Edges in *scope* targeting this scalar port (length
+            0 or 1; multiple wires on a scalar port are invalid per
+            Rule 1 and surface as red borders, not as multiple rows).
+        scope: The active :class:`_DagBuilderScope`.
+
+    Returns:
+        :class:`html.Div` carrying a row header + the wired/empty body.
+    """
+
+    required = not param_info.has_default
+    type_label = _format_param_type_hint(param_info)
+    header = html.Div(
+        [
+            html.Strong(param_name),
+            html.Span(
+                f"  ·  {type_label}" if type_label else "",
+                className="text-muted ms-1",
+                style={"fontSize": FONT_SIZE_LABEL},
+            ),
+            _aux_port_required_tag(required),
+        ],
+        className="d-flex align-items-center mb-1",
+    )
+
+    if not wired_edges:
+        body: Any = html.Div(
+            "Empty",
+            className="text-muted fst-italic small",
+            style={"padding": "0.25rem 0.5rem"},
+        )
+    else:
+        edge = wired_edges[0]
+        source_block = _find_dag_block_in_scope(scope, edge.source_block_id)
+        source_label = (
+            _dag_block_display_label(source_block)
+            if source_block is not None
+            else edge.source_block_id
+        )
+        action_buttons: List[Any] = [
+            dbc.Button(
+                "Disconnect",
+                id=ids.inspector_disconnect_id(edge.edge_id),
+                color="danger",
+                outline=True,
+                size="sm",
+                n_clicks=0,
+                className="ms-2",
+            )
+        ]
+        if source_block is not None and _block_is_container(source_block):
+            # Drill-in is implemented in Phase 5 (container expand/
+            # collapse + drill-in).  Mount the button so the affordance
+            # is visible but disable it until the Phase 5 callback
+            # lands, with a tooltip explaining the gating.
+            action_buttons.append(
+                dbc.Button(
+                    "Drill in →",
+                    id={
+                        "type": "btn-inspector-drill-in-aux",
+                        "block_id": source_block.block_id,
+                    },
+                    color="primary",
+                    outline=True,
+                    size="sm",
+                    n_clicks=0,
+                    className="ms-2",
+                    disabled=True,
+                    title="Container drill-in lands in Phase 5",
+                )
+            )
+        body = html.Div(
+            [
+                html.Span(source_label, className="me-2"),
+                *action_buttons,
+            ],
+            className="d-flex align-items-center",
+        )
+
+    return html.Div(
+        [header, body],
+        className="inspector-aux-row mb-3",
+    )
+
+
+def _build_aux_list_row(
+    *,
+    block: "BlockNode",
+    param_name: str,
+    param_info: Any,
+    wired_edges: List["Edge"],
+    scope: "_DagBuilderScope",
+) -> html.Div:
+    """Render one list-aux row inside the aux ports section.
+
+    Spec §4.5 calls for: drag-handles, badge numbers, source class
+    labels, ``✕`` remove buttons per row, plus a ``+ Add empty slot``
+    affordance.  Phase 4 ships the row with ``▲`` / ``▼`` arrow
+    buttons as a drag-handle fallback (drag glue lands in a follow-up
+    phase per the prompt); the hidden reorder ``dcc.Store`` is mounted
+    so the future drag handlers don't churn the inspector callback
+    surface.
+
+    Empty slots are tracked on ``block.list_slot_counts``; the row
+    renders ``[0, count)`` positions and fills the wired-edge slots
+    first, then pads with "Empty" placeholders.
+
+    Args:
+        block: The selected :class:`BlockNode` (carries
+            ``list_slot_counts``).
+        param_name: List-typed parameter name.
+        param_info: :class:`ParamInfo` for *param_name*.
+        wired_edges: Edges in *scope* targeting ``(block.block_id,
+            param_name)``.  Order may be arbitrary; this helper sorts by
+            ``target_slot`` to render in slot order.
+        scope: The active :class:`_DagBuilderScope`.
+
+    Returns:
+        :class:`html.Div` carrying the row header + ordered list body +
+        ``+ Add empty slot`` button + hidden reorder store.
+    """
+
+    required = not param_info.has_default
+    type_label = _format_param_type_hint(param_info)
+
+    header = html.Div(
+        [
+            html.Strong(param_name),
+            html.Span(
+                f"  ·  {type_label}" if type_label else "",
+                className="text-muted ms-1",
+                style={"fontSize": FONT_SIZE_LABEL},
+            ),
+            _aux_port_required_tag(required),
+        ],
+        className="d-flex align-items-center mb-1",
+    )
+
+    # Order edges by their declared slot index so the row order matches
+    # the canvas badge numbering.
+    sorted_edges = sorted(
+        wired_edges,
+        key=lambda e: (e.target_slot if e.target_slot is not None else 0),
+    )
+    slot_count = max(
+        int(block.list_slot_counts.get(param_name, 0)),
+        len(sorted_edges),
+    )
+
+    # Build slot occupancy: slots[i] is either an Edge or None for empty.
+    slots: List[Optional["Edge"]] = [None] * slot_count
+    for edge in sorted_edges:
+        idx = edge.target_slot if edge.target_slot is not None else 0
+        if 0 <= idx < slot_count:
+            slots[idx] = edge
+
+    edge_id_order = [e.edge_id if e is not None else None for e in slots]
+
+    row_children: List[Any] = []
+    for i, slot_entry in enumerate(slots):
+        is_first = i == 0
+        is_last = i == len(slots) - 1
+        # Up/down arrow buttons gate themselves by position; both share
+        # the same pattern-matching id family so a single callback can
+        # handle reorder.  Empty slots use a synthetic id sentinel so
+        # the button still mounts (we disable it via ``disabled`` so
+        # the user can't move an empty row).
+        slot_edge_id = (
+            slot_entry.edge_id if slot_entry is not None else f"empty:{i}"
+        )
+        up_btn = dbc.Button(
+            "▲",
+            id=ids.inspector_list_move_id(slot_edge_id, "up"),
+            color="link",
+            size="sm",
+            n_clicks=0,
+            disabled=is_first or slot_entry is None,
+            className="p-0 me-1",
+            title="Move up",
+        )
+        down_btn = dbc.Button(
+            "▼",
+            id=ids.inspector_list_move_id(slot_edge_id, "down"),
+            color="link",
+            size="sm",
+            n_clicks=0,
+            disabled=is_last or slot_entry is None,
+            className="p-0 me-2",
+            title="Move down",
+        )
+        # Drag-handle placeholder (spec §4.5 calls for one).  Phase 4
+        # ships the arrow-button fallback; the handle carries the
+        # ``inspector-drag-handle`` class so a follow-up phase can
+        # attach HTML5 dnd glue without touching the inspector layout.
+        # ``data-edge-id`` is set via ``data_attributes`` keyword which
+        # Dash forwards as an ``html-data-*`` attribute on the DOM
+        # element.  Bare ``data-edge-id=`` would type-check fine but
+        # ``html.Span`` only accepts dict-keyed kwargs through ``**``,
+        # which loses mypy narrowing — so we stash the id on the
+        # className/title instead and let a future drag-glue phase
+        # add a proper data-* attribute.
+        drag_handle = html.Span(
+            "☰",
+            className="inspector-drag-handle me-2",
+            style={"cursor": "grab", "color": COLOR_MUTED},
+            title=(
+                f"Row {i}"
+                + (
+                    f" (edge {slot_entry.edge_id})"
+                    if slot_entry is not None
+                    else ""
+                )
+            ),
+        )
+        badge = dbc.Badge(
+            str(i),
+            color="light",
+            text_color="dark",
+            className="me-2",
+        )
+        if slot_entry is None:
+            label_node: Any = html.Span(
+                "Empty",
+                className="text-muted fst-italic",
+            )
+            action_buttons: List[Any] = []
+        else:
+            source_block = _find_dag_block_in_scope(
+                scope, slot_entry.source_block_id
+            )
+            source_label = (
+                _dag_block_display_label(source_block)
+                if source_block is not None
+                else slot_entry.source_block_id
+            )
+            label_node = html.Span(source_label, className="me-2")
+            action_buttons = [
+                dbc.Button(
+                    "✕",
+                    id=ids.inspector_list_remove_id(slot_entry.edge_id),
+                    color="danger",
+                    outline=True,
+                    size="sm",
+                    n_clicks=0,
+                    className="ms-1",
+                    title="Remove",
+                )
+            ]
+        row_children.append(
+            html.Div(
+                [
+                    drag_handle,
+                    up_btn,
+                    down_btn,
+                    badge,
+                    label_node,
+                    *action_buttons,
+                ],
+                className=(
+                    f"inspector-aux-list-row inspector-aux-slot-{i} "
+                    "d-flex align-items-center py-1 px-2 mb-1"
+                ),
+                style={
+                    "border": f"1px solid {COLOR_BORDER}",
+                    "borderRadius": "4px",
+                    "background": "#fff",
+                },
+            )
+        )
+
+    add_slot_btn = dbc.Button(
+        "+ Add empty slot",
+        id=ids.inspector_add_empty_slot_id(block.block_id, param_name),
+        color="primary",
+        outline=True,
+        size="sm",
+        n_clicks=0,
+        className="mt-1",
+    )
+
+    # Hidden reorder sink — written by future drag glue, consumed by the
+    # ``list_aux_reorder`` dispatcher.  Initial data carries the current
+    # ordering so the consumer can diff cheaply.
+    reorder_store = dcc.Store(
+        id=ids.inspector_list_reorder_store_id(block.block_id, param_name),
+        data={"edge_id_order": edge_id_order},
+        storage_type="memory",
+    )
+
+    return html.Div(
+        [
+            header,
+            html.Div(row_children, className="inspector-aux-list mb-1"),
+            add_slot_btn,
+            reorder_store,
+        ],
+        className="inspector-aux-row mb-3",
+    )
+
+
+def _build_aux_ports_section(
+    *,
+    block: "BlockNode",
+    scope: "_DagBuilderScope",
+    registry: "OperationRegistry",
+) -> Optional[html.Div]:
+    """Render the per-block aux ports section.
+
+    Returns ``None`` when the block has no aux-typed parameters (either
+    because it's the ``InputImage`` sentinel, a container, or an op
+    whose signature has no op/pipeline-typed params).  The caller
+    suppresses the wrapping ``html.Div`` in that case so the inspector
+    layout doesn't include an empty section.
+
+    Args:
+        block: The selected :class:`BlockNode`.
+        scope: The active :class:`_DagBuilderScope` (used to enumerate
+            edges targeting this block).
+        registry: The :class:`OperationRegistry`.
+
+    Returns:
+        :class:`html.Div` keyed by :data:`INSPECTOR_AUX_SECTION`, or
+        ``None`` when nothing aux-related applies.
+    """
+
+    if block.class_name in (INPUT_IMAGE_CLASS_NAME, PIPELINE_CLASS_NAME):
+        return None
+    info = registry.get(block.class_name)
+    if info is None:
+        return None
+    aux_params = _aux_typed_params(info)
+    if not aux_params:
+        return None
+
+    # Bucket aux edges targeting (block.block_id, param) once so each
+    # row's enumeration stays O(E_param) instead of re-walking
+    # ``scope.edges`` per row.
+    edges_by_port: Dict[str, List[Edge]] = {}
+    for edge in scope.edges:
+        if edge.kind != "aux" or edge.target_block_id != block.block_id:
+            continue
+        edges_by_port.setdefault(edge.target_port, []).append(edge)
+
+    rows: List[Any] = []
+    for param_name, param_info in aux_params:
+        wired = edges_by_port.get(param_name, [])
+        if param_info.is_list:
+            rows.append(
+                _build_aux_list_row(
+                    block=block,
+                    param_name=param_name,
+                    param_info=param_info,
+                    wired_edges=wired,
+                    scope=scope,
+                )
+            )
+        else:
+            rows.append(
+                _build_aux_scalar_row(
+                    param_name=param_name,
+                    param_info=param_info,
+                    wired_edges=wired,
+                    scope=scope,
+                )
+            )
+
+    return html.Div(
+        [
+            html.H6("Aux ports", className="mt-3 mb-2"),
+            *rows,
+        ],
+        id=ids.INSPECTOR_AUX_SECTION,
+        className="inspector-aux-section",
+    )
+
+
+def _find_dag_edge_in_scope(
+    scope: "_DagBuilderScope", edge_id: str
+) -> Optional["Edge"]:
+    """Locate an :class:`Edge` by id within a single scope (no recursion).
+
+    The inspector only renders the active scope's wire card, so this
+    helper deliberately does not recurse into nested container scopes —
+    if the selected edge belongs to a different scope, the caller falls
+    back to the empty-state placeholder (mirrors the behaviour of
+    container drill-in once the breadcrumb has shifted).
+    """
+
+    return next((e for e in scope.edges if e.edge_id == edge_id), None)
+
+
+def _empty_state_card_for_dag() -> dbc.Card:
+    """Friendly placeholder for the DAG inspector empty state.
+
+    Spec §4.5 calls for a small intro card describing the validation
+    badge alongside the "drag from palette" hint.  Used when no
+    block / wire is selected so a user opening a fresh canvas can
+    orient themselves without exploring the toolbar first.
+    """
+
+    return dbc.Card(
+        dbc.CardBody(
+            [
+                html.H5("Inspector", className="card-title"),
+                html.P(
+                    "Drag an operation from the palette to begin.",
+                    className="mb-1",
+                ),
+                html.P(
+                    "The toolbar issue badge tells you when the canvas "
+                    "is ready to run — it shows “0 issues” "
+                    "for a clean pipeline.",
+                    className="text-muted mb-0",
+                    style={"fontSize": FONT_SIZE_LABEL},
+                ),
+            ]
+        ),
+        className="h-100",
+    )
+
+
+def _build_dag_inspector(
+    state: "_DagBuilderState",
+    registry: "OperationRegistry",
+) -> html.Div:
+    """Render the inspector for a DAG-shaped :class:`BuilderState`.
+
+    Selection mutual exclusion (spec §4.5): at most one of ``block``,
+    ``wire``, or ``container`` is selected at a time.  The dispatchers
+    in ``_callbacks.py`` enforce this server-side; this renderer trusts
+    that invariant and short-circuits on whichever id is set:
+
+    * ``selected_edge_id`` set → render :func:`_build_wire_card`.
+    * ``selected_block_id`` set → render block label + param form +
+      aux ports section (when the block has aux-typed params).
+    * Neither set → render :func:`_empty_state_card_for_dag`.
+
+    The function always returns an :class:`html.Div` keyed by
+    :data:`INSPECTOR_CONTAINER` plus the hidden inspector widgets so
+    the existing fan-in callback's :data:`INPUT_NODE_LABEL` /
+    :data:`BTN_DRILL_IN` / :data:`INSPECTOR_DOC_TOGGLE` inputs always
+    resolve.
+
+    Args:
+        state: A DAG-shaped :class:`_DagBuilderState`.
+        registry: The :class:`OperationRegistry`.
+
+    Returns:
+        :class:`html.Div` wrapping the inspector card.
+    """
+
+    # Resolve active scope.  Stale breadcrumb (e.g. the container the
+    # user drilled into got deleted by another callback) collapses to
+    # the empty state.  ``current_scope`` is typed for the legacy
+    # state shape but works structurally on DAG state too — the
+    # ``# type: ignore`` annotations below acknowledge that the
+    # dispatch above guarantees a DAG-shaped scope here.
+    try:
+        scope: "_DagBuilderScope" = current_scope(state)  # type: ignore[arg-type,assignment]
+    except KeyError:
+        return html.Div(
+            [_empty_state_card_for_dag(), *_hidden_inspector_widgets()],
+            id=ids.INSPECTOR_CONTAINER,
+        )
+
+    # ── Wire selection takes precedence; ``selected_edge_id`` and
+    #    ``selected_block_id`` are mutually exclusive per spec §4.5,
+    #    but defense in depth: if both happen to be set (e.g. via a
+    #    hand-crafted state dict in tests), prefer the wire card so
+    #    the user can still disconnect.
+    edge = (
+        _find_dag_edge_in_scope(scope, state.selected_edge_id)
+        if state.selected_edge_id
+        else None
+    )
+    if edge is not None:
+        return html.Div(
+            [_build_wire_card(scope, edge), *_hidden_inspector_widgets()],
+            id=ids.INSPECTOR_CONTAINER,
+        )
+
+    block = (
+        _find_dag_block_in_scope(scope, state.selected_block_id)
+        if state.selected_block_id
+        else None
+    )
+    if block is None:
+        return html.Div(
+            [_empty_state_card_for_dag(), *_hidden_inspector_widgets()],
+            id=ids.INSPECTOR_CONTAINER,
+        )
+
+    # ── Block selection: label + (optional) param form + aux section.
+    label_value = block.label or block.class_name
+    header_children: List[Any] = [
+        html.H5(block.class_name, className="card-title mb-3"),
+        dbc.InputGroup(
+            [
+                dbc.InputGroupText("Label"),
+                dbc.Input(
+                    id=ids.INPUT_NODE_LABEL,
+                    type="text",
+                    value=label_value,
+                    debounce=True,
+                ),
+            ],
+            className="mb-3",
+        ),
+    ]
+
+    # Input Image gets a dedicated info card (spec §4.5; the Re-layout
+    # / Re-anchor buttons are deferred to Phase 6, flagged below).
+    if block.class_name == INPUT_IMAGE_CLASS_NAME:
+        body_children: List[Any] = [
+            *header_children,
+            html.P(
+                "Every op chain starts here. The image flowing out of "
+                "this block is whatever your run-time loader provides.",
+                className="text-muted small",
+            ),
+            # Re-layout / Re-anchor buttons are Phase 6 work; hidden
+            # placeholders keep the existing fan-in callbacks (BTN_DRILL_IN
+            # etc.) wired up.
+            *_doc_section_widgets(None),
+            dbc.Button(id=ids.BTN_DRILL_IN, n_clicks=0, style=_HIDDEN_STYLE),
+        ]
+        return html.Div(
+            dbc.Card(dbc.CardBody(body_children), className="h-100"),
+            id=ids.INSPECTOR_CONTAINER,
+        )
+
+    # Container blocks render a drill-in affordance + nested-scope
+    # summary; param form is suppressed (containers have no scalar params).
+    if block.class_name == PIPELINE_CLASS_NAME:
+        nested_len = (
+            len(block.nested.blocks) if block.nested is not None else 0
+        )
+        body_children = [
+            *header_children,
+            html.P(
+                f"Nested scope: {nested_len} block(s).",
+                className="text-muted small",
+            ),
+            dbc.Button(
+                "Drill in →",
+                id=ids.BTN_DRILL_IN,
+                color="primary",
+                outline=True,
+                n_clicks=0,
+            ),
+            html.Hr(),
+            html.Div(id=ids.INSPECTOR_PARAM_FORM),
+            html.Div(id=ids.INSPECTOR_PREVIEW, className="mt-3"),
+            *_doc_section_widgets(None),
+        ]
+        return html.Div(
+            dbc.Card(dbc.CardBody(body_children), className="h-100"),
+            id=ids.INSPECTOR_CONTAINER,
+        )
+
+    # Ordinary op block: param form + aux ports section + hidden
+    # placeholders for the doc-section / drill-in widgets so the
+    # existing fan-in callback always resolves its inputs.
+    op_info = registry.get(block.class_name)
+    if op_info is None:
+        form: Any = html.Div(
+            f"Unknown operation '{block.class_name}'. "
+            "It may have been removed from the registry.",
+            className="text-warning",
+        )
+    else:
+        form = html.Div(
+            param_form(
+                op_info,
+                current_values=block.params,
+                form_id_prefix=block.block_id,
+            ),
+            id=ids.INSPECTOR_PARAM_FORM,
+        )
+
+    aux_section = _build_aux_ports_section(
+        block=block, scope=scope, registry=registry
+    )
+
+    body_children = [
+        *header_children,
+        *_doc_section_widgets(op_info.docstring if op_info else None),
+        form,
+    ]
+    if aux_section is not None:
+        body_children.append(aux_section)
+    body_children.extend(
+        [
+            html.Hr(),
+            html.Div(
+                "(Run preview to populate)",
+                id=ids.INSPECTOR_PREVIEW,
+                className="text-muted small fst-italic",
+            ),
+            dbc.Button(id=ids.BTN_DRILL_IN, n_clicks=0, style=_HIDDEN_STYLE),
+        ]
+    )
+    return html.Div(
+        dbc.Card(dbc.CardBody(body_children), className="h-100"),
+        id=ids.INSPECTOR_CONTAINER,
+    )
+
+
 def build_inspector(
     state: BuilderState,
     registry: "OperationRegistry",
 ) -> html.Div:
     """Render the inspector pane for the current selection.
 
-    The inspector mirrors one node's parameters at a time. In the
-    popover-anchored aux design two distinct modes are possible:
+    Dispatches by state shape:
 
-    * **Consumer mode** (default): renders the canvas-selected node's
-      param form. This is the path used whenever
-      ``state.inspector_focus_aux`` is ``None``.
-    * **Aux-focus mode**: triggered when the user opens the popover for
-      a wired aux (or wires a new one). ``state.inspector_focus_aux``
-      carries ``{"target_node_id", "param", "slot"}``; the inspector
-      looks up the embedded aux :class:`StepNode` at that slot and
-      renders ITS params instead, prefixed by a clickable breadcrumb
-      banner that reverts to consumer mode.
+    * **DAG state** (``hasattr(state, "selected_block_id")``) →
+      :func:`_build_dag_inspector` renders the wire card (when
+      ``selected_edge_id`` is set), the block param form + aux ports
+      section (when ``selected_block_id`` is set), or the empty-state
+      placeholder when neither is set (spec §4.5).
+    * **Legacy state** (the popover-anchored model) → the original
+      consumer / aux-focus dispatch is preserved verbatim below so the
+      ``PHENOTYPIC_GUI_DAG`` flag can stay off in production until the
+      DAG path is fully shipped.
 
     Args:
-        state: The full builder state (used to resolve the active scope,
-            selection, and aux focus via :func:`current_scope` +
-            :func:`_resolve_inspector_focus_target`).
+        state: The full builder state (legacy or DAG schema).
         registry: Operation registry consulted for parameter metadata.
 
     Returns:
@@ -1898,7 +2742,16 @@ def build_inspector(
         the :data:`INSPECTOR_CONTAINER` id so callbacks can swap children.
     """
 
-    if state.selected_node_id is None:
+    # Duck-typed dispatch — same pattern as ``state_to_json`` in _state.py
+    # to stay resilient against importlib.reload in tests.  The
+    # ``# type: ignore[arg-type]`` is needed because mypy resolves
+    # ``BuilderState`` to the legacy class when ``PHENOTYPIC_GUI_DAG=0``
+    # (the static default); the duck-typed branch is only reachable
+    # when the runtime state IS a ``_DagBuilderState``.
+    if hasattr(state, "selected_block_id"):
+        return _build_dag_inspector(state, registry)  # type: ignore[arg-type]
+
+    if state.selected_node_id is None:  # type: ignore[attr-defined]
         return _empty_inspector_div()
 
     try:
@@ -2886,6 +3739,20 @@ def build_app_layout(
             # (``block_create`` dispatch).
             dcc.Store(
                 id=ids.STORE_PALETTE_DROP,
+                data=None,
+            ),
+            # Phase 4 wire-drawing store: written by
+            # ``assets/wire_drawing.js`` on edge gestures + by the
+            # inspector wire / aux cards (Agent 4C) for keyboard /
+            # button-driven mutations.  Carries a discriminated-union
+            # payload routed by ``payload["kind"]`` to the appropriate
+            # ``edge_*`` / ``list_aux_*`` / ``wire_select`` /
+            # ``block_select`` dispatch.  Mounted unconditionally so the
+            # Phase 4 callbacks never error on a missing input; until
+            # the feature flag is on, the store stays at ``None`` and
+            # downstream dispatches no-op.
+            dcc.Store(
+                id=ids.STORE_EDGE_EVENT,
                 data=None,
             ),
         ]

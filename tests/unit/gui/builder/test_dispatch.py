@@ -26,7 +26,7 @@ a stable, isolated registry.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import pytest
 
@@ -521,3 +521,874 @@ def test_block_create_does_not_mutate_input_dict(
     assert len(state_dict["root"]["blocks"]) == snapshot["block_count"]
     assert [b["block_id"] for b in state_dict["root"]["blocks"]] == snapshot["block_ids"]
     assert state_dict.get("selected_block_id") == snapshot["selected_block_id"]
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 — edge-dispatch helpers + fixtures
+# ---------------------------------------------------------------------------
+
+
+def _make_edge_create_payload(
+    *,
+    source_block_id: str,
+    target_block_id: str,
+    target_port: str,
+    edge_kind: str = "aux",
+    ts: int = 0,
+) -> Dict[str, Any]:
+    """Construct an ``edge_create`` payload matching the JS contract.
+
+    Note: clients send ``edge_kind`` (not ``kind`` — ``kind`` is the
+    dispatch discriminator at the top level).
+    """
+
+    return {
+        "kind": "edge_create",
+        "source_block_id": source_block_id,
+        "target_block_id": target_block_id,
+        "target_port": target_port,
+        "edge_kind": edge_kind,
+        "ts": ts,
+    }
+
+
+def _seed_aux_consumer_registry(empty_registry: Any) -> Dict[str, str]:
+    """Seed two ops in the registry: a Source op + a Consumer op.
+
+    The Consumer carries one **scalar aux** param ``scalar_aux`` and one
+    **list aux** param ``list_aux``.  Returns a dict mapping logical
+    name to registered class name for clarity.
+    """
+
+    from .conftest import _make_param
+
+    source_info = _make_op_info("SourceOp")
+    consumer_info = _make_op_info(
+        "ConsumerOp",
+        parameters={
+            "scalar_aux": _make_param(
+                "scalar_aux",
+                has_default=True,
+                is_operation=True,
+                is_list=False,
+            ),
+            "list_aux": _make_param(
+                "list_aux",
+                has_default=True,
+                is_operation=True,
+                is_list=True,
+            ),
+        },
+    )
+    empty_registry.ops["SourceOp"] = source_info
+    empty_registry.ops["ConsumerOp"] = consumer_info
+    return {"source": "SourceOp", "consumer": "ConsumerOp"}
+
+
+def _build_source_consumer_state(
+    patched_registry: Any,
+) -> Tuple[Dict[str, Any], str, str]:
+    """Return (state_dict, source_block_id, consumer_block_id).
+
+    Boots a DAG state with two blocks via the ``block_create`` dispatch
+    so the source + consumer block ids are deterministic and the
+    registry-derived params dict matches a real palette drop.
+    """
+
+    _seed_aux_consumer_registry(patched_registry)
+    state_dict = _empty_dag_state_dict()
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload("SourceOp"),
+    )
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload("ConsumerOp"),
+    )
+    blocks = state_dict["root"]["blocks"]
+    source_block = next(b for b in blocks if b["class_name"] == "SourceOp")
+    consumer_block = next(b for b in blocks if b["class_name"] == "ConsumerOp")
+    return state_dict, source_block["block_id"], consumer_block["block_id"]
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 — edge_create
+# ---------------------------------------------------------------------------
+
+
+def test_edge_create_image_flow_succeeds(patched_registry: Any) -> None:
+    """Image-flow ``edge_create`` adds one edge to the shared scope."""
+
+    state_dict, src_id, tgt_id = _build_source_consumer_state(patched_registry)
+    initial_edges = list(state_dict["root"].get("edges", []) or [])
+
+    new_state = _dispatch_state_update(
+        state_dict,
+        "edge_create",
+        _make_edge_create_payload(
+            source_block_id=src_id,
+            target_block_id=tgt_id,
+            target_port="in",
+            edge_kind="image",
+        ),
+    )
+
+    edges = new_state["root"]["edges"]
+    assert len(edges) == len(initial_edges) + 1
+    new_edge = next(
+        e for e in edges
+        if e["source_block_id"] == src_id and e["target_block_id"] == tgt_id
+    )
+    assert new_edge["target_port"] == "in"
+    assert new_edge["kind"] == "image"
+    assert new_edge["target_slot"] is None
+    assert len(new_edge["edge_id"]) == 32  # uuid hex
+
+
+def test_edge_create_scalar_aux_replaces_existing(
+    patched_registry: Any,
+) -> None:
+    """Second edge to same scalar aux port → first edge gone, second present."""
+
+    _seed_aux_consumer_registry(patched_registry)
+    # Three blocks: source_a, source_b, consumer.  Wire source_a → consumer.scalar_aux,
+    # then wire source_b → consumer.scalar_aux.  Result: only the source_b edge.
+    state_dict = _empty_dag_state_dict()
+    for cls in ("SourceOp", "SourceOp", "ConsumerOp"):
+        state_dict = _dispatch_state_update(
+            state_dict, "block_create",
+            _make_palette_drop_payload(cls),
+        )
+    source_blocks = [
+        b for b in state_dict["root"]["blocks"]
+        if b["class_name"] == "SourceOp"
+    ]
+    src_a, src_b = source_blocks[0]["block_id"], source_blocks[1]["block_id"]
+    tgt = next(
+        b for b in state_dict["root"]["blocks"]
+        if b["class_name"] == "ConsumerOp"
+    )["block_id"]
+
+    state_dict = _dispatch_state_update(
+        state_dict, "edge_create",
+        _make_edge_create_payload(
+            source_block_id=src_a,
+            target_block_id=tgt,
+            target_port="scalar_aux",
+            edge_kind="aux",
+        ),
+    )
+    state_dict = _dispatch_state_update(
+        state_dict, "edge_create",
+        _make_edge_create_payload(
+            source_block_id=src_b,
+            target_block_id=tgt,
+            target_port="scalar_aux",
+            edge_kind="aux",
+        ),
+    )
+
+    scalar_edges = [
+        e for e in state_dict["root"]["edges"]
+        if e["target_block_id"] == tgt and e["target_port"] == "scalar_aux"
+    ]
+    assert len(scalar_edges) == 1
+    assert scalar_edges[0]["source_block_id"] == src_b
+
+
+def test_edge_create_list_aux_appends_to_next_slot(
+    patched_registry: Any,
+) -> None:
+    """Three ``edge_create`` to the same list aux port → slots 0, 1, 2."""
+
+    _seed_aux_consumer_registry(patched_registry)
+    state_dict = _empty_dag_state_dict()
+    for _ in range(3):
+        state_dict = _dispatch_state_update(
+            state_dict, "block_create",
+            _make_palette_drop_payload("SourceOp"),
+        )
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload("ConsumerOp"),
+    )
+
+    source_ids = [
+        b["block_id"]
+        for b in state_dict["root"]["blocks"]
+        if b["class_name"] == "SourceOp"
+    ]
+    tgt = next(
+        b for b in state_dict["root"]["blocks"]
+        if b["class_name"] == "ConsumerOp"
+    )["block_id"]
+
+    # Wire all three sources into the consumer's list_aux port.
+    for sid in source_ids:
+        state_dict = _dispatch_state_update(
+            state_dict, "edge_create",
+            _make_edge_create_payload(
+                source_block_id=sid,
+                target_block_id=tgt,
+                target_port="list_aux",
+                edge_kind="aux",
+            ),
+        )
+
+    list_edges = sorted(
+        [
+            e for e in state_dict["root"]["edges"]
+            if e["target_block_id"] == tgt
+            and e["target_port"] == "list_aux"
+        ],
+        key=lambda e: e["target_slot"],
+    )
+    assert [e["target_slot"] for e in list_edges] == [0, 1, 2]
+    # Server-side slot resolution: ``list_slot_counts`` reaches 3.
+    tgt_block = next(
+        b for b in state_dict["root"]["blocks"] if b["block_id"] == tgt
+    )
+    assert tgt_block["list_slot_counts"]["list_aux"] == 3
+
+
+def test_edge_create_list_aux_slot_no_collision_after_delete(
+    patched_registry: Any,
+) -> None:
+    """Wire slots 0,1,2; delete slot 1; wire 4th → slot 3 (no collision)."""
+
+    _seed_aux_consumer_registry(patched_registry)
+    state_dict = _empty_dag_state_dict()
+    for _ in range(4):
+        state_dict = _dispatch_state_update(
+            state_dict, "block_create",
+            _make_palette_drop_payload("SourceOp"),
+        )
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload("ConsumerOp"),
+    )
+    source_ids = [
+        b["block_id"]
+        for b in state_dict["root"]["blocks"]
+        if b["class_name"] == "SourceOp"
+    ]
+    tgt = next(
+        b for b in state_dict["root"]["blocks"]
+        if b["class_name"] == "ConsumerOp"
+    )["block_id"]
+
+    # Wire first three sources → slots 0, 1, 2.
+    for sid in source_ids[:3]:
+        state_dict = _dispatch_state_update(
+            state_dict, "edge_create",
+            _make_edge_create_payload(
+                source_block_id=sid,
+                target_block_id=tgt,
+                target_port="list_aux",
+                edge_kind="aux",
+            ),
+        )
+    # Delete the slot-1 edge.
+    slot1_edge = next(
+        e for e in state_dict["root"]["edges"]
+        if e["target_block_id"] == tgt
+        and e["target_port"] == "list_aux"
+        and e["target_slot"] == 1
+    )
+    state_dict = _dispatch_state_update(
+        state_dict, "edge_delete",
+        {"kind": "edge_delete", "edge_id": slot1_edge["edge_id"], "ts": 1},
+    )
+    # Slot count stays at 3 (no renumbering on delete).
+    tgt_block = next(
+        b for b in state_dict["root"]["blocks"] if b["block_id"] == tgt
+    )
+    assert tgt_block["list_slot_counts"]["list_aux"] == 3
+
+    # Wire the 4th source → slot 3 (server-side resolution; never reuses
+    # the freed slot 1).
+    state_dict = _dispatch_state_update(
+        state_dict, "edge_create",
+        _make_edge_create_payload(
+            source_block_id=source_ids[3],
+            target_block_id=tgt,
+            target_port="list_aux",
+            edge_kind="aux",
+            ts=2,
+        ),
+    )
+    new_edge = next(
+        e for e in state_dict["root"]["edges"]
+        if e["source_block_id"] == source_ids[3]
+    )
+    assert new_edge["target_slot"] == 3
+    tgt_block = next(
+        b for b in state_dict["root"]["blocks"] if b["block_id"] == tgt
+    )
+    assert tgt_block["list_slot_counts"]["list_aux"] == 4
+
+
+def test_edge_create_cross_scope_rejected(patched_registry: Any) -> None:
+    """Source in root, target in container → reject + toast."""
+
+    _seed_aux_consumer_registry(patched_registry)
+    # Build a container + put a ConsumerOp inside it.
+    container = _make_container_block()
+    state = _DagBuilderState(
+        root=_DagBuilderScope(blocks=[container]),
+    )
+    state_dict = state_to_json(state)
+    # Drop a source into the root, a consumer inside the container.
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload("SourceOp"),
+    )
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload(
+            "ConsumerOp",
+            container_block_id=container.block_id,
+        ),
+    )
+
+    src = next(
+        b for b in state_dict["root"]["blocks"]
+        if b["class_name"] == "SourceOp"
+    )["block_id"]
+    container_dict = next(
+        b for b in state_dict["root"]["blocks"]
+        if b["block_id"] == container.block_id
+    )
+    consumer = next(
+        b for b in container_dict["nested"]["blocks"]
+        if b["class_name"] == "ConsumerOp"
+    )["block_id"]
+
+    initial_root_edges = list(state_dict["root"].get("edges", []) or [])
+    initial_nested_edges = list(
+        container_dict["nested"].get("edges", []) or []
+    )
+
+    new_state = _dispatch_state_update(
+        state_dict, "edge_create",
+        _make_edge_create_payload(
+            source_block_id=src,
+            target_block_id=consumer,
+            target_port="scalar_aux",
+            edge_kind="aux",
+        ),
+    )
+
+    # No edges added anywhere.
+    assert (
+        list(new_state["root"].get("edges", []) or []) == initial_root_edges
+    )
+    new_container_dict = next(
+        b for b in new_state["root"]["blocks"]
+        if b["block_id"] == container.block_id
+    )
+    assert (
+        list(new_container_dict["nested"].get("edges", []) or [])
+        == initial_nested_edges
+    )
+    # Toast surfaced.
+    toasts = new_state.get("toast_queue") or []
+    assert any("Cross-scope" in t["text"] for t in toasts)
+
+
+def test_edge_create_concurrent_drag_determinism(
+    patched_registry: Any,
+) -> None:
+    """Two ``edge_create`` payloads same-tick → deterministic slot index.
+
+    The fan-in callback serialises by ``ts`` (spec §5.5).  Per-dispatch
+    each call sees the incremented ``list_slot_counts`` so two
+    independent wires resolve to slots 0 and 1 deterministically.
+    """
+
+    _seed_aux_consumer_registry(patched_registry)
+    state_dict = _empty_dag_state_dict()
+    for _ in range(2):
+        state_dict = _dispatch_state_update(
+            state_dict, "block_create",
+            _make_palette_drop_payload("SourceOp"),
+        )
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload("ConsumerOp"),
+    )
+    source_ids = [
+        b["block_id"]
+        for b in state_dict["root"]["blocks"]
+        if b["class_name"] == "SourceOp"
+    ]
+    tgt = next(
+        b for b in state_dict["root"]["blocks"]
+        if b["class_name"] == "ConsumerOp"
+    )["block_id"]
+
+    # Same ts on both payloads — order of application still produces
+    # deterministic slots because the dispatcher is purely deterministic
+    # per call.
+    state_dict = _dispatch_state_update(
+        state_dict, "edge_create",
+        _make_edge_create_payload(
+            source_block_id=source_ids[0],
+            target_block_id=tgt,
+            target_port="list_aux",
+            edge_kind="aux",
+            ts=100,
+        ),
+    )
+    state_dict = _dispatch_state_update(
+        state_dict, "edge_create",
+        _make_edge_create_payload(
+            source_block_id=source_ids[1],
+            target_block_id=tgt,
+            target_port="list_aux",
+            edge_kind="aux",
+            ts=100,
+        ),
+    )
+    list_edges = sorted(
+        [
+            e for e in state_dict["root"]["edges"]
+            if e["target_block_id"] == tgt
+            and e["target_port"] == "list_aux"
+        ],
+        key=lambda e: e["target_slot"],
+    )
+    assert [e["target_slot"] for e in list_edges] == [0, 1]
+    # Distinct sources mapped to distinct slots.
+    assert {e["source_block_id"] for e in list_edges} == set(source_ids)
+
+
+def test_edge_create_image_source_single_wire_rule(
+    patched_registry: Any,
+) -> None:
+    """Wiring source → A then source → B replaces the first wire (spec §4.2).
+
+    Output ports take at most one outgoing wire **total** (image or aux,
+    never both).  The second ``edge_create`` from the same source must
+    delete the first.
+    """
+
+    _seed_aux_consumer_registry(patched_registry)
+    state_dict = _empty_dag_state_dict()
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload("SourceOp"),
+    )
+    # Two consumer blocks (distinct downstream targets).
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload("ConsumerOp"),
+    )
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload("ConsumerOp"),
+    )
+    src = next(
+        b for b in state_dict["root"]["blocks"]
+        if b["class_name"] == "SourceOp"
+    )["block_id"]
+    consumers = [
+        b["block_id"]
+        for b in state_dict["root"]["blocks"]
+        if b["class_name"] == "ConsumerOp"
+    ]
+
+    state_dict = _dispatch_state_update(
+        state_dict, "edge_create",
+        _make_edge_create_payload(
+            source_block_id=src,
+            target_block_id=consumers[0],
+            target_port="scalar_aux",
+            edge_kind="aux",
+        ),
+    )
+    state_dict = _dispatch_state_update(
+        state_dict, "edge_create",
+        _make_edge_create_payload(
+            source_block_id=src,
+            target_block_id=consumers[1],
+            target_port="scalar_aux",
+            edge_kind="aux",
+            ts=1,
+        ),
+    )
+
+    src_edges = [
+        e for e in state_dict["root"]["edges"]
+        if e["source_block_id"] == src
+    ]
+    assert len(src_edges) == 1
+    assert src_edges[0]["target_block_id"] == consumers[1]
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 — edge_delete
+# ---------------------------------------------------------------------------
+
+
+def test_edge_delete_removes_edge(patched_registry: Any) -> None:
+    """Edge in scope.edges; after dispatch, gone."""
+
+    state_dict, src, tgt = _build_source_consumer_state(patched_registry)
+    state_dict = _dispatch_state_update(
+        state_dict, "edge_create",
+        _make_edge_create_payload(
+            source_block_id=src,
+            target_block_id=tgt,
+            target_port="in",
+            edge_kind="image",
+        ),
+    )
+    edge_id = state_dict["root"]["edges"][0]["edge_id"]
+
+    new_state = _dispatch_state_update(
+        state_dict, "edge_delete",
+        {"kind": "edge_delete", "edge_id": edge_id, "ts": 1},
+    )
+    assert all(
+        e["edge_id"] != edge_id for e in new_state["root"]["edges"]
+    )
+
+
+def test_edge_delete_list_aux_keeps_slot_count(
+    patched_registry: Any,
+) -> None:
+    """Slot count after delete unchanged (spec §5.6: never decrements)."""
+
+    _seed_aux_consumer_registry(patched_registry)
+    state_dict = _empty_dag_state_dict()
+    for _ in range(2):
+        state_dict = _dispatch_state_update(
+            state_dict, "block_create",
+            _make_palette_drop_payload("SourceOp"),
+        )
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload("ConsumerOp"),
+    )
+    sources = [
+        b["block_id"]
+        for b in state_dict["root"]["blocks"]
+        if b["class_name"] == "SourceOp"
+    ]
+    tgt = next(
+        b for b in state_dict["root"]["blocks"]
+        if b["class_name"] == "ConsumerOp"
+    )["block_id"]
+
+    for sid in sources:
+        state_dict = _dispatch_state_update(
+            state_dict, "edge_create",
+            _make_edge_create_payload(
+                source_block_id=sid,
+                target_block_id=tgt,
+                target_port="list_aux",
+                edge_kind="aux",
+            ),
+        )
+
+    tgt_block_before = next(
+        b for b in state_dict["root"]["blocks"] if b["block_id"] == tgt
+    )
+    slot_count_before = tgt_block_before["list_slot_counts"]["list_aux"]
+    assert slot_count_before == 2
+
+    edge_to_delete = state_dict["root"]["edges"][0]["edge_id"]
+    new_state = _dispatch_state_update(
+        state_dict, "edge_delete",
+        {"kind": "edge_delete", "edge_id": edge_to_delete, "ts": 1},
+    )
+
+    tgt_block_after = next(
+        b for b in new_state["root"]["blocks"] if b["block_id"] == tgt
+    )
+    assert (
+        tgt_block_after["list_slot_counts"]["list_aux"] == slot_count_before
+    )
+
+
+def test_edge_delete_unknown_id_is_noop(patched_registry: Any) -> None:
+    """Unknown edge_id → state unchanged (no crash)."""
+
+    state_dict, _, _ = _build_source_consumer_state(patched_registry)
+    edges_before = list(state_dict["root"].get("edges", []) or [])
+    new_state = _dispatch_state_update(
+        state_dict, "edge_delete",
+        {"kind": "edge_delete", "edge_id": "x" * 32, "ts": 0},
+    )
+    assert list(new_state["root"].get("edges", []) or []) == edges_before
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 — list_aux_reorder
+# ---------------------------------------------------------------------------
+
+
+def test_list_aux_reorder_valid_permutation(patched_registry: Any) -> None:
+    """Wired edges reorder; ``target_slot`` updated to new positions."""
+
+    _seed_aux_consumer_registry(patched_registry)
+    state_dict = _empty_dag_state_dict()
+    for _ in range(3):
+        state_dict = _dispatch_state_update(
+            state_dict, "block_create",
+            _make_palette_drop_payload("SourceOp"),
+        )
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload("ConsumerOp"),
+    )
+    sources = [
+        b["block_id"]
+        for b in state_dict["root"]["blocks"]
+        if b["class_name"] == "SourceOp"
+    ]
+    tgt = next(
+        b for b in state_dict["root"]["blocks"]
+        if b["class_name"] == "ConsumerOp"
+    )["block_id"]
+    for sid in sources:
+        state_dict = _dispatch_state_update(
+            state_dict, "edge_create",
+            _make_edge_create_payload(
+                source_block_id=sid,
+                target_block_id=tgt,
+                target_port="list_aux",
+                edge_kind="aux",
+            ),
+        )
+    # Current edges sorted by slot: slot0, slot1, slot2.
+    list_edges = sorted(
+        [
+            e for e in state_dict["root"]["edges"]
+            if e["target_port"] == "list_aux"
+        ],
+        key=lambda e: e["target_slot"],
+    )
+    e0, e1, e2 = list_edges
+
+    # Reorder: reverse the list.
+    new_order = [e2["edge_id"], e1["edge_id"], e0["edge_id"]]
+    new_state = _dispatch_state_update(
+        state_dict, "list_aux_reorder",
+        {
+            "kind": "list_aux_reorder",
+            "block_id": tgt,
+            "param": "list_aux",
+            "new_order": new_order,
+            "ts": 0,
+        },
+    )
+
+    slot_by_edge = {
+        e["edge_id"]: e["target_slot"]
+        for e in new_state["root"]["edges"]
+        if e["target_port"] == "list_aux"
+    }
+    assert slot_by_edge[e2["edge_id"]] == 0
+    assert slot_by_edge[e1["edge_id"]] == 1
+    assert slot_by_edge[e0["edge_id"]] == 2
+
+    tgt_block = next(
+        b for b in new_state["root"]["blocks"] if b["block_id"] == tgt
+    )
+    assert tgt_block["list_slot_counts"]["list_aux"] == 3
+
+
+def test_list_aux_reorder_non_permutation_rejected(
+    patched_registry: Any,
+) -> None:
+    """Invalid input → no-op + toast (spec §5.6)."""
+
+    _seed_aux_consumer_registry(patched_registry)
+    state_dict = _empty_dag_state_dict()
+    for _ in range(2):
+        state_dict = _dispatch_state_update(
+            state_dict, "block_create",
+            _make_palette_drop_payload("SourceOp"),
+        )
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload("ConsumerOp"),
+    )
+    sources = [
+        b["block_id"]
+        for b in state_dict["root"]["blocks"]
+        if b["class_name"] == "SourceOp"
+    ]
+    tgt = next(
+        b for b in state_dict["root"]["blocks"]
+        if b["class_name"] == "ConsumerOp"
+    )["block_id"]
+    for sid in sources:
+        state_dict = _dispatch_state_update(
+            state_dict, "edge_create",
+            _make_edge_create_payload(
+                source_block_id=sid,
+                target_block_id=tgt,
+                target_port="list_aux",
+                edge_kind="aux",
+            ),
+        )
+    edges_before = [
+        {"edge_id": e["edge_id"], "target_slot": e["target_slot"]}
+        for e in state_dict["root"]["edges"]
+        if e["target_port"] == "list_aux"
+    ]
+    toast_count_before = len(state_dict.get("toast_queue") or [])
+
+    # Invalid: refers to a non-existent edge_id.
+    new_state = _dispatch_state_update(
+        state_dict, "list_aux_reorder",
+        {
+            "kind": "list_aux_reorder",
+            "block_id": tgt,
+            "param": "list_aux",
+            "new_order": ["z" * 32, edges_before[0]["edge_id"]],
+            "ts": 0,
+        },
+    )
+    edges_after = [
+        {"edge_id": e["edge_id"], "target_slot": e["target_slot"]}
+        for e in new_state["root"]["edges"]
+        if e["target_port"] == "list_aux"
+    ]
+    assert sorted(edges_after, key=lambda e: e["edge_id"]) == sorted(
+        edges_before, key=lambda e: e["edge_id"]
+    )
+    toasts = new_state.get("toast_queue") or []
+    assert len(toasts) == toast_count_before + 1
+    assert "Reorder rejected" in toasts[-1]["text"]
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 — list_aux_add_empty_slot
+# ---------------------------------------------------------------------------
+
+
+def test_list_aux_add_empty_slot_increments_count(
+    patched_registry: Any,
+) -> None:
+    """Count + 1; no edge created (spec §5.6)."""
+
+    _seed_aux_consumer_registry(patched_registry)
+    state_dict = _empty_dag_state_dict()
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload("ConsumerOp"),
+    )
+    tgt = next(
+        b for b in state_dict["root"]["blocks"]
+        if b["class_name"] == "ConsumerOp"
+    )["block_id"]
+    edges_before = list(state_dict["root"].get("edges", []) or [])
+
+    new_state = _dispatch_state_update(
+        state_dict, "list_aux_add_empty_slot",
+        {
+            "kind": "list_aux_add_empty_slot",
+            "block_id": tgt,
+            "param": "list_aux",
+            "ts": 0,
+        },
+    )
+
+    tgt_block = next(
+        b for b in new_state["root"]["blocks"] if b["block_id"] == tgt
+    )
+    assert tgt_block["list_slot_counts"]["list_aux"] == 1
+    # No edge was created.
+    assert (
+        list(new_state["root"].get("edges", []) or []) == edges_before
+    )
+
+    # Fire it again — count rises to 2.
+    newer_state = _dispatch_state_update(
+        new_state, "list_aux_add_empty_slot",
+        {
+            "kind": "list_aux_add_empty_slot",
+            "block_id": tgt,
+            "param": "list_aux",
+            "ts": 1,
+        },
+    )
+    tgt_block = next(
+        b for b in newer_state["root"]["blocks"] if b["block_id"] == tgt
+    )
+    assert tgt_block["list_slot_counts"]["list_aux"] == 2
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 — wire_select / block_select (mutual exclusion)
+# ---------------------------------------------------------------------------
+
+
+def test_wire_select_clears_block_selection(patched_registry: Any) -> None:
+    """Block selected; wire_select fires; block_id cleared (spec §4.5)."""
+
+    state_dict, src, tgt = _build_source_consumer_state(patched_registry)
+    state_dict = _dispatch_state_update(
+        state_dict, "edge_create",
+        _make_edge_create_payload(
+            source_block_id=src,
+            target_block_id=tgt,
+            target_port="in",
+            edge_kind="image",
+        ),
+    )
+    edge_id = state_dict["root"]["edges"][0]["edge_id"]
+    # Block selected initially (block_create sets it).
+    state_dict["selected_block_id"] = src
+    state_dict["selected_edge_id"] = None
+
+    new_state = _dispatch_state_update(
+        state_dict, "wire_select",
+        {"kind": "wire_select", "edge_id": edge_id, "ts": 0},
+    )
+    assert new_state["selected_edge_id"] == edge_id
+    assert new_state["selected_block_id"] is None
+
+    # Deselection (edge_id=None) clears both — but specifically only the
+    # wire selection is touched here.
+    cleared = _dispatch_state_update(
+        new_state, "wire_select",
+        {"kind": "wire_select", "edge_id": None, "ts": 1},
+    )
+    assert cleared["selected_edge_id"] is None
+
+
+def test_block_select_clears_wire_selection(patched_registry: Any) -> None:
+    """Wire selected; block_select fires; edge_id cleared (spec §4.5)."""
+
+    state_dict, src, tgt = _build_source_consumer_state(patched_registry)
+    state_dict = _dispatch_state_update(
+        state_dict, "edge_create",
+        _make_edge_create_payload(
+            source_block_id=src,
+            target_block_id=tgt,
+            target_port="in",
+            edge_kind="image",
+        ),
+    )
+    edge_id = state_dict["root"]["edges"][0]["edge_id"]
+    state_dict["selected_block_id"] = None
+    state_dict["selected_edge_id"] = edge_id
+
+    new_state = _dispatch_state_update(
+        state_dict, "block_select",
+        {"kind": "block_select", "block_id": src, "ts": 0},
+    )
+    assert new_state["selected_block_id"] == src
+    assert new_state["selected_edge_id"] is None
+
+    # Deselection.
+    cleared = _dispatch_state_update(
+        new_state, "block_select",
+        {"kind": "block_select", "block_id": None, "ts": 1},
+    )
+    assert cleared["selected_block_id"] is None

@@ -110,6 +110,35 @@ STORE_ASSET_STATUS = "store-asset-status"
 #: class still trigger change detection.
 STORE_PALETTE_DROP = "store-palette-drop"
 
+#: ``dcc.Store`` written by the clientside ``wire_drawing.js`` glue when
+#: the user completes (or cancels) a wire-drag gesture, **or** when an
+#: inspector wire-card / aux-card action triggers an edge mutation.
+#: Server-side callbacks subscribe to it to route through
+#: ``_dispatch_state_update`` with the appropriate ``edge_*`` /
+#: ``list_aux_*`` / ``wire_select`` / ``block_select`` kind.  See spec
+#: §5.5 (clientside event contract) and §5.6 (dispatch table).  Data
+#: shape varies by ``kind`` (Phase 4):
+#:
+#: * ``{"kind": "edge_create", "source_block_id": str,
+#:   "target_block_id": str, "target_port": str, "edge_kind":
+#:   "image" | "aux", "ts": int}`` — note ``edge_kind`` is the wire
+#:   kind (image/aux); ``kind`` is reserved for the dispatch
+#:   discriminator at the top level.
+#: * ``{"kind": "edge_delete", "edge_id": str, "ts": int}``.
+#: * ``{"kind": "list_aux_reorder", "block_id": str, "param": str,
+#:   "new_order": List[str | None], "ts": int}``.
+#: * ``{"kind": "list_aux_add_empty_slot", "block_id": str,
+#:   "param": str, "ts": int}``.
+#: * ``{"kind": "wire_select", "edge_id": str | None, "ts": int}``.
+#: * ``{"kind": "block_select", "block_id": str | None, "ts": int}``.
+#:
+#: ``None`` between events.  The fan-in callback routes on
+#: ``payload["kind"]`` so the single store carries every wire-related
+#: mutation; this keeps the JS surface tiny and lets Agent 4C's
+#: inspector emit dispatches through the same channel rather than
+#: needing a parallel store.
+STORE_EDGE_EVENT = "store-edge-event"
+
 #: Toolbar button that re-runs the dagre layout pass + ``cy.fit()``.  Wired
 #: to the ``relayout`` payload in ``STORE_VIEWPORT_OP``; disabled by the
 #: ``asset_status_disables`` callback when ``viewport_ops.js`` or the
@@ -136,6 +165,177 @@ BTN_CONFIRM_DELETE = "btn-confirm-delete"
 #: Cancel button inside :data:`CONFIRM_DELETE_MODAL_ID`.  Clears
 #: ``state.pending_delete_block_id`` so the modal closes.
 BTN_CANCEL_DELETE = "btn-cancel-delete"
+
+# NOTE: ``STORE_EDGE_EVENT`` (canonical owner: Agent 4B) is declared
+# higher up in this module.  The inspector pane (Agent 4C) writes into
+# the same store via the kinds ``edge_delete``,
+# ``list_aux_add_empty_slot``, and ``list_aux_reorder`` so the
+# clientside ``wire_drawing.js`` glue and the server-side inspector
+# callbacks share a single mutation channel.
+
+#: ``html.Div`` wrapping the inspector wire-card. Mounted by
+#: :func:`phenotypic.gui.builder._layout.build_inspector` (DAG branch)
+#: only when ``state.selected_edge_id`` resolves to an :class:`Edge`
+#: in the active scope.  Carries the wire's source/target labels,
+#: kind tag, and a ``Disconnect`` button.
+INSPECTOR_WIRE_CARD = "inspector-wire-card"
+
+#: ``html.Div`` wrapping the inspector aux-ports section.  Mounted by
+#: :func:`phenotypic.gui.builder._layout.build_inspector` (DAG branch)
+#: only when ``state.selected_block_id`` resolves to a :class:`BlockNode`
+#: that exposes one or more op-typed parameters.  Enumerates each aux
+#: port (scalar or list-typed) with the wired edges + the ``+ Add
+#: empty slot`` affordance.
+INSPECTOR_AUX_SECTION = "inspector-aux-section"
+
+#: Pattern-match ``type`` key for the wire-card / list-row ``Disconnect``
+#: buttons.  Both surfaces dispatch ``edge_delete`` against a specific
+#: :class:`Edge.edge_id`; the inspector callback matches
+#: ``Input({"type": BTN_INSPECTOR_DISCONNECT, "edge_id": ALL}, "n_clicks")``.
+BTN_INSPECTOR_DISCONNECT = "btn-inspector-disconnect"
+
+#: Pattern-match ``type`` key for the list-aux per-row remove buttons
+#: (``✕``).  Distinguished from :data:`BTN_INSPECTOR_DISCONNECT` so
+#: both surfaces can co-exist in the same DOM without callback id
+#: collisions.
+BTN_INSPECTOR_LIST_REMOVE = "btn-inspector-list-remove"
+
+#: Pattern-match ``type`` key for the ``+ Add empty slot`` buttons inside
+#: the aux ports section.  Keyed by ``(block_id, param)`` so the
+#: dispatcher knows which list-aux port to extend.
+BTN_INSPECTOR_ADD_EMPTY_SLOT = "btn-inspector-add-empty-slot"
+
+#: Pattern-match ``type`` key for the per-row ``▲``/``▼`` move
+#: buttons (Phase-4 drag-handle fallback).  Each id carries
+#: ``edge_id`` + ``direction`` so a single callback can dispatch the
+#: right reorder.
+BTN_INSPECTOR_LIST_MOVE = "btn-inspector-list-move"
+
+#: Pattern-match ``type`` key for the hidden ``dcc.Store`` rendered once
+#: per list-typed op-param on the selected block.  Future HTML5 drag
+#: glue can write the new permutation as a ``List[str]`` of edge_ids
+#: here without churn to the inspector callback; the Phase-4 arrow-
+#: button fallback uses :data:`BTN_INSPECTOR_LIST_MOVE` instead.
+STORE_INSPECTOR_LIST_REORDER = "store-inspector-list-reorder"
+
+
+def inspector_disconnect_id(edge_id: str) -> Dict[str, Any]:
+    """Build the pattern-matching id for the inspector ``Disconnect`` button.
+
+    The wire-card and the per-row ``✕`` remove button inside the
+    aux ports section both dispatch ``edge_delete`` for a specific
+    :class:`Edge`.  Both call into this helper so callbacks can match
+    against ``Input({"type": BTN_INSPECTOR_DISCONNECT, "edge_id": ALL},
+    "n_clicks")`` regardless of which surface emitted the click.
+
+    Args:
+        edge_id: The :class:`Edge.edge_id` value of the wire to delete.
+
+    Returns:
+        Dict of shape ``{"type": BTN_INSPECTOR_DISCONNECT, "edge_id":
+        edge_id}``.
+    """
+
+    return {"type": BTN_INSPECTOR_DISCONNECT, "edge_id": edge_id}
+
+
+def inspector_list_remove_id(edge_id: str) -> Dict[str, Any]:
+    """Build the pattern-matching id for the list-aux row ``✕`` button.
+
+    Rendered once per edge inside the aux ports section's list-aux row
+    enumeration.  Distinguished from :func:`inspector_disconnect_id` by
+    the ``type`` key so the inspector can render *both* in the same
+    DOM (wire-card Disconnect + per-row remove) without callback
+    pattern-match collisions.
+
+    Args:
+        edge_id: The :class:`Edge.edge_id` value of the list-aux row.
+
+    Returns:
+        Dict of shape ``{"type": BTN_INSPECTOR_LIST_REMOVE, "edge_id":
+        edge_id}``.
+    """
+
+    return {"type": BTN_INSPECTOR_LIST_REMOVE, "edge_id": edge_id}
+
+
+def inspector_add_empty_slot_id(block_id: str, param: str) -> Dict[str, Any]:
+    """Build the pattern-matching id for the ``+ Add empty slot`` button.
+
+    Rendered once per list-typed op-param on the selected block.
+    Carries enough context (block_id + param name) for the dispatcher
+    to know which port to extend without consulting
+    ``selected_block_id`` at click-time.
+
+    Args:
+        block_id: ``BlockNode.block_id`` the slot belongs to.
+        param: Op-typed parameter name on that block.
+
+    Returns:
+        Dict of shape ``{"type": BTN_INSPECTOR_ADD_EMPTY_SLOT,
+        "block_id": block_id, "param": param}``.
+    """
+
+    return {
+        "type": BTN_INSPECTOR_ADD_EMPTY_SLOT,
+        "block_id": block_id,
+        "param": param,
+    }
+
+
+def inspector_list_move_id(
+    edge_id: str, direction: str
+) -> Dict[str, Any]:
+    """Build the pattern-matching id for a list-aux row up/down arrow.
+
+    Phase 4 ships the ordered-list section with arrow-button reorder as
+    a fallback for the drag-handles called out in spec §4.5.  Each row
+    carries an ``▲`` (up) and ``▼`` (down) button keyed by
+    ``edge_id`` + direction so a single pattern-match callback can
+    dispatch the right reorder.
+
+    Args:
+        edge_id: The :class:`Edge.edge_id` value of the wire to move.
+        direction: ``"up"`` or ``"down"``.
+
+    Returns:
+        Dict of shape ``{"type": BTN_INSPECTOR_LIST_MOVE, "edge_id":
+        edge_id, "direction": direction}``.
+    """
+
+    return {
+        "type": BTN_INSPECTOR_LIST_MOVE,
+        "edge_id": edge_id,
+        "direction": direction,
+    }
+
+
+def inspector_list_reorder_store_id(
+    block_id: str, param: str
+) -> Dict[str, Any]:
+    """Build the pattern-matching id for the list-aux reorder ``dcc.Store``.
+
+    A hidden ``dcc.Store`` rendered once per list-typed op-param on the
+    selected block.  Future HTML5 drag glue (or the existing arrow
+    buttons in the Phase-4 fallback) can write the new permutation
+    here; the server-side callback dispatches ``list_aux_reorder``
+    against the same ``(block_id, param)`` without re-walking the
+    selected-block layout.
+
+    Args:
+        block_id: ``BlockNode.block_id`` the slot list belongs to.
+        param: Op-typed parameter name on that block.
+
+    Returns:
+        Dict of shape ``{"type": STORE_INSPECTOR_LIST_REORDER,
+        "block_id": block_id, "param": param}``.
+    """
+
+    return {
+        "type": STORE_INSPECTOR_LIST_REORDER,
+        "block_id": block_id,
+        "param": param,
+    }
 
 
 def block_port_id(block_id: str, port: str) -> str:
@@ -771,4 +971,18 @@ __all__ = [
     "BTN_CANCEL_DELETE",
     "block_port_id",
     "edge_id",
+    # Phase 4 DAG redesign additions
+    "STORE_EDGE_EVENT",
+    "INSPECTOR_WIRE_CARD",
+    "INSPECTOR_AUX_SECTION",
+    "BTN_INSPECTOR_DISCONNECT",
+    "BTN_INSPECTOR_LIST_REMOVE",
+    "BTN_INSPECTOR_ADD_EMPTY_SLOT",
+    "BTN_INSPECTOR_LIST_MOVE",
+    "STORE_INSPECTOR_LIST_REORDER",
+    "inspector_disconnect_id",
+    "inspector_list_remove_id",
+    "inspector_add_empty_slot_id",
+    "inspector_list_move_id",
+    "inspector_list_reorder_store_id",
 ]
