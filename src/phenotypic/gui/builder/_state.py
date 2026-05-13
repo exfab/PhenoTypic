@@ -305,6 +305,47 @@ def _seed_input_image(scope: _DagBuilderScope) -> None:
     )
 
 
+def _find_container_scope_by_block_id(
+    root: _DagBuilderScope, block_id: str
+) -> Optional[_DagBuilderScope]:
+    """Depth-first search for a container's *nested* scope by ``block_id``.
+
+    Many callers (Phase 3 palette drop, future re-parent dispatches) need
+    to resolve a ``container_block_id`` payload field to the scope the
+    new block should be appended to.  This helper walks the tree rooted
+    at *root* and returns the first ``nested`` scope it finds whose
+    parent :class:`BlockNode` has the matching ``block_id``.
+
+    The search is recursive through every container's ``nested`` scope;
+    only blocks whose ``class_name == PIPELINE_CLASS_NAME`` have a
+    non-``None`` ``nested`` field, so the walk naturally restricts itself
+    to container blocks.  Lookup is O(N) in the number of blocks across
+    every scope, which is fine: typical pipelines have <50 blocks and
+    the search runs once per drop.
+
+    Args:
+        root: The outermost :class:`_DagBuilderScope` (usually
+            ``state.root``).
+        block_id: The container ``BlockNode.block_id`` whose nested
+            scope is being looked up.
+
+    Returns:
+        The matching container's :class:`_DagBuilderScope`, or ``None``
+        when *block_id* doesn't resolve to a container in the tree
+        (stale id, regular op block, or :data:`INPUT_IMAGE_CLASS_NAME`
+        sentinel).
+    """
+
+    for block in root.blocks:
+        if block.block_id == block_id:
+            return block.nested
+        if block.nested is not None:
+            hit = _find_container_scope_by_block_id(block.nested, block_id)
+            if hit is not None:
+                return hit
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Legacy schema (linear list + embedded aux_ports) — renamed in place so
 # the new DAG types can claim the public ``BuilderScope`` / ``BuilderState``

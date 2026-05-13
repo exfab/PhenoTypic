@@ -207,7 +207,7 @@ def _palette_for_categories(
         for op_info in ops:
             stage = _safe_stage(op_info.name)
             button_children: List[Any] = [html.Span(op_info.name)]
-            button_class = "text-start w-100 mb-1"
+            button_class = "text-start w-100 mb-1 palette-button"
             if op_info.is_point_pickable:
                 button_children.append(
                     dbc.Badge(
@@ -217,6 +217,11 @@ def _palette_for_categories(
                     )
                 )
                 button_class = f"{button_class} builder-op-pickable"
+            # ``draggable`` + ``data-palette-class`` enable the HTML5
+            # drag-and-drop bridge in ``assets/palette_dnd.js`` (Phase 3
+            # of the DAG redesign). ``dbc.Button`` forwards arbitrary
+            # ``**kwargs`` through to the underlying ``<button>`` element
+            # so these attributes survive Dash's component layer.
             buttons.append(
                 dbc.Button(
                     button_children,
@@ -226,6 +231,10 @@ def _palette_for_categories(
                     size="sm",
                     n_clicks=0,
                     className=button_class,
+                    **{
+                        "draggable": "true",
+                        "data-palette-class": op_info.name,
+                    },
                 )
             )
 
@@ -2870,6 +2879,14 @@ def build_app_layout(
                     "viewport_ops": True,
                     "dagre_missing": False,
                 },
+            ),
+            # Phase 3 palette drag-and-drop: written by
+            # ``assets/palette_dnd.js`` on drop / keyboard fallback.
+            # See spec §5.5 (clientside event contract) and §5.6
+            # (``block_create`` dispatch).
+            dcc.Store(
+                id=ids.STORE_PALETTE_DROP,
+                data=None,
             ),
         ]
     )

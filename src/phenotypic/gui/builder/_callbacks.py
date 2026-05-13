@@ -89,10 +89,12 @@ from phenotypic.gui.builder._modal_browser import (
 from phenotypic.gui.builder._param_form import parse_widget_value
 from phenotypic.gui.builder._session import PreviewRenderError, get_cache
 from phenotypic.gui.builder._state import (
+    INPUT_IMAGE_CLASS_NAME,
     PIPELINE_CLASS_NAME,
     BuilderState,
     StepNode,
     _PARAM_SCOPE_KEY,
+    _new_block_id,
     _new_node_id,
     current_scope,
     from_pipeline,
@@ -101,6 +103,7 @@ from phenotypic.gui.builder._state import (
     state_to_json,
     to_pipeline,
 )
+from phenotypic.gui.builder._validation import validate
 
 logger = logging.getLogger(__name__)
 
@@ -422,6 +425,81 @@ def _find_in_scope(
     )
 
 
+def _find_dag_container_scope(
+    root_scope_dict: Dict[str, Any], block_id: str
+) -> Optional[Dict[str, Any]]:
+    """Depth-first search for a container's nested scope dict by ``block_id``.
+
+    Dict-level mirror of
+    :func:`phenotypic.gui.builder._state._find_container_scope_by_block_id`,
+    used by the ``block_create`` dispatch kind (and any future DAG
+    dispatch that takes a ``container_block_id`` payload field) so
+    state mutations operate on JSON-shaped state without re-hydrating
+    the dataclass tree on every call.
+
+    The walk visits every block in *root_scope_dict* (and, recursively,
+    every block in every container's nested scope) and returns the
+    *nested scope dict* of the first block whose ``block_id`` matches.
+    Only container blocks (``class_name == PIPELINE_CLASS_NAME``) carry
+    a non-``None`` ``nested`` field; non-container hits return ``None``.
+
+    Args:
+        root_scope_dict: The outermost DAG scope dict — the value of
+            ``state_dict["root"]`` for a payload encoded via
+            :func:`state_to_json`.
+        block_id: The container ``BlockNode.block_id`` whose ``nested``
+            scope dict is being resolved.
+
+    Returns:
+        The matching container's nested scope dict (``{"blocks": [...],
+        "edges": [...], ...}``), or ``None`` when *block_id* doesn't
+        resolve to a container in the tree.
+    """
+
+    for block in root_scope_dict.get("blocks", []) or []:
+        if block.get("block_id") == block_id:
+            nested = block.get("nested")
+            return nested if isinstance(nested, dict) else None
+        nested = block.get("nested")
+        if isinstance(nested, dict):
+            hit = _find_dag_container_scope(nested, block_id)
+            if hit is not None:
+                return hit
+    return None
+
+
+def _seed_input_image_dict(scope_dict: Dict[str, Any]) -> None:
+    """Idempotently add an ``InputImage`` block dict to *scope_dict*.
+
+    Dict-level mirror of
+    :func:`phenotypic.gui.builder._state._seed_input_image` — used by
+    the DAG dispatcher's defense-in-depth seeding pass on a container
+    scope before a new block is appended.  No-op when the scope
+    already contains at least one block with
+    ``class_name == INPUT_IMAGE_CLASS_NAME``.
+
+    Args:
+        scope_dict: The scope dict to seed in place.  Mutated in place;
+            the returned value is the same dict.
+    """
+
+    blocks = scope_dict.setdefault("blocks", [])
+    if any(b.get("class_name") == INPUT_IMAGE_CLASS_NAME for b in blocks):
+        return
+    blocks.insert(
+        0,
+        {
+            "block_id": _new_block_id(),
+            "class_name": INPUT_IMAGE_CLASS_NAME,
+            "params": {},
+            "label": None,
+            "nested": None,
+            "collapsed": False,
+            "list_slot_counts": {},
+        },
+    )
+
+
 def _default_params_for(class_name: str) -> Dict[str, Any]:
     """Return a JSON-friendly default-param dict for *class_name*.
 
@@ -585,6 +663,17 @@ def _dispatch_state_update(
                 writes the focus dict; any other ``focus`` value clears
                 it (returning the inspector to the canvas-selected
                 consumer's params).
+            ``"block_create"`` (payload: ``class_name``, ``x``, ``y``,
+            ``container_block_id``, ``ts``)
+                DAG-only. Append a fresh DAG :class:`BlockNode` dict to
+                either the root scope (when ``container_block_id`` is
+                ``None``) or to a container's nested scope (looked up
+                by DFS).  Rejects ``class_name ==
+                INPUT_IMAGE_CLASS_NAME`` with a toast (spec §4.8); a
+                stale ``container_block_id`` short-circuits with a
+                warning + toast.  Drop coords ``(x, y)`` are
+                **ignored** — the leaf-first dagre pass re-lays the
+                canvas on the next render (spec §4.7).
 
         payload: kind-specific data (see above).
 
@@ -940,6 +1029,100 @@ def _dispatch_state_update(
         out["inspector_focus_aux"] = None
         return out
 
+    if kind == "block_create":
+        # DAG-only dispatch kind written by ``assets/palette_dnd.js`` on
+        # palette drop / keyboard fallback (spec §5.6).
+        #
+        # Payload contract (per spec §5.5):
+        #   {"kind": "block_create", "class_name": str, "x": float,
+        #    "y": float, "container_block_id": str | None,
+        #    "ts": int}
+        #
+        # Algorithm:
+        #   1. Reject ``class_name == INPUT_IMAGE_CLASS_NAME`` — Input
+        #      Image is auto-seeded per scope and cannot be created from
+        #      the palette (spec §4.8 + §4.10). Queue an info toast +
+        #      short-circuit.
+        #   2. Resolve ``container_block_id`` (if not None) to a
+        #      container's nested scope dict via DFS in
+        #      ``out["root"]``. If unresolvable, log a warning, queue a
+        #      toast, and short-circuit (defense in depth — JS sends a
+        #      stale id only when the user dropped on a container that
+        #      was just deleted).
+        #   3. Seed an InputImage block in the parent scope before
+        #      appending — defense in depth on top of Phase 1's
+        #      auto-seed.
+        #   4. Mint a fresh BlockNode dict with default params.
+        #
+        # The dispatcher does NOT persist (x, y); per spec §4.7 manual
+        # drag positions are ephemeral and the leaf-first dagre pass
+        # re-lays the canvas on the next render.
+        class_name = payload.get("class_name")
+        if not isinstance(class_name, str) or not class_name:
+            return out
+        if class_name == INPUT_IMAGE_CLASS_NAME:
+            toast_queue = out.setdefault("toast_queue", [])
+            toast_queue.append(
+                {
+                    "kind": "info",
+                    "text": (
+                        "Input Image is auto-seeded per scope and cannot be "
+                        "created from the palette."
+                    ),
+                }
+            )
+            return out
+
+        container_block_id = payload.get("container_block_id")
+        root_scope = out.get("root")
+        if not isinstance(root_scope, dict):
+            return out
+
+        if container_block_id is None:
+            target_scope = root_scope
+        else:
+            resolved = _find_dag_container_scope(root_scope, container_block_id)
+            if resolved is None:
+                logger.warning(
+                    "block_create: stale container_block_id %r — "
+                    "container missing from state tree",
+                    container_block_id,
+                )
+                toast_queue = out.setdefault("toast_queue", [])
+                toast_queue.append(
+                    {
+                        "kind": "warning",
+                        "text": (
+                            "Drop target container is no longer in the "
+                            "pipeline; block not created."
+                        ),
+                    }
+                )
+                return out
+            target_scope = resolved
+
+        # Defense in depth — Phase 1 already auto-seeds, but make sure
+        # the target scope has its InputImage before the new block is
+        # appended so the canvas never renders a scope without one.
+        _seed_input_image_dict(target_scope)
+
+        new_block_id = _new_block_id()
+        new_block = {
+            "block_id": new_block_id,
+            "class_name": class_name,
+            "params": _default_params_for(class_name),
+            "label": None,
+            "nested": None,
+            "collapsed": False,
+            "list_slot_counts": {},
+        }
+        target_scope.setdefault("blocks", []).append(new_block)
+        out["selected_block_id"] = new_block_id
+        # Selection focus moves to the new block; clear any wire selection
+        # so the inspector picks the new block up cleanly.
+        out["selected_edge_id"] = None
+        return out
+
     return out
 
 
@@ -1240,6 +1423,9 @@ def register_callbacks(app: dash.Dash) -> None:
         # palette
         Input({"type": "palette-add", "class_name": ALL}, "n_clicks"),
         Input(ids.BTN_NEW_PIPELINE_NODE, "n_clicks"),
+        # Phase 3 palette drag-and-drop: the clientside ``palette_dnd.js``
+        # writes a ``block_create`` payload here on drop / keyboard fallback.
+        Input(ids.STORE_PALETTE_DROP, "data"),
         # selection
         Input(ids.CANVAS_CYTOSCAPE, "tapNodeData"),
         # drill in (visible button on pipeline-node inspector); drill-out is
@@ -1284,6 +1470,7 @@ def register_callbacks(app: dash.Dash) -> None:
     def fan_in_state_mutation(  # noqa: C901, PLR0912, PLR0913, PLR0915
         _palette_clicks: List[int],
         _new_pipe_clicks: Optional[int],
+        palette_drop: Optional[Dict[str, Any]],
         tap_node_data: Optional[Dict[str, Any]],
         _drill_out_clicks: Optional[int],
         _crumb_clicks: List[int],
@@ -1399,6 +1586,22 @@ def register_callbacks(app: dash.Dash) -> None:
                     return _NOOP_FAN_IN
 
             # --- Plain string ids -------------------------------------
+            elif triggered == ids.STORE_PALETTE_DROP:
+                # Phase 3 palette drag-and-drop. The clientside
+                # ``palette_dnd.js`` writes a ``block_create`` payload to
+                # ``STORE_PALETTE_DROP``; the dispatcher routes it through
+                # the unified ``_dispatch_state_update`` fan-in. The JS
+                # already validated the payload shape + the
+                # innermost-container hit-test; the server enforces the
+                # remaining rules (InputImage rejection, stale container
+                # id short-circuit, validation re-run).
+                if not isinstance(palette_drop, dict):
+                    return _NOOP_FAN_IN
+                if palette_drop.get("kind") != "block_create":
+                    return _NOOP_FAN_IN
+                new_state_dict = _dispatch_state_update(
+                    state_data, "block_create", palette_drop
+                )
             elif triggered == ids.BTN_NEW_PIPELINE_NODE:
                 new_state_dict = _dispatch_state_update(
                     state_data, "add_pipeline", {}
@@ -1495,6 +1698,69 @@ def register_callbacks(app: dash.Dash) -> None:
                 "danger",
                 "Update failed",
             )
+
+    # ----------------------------------------------------------------------
+    # 2a. Validation pipeline (spec §5.6 + §5.3)
+    # ----------------------------------------------------------------------
+    #
+    # Every state mutation feeds this callback via ``STORE_BUILDER_STATE``.
+    # We re-run :func:`validate` and republish the resulting list of
+    # :class:`Issue` dicts to ``STORE_ISSUES`` so the toolbar badge, the
+    # red/yellow border decorations, and the Run/Save gating callbacks all
+    # subscribe to a single source of truth. The validator is pure +
+    # O(V+E); piping it through a separate callback keeps the fan-in body
+    # focused on state mutation and avoids re-rendering the canvas /
+    # inspector when only the issues list changes.
+
+    @app.callback(
+        Output(ids.STORE_ISSUES, "data"),
+        Input(ids.STORE_BUILDER_STATE, "data"),
+        prevent_initial_call=False,
+    )
+    def revalidate_on_state_change(
+        state_data: Optional[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Re-run :func:`validate` whenever ``STORE_BUILDER_STATE`` changes.
+
+        Args:
+            state_data: ``state_to_json`` payload (legacy or DAG schema).
+                ``None`` during the very first paint, before any state
+                has been written.
+
+        Returns:
+            JSON-friendly list of :class:`Issue` dicts. Empty list when
+            state is ``None`` or carries the legacy schema (the DAG
+            validation suite is meaningless against legacy linear-list
+            state).
+        """
+
+        if state_data is None:
+            return []
+        try:
+            state = state_from_json(state_data)
+        except Exception:
+            logger.exception("revalidate_on_state_change: state_from_json failed")
+            return []
+        # Validation only targets the DAG schema; the legacy state shape
+        # has no ``root.blocks`` field and the validator would no-op
+        # anyway. Detect via duck-typing on the state object.
+        if not hasattr(state, "selected_block_id"):
+            return []
+        try:
+            issues = validate(state)
+        except Exception:
+            logger.exception("revalidate_on_state_change: validate raised")
+            return []
+        return [
+            {
+                "kind": issue.kind,
+                "block_id": issue.block_id,
+                "detail": issue.detail,
+                "scope_path": list(issue.scope_path),
+                "severity": issue.severity,
+            }
+            for issue in issues
+        ]
 
     # ----------------------------------------------------------------------
     # 2b. Point-picker store fan-in
