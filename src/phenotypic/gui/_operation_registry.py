@@ -210,14 +210,23 @@ class OperationRegistry:
         NOT extend ``ImageOperation`` so they bypass
         :meth:`_discover_from_module`'s ``base_class`` constraint.
         """
-        from phenotypic.analysis.abc_ import ModelFitter, SetAnalyzer
+        from phenotypic.analysis.abc_ import ModelFitter, QualityCheck, SetAnalyzer
 
         for name, obj in inspect.getmembers(module, inspect.isclass):
             if name.startswith("_"):
                 continue
-            if not issubclass(obj, SetAnalyzer) or obj in (SetAnalyzer, ModelFitter):
+            if not issubclass(obj, SetAnalyzer) or obj in (
+                SetAnalyzer,
+                ModelFitter,
+                QualityCheck,
+            ):
                 continue
-            category = "Model" if issubclass(obj, ModelFitter) else "Filter"
+            if issubclass(obj, QualityCheck):
+                category = "quality_check"
+            elif issubclass(obj, ModelFitter):
+                category = "Model"
+            else:
+                category = "Filter"
             try:
                 op_info = OperationInfo(
                     cls=obj,
@@ -396,8 +405,19 @@ class OperationRegistry:
 
         params = {}
 
+        # Per spec §1419–1428, ``QualityCheck`` subclasses inherit
+        # ``agg_func`` from ``SetAnalyzer``'s constructor signature but no v1
+        # check actually aggregates values. Subclasses opt in to exposing
+        # the parameter via ``_exposes_agg_func: ClassVar[bool] = True``;
+        # the default ``False`` filters the param out of the GUI form.
+        # Classes without the attribute (e.g. ``EdgeCorrector``,
+        # ``LogGrowthModel``) are treated as opted in for backward-compat.
+        exposes_agg_func = getattr(cls, "_exposes_agg_func", True)
+
         for name, p in sig.parameters.items():
             if name in ("self", "args", "kwargs"):
+                continue
+            if name == "agg_func" and not exposes_agg_func:
                 continue
 
             hint = hints.get(name, Any)

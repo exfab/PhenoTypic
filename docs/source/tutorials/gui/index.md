@@ -25,6 +25,8 @@ the images aligned with the implementation.
 | [Pick points](07_pick_points.md) | Curate detected colonies manually with the in-builder point picker. |
 | [Analysis](08_analysis.md) | Compose `phenotypic.analysis` filters + endpoint model and emit `analysis.{csv,parquet}`. |
 | [Aux ports](09_aux_ports.md) | Wire operation-typed parameters (e.g. `FilamentousFungiDetector.inoculum_detector`) via Galaxy-style aux input ports. |
+| [QC curation loop](10_qc_curation_loop.md) | Configure `QualityCheck` analyzers and curate flagged colonies in a tight feedback loop. |
+| [Heatmap exploration](11_heatmap_exploration.md) | Pick a measurement and walk through time on a plate to spot edge / contamination patterns. |
 
 ## Prerequisites
 
@@ -49,4 +51,6 @@ hub, see the [GUI hub guide](../../how_to/pages/gui_hub.md). This walkthrough is
 07_pick_points
 08_analysis
 09_aux_ports
+10_qc_curation_loop
+11_heatmap_exploration
 ```

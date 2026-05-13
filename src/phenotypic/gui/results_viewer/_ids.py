@@ -400,6 +400,34 @@ TAB_PLATE_ID = "tab-plate"
 #: ``dbc.Tab`` value for the colony (per-object grid) view.
 TAB_COLONY_ID = "tab-colony"
 
+#: ``dbc.Tab`` value for the QC checks view. The tab body itself is
+#: built by Wave E; this constant is mounted now so the Heatmap tab's
+#: callbacks (which reference the recipe-revision store) can land
+#: ahead of the QC tab implementation without an import cycle.
+TAB_QC_ID = "tab-qc"
+
+#: ``dbc.Tab`` value for the heatmap view (per-image grid view).
+TAB_HEATMAP_ID = "tab-heatmap"
+
+
+# ---------------------------------------------------------------------------
+# QC stores (Wave D mounts the stores; Wave E writes to them)
+# ---------------------------------------------------------------------------
+
+#: ``dcc.Store`` carrying the active :class:`QcRecipe` revision counter.
+#: Bumped by Wave E's ``add``/``remove``/``update`` callbacks. The
+#: Heatmap tab subscribes to it so its picker options refresh whenever
+#: a check is added or removed.
+STORE_QC_RECIPE_REVISION = "store-qc-recipe-revision"
+
+#: ``dcc.Store`` bumped by Wave E's QC tab callback **after** it has
+#: finished writing :data:`phenotypic.gui._config.CFG_QC_AUGMENTED_FRAME`.
+#: The Heatmap render callback subscribes to it (in addition to
+#: ``STORE_REMOVED_KEYS``) so the augmented-frame read is deterministic
+#: rather than racing the QC writer. See the spec's "shared
+#: augmented-frame cache" section (lines 775-798).
+STORE_QC_AUGMENTED_REVISION = "store-qc-augmented-revision"
+
 
 # ---------------------------------------------------------------------------
 # Colony-view static
@@ -636,6 +664,10 @@ __all__ = [
     "TABS_ID",
     "TAB_PLATE_ID",
     "TAB_COLONY_ID",
+    "TAB_QC_ID",
+    "TAB_HEATMAP_ID",
+    "STORE_QC_RECIPE_REVISION",
+    "STORE_QC_AUGMENTED_REVISION",
     "COLONY_X_AXIS_DROPDOWN_ID",
     "COLONY_Y_AXIS_DROPDOWN_ID",
     "COLONY_GRID_CONTAINER_ID",

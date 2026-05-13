@@ -1,4 +1,4 @@
-"""Unit tests for ``phenotypic.gui.analysis._schema_cache.MeasurementSchema``."""
+"""Unit tests for ``phenotypic.gui._schema_cache.MeasurementSchema``."""
 from __future__ import annotations
 
 import time
@@ -7,7 +7,7 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-from phenotypic.gui.analysis._schema_cache import MeasurementSchema
+from phenotypic.gui._schema_cache import MeasurementSchema
 
 
 @pytest.fixture()

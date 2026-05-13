@@ -276,6 +276,8 @@ def capture_workflow_screenshots(base_url: str, headed: bool = False) -> None:
             _capture_pick_points(context, base_url)
             _capture_analysis(context, base_url)
             _capture_aux_ports(context, base_url)
+            _capture_qc_curation_loop(context, base_url)
+            _capture_heatmap_exploration(context, base_url)
         finally:
             browser.close()
 
@@ -1050,6 +1052,113 @@ def _aux_ports_list_scenarios(
     _save(page, "aux_ports", "09_per_slot_disconnect.png")
 
 
+def _capture_qc_curation_loop(context, base_url: str) -> None:
+    """Capture the QC curation loop workflow.
+
+    Spec §1232. Drives the Results Viewer's QC tab through the
+    add-check / curate / re-render loop. The tab body composes one
+    Plotly card per configured :class:`QualityCheck`; each card
+    subscribes to ``STORE_REMOVED_KEYS`` so removing a colony from
+    the measurements table triggers an automatic figure refresh
+    without a manual reload.
+
+    Three screenshots illustrate the workflow:
+
+    1. ``01_empty_state.png`` — the Viewer mounted in empty state
+       with the QC tab selected so the reader sees what "no checks
+       configured" looks like (the hub-mounted viewer has no
+       ``output_root`` until the sidebar binds one).
+    2. ``02_add_check_modal.png`` — the ``+ Add check`` modal open
+       in add mode, showing the class picker dropdown that lists
+       every concrete ``QualityCheck`` subclass.
+    3. ``03_card_after_add.png`` — the QC tab body after the modal
+       has been dismissed, illustrating the "no cards" placeholder
+       remains when the user closes the modal without picking a
+       class (the empty hub-mounted viewer cannot persist a real
+       recipe entry — see the tutorial page for the full add-and-
+       curate flow).
+    """
+    print("[shot] workflow=qc_curation_loop")
+    page = _new_page(context, base_url, "/results/")
+    # The hub viewer mounts in empty state until the sidebar binds an
+    # ``output_root``. The QC tab is still selectable; it renders the
+    # "no checks configured" placeholder which is the natural empty
+    # state shot for the tutorial.
+    page.wait_for_timeout(800)
+    _save(page, "qc_curation_loop", "01_empty_state.png")
+
+    # Try to click the QC tab if it's mounted (the hub viewer's empty
+    # state may render the tab strip even without an ``output_root``).
+    # dbc.Tab anchors don't carry a stable id, so match by visible text.
+    qc_tab = page.locator('a[role="tab"]:has-text("QC")').first
+    if qc_tab.count() > 0:
+        try:
+            qc_tab.click(timeout=2000)
+            page.wait_for_timeout(600)
+            _save(page, "qc_curation_loop", "02_qc_tab_selected.png")
+        except Exception:  # pragma: no cover - best-effort
+            pass
+
+    # Try to open the Add check modal so the reader sees the picker.
+    add_btn = page.locator("#qc-add-check-btn")
+    if add_btn.count() > 0:
+        try:
+            add_btn.click(timeout=2000)
+            page.wait_for_timeout(700)
+            _save(page, "qc_curation_loop", "03_add_check_modal.png")
+        except Exception:  # pragma: no cover - best-effort
+            pass
+
+    page.close()
+
+
+def _capture_heatmap_exploration(context, base_url: str) -> None:
+    """Capture the Heatmap exploration workflow.
+
+    Spec §1233. Drives the Results Viewer's Heatmap tab so the
+    reader sees the color / image / aggregator pickers and the
+    plate-shaped heatmap output. Removed cells overlay as
+    ``COLOR_MUTED`` × markers so the visual distinction between
+    "curated" and "low value" cells is clear.
+
+    Two screenshots illustrate the workflow:
+
+    1. ``01_default_view.png`` — the Heatmap tab on first open,
+       showing the empty-state explanation when ``Grid_RowNum`` /
+       ``Grid_ColNum`` are missing (the synthetic tutorial dataset
+       does not run ``GridMeasureFeatures``).
+    2. ``02_color_picker_open.png`` — the color column dropdown
+       open so the reader can see the measurement / QC severity
+       union the dropdown surfaces.
+    """
+    print("[shot] workflow=heatmap_exploration")
+    page = _new_page(context, base_url, "/results/")
+    page.wait_for_timeout(800)
+
+    # Switch to the Heatmap tab.
+    heatmap_tab = page.locator('a[role="tab"]:has-text("Heatmap")').first
+    if heatmap_tab.count() > 0:
+        try:
+            heatmap_tab.click(timeout=2000)
+            page.wait_for_timeout(600)
+        except Exception:  # pragma: no cover - best-effort
+            pass
+    _save(page, "heatmap_exploration", "01_default_view.png")
+
+    # Open the color picker dropdown so the reader sees the union of
+    # measurement columns + QC severity columns.
+    color_picker = page.locator("#heatmap-color-picker")
+    if color_picker.count() > 0:
+        try:
+            color_picker.click(timeout=2000)
+            page.wait_for_timeout(500)
+            _save(page, "heatmap_exploration", "02_color_picker_open.png")
+        except Exception:  # pragma: no cover - best-effort
+            pass
+
+    page.close()
+
+
 def _capture_analysis(context, base_url: str) -> None:
     """Capture the analysis sub-app's empty-state hand-off banner.
 
@@ -1230,6 +1339,20 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
                 page.mouse.wheel(0, 800)
                 page.wait_for_timeout(500)
                 _save(page, "view_results", "03_measurement_table.png")
+
+                # While the standalone viewer is still up and the page is
+                # populated, capture the loaded-state versions of the QC
+                # and Heatmap tab tutorials. The hub-mounted captures
+                # above only see the empty state because the hub viewer
+                # is unbound at startup; the standalone launcher has a
+                # real ``output_root`` and renders the tab strip, so QC
+                # / Heatmap controls are reachable from here.
+                page.mouse.wheel(0, -800)
+                page.wait_for_timeout(400)
+
+                _qc_curation_loop_loaded_shots(page)
+                _heatmap_exploration_loaded_shots(page)
+
                 page.close()
             finally:
                 browser.close()
@@ -1240,6 +1363,87 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait(timeout=5.0)
+
+
+def _qc_curation_loop_loaded_shots(page) -> None:
+    """Capture loaded-state QC tab screenshots inside the standalone viewer.
+
+    The hub-mounted ``_capture_qc_curation_loop`` only sees the empty
+    state because the hub viewer is unbound at startup. The standalone
+    viewer has a real ``output_root``, so the tab strip mounts and the
+    QC top-strip buttons (``+ Add check`` / ``Export QC report``) are
+    reachable. Three additional screenshots cover the loaded state:
+
+    * ``02_qc_tab_selected.png`` — empty cards container with the top
+      strip visible.
+    * ``03_add_check_modal.png`` — the add-check modal open in add
+      mode showing the class picker.
+    """
+    qc_tab = page.locator('a[role="tab"]:has-text("QC")').first
+    if qc_tab.count() == 0:
+        print("[shot]   qc_curation_loop: QC tab not found — loaded captures skipped")
+        return
+    try:
+        qc_tab.click(timeout=3000)
+        page.wait_for_timeout(800)
+    except Exception:  # pragma: no cover - best-effort
+        pass
+    _save(page, "qc_curation_loop", "02_qc_tab_selected.png")
+
+    add_btn = page.locator("#qc-add-check-btn")
+    if add_btn.count() > 0:
+        try:
+            add_btn.click(timeout=2000)
+            # Wait for the modal to mount.
+            page.wait_for_selector("#qc-add-check-modal", timeout=4000)
+            page.wait_for_timeout(500)
+        except Exception:  # pragma: no cover - best-effort
+            pass
+    _save(page, "qc_curation_loop", "03_add_check_modal.png")
+
+    # Close the modal so the next workflow's screenshots aren't polluted.
+    cancel = page.locator("#qc-add-check-cancel")
+    if cancel.count() > 0:
+        try:
+            cancel.click(timeout=2000)
+            page.wait_for_timeout(400)
+        except Exception:  # pragma: no cover - best-effort
+            pass
+
+
+def _heatmap_exploration_loaded_shots(page) -> None:
+    """Capture loaded-state Heatmap tab screenshots inside the standalone viewer.
+
+    Mirrors :func:`_qc_curation_loop_loaded_shots`: switches to the
+    Heatmap tab in the standalone viewer (where the tab strip is
+    mounted) and captures the controls + figure. The synthetic
+    tutorial dataset does not run ``GridMeasureFeatures``, so the
+    populated state still renders the empty-state explanation card
+    rather than a real heatmap — but the captures reach more of the
+    real DOM than the empty-hub fallback.
+    """
+    heatmap_tab = page.locator('a[role="tab"]:has-text("Heatmap")').first
+    if heatmap_tab.count() == 0:
+        print(
+            "[shot]   heatmap_exploration: Heatmap tab not found — loaded captures skipped"
+        )
+        return
+    try:
+        heatmap_tab.click(timeout=3000)
+        page.wait_for_timeout(800)
+    except Exception:  # pragma: no cover - best-effort
+        pass
+    _save(page, "heatmap_exploration", "02_heatmap_tab_loaded.png")
+
+    # Try opening the color picker so the dropdown options are visible.
+    color_picker = page.locator("#heatmap-color-picker")
+    if color_picker.count() > 0:
+        try:
+            color_picker.click(timeout=2000)
+            page.wait_for_timeout(500)
+            _save(page, "heatmap_exploration", "03_color_picker_open.png")
+        except Exception:  # pragma: no cover - best-effort
+            pass
 
 
 # ---------------------------------------------------------------------------

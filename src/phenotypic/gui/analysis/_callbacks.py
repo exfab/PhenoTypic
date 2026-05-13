@@ -77,7 +77,7 @@ def register_callbacks(app: "dash.Dash") -> None:
       :class:`~phenotypic.gui.results_viewer._output_root.OutputRoot`.
     - :data:`CFG_RECIPE_STATE` — the loaded :class:`RecipeState`.
     - :data:`CFG_MEASUREMENT_SCHEMA` — the
-      :class:`~phenotypic.gui.analysis._schema_cache.MeasurementSchema`
+      :class:`~phenotypic.gui._schema_cache.MeasurementSchema`
       instance whose ``columns_for`` method is plumbed into every
       ``build_section_stack`` rebuild so column-aware widgets stay in
       sync with the on-disk measurements file.
