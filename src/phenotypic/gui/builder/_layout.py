@@ -218,10 +218,10 @@ def _palette_for_categories(
                 )
                 button_class = f"{button_class} builder-op-pickable"
             # ``draggable`` + ``data-palette-class`` enable the HTML5
-            # drag-and-drop bridge in ``assets/palette_dnd.js`` (Phase 3
-            # of the DAG redesign). ``dbc.Button`` forwards arbitrary
-            # ``**kwargs`` through to the underlying ``<button>`` element
-            # so these attributes survive Dash's component layer.
+            # drag-and-drop bridge in ``assets/palette_dnd.js``.
+            # ``dbc.Button`` forwards arbitrary ``**kwargs`` through to
+            # the underlying ``<button>`` element so these attributes
+            # survive Dash's component layer.
             buttons.append(
                 dbc.Button(
                     button_children,
@@ -2880,7 +2880,7 @@ def build_app_layout(
                     "dagre_missing": False,
                 },
             ),
-            # Phase 3 palette drag-and-drop: written by
+            # Palette drag-and-drop store: written by
             # ``assets/palette_dnd.js`` on drop / keyboard fallback.
             # See spec §5.5 (clientside event contract) and §5.6
             # (``block_create`` dispatch).

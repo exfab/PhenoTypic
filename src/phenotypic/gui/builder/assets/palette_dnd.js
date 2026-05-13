@@ -140,18 +140,17 @@
         }, 100);
     }
 
-    /** Walk every cytoscape container node that contains ``(graphX,
-     *  graphY)`` in its bounding box and return the deepest one
-     *  (innermost-wins). Returns ``null`` when no container is under the
-     *  cursor.
-     *
-     *  Depth is measured via ``node.parents().length`` so a doubly-
-     *  nested container ranks above its outer wrapper. */
-    function findInnermostContainer(cy, graphX, graphY) {
-        const containers = cy.nodes("." + CONTAINER_CSS_CLASS);
+    /** Return the deepest cytoscape node in ``nodes`` whose bounding
+     *  box contains ``(graphX, graphY)``. ``accept`` is an optional
+     *  predicate run per node — falsy nodes are skipped. Depth is
+     *  measured via ``node.parents().length`` so doubly-nested nodes
+     *  rank above their outer wrappers. Returns ``null`` when nothing
+     *  matches. */
+    function _deepestNodeAt(nodes, graphX, graphY, accept) {
         let best = null;
         let bestDepth = -1;
-        containers.forEach(function (node) {
+        nodes.forEach(function (node) {
+            if (accept && !accept(node)) return;
             const bb = node.boundingBox({
                 includeOverlays: false,
                 includeLabels: false,
@@ -172,38 +171,34 @@
         return best;
     }
 
+    /** Walk every cytoscape container node that contains ``(graphX,
+     *  graphY)`` and return the deepest one (innermost-wins). Returns
+     *  ``null`` when no container is under the cursor. */
+    function findInnermostContainer(cy, graphX, graphY) {
+        return _deepestNodeAt(
+            cy.nodes("." + CONTAINER_CSS_CLASS),
+            graphX,
+            graphY,
+            null,
+        );
+    }
+
     /** Return the topmost non-container cytoscape node under ``(graphX,
      *  graphY)`` whose class list is ``.dag-block`` but NOT
      *  ``.dag-block--container``. Used to detect drop-on-block and emit
      *  the adjacent-offset coords. Returns ``null`` when no block is
      *  under the cursor. */
     function findBlockAt(cy, graphX, graphY) {
-        const blocks = cy.nodes(".dag-block");
-        let best = null;
-        let bestDepth = -1;
-        blocks.forEach(function (node) {
-            if (node.hasClass(CONTAINER_CSS_CLASS)) return;
-            if (node.data("is_port")) return;
-            const bb = node.boundingBox({
-                includeOverlays: false,
-                includeLabels: false,
-            });
-            if (
-                bb.x1 <= graphX &&
-                graphX <= bb.x2 &&
-                bb.y1 <= graphY &&
-                graphY <= bb.y2
-            ) {
-                const depth = node.parents().length;
-                // Prefer the deepest (innermost) hit so nested blocks
-                // win over their container parent's body region.
-                if (depth > bestDepth) {
-                    bestDepth = depth;
-                    best = node;
-                }
-            }
-        });
-        return best;
+        return _deepestNodeAt(
+            cy.nodes(".dag-block"),
+            graphX,
+            graphY,
+            function (node) {
+                if (node.hasClass(CONTAINER_CSS_CLASS)) return false;
+                if (node.data("is_port")) return false;
+                return true;
+            },
+        );
     }
 
     /** Return the cytoscape edge nearest ``(graphX, graphY)`` if the

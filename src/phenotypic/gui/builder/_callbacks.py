@@ -1423,7 +1423,7 @@ def register_callbacks(app: dash.Dash) -> None:
         # palette
         Input({"type": "palette-add", "class_name": ALL}, "n_clicks"),
         Input(ids.BTN_NEW_PIPELINE_NODE, "n_clicks"),
-        # Phase 3 palette drag-and-drop: the clientside ``palette_dnd.js``
+        # Palette drag-and-drop: the clientside ``palette_dnd.js``
         # writes a ``block_create`` payload here on drop / keyboard fallback.
         Input(ids.STORE_PALETTE_DROP, "data"),
         # selection
@@ -1587,14 +1587,9 @@ def register_callbacks(app: dash.Dash) -> None:
 
             # --- Plain string ids -------------------------------------
             elif triggered == ids.STORE_PALETTE_DROP:
-                # Phase 3 palette drag-and-drop. The clientside
-                # ``palette_dnd.js`` writes a ``block_create`` payload to
-                # ``STORE_PALETTE_DROP``; the dispatcher routes it through
-                # the unified ``_dispatch_state_update`` fan-in. The JS
-                # already validated the payload shape + the
-                # innermost-container hit-test; the server enforces the
-                # remaining rules (InputImage rejection, stale container
-                # id short-circuit, validation re-run).
+                # ``palette_dnd.js`` writes a ``block_create`` payload here;
+                # the dispatcher enforces InputImage rejection + stale
+                # container id short-circuit (JS already did the hit-test).
                 if not isinstance(palette_drop, dict):
                     return _NOOP_FAN_IN
                 if palette_drop.get("kind") != "block_create":

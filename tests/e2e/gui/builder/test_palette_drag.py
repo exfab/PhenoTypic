@@ -25,23 +25,22 @@ Coordination:
 
 from __future__ import annotations
 
-import os
-import subprocess
-import sys
 from pathlib import Path
 from typing import Iterator
 
 import pytest
 from playwright.sync_api import Page, expect
 
-from tests.e2e.gui.conftest import _build_sandbox, _free_port, _wait_for_http_200
+from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
 
 
 # ---------------------------------------------------------------------------
 # Live-server override: enable PHENOTYPIC_GUI_DAG=1 for the duration of
 # the module so the DAG canvas, palette buttons, and dispatcher path
 # are all active. The parent conftest's ``live_server`` fixture does
-# not set this, so we re-implement the boot logic here.
+# not flip the feature flag, so we delegate to ``_start_live_server``
+# with an ``env_overrides`` payload — no re-implementation of the
+# subprocess boilerplate.
 # ---------------------------------------------------------------------------
 
 
@@ -61,37 +60,10 @@ def live_server(palette_dnd_sandbox: Path) -> Iterator[str]:
     name on a function-scoped basis — pytest picks the closer scope).
     """
 
-    port = _free_port()
-    env = {**os.environ, "PHENOTYPIC_GUI_DAG": "1"}
-    cmd = [
-        sys.executable,
-        "-m",
-        "phenotypic.gui",
-        "--root",
-        str(palette_dnd_sandbox),
-        "--port",
-        str(port),
-        "--host",
-        "127.0.0.1",
-    ]
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
-        text=True,
-        env=env,
+    yield from _start_live_server(
+        palette_dnd_sandbox,
+        env_overrides={"PHENOTYPIC_GUI_DAG": "1"},
     )
-    base_url = f"http://127.0.0.1:{port}"
-    try:
-        _wait_for_http_200(base_url + "/", timeout=20.0)
-        yield base_url
-    finally:
-        proc.terminate()
-        try:
-            proc.wait(timeout=5.0)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait(timeout=5.0)
 
 
 @pytest.fixture(scope="module")

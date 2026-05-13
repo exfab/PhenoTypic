@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pytest
 
-from phenotypic.gui._operation_registry import OperationInfo, ParamInfo
+from phenotypic.gui._operation_registry import OperationInfo
 from phenotypic.gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
     PIPELINE_CLASS_NAME,
@@ -33,29 +33,7 @@ from phenotypic.gui.builder._state import (
 )
 from phenotypic.gui.builder._validation import Issue, validate
 
-from .conftest import _make_param
-
-
-def _make_op_info(
-    cls_name: str,
-    parameters: Dict[str, ParamInfo],
-    *,
-    category: str = "Enhancer",
-) -> OperationInfo:
-    """Build an ``OperationInfo`` shell with the right shape for tests."""
-
-    class _StubCls:
-        pass
-
-    _StubCls.__name__ = cls_name
-    return OperationInfo(
-        cls=_StubCls,
-        name=cls_name,
-        category=category,
-        module="tests.fake",
-        docstring="",
-        parameters=parameters,
-    )
+from .conftest import _make_op_info, _make_param
 
 
 # ---------------------------------------------------------------------------

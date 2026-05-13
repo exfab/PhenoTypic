@@ -7,6 +7,8 @@ directory need:
   ``.get(name)`` contract used by the validation module.
 * :func:`_make_param` — a :class:`ParamInfo` builder with only the
   keyword arguments the validation rules care about.
+* :func:`_make_op_info` — a :class:`OperationInfo` builder with a stub
+  class object, used by every test module that seeds a fake registry.
 * :func:`empty_registry` (pytest fixture) — monkeypatches
   ``phenotypic.gui.builder._validation.get_registry`` so registry-driven
   rules (Rule 3 / Rule 7) test against a stable, isolated surface.
@@ -71,6 +73,44 @@ def _make_param(
         is_pipeline=is_pipeline,
         is_optional=False,
         is_list=is_list,
+    )
+
+
+def _make_op_info(
+    cls_name: str,
+    parameters: Optional[Dict[str, ParamInfo]] = None,
+    *,
+    category: str = "Enhancer",
+) -> OperationInfo:
+    """Build an :class:`OperationInfo` shell with the right shape for tests.
+
+    Used by ``test_validation.py`` and ``test_dispatch.py`` (both seed a
+    fake registry with stub operations). The class object is a throwaway
+    ``_StubCls`` whose ``__name__`` matches *cls_name* so any code path
+    that calls ``info.cls.__name__`` keeps working.
+
+    Args:
+        cls_name: Registry key (``OperationInfo.name``).
+        parameters: Parameter dict — defaults to an empty dict so callers
+            that only care about the class identity can omit it.
+        category: Operation category bucket (defaults to ``"Enhancer"``
+            because most validation/dispatch tests seed enhancers).
+
+    Returns:
+        Fully-populated :class:`OperationInfo` instance.
+    """
+
+    class _StubCls:
+        pass
+
+    _StubCls.__name__ = cls_name
+    return OperationInfo(
+        cls=_StubCls,
+        name=cls_name,
+        category=category,
+        module="tests.fake",
+        docstring="",
+        parameters=parameters or {},
     )
 
 

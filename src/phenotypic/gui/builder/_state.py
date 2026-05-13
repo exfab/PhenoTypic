@@ -310,11 +310,11 @@ def _find_container_scope_by_block_id(
 ) -> Optional[_DagBuilderScope]:
     """Depth-first search for a container's *nested* scope by ``block_id``.
 
-    Many callers (Phase 3 palette drop, future re-parent dispatches) need
-    to resolve a ``container_block_id`` payload field to the scope the
-    new block should be appended to.  This helper walks the tree rooted
-    at *root* and returns the first ``nested`` scope it finds whose
-    parent :class:`BlockNode` has the matching ``block_id``.
+    Callers (palette drop, future re-parent dispatches) resolve a
+    ``container_block_id`` payload field to the scope the new block
+    should be appended to.  This helper walks the tree rooted at *root*
+    and returns the first ``nested`` scope it finds whose parent
+    :class:`BlockNode` has the matching ``block_id``.
 
     The search is recursive through every container's ``nested`` scope;
     only blocks whose ``class_name == PIPELINE_CLASS_NAME`` have a

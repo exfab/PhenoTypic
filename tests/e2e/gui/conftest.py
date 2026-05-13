@@ -160,13 +160,24 @@ def _wait_for_http_200(url: str, *, timeout: float = 20.0) -> None:
     )
 
 
-def _start_live_server(sandbox: Path) -> Iterator[str]:
+def _start_live_server(
+    sandbox: Path,
+    *,
+    env_overrides: dict[str, str] | None = None,
+) -> Iterator[str]:
     """Generator that spawns ``phenotypic-gui`` against ``sandbox`` and yields
     the base URL. SIGTERMs the child on teardown; SIGKILLs after 5s.
 
     Public so a test module that overrides :func:`fake_sandbox` with a
     function-scoped variant can also override :func:`live_server` and reuse
     the same boot logic.
+
+    Args:
+        sandbox: Path passed as ``--root`` to ``phenotypic-gui``.
+        env_overrides: Optional mapping merged on top of ``os.environ``
+            for the subprocess. Use this to flip feature flags such as
+            ``PHENOTYPIC_GUI_DAG=1`` without re-implementing the boot
+            logic in the calling test module.
     """
     port = _free_port()
     cmd = [
@@ -180,11 +191,13 @@ def _start_live_server(sandbox: Path) -> Iterator[str]:
         "--host",
         "127.0.0.1",
     ]
+    env = {**os.environ, **(env_overrides or {})} if env_overrides else None
     proc = subprocess.Popen(
         cmd,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
         text=True,
+        env=env,
     )
     base_url = f"http://127.0.0.1:{port}"
     try:
