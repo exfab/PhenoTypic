@@ -214,9 +214,27 @@ def _scope_at_breadcrumb(
     Returns:
         The nested scope dict (``{"nodes": [...], ...}``).  Returns the
         root scope when ``breadcrumb`` is empty.
+
+    Defensive note (Phase 5 extension): when *state_dict* carries the DAG
+    schema (``root`` is a ``{"blocks": [...], "edges": [...]}`` dict, not
+    a legacy ``{"nodes": [...]}`` dict), this helper returns the root
+    scope unchanged.  Every DAG dispatch kind (``block_create``,
+    ``edge_create``, ``block_reparent``, etc.) re-computes its own scope
+    via :func:`_dag_scope_at_breadcrumb` / :func:`_find_block_in_tree`
+    and never consults the result of this legacy walker, so returning
+    root is safe — the alternative is a ``KeyError: 'nodes'`` raised
+    immediately at the top of :func:`_dispatch_state_update` for any
+    DAG mutation triggered while the breadcrumb is non-empty (i.e. while
+    drilled into a container).
     """
 
     scope = state_dict["root"]
+    # DAG-schema short-circuit: legacy scopes have a ``nodes`` list; DAG
+    # scopes have ``blocks``.  When the root carries the DAG shape we
+    # don't walk the breadcrumb here — DAG dispatchers handle their own
+    # scope resolution via the dedicated helpers.
+    if isinstance(scope, dict) and "blocks" in scope and "nodes" not in scope:
+        return scope
     for raw in breadcrumb:
         seg = _normalize_segment(raw)
         if "target_node_id" in seg:

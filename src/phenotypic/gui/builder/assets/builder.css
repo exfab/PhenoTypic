@@ -1067,6 +1067,44 @@ code, pre, .text-monospace, .font-monospace {
     font-style: italic;
 }
 
+.dag-block--container-empty {
+    /* Empty-state container chrome: the user has created the container
+     * but not yet dropped any real ops inside.  The ``+ drop ops here``
+     * placeholder inside the body advertises the drop target; the
+     * outer ``dag-block--container-empty`` selector is the hook for
+     * any DOM-side outline / hover affordance the cytoscape compound
+     * cannot express.  Most of the visual chrome stays in the
+     * cytoscape stylesheet; this DOM rule narrows the cursor to ``copy``
+     * so the user understands the entire compound is a valid drop
+     * target. */
+    cursor: copy;
+}
+
+.dag-block__chain-glyph {
+    /* Compact chain-glyph badge surfaced on collapsed containers
+     * (spec §4.4).  The glyph text + inner-op count live in the
+     * cytoscape compound's ``data.label`` field today; this CSS class
+     * is reserved for any future DOM overlay (e.g. a popover triggered
+     * by hovering the collapsed chain glyph).  Keeping the class in the
+     * stylesheet means a future enhancement can ship without touching
+     * the cytoscape stylesheet. */
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
+    letter-spacing: 0.04em;
+}
+
+.dag-block__chevron {
+    /* Generic chevron hook (alias for the encoded ▼ / ▶ text glyphs
+     * carried inside the title-bar label).  Reserved for any DOM
+     * overlay that needs to anchor to the chevron's hit target — the
+     * server-side renderer ships the chevron inside the cytoscape
+     * compound's ``data.label`` to avoid a second hit target. */
+    cursor: pointer;
+    color: var(--color-navy);
+    transition: transform var(--transition);
+}
+
 /* Inspector container card (spec §4.5).  The card holds the label /
  * name / desc inputs, the inner-scope summary, the aggregated
  * inner-issue count, and the ``Drill in →`` button.  Tighter spacing

@@ -622,6 +622,22 @@ def _canvas_stylesheet() -> List[dict]:
                 "padding": 0,
             },
         },
+        # ── Empty container chrome (spec §4.8) ─────────────────────────
+        # A container with only the auto-seeded ``InputImage`` inside
+        # reads as a dashed-outline drop target.  The dashed border
+        # advertises the empty state without competing with the
+        # purple-solid border used for populated containers; the lower
+        # opacity surface tint keeps the empty container visually
+        # quieter than its populated siblings.
+        {
+            "selector": "node.dag-block--container.dag-block--container-empty",
+            "style": {
+                "border-style": "dashed",
+                "border-color": OI_PURPLE,
+                "border-width": 1.5,
+                "background-opacity": 0.1,
+            },
+        },
     ]
 
 
@@ -1205,6 +1221,22 @@ _DAG_CONTAINER_TITLE_EXPANDED = "▼ Pipeline — {label}"
 _DAG_CONTAINER_TITLE_COLLAPSED = "▶ Pipeline — {label}"
 
 
+def _count_inner_ops(nested: Optional["_DagBuilderScope"]) -> int:
+    """Return the number of non-InputImage blocks in a nested scope.
+
+    Spec §4.4 — collapsed containers surface a chain-glyph indicator
+    showing how many ops live inside.  The count excludes the auto-
+    seeded ``InputImage`` sentinel so a fresh container reads as
+    ``0 ops`` rather than ``1 op``.  Nested ``Pipeline`` containers
+    count once each (the user thinks of the aux pipeline as a single
+    composed unit, not as the sum of its inner blocks).
+    """
+
+    if nested is None:
+        return 0
+    return sum(1 for b in nested.blocks if b.class_name != INPUT_IMAGE_CLASS_NAME)
+
+
 def _scope_has_only_input_image(scope: "_DagBuilderScope") -> bool:
     """Return ``True`` when *scope* holds only the auto-seeded InputImage.
 
@@ -1517,6 +1549,18 @@ def _emit_scope_elements(
             classes.append("selected")
         if block.class_name == PIPELINE_CLASS_NAME and block.collapsed:
             classes.append("dag-block--collapsed")
+        # Empty container (only the auto-seeded InputImage inside) gets a
+        # marker class so the stylesheet can apply the dashed-outline
+        # hint chrome (spec §4.8).  Only applies when expanded — collapsed
+        # containers read as a compact 1-row block regardless of inner
+        # content.
+        if (
+            block.class_name == PIPELINE_CLASS_NAME
+            and not block.collapsed
+            and block.nested is not None
+            and _scope_has_only_input_image(block.nested)
+        ):
+            classes.append("dag-block--container-empty")
 
         if block.class_name == PIPELINE_CLASS_NAME:
             base_label = block.label or block.class_name
@@ -1526,6 +1570,35 @@ def _emit_scope_elements(
                 else _DAG_CONTAINER_TITLE_EXPANDED
             )
             label = template.format(label=base_label)
+            # Collapsed containers append a chain-glyph suffix showing the
+            # inner-op count + aggregated issue count so the user reads
+            # the inner state at a glance without expanding (spec §4.4).
+            if block.collapsed and block.nested is not None:
+                inner_op_count = _count_inner_ops(block.nested)
+                inner_errors_pre, inner_hints_pre = _collect_container_issues(
+                    block.nested, issue_by_block
+                )
+                suffix_parts: List[str] = []
+                # Chain glyph + op count (always rendered so the user can
+                # tell a 0-op collapsed container from a populated one).
+                suffix_parts.append(
+                    f"⬞ {inner_op_count} op"
+                    f"{'s' if inner_op_count != 1 else ''}"
+                )
+                if inner_errors_pre or inner_hints_pre:
+                    bits: List[str] = []
+                    if inner_errors_pre:
+                        bits.append(
+                            f"{inner_errors_pre} issue"
+                            f"{'s' if inner_errors_pre != 1 else ''}"
+                        )
+                    if inner_hints_pre:
+                        bits.append(
+                            f"{inner_hints_pre} hint"
+                            f"{'s' if inner_hints_pre != 1 else ''}"
+                        )
+                    suffix_parts.append(", ".join(bits))
+                label = f"{label}  ({' • '.join(suffix_parts)})"
         elif block.class_name == INPUT_IMAGE_CLASS_NAME:
             label = block.label or _DAG_INPUT_IMAGE_LABEL
         else:

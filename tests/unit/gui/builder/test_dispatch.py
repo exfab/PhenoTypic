@@ -1392,3 +1392,744 @@ def test_block_select_clears_wire_selection(patched_registry: Any) -> None:
         {"kind": "block_select", "block_id": None, "ts": 1},
     )
     assert cleared["selected_block_id"] is None
+
+
+# ---------------------------------------------------------------------------
+# block_reparent — pipeline container relocation (spec §4.4 / §5.6)
+# ---------------------------------------------------------------------------
+
+
+def _seed_reparent_registry(empty_registry: Any) -> None:
+    """Seed registry with a no-aux op + a consumer with one scalar aux.
+
+    These are the two minimal shapes the reparent tests need: an op that can
+    safely live in either scope without aux wiring, and a consumer that can
+    be wired to it so we can fabricate orphan-edge scenarios.
+    """
+
+    from .conftest import _make_param
+
+    empty_registry.ops["SourceOp"] = _make_op_info("SourceOp")
+    empty_registry.ops["ConsumerOp"] = _make_op_info(
+        "ConsumerOp",
+        parameters={
+            "scalar_aux": _make_param(
+                "scalar_aux",
+                has_default=True,
+                is_operation=True,
+                is_list=False,
+            ),
+        },
+    )
+
+
+def test_block_reparent_to_container_moves_block(
+    patched_registry: Any,
+) -> None:
+    """Block in root scope moves to a container's nested scope.
+
+    Drag-IN direction (root → container, ancestor → descendant).  Spec §4.4
+    rules: the block is removed from root and appended to the container's
+    nested scope in one dispatch.  No orphan edges (no wires touching the
+    block), so the move is clean.
+    """
+
+    _seed_reparent_registry(patched_registry)
+    container = _make_container_block()
+    state = _DagBuilderState(root=_DagBuilderScope(blocks=[container]))
+    state_dict = state_to_json(state)
+    # Drop a SourceOp into the root scope (sibling to the container).
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload("SourceOp"),
+    )
+    src_block_id = next(
+        b["block_id"] for b in state_dict["root"]["blocks"]
+        if b["class_name"] == "SourceOp"
+    )
+
+    new_state = _dispatch_state_update(
+        state_dict, "block_reparent",
+        {
+            "kind": "block_reparent",
+            "block_id": src_block_id,
+            "new_parent_block_id": container.block_id,
+            "x": 0.0,
+            "y": 0.0,
+            "ts": 0,
+        },
+    )
+
+    # Root scope no longer contains the SourceOp.
+    root_class_names = [b["class_name"] for b in new_state["root"]["blocks"]]
+    assert "SourceOp" not in root_class_names
+
+    # Container's nested scope now contains it.
+    container_block = next(
+        b for b in new_state["root"]["blocks"]
+        if b["block_id"] == container.block_id
+    )
+    inner_class_names = [
+        b["class_name"] for b in container_block["nested"]["blocks"]
+    ]
+    assert inner_class_names.count("SourceOp") == 1
+
+
+def test_block_reparent_sibling_container_atomic(
+    patched_registry: Any,
+) -> None:
+    """Block moves from container A's nested scope to sibling B's nested scope.
+
+    Spec §4.4 "Sibling-container moves are a single atomic dispatch — the
+    block is removed from its current containing scope and appended to the
+    target's nested scope in one tick".  Both scopes change in the same
+    dispatch.
+    """
+
+    _seed_reparent_registry(patched_registry)
+    container_a = _make_container_block()
+    container_b = _make_container_block()
+    state = _DagBuilderState(
+        root=_DagBuilderScope(blocks=[container_a, container_b]),
+    )
+    state_dict = state_to_json(state)
+    # Drop SourceOp into container_a's nested scope.
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload(
+            "SourceOp", container_block_id=container_a.block_id,
+        ),
+    )
+    container_a_blocks = next(
+        b for b in state_dict["root"]["blocks"]
+        if b["block_id"] == container_a.block_id
+    )["nested"]["blocks"]
+    src_block_id = next(
+        b["block_id"] for b in container_a_blocks
+        if b["class_name"] == "SourceOp"
+    )
+
+    new_state = _dispatch_state_update(
+        state_dict, "block_reparent",
+        {
+            "kind": "block_reparent",
+            "block_id": src_block_id,
+            "new_parent_block_id": container_b.block_id,
+            "x": 0.0,
+            "y": 0.0,
+            "ts": 0,
+        },
+    )
+
+    # A's nested scope no longer has SourceOp; B's does.  Single dispatch.
+    a_inner = next(
+        b for b in new_state["root"]["blocks"]
+        if b["block_id"] == container_a.block_id
+    )["nested"]["blocks"]
+    b_inner = next(
+        b for b in new_state["root"]["blocks"]
+        if b["block_id"] == container_b.block_id
+    )["nested"]["blocks"]
+    a_class_names = [b["class_name"] for b in a_inner]
+    b_class_names = [b["class_name"] for b in b_inner]
+    assert "SourceOp" not in a_class_names
+    assert b_class_names.count("SourceOp") == 1
+
+
+def test_block_reparent_drag_out_with_inner_edges_rejected_with_toast(
+    patched_registry: Any,
+) -> None:
+    """Drag-OUT direction with orphan edges → reject + toast.
+
+    Spec §4.4 "Drag-out direction with orphan edges → snap-back + toast
+    listing edge count + names. User must manually disconnect first."
+    """
+
+    _seed_reparent_registry(patched_registry)
+    container = _make_container_block()
+    state = _DagBuilderState(root=_DagBuilderScope(blocks=[container]))
+    state_dict = state_to_json(state)
+    # Put SourceOp + ConsumerOp inside the container, then wire them.
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload(
+            "SourceOp", container_block_id=container.block_id,
+        ),
+    )
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload(
+            "ConsumerOp", container_block_id=container.block_id,
+        ),
+    )
+    container_dict = next(
+        b for b in state_dict["root"]["blocks"]
+        if b["block_id"] == container.block_id
+    )
+    src_block_id = next(
+        b["block_id"] for b in container_dict["nested"]["blocks"]
+        if b["class_name"] == "SourceOp"
+    )
+    consumer_block_id = next(
+        b["block_id"] for b in container_dict["nested"]["blocks"]
+        if b["class_name"] == "ConsumerOp"
+    )
+    # Drill into the container so the cross-scope rule is satisfied (the edge
+    # dispatcher requires source + target in the same scope).
+    state_dict = _dispatch_state_update(
+        state_dict, "drill_into_container",
+        {
+            "kind": "drill_into_container",
+            "block_id": container.block_id,
+            "ts": 0,
+        },
+    )
+    state_dict = _dispatch_state_update(
+        state_dict, "edge_create",
+        _make_edge_create_payload(
+            source_block_id=src_block_id,
+            target_block_id=consumer_block_id,
+            target_port="scalar_aux",
+            edge_kind="aux",
+        ),
+    )
+    # Drill back out so the "current scope" (per breadcrumb) is root.  The
+    # drag-out direction is the case where the *target* scope (current
+    # breadcrumb scope) is an *ancestor* of the block's actual containing
+    # scope — i.e. user grabs a block from inside a container while
+    # viewing the parent scope and drops onto the parent scope.
+    state_dict = _dispatch_state_update(
+        state_dict, "drill_out", {"kind": "drill_out", "ts": 0},
+    )
+    initial_inner_blocks = [
+        b["block_id"] for b in next(
+            b for b in state_dict["root"]["blocks"]
+            if b["block_id"] == container.block_id
+        )["nested"]["blocks"]
+    ]
+    initial_inner_edges = list(
+        next(
+            b for b in state_dict["root"]["blocks"]
+            if b["block_id"] == container.block_id
+        )["nested"].get("edges", []) or []
+    )
+    initial_toast_count = len(state_dict.get("toast_queue") or [])
+    # Move SourceOp OUT (to root) — drag-out direction; ConsumerOp stays in
+    # the container so the SourceOp → ConsumerOp aux edge would orphan.
+    new_state = _dispatch_state_update(
+        state_dict, "block_reparent",
+        {
+            "kind": "block_reparent",
+            "block_id": src_block_id,
+            "new_parent_block_id": None,  # to root
+            "x": 0.0,
+            "y": 0.0,
+            "ts": 1,
+        },
+    )
+
+    # State unchanged (rejection).  Source still in container's nested scope.
+    new_container = next(
+        b for b in new_state["root"]["blocks"]
+        if b["block_id"] == container.block_id
+    )
+    assert [
+        b["block_id"] for b in new_container["nested"]["blocks"]
+    ] == initial_inner_blocks
+    # Edge still present.
+    assert list(new_container["nested"].get("edges", []) or []) == \
+        initial_inner_edges
+    # Toast surfaced with the orphan-edge count.
+    toasts = new_state.get("toast_queue") or []
+    assert len(toasts) == initial_toast_count + 1
+    assert "orphan" in toasts[-1]["text"].lower() or \
+        "disconnect" in toasts[-1]["text"].lower() or \
+        "inner edge" in toasts[-1]["text"].lower()
+
+
+def test_block_reparent_rejects_input_image(
+    patched_registry: Any,
+) -> None:
+    """Defense-in-depth: ``block_reparent`` of an Input Image is rejected."""
+
+    state_dict = _empty_dag_state_dict()
+    input_image_id = next(
+        b["block_id"] for b in state_dict["root"]["blocks"]
+        if b["class_name"] == INPUT_IMAGE_CLASS_NAME
+    )
+    # Build a container we could attempt to relocate into.
+    container = _make_container_block()
+    state_dict["root"]["blocks"].append({
+        "block_id": container.block_id,
+        "class_name": PIPELINE_CLASS_NAME,
+        "params": {},
+        "label": None,
+        "nested": {
+            "blocks": [{
+                "block_id": _new_block_id(),
+                "class_name": INPUT_IMAGE_CLASS_NAME,
+                "params": {},
+                "label": None,
+                "nested": None,
+                "collapsed": False,
+                "list_slot_counts": {},
+            }],
+            "edges": [],
+            "name": "Pipeline",
+            "desc": "",
+            "nrows": None,
+            "ncols": None,
+        },
+        "collapsed": False,
+        "list_slot_counts": {},
+    })
+    blocks_before = [b["block_id"] for b in state_dict["root"]["blocks"]]
+    toast_count_before = len(state_dict.get("toast_queue") or [])
+
+    new_state = _dispatch_state_update(
+        state_dict, "block_reparent",
+        {
+            "kind": "block_reparent",
+            "block_id": input_image_id,
+            "new_parent_block_id": container.block_id,
+            "x": 0.0,
+            "y": 0.0,
+            "ts": 0,
+        },
+    )
+
+    # The InputImage stays in root.
+    assert [
+        b["block_id"] for b in new_state["root"]["blocks"]
+    ] == blocks_before
+    # Toast queued.
+    toasts = new_state.get("toast_queue") or []
+    assert len(toasts) == toast_count_before + 1
+    assert "Input Image" in toasts[-1]["text"]
+
+
+# ---------------------------------------------------------------------------
+# block_collapsed_toggle (spec §4.4 / §5.6)
+# ---------------------------------------------------------------------------
+
+
+def test_block_collapsed_toggle_flips_bool(patched_registry: Any) -> None:
+    """Container's ``collapsed`` field flips True ↔ False."""
+
+    container = _make_container_block()
+    state = _DagBuilderState(root=_DagBuilderScope(blocks=[container]))
+    state_dict = state_to_json(state)
+    # The container starts uncollapsed.
+    container_dict = next(
+        b for b in state_dict["root"]["blocks"]
+        if b["block_id"] == container.block_id
+    )
+    assert container_dict.get("collapsed") is False
+
+    # First toggle → True.
+    new_state = _dispatch_state_update(
+        state_dict, "block_collapsed_toggle",
+        {
+            "kind": "block_collapsed_toggle",
+            "block_id": container.block_id,
+            "ts": 0,
+        },
+    )
+    new_container = next(
+        b for b in new_state["root"]["blocks"]
+        if b["block_id"] == container.block_id
+    )
+    assert new_container.get("collapsed") is True
+
+    # Second toggle → False.
+    newer_state = _dispatch_state_update(
+        new_state, "block_collapsed_toggle",
+        {
+            "kind": "block_collapsed_toggle",
+            "block_id": container.block_id,
+            "ts": 1,
+        },
+    )
+    newer_container = next(
+        b for b in newer_state["root"]["blocks"]
+        if b["block_id"] == container.block_id
+    )
+    assert newer_container.get("collapsed") is False
+
+
+# ---------------------------------------------------------------------------
+# drill_into_container (spec §4.4 / §5.6)
+# ---------------------------------------------------------------------------
+
+
+def test_drill_into_container_pushes_breadcrumb(
+    patched_registry: Any,
+) -> None:
+    """``state.breadcrumb`` appends the container's block_id on drill-in."""
+
+    container = _make_container_block()
+    state = _DagBuilderState(root=_DagBuilderScope(blocks=[container]))
+    state_dict = state_to_json(state)
+    assert state_dict.get("breadcrumb") == []
+
+    new_state = _dispatch_state_update(
+        state_dict, "drill_into_container",
+        {
+            "kind": "drill_into_container",
+            "block_id": container.block_id,
+            "ts": 0,
+        },
+    )
+
+    assert new_state["breadcrumb"] == [container.block_id]
+    # Selections cleared (the new scope is its own context).
+    assert new_state.get("selected_block_id") is None
+    assert new_state.get("selected_edge_id") is None
+
+
+# ---------------------------------------------------------------------------
+# drill_out (spec §4.4 / §5.6)
+# ---------------------------------------------------------------------------
+
+
+def test_drill_out_default_pops_one_segment(patched_registry: Any) -> None:
+    """Default ``drill_out`` removes the last breadcrumb segment."""
+
+    container_a = _make_container_block()
+    container_b = _make_container_block()
+    # Nest container_b inside container_a so the breadcrumb [a, b] is real.
+    container_a.nested.blocks.append(container_b)
+    state = _DagBuilderState(
+        root=_DagBuilderScope(blocks=[container_a]),
+        breadcrumb=[container_a.block_id, container_b.block_id],
+    )
+    state_dict = state_to_json(state)
+
+    new_state = _dispatch_state_update(
+        state_dict, "drill_out", {"kind": "drill_out", "ts": 0},
+    )
+
+    assert new_state["breadcrumb"] == [container_a.block_id]
+
+
+# ---------------------------------------------------------------------------
+# drill_to_scope (spec §4.4 / §5.6)
+# ---------------------------------------------------------------------------
+
+
+def test_drill_to_scope_replaces_breadcrumb_atomically(
+    patched_registry: Any,
+) -> None:
+    """Single dispatch replaces ``state.breadcrumb`` — no intermediate states."""
+
+    # Build a tree: root → [container_a, container_b] where container_b has
+    # an inner container_c.  We can navigate root → [b, c] atomically.
+    container_a = _make_container_block()
+    container_c = _make_container_block()
+    container_b = _make_container_block()
+    container_b.nested.blocks.append(container_c)
+    state = _DagBuilderState(
+        root=_DagBuilderScope(blocks=[container_a, container_b]),
+        breadcrumb=[container_a.block_id],
+    )
+    state_dict = state_to_json(state)
+
+    new_state = _dispatch_state_update(
+        state_dict, "drill_to_scope",
+        {
+            "kind": "drill_to_scope",
+            "target_breadcrumb": [container_b.block_id, container_c.block_id],
+            "ts": 0,
+        },
+    )
+
+    assert new_state["breadcrumb"] == [
+        container_b.block_id,
+        container_c.block_id,
+    ]
+    # Selections cleared.
+    assert new_state.get("selected_block_id") is None
+    assert new_state.get("selected_edge_id") is None
+
+
+def test_drill_to_scope_stale_id_rejects_with_toast(
+    patched_registry: Any,
+) -> None:
+    """Stale (non-existent) block_id in target_breadcrumb → reject + toast."""
+
+    container = _make_container_block()
+    state = _DagBuilderState(root=_DagBuilderScope(blocks=[container]))
+    state_dict = state_to_json(state)
+    breadcrumb_before = list(state_dict.get("breadcrumb") or [])
+    toast_count_before = len(state_dict.get("toast_queue") or [])
+
+    new_state = _dispatch_state_update(
+        state_dict, "drill_to_scope",
+        {
+            "kind": "drill_to_scope",
+            "target_breadcrumb": ["z" * 32],  # stale id, no real container
+            "ts": 0,
+        },
+    )
+
+    # Breadcrumb unchanged.
+    assert new_state["breadcrumb"] == breadcrumb_before
+    # Toast surfaced.
+    toasts = new_state.get("toast_queue") or []
+    assert len(toasts) == toast_count_before + 1
+    assert "scope" in toasts[-1]["text"].lower() or \
+        "container" in toasts[-1]["text"].lower()
+
+
+# ---------------------------------------------------------------------------
+# block_delete_request / block_delete_confirm (spec §5.6)
+# ---------------------------------------------------------------------------
+
+
+def test_block_delete_request_non_empty_container_sets_pending(
+    patched_registry: Any,
+) -> None:
+    """Non-empty container delete request sets ``pending_delete_block_id``.
+
+    The modal opens when ``pending_delete_block_id`` is set; the user must
+    Confirm or Cancel.  No actual deletion happens at this stage.
+    """
+
+    _seed_reparent_registry(patched_registry)
+    container = _make_container_block()
+    state = _DagBuilderState(root=_DagBuilderScope(blocks=[container]))
+    state_dict = state_to_json(state)
+    # Populate the container's nested scope with at least one non-InputImage
+    # block so the "non-empty" branch fires.
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload(
+            "SourceOp", container_block_id=container.block_id,
+        ),
+    )
+
+    blocks_before = [b["block_id"] for b in state_dict["root"]["blocks"]]
+    assert state_dict.get("pending_delete_block_id") is None
+
+    new_state = _dispatch_state_update(
+        state_dict, "block_delete_request",
+        {
+            "kind": "block_delete_request",
+            "block_id": container.block_id,
+            "ts": 0,
+        },
+    )
+
+    # Container NOT deleted yet (modal opens).
+    assert [
+        b["block_id"] for b in new_state["root"]["blocks"]
+    ] == blocks_before
+    # The pending-delete id matches the container.
+    assert new_state["pending_delete_block_id"] == container.block_id
+
+
+def test_block_delete_request_empty_container_delegates_to_confirm(
+    patched_registry: Any,
+) -> None:
+    """Empty container (only auto-seeded Input Image) delete skips modal.
+
+    Spec §5.6: "container with ZERO non-InputImage children → delegate to
+    ``block_delete_confirm`` in same dispatch".
+    """
+
+    container = _make_container_block()
+    state = _DagBuilderState(root=_DagBuilderScope(blocks=[container]))
+    state_dict = state_to_json(state)
+
+    new_state = _dispatch_state_update(
+        state_dict, "block_delete_request",
+        {
+            "kind": "block_delete_request",
+            "block_id": container.block_id,
+            "ts": 0,
+        },
+    )
+
+    # The container is gone.
+    assert all(
+        b["block_id"] != container.block_id
+        for b in new_state["root"]["blocks"]
+    )
+    # No pending modal was opened.
+    assert new_state.get("pending_delete_block_id") is None
+
+
+def test_block_delete_request_non_container_delegates_to_confirm(
+    patched_registry: Any,
+) -> None:
+    """Non-container delete request immediately deletes (no modal).
+
+    Spec §5.6: "non-container OR container with ZERO non-InputImage children
+    → delegate to ``block_delete_confirm`` in same dispatch".
+    """
+
+    _seed_reparent_registry(patched_registry)
+    state_dict = _empty_dag_state_dict()
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload("SourceOp"),
+    )
+    src_block_id = next(
+        b["block_id"] for b in state_dict["root"]["blocks"]
+        if b["class_name"] == "SourceOp"
+    )
+
+    new_state = _dispatch_state_update(
+        state_dict, "block_delete_request",
+        {
+            "kind": "block_delete_request",
+            "block_id": src_block_id,
+            "ts": 0,
+        },
+    )
+
+    # SourceOp deleted directly; no pending-delete state.
+    assert all(
+        b["block_id"] != src_block_id
+        for b in new_state["root"]["blocks"]
+    )
+    assert new_state.get("pending_delete_block_id") is None
+
+
+def test_block_delete_confirm_recursively_clears_nested_and_edges(
+    patched_registry: Any,
+) -> None:
+    """Deleting a container also removes its inner blocks + incident edges.
+
+    Spec §5.6: ``block_delete_confirm`` atomically removes the block from
+    its scope's blocks list, removes every edge in that scope whose
+    source/target matches the block, and the nested scope is GC'd as a
+    side effect of removing the parent.
+    """
+
+    _seed_reparent_registry(patched_registry)
+    container = _make_container_block()
+    state = _DagBuilderState(root=_DagBuilderScope(blocks=[container]))
+    state_dict = state_to_json(state)
+    # Put SourceOp + ConsumerOp into the container and wire them.
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload(
+            "SourceOp", container_block_id=container.block_id,
+        ),
+    )
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload(
+            "ConsumerOp", container_block_id=container.block_id,
+        ),
+    )
+    container_dict = next(
+        b for b in state_dict["root"]["blocks"]
+        if b["block_id"] == container.block_id
+    )
+    src_block_id = next(
+        b["block_id"] for b in container_dict["nested"]["blocks"]
+        if b["class_name"] == "SourceOp"
+    )
+    consumer_block_id = next(
+        b["block_id"] for b in container_dict["nested"]["blocks"]
+        if b["class_name"] == "ConsumerOp"
+    )
+    # Also drop another op at root and wire something at root scope to make
+    # sure we're not accidentally pulling unrelated state.
+    state_dict = _dispatch_state_update(
+        state_dict, "block_create",
+        _make_palette_drop_payload("SourceOp"),
+    )
+    root_src_id = next(
+        b["block_id"] for b in state_dict["root"]["blocks"]
+        if b["class_name"] == "SourceOp"
+    )
+    # Drill into container, wire SRC → CONSUMER inside.
+    state_dict = _dispatch_state_update(
+        state_dict, "drill_into_container",
+        {
+            "kind": "drill_into_container",
+            "block_id": container.block_id,
+            "ts": 0,
+        },
+    )
+    state_dict = _dispatch_state_update(
+        state_dict, "edge_create",
+        _make_edge_create_payload(
+            source_block_id=src_block_id,
+            target_block_id=consumer_block_id,
+            target_port="scalar_aux",
+            edge_kind="aux",
+        ),
+    )
+    # Drill back out so the container is in the current scope for deletion.
+    state_dict = _dispatch_state_update(
+        state_dict, "drill_out", {"kind": "drill_out", "ts": 0},
+    )
+
+    # Sanity: the inner edge exists.
+    container_dict_before = next(
+        b for b in state_dict["root"]["blocks"]
+        if b["block_id"] == container.block_id
+    )
+    assert len(container_dict_before["nested"].get("edges", []) or []) == 1
+
+    new_state = _dispatch_state_update(
+        state_dict, "block_delete_confirm",
+        {
+            "kind": "block_delete_confirm",
+            "block_id": container.block_id,
+            "ts": 1,
+        },
+    )
+
+    # Container gone from root.
+    assert all(
+        b["block_id"] != container.block_id
+        for b in new_state["root"]["blocks"]
+    )
+    # The unrelated root SourceOp survives.
+    assert any(
+        b["block_id"] == root_src_id
+        for b in new_state["root"]["blocks"]
+    )
+    # The container's nested SourceOp + ConsumerOp + their edge are gone
+    # (GC'd via removal of the parent).
+    remaining_classes = [
+        b["class_name"] for b in new_state["root"]["blocks"]
+    ]
+    assert remaining_classes.count("ConsumerOp") == 0
+
+
+def test_block_delete_request_rejects_input_image(
+    patched_registry: Any,
+) -> None:
+    """Defense-in-depth: ``block_delete_request`` rejects Input Image ids."""
+
+    state_dict = _empty_dag_state_dict()
+    input_image_id = next(
+        b["block_id"] for b in state_dict["root"]["blocks"]
+        if b["class_name"] == INPUT_IMAGE_CLASS_NAME
+    )
+    blocks_before = [b["block_id"] for b in state_dict["root"]["blocks"]]
+    toast_count_before = len(state_dict.get("toast_queue") or [])
+
+    new_state = _dispatch_state_update(
+        state_dict, "block_delete_request",
+        {
+            "kind": "block_delete_request",
+            "block_id": input_image_id,
+            "ts": 0,
+        },
+    )
+
+    # Input Image survives.
+    assert [
+        b["block_id"] for b in new_state["root"]["blocks"]
+    ] == blocks_before
+    # Toast surfaced.
+    toasts = new_state.get("toast_queue") or []
+    assert len(toasts) == toast_count_before + 1
+    assert "Input Image" in toasts[-1]["text"]
