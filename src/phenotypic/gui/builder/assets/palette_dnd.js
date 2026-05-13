@@ -126,10 +126,15 @@
     // -----------------------------------------------------------------
     // Helpers.
     // -----------------------------------------------------------------
-    /** Resolve the live cytoscape instance via ``window.phenoGetCy``.
-     *  Mirrors ``viewport_ops.js`` so this asset works regardless of
-     *  load order. */
+    /** Resolve the live cytoscape instance via the shared accessor
+     *  ``window.phenoWhenCyReady`` exposed by ``builder.js`` (with a
+     *  defensive inline fallback for the cold-load case where this asset
+     *  evaluates before ``builder.js``). */
     function whenCyReady(cb) {
+        if (typeof window.phenoWhenCyReady === "function") {
+            window.phenoWhenCyReady(cb);
+            return;
+        }
         const cy = window.phenoGetCy && window.phenoGetCy();
         if (cy) {
             cb(cy);

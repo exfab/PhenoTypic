@@ -1870,7 +1870,7 @@ def _inspector_focus_aux_banner(
 
 
 # ---------------------------------------------------------------------------
-# DAG inspector helpers (Phase 4: wire card + aux ports section)
+# DAG inspector helpers — wire card + aux ports section
 # ---------------------------------------------------------------------------
 
 
@@ -2202,11 +2202,10 @@ def _build_aux_list_row(
 
     Spec §4.5 calls for: drag-handles, badge numbers, source class
     labels, ``✕`` remove buttons per row, plus a ``+ Add empty slot``
-    affordance.  Phase 4 ships the row with ``▲`` / ``▼`` arrow
-    buttons as a drag-handle fallback (drag glue lands in a follow-up
-    phase per the prompt); the hidden reorder ``dcc.Store`` is mounted
-    so the future drag handlers don't churn the inspector callback
-    surface.
+    affordance.  The row ships with ``▲`` / ``▼`` arrow buttons as a
+    drag-handle fallback (drag glue lands in a follow-up phase); the
+    hidden reorder ``dcc.Store`` is mounted so the future drag
+    handlers don't churn the inspector callback surface.
 
     Empty slots are tracked on ``block.list_slot_counts``; the row
     renders ``[0, count)`` positions and fills the wired-edge slots
@@ -2295,8 +2294,8 @@ def _build_aux_list_row(
             className="p-0 me-2",
             title="Move down",
         )
-        # Drag-handle placeholder (spec §4.5 calls for one).  Phase 4
-        # ships the arrow-button fallback; the handle carries the
+        # Drag-handle placeholder (spec §4.5 calls for one).  The
+        # arrow-button fallback ships now; the handle carries the
         # ``inspector-drag-handle`` class so a follow-up phase can
         # attach HTML5 dnd glue without touching the inspector layout.
         # ``data-edge-id`` is set via ``data_attributes`` keyword which
@@ -3739,16 +3738,15 @@ def build_app_layout(
                 id=ids.STORE_PALETTE_DROP,
                 data=None,
             ),
-            # Phase 4 wire-drawing store: written by
-            # ``assets/wire_drawing.js`` on edge gestures + by the
-            # inspector wire / aux cards (Agent 4C) for keyboard /
-            # button-driven mutations.  Carries a discriminated-union
-            # payload routed by ``payload["kind"]`` to the appropriate
-            # ``edge_*`` / ``list_aux_*`` / ``wire_select`` /
-            # ``block_select`` dispatch.  Mounted unconditionally so the
-            # Phase 4 callbacks never error on a missing input; until
-            # the feature flag is on, the store stays at ``None`` and
-            # downstream dispatches no-op.
+            # Wire-drawing store: written by ``assets/wire_drawing.js``
+            # on edge gestures + by the inspector wire / aux cards for
+            # keyboard / button-driven mutations.  Carries a
+            # discriminated-union payload routed by ``payload["kind"]``
+            # to the appropriate ``edge_*`` / ``list_aux_*`` /
+            # ``wire_select`` / ``block_select`` dispatch.  Mounted
+            # unconditionally so the callbacks never error on a missing
+            # input; until the feature flag is on, the store stays at
+            # ``None`` and downstream dispatches no-op.
             dcc.Store(
                 id=ids.STORE_EDGE_EVENT,
                 data=None,

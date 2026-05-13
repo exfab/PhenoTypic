@@ -117,7 +117,7 @@ STORE_PALETTE_DROP = "store-palette-drop"
 #: ``_dispatch_state_update`` with the appropriate ``edge_*`` /
 #: ``list_aux_*`` / ``wire_select`` / ``block_select`` kind.  See spec
 #: §5.5 (clientside event contract) and §5.6 (dispatch table).  Data
-#: shape varies by ``kind`` (Phase 4):
+#: shape varies by ``kind``:
 #:
 #: * ``{"kind": "edge_create", "source_block_id": str,
 #:   "target_block_id": str, "target_port": str, "edge_kind":
@@ -134,9 +134,9 @@ STORE_PALETTE_DROP = "store-palette-drop"
 #:
 #: ``None`` between events.  The fan-in callback routes on
 #: ``payload["kind"]`` so the single store carries every wire-related
-#: mutation; this keeps the JS surface tiny and lets Agent 4C's
-#: inspector emit dispatches through the same channel rather than
-#: needing a parallel store.
+#: mutation; this keeps the JS surface tiny and lets the inspector
+#: emit dispatches through the same channel rather than needing a
+#: parallel store.
 STORE_EDGE_EVENT = "store-edge-event"
 
 #: Toolbar button that re-runs the dagre layout pass + ``cy.fit()``.  Wired
@@ -166,12 +166,11 @@ BTN_CONFIRM_DELETE = "btn-confirm-delete"
 #: ``state.pending_delete_block_id`` so the modal closes.
 BTN_CANCEL_DELETE = "btn-cancel-delete"
 
-# NOTE: ``STORE_EDGE_EVENT`` (canonical owner: Agent 4B) is declared
-# higher up in this module.  The inspector pane (Agent 4C) writes into
-# the same store via the kinds ``edge_delete``,
-# ``list_aux_add_empty_slot``, and ``list_aux_reorder`` so the
-# clientside ``wire_drawing.js`` glue and the server-side inspector
-# callbacks share a single mutation channel.
+# NOTE: ``STORE_EDGE_EVENT`` is declared higher up in this module.
+# The inspector pane writes into the same store via the kinds
+# ``edge_delete``, ``list_aux_add_empty_slot``, and ``list_aux_reorder``
+# so the clientside ``wire_drawing.js`` glue and the server-side
+# inspector callbacks share a single mutation channel.
 
 #: ``html.Div`` wrapping the inspector wire-card. Mounted by
 #: :func:`phenotypic.gui.builder._layout.build_inspector` (DAG branch)
@@ -206,16 +205,15 @@ BTN_INSPECTOR_LIST_REMOVE = "btn-inspector-list-remove"
 BTN_INSPECTOR_ADD_EMPTY_SLOT = "btn-inspector-add-empty-slot"
 
 #: Pattern-match ``type`` key for the per-row ``▲``/``▼`` move
-#: buttons (Phase-4 drag-handle fallback).  Each id carries
-#: ``edge_id`` + ``direction`` so a single callback can dispatch the
-#: right reorder.
+#: buttons (drag-handle fallback).  Each id carries ``edge_id`` +
+#: ``direction`` so a single callback can dispatch the right reorder.
 BTN_INSPECTOR_LIST_MOVE = "btn-inspector-list-move"
 
 #: Pattern-match ``type`` key for the hidden ``dcc.Store`` rendered once
 #: per list-typed op-param on the selected block.  Future HTML5 drag
 #: glue can write the new permutation as a ``List[str]`` of edge_ids
-#: here without churn to the inspector callback; the Phase-4 arrow-
-#: button fallback uses :data:`BTN_INSPECTOR_LIST_MOVE` instead.
+#: here without churn to the inspector callback; the arrow-button
+#: fallback uses :data:`BTN_INSPECTOR_LIST_MOVE` instead.
 STORE_INSPECTOR_LIST_REORDER = "store-inspector-list-reorder"
 
 
@@ -288,8 +286,8 @@ def inspector_list_move_id(
 ) -> Dict[str, Any]:
     """Build the pattern-matching id for a list-aux row up/down arrow.
 
-    Phase 4 ships the ordered-list section with arrow-button reorder as
-    a fallback for the drag-handles called out in spec §4.5.  Each row
+    The ordered-list section ships with arrow-button reorder as a
+    fallback for the drag-handles called out in spec §4.5.  Each row
     carries an ``▲`` (up) and ``▼`` (down) button keyed by
     ``edge_id`` + direction so a single pattern-match callback can
     dispatch the right reorder.
@@ -316,11 +314,10 @@ def inspector_list_reorder_store_id(
     """Build the pattern-matching id for the list-aux reorder ``dcc.Store``.
 
     A hidden ``dcc.Store`` rendered once per list-typed op-param on the
-    selected block.  Future HTML5 drag glue (or the existing arrow
-    buttons in the Phase-4 fallback) can write the new permutation
-    here; the server-side callback dispatches ``list_aux_reorder``
-    against the same ``(block_id, param)`` without re-walking the
-    selected-block layout.
+    selected block.  Future HTML5 drag glue (or the existing arrow-
+    button fallback) can write the new permutation here; the server-
+    side callback dispatches ``list_aux_reorder`` against the same
+    ``(block_id, param)`` without re-walking the selected-block layout.
 
     Args:
         block_id: ``BlockNode.block_id`` the slot list belongs to.
@@ -971,7 +968,7 @@ __all__ = [
     "BTN_CANCEL_DELETE",
     "block_port_id",
     "edge_id",
-    # Phase 4 DAG redesign additions
+    # DAG canvas wire + inspector additions
     "STORE_EDGE_EVENT",
     "INSPECTOR_WIRE_CARD",
     "INSPECTOR_AUX_SECTION",

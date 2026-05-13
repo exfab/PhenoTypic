@@ -1,16 +1,16 @@
 """Playwright E2E tests for list-aux ports (spec §8.3.3, §4.4 list semantics, §4.5).
 
 Each test name mirrors the spec §8.3.3 row exactly so an audit can grep
-for missing coverage.  The clientside JS owners are Agents 4A
-(``wire_drawing.js``) + 4C (inspector aux-port section); the server-side
-dispatcher owner is Agent 4B (``edge_create`` / ``list_aux_reorder`` /
-``list_aux_add_empty_slot`` dispatches + ``STORE_EDGE_EVENT`` fan-in).
+for missing coverage.  The clientside JS lives in ``wire_drawing.js``
++ the inspector aux-port section; the server-side dispatcher handles
+``edge_create`` / ``list_aux_reorder`` / ``list_aux_add_empty_slot``
+dispatches via the ``STORE_EDGE_EVENT`` fan-in.
 
 Most tests in this file rely on programmatic state injection via
-``STORE_EDGE_EVENT.set_props``.  When the inspector reorder UI (4C's
-domain) doesn't expose a stable selector to drive drag-handles
-programmatically, those tests skip gracefully and the underlying
-dispatcher logic is covered by ``tests/unit/gui/builder/test_dispatch.py``.
+``STORE_EDGE_EVENT.set_props``.  When the inspector reorder UI doesn't
+expose a stable selector to drive drag-handles programmatically, those
+tests skip gracefully and the underlying dispatcher logic is covered by
+``tests/unit/gui/builder/test_dispatch.py``.
 
 Run gates: ``PLAYWRIGHT=1`` + ``PHENOTYPIC_GUI_DAG=1`` (set on the
 live server via ``env_overrides``).
@@ -173,16 +173,14 @@ def test_list_aux_inspector_reorder_updates_canvas_badges(
 ) -> None:
     """Drag inspector handle for badge 2 above badge 1 → canvas badges swap.
 
-    Inspector reorder is Agent 4C's surface.  This test exercises the
-    end-to-end loop: inspector emits ``list_aux_reorder`` to
-    ``STORE_EDGE_EVENT``; the dispatcher (Agent 4B) updates
+    Exercises the end-to-end loop: the inspector emits
+    ``list_aux_reorder`` to ``STORE_EDGE_EVENT``; the dispatcher updates
     ``target_slot``; the canvas re-renders with new badge numbers.
     """
 
     _open_builder(page, hub_url)
-    # The inspector reorder UI is Agent 4C's domain; this test depends
-    # on a state-injection helper to skip the choreography of seeding
-    # multiple list-aux wires.
+    # The inspector reorder UI depends on a state-injection helper to
+    # skip the choreography of seeding multiple list-aux wires.
     if not _has_state_injection_helper(page):
         pytest.skip(
             "Inspector-reorder end-to-end requires programmatic state "
@@ -214,11 +212,11 @@ def test_list_aux_remove_wire_keeps_empty_slot(page: Page, hub_url: str) -> None
 def test_list_aux_add_empty_slot(page: Page, hub_url: str) -> None:
     """Click ``+ Add empty slot`` → total slot count increments by 1.
 
-    The button is in the inspector aux-ports section (Agent 4C).  The
-    dispatcher (Agent 4B) handles ``list_aux_add_empty_slot`` by
-    incrementing ``block.list_slot_counts[param]`` without minting an
-    edge.  Driven via ``STORE_EDGE_EVENT.set_props`` so the test
-    doesn't depend on the precise inspector DOM layout.
+    The button lives in the inspector aux-ports section.  The
+    dispatcher handles ``list_aux_add_empty_slot`` by incrementing
+    ``block.list_slot_counts[param]`` without minting an edge.  Driven
+    via ``STORE_EDGE_EVENT.set_props`` so the test doesn't depend on
+    the precise inspector DOM layout.
     """
 
     _open_builder(page, hub_url)

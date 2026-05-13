@@ -524,7 +524,7 @@ def test_block_create_does_not_mutate_input_dict(
 
 
 # ---------------------------------------------------------------------------
-# Phase 4 — edge-dispatch helpers + fixtures
+# Edge-dispatch helpers + fixtures
 # ---------------------------------------------------------------------------
 
 
@@ -612,7 +612,7 @@ def _build_source_consumer_state(
 
 
 # ---------------------------------------------------------------------------
-# Phase 4 — edge_create
+# edge_create
 # ---------------------------------------------------------------------------
 
 
@@ -1027,7 +1027,7 @@ def test_edge_create_image_source_single_wire_rule(
 
 
 # ---------------------------------------------------------------------------
-# Phase 4 — edge_delete
+# edge_delete
 # ---------------------------------------------------------------------------
 
 
@@ -1125,7 +1125,7 @@ def test_edge_delete_unknown_id_is_noop(patched_registry: Any) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Phase 4 — list_aux_reorder
+# list_aux_reorder
 # ---------------------------------------------------------------------------
 
 
@@ -1267,7 +1267,7 @@ def test_list_aux_reorder_non_permutation_rejected(
 
 
 # ---------------------------------------------------------------------------
-# Phase 4 — list_aux_add_empty_slot
+# list_aux_add_empty_slot
 # ---------------------------------------------------------------------------
 
 
@@ -1324,7 +1324,7 @@ def test_list_aux_add_empty_slot_increments_count(
 
 
 # ---------------------------------------------------------------------------
-# Phase 4 — wire_select / block_select (mutual exclusion)
+# wire_select / block_select (mutual exclusion)
 # ---------------------------------------------------------------------------
 
 

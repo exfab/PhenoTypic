@@ -1,12 +1,12 @@
 """Shared component-tree walking helpers for builder integration tests.
 
-The Phase 4 inspector tests (wire-card + aux-section renderers) both
-need to introspect Dash component trees: descend through every child,
-locate a component by string-id or pattern-matching-id, and flatten
-the descendant text content into a single string for substring asserts.
+The inspector tests (wire-card + aux-section renderers) both need to
+introspect Dash component trees: descend through every child, locate a
+component by string-id or pattern-matching-id, and flatten the
+descendant text content into a single string for substring asserts.
 The four helpers below are byte-identical in both ``test_inspector_*``
 files; hoisting them here keeps the test surface DRY without spreading
-the same boilerplate to every future Phase 4+ integration test.
+the same boilerplate to every future integration test.
 
 Why a fresh conftest (and not the existing
 ``tests/unit/gui/builder/conftest.py``)?  pytest only auto-discovers

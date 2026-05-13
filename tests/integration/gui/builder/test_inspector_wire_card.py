@@ -1,4 +1,4 @@
-"""Integration tests for the inspector wire card (Phase 4, spec §4.5).
+"""Integration tests for the inspector wire card (spec §4.5).
 
 Exercises the new DAG branch of
 :func:`phenotypic.gui.builder._layout.build_inspector` for the
@@ -37,7 +37,7 @@ from phenotypic.gui.builder._state import (
 
 # Component-tree walking helpers shared with ``test_inspector_aux_section.py``;
 # see ``conftest.py`` in this directory.
-from .conftest import _collect_text, _find_by_id, _find_by_type_key
+from .conftest import _collect_text, _find_by_id
 
 
 FIXTURE_DIR = (

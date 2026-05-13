@@ -6,10 +6,9 @@ the missing file, and existing state still surfaces.  This is the
 canonical place for "what happens when ``wire_drawing.js`` /
 ``palette_dnd.js`` / ``viewport_ops.js`` fail to load" coverage.
 
-Phase 4 ships only ``test_clientside_wire_drawing_js_fails_to_load`` per
-the orchestrator brief.  Future phases extend this file with the
-companion checks for ``viewport_ops.js`` failure modes and dagre
-absence.
+``test_clientside_wire_drawing_js_fails_to_load`` ships first; future
+phases extend this file with the companion checks for
+``viewport_ops.js`` failure modes and dagre absence.
 
 Run gates: ``PLAYWRIGHT=1`` + ``PHENOTYPIC_GUI_DAG=1``.
 """

@@ -56,9 +56,8 @@
      *  §4.3 "Mouse leaves the cytoscape wrapper bounds"). */
     const CY_WRAPPER_ID = "canvas-cytoscape-wrapper";
 
-    /** Mirror of ``builder/_ids.STORE_EDGE_EVENT``.  Agent 4B's
-     *  ``_ids.py`` update should match — keep the literal in sync.
-     *  Phase 4 contract:
+    /** Mirror of ``builder/_ids.STORE_EDGE_EVENT``; keep the literal
+     *  in sync with the server-side ``_ids.py`` value.  Contract:
      *  ``{kind: "edge_create" | "edge_delete",
      *    source_block_id?, target_block_id?, target_port?,
      *    edge_kind?: "image" | "aux", edge_id?, ts}``. */
@@ -163,10 +162,15 @@
     // -----------------------------------------------------------------
     // Helpers — generic.
     // -----------------------------------------------------------------
-    /** Resolve the live cytoscape instance via ``window.phenoGetCy``.
-     *  Mirrors ``viewport_ops.js`` so this asset works regardless of
-     *  load order. */
+    /** Resolve the live cytoscape instance via the shared accessor
+     *  ``window.phenoWhenCyReady`` exposed by ``builder.js`` (with a
+     *  defensive inline fallback for the cold-load case where this asset
+     *  evaluates before ``builder.js``). */
     function whenCyReady(cb) {
+        if (typeof window.phenoWhenCyReady === "function") {
+            window.phenoWhenCyReady(cb);
+            return;
+        }
         const cy = window.phenoGetCy && window.phenoGetCy();
         if (cy) {
             cb(cy);

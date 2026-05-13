@@ -54,7 +54,7 @@ import time
 import uuid
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple, TypeAlias
 
 import dash
 from dash import ALL, Input, Output, State, ctx, html, no_update
@@ -760,8 +760,78 @@ def _build_fresh_aux_node(
     }
 
 
+def _queue_toast(
+    state_dict: Dict[str, Any], text: str, *, kind: str = "info"
+) -> None:
+    """Append a ``{kind, text}`` entry to ``state_dict['toast_queue']``.
+
+    The DAG dispatchers surface rejection / informational messages by
+    appending to ``state.toast_queue``; the JS GUI drains the queue
+    and shows each entry via the toast notification surface.  Every kind
+    that surfaces a rejection toast uses the same setdefault → append
+    boilerplate (``block_create`` InputImage/stale-container reject,
+    ``edge_create`` cross-scope reject, ``list_aux_reorder``
+    non-permutation reject); this helper centralises it so future
+    dispatch kinds only need a one-liner.
+
+    Args:
+        state_dict: The in-progress dispatcher state dict (the function
+            mutates ``state_dict["toast_queue"]`` in place).
+        text: User-facing message.
+        kind: ``"info"`` / ``"warning"`` / ``"error"`` — drives the toast
+            icon + accent colour.
+    """
+
+    queue = state_dict.setdefault("toast_queue", [])
+    queue.append({"kind": kind, "text": text})
+
+
+#: Closed set of dispatch-kind strings routed by :func:`_dispatch_state_update`.
+#:
+#: Per the project's typing convention (CLAUDE.md "Code Style") a Literal
+#: alias is sufficient for type-only enforcement of a closed set with no
+#: user-visible documentation surface — dispatch keys never reach the GUI
+#: chrome.  Adding the alias as a non-enforcing annotation on the dispatcher
+#: doesn't change runtime behaviour (``Literal`` is erased at runtime), but
+#: it lets type-checkers flag a typo at the call sites that build the
+#: ``store-edge-event`` / ``store-palette-drop`` / ``store-builder-state``
+#: payloads.  The DAG redesign added 6 new kinds (``block_create``,
+#: ``edge_create``, ``edge_delete``, ``list_aux_reorder``,
+#: ``list_aux_add_empty_slot``, ``wire_select``, ``block_select``), so
+#: the alias is now warranted.
+DispatchKind: TypeAlias = Literal[
+    # Legacy linear-builder kinds.
+    "add_node",
+    "add_pipeline",
+    "select_node",
+    "delete_node",
+    "drill_in",
+    "drill_out",
+    "breadcrumb_to",
+    "drill_in_param",
+    "reorder",
+    "edit_param",
+    "edit_label",
+    "wire_create",
+    "wire_delete",
+    "port_slot_add",
+    "port_slot_remove",
+    "drill_in_aux",
+    "set_inspector_focus",
+    # Palette drag-and-drop.
+    "block_create",
+    # Wire drawing + list-aux fan-in.
+    "edge_create",
+    "edge_delete",
+    "list_aux_reorder",
+    "list_aux_add_empty_slot",
+    "wire_select",
+    "block_select",
+]
+
+
 def _dispatch_state_update(
-    state_dict: Dict[str, Any], kind: str, payload: Dict[str, Any]
+    state_dict: Dict[str, Any], kind: DispatchKind, payload: Dict[str, Any]
 ) -> Dict[str, Any]:
     """Apply a named mutation to a serialized state dict.
 
@@ -1234,13 +1304,7 @@ def _dispatch_state_update(
             # Input Image" so wording stays consistent with the spec-
             # surfaced rejection copy referenced elsewhere (e.g. docs,
             # tutorials, screenshots).
-            toast_queue = out.setdefault("toast_queue", [])
-            toast_queue.append(
-                {
-                    "kind": "info",
-                    "text": "scope already has an Input Image",
-                }
-            )
+            _queue_toast(out, "scope already has an Input Image", kind="info")
             return out
 
         container_block_id = payload.get("container_block_id")
@@ -1258,15 +1322,11 @@ def _dispatch_state_update(
                     "container missing from state tree",
                     container_block_id,
                 )
-                toast_queue = out.setdefault("toast_queue", [])
-                toast_queue.append(
-                    {
-                        "kind": "warning",
-                        "text": (
-                            "Drop target container is no longer in the "
-                            "pipeline; block not created."
-                        ),
-                    }
+                _queue_toast(
+                    out,
+                    "Drop target container is no longer in the "
+                    "pipeline; block not created.",
+                    kind="warning",
                 )
                 return out
             target_scope = resolved
@@ -1343,12 +1403,8 @@ def _dispatch_state_update(
         # Cross-scope rule (spec §4.4): source + target must live in
         # the same scope.  Reject with a toast.
         if source_scope is not target_scope_dict:
-            toast_queue = out.setdefault("toast_queue", [])
-            toast_queue.append(
-                {
-                    "kind": "warning",
-                    "text": "Cross-scope wires are not allowed",
-                }
+            _queue_toast(
+                out, "Cross-scope wires are not allowed", kind="warning"
             )
             return out
 
@@ -1488,13 +1544,7 @@ def _dispatch_state_update(
         if new_order_ids != wired_ids or len(new_order_ids) != len(
             [x for x in reorder_request if x is not None]
         ):
-            toast_queue = out.setdefault("toast_queue", [])
-            toast_queue.append(
-                {
-                    "kind": "warning",
-                    "text": "Reorder rejected",
-                }
-            )
+            _queue_toast(out, "Reorder rejected", kind="warning")
             return out
 
         # Rebuild target_slot from position.
@@ -2400,12 +2450,12 @@ def register_callbacks(app: dash.Dash) -> None:
     ) -> Any:
         """Emit a ``list_aux_reorder`` payload for ``▲``/``▼`` clicks.
 
-        The arrow buttons are the Phase-4 drag-handle fallback (spec
-        §4.5 calls for HTML5 drag-handles; the prompt explicitly OKs
-        up/down buttons as an intermediate).  The callback resolves
-        which block/param the edge targets, swaps it with its neighbour,
-        and emits a ``list_aux_reorder`` payload whose ``new_order``
-        argument is what :func:`_dispatch_state_update` consumes.
+        The arrow buttons are the drag-handle fallback (spec §4.5 calls
+        for HTML5 drag-handles; up/down buttons are an intermediate).
+        The callback resolves which block/param the edge targets,
+        swaps it with its neighbour, and emits a ``list_aux_reorder``
+        payload whose ``new_order`` argument is what
+        :func:`_dispatch_state_update` consumes.
 
         Args:
             _clicks: One entry per matched button (n_clicks).
@@ -2479,14 +2529,14 @@ def register_callbacks(app: dash.Dash) -> None:
     def inspector_list_reorder_emit(_payloads: List[Any]) -> Any:
         """Emit a ``list_aux_reorder`` payload from a drag-handle store write.
 
-        Phase 4 ships the row layout with ``▲``/``▼`` arrows as the
-        primary reorder surface, but the spec calls for HTML5
-        drag-handles; mounting this callback against the hidden
-        ``dcc.Store`` family means a future phase can land the drag JS
-        glue without touching the inspector callback wiring.  Until
-        that JS lands, the store data on inspector render mirrors the
-        current state — and the central dispatcher's permutation check
-        no-ops a same-order payload.
+        The row layout ships with ``▲``/``▼`` arrows as the primary
+        reorder surface; the spec calls for HTML5 drag-handles.
+        Mounting this callback against the hidden ``dcc.Store`` family
+        means a future phase can land the drag JS glue without touching
+        the inspector callback wiring.  Until that JS lands, the store
+        data on inspector render mirrors the current state — and the
+        central dispatcher's permutation check no-ops a same-order
+        payload.
         """
 
         triggered = ctx.triggered_id

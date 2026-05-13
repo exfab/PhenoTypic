@@ -66,12 +66,15 @@
     // -----------------------------------------------------------------
     // Helpers.
     // -----------------------------------------------------------------
-    /** Resolve the live cytoscape instance via the accessor builder.js
-     *  publishes on ``window``. ``cb(cy)`` runs whenever an instance
-     *  becomes available; if cytoscape hasn't mounted yet we retry every
-     *  100ms. Mirrors the polling pattern used by ``aux_popover.js`` so
-     *  asset load order doesn't matter. */
+    /** Resolve the live cytoscape instance via the shared accessor
+     *  ``window.phenoWhenCyReady`` exposed by ``builder.js`` (with a
+     *  defensive inline fallback for the cold-load case where this asset
+     *  evaluates before ``builder.js``). */
     function whenCyReady(cb) {
+        if (typeof window.phenoWhenCyReady === "function") {
+            window.phenoWhenCyReady(cb);
+            return;
+        }
         const cy = window.phenoGetCy && window.phenoGetCy();
         if (cy) {
             cb(cy);

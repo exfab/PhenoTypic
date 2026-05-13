@@ -1,9 +1,9 @@
 """Playwright E2E tests for wire-drawing (spec §8.3.2, §4.3, §4.9).
 
 Each test name mirrors the spec exactly so an audit can grep for missing
-coverage.  The clientside JS owner is Agent 4A
-(``assets/wire_drawing.js``); the server-side dispatcher owner is Agent
-4B (``_callbacks.py::_dispatch_state_update`` ``edge_*`` branches +
+coverage.  The clientside JS lives in ``assets/wire_drawing.js``; the
+server-side dispatcher lives in
+``_callbacks.py::_dispatch_state_update`` (``edge_*`` branches +
 ``STORE_EDGE_EVENT`` fan-in).  These tests drive real pointer events at
 the rendered DOM and assert against:
 
@@ -319,7 +319,7 @@ def test_wire_drag_from_already_wired_source_replaces_first_wire(
 ) -> None:
     """Drag from an already-wired source → prior edge gone; new edge present.
 
-    The server-side dispatcher (Phase 4 spec §4.2) deletes any existing
+    The server-side dispatcher (spec §4.2) deletes any existing
     outgoing wire from the source in the same dispatch before adding
     the new one.  Driven through ``STORE_EDGE_EVENT`` so the test
     doesn't require port-mousedown geometry.

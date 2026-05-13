@@ -4,6 +4,14 @@
  * ``_callbacks.py``) can drive the cytoscape canvas directly via its native
  * API — ``cy.fit()`` / ``cy.zoom()`` — instead of fighting dash-cytoscape's
  * prop change detection.
+ *
+ * Also exposes ``window.phenoWhenCyReady(cb)`` — a shared accessor that
+ * polls ``phenoGetCy()`` every 100ms and invokes ``cb(cy)`` once the
+ * cytoscape instance has mounted.  All three IIFE assets
+ * (``viewport_ops.js``, ``palette_dnd.js``, ``wire_drawing.js``) used to
+ * carry an identical copy of this pattern; centralising it here keeps
+ * load-order tolerance in one place and means new assets only need to
+ * call ``window.phenoWhenCyReady`` rather than re-implement the loop.
  */
 
 (function () {
@@ -52,6 +60,25 @@
             if (node.sibling) stack.push(node.sibling);
         }
         return null;
+    };
+
+    /** Poll ``window.phenoGetCy`` every 100ms and invoke ``cb(cy)`` once
+     *  the cytoscape instance has mounted.  Shared by every asset that
+     *  binds clientside handlers but doesn't know whether the canvas
+     *  has rendered yet (load-order tolerance).
+     *
+     *  Idempotency: each asset's IIFE is expected to call this exactly
+     *  once at bind time; the recursive ``setTimeout`` walks at most
+     *  one outstanding chain at a time per caller. */
+    window.phenoWhenCyReady = function phenoWhenCyReady(cb) {
+        const cy = window.phenoGetCy && window.phenoGetCy();
+        if (cy) {
+            cb(cy);
+            return;
+        }
+        setTimeout(function () {
+            window.phenoWhenCyReady(cb);
+        }, 100);
     };
 
     /* Watch the cytoscape container for size changes (the layout settles

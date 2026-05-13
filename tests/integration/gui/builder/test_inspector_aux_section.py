@@ -1,4 +1,4 @@
-"""Integration tests for the inspector aux ports section (Phase 4, spec §4.5).
+"""Integration tests for the inspector aux ports section (spec §4.5).
 
 Exercises the new DAG branch of
 :func:`phenotypic.gui.builder._layout.build_inspector` for the
