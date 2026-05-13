@@ -43,7 +43,7 @@ from phenotypic.gui.builder._state import (
 
 # Component-tree walking helpers shared with other inspector tests;
 # see ``conftest.py`` in this directory.
-from .conftest import _find_by_id, _find_by_type_key, _walk
+from .conftest import _find_by_id, _find_by_type_key
 
 
 # ---------------------------------------------------------------------------
@@ -52,14 +52,14 @@ from .conftest import _find_by_id, _find_by_type_key, _walk
 
 
 def _row_components(badge_span: Any) -> List[Any]:
-    """Return every row inside the badge's popover, ordered by render order."""
+    """Return every row inside the badge's popover, ordered by render order.
 
-    rows: List[Any] = []
-    for node in _walk(badge_span):
-        node_id = getattr(node, "id", None)
-        if isinstance(node_id, dict) and node_id.get("type") == "issue-row":
-            rows.append(node)
-    return rows
+    Delegates to the shared ``_find_by_type_key`` conftest helper so
+    every "find components by dict-id ``type`` key" call site in the
+    integration suite uses the same walk semantics.
+    """
+
+    return _find_by_type_key(badge_span, "issue-row")
 
 
 def _node_attr(node: Any, attr: str) -> Any:

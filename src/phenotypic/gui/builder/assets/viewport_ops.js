@@ -722,7 +722,7 @@
     // ``STORE_VIEWPORT_OP`` with ``{kind: "scroll_to_aborted", ts}``.
     // We can't subscribe to the store directly from this asset
     // (Dash mediates store changes), so the equivalent clientside
-    // callback registered in ``_callbacks.py`` (Phase 6) calls
+    // callback registered in ``_callbacks.py`` calls
     // ``window.phenotypicScrollToAbortedRelay`` whenever it sees the
     // sentinel.  That function dispatches the DOM event our
     // ``waitForLayoutstopOrAbort`` helper races against.

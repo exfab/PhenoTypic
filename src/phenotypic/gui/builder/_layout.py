@@ -3433,10 +3433,10 @@ def _build_input_image_card(
         :class:`html.Div` ready to drop into :data:`ids.INSPECTOR_CONTAINER`.
     """
 
-    _unused_state = state  # noqa: F841 — reserved for future wiring.
-    _unused_block = block  # noqa: F841 — Input Image has no user-editable
-    # fields, but the param is preserved so the helper signature mirrors
-    # the other inspector-card builders.
+    # ``state`` / ``block`` are accepted to match the signature shape of
+    # the other inspector-card builders; Input Image has no user-editable
+    # fields so neither is consulted here.
+    del state, block
 
     # ``BTN_RELAYOUT`` is owned by the canvas toolbar (always visible,
     # single instance) so it cannot be duplicated inside this card —
