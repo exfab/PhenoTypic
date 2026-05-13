@@ -10,9 +10,17 @@
  *   * ``window.phenotypicBlockCollapsedToggle(blockId)`` — flip the
  *     ``dag-block--collapsed`` CSS class on the container block; the body's
  *     ``display: none`` is handled by ``builder.css``.
- *   * ``window.phenotypicScrollTo(...)`` and ``window.phenotypicDrillToScope(...)``
- *     are stubs until the validation-badge callback ships the full
- *     expand-chain + scrim flow.
+ *   * ``window.phenotypicScrollTo(blockId, scopePath, targetBreadcrumb)`` —
+ *     pans + fits the canvas to the offender, traversing the breadcrumb
+ *     and expanding collapsed containers as needed (spec §5.6).  Mounts
+ *     a canvas-wide scrim (``data-testid="dag-scrim"``) so a user drag
+ *     cannot interleave with the expand chain; dismisses the scrim and
+ *     emits ``phenotypic:scroll-to-complete`` on settle.
+ *   * ``window.phenotypicDrillToScope(targetBreadcrumb)`` — dispatch an
+ *     atomic breadcrumb replacement through ``STORE_VIEWPORT_OP``.  The
+ *     server-side dispatcher validates each id; stale ids → reject +
+ *     toast + ``STORE_VIEWPORT_OP`` sentinel ``scroll_to_aborted`` that
+ *     this module relays as a ``phenotypic:scroll-to-aborted`` DOM event.
  *
  * On completion the IIFE writes the asset-readiness sentinels expected by
  * ``builder.js``'s polling routine (spec §5.5 / §5.6):
@@ -55,6 +63,22 @@
     /** Padding (px) ``cy.fit()`` reserves around the final bounding box. */
     const FIT_PADDING = 24;
 
+    /** Padding (px) the ``scroll_to`` chain reserves around the offender
+     *  block once the expand chain resolves and ``cy.fit()`` zooms in. */
+    const SCROLL_TO_FIT_PADDING = 60;
+
+    /** Duration (ms) of the final ``cy.animate({fit})`` after the expand
+     *  chain settles.  Matches the canvas-toolbar fit/zoom buttons so the
+     *  visual rhythm reads as one consistent motion language. */
+    const SCROLL_TO_FIT_DURATION = 300;
+
+    /** Max time (ms) ``waitForLayoutstopOrAbort`` will block on a single
+     *  ``layoutstop`` event.  Sized so a 2–3 level expand chain
+     *  (~200–600ms per the spec) plus a generous network round-trip
+     *  fits within the budget; the timeout fires only when the server
+     *  silently dropped the dispatch. */
+    const LAYOUTSTOP_TIMEOUT_MS = 5000;
+
     /** CSS class toggled on the compound parent during collapse.
      *  ``builder.css`` owns the visibility rule:
      *      .dag-block--collapsed > .dag-block__body { display: none; } */
@@ -62,6 +86,19 @@
 
     /** ``data.class_name`` value identifying the root-scope source block. */
     const INPUT_IMAGE_CLASS = "InputImage";
+
+    /** ``data-testid`` attribute on the scroll-to scrim.  Playwright +
+     *  the spec §6 row both spell this exact string; tests resolve the
+     *  scrim element by ``[data-testid="dag-scrim"]``. */
+    const SCRIM_TEST_ID = "dag-scrim";
+
+    /** Custom-event name emitted by the abort path.  ``phenotypicScrollTo``
+     *  listens for this so the scrim dismisses immediately on a stale-id
+     *  rejection rather than waiting for the ``layoutstop`` timeout. */
+    const SCROLL_TO_ABORTED_EVENT = "phenotypic:scroll-to-aborted";
+
+    /** Custom-event name emitted on a successful chain settle. */
+    const SCROLL_TO_COMPLETE_EVENT = "phenotypic:scroll-to-complete";
 
     // -----------------------------------------------------------------
     // Helpers.
@@ -316,6 +353,147 @@
     }
 
     // -----------------------------------------------------------------
+    // ``scroll_to`` chain helpers (spec §5.6).
+    // -----------------------------------------------------------------
+
+    /** Compare two breadcrumb arrays element-wise. ``null`` / ``undefined``
+     *  coerce to an empty array so both default cases (root scope,
+     *  uninitialised state) compare equal. */
+    function arraysEqual(a, b) {
+        const aa = Array.isArray(a) ? a : [];
+        const bb = Array.isArray(b) ? b : [];
+        if (aa.length !== bb.length) return false;
+        for (let i = 0; i < aa.length; i++) {
+            if (aa[i] !== bb[i]) return false;
+        }
+        return true;
+    }
+
+    /** Read the active breadcrumb out of ``STORE_BUILDER_STATE``.
+     *
+     *  The store is a Dash ``dcc.Store`` whose data field hangs off the
+     *  hidden ``<div id="store-builder-state">`` element's
+     *  ``__dashprivate_initial_props`` attribute *during the initial
+     *  render*; for ongoing state we read the live React props via
+     *  ``window.dash_clientside`` — but Dash doesn't expose those.
+     *  Instead, ``builder.js`` mirrors the breadcrumb onto
+     *  ``window.__phenoBreadcrumb`` after every fan-in render so we have
+     *  a stable hook here.
+     *
+     *  If the mirror isn't present (older builder.js / pre-render race),
+     *  fall back to reading the breadcrumb pill DOM via the
+     *  ``.pheno-breadcrumb [data-breadcrumb-segment]`` attribute
+     *  rendered by ``_layout.build_breadcrumb``. */
+    function getCurrentBreadcrumb() {
+        if (Array.isArray(window.__phenoBreadcrumb)) {
+            return window.__phenoBreadcrumb.slice();
+        }
+        // DOM fallback — read every breadcrumb segment id attribute.
+        const segments = document.querySelectorAll(
+            ".pheno-breadcrumb [data-breadcrumb-segment]"
+        );
+        const ids = [];
+        segments.forEach(function (el) {
+            const segId = el.getAttribute("data-breadcrumb-segment");
+            if (segId) ids.push(segId);
+        });
+        return ids;
+    }
+
+    /** Mount a ``data-testid="dag-scrim"`` div on the canvas wrapper.
+     *
+     *  The scrim:
+     *    * Covers the entire canvas wrapper (CSS rules in ``builder.css``
+     *      set ``position: absolute; top/left/right/bottom: 0``).
+     *    * Captures pointer events so palette drag-over and port-mousedown
+     *      gestures cannot interleave with the expand chain.
+     *    * Carries a ``data-testid`` attribute so Playwright can assert
+     *      its lifecycle (mount on chain start, unmount on completion).
+     *
+     *  Returns the scrim element so the caller can ``.remove()`` it on
+     *  chain completion. */
+    function mountScrim() {
+        const cyContainer = document.getElementById("canvas-cytoscape");
+        // Mount on the cytoscape container's parent — that's where the
+        // canvas chrome (toolbar, asset banner) shares a positioning
+        // context.  Falling back to the cy container itself if the
+        // parent isn't `position: relative` keeps the scrim covering
+        // the right surface.
+        const host = (cyContainer && cyContainer.parentElement) || cyContainer || document.body;
+        // Ensure the host can position the scrim absolutely.
+        const computed = window.getComputedStyle(host);
+        if (computed.position === "static") {
+            host.style.position = "relative";
+        }
+        const scrim = document.createElement("div");
+        scrim.className = "dag-scrim";
+        scrim.setAttribute("data-testid", SCRIM_TEST_ID);
+        scrim.setAttribute("aria-busy", "true");
+        host.appendChild(scrim);
+        return scrim;
+    }
+
+    /** Resolve once ``cy`` fires its next ``layoutstop`` OR once a
+     *  ``phenotypic:scroll-to-aborted`` event is dispatched on document.
+     *
+     *  This race lets ``phenotypicScrollTo`` short-circuit when the
+     *  server-side ``drill_to_scope`` rejects a stale breadcrumb id —
+     *  without the race, the scrim would block for the full timeout
+     *  before dismissing.
+     *
+     *  Times out after ``LAYOUTSTOP_TIMEOUT_MS`` so a silently-dropped
+     *  dispatch can't pin the scrim indefinitely. */
+    function waitForLayoutstopOrAbort(cy, timeoutMs) {
+        const budget = typeof timeoutMs === "number" ? timeoutMs : LAYOUTSTOP_TIMEOUT_MS;
+        return new Promise(function (resolve, reject) {
+            let timer = null;
+            function cleanup() {
+                if (timer !== null) {
+                    clearTimeout(timer);
+                    timer = null;
+                }
+                document.removeEventListener(SCROLL_TO_ABORTED_EVENT, onAbort);
+                if (cy && typeof cy.removeListener === "function") {
+                    cy.removeListener("layoutstop", onStop);
+                }
+            }
+            function onAbort() {
+                cleanup();
+                reject(new Error("scroll-to-aborted"));
+            }
+            function onStop() {
+                cleanup();
+                resolve();
+            }
+            document.addEventListener(SCROLL_TO_ABORTED_EVENT, onAbort, { once: true });
+            // cy.one binds a one-shot handler that auto-detaches on fire.
+            if (cy && typeof cy.one === "function") {
+                cy.one("layoutstop", onStop);
+            }
+            timer = setTimeout(function () {
+                cleanup();
+                reject(new Error("layoutstop timeout"));
+            }, budget);
+        });
+    }
+
+    /** Helper: write a payload to ``STORE_VIEWPORT_OP`` via
+     *  ``dash_clientside.set_props``.  The fan-in callback subscribed to
+     *  the store picks up the change and routes through the dispatcher. */
+    function publishViewportOp(payload) {
+        if (
+            window.dash_clientside &&
+            typeof window.dash_clientside.set_props === "function"
+        ) {
+            window.dash_clientside.set_props("store-viewport-op", {
+                data: payload,
+            });
+            return true;
+        }
+        return false;
+    }
+
+    // -----------------------------------------------------------------
     // Public viewport ops attached to ``window`` for fan-in callbacks.
     // -----------------------------------------------------------------
     /** Re-run the leaf-first dagre layout + fit. Server-side callbacks
@@ -374,49 +552,183 @@
         });
     }
 
-    /** Pan/zoom-only stub. Phase 6 expands the full chain:
-     *    - mounts a canvas-wide scrim,
-     *    - dispatches ``drill_to_scope`` if the offender lives in a
-     *      different breadcrumb,
-     *    - chains ``block_collapsed_toggle`` for each collapsed
-     *      container in ``scope_path``,
-     *    - emits ``phenotypic:scroll-to-complete`` on settle.
-     *  PHASE 6: full expand-chain + scrim + drill_to_scope. */
-    function phenotypicScrollTo(blockId, _scopePath, _targetBreadcrumb) {
+    /** Full scroll-to chain (spec §5.6 ``scroll_to`` row).
+     *
+     *  Pans + fits the cytoscape viewport to the block, traversing
+     *  the breadcrumb and expanding collapsed containers as needed.
+     *  Mounts a canvas-wide scrim so a user drag cannot interleave
+     *  with the expand chain — the scrim dismisses on settle or abort.
+     *
+     *  Steps:
+     *    (1) Mount the ``data-testid="dag-scrim"`` overlay.
+     *    (2) If ``targetBreadcrumb`` differs from the current breadcrumb,
+     *        publish a ``drill_to_scope`` payload to ``STORE_VIEWPORT_OP``
+     *        and await ``layoutstop`` (with a race against
+     *        ``phenotypic:scroll-to-aborted`` for the stale-id case).
+     *    (3) For each collapsed container in ``scopePath`` (now in the
+     *        active scope), publish a ``block_collapsed_toggle`` payload
+     *        and await ``layoutstop``.
+     *    (4) ``cy.animate({fit})`` to the offender block.
+     *    (5) Remove the scrim.
+     *    (6) Dispatch ``phenotypic:scroll-to-complete``.
+     *
+     *  Args:
+     *    blockId: ``BlockNode.block_id`` of the offender to pan to.
+     *    scopePath: List of container block_ids on the path from
+     *      the active scope down to the offender's enclosing scope.
+     *      Each entry is an *intermediate* container — the offender
+     *      itself is NOT included.
+     *    targetBreadcrumb: Breadcrumb the offender lives under.
+     *      When this differs from the current breadcrumb, the chain
+     *      begins with a single ``drill_to_scope`` dispatch.
+     */
+    async function phenotypicScrollTo(blockId, scopePath, targetBreadcrumb) {
         if (!blockId) return;
-        whenCyReady(function (cy) {
-            const node = cy.getElementById(blockId);
-            if (!node || !node.length) return;
-            cy.animate(
-                { center: { eles: node } },
-                {
-                    duration: ANIMATION_DURATION,
-                    easing: ANIMATION_EASING,
-                    complete: function () {
-                        try {
-                            document.dispatchEvent(
-                                new CustomEvent("phenotypic:scroll-to-complete", {
-                                    detail: { block_id: blockId },
-                                })
-                            );
-                        } catch (err) {
-                            // Older browsers — ignore.
-                        }
-                    },
+        const cy = window.phenoGetCy && window.phenoGetCy();
+        if (!cy) return;
+
+        const scopes = Array.isArray(scopePath) ? scopePath : [];
+        const breadcrumb = Array.isArray(targetBreadcrumb) ? targetBreadcrumb : [];
+
+        // (1) Mount the scrim.
+        const scrim = mountScrim();
+
+        try {
+            // (2) Cross-breadcrumb navigation if needed.
+            const currentBreadcrumb = getCurrentBreadcrumb();
+            if (!arraysEqual(breadcrumb, currentBreadcrumb)) {
+                const published = publishViewportOp({
+                    kind: "drill_to_scope",
+                    target_breadcrumb: breadcrumb,
+                    ts: Date.now(),
+                });
+                if (!published) {
+                    // dash_clientside not ready — abort the chain.
+                    return;
                 }
+                await waitForLayoutstopOrAbort(cy);
+            }
+
+            // (3) Expand collapsed containers in scope_path.  Each
+            // collapsed-toggle dispatch may re-render the canvas; we
+            // re-resolve the node each iteration in case the prior
+            // dispatch dropped & re-created the cytoscape elements.
+            for (let i = 0; i < scopes.length; i++) {
+                const containerBlockId = scopes[i];
+                if (!containerBlockId) continue;
+                const node = cy.getElementById(containerBlockId);
+                if (!node || !node.length) continue;
+                // ``data.collapsed`` is the canonical truth set by the
+                // server-side reducer; the DOM class lags behind a tick
+                // after the cytoscape re-render.
+                if (!node.data("collapsed")) continue;
+                const published = publishViewportOp({
+                    kind: "block_collapsed_toggle",
+                    block_id: containerBlockId,
+                    ts: Date.now(),
+                });
+                if (!published) return;
+                await waitForLayoutstopOrAbort(cy);
+            }
+
+            // (4) Pan + fit to the target block.
+            const targetNode = cy.getElementById(blockId);
+            if (targetNode && targetNode.length) {
+                await new Promise(function (resolve) {
+                    cy.animate(
+                        {
+                            fit: {
+                                eles: targetNode,
+                                padding: SCROLL_TO_FIT_PADDING,
+                            },
+                        },
+                        {
+                            duration: SCROLL_TO_FIT_DURATION,
+                            easing: ANIMATION_EASING,
+                            complete: resolve,
+                        }
+                    );
+                });
+            }
+        } catch (err) {
+            // Aborted or timed out — fall through to scrim removal +
+            // emit no completion event.  The toast queue already
+            // surfaced the user-facing message; nothing else to do.
+            try {
+                scrim.remove();
+            } catch (cleanupErr) {
+                // Scrim already detached — ignore.
+            }
+            return;
+        }
+
+        // (5) Dismiss the scrim.
+        try {
+            scrim.remove();
+        } catch (err) {
+            // Scrim already detached — ignore.
+        }
+
+        // (6) Emit the completion event.
+        try {
+            document.dispatchEvent(
+                new CustomEvent(SCROLL_TO_COMPLETE_EVENT, {
+                    detail: { block_id: blockId },
+                })
             );
-        });
+        } catch (err) {
+            // Older browsers — ignore.
+        }
     }
 
-    /** Phase-2 stub. The full implementation dispatches a
-     *  ``drill_to_scope`` mutation through ``STORE_BUILDER_STATE`` and
-     *  awaits ``layoutstop``; for now we no-op so the asset is forward-
-     *  compatible.
-     *  PHASE 6: atomic breadcrumb replacement + validation. */
-    function phenotypicDrillToScope(_targetBreadcrumb) {
-        // Intentional no-op — STORE_BUILDER_STATE writes belong on the
-        // server side; the dispatcher already handles drill_to_scope
-        // payloads. Phase 6 wires the clientside trigger.
+    /** Atomic breadcrumb replacement (spec §5.6 ``drill_to_scope`` row).
+     *
+     *  Publishes a ``drill_to_scope`` payload to ``STORE_VIEWPORT_OP``.
+     *  The server-side fan-in callback validates each segment in
+     *  ``targetBreadcrumb`` against the current state tree:
+     *
+     *    * Every id must resolve to a ``Pipeline``-class container at
+     *      the right depth.
+     *    * Stale (deleted) ids → reject + queue toast + emit the
+     *      ``scroll_to_aborted`` sentinel back to ``STORE_VIEWPORT_OP``
+     *      (which the bottom-of-this-file relay turns into a
+     *      ``phenotypic:scroll-to-aborted`` DOM event).
+     *
+     *  No client-side custom event from the success path; the
+     *  ``layoutstop`` after dispatch is the signal the caller awaits. */
+    function phenotypicDrillToScope(targetBreadcrumb) {
+        const breadcrumb = Array.isArray(targetBreadcrumb) ? targetBreadcrumb : [];
+        publishViewportOp({
+            kind: "drill_to_scope",
+            target_breadcrumb: breadcrumb,
+            ts: Date.now(),
+        });
+        // Server-side rejects stale ids and queues a toast.  No client-
+        // side custom event from the success path; the layout-stop
+        // after dispatch is the signal callers await.
+    }
+
+    // -----------------------------------------------------------------
+    // ``scroll_to_aborted`` relay.
+    // -----------------------------------------------------------------
+    //
+    // When the server-side ``drill_to_scope`` dispatch rejects a stale
+    // breadcrumb id, the ``viewport_op_fan_in`` callback writes back to
+    // ``STORE_VIEWPORT_OP`` with ``{kind: "scroll_to_aborted", ts}``.
+    // We can't subscribe to the store directly from this asset
+    // (Dash mediates store changes), so the equivalent clientside
+    // callback registered in ``_callbacks.py`` (Phase 6) calls
+    // ``window.phenotypicScrollToAbortedRelay`` whenever it sees the
+    // sentinel.  That function dispatches the DOM event our
+    // ``waitForLayoutstopOrAbort`` helper races against.
+    function phenotypicScrollToAbortedRelay() {
+        try {
+            document.dispatchEvent(
+                new CustomEvent(SCROLL_TO_ABORTED_EVENT, { detail: {} })
+            );
+        } catch (err) {
+            // Older browsers without CustomEvent constructor — ignore.
+        }
     }
 
     // -----------------------------------------------------------------
@@ -444,6 +756,7 @@
         window.phenotypicBlockCollapsedToggle = phenotypicBlockCollapsedToggle;
         window.phenotypicScrollTo = phenotypicScrollTo;
         window.phenotypicDrillToScope = phenotypicDrillToScope;
+        window.phenotypicScrollToAbortedRelay = phenotypicScrollToAbortedRelay;
 
         // Signal readiness — builder.js poller writes the missing-asset
         // list to STORE_ASSET_STATUS based on these sentinels.

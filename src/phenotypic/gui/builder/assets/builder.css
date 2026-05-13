@@ -887,22 +887,36 @@ code, pre, .text-monospace, .font-monospace {
      * callback dispatches ``scroll_to`` on click). */
     cursor: pointer;
 }
-.dag-scrim {
+.dag-scrim,
+[data-testid="dag-scrim"] {
     /* Full-canvas overlay mounted by ``viewport_ops.js`` during the
      * ``scroll_to`` chain.  Suppresses pointer events so a user drag
      * cannot interleave with the expand chain; the chain is typically
      * 200-600ms for 2-3 collapsed levels (spec §5.6 ``scroll_to``).
-     * Semi-transparent surface tint mirrors the modal scrim used by
-     * dbc.Modal so the visual language is consistent. */
+     *
+     * Per spec §5.6: the scrim:
+     *   - Covers the entire canvas (``position: absolute`` over the
+     *     ``#canvas-cytoscape`` parent, which ``viewport_ops.js``
+     *     ensures has ``position: relative``).
+     *   - Captures every pointer gesture (``pointer-events: auto``) so
+     *     palette drop, port mousedown, and wire-drag are all suppressed
+     *     while the chain runs.
+     *   - Sits above every canvas-anchored DOM overlay (toolbar +
+     *     popovers cap at ``z-index: 200`` for ``.cy-popover``); ``9999``
+     *     keeps the scrim above any future overlay without re-tuning.
+     *   - Surfaces a faint dark tint so the user can see the chain is
+     *     in progress without obscuring the canvas state.
+     *   - ``cursor: wait`` (matched by ``progress`` on older browsers)
+     *     signals the in-progress chain. */
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(255, 255, 255, 0.55);
-    z-index: 50;
-    pointer-events: all;
-    cursor: progress;
+    background: rgba(0, 0, 0, 0.15);
+    z-index: 9999;
+    pointer-events: auto;
+    cursor: wait;
 }
 
 /* Asset-status banner above the canvas (spec §6 row).  Surfaces the

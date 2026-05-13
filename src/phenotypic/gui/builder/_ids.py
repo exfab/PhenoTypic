@@ -158,6 +158,29 @@ STORE_EDGE_EVENT = "store-edge-event"
 #: ``cytoscape-dagre`` extension is missing.
 BTN_RELAYOUT = "btn-relayout"
 
+#: Button inside the Input Image inspector card (spec §4.5) that
+#: dispatches a ``reanchor`` payload to :data:`STORE_VIEWPORT_OP` so the
+#: clientside viewport-ops chain pans / zooms the cytoscape view to
+#: centre on the auto-seeded Input Image block.  Distinct from
+#: :data:`BTN_RELAYOUT` (which re-runs dagre on the full graph) so the
+#: dispatcher / clientside can subscribe to each independently.
+BTN_REANCHOR = "btn-reanchor"
+
+#: Container wrapping the inspector "empty-state" placeholder card
+#: shown when neither a block nor a wire is selected (spec §4.5).
+#: Carries the "Drag an operation from the palette to begin." prompt
+#: plus a one-line hint pointing at the toolbar validation badge.
+#: Used as a stable handle for integration tests that assert the
+#: empty-state branch is rendering.
+INSPECTOR_EMPTY_STATE = "inspector-empty-state"
+
+#: Container wrapping the inspector "Input Image — pipeline source"
+#: card (spec §4.5).  Rendered when ``selected_block_id`` resolves to
+#: a block with ``class_name == INPUT_IMAGE_CLASS_NAME``.  The card
+#: carries the Re-layout + Re-anchor buttons (no param form, no
+#: delete button) and is a stable handle for integration tests.
+INSPECTOR_INPUT_IMAGE_CARD = "inspector-input-image-card"
+
 #: ``html.Div`` row sitting above the canvas that surfaces missing-asset
 #: messages (one row per missing JS file).  Subscribes to
 #: :data:`STORE_ASSET_STATUS`; hidden when all assets ready.  Rendered by
@@ -1034,6 +1057,9 @@ __all__ = [
     "STORE_ASSET_STATUS",
     "STORE_PALETTE_DROP",
     "BTN_RELAYOUT",
+    "BTN_REANCHOR",
+    "INSPECTOR_EMPTY_STATE",
+    "INSPECTOR_INPUT_IMAGE_CARD",
     "BANNER_ASSET_STATUS",
     "CONFIRM_DELETE_MODAL_ID",
     "BTN_CONFIRM_DELETE",

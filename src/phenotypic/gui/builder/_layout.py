@@ -2270,13 +2270,25 @@ def build_issue_badge(
             )
         ]
 
-    badge = dbc.Badge(
+    # Wrap the chip in a ``html.Span`` so the spec's
+    # ``data-testid="issue-badge"`` attribute can hang off the
+    # outermost clickable surface — ``dbc.Badge`` has a strict prop
+    # allowlist and rejects unknown ``data-*`` kwargs.  The badge
+    # itself still carries the static id so the row callback can
+    # subscribe via ``Input(ids.ISSUE_BADGE, "n_clicks")`` if a future
+    # phase wants a chip-level click target (e.g. to open a modal
+    # listing every issue across every scope).
+    badge_chip = dbc.Badge(
         label,
         id=ids.ISSUE_BADGE,
         color=color,
-        className="issue-badge me-1",
+        className="issue-badge",
         style={"cursor": "pointer"},
         n_clicks=0,
+    )
+    badge_wrapper = html.Span(
+        badge_chip,
+        className="issue-badge-target d-inline-flex align-items-center",
         **{"data-testid": "issue-badge"},  # type: ignore[arg-type]
     )
 
@@ -2291,7 +2303,7 @@ def build_issue_badge(
         placement="bottom",
     )
 
-    return html.Span([badge, popover], className="issue-badge-wrap")
+    return html.Span([badge_wrapper, popover], className="issue-badge-wrap")
 
 
 def build_canvas_section(
@@ -3332,6 +3344,12 @@ def _empty_state_card_for_dag() -> dbc.Card:
     badge alongside the "drag from palette" hint.  Used when no
     block / wire is selected so a user opening a fresh canvas can
     orient themselves without exploring the toolbar first.
+
+    The card carries :data:`ids.INSPECTOR_EMPTY_STATE` so integration
+    tests can assert that the empty branch is rendering, and so a
+    future callback can subscribe to the placeholder for runtime
+    chrome updates (e.g. swapping the hint copy on first-time-user
+    detection).
     """
 
     return dbc.Card(
@@ -3342,16 +3360,146 @@ def _empty_state_card_for_dag() -> dbc.Card:
                     "Drag an operation from the palette to begin.",
                     className="mb-1",
                 ),
-                html.P(
-                    "The toolbar issue badge tells you when the canvas "
-                    "is ready to run — it shows “0 issues” "
-                    "for a clean pipeline.",
-                    className="text-muted mb-0",
+                html.Small(
+                    "The badge in the toolbar shows validation issues. "
+                    "Run preview and Save are disabled when any errors "
+                    "exist.",
+                    className="text-muted",
                     style={"fontSize": FONT_SIZE_LABEL},
                 ),
             ]
         ),
+        id=ids.INSPECTOR_EMPTY_STATE,
         className="h-100",
+    )
+
+
+def _build_input_image_card(
+    state: "_DagBuilderState",
+    block: "BlockNode",
+) -> html.Div:
+    """Render the inspector card for the auto-seeded Input Image source.
+
+    Spec §4.5 — Input Image inspector card surface:
+
+    * **Heading**: "Input Image — pipeline source".
+    * **Description**: one-paragraph explanation of the loader contract.
+    * **Re-layout button** — clicking forwards to the toolbar's
+      canonical :data:`ids.BTN_RELAYOUT`.  The inspector copy carries
+      no Dash id (Dash forbids duplicate ids) and uses the
+      ``data-relayout-proxy`` attribute as a clientside hook.
+    * **Re-anchor button** (:data:`ids.BTN_REANCHOR`) — clicking
+      dispatches a ``reanchor`` payload that pans / zooms the
+      cytoscape viewport to centre on this Input Image block.
+    * **No param form**: InputImage has no user-editable parameters
+      (the image is supplied by the runtime loader, not the user).
+    * **No Delete button**: spec §4.1 — the Input Image sentinel
+      cannot be deleted because every scope must contain exactly
+      one (Rule 6 of the validation suite).
+    * **Hidden placeholders** for :data:`ids.INPUT_NODE_LABEL` /
+      :data:`ids.BTN_DRILL_IN` / doc-section widgets so the existing
+      fan-in callback's ``Input`` ids always resolve regardless of
+      which inspector branch the user is looking at.
+
+    Args:
+        state: The full :class:`_DagBuilderState`. Reserved for a
+            future enhancement that disables the buttons when the
+            scope is in a degraded state (currently unused; suppresses
+            a lint warning).
+        block: The selected :class:`BlockNode`. Must satisfy
+            ``block.class_name == INPUT_IMAGE_CLASS_NAME``.
+
+    Returns:
+        :class:`html.Div` ready to drop into :data:`ids.INSPECTOR_CONTAINER`.
+    """
+
+    _unused_state = state  # noqa: F841 — reserved for future wiring.
+    _unused_block = block  # noqa: F841 — Input Image has no user-editable
+    # fields, but the param is preserved so the helper signature mirrors
+    # the other inspector-card builders.
+
+    # ``BTN_RELAYOUT`` is owned by the canvas toolbar (always visible,
+    # single instance) so it cannot be duplicated inside this card —
+    # Dash forbids duplicate component ids in the live DOM and the
+    # toolbar button stays mounted while the inspector card renders.
+    # Spec §4.5 lists "Re-layout" and "Re-anchor" as the two affordances
+    # on the Input Image card; we surface a "Re-layout (toolbar)" label
+    # button here for discoverability (no Dash id — purely cosmetic; it
+    # carries a ``className`` test selector so the integration tests can
+    # assert the affordance is present) and bind the dispatching click
+    # to the toolbar's canonical :data:`ids.BTN_RELAYOUT`.  The
+    # Re-anchor button uses :data:`ids.BTN_REANCHOR` which lives only
+    # inside this card so the clientside callback can dispatch the
+    # ``reanchor`` payload through a single binding.
+    body_children: List[Any] = [
+        dbc.CardHeader(
+            html.H4(
+                "Input Image — pipeline source",
+                className="mb-0",
+            )
+        ),
+        dbc.CardBody(
+            [
+                html.P(
+                    "Every op chain starts here. The image flowing out "
+                    "of this block is whatever your run-time loader "
+                    "provides — typically the file you point Run "
+                    "preview at, or each image in the batch under a "
+                    "production run.",
+                    className="text-muted small mb-3",
+                ),
+                dbc.Button(
+                    "Re-layout",
+                    # No ``id=`` — Dash forbids duplicating the toolbar's
+                    # ``BTN_RELAYOUT``.  The button uses an "as=html.A"
+                    # style trick to forward the click to the toolbar
+                    # button via JS document delegation; until that JS
+                    # lands the button is still discoverable to users
+                    # as a label hint pointing at the toolbar control.
+                    color="secondary",
+                    outline=True,
+                    size="sm",
+                    n_clicks=0,
+                    className="me-2 inspector-input-image-relayout-btn",
+                    # The "data-relayout-proxy" attribute lets the
+                    # clientside callback below detect clicks on this
+                    # cosmetic button and forward to the toolbar's
+                    # canonical handler without needing a Dash id.
+                    **{"data-relayout-proxy": "true"},
+                ),
+                dbc.Button(
+                    "Re-anchor view to Input Image",
+                    id=ids.BTN_REANCHOR,
+                    color="secondary",
+                    outline=True,
+                    size="sm",
+                    n_clicks=0,
+                ),
+            ]
+        ),
+        # Hidden placeholders so the fan-in callback's
+        # ``Input(BTN_DRILL_IN)`` / ``Input(INPUT_NODE_LABEL)`` ids stay
+        # resolvable even though InputImage doesn't surface them.
+        dbc.Input(
+            id=ids.INPUT_NODE_LABEL,
+            type="text",
+            style=_HIDDEN_STYLE,
+        ),
+        dbc.Button(
+            id=ids.BTN_DRILL_IN,
+            n_clicks=0,
+            style=_HIDDEN_STYLE,
+        ),
+        *_doc_section_widgets(None),
+    ]
+
+    return html.Div(
+        dbc.Card(
+            body_children,
+            id=ids.INSPECTOR_INPUT_IMAGE_CARD,
+            className="h-100",
+        ),
+        id=ids.INSPECTOR_CONTAINER,
     )
 
 
@@ -3652,26 +3800,13 @@ def _build_dag_inspector(
         ),
     ]
 
-    # Input Image gets a dedicated info card (spec §4.5; the Re-layout
-    # / Re-anchor buttons are deferred to Phase 6, flagged below).
+    # Input Image gets a dedicated info card (spec §4.5).  The card
+    # carries Re-layout (label-only, proxied to the toolbar button)
+    # and Re-anchor affordances + the loader-source description; no
+    # param form (InputImage has no parameters) and no Delete button
+    # (the Input Image sentinel cannot be deleted — spec §4.1).
     if block.class_name == INPUT_IMAGE_CLASS_NAME:
-        body_children: List[Any] = [
-            *header_children,
-            html.P(
-                "Every op chain starts here. The image flowing out of "
-                "this block is whatever your run-time loader provides.",
-                className="text-muted small",
-            ),
-            # Re-layout / Re-anchor buttons are Phase 6 work; hidden
-            # placeholders keep the existing fan-in callbacks (BTN_DRILL_IN
-            # etc.) wired up.
-            *_doc_section_widgets(None),
-            dbc.Button(id=ids.BTN_DRILL_IN, n_clicks=0, style=_HIDDEN_STYLE),
-        ]
-        return html.Div(
-            dbc.Card(dbc.CardBody(body_children), className="h-100"),
-            id=ids.INSPECTOR_CONTAINER,
-        )
+        return _build_input_image_card(state, block)
 
     # Container blocks render the dedicated container inspector card
     # (label + name + desc + summary + drill-in).  Spec §4.5 suppresses

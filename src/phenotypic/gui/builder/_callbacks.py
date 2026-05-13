@@ -2273,6 +2273,88 @@ def _format_exception(exc: BaseException) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Run preview / Save gating (spec §5.6)
+# ---------------------------------------------------------------------------
+
+
+def _filter_blocking_issues(state_data: Optional[Dict[str, Any]]) -> List[Any]:
+    """Return the blocking-severity issues for the current builder state.
+
+    Spec §5.6: Run preview and Save pipeline are gated on validation
+    severity == ``"error"``.  Advisory hints (severity ==
+    ``"advisory"``: ``stage_order_hint`` and ``unknown_class``) NEVER
+    block these actions — they decorate the canvas with yellow borders
+    and surface in the issue badge tooltip, but the user can still
+    preview / save.
+
+    The legacy (non-DAG) state shape doesn't carry the validation
+    schema, so :func:`validate` would no-op against it; the helper
+    short-circuits to an empty list in that case so the gate is
+    transparent on legacy state.
+
+    Args:
+        state_data: ``state_to_json`` payload from
+            :data:`ids.STORE_BUILDER_STATE`.  ``None`` during the first
+            paint, before any state has been published.
+
+    Returns:
+        List of :class:`Issue` records whose ``severity == "error"``.
+        Empty list when state is ``None``, parses, or carries the
+        legacy schema.  The list preserves the validator's emission
+        order so callers can pull ``[0]`` as the user-facing first
+        offence.
+    """
+
+    if state_data is None:
+        return []
+    try:
+        state = state_from_json(state_data)
+    except Exception:  # noqa: BLE001
+        logger.exception("_filter_blocking_issues: state_from_json failed")
+        return []
+    # Validation only targets the DAG schema; the legacy state shape
+    # has no ``root.blocks`` field and the validator would no-op
+    # anyway.  Detect via duck-typing on the state object so the
+    # legacy GUI flag-off path never accidentally gates Run/Save.
+    if not hasattr(state, "selected_block_id"):
+        return []
+    try:
+        issues = validate(state)
+    except Exception:  # noqa: BLE001
+        logger.exception("_filter_blocking_issues: validate raised")
+        return []
+    return [i for i in issues if i.severity == "error"]
+
+
+def _gate_toast_for_issue(action: str, issue: Any) -> Tuple[bool, str, str, str]:
+    """Build the toast outputs surfaced when an action is gated.
+
+    Wraps :func:`_toast` to apply a consistent message shape so the
+    user sees the same "Cannot <action>: <kind> (<detail>)" prefix
+    regardless of which gated callback fired.  Centralised here so
+    future gates (e.g. autosave, sandbox export) can reuse the same
+    copy convention.
+
+    Args:
+        action: User-facing verb describing the gated action — e.g.
+            ``"run preview"`` / ``"save pipeline"``.  Spliced into the
+            toast body verbatim.
+        issue: The first blocking :class:`Issue` returned by
+            :func:`_filter_blocking_issues`.
+
+    Returns:
+        Toast output tuple matching the standard
+        ``Output(TOAST_NOTIFICATION, ...)`` quadruple.
+    """
+
+    return _toast(
+        f"Cannot {action}: {issue.kind} ({issue.detail})",
+        ok=False,
+        header="Validation",
+    )
+
+
+# ---------------------------------------------------------------------------
 # Layout-render helpers (re-render canvas/inspector/breadcrumb after a state
 # mutation)
 # ---------------------------------------------------------------------------
@@ -3653,6 +3735,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "header", allow_duplicate=True),
+        Output(ids.STORE_VIEWPORT_OP, "data", allow_duplicate=True),
         Input(ids.STORE_VIEWPORT_OP, "data"),
         State(ids.STORE_BUILDER_STATE, "data"),
         prevent_initial_call=True,
@@ -3672,6 +3755,20 @@ def register_callbacks(app: dash.Dash) -> None:
         Dash debounces would refire).  The mutation ops route through
         :func:`_dispatch_state_update`.
 
+        Stale-id abort signalling (spec §5.6 ``drill_to_scope`` row):
+            When the dispatch rejects a ``drill_to_scope`` payload
+            (every breadcrumb id must resolve to a current Pipeline
+            container at the right depth) the state changes only in the
+            toast queue — the breadcrumb itself is untouched.  In that
+            case we additionally write a sentinel
+            ``{"kind": "scroll_to_aborted", "ts": <now>}`` back to
+            :data:`STORE_VIEWPORT_OP`.  A small clientside callback
+            (registered in :func:`_register_scroll_to_aborted_relay`)
+            relays the sentinel as the
+            ``phenotypic:scroll-to-aborted`` DOM event so
+            ``viewport_ops.js`` dismisses its active scrim immediately
+            instead of waiting on the layout-stop timeout.
+
         Args:
             viewport_op: Payload written by ``viewport_ops.js`` /
                 ``palette_dnd.js`` / inspector buttons.
@@ -3679,10 +3776,11 @@ def register_callbacks(app: dash.Dash) -> None:
 
         Returns:
             The standard 10-output fan-in tuple matching
-            ``fan_in_state_mutation``.
+            ``fan_in_state_mutation``, extended with a final
+            :data:`STORE_VIEWPORT_OP` output for the abort sentinel.
         """
 
-        noop = (no_update,) * 10
+        noop = (no_update,) * 11
         if not isinstance(viewport_op, dict) or state_data is None:
             return noop
 
@@ -3700,6 +3798,59 @@ def register_callbacks(app: dash.Dash) -> None:
             new_state_dict = _dispatch_state_update(
                 state_data, kind, viewport_op
             )
+            # Detect drill_to_scope stale-id rejection.  The dispatcher
+            # leaves the breadcrumb unchanged + queues a toast; the
+            # clientside scrim needs an immediate abort signal so it can
+            # dismiss without waiting on the layout-stop timeout.
+            if kind == "drill_to_scope":
+                old_breadcrumb = state_data.get("breadcrumb") or []
+                new_breadcrumb = new_state_dict.get("breadcrumb") or []
+                if old_breadcrumb == new_breadcrumb:
+                    # No breadcrumb change → either a toast was queued
+                    # (the rejection path) or the payload was a no-op
+                    # against the current state.  Either way, emit the
+                    # abort sentinel so the scrim dismisses; the toast
+                    # output below will surface the rejection text on
+                    # the next fan-in tick.
+                    aborted_payload = {
+                        "kind": "scroll_to_aborted",
+                        "ts": int(time.time() * 1000),
+                    }
+                    if new_state_dict == state_data:
+                        # Nothing else changed — just dispatch the
+                        # sentinel and bail.
+                        return (
+                            no_update,
+                            no_update,
+                            no_update,
+                            no_update,
+                            no_update,
+                            no_update,
+                            no_update,
+                            no_update,
+                            no_update,
+                            no_update,
+                            aborted_payload,
+                        )
+                    # State changed (toast queue grew) — render views
+                    # + emit the abort sentinel together.
+                    new_state = state_from_json(new_state_dict)
+                    breadcrumb, canvas_elements, inspector, popover_contents = (
+                        _render_views(new_state)
+                    )
+                    return (
+                        new_state_dict,
+                        breadcrumb,
+                        canvas_elements,
+                        inspector,
+                        popover_contents,
+                        _popover_style_for(popover_contents),
+                        no_update,
+                        no_update,
+                        no_update,
+                        no_update,
+                        aborted_payload,
+                    )
             if new_state_dict == state_data:
                 return noop
             new_state = state_from_json(new_state_dict)
@@ -3713,6 +3864,7 @@ def register_callbacks(app: dash.Dash) -> None:
                 inspector,
                 popover_contents,
                 _popover_style_for(popover_contents),
+                no_update,
                 no_update,
                 no_update,
                 no_update,
@@ -3731,7 +3883,75 @@ def register_callbacks(app: dash.Dash) -> None:
                 _format_exception(exc),
                 "danger",
                 "Update failed",
+                no_update,
             )
+
+    # ----------------------------------------------------------------------
+    # 2c-i-bis. STORE_VIEWPORT_OP → clientside visual ops + abort relay
+    # ----------------------------------------------------------------------
+    # The clientside ``viewport_ops.js`` exposes four canvas-only viewport
+    # ops on ``window``: ``phenotypicScrollTo``, ``phenotypicRelayout``,
+    # ``phenotypicReanchor``, and ``phenotypicScrollToAbortedRelay``.
+    # ``STORE_VIEWPORT_OP`` carries the dispatch payload for each:
+    #
+    #   * ``scroll_to`` (from issue-row click, see
+    #     :func:`issue_row_click_dispatch`) → invoke
+    #     ``phenotypicScrollTo(block_id, scope_path, target_breadcrumb)``;
+    #     the JS mounts a scrim, walks the expand chain, and emits
+    #     ``phenotypic:scroll-to-complete`` on settle.
+    #   * ``relayout`` (from ``BTN_RELAYOUT`` button) → invoke
+    #     ``phenotypicRelayout()``; the JS reruns dagre + fits.
+    #   * ``reanchor`` (programmatic) → invoke ``phenotypicReanchor()``.
+    #   * ``scroll_to_aborted`` (written back by
+    #     :func:`viewport_op_fan_in` on stale-id rejection) → invoke
+    #     ``phenotypicScrollToAbortedRelay()`` to dispatch the
+    #     ``phenotypic:scroll-to-aborted`` DOM event so the JS's
+    #     ``waitForLayoutstopOrAbort`` race wakes up immediately.
+    #
+    # The fan-in callback handles the *state-mutating* kinds
+    # (``drill_to_scope``, ``block_collapsed_toggle``, ...) on the
+    # server side; this clientside relay handles the *visual* kinds
+    # so the round-trip never blocks the user's pan/fit gesture.
+    app.clientside_callback(
+        """
+        function(payload) {
+            if (!payload || typeof payload !== 'object') {
+                return window.dash_clientside.no_update;
+            }
+            var kind = payload.kind;
+            if (
+                kind === 'scroll_to_aborted'
+                && typeof window.phenotypicScrollToAbortedRelay === 'function'
+            ) {
+                window.phenotypicScrollToAbortedRelay();
+            } else if (
+                kind === 'scroll_to'
+                && typeof window.phenotypicScrollTo === 'function'
+            ) {
+                window.phenotypicScrollTo(
+                    payload.block_id,
+                    payload.scope_path || [],
+                    payload.target_breadcrumb || []
+                );
+            } else if (
+                kind === 'relayout'
+                && typeof window.phenotypicRelayout === 'function'
+            ) {
+                window.phenotypicRelayout();
+            } else if (
+                kind === 'reanchor'
+                && typeof window.phenotypicReanchor === 'function'
+            ) {
+                window.phenotypicReanchor();
+            }
+            return window.dash_clientside.no_update;
+        }
+        """,
+        Output(ids.STORE_CANVAS_CONTROL, "data", allow_duplicate=True),
+        Input(ids.STORE_VIEWPORT_OP, "data"),
+        prevent_initial_call=True,
+    )
+
 
     # ----------------------------------------------------------------------
     # 2c-ii. Container delete two-stage flow (spec §5.6)
@@ -4413,10 +4633,22 @@ def register_callbacks(app: dash.Dash) -> None:
         nrows: Optional[Any],
         ncols: Optional[Any],
     ) -> Tuple[Any, bool, str, str, str]:
-        """Build the pipeline, run preview, cache intermediates."""
+        """Build the pipeline, run preview, cache intermediates.
+
+        Spec §5.6 gate: before doing any work, filter validation
+        issues to ``severity == "error"`` and short-circuit with a
+        validation toast when any blocking error is present.  Advisory
+        hints (``severity == "advisory"``) NEVER block — they decorate
+        the canvas and badge but the user can still preview.
+        """
 
         if not n_clicks or state_data is None:
             return no_update, *_toast("No state to preview", ok=False)
+
+        # Run preview gating — spec §5.6.
+        errors = _filter_blocking_issues(state_data)
+        if errors:
+            return no_update, *_gate_toast_for_issue("run preview", errors[0])
 
         if not session_id:
             session_id = uuid.uuid4().hex
@@ -4661,6 +4893,18 @@ def register_callbacks(app: dash.Dash) -> None:
             return (no_update, *_toast("Pick a folder first", ok=False))
         if not filename_value:
             return (no_update, *_toast("Provide a filename first", ok=False))
+
+        # Save gating — spec §5.6.  Mirror the Run preview filter so
+        # the user sees the same "Cannot <action>" toast and the
+        # modal stays open for them to fix the issue.  Advisory hints
+        # never block save (yellow-border decorations are persisted
+        # alongside the rest of the pipeline JSON).
+        errors = _filter_blocking_issues(state_data)
+        if errors:
+            return (
+                no_update,
+                *_gate_toast_for_issue("save pipeline", errors[0]),
+            )
 
         try:
             # Aux nodes are now embedded inside each consumer's
