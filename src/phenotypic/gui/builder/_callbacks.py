@@ -1294,7 +1294,7 @@ def _dispatch_state_update(
         return out
 
     if kind == "edge_create":
-        # Phase 4 wire-drawing dispatch (spec §5.6, §4.2, §4.3).
+        # Wire-drawing dispatch (spec §5.6, §4.2, §4.3).
         #
         # Payload (per spec §5.5):
         #   {"kind": "edge_create", "source_block_id": str,
@@ -1410,7 +1410,7 @@ def _dispatch_state_update(
         return out
 
     if kind == "edge_delete":
-        # Phase 4 wire-deletion dispatch (spec §5.6).
+        # Wire-deletion dispatch (spec §5.6).
         #
         # Payload: ``{"kind": "edge_delete", "edge_id": str, "ts": int}``.
         #
@@ -1443,7 +1443,7 @@ def _dispatch_state_update(
         return out
 
     if kind == "list_aux_reorder":
-        # Phase 4 list-aux reorder dispatch (spec §5.6).
+        # List-aux reorder dispatch (spec §5.6).
         #
         # Payload: ``{"kind": "list_aux_reorder", "block_id": str,
         # "param": str, "new_order": [edge_id_or_null, ...], "ts": int}``.
@@ -1516,7 +1516,7 @@ def _dispatch_state_update(
         return out
 
     if kind == "list_aux_add_empty_slot":
-        # Phase 4 list-aux empty-slot dispatch (spec §5.6).
+        # List-aux empty-slot dispatch (spec §5.6).
         #
         # Payload: ``{"kind": "list_aux_add_empty_slot", "block_id":
         # str, "param": str, "ts": int}``.
@@ -1541,7 +1541,7 @@ def _dispatch_state_update(
         return out
 
     if kind == "wire_select":
-        # Phase 4 wire-selection dispatch (spec §5.6, §4.5).
+        # Wire-selection dispatch (spec §5.6, §4.5).
         #
         # Payload: ``{"kind": "wire_select", "edge_id": str | None,
         # "ts": int}``.  ``None`` deselects.  Setting a new id clears
@@ -1553,7 +1553,7 @@ def _dispatch_state_update(
         return out
 
     if kind == "block_select":
-        # Phase 4 block-selection dispatch (spec §5.6, §4.5).
+        # Block-selection dispatch (spec §5.6, §4.5).
         #
         # Payload: ``{"kind": "block_select", "block_id": str | None,
         # "ts": int}``.  ``None`` deselects.  Setting a new id clears
@@ -1869,10 +1869,10 @@ def register_callbacks(app: dash.Dash) -> None:
         # Palette drag-and-drop: the clientside ``palette_dnd.js``
         # writes a ``block_create`` payload here on drop / keyboard fallback.
         Input(ids.STORE_PALETTE_DROP, "data"),
-        # Wire-drawing + edge mutations (Phase 4): the clientside
+        # Wire-drawing + edge mutations: the clientside
         # ``wire_drawing.js`` writes here on drag-drop; the inspector
-        # (Agent 4C) writes here for keyboard / button-driven
-        # mutations.  Payload is a discriminated union routed on
+        # writes here for keyboard / button-driven mutations.
+        # Payload is a discriminated union routed on
         # ``payload["kind"]`` (see ``ids.STORE_EDGE_EVENT`` docstring).
         Input(ids.STORE_EDGE_EVENT, "data"),
         # selection
@@ -2048,14 +2048,13 @@ def register_callbacks(app: dash.Dash) -> None:
                     state_data, "block_create", palette_drop
                 )
             elif triggered == ids.STORE_EDGE_EVENT:
-                # Phase 4 wire-drawing + edge-mutation channel.  The
-                # clientside ``wire_drawing.js`` (Agent 4A) writes
-                # ``edge_create`` / ``edge_delete`` payloads here on
-                # drop / right-click; the inspector wire / aux cards
-                # (Agent 4C) write ``list_aux_*`` / ``wire_select`` /
-                # ``block_select`` payloads through the same channel.
-                # Route on ``payload["kind"]`` to keep the JS surface
-                # tiny.
+                # Wire-drawing + edge-mutation channel.  The clientside
+                # ``wire_drawing.js`` writes ``edge_create`` /
+                # ``edge_delete`` payloads here on drop / right-click;
+                # the inspector wire / aux cards write ``list_aux_*`` /
+                # ``wire_select`` / ``block_select`` payloads through
+                # the same channel.  Route on ``payload["kind"]`` to
+                # keep the JS surface tiny.
                 if not isinstance(edge_event, dict):
                     return _NOOP_FAN_IN
                 event_kind = edge_event.get("kind")
@@ -2256,7 +2255,7 @@ def register_callbacks(app: dash.Dash) -> None:
         return new_issues
 
     # ----------------------------------------------------------------------
-    # 2a-i. Inspector wire / aux ports button → STORE_EDGE_EVENT (Phase 4C)
+    # 2a-i. Inspector wire / aux ports button → STORE_EDGE_EVENT
     # ----------------------------------------------------------------------
     #
     # The inspector wire card + aux ports section emit pattern-matched

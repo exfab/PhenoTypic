@@ -36,7 +36,7 @@ from phenotypic.gui.builder._state import (
 
 # Component-tree walking helpers shared with ``test_inspector_wire_card.py``;
 # see ``conftest.py`` in this directory.
-from .conftest import _collect_text, _find_by_id, _find_by_type_key
+from .conftest import _collect_text, _find_by_id, _find_by_type_key, _walk
 
 
 @dataclass
