@@ -5725,6 +5725,176 @@ def register_callbacks(app: dash.Dash) -> None:
 
         return relayout_disabled, palette_style, [], {"display": "none"}
 
+    # ----------------------------------------------------------------------
+    # 12. Toolbar Re-layout / Inspector Re-anchor → STORE_VIEWPORT_OP
+    # ----------------------------------------------------------------------
+    # Spec §5.5: clicking ``BTN_RELAYOUT`` writes a ``{kind: "relayout"}``
+    # payload to ``STORE_VIEWPORT_OP``; ``viewport_ops.js`` mirrors the
+    # payload into ``window.phenotypicRelayout``.  The inspector's
+    # Re-layout label button (no Dash id — cosmetic only) forwards via
+    # a separate document-delegated click listener emitted alongside
+    # the cytoscape stylesheet so the spec-required affordance still
+    # works from the inspector pane.
+    #
+    # The Re-anchor button (``BTN_REANCHOR`` — Input Image card only)
+    # writes a ``{kind: "reanchor"}`` payload.  Both flow through the
+    # ``viewport_op_fan_in`` callback above, which short-circuits
+    # purely visual ops to the clientside relay.
+    app.clientside_callback(
+        """
+        function(relayout_clicks, reanchor_clicks, prev) {
+            const trig = window.dash_clientside.callback_context.triggered;
+            if (!trig || !trig.length) return window.dash_clientside.no_update;
+            const id = trig[0].prop_id.split('.')[0];
+            const ts = Date.now();
+            if (id === 'btn-relayout' && relayout_clicks) {
+                return { kind: 'relayout', ts: ts };
+            }
+            if (id === 'btn-reanchor' && reanchor_clicks) {
+                return { kind: 'reanchor', ts: ts };
+            }
+            return window.dash_clientside.no_update;
+        }
+        """,
+        Output(ids.STORE_VIEWPORT_OP, "data", allow_duplicate=True),
+        Input(ids.BTN_RELAYOUT, "n_clicks"),
+        Input(ids.BTN_REANCHOR, "n_clicks"),
+        State(ids.STORE_VIEWPORT_OP, "data"),
+        prevent_initial_call=True,
+    )
+
+    # ----------------------------------------------------------------------
+    # 13. Toast queue consumer (spec §5.1)
+    # ----------------------------------------------------------------------
+    #
+    # ``BuilderState.toast_queue`` is a FIFO list of ``{kind, text}``
+    # payloads enqueued by dispatch helpers (``_queue_toast``).  The
+    # spec calls for one toast visible at a time, 3000ms auto-dismiss,
+    # dismissable on click, with FIFO drain semantics.  We implement
+    # the visible-at-a-time contract by surfacing only the queue's
+    # head on every state change and clearing it after a 3000ms
+    # ``dbc.Toast`` ``duration`` (already configured on the existing
+    # ``TOAST_NOTIFICATION`` component at layout-build time; we don't
+    # rebuild the toast widget).  Click-dismiss is the default
+    # ``dismissable=True`` on the toast — that fires the same close
+    # action that the duration timer would.
+    #
+    # When the toast closes (auto or click), this callback pops the
+    # head off ``toast_queue`` and writes the trimmed list back to
+    # ``STORE_BUILDER_STATE`` so the next queued payload surfaces on
+    # the next state mutation.  Two near-simultaneous mutations queue
+    # rather than race: the queue list is mutation-only (append on
+    # enqueue, pop-head on consume) and there is at most one consumer
+    # active at a time per session.
+    #
+    # The toast is rendered with the standard ``_toast`` helper so the
+    # icon / header / colour conventions are consistent with the
+    # direct-toast paths (``run_preview``, ``save_pipeline``, etc.).
+    @app.callback(
+        Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "header", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "duration", allow_duplicate=True),
+        Input(ids.STORE_BUILDER_STATE, "data"),
+        prevent_initial_call=True,
+    )
+    def surface_toast_queue_head(
+        state_data: Optional[Dict[str, Any]],
+    ) -> Tuple[Any, ...]:
+        """Surface the head of ``state.toast_queue`` on the live toast.
+
+        Per spec §5.1: one toast visible at a time, 3000ms auto-dismiss,
+        FIFO order.  This callback subscribes to every
+        :data:`STORE_BUILDER_STATE` write and shows the head when the
+        queue is non-empty.  When the queue is empty (typical case),
+        the call short-circuits with ``no_update`` so other toast
+        sources (Run preview / Save / direct-error toasts) are not
+        clobbered.
+
+        Args:
+            state_data: ``state_to_json`` payload from
+                :data:`ids.STORE_BUILDER_STATE`.  ``None`` during the
+                first paint, before any state has been published.
+
+        Returns:
+            Five-tuple matching the standard toast outputs plus the
+            ``duration`` slot — 3000ms per spec.  ``no_update`` on
+            every output when the queue is empty.
+        """
+
+        if not isinstance(state_data, dict):
+            return (no_update,) * 5
+        queue = state_data.get("toast_queue") or []
+        if not queue:
+            return (no_update,) * 5
+        head = queue[0]
+        if not isinstance(head, dict):
+            return (no_update,) * 5
+        text = str(head.get("text", ""))
+        kind = str(head.get("kind", "info"))
+        ok = kind not in {"error", "warning"}
+        # _toast returns (is_open, children, icon, header) — splice
+        # the 3000ms duration on so the toast auto-dismisses per spec.
+        toast_outputs = _toast(text, ok=ok)
+        return (*toast_outputs, 3000)
+
+    # ----------------------------------------------------------------------
+    # 14. Toast dismiss → pop the queue head
+    # ----------------------------------------------------------------------
+    #
+    # When the user clicks dismiss (or the 3000ms timer fires), the
+    # ``dbc.Toast`` flips ``is_open`` from True → False.  We listen
+    # for that transition and rewrite ``STORE_BUILDER_STATE`` with the
+    # queue's head popped so the next queued payload can surface on
+    # the next state mutation.
+    #
+    # Edge case: the toast may flip ``is_open=False`` because *this*
+    # callback just wrote ``is_open=True`` and then the timer fired —
+    # we need to be tolerant of the empty-queue / out-of-sync case
+    # where the queue is already empty (the toast was set by a direct
+    # _toast call, not by surface_toast_queue_head).  We short-circuit
+    # with ``no_update`` when the queue is empty so we don't churn
+    # state on every unrelated toast dismiss.
+    @app.callback(
+        Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
+        Input(ids.TOAST_NOTIFICATION, "is_open"),
+        State(ids.STORE_BUILDER_STATE, "data"),
+        prevent_initial_call=True,
+    )
+    def pop_toast_queue_on_dismiss(
+        is_open: Optional[bool],
+        state_data: Optional[Dict[str, Any]],
+    ) -> Any:
+        """Pop the toast queue head when the toast closes.
+
+        Spec §5.1: dismissable on user click, 3000ms auto-dismiss,
+        FIFO drain.  Both close paths flip ``is_open=False`` on the
+        :data:`ids.TOAST_NOTIFICATION` component; this callback
+        listens for that transition and trims the queue.
+
+        Args:
+            is_open: New value of ``TOAST_NOTIFICATION.is_open``.
+                ``True`` means a toast just opened (no-op); ``False``
+                means a dismiss / timeout fired and we should pop.
+            state_data: Live ``STORE_BUILDER_STATE`` dump.
+
+        Returns:
+            The mutated state dict (with the queue head removed), or
+            :data:`no_update` when no pop is needed.
+        """
+
+        if is_open:
+            return no_update
+        if not isinstance(state_data, dict):
+            return no_update
+        queue = state_data.get("toast_queue") or []
+        if not queue:
+            return no_update
+        new_state = dict(state_data)
+        new_state["toast_queue"] = list(queue[1:])
+        return new_state
+
 
 # ---------------------------------------------------------------------------
 # Helpers (private to this module)

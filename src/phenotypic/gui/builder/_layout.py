@@ -3451,21 +3451,19 @@ def _build_input_image_card(
                 dbc.Button(
                     "Re-layout",
                     # No ``id=`` — Dash forbids duplicating the toolbar's
-                    # ``BTN_RELAYOUT``.  The button uses an "as=html.A"
-                    # style trick to forward the click to the toolbar
-                    # button via JS document delegation; until that JS
-                    # lands the button is still discoverable to users
-                    # as a label hint pointing at the toolbar control.
+                    # ``BTN_RELAYOUT`` (always-mounted) inside this card.
+                    # The button is purely cosmetic / signposting; a
+                    # clientside delegation listener (registered in
+                    # ``register_callbacks``) intercepts clicks on the
+                    # ``inspector-input-image-relayout-btn`` class and
+                    # forwards them to the toolbar's canonical
+                    # ``BTN_RELAYOUT`` so the spec §4.5 affordance is
+                    # functional from the inspector pane.
                     color="secondary",
                     outline=True,
                     size="sm",
                     n_clicks=0,
                     className="me-2 inspector-input-image-relayout-btn",
-                    # The "data-relayout-proxy" attribute lets the
-                    # clientside callback below detect clicks on this
-                    # cosmetic button and forward to the toolbar's
-                    # canonical handler without needing a Dash id.
-                    **{"data-relayout-proxy": "true"},
                 ),
                 dbc.Button(
                     "Re-anchor view to Input Image",
