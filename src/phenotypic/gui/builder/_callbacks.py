@@ -3853,19 +3853,7 @@ def register_callbacks(app: dash.Dash) -> None:
                     if new_state_dict == state_data:
                         # Nothing else changed — just dispatch the
                         # sentinel and bail.
-                        return (
-                            no_update,
-                            no_update,
-                            no_update,
-                            no_update,
-                            no_update,
-                            no_update,
-                            no_update,
-                            no_update,
-                            no_update,
-                            no_update,
-                            aborted_payload,
-                        )
+                        return (*((no_update,) * 10), aborted_payload)
                     # State changed (toast queue grew) — render views
                     # + emit the abort sentinel together.
                     new_state = state_from_json(new_state_dict)
@@ -3879,10 +3867,7 @@ def register_callbacks(app: dash.Dash) -> None:
                         inspector,
                         popover_contents,
                         _popover_style_for(popover_contents),
-                        no_update,
-                        no_update,
-                        no_update,
-                        no_update,
+                        *((no_update,) * 4),
                         aborted_payload,
                     )
             if new_state_dict == state_data:
@@ -3898,21 +3883,12 @@ def register_callbacks(app: dash.Dash) -> None:
                 inspector,
                 popover_contents,
                 _popover_style_for(popover_contents),
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                no_update,
+                *((no_update,) * 5),
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception("viewport_op_fan_in failed")
             return (
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                no_update,
+                *((no_update,) * 6),
                 True,
                 _format_exception(exc),
                 "danger",
@@ -5838,13 +5814,13 @@ def register_callbacks(app: dash.Dash) -> None:
     ) -> Tuple[Any, ...]:
         """Surface the head of ``state.toast_queue`` on the live toast.
 
-        Per spec §5.1: one toast visible at a time, 3000ms auto-dismiss,
-        FIFO order.  This callback subscribes to every
-        :data:`STORE_BUILDER_STATE` write and shows the head when the
-        queue is non-empty.  When the queue is empty (typical case),
-        the call short-circuits with ``no_update`` so other toast
-        sources (Run preview / Save / direct-error toasts) are not
-        clobbered.
+        Per spec §5.1: one toast visible at a time, auto-dismiss after
+        :data:`_TOAST_QUEUE_DURATION_MS`, FIFO order.  This callback
+        subscribes to every :data:`STORE_BUILDER_STATE` write and shows
+        the head when the queue is non-empty.  When the queue is empty
+        (typical case), the call short-circuits with ``no_update`` so
+        other toast sources (Run preview / Save / direct-error toasts)
+        are not clobbered.
 
         Args:
             state_data: ``state_to_json`` payload from
@@ -5853,8 +5829,8 @@ def register_callbacks(app: dash.Dash) -> None:
 
         Returns:
             Five-tuple matching the standard toast outputs plus the
-            ``duration`` slot — 3000ms per spec.  ``no_update`` on
-            every output when the queue is empty.
+            ``duration`` slot.  ``no_update`` on every output when the
+            queue is empty.
         """
 
         queue = _toast_queue_from_state(state_data)
@@ -5900,10 +5876,11 @@ def register_callbacks(app: dash.Dash) -> None:
     ) -> Any:
         """Pop the toast queue head when the toast closes.
 
-        Spec §5.1: dismissable on user click, 3000ms auto-dismiss,
-        FIFO drain.  Both close paths flip ``is_open=False`` on the
-        :data:`ids.TOAST_NOTIFICATION` component; this callback
-        listens for that transition and trims the queue.
+        Spec §5.1: dismissable on user click, auto-dismiss after
+        :data:`_TOAST_QUEUE_DURATION_MS`, FIFO drain.  Both close paths
+        flip ``is_open=False`` on the :data:`ids.TOAST_NOTIFICATION`
+        component; this callback listens for that transition and trims
+        the queue.
 
         Args:
             is_open: New value of ``TOAST_NOTIFICATION.is_open``.
