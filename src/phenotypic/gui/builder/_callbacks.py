@@ -190,10 +190,10 @@ def _scope_at_breadcrumb(
     * Regular main-ribbon drill (``{"node_id": <id>, "param": None}``):
       descend into ``node["nested"]``.
     * Legacy op-typed parameter drill (``{"node_id": <id>, "param":
-      <name>}``): descend into the synthesised scope under
-      ``node["params"]["__op_param_scope__"][param_name]``, seeding from
-      any existing operation marker dict if absent. Kept for back-compat;
-      new code should use the aux-slot form below.
+      <name>}``): the synthesised op-param scope was retired in Phase 7
+      with the popover wire flow. The segment is now treated as a no-op
+      (continues walking with the current scope) so older saved state
+      that still carries these segments loads without crashing.
     * Aux-slot drill (``{"target_node_id": <id>, "param": <name>,
       "slot": <int>}``): descend into the embedded aux ``StepNode`` dict
       at ``consumer["aux_ports"][param][slot]``. If that aux has

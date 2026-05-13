@@ -352,9 +352,9 @@ def build_post_palette(registry: "OperationRegistry") -> dbc.Accordion:
 
 
 def _canvas_stylesheet() -> List[dict]:
-    """Cytoscape stylesheet used by :func:`build_canvas`.
+    """Cytoscape stylesheet used by :func:`build_canvas` (legacy path).
 
-    The popover-anchored aux design renders two extra visible markers per
+    The legacy ribbon canvas renders one extra visible marker pair per
     consumer node:
 
     * **Main I/O ports** — small blue circles on the left (input) and
@@ -362,15 +362,13 @@ def _canvas_stylesheet() -> List[dict]:
       the previous node's main-output port to the next node's main-input
       port (the wire visibly *enters* and *exits* each operation rather
       than routing through node centers).
-    * **Aux ports** — small purple rounded-square markers on the
-      BOTTOM edge of every consumer that has op-typed parameters. One
-      marker per param (regardless of slot cardinality); list-typed
-      params still show a single marker. Tapping the marker opens the
-      canvas-anchored popover which then handles slot management.
 
-    These markers live as additional cytoscape *nodes* (not edges) so
-    they're positionable independently and the popover's clientside JS
-    glue can target them by ``id`` prefix. The cytoscape side intentionally
+    Phase 7 retired the popover-anchored aux flow; the bottom-edge
+    aux-port markers and their purple-square stylesheet rules are gone
+    (the DAG path renders aux wiring as first-class ``block_port``
+    elements + the inspector aux-ports section). Main I/O port markers
+    still live as additional cytoscape *nodes* (not edges) so they're
+    positionable independently. The cytoscape side intentionally
     references ``OI_PURPLE`` directly (the value behind
     ``--color-interactive`` / ``--oi-purple``) because cytoscape's canvas
     renderer cannot resolve CSS custom properties.
