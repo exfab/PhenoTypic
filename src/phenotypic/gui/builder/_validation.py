@@ -75,10 +75,10 @@ class Issue:
             offender's block id.
         detail: Free-form human-readable explanation. Used by tooltips
             and toasts; not part of the test-normalisation key.
-        scope_path: List of container ``block_id``s walked from the root
-            scope to the offender's scope. Empty when the issue lives in
-            the root scope. The UI consumes this to pan/zoom across
-            container boundaries when a badge is clicked.
+        scope_path: List of container block_id values walked from the
+            root scope to the offender's scope. Empty when the issue
+            lives in the root scope. The UI consumes this to pan/zoom
+            across container boundaries when a badge is clicked.
         severity: ``"error"`` for the seven blocking rules,
             ``"advisory"`` for ``stage_order_hint`` and
             ``unknown_class``. Populated by the rule that emits the
@@ -111,6 +111,23 @@ def validate(state: BuilderState) -> List[Issue]:
         ``cycle`` → ``container_mode`` → ``stage_order_hint``, and
         nested-scope issues are appended after the parent scope's
         issues. The ordering is stable for snapshot-style tests.
+
+    Examples:
+        An empty scope (only the auto-seeded ``InputImage`` block)
+        passes every rule and returns an empty issue list. The
+        synth-yeast fixture is loaded only to anchor the example in
+        the project's microbiology context — validation does not
+        touch image data:
+
+        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> from phenotypic.gui.builder._state import (
+        ...     BuilderScope, BuilderState,
+        ... )
+        >>> from phenotypic.gui.builder._validation import validate
+        >>> state = BuilderState(root=BuilderScope())
+        >>> validate(state)
+        []
+        >>> _ = load_synth_yeast_plate()  # microbiology context anchor
     """
 
     return _validate_scope(state.root, scope_path=[])

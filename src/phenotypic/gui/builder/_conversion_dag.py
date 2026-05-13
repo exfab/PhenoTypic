@@ -104,6 +104,41 @@ def to_pipeline_dag(state: BuilderState) -> ImagePipeline:
             ``severity == "error"``. The message lists each rule kind
             and the offending block's label so the GUI toast can
             surface a deterministic explanation.
+
+    Examples:
+        Build a one-op DAG (Input Image → GaussianBlur) and materialise
+        it as an :class:`~phenotypic.ImagePipeline`. The synth-yeast
+        fixture is loaded only to anchor the example in the project's
+        microbiology context — the conversion does not touch image
+        data:
+
+        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> from phenotypic.gui.builder._state import (
+        ...     BuilderScope, BuilderState, BlockNode, Edge,
+        ...     _new_block_id,
+        ... )
+        >>> from phenotypic.gui.builder._conversion_dag import to_pipeline_dag
+        >>> scope = BuilderScope(name="demo", desc="one-op chain")
+        >>> input_block = scope.blocks[0]
+        >>> blur = BlockNode(
+        ...     block_id=_new_block_id(),
+        ...     class_name="GaussianBlur",
+        ...     params={},
+        ...     label="blur",
+        ... )
+        >>> scope.blocks.append(blur)
+        >>> scope.edges.append(Edge(
+        ...     edge_id=_new_block_id(),
+        ...     source_block_id=input_block.block_id,
+        ...     target_block_id=blur.block_id,
+        ...     target_port="in",
+        ...     kind="image",
+        ... ))
+        >>> state = BuilderState(root=scope)
+        >>> pipeline = to_pipeline_dag(state)
+        >>> len(pipeline.get_ops())
+        1
+        >>> _ = load_synth_yeast_plate()  # microbiology context anchor
     """
     errors = [iss for iss in validate(state) if iss.severity == "error"]
     if errors:
@@ -668,6 +703,24 @@ def from_pipeline_dag(pipeline: ImagePipeline) -> BuilderState:
     Returns:
         A :class:`BuilderState` whose root scope reproduces the
         pipeline.
+
+    Examples:
+        Mirror a tiny :class:`~phenotypic.ImagePipeline` back into a
+        DAG :class:`BuilderState`. The auto-seeded ``InputImage``
+        block sits at index 0 of the root scope's ``blocks`` list and
+        the mirrored op follows at index 1:
+
+        >>> from phenotypic import ImagePipeline
+        >>> from phenotypic.enhance import GaussianBlur
+        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> from phenotypic.gui.builder._conversion_dag import (
+        ...     from_pipeline_dag,
+        ... )
+        >>> pipeline = ImagePipeline(ops=[GaussianBlur()], name="demo")
+        >>> state = from_pipeline_dag(pipeline)
+        >>> [b.class_name for b in state.root.blocks]
+        ['InputImage', 'GaussianBlur']
+        >>> _ = load_synth_yeast_plate()  # microbiology context anchor
     """
 
     state = BuilderState()
