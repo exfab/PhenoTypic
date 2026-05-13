@@ -66,9 +66,11 @@ to put both new tabs inside the results-viewer Dash app rather than the
 
 - New `QualityCheck(SetAnalyzer)` ABC in `phenotypic.analysis.abc_`.
 - Two concrete subclasses: `ExpectedVsDetectedCount`, `ReplicateAgreement`.
-- New `QUALITY_COUNT` and `QUALITY_SE` MeasurementInfo classes (one
-  per concrete check; no generic `QUALITY_CHECK` enum — see
-  rationale in the MeasurementInfo section).
+- New `QUALITY_CHECK`, `QUALITY_COUNT`, and `QUALITY_SE`
+  MeasurementInfo classes. `QUALITY_CHECK` is the generic one shared
+  by every subclass; it overrides `append_rst_to_doc` to accept a
+  per-check `name` so emitted column names render correctly in each
+  subclass's documentation.
 - QC tab inside the results viewer with configurable check cards, live
   recompute on curation, "mark flagged for removal" hand-off into the
   existing `STORE_REMOVED_KEYS` curation store.
@@ -179,6 +181,9 @@ src/phenotypic/analysis/
 └── __init__.py                     # MOD: export the new public names
 
 src/phenotypic/tools_/measurement_info/
+├── _quality_check.py               # NEW: QUALITY_CHECK MI (generic;
+│                                     overrides append_rst_to_doc to
+│                                     accept a per-check name kwarg)
 ├── _quality_count.py               # NEW: QUALITY_COUNT MI (per-check)
 └── _quality_se.py                  # NEW: QUALITY_SE MI (per-check)
 ```
@@ -440,17 +445,60 @@ colored by the worst-status timepoint in that group.
 
 ### `MeasurementInfo` classes
 
-There is **no** `QUALITY_CHECK` enum. The generic Flag/Severity/Status
-columns are dynamically named per-subclass (`QC_<name>_Flag` etc.),
-which a static `MeasurementInfo` enum cannot express — its members
-would render as `QC_Flag`/`QC_Severity`/`QC_Status` (the wrong column
-names) and `append_rst_to_doc` would produce misleading documentation.
-The generic columns are documented in the `QualityCheck` class
-docstring as free-text, alongside the column-composition rule. Each
-concrete subclass owns its **own** per-check MeasurementInfo for its
-non-generic fields (Detected/Expected/Delta, SE/Mean/CV, …):
+Three `MeasurementInfo` enums: one **generic** (shared by every QC
+subclass) and two **per-check** (specific to `ExpectedVsDetectedCount`
+and `ReplicateAgreement`). The generic one overrides
+`append_rst_to_doc` so subclass docstrings render the right substituted
+column names rather than the literal placeholder.
 
 ```python
+# tools_/measurement_info/_quality_check.py
+class QUALITY_CHECK(MeasurementInfo):
+    """Generic QC output columns emitted by every QualityCheck subclass.
+
+    The category convention used elsewhere in the codebase would produce
+    column names ``QC_Flag``, ``QC_Severity``, ``QC_Status`` — but the
+    actual emitted columns include each subclass's ``name`` between the
+    category and the label (``QC_Count_Flag``, ``QC_SE_Flag``). This
+    enum overrides ``append_rst_to_doc`` to substitute the subclass's
+    ``name`` into the RST column header, so each concrete subclass's
+    docstring documents its real emitted columns.
+    """
+    FLAG     = ("Flag",     "True when severity >= severity_fail; eligible for curation.")
+    SEVERITY = ("Severity", "Normalized magnitude in [0, inf). Drives Status.")
+    STATUS   = ("Status",   "Categorical: pass | warn | fail.")
+
+    @classmethod
+    def category(cls) -> str:
+        return "QC"
+
+    @classmethod
+    def append_rst_to_doc(
+        cls,
+        doc: str,
+        *,
+        check_name: str | None = None,
+    ) -> str:
+        """Append an RST table with optional per-check name substitution.
+
+        Args:
+            doc: Existing class docstring to splice into.
+            check_name: When provided, column names render as
+                ``QC_<check_name>_<Label>`` (e.g. ``QC_Count_Flag``).
+                When omitted (called on the base ``QualityCheck`` class
+                or for general docs), column names render as
+                ``QC_<name>_<Label>`` with ``<name>`` as a literal
+                placeholder, signalling the per-subclass substitution.
+
+        Returns:
+            Docstring with an appended RST table of output columns.
+        """
+        # Implementation: build the same table as the base class's
+        # append_rst_to_doc, but compose the column-name strings using
+        # `f"QC_{check_name or '<name>'}_{member.label}"` instead of
+        # the base class's `f"{category}_{member.label}"`.
+        ...
+
 # tools_/measurement_info/_quality_count.py
 class QUALITY_COUNT(MeasurementInfo):
     DETECTED = ("Detected", "Detected colony count in the group.")
@@ -469,9 +517,39 @@ class QUALITY_SE(MeasurementInfo):
     def category(cls) -> str: return "QC_SE"
 ```
 
-Each concrete check's docstring composes its `_measurement_infoclass`
-documentation via the existing `append_rst_to_doc` pattern used by
-`EdgeCorrector`.
+**How the generic + per-check docs compose on each subclass:**
+
+```python
+# At module load time:
+QualityCheck.__doc__ = QUALITY_CHECK.append_rst_to_doc(QualityCheck.__doc__)
+# → base class gets the table with QC_<name>_Flag etc. (placeholder)
+
+# Each concrete subclass:
+ExpectedVsDetectedCount.__doc__ = QUALITY_CHECK.append_rst_to_doc(
+    ExpectedVsDetectedCount.__doc__, check_name="Count"
+)
+ExpectedVsDetectedCount.__doc__ = QUALITY_COUNT.append_rst_to_doc(
+    ExpectedVsDetectedCount.__doc__
+)
+# → docstring carries TWO tables: the generic QC_Count_Flag/Severity/Status
+#   table, plus the QC_Count Detected/Expected/Delta table.
+```
+
+The pattern is wired automatically via `QualityCheck.__init_subclass__`,
+so concrete checks don't have to call `append_rst_to_doc` manually:
+
+```python
+class QualityCheck(SetAnalyzer, ABC):
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if cls.__doc__ and getattr(cls, "name", None):
+            cls.__doc__ = QUALITY_CHECK.append_rst_to_doc(
+                cls.__doc__, check_name=cls.name
+            )
+            mi = getattr(cls, "_measurement_infoclass", None)
+            if mi is not None:
+                cls.__doc__ = mi.append_rst_to_doc(cls.__doc__)
+```
 
 ---
 
@@ -740,11 +818,18 @@ reused when revision is unchanged.
 ### Export "QC report" button
 
 ```
-<output_root>/qc.parquet         long format: union of every check's
-                                 analyze() output, with a leading
-                                 "QC_Check_Name" column as discriminator
+<output_root>/qc.parquet         long format: union of every enabled
+                                 check's analyze() output, with TWO
+                                 leading discriminator columns:
+                                   - QC_Check_Class      (e.g. "ReplicateAgreement")
+                                   - QC_Check_Instance_Id (e.g. "qc-se-a3f4b91d")
+                                 Class lets downstream consumers filter
+                                 by check type; Instance_Id distinguishes
+                                 multiple configured instances of the
+                                 same class (e.g. SE on Size_Area vs SE
+                                 on Intensity_Mean).
 
-<output_root>/qc_summary.json    one entry per instance:
+<output_root>/qc_summary.json    one entry per enabled instance:
                                  {instance_id, class, params,
                                   num_rows, num_flagged, max_severity,
                                   status_counts: {pass, warn, fail}}
@@ -1077,6 +1162,13 @@ tests/
 │   │                                              non-numeric time column
 │   │                                              → empty-state path.
 │   └── tools_/
+│       ├── test_quality_check_info.py           # QUALITY_CHECK FLAG/SEVERITY/
+│       │                                          STATUS members; overridden
+│       │                                          append_rst_to_doc:
+│       │                                          - no check_name → table has
+│       │                                            QC_<name>_Flag placeholder
+│       │                                          - check_name="Count" →
+│       │                                            QC_Count_Flag etc.
 │       ├── test_quality_count_info.py           # QUALITY_COUNT category +
 │       │                                          DETECTED/EXPECTED/DELTA
 │       │                                          labels & headers.
@@ -1160,25 +1252,30 @@ Each requires:
 Bottom-up; each step is independently green-able and unblocks the next.
 
 ```
-1. tools_/measurement_info/_quality_count.py    + tests
-2. tools_/measurement_info/_quality_se.py       + tests
+1. tools_/measurement_info/_quality_check.py    + tests
+   (QUALITY_CHECK MI with overridden append_rst_to_doc that accepts
+   a `check_name` kwarg for per-subclass column-name substitution.)
+2. tools_/measurement_info/_quality_count.py    + tests
+3. tools_/measurement_info/_quality_se.py       + tests
    └── gate: uv run pytest tests/unit/tools_/test_quality_*
 
-3. analysis/abc_/_quality_check.py              + tests
+4. analysis/abc_/_quality_check.py              + tests
+   (QualityCheck base class with __init_subclass__ that calls
+   QUALITY_CHECK.append_rst_to_doc(cls.__doc__, check_name=cls.name).)
    └── gate: uv run pytest tests/unit/analysis/abc_/test_quality_check.py
 
-4. analysis/_expected_vs_detected.py            + tests + doctest
-5. analysis/_replicate_agreement.py             + tests + doctest
+5. analysis/_expected_vs_detected.py            + tests + doctest
+6. analysis/_replicate_agreement.py             + tests + doctest
    └── gate: uv run pytest tests/unit/analysis/test_expected_vs_detected.py
               tests/unit/analysis/test_replicate_agreement.py
               --doctest-modules
 
-6. Refactor gui/analysis/_schema_cache.py → gui/_schema_cache.py
+7. Refactor gui/analysis/_schema_cache.py → gui/_schema_cache.py
    (mechanical move + 2-3 import-site updates)
    └── gate: uv run pytest tests/
 
-7. gui/_qc_recipe.py                            + tests
-8. gui/_operation_registry.py — add an explicit
+8. gui/_qc_recipe.py                            + tests
+9. gui/_operation_registry.py — add an explicit
    `elif issubclass(obj, QualityCheck): category = "quality_check"`
    branch inside `_discover_analyzers` BEFORE the `ModelFitter` check.
    (Without this branch, QC classes silently inherit the default
@@ -1186,33 +1283,33 @@ Bottom-up; each step is independently green-able and unblocks the next.
    └── gate: uv run pytest tests/unit/gui/test_qc_recipe.py
               and `_discover_analyzers` discovers QC subclasses
 
-9. results_viewer/_heatmap_tab/_figure.py      + tests
-   (pure function — fastest GUI seam to land)
-   └── gate: uv run pytest tests/unit/gui/test_heatmap_figure.py
+10. results_viewer/_heatmap_tab/_figure.py     + tests
+    (pure function — fastest GUI seam to land)
+    └── gate: uv run pytest tests/unit/gui/test_heatmap_figure.py
 
-10. results_viewer/_heatmap_tab/_layout.py + _callbacks.py + _ids.py
-11. results_viewer/_layout.py — register Heatmap tab
+11. results_viewer/_heatmap_tab/_layout.py + _callbacks.py + _ids.py
+12. results_viewer/_layout.py — register Heatmap tab
     └── gate: uv run pytest tests/gui/test_heatmap_tab.py
 
-12. results_viewer/_qc_tab/_check_card.py
-13. results_viewer/_qc_tab/_layout.py
-14. results_viewer/_qc_tab/_callbacks.py
-15. results_viewer/_layout.py — register QC tab
-16. results_viewer/_app.py — stash QcRecipe + MeasurementSchema on
+13. results_viewer/_qc_tab/_check_card.py
+14. results_viewer/_qc_tab/_layout.py
+15. results_viewer/_qc_tab/_callbacks.py
+16. results_viewer/_layout.py — register QC tab
+17. results_viewer/_app.py — stash QcRecipe + MeasurementSchema on
                               app.server.config
     └── gate: uv run pytest tests/gui/test_qc_tab.py
 
-17. gui/FEATURES.md rows                        (CI gate)
-18. gui/WORKFLOWS.md rows                       (CI gate)
-19. scripts/capture_gui_tutorial_screenshots.py — _capture_qc_curation_loop,
+18. gui/FEATURES.md rows                        (CI gate)
+19. gui/WORKFLOWS.md rows                       (CI gate)
+20. scripts/capture_gui_tutorial_screenshots.py — _capture_qc_curation_loop,
                                                   _capture_heatmap_exploration
-20. docs/source/tutorials/gui/qc_curation_loop.rst
-21. docs/source/tutorials/gui/heatmap_exploration.rst
-22. uv run python scripts/capture_gui_tutorial_screenshots.py
+21. docs/source/tutorials/gui/qc_curation_loop.rst
+22. docs/source/tutorials/gui/heatmap_exploration.rst
+23. uv run python scripts/capture_gui_tutorial_screenshots.py
     + commit refreshed PNGs
     └── gate: pre-commit hook + gui-docs CI workflow
 
-23. Full integration sanity:
+24. Full integration sanity:
     uv run mypy src/phenotypic
     uv run ruff check --fix
     uv run pytest
@@ -1220,17 +1317,17 @@ Bottom-up; each step is independently green-able and unblocks the next.
 
 **Order rationale:**
 
-- Steps 1–5 land a fully usable library API (`from phenotypic.analysis
+- Steps 1–6 land a fully usable library API (`from phenotypic.analysis
   import ExpectedVsDetectedCount`) before any GUI work, so the user
   can smoke-test in Jupyter while the GUI is being built.
-- Step 9 (heatmap figure builder) is a pure function — the fastest
+- Step 10 (heatmap figure builder) is a pure function — the fastest
   CI-green GUI seam, builds confidence in the Plotly approach before
   touching layout.
-- Heatmap tab (10–11) lands before QC tab (12–15) because it's
+- Heatmap tab (11–12) lands before QC tab (13–16) because it's
   simpler — one figure, no per-card pattern-matching — and surfaces
   any `_param_forms` / schema integration issues early on a low-risk
   surface.
-- Ledger + tutorials (17–22) come last because they reference the
+- Ledger + tutorials (18–23) come last because they reference the
   shipped chrome; building them earlier would invite drift.
 
 ---
@@ -1240,13 +1337,16 @@ Bottom-up; each step is independently green-able and unblocks the next.
 The plan-reviewer pass surfaced five open questions. Resolutions below
 so implementers don't re-derive them.
 
-1. **`QUALITY_CHECK` MeasurementInfo disposition.** Dropped. Static
-   enum members can't express the per-subclass column-name
-   composition (`QC_<name>_Flag`), and a placeholder enum would
-   generate misleading RST. Generic columns are documented in the
-   `QualityCheck` class docstring as free-text. Each concrete check
-   still owns its own per-check MeasurementInfo
-   (`QUALITY_COUNT`, `QUALITY_SE`).
+1. **`QUALITY_CHECK` MeasurementInfo disposition.** Kept, with an
+   **overridden `append_rst_to_doc`** that accepts a `check_name`
+   kwarg for per-subclass column-name substitution. Without the
+   kwarg (called on the base `QualityCheck` class), the RST table
+   renders columns as `QC_<name>_Flag` with `<name>` as a literal
+   placeholder. With the kwarg (called from each concrete subclass
+   via `__init_subclass__`), substitution produces the real
+   emitted column names: `QC_Count_Flag`, `QC_SE_Flag`, …
+   Resolves the reviewer's enum-vs-emitted-columns mismatch while
+   keeping MeasurementInfo's structured-documentation job intact.
 
 2. **Heatmap aggregator semantics — before or after image filter?**
    After. The Image picker filters down to a single image first,
@@ -1261,12 +1361,14 @@ so implementers don't re-derive them.
    already reflects the addition.
 
 4. **Export QC report — what's included?** Only `enabled=True` checks
-   contribute rows to `qc.parquet`. The discriminator column is
-   `QC_Check_Instance_Id` (the recipe's `instance_id`, not the class
-   name), so the user can correlate exported rows back to specific
-   recipe entries even when multiple instances of the same class
-   exist. `qc_summary.json` includes both `instance_id` and `class`
-   per entry for the same reason.
+   contribute rows to `qc.parquet`. Two discriminator columns lead
+   every row: `QC_Check_Class` (e.g. `"ReplicateAgreement"`) and
+   `QC_Check_Instance_Id` (e.g. `"qc-se-a3f4b91d"`). Class supports
+   the common "filter by check type" downstream query; Instance_Id
+   distinguishes multiple configured instances of the same class
+   (e.g. SE on `Size_Area` vs SE on `Intensity_Mean`).
+   `qc_summary.json` includes both `instance_id` and `class` per
+   entry for the same reason.
 
 5. **`metadata` path absolute vs relative in the recipe.** Stored
    absolute as written by the file picker. Relative paths would be
