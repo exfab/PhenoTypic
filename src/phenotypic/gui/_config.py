@@ -78,6 +78,9 @@ __all__ = [
     "CFG_FILTERED_STATE",
     "CFG_RECIPE_STATE",
     "CFG_MEASUREMENT_SCHEMA",
+    "CFG_QC_RECIPE",
+    "CFG_QC_INSTANCES_CACHE",
+    "CFG_QC_AUGMENTED_FRAME",
     # Sandbox subdirectories
     "SANDBOX_GUI_DIRNAME",
     "SANDBOX_PRESETS_SUBDIR",
@@ -204,12 +207,28 @@ CFG_FILTERED_STATE: str = "filtered_state"
 CFG_RECIPE_STATE: str = "recipe_state"
 
 #: ``app.server.config`` key holding the analysis sub-app's
-#: :class:`~phenotypic.gui.analysis._schema_cache.MeasurementSchema` —
+#: :class:`~phenotypic.gui._schema_cache.MeasurementSchema` —
 #: a lazy mtime-keyed cache of column lists from
 #: ``measurements.parquet`` / ``master_measurements.parquet`` (with CSV
 #: fallback). Drives the column-aware dropdowns on filter / model
 #: section forms.
 CFG_MEASUREMENT_SCHEMA: str = "pheno_measurement_schema"
+
+#: ``app.server.config[CFG_QC_RECIPE]`` — :class:`QcRecipe` instance
+#: for the active output directory. Loaded at create_app() boot and
+#: mutated by QC tab callbacks (add/remove/update). Spec lines 751-759.
+CFG_QC_RECIPE: str = "pheno_qc_recipe"
+
+#: ``app.server.config[CFG_QC_INSTANCES_CACHE]`` — a single dict
+#: ``{revision: list[QualityCheck]}`` invalidated on every recipe-revision
+#: change (read-then-discard, not unbounded). Spec lines 753-755.
+CFG_QC_INSTANCES_CACHE: str = "pheno_qc_instances"
+
+#: ``app.server.config[CFG_QC_AUGMENTED_FRAME]`` — latest merged
+#: filtered + QC-columns frame consumed by the Heatmap tab. Single
+#: value, overwritten on every QC card-body refresh; sized cap-at-one
+#: enforced. Spec lines 756-759.
+CFG_QC_AUGMENTED_FRAME: str = "pheno_qc_augmented_frame"
 
 # ---------------------------------------------------------------------------
 # Sandbox subdirectories

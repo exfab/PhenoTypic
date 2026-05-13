@@ -349,3 +349,70 @@ class TestIsListDetection:
         assert blur is not None
         for p in blur.parameters.values():
             assert p.is_list is False
+
+
+class TestQualityCheckCategory:
+    """`_discover_analyzers` routes QualityCheck subclasses to a dedicated category.
+
+    Per spec §1278–1283, ``QualityCheck`` subclasses (e.g.
+    ``ExpectedVsDetectedCount``, ``ReplicateAgreement``) must land under
+    the ``"quality_check"`` category so the QC tab's add-check dropdown
+    has something to render. Without the explicit branch, the
+    fall-through default would mis-route them into ``"Filter"``.
+
+    Per spec §1419–1428, ``OperationRegistry._extract_parameters`` skips
+    the inherited ``agg_func`` parameter on QC subclasses that opt out
+    via ``_exposes_agg_func: ClassVar[bool] = False`` (the default for
+    every v1 check) so the param form doesn't surface an unused dropdown.
+    Backward-compat: analyzers without the attribute (``EdgeCorrector``,
+    ``LogGrowthModel``) keep their ``agg_func`` parameter exposed.
+    """
+
+    @pytest.fixture(scope="class")
+    def registry(self):
+        reg = OperationRegistry()
+        reg.discover()
+        return reg
+
+    def test_quality_check_subclasses_get_quality_check_category(self, registry):
+        """``ExpectedVsDetectedCount`` and ``ReplicateAgreement`` register here."""
+        qc_ops = registry.get_by_category("quality_check")
+        qc_names = {info.name for info in qc_ops}
+        assert "ExpectedVsDetectedCount" in qc_names
+        assert "ReplicateAgreement" in qc_names
+        # Each registered op must carry the matching category attribute.
+        for info in qc_ops:
+            assert info.category == "quality_check"
+
+    def test_quality_check_classes_excluded_from_filter_or_model_categories(
+        self, registry
+    ):
+        """QC classes must not leak into ``"Filter"`` or ``"Model"`` buckets."""
+        filter_names = {info.name for info in registry.get_by_category("Filter")}
+        model_names = {info.name for info in registry.get_by_category("Model")}
+        assert "ExpectedVsDetectedCount" not in filter_names
+        assert "ExpectedVsDetectedCount" not in model_names
+        assert "ReplicateAgreement" not in filter_names
+        assert "ReplicateAgreement" not in model_names
+
+    def test_quality_check_base_class_itself_not_registered(self, registry):
+        """The abstract ``QualityCheck`` ABC is excluded from every category."""
+        all_ops = registry.get_all()
+        assert "QualityCheck" not in all_ops
+        for category in registry.get_categories():
+            names = {info.name for info in registry.get_by_category(category)}
+            assert "QualityCheck" not in names
+
+    def test_quality_check_params_omit_agg_func_when_exposes_agg_func_is_false(
+        self, registry
+    ):
+        """``_exposes_agg_func=False`` filters ``agg_func`` out of params."""
+        info = registry.get("ExpectedVsDetectedCount")
+        assert info is not None
+        assert "agg_func" not in info.parameters
+
+    def test_non_quality_check_analyzers_still_expose_agg_func(self, registry):
+        """Backward-compat: analyzers without the flag keep ``agg_func``."""
+        info = registry.get("EdgeCorrector")
+        assert info is not None
+        assert "agg_func" in info.parameters
