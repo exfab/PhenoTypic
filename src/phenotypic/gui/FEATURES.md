@@ -214,6 +214,49 @@ under both standalone and dispatcher-mounted launches.
 | Sidebar hand-off (shared)     | `extra_release_sessions` on `/sandbox/api/viewer/output-root` | A successful POST to the bind endpoint releases BOTH `viewer_session` and `analysis_session` so a single sidebar pick binds both tools to the same output directory in lock-step. | ✅ shipping | integration | tests/integration/gui/test_analysis_handoff.py::test_bind_releases_both_sessions |
 | Empty-state hand-off banner   | `EMPTY_HANDOFF_BANNER` + `_register_empty_state_callbacks` | Empty-state mount of `/analysis/` renders a banner that picks up `SHELL_SIDEBAR_SELECTION_STORE`, populates the path label, enables ↩ Open in analysis when the selection is a CLI output, and clientside-POSTs to the bind endpoint on click. | ✅ shipping | integration | tests/integration/gui/test_analysis_handoff.py::test_bind_releases_both_sessions |
 
+## QC tab
+
+The Results Viewer's QC tab composes one Plotly card per configured
+`QualityCheck` analyzer. Each card subscribes to `STORE_REMOVED_KEYS`
+so the figure + summary strip + status badge re-render on every curation
+tick without a manual refresh, and the recipe-mutation callbacks bump
+`STORE_QC_RECIPE_REVISION` so the card-list-render callback can swap the
+DOM atomically when entries are added / edited / removed.
+
+| Feature                                    | Element                          | Expected behaviour                                                                                                | Status     | Test layer  | Test ref                                                                                          |
+| ------------------------------------------ | -------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ---------- | ----------- | ------------------------------------------------------------------------------------------------- |
+| QC tab — Add check button                  | `+ Add check` button + modal     | Opens modal listing `quality_check` operations; submitting creates a card; `qc_recipe.json` reflects the new entry. | ✅ shipping | e2e         | tests/e2e/gui/test_qc_tab.py::test_add_check_modal                                                |
+| QC tab — Per-check edit modal              | Edit button per card             | Pre-fills current params; submit persists; `STORE_QC_RECIPE_REVISION` bumps.                                      | ✅ shipping | e2e         | tests/e2e/gui/test_qc_tab.py::test_edit_check_modal                                               |
+| QC tab — Per-check enable toggle           | Toggle per card                  | `enabled=False` greys the card body; on-disk JSON reflects the toggle.                                            | ✅ shipping | e2e         | tests/e2e/gui/test_qc_tab.py::test_toggle_check_enabled                                           |
+| QC tab — Per-check delete button           | Delete icon per card             | Removes the card from DOM; on-disk entry gone.                                                                    | ✅ shipping | e2e         | tests/e2e/gui/test_qc_tab.py::test_delete_check                                                   |
+| QC tab — Per-check duplicate button        | Duplicate icon per card          | Creates a sibling card with a new `instance_id` and the same params.                                              | ✅ shipping | e2e         | tests/e2e/gui/test_qc_tab.py::test_duplicate_check                                                |
+| QC tab — Status badge (pass/warn/fail)     | Card title row badge             | Badge color reflects worst per-group status from the analyzer summary.                                            | ✅ shipping | e2e         | tests/e2e/gui/test_qc_tab.py::test_status_badge_colors                                            |
+| QC tab — Plotly figure auto-refresh        | `qc-card-figure` Graph           | Re-renders on every `STORE_REMOVED_KEYS` tick without a manual refresh.                                           | ✅ shipping | e2e         | tests/e2e/gui/test_qc_tab.py::test_card_refresh_on_curation                                       |
+| QC tab — Summary strip                     | `qc-card-summary` text           | Renders `groups: N \| flagged: K \| max severity: X.YZ` matching `analyzer.summary()`.                            | ✅ shipping | e2e         | tests/e2e/gui/test_qc_tab.py::test_summary_strip_counts                                           |
+| QC tab — Mark-flagged-for-removal button   | Per-card "Mark all flagged for removal" | Unions `flagged_keys()` into `STORE_REMOVED_KEYS` with `allow_duplicate=True`.                            | ✅ shipping | e2e         | tests/e2e/gui/test_qc_tab.py::test_mark_flagged_pushes_to_removed_keys                            |
+| QC tab — Export QC report button           | "Export QC report" top-strip button | Writes `<output>/qc.parquet` + `<output>/qc_summary.json` with `QC_Check_Class` + `QC_Check_Instance_Id` discriminator columns; toast on success; disabled when no checks. | ✅ shipping | e2e         | tests/e2e/gui/test_qc_tab.py::test_export_emits_qc_parquet_and_summary                             |
+| QC tab — Load-warning banner               | Top-strip banner                 | Visible when `recipe.load_warnings` is non-empty; lists `instance_id` + reason for each unresolved entry.         | ✅ shipping | e2e         | tests/e2e/gui/test_qc_tab.py::test_load_warning_banner                                            |
+| QC tab — Export button enabled state       | "Export QC report" disabled gate | Disabled when no checks configured; enabled after first add.                                                       | ✅ shipping | e2e         | tests/e2e/gui/test_qc_tab.py::test_export_button_disabled_when_no_checks                          |
+| STORE_QC_RECIPE_REVISION                   | `dcc.Store` mounted in viewer    | Bumps on every `QcRecipe.{add,remove,update}`; drives card-list-render callback.                                  | ✅ shipping | unit        | tests/unit/gui/test_qc_recipe.py::test_revision_bumps_on_mutation                                 |
+
+## Heatmap tab
+
+The Results Viewer's Heatmap tab pivots `(Grid_RowNum, Grid_ColNum)`
+into a plate-shaped Plotly heatmap. The color column dropdown is
+recipe-revision-aware so QC tabs that emit `QC_*_Severity` columns into
+the augmented frame appear in the picker; removed cells overlay as
+`COLOR_MUTED` × markers via a secondary `go.Scatter` trace so excluded
+wells stay visually distinct from genuinely low-value cells.
+
+| Feature                                    | Element                              | Expected behaviour                                                                                                            | Status     | Test layer  | Test ref                                                                                                |
+| ------------------------------------------ | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- | ---------- | ----------- | ------------------------------------------------------------------------------------------------------- |
+| Heatmap tab — Color column dropdown        | `heatmap-color-picker` Select        | Lists measurement columns ∪ `QC_*_Severity` columns currently emitted; recipe-revision-aware.                                 | ✅ shipping | e2e         | tests/e2e/gui/test_heatmap_tab.py::test_color_picker_lists_measurements_and_qc_severities               |
+| Heatmap tab — Aggregator dropdown          | `heatmap-aggregator-picker` Select   | `mean / median / max / min`; aggregation applied AFTER image filter; flipping aggregator changes the cell value when bins are non-singleton. | ✅ shipping | e2e         | tests/e2e/gui/test_heatmap_tab.py::test_aggregator_semantics                                            |
+| Heatmap tab — Image picker                 | `heatmap-image-picker` Select        | Switches between unique `Metadata_ImageFile` values.                                                                          | ✅ shipping | e2e         | tests/e2e/gui/test_heatmap_tab.py::test_image_picker                                                    |
+| Heatmap tab — Time slider                  | `heatmap-time-slider` Slider         | Hidden when single timepoint, column absent, or all-NaN; partial-NaN shows slider with "skipping N non-numeric time values" caption. | ✅ shipping | e2e         | tests/e2e/gui/test_heatmap_tab.py::test_time_slider_visibility                                          |
+| Heatmap tab — Removed-cell overlay         | `go.Scatter` × markers on heatmap    | Curated cells render with `COLOR_MUTED` × overlay; visually distinct from low-value cells.                                    | ✅ shipping | e2e         | tests/e2e/gui/test_heatmap_tab.py::test_removed_cells_visually_distinct                                 |
+| Heatmap tab — Empty-state (no grid)        | Explanation card when grid columns absent | Renders without raising when `Grid_RowNum`/`Grid_ColNum` are missing; no figure div.                                       | ✅ shipping | e2e         | tests/e2e/gui/test_heatmap_tab.py::test_empty_state_when_no_grid                                        |
+
 ## Entry points
 
 | Feature                                | Element                | Expected behaviour                                                              | Status     | Test layer  | Test ref                                                                |

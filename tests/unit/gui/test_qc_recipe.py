@@ -254,6 +254,74 @@ class TestUpdate:
 
 
 # ---------------------------------------------------------------------------
+# Revision contract — drives STORE_QC_RECIPE_REVISION dcc.Store
+# ---------------------------------------------------------------------------
+
+
+def test_revision_bumps_on_mutation(
+    output_root: Path,
+    recipe_path: Path,
+    metadata_csv: Path,
+) -> None:
+    """Every ``add`` / ``remove`` / ``update`` rewrites the on-disk file.
+
+    The QC tab's card-list-render callback subscribes to
+    ``STORE_QC_RECIPE_REVISION``. The store is bumped by the same callbacks
+    that mutate the recipe, so a working "revision" proxy is the on-disk
+    JSON's serialized payload: every successful mutation rewrites it with
+    a new entries list, and a no-op (``remove`` / ``update`` with an
+    unknown id) leaves it unchanged.
+
+    Spec §1228 — `STORE_QC_RECIPE_REVISION` row in FEATURES.md.
+    """
+    recipe = QcRecipe.load(output_root)
+    # No file yet ⇒ no initial revision payload.
+    assert not recipe_path.exists()
+
+    # ``add`` writes the file for the first time.
+    first_id = recipe.add(
+        ExpectedVsDetectedCount,
+        {
+            "metadata": str(metadata_csv),
+            "groupby": ["Metadata_ImageFile"],
+        },
+    )
+    payload_after_add = recipe_path.read_text(encoding="utf-8")
+    assert json.loads(payload_after_add)["checks"][0]["instance_id"] == first_id
+
+    # A second ``add`` produces a strictly different payload.
+    second_id = recipe.add(
+        ExpectedVsDetectedCount,
+        {
+            "metadata": str(metadata_csv),
+            "groupby": ["Metadata_ImageFile"],
+        },
+    )
+    payload_after_second_add = recipe_path.read_text(encoding="utf-8")
+    assert payload_after_second_add != payload_after_add
+    assert len(json.loads(payload_after_second_add)["checks"]) == 2
+
+    # ``update`` bumps the revision when it actually changes the entry.
+    assert recipe.update(second_id, enabled=False) is True
+    payload_after_update = recipe_path.read_text(encoding="utf-8")
+    assert payload_after_update != payload_after_second_add
+
+    # ``update`` for an unknown id is a no-op — payload stays unchanged.
+    assert recipe.update("never-existed", enabled=True) is False
+    assert recipe_path.read_text(encoding="utf-8") == payload_after_update
+
+    # ``remove`` bumps the revision when it actually drops an entry.
+    assert recipe.remove(first_id) is True
+    payload_after_remove = recipe_path.read_text(encoding="utf-8")
+    assert payload_after_remove != payload_after_update
+    assert len(json.loads(payload_after_remove)["checks"]) == 1
+
+    # ``remove`` for an unknown id is a no-op — payload stays unchanged.
+    assert recipe.remove("never-existed") is False
+    assert recipe_path.read_text(encoding="utf-8") == payload_after_remove
+
+
+# ---------------------------------------------------------------------------
 # instance_id contract
 # ---------------------------------------------------------------------------
 

@@ -128,10 +128,12 @@ def register_heatmap_callbacks(app: dash.Dash) -> None:
         Output(ids.HEATMAP_TIME_SLIDER_WRAPPER_ID, "style"),
         Output(ids.HEATMAP_TIME_NON_NUMERIC_CAPTION_ID, "children"),
         Input(viewer_ids.STORE_QC_RECIPE_REVISION, "data"),
+        Input(viewer_ids.STORE_QC_AUGMENTED_REVISION, "data"),
         Input(viewer_ids.STORE_REMOVED_KEYS, "data"),
     )
     def _refresh_heatmap_controls(
         _recipe_revision: int | None,
+        _augmented_revision: int | None,
         _removed_keys: list[Any] | None,
     ) -> tuple[
         list[dict[str, str]],
