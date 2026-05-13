@@ -998,3 +998,84 @@ code, pre, .text-monospace, .font-monospace {
     outline-offset: 2px;
     background: rgba(27, 117, 188, 0.06);
 }
+
+/* ─── Pipeline container chrome (spec §4.4, §4.5, §4.7) ───────────────
+ *
+ * Container blocks (``class_name == "ImagePipeline"``) render as
+ * cytoscape compound parents.  Most of the visual styling
+ * (border colour, padding, title bar position) lives in the
+ * cytoscape stylesheet inside ``_layout.py`` because cytoscape's
+ * canvas renderer ignores DOM CSS for in-graph elements.  The DOM-
+ * side rules below cover the affordances that *do* land on the
+ * DOM layer (cursor, focus rings on the inspector container card)
+ * plus the title-bar styling for any future DOM-anchored overlay. */
+
+.dag-block--container {
+    /* Container blocks select the entire compound (title bar + body)
+     * with a single click — same affordance as ordinary blocks. */
+    cursor: pointer;
+}
+
+.dag-block--container.dag-block--collapsed {
+    /* Collapsed containers behave as a single-row block.  The width
+     * / height / padding overrides land in the cytoscape stylesheet;
+     * this rule narrows the cursor so the hover affordance reads
+     * "click to select" rather than "click to expand body". */
+    cursor: pointer;
+}
+
+.dag-block__title-bar {
+    /* Reserved class for any DOM overlay that anchors to a container's
+     * title bar (Phase 5 ships the title text inside the cytoscape
+     * compound's ``label`` data field — see ``_layout.py``).  Future
+     * inline-rename glue (spec §4.4) hangs off this hook. */
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    font-weight: 600;
+    color: var(--color-navy);
+}
+
+.dag-block__collapse-chevron {
+    /* The collapse chevron is encoded in the title-bar text (▼ vs ▶
+     * — see ``_DAG_CONTAINER_TITLE_EXPANDED`` / ``..._COLLAPSED`` in
+     * ``_layout.py``).  This class is reserved for any DOM hover
+     * affordance attached to a future click-target overlay. */
+    cursor: pointer;
+    color: var(--color-navy);
+    transition: transform var(--transition);
+}
+
+.dag-block__consumer-fed-dot {
+    /* The container-scope ``InputImage`` sentinel renders as a small
+     * purple dot anchored to the container's inner-left edge.  The
+     * cytoscape stylesheet paints the dot itself (round, 12×12,
+     * purple); the DOM-side rule supplies the cursor affordance for
+     * any DOM overlay that anchors to it. */
+    cursor: default;
+}
+
+.dag-block__placeholder {
+    /* ``+ drop ops here`` placeholder rendered inside an empty
+     * container.  Non-selectable on the canvas side; the DOM rule
+     * mirrors that with ``pointer-events: none`` so palette drops
+     * still hit-test against the container instead of the
+     * placeholder.  ``user-select`` blocks accidental selection
+     * during DnD. */
+    pointer-events: none;
+    user-select: none;
+    color: var(--color-muted);
+    font-style: italic;
+}
+
+/* Inspector container card (spec §4.5).  The card holds the label /
+ * name / desc inputs, the inner-scope summary, the aggregated
+ * inner-issue count, and the ``Drill in →`` button.  Tighter spacing
+ * than the standard inspector card so the surface stays compact for
+ * a feature that's typically used at-a-glance. */
+.inspector-container-card .inspector-container-summary {
+    line-height: 1.4;
+}
+.inspector-container-card .inspector-container-issues {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+}

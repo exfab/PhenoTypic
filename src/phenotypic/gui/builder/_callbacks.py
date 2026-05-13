@@ -786,6 +786,301 @@ def _queue_toast(
     queue.append({"kind": kind, "text": text})
 
 
+def _dag_scope_at_breadcrumb(
+    state_dict: Dict[str, Any], breadcrumb: List[str]
+) -> Optional[Dict[str, Any]]:
+    """Resolve the DAG scope dict pointed at by *breadcrumb*.
+
+    Walks the DAG ``state["root"]`` tree, descending into each
+    container's ``nested`` scope by ``block_id``.  Returns ``None``
+    when any segment fails to resolve to a real Pipeline container
+    (stale state, wrong class, etc.) so callers can short-circuit.
+
+    Args:
+        state_dict: JSON-shaped DAG state dict (``state_to_json`` output).
+        breadcrumb: Ordered list of container block_ids; ``[]`` returns
+            the root scope.
+
+    Returns:
+        The matching scope dict, or ``None`` when *breadcrumb* is
+        invalid against the current tree.
+    """
+
+    scope = state_dict.get("root")
+    if not isinstance(scope, dict):
+        return None
+    for segment in breadcrumb:
+        if not isinstance(segment, str):
+            return None
+        block = next(
+            (
+                b for b in scope.get("blocks", []) or []
+                if b.get("block_id") == segment
+            ),
+            None,
+        )
+        if block is None:
+            return None
+        if block.get("class_name") != PIPELINE_CLASS_NAME:
+            return None
+        nested = block.get("nested")
+        if not isinstance(nested, dict):
+            return None
+        scope = nested
+    return scope
+
+
+def _validate_breadcrumb_path(
+    root_scope: Dict[str, Any], target_breadcrumb: List[str]
+) -> bool:
+    """Return ``True`` if every segment resolves to a real container.
+
+    Each entry of *target_breadcrumb* must name a Pipeline container in
+    the scope produced by the previous segments.  Used by
+    ``drill_to_scope`` to reject stale ids without mutating state.
+
+    Args:
+        root_scope: ``state_dict["root"]``.
+        target_breadcrumb: List of container block_ids.
+
+    Returns:
+        ``True`` when the breadcrumb resolves cleanly, ``False``
+        otherwise.
+    """
+
+    scope = root_scope
+    for segment in target_breadcrumb:
+        block = next(
+            (
+                b for b in scope.get("blocks", []) or []
+                if b.get("block_id") == segment
+            ),
+            None,
+        )
+        if block is None:
+            return False
+        if block.get("class_name") != PIPELINE_CLASS_NAME:
+            return False
+        nested = block.get("nested")
+        if not isinstance(nested, dict):
+            return False
+        scope = nested
+    return True
+
+
+def _container_is_empty(block_dict: Dict[str, Any]) -> bool:
+    """Return ``True`` if *block_dict* is an empty Pipeline container.
+
+    Per spec §5.6 the empty-container threshold for the two-stage delete
+    is: the container's ``nested.blocks`` contains *only* the
+    auto-seeded ``InputImage`` sentinel (i.e. the count of non-
+    ``InputImage`` blocks is zero).
+
+    Args:
+        block_dict: A block dict from a scope's ``blocks`` list.
+
+    Returns:
+        ``True`` when the container has no real inner ops (only the
+        auto-seeded ``InputImage``), ``False`` otherwise.  Non-container
+        blocks return ``False`` since "empty" is meaningless for them.
+    """
+
+    if block_dict.get("class_name") != PIPELINE_CLASS_NAME:
+        return False
+    nested = block_dict.get("nested")
+    if not isinstance(nested, dict):
+        return True
+    non_input_count = sum(
+        1 for b in nested.get("blocks", []) or []
+        if b.get("class_name") != INPUT_IMAGE_CLASS_NAME
+    )
+    return non_input_count == 0
+
+
+def _scope_contains_block_id(
+    scope_dict: Dict[str, Any], block_id: str
+) -> bool:
+    """Return ``True`` if *block_id* is a direct child of *scope_dict*.
+
+    Used by the reparent dispatcher's ancestry check: we ask whether the
+    block's *current scope* is reachable from the *target scope* by
+    descending into containers (i.e. the move is a drag-in / sibling)
+    vs. ascending (drag-out / promote).
+    """
+
+    return any(
+        b.get("block_id") == block_id
+        for b in scope_dict.get("blocks", []) or []
+    )
+
+
+def _is_ancestor_scope(
+    state_dict: Dict[str, Any],
+    candidate_scope: Dict[str, Any],
+    descendant_scope: Dict[str, Any],
+) -> bool:
+    """Return ``True`` if *candidate_scope* contains *descendant_scope*.
+
+    Walks the state tree from *candidate_scope* down and checks whether
+    any descendant container's nested scope is the same dict object as
+    *descendant_scope*.  The ``is`` identity check is intentional —
+    every scope dict in the state tree is a unique Python object after
+    the dispatcher's ``deepcopy``, so identity-equality is the precise
+    notion of "same scope" we want.
+    """
+
+    if candidate_scope is descendant_scope:
+        return False  # same scope is *not* an ancestor in this sense
+    stack: List[Dict[str, Any]] = [candidate_scope]
+    while stack:
+        current = stack.pop()
+        for block in current.get("blocks", []) or []:
+            nested = block.get("nested")
+            if not isinstance(nested, dict):
+                continue
+            if nested is descendant_scope:
+                return True
+            stack.append(nested)
+    return False
+
+
+def _dispatch_block_reparent(
+    out: Dict[str, Any], payload: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Implement the ``block_reparent`` dispatch (spec §4.4 / §5.6).
+
+    The full algorithm is described in the inline call-site comment in
+    :func:`_dispatch_state_update`.  Pulled out into its own helper so
+    the dispatcher's body stays under the McCabe complexity limit.
+    """
+
+    block_id = payload.get("block_id")
+    if not isinstance(block_id, str) or not block_id:
+        return out
+    new_parent_block_id = payload.get("new_parent_block_id")
+    if new_parent_block_id is not None and not isinstance(
+        new_parent_block_id, str
+    ):
+        return out
+
+    root_scope = out.get("root")
+    if not isinstance(root_scope, dict):
+        return out
+
+    # Locate the block + its containing scope.
+    block_hit = _find_block_in_tree(root_scope, block_id)
+    if block_hit is None:
+        return out
+    source_scope, block = block_hit
+
+    # Reject InputImage block_ids (defense in depth — palette guard
+    # already prevents the drag from starting).
+    if block.get("class_name") == INPUT_IMAGE_CLASS_NAME:
+        _queue_toast(
+            out, "Input Image cannot be moved between scopes.", kind="info"
+        )
+        return out
+
+    # Resolve the target scope.  ``None`` parent → the visible scope
+    # (current breadcrumb); non-None → that container's nested scope.
+    breadcrumb_list = list(out.get("breadcrumb", []) or [])
+    if new_parent_block_id is None:
+        target_scope = _dag_scope_at_breadcrumb(out, breadcrumb_list)
+        if target_scope is None:
+            return out
+    else:
+        target_scope = _find_dag_container_scope(
+            root_scope, new_parent_block_id
+        )
+        if target_scope is None:
+            _queue_toast(
+                out,
+                "Drop target container is no longer in the pipeline.",
+                kind="warning",
+            )
+            return out
+
+    # No-op when source and target are the same scope: the canvas
+    # surfaces drags within a single scope as pure visual nudges (spec
+    # §4.7 manual-drag-is-ephemeral) so the dispatcher takes no action.
+    if source_scope is target_scope:
+        return out
+
+    # Identify orphaned edges: edges incident to *block_id* whose other
+    # endpoint is NOT moving (we only move one block at a time in v1 —
+    # multi-select reparent is deferred per spec §10).  These edges
+    # would cross the new scope boundary, so they must be deleted (or
+    # the move snaps back if this is a drag-out direction).
+    orphan_edges: List[Dict[str, Any]] = []
+    other_labels: List[str] = []
+    for edge in list(source_scope.get("edges", []) or []):
+        src = edge.get("source_block_id")
+        tgt = edge.get("target_block_id")
+        if src == block_id or tgt == block_id:
+            other_id = tgt if src == block_id else src
+            other_block = next(
+                (
+                    b for b in source_scope.get("blocks", []) or []
+                    if b.get("block_id") == other_id
+                ),
+                None,
+            )
+            if other_block is not None:
+                orphan_edges.append(edge)
+                label = other_block.get("label") or other_block.get(
+                    "class_name", "block"
+                )
+                other_labels.append(str(label))
+
+    # Drag-out direction: the target scope is an *ancestor* of the
+    # source scope.  If any inner edges would be orphaned, reject the
+    # move with snap-back + toast (spec §4.4).
+    moving_outward = _is_ancestor_scope(out, target_scope, source_scope)
+    if moving_outward and orphan_edges:
+        moved_label = block.get("label") or block.get("class_name", "block")
+        joined = ", ".join(sorted(set(other_labels)))
+        _queue_toast(
+            out,
+            (
+                f"Can't move {moved_label} out — "
+                f"{len(orphan_edges)} inner edge(s) would be orphaned "
+                f"({joined}). Disconnect first."
+            ),
+            kind="warning",
+        )
+        return out
+
+    # Drag-in / sibling / promote direction: delete the orphan edges and
+    # commit the move.  Toast the deletion count (named labels included
+    # so the user knows which connections vanished).
+    if orphan_edges:
+        orphan_ids = {e.get("edge_id") for e in orphan_edges}
+        source_scope["edges"] = [
+            e for e in source_scope.get("edges", []) or []
+            if e.get("edge_id") not in orphan_ids
+        ]
+        joined = ", ".join(sorted(set(other_labels)))
+        _queue_toast(
+            out,
+            (
+                f"Removed {len(orphan_edges)} edge(s) that no longer "
+                f"fit ({joined})."
+            ),
+            kind="info",
+        )
+
+    # Remove block from source scope; ensure target scope is seeded
+    # (defense in depth: any scope we paste into MUST have an
+    # InputImage per Rule 6).
+    source_scope["blocks"] = [
+        b for b in source_scope.get("blocks", []) or []
+        if b.get("block_id") != block_id
+    ]
+    _seed_input_image_dict(target_scope)
+    target_scope.setdefault("blocks", []).append(block)
+    return out
+
+
 #: Closed set of dispatch-kind strings routed by :func:`_dispatch_state_update`.
 #:
 #: Per the project's typing convention (CLAUDE.md "Code Style") a Literal
@@ -827,6 +1122,13 @@ DispatchKind: TypeAlias = Literal[
     "list_aux_add_empty_slot",
     "wire_select",
     "block_select",
+    # Pipeline-container dispatchers (Phase 5, spec §4.4 / §5.6).
+    "block_reparent",
+    "block_collapsed_toggle",
+    "drill_into_container",
+    "drill_to_scope",
+    "block_delete_request",
+    "block_delete_confirm",
 ]
 
 
@@ -1337,12 +1639,27 @@ def _dispatch_state_update(
         _seed_input_image_dict(target_scope)
 
         new_block_id = _new_block_id()
+        # ImagePipeline containers auto-initialize an empty nested
+        # BuilderScope (spec §4.4 "Every container scope is auto-seeded
+        # with an InputImage block"). Non-container blocks keep
+        # ``nested=None``.
+        nested_scope: Optional[Dict[str, Any]] = None
+        if class_name == PIPELINE_CLASS_NAME:
+            nested_scope = {
+                "blocks": [],
+                "edges": [],
+                "name": "Pipeline",
+                "desc": "",
+                "nrows": None,
+                "ncols": None,
+            }
+            _seed_input_image_dict(nested_scope)
         new_block = {
             "block_id": new_block_id,
             "class_name": class_name,
             "params": _default_params_for(class_name),
             "label": None,
-            "nested": None,
+            "nested": nested_scope,
             "collapsed": False,
             "list_slot_counts": {},
         }
@@ -1614,6 +1931,221 @@ def _dispatch_state_update(
         )
         if out["selected_block_id"] is not None:
             out["selected_edge_id"] = None
+        return out
+
+    if kind == "block_reparent":
+        # Pipeline-container reparent dispatch (spec §4.4 / §5.6).
+        #
+        # Payload (per spec §5.6):
+        #   {"kind": "block_reparent", "block_id": str,
+        #    "new_parent_block_id": str | None,
+        #    "x": float, "y": float, "ts": int}
+        #
+        # ``new_parent_block_id=None`` promotes the block to the current
+        # scope (the visible scope under ``state.breadcrumb``); a non-None
+        # value adopts the block into that container's nested scope.
+        #
+        # Sibling-container moves are a single atomic dispatch — the block
+        # is removed from its current containing scope and appended to the
+        # target's nested scope in one tick, and the orphan-edge check
+        # runs across both scopes before the move commits.
+        #
+        # Drag-out direction (i.e. the new parent is an *ancestor* of the
+        # block's current scope) with orphan edges → snap-back + toast.
+        # Drag-in / sibling direction with orphan edges → delete the
+        # incompatible edges + toast the count, then commit the move.
+        return _dispatch_block_reparent(out, payload)
+
+    if kind == "block_collapsed_toggle":
+        # Container collapse-toggle (spec §4.4 / §5.6).
+        #
+        # Payload: ``{"kind": "block_collapsed_toggle",
+        # "block_id": str, "ts": int}``.
+        #
+        # Toggles ``block.collapsed`` for the named Pipeline container.
+        # No-op for non-container blocks (i.e. anything whose
+        # ``class_name != PIPELINE_CLASS_NAME``).
+        block_id = payload.get("block_id")
+        if not isinstance(block_id, str) or not block_id:
+            return out
+        root_scope = out.get("root")
+        if not isinstance(root_scope, dict):
+            return out
+        hit = _find_block_in_tree(root_scope, block_id)
+        if hit is None:
+            return out
+        _scope, block = hit
+        if block.get("class_name") != PIPELINE_CLASS_NAME:
+            return out
+        block["collapsed"] = not bool(block.get("collapsed", False))
+        return out
+
+    if kind == "drill_into_container":
+        # Drill-into-container dispatch (spec §4.4 / §5.6).
+        #
+        # Payload: ``{"kind": "drill_into_container",
+        # "block_id": str, "ts": int}``.
+        #
+        # Algorithm:
+        #   1. Validate ``block_id`` resolves to a container at the
+        #      *current* breadcrumb depth (i.e. it must live directly in
+        #      the visible scope, not a sibling drill level).
+        #   2. Push ``block_id`` onto ``state.breadcrumb``.
+        #   3. Clear any block / wire selection — the new scope is its
+        #      own context.
+        block_id = payload.get("block_id")
+        if not isinstance(block_id, str) or not block_id:
+            return out
+        breadcrumb_list = list(out.get("breadcrumb", []) or [])
+        current_scope_dict = _dag_scope_at_breadcrumb(out, breadcrumb_list)
+        if current_scope_dict is None:
+            return out
+        block_in_scope = next(
+            (
+                b for b in current_scope_dict.get("blocks", []) or []
+                if b.get("block_id") == block_id
+            ),
+            None,
+        )
+        if block_in_scope is None:
+            return out
+        if block_in_scope.get("class_name") != PIPELINE_CLASS_NAME:
+            return out
+        breadcrumb_list.append(block_id)
+        out["breadcrumb"] = breadcrumb_list
+        out["selected_block_id"] = None
+        out["selected_edge_id"] = None
+        return out
+
+    if kind == "drill_to_scope":
+        # Atomic-breadcrumb-replacement dispatch (spec §4.4 / §5.6).
+        #
+        # Payload: ``{"kind": "drill_to_scope",
+        # "target_breadcrumb": List[str], "ts": int}``.
+        #
+        # Algorithm:
+        #   1. Validate every block_id in ``target_breadcrumb`` resolves
+        #      to a real Pipeline container at the correct depth in the
+        #      state tree.
+        #   2. Stale (deleted) ids → reject + queue toast.  The
+        #      ``viewport_ops.js`` scrim notices the toast / no state
+        #      change and emits ``phenotypic:scroll-to-aborted`` itself.
+        #   3. Set ``state.breadcrumb = target_breadcrumb`` atomically.
+        target_breadcrumb_raw = payload.get("target_breadcrumb")
+        if not isinstance(target_breadcrumb_raw, list):
+            return out
+        target_breadcrumb: List[str] = []
+        for entry in target_breadcrumb_raw:
+            if not isinstance(entry, str) or not entry:
+                _queue_toast(
+                    out,
+                    "Cannot navigate to that scope: invalid breadcrumb entry.",
+                    kind="warning",
+                )
+                return out
+            target_breadcrumb.append(entry)
+        root_scope = out.get("root")
+        if not isinstance(root_scope, dict):
+            return out
+        if not _validate_breadcrumb_path(root_scope, target_breadcrumb):
+            _queue_toast(
+                out,
+                "Cannot navigate to that scope: container is no longer "
+                "in the pipeline.",
+                kind="warning",
+            )
+            return out
+        out["breadcrumb"] = target_breadcrumb
+        out["selected_block_id"] = None
+        out["selected_edge_id"] = None
+        return out
+
+    if kind == "block_delete_request":
+        # First stage of the two-stage container delete (spec §5.6).
+        #
+        # Payload: ``{"kind": "block_delete_request",
+        # "block_id": str, "ts": int}``.
+        #
+        # Algorithm:
+        #   1. Reject InputImage block_ids (defense in depth).
+        #   2. Non-container OR empty container → delegate to
+        #      ``block_delete_confirm`` immediately.
+        #   3. Non-empty container → set
+        #      ``state.pending_delete_block_id = block_id`` so the
+        #      confirm modal opens.
+        block_id = payload.get("block_id")
+        if not isinstance(block_id, str) or not block_id:
+            return out
+        root_scope = out.get("root")
+        if not isinstance(root_scope, dict):
+            return out
+        hit = _find_block_in_tree(root_scope, block_id)
+        if hit is None:
+            return out
+        _scope, block = hit
+        if block.get("class_name") == INPUT_IMAGE_CLASS_NAME:
+            _queue_toast(
+                out, "Input Image cannot be removed.", kind="info"
+            )
+            return out
+        is_container = block.get("class_name") == PIPELINE_CLASS_NAME
+        if not is_container or _container_is_empty(block):
+            return _dispatch_state_update(
+                out,
+                "block_delete_confirm",
+                {"kind": "block_delete_confirm", "block_id": block_id},
+            )
+        out["pending_delete_block_id"] = block_id
+        return out
+
+    if kind == "block_delete_confirm":
+        # Second stage / single-stage delete (spec §5.6).
+        #
+        # Payload: ``{"kind": "block_delete_confirm",
+        # "block_id": str, "ts": int}``.
+        #
+        # Algorithm:
+        #   1. Locate the block + its containing scope by DFS.
+        #   2. Reject InputImage block_ids (defense in depth).
+        #   3. Atomically remove the block from its scope's
+        #      ``blocks`` list AND every edge in that scope whose
+        #      source/target matches the block.
+        #   4. The block's ``nested`` scope (if any) is dropped
+        #      wholesale by virtue of removing the parent — Python
+        #      garbage-collects the dict.
+        #   5. Clear ``selected_block_id`` / ``pending_delete_block_id``
+        #      when they pointed at the deleted block.
+        block_id = payload.get("block_id")
+        if not isinstance(block_id, str) or not block_id:
+            return out
+        root_scope = out.get("root")
+        if not isinstance(root_scope, dict):
+            return out
+        hit = _find_block_in_tree(root_scope, block_id)
+        if hit is None:
+            # Block already gone — at least clear any matching pending id.
+            if out.get("pending_delete_block_id") == block_id:
+                out["pending_delete_block_id"] = None
+            return out
+        scope_dict, block = hit
+        if block.get("class_name") == INPUT_IMAGE_CLASS_NAME:
+            _queue_toast(
+                out, "Input Image cannot be removed.", kind="info"
+            )
+            return out
+        scope_dict["blocks"] = [
+            b for b in scope_dict.get("blocks", []) or []
+            if b.get("block_id") != block_id
+        ]
+        scope_dict["edges"] = [
+            e for e in scope_dict.get("edges", []) or []
+            if e.get("source_block_id") != block_id
+            and e.get("target_block_id") != block_id
+        ]
+        if out.get("selected_block_id") == block_id:
+            out["selected_block_id"] = None
+        if out.get("pending_delete_block_id") == block_id:
+            out["pending_delete_block_id"] = None
         return out
 
     return out
@@ -2840,6 +3372,580 @@ def register_callbacks(app: dash.Dash) -> None:
             )
         except Exception:  # noqa: BLE001
             logger.exception("dismiss_popover failed")
+            return noop
+
+    # ----------------------------------------------------------------------
+    # 2c-i. Container dispatch fan-in (spec §4.4 / §5.6, Phase 5)
+    # ----------------------------------------------------------------------
+    #
+    # The DAG canvas surfaces a handful of clientside gestures that don't
+    # fit the existing palette / wire-event fan-ins:
+    #
+    #   * Container drill-in (double-click body, ``Drill in →`` button,
+    #     breadcrumb-segment click) → ``STORE_VIEWPORT_OP`` with
+    #     ``{kind: "drill_into_container" | "drill_out" |
+    #     "drill_to_scope", ...}``.
+    #   * Collapse chevron click → ``STORE_VIEWPORT_OP`` with
+    #     ``{kind: "block_collapsed_toggle", block_id, ts}``.
+    #   * Container reparent (drag block between scopes) →
+    #     ``STORE_VIEWPORT_OP`` with ``{kind: "block_reparent",
+    #     block_id, new_parent_block_id, x, y, ts}``.  ``palette_dnd.js``
+    #     already mints this payload when the user drags an *existing*
+    #     block (vs. a palette button) across container boundaries.
+    #
+    # All viewport-op payloads land in :data:`STORE_VIEWPORT_OP`.  This
+    # callback routes the mutation-bearing kinds through
+    # :func:`_dispatch_state_update`; the purely visual kinds
+    # (``scroll_to`` / ``relayout`` / ``reanchor``) are handled
+    # clientside and never round-trip through this callback.
+
+    @app.callback(
+        Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
+        Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "header", allow_duplicate=True),
+        Input(ids.STORE_VIEWPORT_OP, "data"),
+        State(ids.STORE_BUILDER_STATE, "data"),
+        prevent_initial_call=True,
+    )
+    def viewport_op_fan_in(
+        viewport_op: Optional[Dict[str, Any]],
+        state_data: Dict[str, Any],
+    ) -> Tuple[Any, ...]:
+        """Route ``STORE_VIEWPORT_OP`` mutation kinds through the dispatcher.
+
+        The clientside ``viewport_ops.js`` writes the same store for
+        purely visual ops (``scroll_to``, ``relayout``, ``reanchor``)
+        and for state-mutating ops (``drill_to_scope``,
+        ``block_collapsed_toggle``).  The visual ops do not change
+        state — they're consumed clientside via the chained scrim and
+        never reach this callback (the JS clears the store before
+        Dash debounces would refire).  The mutation ops route through
+        :func:`_dispatch_state_update`.
+
+        Args:
+            viewport_op: Payload written by ``viewport_ops.js`` /
+                ``palette_dnd.js`` / inspector buttons.
+            state_data: Current ``STORE_BUILDER_STATE`` dump.
+
+        Returns:
+            The standard 10-output fan-in tuple matching
+            ``fan_in_state_mutation``.
+        """
+
+        noop = (no_update,) * 10
+        if not isinstance(viewport_op, dict) or state_data is None:
+            return noop
+
+        kind = viewport_op.get("kind")
+        if kind not in {
+            "drill_into_container",
+            "drill_out",
+            "drill_to_scope",
+            "block_collapsed_toggle",
+            "block_reparent",
+        }:
+            return noop
+
+        try:
+            new_state_dict = _dispatch_state_update(
+                state_data, kind, viewport_op
+            )
+            if new_state_dict == state_data:
+                return noop
+            new_state = state_from_json(new_state_dict)
+            breadcrumb, canvas_elements, inspector, popover_contents = (
+                _render_views(new_state)
+            )
+            return (
+                new_state_dict,
+                breadcrumb,
+                canvas_elements,
+                inspector,
+                popover_contents,
+                _popover_style_for(popover_contents),
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("viewport_op_fan_in failed")
+            return (
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                True,
+                _format_exception(exc),
+                "danger",
+                "Update failed",
+            )
+
+    # ----------------------------------------------------------------------
+    # 2c-ii. Container delete two-stage flow (spec §5.6, Phase 5)
+    # ----------------------------------------------------------------------
+    #
+    # The Delete button on a container surface emits a
+    # ``block_delete_request`` payload (through ``STORE_EDGE_EVENT`` or
+    # the canvas right-click menu).  The dispatcher inspects the
+    # container's inner-block count and either:
+    #
+    #   * Short-circuits to ``block_delete_confirm`` immediately
+    #     (empty container or non-container block); the deletion
+    #     happens in the same dispatch tick.
+    #   * Sets ``state.pending_delete_block_id = block_id`` so the
+    #     ``CONFIRM_DELETE_MODAL_ID`` modal opens; the user clicks
+    #     Confirm (dispatches ``block_delete_confirm``) or Cancel
+    #     (clears the pending field).
+    #
+    # The two callbacks below wire the modal buttons.  The toggle
+    # callback (``toggle_confirm_delete_modal``) keys the modal's
+    # ``is_open`` to ``pending_delete_block_id`` being non-None.
+
+    @app.callback(
+        Output(ids.CONFIRM_DELETE_MODAL_ID, "is_open"),
+        Output(f"{ids.CONFIRM_DELETE_MODAL_ID}-body", "children"),
+        Input(ids.STORE_BUILDER_STATE, "data"),
+        prevent_initial_call=False,
+    )
+    def toggle_confirm_delete_modal(
+        state_data: Optional[Dict[str, Any]],
+    ) -> Tuple[bool, Any]:
+        """Open the confirm-delete modal when ``pending_delete_block_id`` is set.
+
+        Per spec §5.6 the modal's ``is_open`` is driven entirely by
+        ``state.pending_delete_block_id``.  This callback fires on every
+        state mutation, but the modal stays closed (``is_open=False``)
+        unless the dispatcher set the pending id in this tick.
+
+        Modal body shape (spec §5.6 "Confirm-delete modal" row):
+            "Delete container '<label>' and its N inner block(s)?"
+        where N excludes the auto-seeded ``InputImage`` sentinel.
+        """
+
+        if not isinstance(state_data, dict):
+            return False, no_update
+        pending = state_data.get("pending_delete_block_id")
+        if not isinstance(pending, str) or not pending:
+            return False, no_update
+        root_scope = state_data.get("root")
+        if not isinstance(root_scope, dict):
+            return False, no_update
+        hit = _find_block_in_tree(root_scope, pending)
+        if hit is None:
+            return False, no_update
+        _scope, block = hit
+        label = block.get("label") or block.get("class_name") or "container"
+        nested = block.get("nested") or {}
+        inner_blocks = nested.get("blocks", []) or []
+        inner_count = sum(
+            1 for b in inner_blocks
+            if b.get("class_name") != INPUT_IMAGE_CLASS_NAME
+        )
+        body_text = (
+            f"Delete container '{label}' and its {inner_count} inner "
+            f"block(s)?"
+        )
+        return True, html.Div(body_text)
+
+    @app.callback(
+        Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
+        Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
+        Input(ids.BTN_CONFIRM_DELETE, "n_clicks"),
+        State(ids.STORE_BUILDER_STATE, "data"),
+        prevent_initial_call=True,
+    )
+    def confirm_delete_block(
+        n_clicks: Optional[int], state_data: Dict[str, Any]
+    ) -> Tuple[Any, ...]:
+        """Dispatch ``block_delete_confirm`` for the pending container.
+
+        Reads ``state.pending_delete_block_id`` and routes it through
+        :func:`_dispatch_state_update`.  Clicking Confirm on a stale
+        state (pending id no longer in the tree) is harmless — the
+        dispatcher's missing-block branch clears the pending field and
+        returns a clean state.
+        """
+
+        noop = (no_update,) * 6
+        if not n_clicks or state_data is None:
+            return noop
+        pending = state_data.get("pending_delete_block_id")
+        if not isinstance(pending, str) or not pending:
+            return noop
+        try:
+            new_state_dict = _dispatch_state_update(
+                state_data,
+                "block_delete_confirm",
+                {
+                    "kind": "block_delete_confirm",
+                    "block_id": pending,
+                    "ts": int(time.time() * 1000),
+                },
+            )
+            if new_state_dict == state_data:
+                return noop
+            new_state = state_from_json(new_state_dict)
+            breadcrumb, canvas_elements, inspector, popover_contents = (
+                _render_views(new_state)
+            )
+            return (
+                new_state_dict,
+                breadcrumb,
+                canvas_elements,
+                inspector,
+                popover_contents,
+                _popover_style_for(popover_contents),
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("confirm_delete_block failed")
+            return noop
+
+    @app.callback(
+        Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
+        Input(ids.BTN_CANCEL_DELETE, "n_clicks"),
+        State(ids.STORE_BUILDER_STATE, "data"),
+        prevent_initial_call=True,
+    )
+    def cancel_delete_block(
+        n_clicks: Optional[int], state_data: Dict[str, Any]
+    ) -> Any:
+        """Clear ``pending_delete_block_id`` so the modal closes.
+
+        No canvas re-render needed — only the modal-toggle callback
+        cares about the pending field, and writing the state store
+        re-triggers it.
+        """
+
+        if not n_clicks or state_data is None:
+            return no_update
+        if not isinstance(state_data, dict):
+            return no_update
+        if state_data.get("pending_delete_block_id") is None:
+            return no_update
+        new_state_dict = deepcopy(state_data)
+        new_state_dict["pending_delete_block_id"] = None
+        return new_state_dict
+
+    @app.callback(
+        Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
+        Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "header", allow_duplicate=True),
+        Input(
+            {"type": "breadcrumb-link", "depth": ALL}, "n_clicks"
+        ),
+        State(ids.STORE_BUILDER_STATE, "data"),
+        prevent_initial_call=True,
+    )
+    def breadcrumb_drill_out_dag(
+        _clicks: List[int], state_data: Dict[str, Any]
+    ) -> Tuple[Any, ...]:
+        """Pop the breadcrumb when a segment is clicked (DAG schema).
+
+        The legacy fan-in already handles the breadcrumb under the
+        ``breadcrumb_to`` kind, but the DAG schema stores breadcrumb
+        entries as plain ``block_id`` strings (no ``depth`` dict) so
+        this dedicated callback dispatches ``drill_out`` with the
+        right depth.
+
+        When the active schema is the legacy linear-list (``state_data``
+        lacks ``root.blocks``), the callback short-circuits to
+        ``no_update`` so the legacy fan-in's branch handles it instead.
+        """
+
+        noop = (no_update,) * 10
+        if state_data is None or ctx.triggered_id is None:
+            return noop
+        triggered = ctx.triggered_id
+        if not isinstance(triggered, dict):
+            return noop
+        if triggered.get("type") != "breadcrumb-link":
+            return noop
+        if not ctx.triggered or not ctx.triggered[0].get("value"):
+            return noop
+        # DAG-schema check (duck-typing): legacy state has no "root.blocks".
+        if not isinstance(state_data.get("root"), dict):
+            return noop
+        if "blocks" not in (state_data.get("root") or {}):
+            return noop
+        depth = triggered.get("depth")
+        if not isinstance(depth, int) or depth < 0:
+            return noop
+        try:
+            new_state_dict = _dispatch_state_update(
+                state_data,
+                "drill_to_scope",
+                {
+                    "kind": "drill_to_scope",
+                    "target_breadcrumb": list(
+                        state_data.get("breadcrumb", []) or []
+                    )[:depth],
+                    "ts": int(time.time() * 1000),
+                },
+            )
+            if new_state_dict == state_data:
+                return noop
+            new_state = state_from_json(new_state_dict)
+            breadcrumb, canvas_elements, inspector, popover_contents = (
+                _render_views(new_state)
+            )
+            return (
+                new_state_dict,
+                breadcrumb,
+                canvas_elements,
+                inspector,
+                popover_contents,
+                _popover_style_for(popover_contents),
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("breadcrumb_drill_out_dag failed")
+            return noop
+
+    @app.callback(
+        Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
+        Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "header", allow_duplicate=True),
+        Input(ids.BTN_DRILL_IN_CONTAINER, "n_clicks"),
+        State(ids.STORE_BUILDER_STATE, "data"),
+        prevent_initial_call=True,
+    )
+    def drill_in_container_button(
+        n_clicks: Optional[int], state_data: Dict[str, Any]
+    ) -> Tuple[Any, ...]:
+        """Inspector container-card ``Drill in →`` → ``drill_into_container``.
+
+        Distinct from the legacy ``BTN_DRILL_IN`` (which dispatches the
+        ``drill_in`` kind against a legacy ``StepNode`` selection).
+        Agent 5A's inspector card mounts the dedicated
+        :data:`BTN_DRILL_IN_CONTAINER` button only when the selected
+        block is a Pipeline container; this callback dispatches the
+        ``drill_into_container`` kind against
+        ``state.selected_block_id``.
+        """
+
+        noop = (no_update,) * 10
+        if not n_clicks or state_data is None:
+            return noop
+        if not isinstance(state_data.get("root"), dict):
+            return noop
+        if "blocks" not in (state_data.get("root") or {}):
+            return noop
+        sel = state_data.get("selected_block_id")
+        if not isinstance(sel, str) or not sel:
+            return noop
+        try:
+            new_state_dict = _dispatch_state_update(
+                state_data,
+                "drill_into_container",
+                {
+                    "kind": "drill_into_container",
+                    "block_id": sel,
+                    "ts": int(time.time() * 1000),
+                },
+            )
+            if new_state_dict == state_data:
+                return noop
+            new_state = state_from_json(new_state_dict)
+            breadcrumb, canvas_elements, inspector, popover_contents = (
+                _render_views(new_state)
+            )
+            return (
+                new_state_dict,
+                breadcrumb,
+                canvas_elements,
+                inspector,
+                popover_contents,
+                _popover_style_for(popover_contents),
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("drill_in_container_button failed")
+            return noop
+
+    @app.callback(
+        Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
+        Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "header", allow_duplicate=True),
+        Input(ids.BTN_DELETE_NODE, "n_clicks"),
+        State(ids.STORE_BUILDER_STATE, "data"),
+        prevent_initial_call=True,
+    )
+    def delete_button_dag(
+        n_clicks: Optional[int], state_data: Dict[str, Any]
+    ) -> Tuple[Any, ...]:
+        """Toolbar Delete button → ``block_delete_request`` (DAG schema).
+
+        Routes the existing ``BTN_DELETE_NODE`` click through the new
+        two-stage delete flow.  For non-container blocks the dispatcher
+        short-circuits to ``block_delete_confirm`` in the same tick so
+        the user-facing behaviour for ops is identical to the legacy
+        flow (immediate deletion).  Empty containers also short-
+        circuit; non-empty containers open the modal.
+
+        Short-circuits to ``no_update`` for legacy state so the legacy
+        fan-in's ``delete_node`` branch handles it instead.
+        """
+
+        noop = (no_update,) * 10
+        if not n_clicks or state_data is None:
+            return noop
+        if not isinstance(state_data.get("root"), dict):
+            return noop
+        if "blocks" not in (state_data.get("root") or {}):
+            return noop
+        sel = state_data.get("selected_block_id")
+        if not isinstance(sel, str) or not sel:
+            return noop
+        try:
+            new_state_dict = _dispatch_state_update(
+                state_data,
+                "block_delete_request",
+                {
+                    "kind": "block_delete_request",
+                    "block_id": sel,
+                    "ts": int(time.time() * 1000),
+                },
+            )
+            if new_state_dict == state_data:
+                return noop
+            new_state = state_from_json(new_state_dict)
+            breadcrumb, canvas_elements, inspector, popover_contents = (
+                _render_views(new_state)
+            )
+            return (
+                new_state_dict,
+                breadcrumb,
+                canvas_elements,
+                inspector,
+                popover_contents,
+                _popover_style_for(popover_contents),
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("delete_button_dag failed")
+            return noop
+
+    @app.callback(
+        Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
+        Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "children", allow_duplicate=True),
+        Output(ids.POPOVER_CONTAINER, "style", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "icon", allow_duplicate=True),
+        Output(ids.TOAST_NOTIFICATION, "header", allow_duplicate=True),
+        Input(ids.BTN_NEW_PIPELINE_NODE, "n_clicks"),
+        State(ids.STORE_BUILDER_STATE, "data"),
+        prevent_initial_call=True,
+    )
+    def new_pipeline_palette_click_dag(
+        n_clicks: Optional[int], state_data: Dict[str, Any]
+    ) -> Tuple[Any, ...]:
+        """``+ New Pipeline`` palette-button keyboard fallback (DAG).
+
+        ``palette_dnd.js`` handles the drag-and-drop path via
+        ``STORE_PALETTE_DROP``.  When the user clicks the button
+        (keyboard fallback / no drag), this callback dispatches
+        ``block_create`` against the current scope with
+        ``class_name="ImagePipeline"`` so a fresh container container
+        appears at the active breadcrumb depth.
+
+        Short-circuits to ``no_update`` for legacy state — the legacy
+        fan-in already handles ``BTN_NEW_PIPELINE_NODE`` via the
+        ``add_pipeline`` dispatch kind.
+        """
+
+        noop = (no_update,) * 10
+        if not n_clicks or state_data is None:
+            return noop
+        if not isinstance(state_data.get("root"), dict):
+            return noop
+        if "blocks" not in (state_data.get("root") or {}):
+            return noop
+        try:
+            # Look up the container we're currently viewing — the new
+            # block lands in the same scope by passing the parent
+            # container's block_id (or ``None`` for the root scope).
+            breadcrumb_list = list(state_data.get("breadcrumb", []) or [])
+            container_block_id = breadcrumb_list[-1] if breadcrumb_list else None
+            new_state_dict = _dispatch_state_update(
+                state_data,
+                "block_create",
+                {
+                    "kind": "block_create",
+                    "class_name": PIPELINE_CLASS_NAME,
+                    "x": 0.0,
+                    "y": 0.0,
+                    "container_block_id": container_block_id,
+                    "ts": int(time.time() * 1000),
+                },
+            )
+            if new_state_dict == state_data:
+                return noop
+            new_state = state_from_json(new_state_dict)
+            breadcrumb, canvas_elements, inspector, popover_contents = (
+                _render_views(new_state)
+            )
+            return (
+                new_state_dict,
+                breadcrumb,
+                canvas_elements,
+                inspector,
+                popover_contents,
+                _popover_style_for(popover_contents),
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("new_pipeline_palette_click_dag failed")
             return noop
 
     @app.callback(

@@ -34,6 +34,7 @@ from phenotypic.gui._design import (
     COLOR_BORDER,
     COLOR_MUTED,
     COLOR_NAVY,
+    COLOR_SURFACE,
     FONT_FAMILY_MONO,
     FONT_SIZE_LABEL,
     OI_PURPLE,
@@ -280,6 +281,51 @@ def build_palette(registry: "OperationRegistry") -> dbc.Accordion:
     )
 
 
+def build_new_pipeline_palette_button() -> dbc.Button:
+    """Build the ``+ New Pipeline`` palette button (DAG redesign, spec §4.4).
+
+    The button is rendered above the per-category palette accordions and
+    serves as the palette entry for the ``ImagePipeline`` container
+    sentinel class.  It carries the same ``draggable="true"`` +
+    ``data-palette-class="ImagePipeline"`` attributes as the regular
+    palette buttons so the clientside ``palette_dnd.js`` glue (Phase 3)
+    handles the drag → ``STORE_PALETTE_DROP`` write → ``block_create``
+    dispatch end-to-end with no extra wiring.
+
+    The button intentionally REUSES :data:`BTN_NEW_PIPELINE_NODE` as its
+    Dash id so the existing keyboard-fallback callback (``add_pipeline``
+    in the legacy schema, ``block_create`` with
+    ``class_name="ImagePipeline"`` in the DAG schema) continues to
+    resolve for users without drag-and-drop.
+
+    Returns:
+        A :class:`dbc.Button` ready to embed above the operations
+        accordion in the palette column.
+    """
+
+    return dbc.Button(
+        [html.Span("⛓"), html.Span(" + New Pipeline", className="ms-1")],
+        id=ids.BTN_NEW_PIPELINE_NODE,
+        color="primary",
+        outline=True,
+        size="sm",
+        n_clicks=0,
+        className="w-100 mb-2 palette-button palette-button--pipeline",
+        title=(
+            "Drag onto the canvas to add a nested ImagePipeline "
+            "container (or click to drop in the current scope)."
+        ),
+        # ``draggable="true"`` + ``data-palette-class="ImagePipeline"``
+        # are read by ``assets/palette_dnd.js``; they survive Dash's
+        # component layer because ``dbc.Button`` forwards ``**kwargs``
+        # through to the underlying ``<button>`` element.
+        **{
+            "draggable": "true",
+            "data-palette-class": PIPELINE_CLASS_NAME,
+        },
+    )
+
+
 def build_measure_palette(registry: "OperationRegistry") -> dbc.Accordion:
     """Build the Measurements palette (the ``Measure`` category)."""
 
@@ -477,6 +523,103 @@ def _canvas_stylesheet() -> List[dict]:
                 "width": 4,
                 "line-color": COLOR_NAVY,
                 "z-compound-depth": "top",
+            },
+        },
+        # ── Container compound chrome (spec §4.4 + §4.7) ────────────────
+        # Compound parents drawn with a purple 1.5px border + a low-
+        # opacity surface tint.  The title bar text lives in the
+        # compound node's ``label`` data; ``text-valign: top`` plus the
+        # negative ``text-margin-y`` lifts the label clear of the
+        # container's body so child blocks render beneath it.  Padding
+        # is leaf-first (spec §4.7) so the inner dagre pass sees a
+        # bounding box wide enough for its children plus a comfortable
+        # gutter.
+        {
+            "selector": "node.dag-block--container",
+            "style": {
+                "shape": "round-rectangle",
+                "background-color": COLOR_SURFACE,
+                "background-opacity": 0.2,
+                "border-color": OI_PURPLE,
+                "border-width": 1.5,
+                "padding": 32,
+                "label": "data(label)",
+                "text-valign": "top",
+                "text-halign": "center",
+                "text-margin-y": -8,
+                "color": COLOR_NAVY,
+                "font-weight": "bold",
+                "font-family": FONT_FAMILY_MONO,
+                "font-size": "12px",
+            },
+        },
+        # ── Collapsed container (spec §4.4) ────────────────────────────
+        # When ``block.collapsed == True`` the container renders as a
+        # 1-row block (same dimensions as a regular op block) so wires
+        # are never visually orphaned; children are hidden by the
+        # ``dag-block--container-hidden-child`` selector below.
+        {
+            "selector": "node.dag-block--container.dag-block--collapsed",
+            "style": {
+                "width": 180,
+                "height": 54,
+                "padding": 0,
+                "text-valign": "center",
+                "text-margin-y": 0,
+            },
+        },
+        # Children of a collapsed container are hidden from the canvas.
+        # The data-attribute pivot (``parent_collapsed``) lets cytoscape's
+        # canvas renderer drop them without us re-emitting elements per
+        # collapse toggle.
+        {
+            "selector": "node[?parent_collapsed]",
+            "style": {
+                "display": "none",
+            },
+        },
+        # ── Consumer-fed dot (spec §4.1, §4.4) ─────────────────────────
+        # The container scope's ``InputImage`` sentinel renders as a
+        # small purple dot anchored to the container's inner-left edge,
+        # NOT as a regular block.  The DOM-side cursor / outline lives
+        # in ``builder.css``; the canvas rule below is what cytoscape's
+        # renderer actually paints.
+        {
+            "selector": "node.dag-block__consumer-fed-dot",
+            "style": {
+                "shape": "ellipse",
+                "label": "",
+                "width": 12,
+                "height": 12,
+                "background-color": OI_PURPLE,
+                "border-color": OI_PURPLE,
+                "border-width": 1.5,
+                "padding": 0,
+            },
+        },
+        # ── Empty container placeholder (spec §4.8) ────────────────────
+        # When a container's nested scope holds only the auto-seeded
+        # ``InputImage`` (no real ops) the renderer emits a label-only
+        # sub-node carrying the hint text.  The element is non-selectable
+        # so a stray click on the placeholder doesn't fight the
+        # container's title-bar click handler.
+        {
+            "selector": "node.dag-block__placeholder",
+            "style": {
+                "shape": "round-rectangle",
+                "background-color": COLOR_SURFACE,
+                "background-opacity": 0,
+                "border-width": 0,
+                "label": "data(label)",
+                "color": COLOR_MUTED,
+                "font-family": FONT_FAMILY_MONO,
+                "font-size": "11px",
+                "font-style": "italic",
+                "text-valign": "center",
+                "text-halign": "center",
+                "width": 140,
+                "height": 24,
+                "padding": 0,
             },
         },
     ]
@@ -1054,6 +1197,519 @@ def _build_image_port_subnode(
     }
 
 
+#: Glyph + format for container title-bar labels (spec §4.4).  Expanded
+#: containers carry the down chevron (▼); collapsed containers swap to
+#: the right chevron (▶) so users can toggle between the two visual
+#: states without reading the title text.
+_DAG_CONTAINER_TITLE_EXPANDED = "▼ Pipeline — {label}"
+_DAG_CONTAINER_TITLE_COLLAPSED = "▶ Pipeline — {label}"
+
+
+def _scope_has_only_input_image(scope: "_DagBuilderScope") -> bool:
+    """Return ``True`` when *scope* holds only the auto-seeded InputImage.
+
+    Spec §4.8 calls for an empty-container placeholder (``+ drop ops
+    here``) when the user creates a fresh container from
+    ``+ New Pipeline`` and has not yet dropped any real ops inside.  The
+    inner scope is "empty" iff every block is the ``InputImage``
+    sentinel.
+
+    Args:
+        scope: The container's nested :class:`_DagBuilderScope`.
+
+    Returns:
+        ``True`` when every block in *scope* is an ``InputImage``
+        sentinel (typical case: exactly one block, the auto-seeded
+        sentinel); ``False`` once any real op block has been added.
+    """
+
+    return all(
+        b.class_name == INPUT_IMAGE_CLASS_NAME for b in scope.blocks
+    )
+
+
+def _build_consumer_fed_dot_subnode(
+    block: "BlockNode", *, container_block_id: str
+) -> dict:
+    """Build the consumer-fed dot element for a nested-scope InputImage.
+
+    Per spec §4.1 + §4.4, the container scope's ``InputImage`` sentinel
+    is NOT rendered as the same big green chevron used at the root
+    scope; instead it surfaces as a small purple dot anchored to the
+    container's inner-left edge.  Cytoscape compound parenting positions
+    the dot inside the container via ``data.parent``.
+
+    Args:
+        block: The nested ``InputImage`` :class:`BlockNode`.
+        container_block_id: ``BlockNode.block_id`` of the enclosing
+            container; assigned as the cytoscape ``parent`` so the dot
+            renders inside the container's bounding box.
+
+    Returns:
+        Cytoscape element dict ready to append to the canvas elements.
+    """
+
+    return {
+        "data": {
+            "id": block.block_id,
+            "block_id": block.block_id,
+            "class_name": INPUT_IMAGE_CLASS_NAME,
+            "label": "",
+            "parent": container_block_id,
+            "is_consumer_fed": True,
+        },
+        "classes": "dag-block dag-block__consumer-fed-dot",
+        "selectable": True,
+        "grabbable": False,
+    }
+
+
+def _build_container_placeholder_subnode(
+    container_block_id: str,
+) -> dict:
+    """Build the ``+ drop ops here`` placeholder for an empty container.
+
+    Spec §4.8: when a container's nested scope holds only the auto-
+    seeded ``InputImage`` (no real ops), the canvas surfaces a label-
+    only sub-node with the hint text so users know the container is a
+    valid drop target.  The element is non-selectable so it doesn't
+    fight the container's own title-bar click handler.
+
+    Args:
+        container_block_id: ``BlockNode.block_id`` of the enclosing
+            empty container.
+
+    Returns:
+        Cytoscape element dict for the placeholder hint.
+    """
+
+    return {
+        "data": {
+            "id": f"placeholder__{container_block_id}",
+            "block_id": container_block_id,
+            "label": "+ drop ops here",
+            "parent": container_block_id,
+            "is_placeholder": True,
+        },
+        "classes": "dag-block__placeholder",
+        "selectable": False,
+        "grabbable": False,
+    }
+
+
+def _collect_container_issues(
+    scope: "_DagBuilderScope",
+    issue_by_block: Dict[str, List[Any]],
+) -> Tuple[int, int]:
+    """Return ``(error_count, hint_count)`` aggregated over *scope* + nested.
+
+    Per spec §4.4 a collapsed container surfaces a single badge with
+    the inner scope's error+hint counts.  The same aggregate also
+    powers the inspector container card.  Walks the scope's blocks
+    recursively so issues attached to any descendant block count.
+
+    Args:
+        scope: The container's nested :class:`_DagBuilderScope`.
+        issue_by_block: Pre-built mapping of ``block_id`` → issues
+            (already bucketed by the outer renderer; reused here for
+            O(1) lookup per block instead of re-walking the issue list).
+
+    Returns:
+        ``(error_count, hint_count)`` tuple — severities other than
+        ``"advisory"`` count as errors; ``"advisory"`` count as hints.
+    """
+
+    errors = 0
+    hints = 0
+    stack: List["_DagBuilderScope"] = [scope]
+    while stack:
+        current = stack.pop()
+        for block in current.blocks:
+            for iss in issue_by_block.get(block.block_id, []):
+                if getattr(iss, "severity", "error") == "advisory":
+                    hints += 1
+                else:
+                    errors += 1
+            if block.nested is not None:
+                stack.append(block.nested)
+    return errors, hints
+
+
+def _bucket_issues_recursively(
+    scope: "_DagBuilderScope",
+    issues: List[Any],
+) -> Dict[str, List[Any]]:
+    """Bucket every issue by ``block_id`` regardless of scope depth.
+
+    Spec §4.6 validates recursively — each container's nested scope
+    runs the same six blocking + one advisory rules.  The renderer
+    needs the union of issues from every scope so badges decorate the
+    right block at the right depth.  This helper builds a flat
+    ``block_id → [Issue, ...]`` map that the per-scope renderer reuses.
+
+    Args:
+        scope: Root scope to walk.
+        issues: Flat list of :class:`~phenotypic.gui.builder._validation.Issue`
+            instances.
+
+    Returns:
+        Mapping from ``block_id`` to a list of issues whose
+        ``Issue.block_id`` matches a block reachable from *scope*.
+        Issues without a ``block_id`` (scope-level rules — Rule 6) or
+        whose id is stale (no matching block in the tree) drop here;
+        the toolbar badge surfaces them separately.
+    """
+
+    valid_ids: set[str] = set()
+    stack: List["_DagBuilderScope"] = [scope]
+    while stack:
+        current = stack.pop()
+        for block in current.blocks:
+            valid_ids.add(block.block_id)
+            if block.nested is not None:
+                stack.append(block.nested)
+
+    bucket: Dict[str, List[Any]] = {}
+    for iss in issues:
+        bid = getattr(iss, "block_id", None)
+        if bid is None or bid not in valid_ids:
+            continue
+        bucket.setdefault(bid, []).append(iss)
+    return bucket
+
+
+def _emit_scope_elements(
+    scope: "_DagBuilderScope",
+    *,
+    elements: List[dict],
+    parent_container_block_id: Optional[str],
+    parent_collapsed: bool,
+    selected_block_id: Optional[str],
+    selected_edge_id: Optional[str],
+    issue_by_block: Dict[str, List[Any]],
+    registry: Any,
+    registry_key: int,
+) -> None:
+    """Emit cytoscape elements for one scope (root or nested).
+
+    Recursively handles container blocks: a container emits itself as a
+    compound parent + recurses into ``block.nested`` so child blocks
+    carry ``data.parent`` pointing at the container's ``block_id``.
+
+    The function mutates *elements* in place — callers create the list
+    once and the helper appends to it.  This keeps the recursive
+    traversal allocation-free per scope (avoids the cost of merging
+    sub-lists for what is typically a 5-50 element pipeline).
+
+    Args:
+        scope: The :class:`_DagBuilderScope` being rendered.
+        elements: Cytoscape elements accumulator (mutated in place).
+        parent_container_block_id: ``BlockNode.block_id`` of the
+            enclosing container, or ``None`` at the root scope.  Every
+            block emitted by this helper carries ``data.parent =
+            parent_container_block_id`` so cytoscape's compound layout
+            nests children inside their container's bounding box.
+        parent_collapsed: ``True`` when any ancestor container is
+            collapsed; child elements get ``data.parent_collapsed`` so
+            the stylesheet's ``[?parent_collapsed]`` selector hides
+            them without re-emitting per-collapse toggle.
+        selected_block_id / selected_edge_id: Selection ids (only the
+            active scope highlights — defense in depth, since
+            selection is mutually exclusive across scopes).
+        issue_by_block: Pre-bucketed issue index for the entire tree.
+        registry: Live operation registry; cached parameter metadata
+            comes from here.
+        registry_key: ``id(registry)`` discriminator for the cached
+            accept-list lookups.
+    """
+
+    aux_consumed_block_ids: set[str] = set()
+    main_path_edges: set[str] = set()
+    aux_wired_counts: Dict[str, Dict[str, int]] = {}
+    image_edges_by_source: Dict[str, List[Edge]] = {}
+    for edge in scope.edges:
+        if edge.kind == "aux":
+            aux_consumed_block_ids.add(edge.source_block_id)
+            block_ports = aux_wired_counts.setdefault(
+                edge.target_block_id, {}
+            )
+            block_ports[edge.target_port] = (
+                block_ports.get(edge.target_port, 0) + 1
+            )
+        elif edge.kind == "image":
+            image_edges_by_source.setdefault(
+                edge.source_block_id, []
+            ).append(edge)
+
+    input_block = next(
+        (b for b in scope.blocks if b.class_name == INPUT_IMAGE_CLASS_NAME),
+        None,
+    )
+    if input_block is not None:
+        frontier = [input_block.block_id]
+        visited: set[str] = set()
+        while frontier:
+            curr = frontier.pop()
+            if curr in visited:
+                continue
+            visited.add(curr)
+            for out_edge in image_edges_by_source.get(curr, []):
+                main_path_edges.add(out_edge.edge_id)
+                frontier.append(out_edge.target_block_id)
+
+    # ── 1. Emit one cytoscape node per block. ───────────────────────────
+    for block in scope.blocks:
+        # The container scope's InputImage sentinel renders as a small
+        # purple consumer-fed dot, NOT as a regular block (spec §4.1 +
+        # §4.4).  Root-scope InputImage keeps the big chevron treatment.
+        if (
+            block.class_name == INPUT_IMAGE_CLASS_NAME
+            and parent_container_block_id is not None
+        ):
+            dot = _build_consumer_fed_dot_subnode(
+                block, container_block_id=parent_container_block_id
+            )
+            if parent_collapsed:
+                dot["data"]["parent_collapsed"] = True
+            elements.append(dot)
+            continue
+
+        block_issues = issue_by_block.get(block.block_id, [])
+        has_issue = bool(block_issues)
+        issue_severity = "error"
+        has_stub_issue = False
+        if has_issue:
+            severities = {
+                getattr(iss, "severity", "error") for iss in block_issues
+            }
+            issue_severity = (
+                "advisory" if severities == {"advisory"} else "error"
+            )
+            kinds = {getattr(iss, "kind", "") for iss in block_issues}
+            has_stub_issue = "stub" in kinds
+
+        # For container blocks, surface inner-scope issues on the
+        # outer border so a collapsed container with internal failures
+        # still reads red (spec §4.4).
+        if (
+            block.class_name == PIPELINE_CLASS_NAME
+            and block.nested is not None
+        ):
+            inner_errors, inner_hints = _collect_container_issues(
+                block.nested, issue_by_block
+            )
+            if inner_errors > 0:
+                has_issue = True
+                issue_severity = "error"
+            elif inner_hints > 0 and not has_issue:
+                has_issue = True
+                issue_severity = "advisory"
+
+        is_aux_consumed = block.block_id in aux_consumed_block_ids
+        classes = _dag_block_classes(
+            block,
+            is_aux_consumed=is_aux_consumed,
+            has_issue=has_issue,
+            issue_severity=issue_severity,
+            has_stub_issue=has_stub_issue,
+        )
+        if block.block_id == selected_block_id:
+            classes.append("selected")
+        if block.class_name == PIPELINE_CLASS_NAME and block.collapsed:
+            classes.append("dag-block--collapsed")
+
+        if block.class_name == PIPELINE_CLASS_NAME:
+            base_label = block.label or block.class_name
+            template = (
+                _DAG_CONTAINER_TITLE_COLLAPSED
+                if block.collapsed
+                else _DAG_CONTAINER_TITLE_EXPANDED
+            )
+            label = template.format(label=base_label)
+        elif block.class_name == INPUT_IMAGE_CLASS_NAME:
+            label = block.label or _DAG_INPUT_IMAGE_LABEL
+        else:
+            label = block.label or block.class_name
+
+        stage = _safe_stage(block.class_name)
+        node_data: Dict[str, Any] = {
+            "id": block.block_id,
+            "label": label,
+            "block_id": block.block_id,
+            "class_name": block.class_name,
+            "stage": stage,
+            "bg": _STAGE_COLORS.get(stage, _STAGE_COLORS["ops"]),
+            "parent": parent_container_block_id,
+        }
+        if block.class_name == PIPELINE_CLASS_NAME:
+            node_data["is_container"] = True
+            node_data["collapsed"] = block.collapsed
+            if block.nested is not None:
+                inner_errors, inner_hints = _collect_container_issues(
+                    block.nested, issue_by_block
+                )
+            else:
+                inner_errors, inner_hints = 0, 0
+            node_data["inner_error_count"] = inner_errors
+            node_data["inner_hint_count"] = inner_hints
+        if parent_collapsed:
+            node_data["parent_collapsed"] = True
+        elements.append(
+            {
+                "data": node_data,
+                "classes": " ".join(classes),
+                "grabbable": True,
+                "selectable": True,
+            }
+        )
+
+    # ── 2. Port sub-nodes per non-InputImage / non-container block. ────
+    for block in scope.blocks:
+        if (
+            block.class_name == INPUT_IMAGE_CLASS_NAME
+            and parent_container_block_id is not None
+        ):
+            # Consumer-fed dot already emitted with no ports.
+            continue
+        if block.class_name != INPUT_IMAGE_CLASS_NAME:
+            port = _build_image_port_subnode(
+                block.block_id,
+                "in",
+                "image-in",
+                css_class="dag-port--input",
+            )
+            if parent_collapsed:
+                port["data"]["parent_collapsed"] = True
+            elements.append(port)
+        port = _build_image_port_subnode(
+            block.block_id,
+            "out",
+            "image-out",
+            css_class="dag-port--output",
+        )
+        if parent_collapsed:
+            port["data"]["parent_collapsed"] = True
+        elements.append(port)
+
+        if block.class_name in (
+            INPUT_IMAGE_CLASS_NAME,
+            PIPELINE_CLASS_NAME,
+        ):
+            continue
+        info = registry.get(block.class_name)
+        if info is None:
+            continue
+        wired_count_by_port = aux_wired_counts.get(block.block_id, {})
+        for param_name, param_info in info.parameters.items():
+            if not (param_info.is_operation or param_info.is_pipeline):
+                continue
+            cached_accepts = _resolve_dag_accepts_for_class_port(
+                block.class_name, param_name, registry_key
+            )
+            if cached_accepts is None:
+                accepts: List[str] = _resolve_dag_accepts(
+                    param_info, registry
+                )
+            else:
+                accepts = list(cached_accepts)
+            wired_count = wired_count_by_port.get(param_name, 0)
+            wired = wired_count > 0
+            required = not param_info.has_default
+            port_classes = _aux_port_classes(
+                wired=wired,
+                required=required,
+                is_list=param_info.is_list,
+            )
+            port_data: Dict[str, Any] = {
+                "id": ids.block_port_id(block.block_id, param_name),
+                "parent": block.block_id,
+                "block_id": block.block_id,
+                "port": param_name,
+                "port_kind": "aux",
+                "is_port": True,
+                "is_list": param_info.is_list,
+                "is_required": required,
+                "accepts": accepts,
+                "wired_count": wired_count,
+            }
+            if parent_collapsed:
+                port_data["parent_collapsed"] = True
+            elements.append(
+                {
+                    "data": port_data,
+                    "classes": " ".join(port_classes),
+                    "selectable": False,
+                    "grabbable": False,
+                }
+            )
+
+    # ── 3. Edges within this scope. ────────────────────────────────────
+    for edge in scope.edges:
+        edge_classes = ["dag-wire"]
+        if edge.kind == "image":
+            edge_classes.append("dag-wire--image")
+        else:
+            edge_classes.append("dag-wire--aux")
+        if edge.edge_id in main_path_edges:
+            edge_classes.append("dag-wire--main")
+        if edge.edge_id == selected_edge_id:
+            edge_classes.append("selected")
+        edge_data: Dict[str, Any] = {
+            "id": ids.edge_id(edge.edge_id),
+            "source": edge.source_block_id,
+            "target": edge.target_block_id,
+            "edge_id": edge.edge_id,
+            "kind": edge.kind,
+            "target_slot": edge.target_slot,
+            "target_port": edge.target_port,
+            "source_port": edge.source_port,
+            "is_main": edge.edge_id in main_path_edges,
+        }
+        if parent_collapsed:
+            edge_data["parent_collapsed"] = True
+        elements.append(
+            {
+                "data": edge_data,
+                "classes": " ".join(edge_classes),
+                "selectable": True,
+                "grabbable": False,
+            }
+        )
+
+    # ── 4. Recurse into container blocks. ──────────────────────────────
+    for block in scope.blocks:
+        if (
+            block.class_name != PIPELINE_CLASS_NAME
+            or block.nested is None
+        ):
+            continue
+        nested_scope = block.nested
+        # Empty-container placeholder: render the hint inside the
+        # container's body when the nested scope holds only the
+        # auto-seeded InputImage sentinel (spec §4.8).
+        if (
+            _scope_has_only_input_image(nested_scope)
+            and not block.collapsed
+        ):
+            placeholder = _build_container_placeholder_subnode(
+                block.block_id
+            )
+            if parent_collapsed:
+                placeholder["data"]["parent_collapsed"] = True
+            elements.append(placeholder)
+        _emit_scope_elements(
+            nested_scope,
+            elements=elements,
+            parent_container_block_id=block.block_id,
+            parent_collapsed=parent_collapsed or block.collapsed,
+            selected_block_id=selected_block_id,
+            selected_edge_id=selected_edge_id,
+            issue_by_block=issue_by_block,
+            registry=registry,
+            registry_key=registry_key,
+        )
+
+
 def build_canvas_elements_dag(
     scope: "_DagBuilderScope",
     *,
@@ -1091,6 +1747,16 @@ def build_canvas_elements_dag(
       to the chain's terminal carry ``data.is_main: True`` so the
       cytoscape stylesheet can render them at ``width: 3px``; aux + non-
       main edges land at ``width: 2px``.
+    * **Container compound parents (Phase 5).** Container blocks
+      (``class_name == PIPELINE_CLASS_NAME``) recurse into their
+      ``nested`` scope; child elements carry ``data.parent =
+      container_block_id`` so cytoscape's compound layout nests them
+      visually.  Container scopes' ``InputImage`` sentinel renders as
+      a small purple consumer-fed dot (NOT the big root-scope
+      chevron).  Empty containers surface a ``+ drop ops here``
+      placeholder.  Collapsed containers render as a 1-row block
+      whose data carries ``inner_error_count`` / ``inner_hint_count``
+      so the aggregated badge reads ``▣ N issues, M hints``.
 
     Args:
         scope: The :class:`_DagBuilderScope` currently in view (root or
@@ -1112,240 +1778,32 @@ def build_canvas_elements_dag(
         blocks + port sub-nodes + edges + issue badges).
     """
 
-    # Local import keeps the module's top-level import graph dash-only.
     from phenotypic.gui._operation_registry import get_registry
 
     registry = get_registry()
-    # ``registry_key`` is the cache discriminator for
-    # ``_resolve_dag_accepts_for_class_port``.  Captured once per render
-    # so the inner aux-port loop avoids repeated ``id(registry)`` calls.
     registry_key = id(registry)
     elements: List[dict] = []
     issues = list(issues or [])
 
-    # Build a per-block issue index so the renderer can decorate each
-    # block once.  Issues outside the active scope are silently dropped
-    # (spec §4.6: nested-scope issues surface as the container's
-    # aggregate badge).
-    issue_by_block: Dict[str, List[Any]] = {}
-    for iss in issues:
-        bid = getattr(iss, "block_id", None)
-        if bid is None:
-            continue
-        issue_by_block.setdefault(bid, []).append(iss)
+    issue_by_block = _bucket_issues_recursively(scope, issues)
 
-    # Compute the set of blocks consumed as aux (output wires to a
-    # purple aux port).  Used by the border-decoration rule.
-    aux_consumed_block_ids: set[str] = set()
-    # Compute the main-path edge set for the width: 3px emphasis.
-    main_path_edges: set[str] = set()
-
-    # Bucket aux wired counts by (target_block_id, target_port) up-front
-    # so the port-emission loop below stays O(V + E) rather than
-    # re-walking ``scope.edges`` once per block (O(V × E)).  Indexed by
-    # ``target_block_id`` -> {port_name: count}.
-    aux_wired_counts: Dict[str, Dict[str, int]] = {}
-    image_edges_by_source: Dict[str, List[Edge]] = {}
-    for edge in scope.edges:
-        if edge.kind == "aux":
-            aux_consumed_block_ids.add(edge.source_block_id)
-            block_ports = aux_wired_counts.setdefault(
-                edge.target_block_id, {}
-            )
-            block_ports[edge.target_port] = (
-                block_ports.get(edge.target_port, 0) + 1
-            )
-        elif edge.kind == "image":
-            image_edges_by_source.setdefault(edge.source_block_id, []).append(edge)
-
-    # Walk image-flow forward from the Input Image to populate the main-path.
-    input_block = next(
-        (b for b in scope.blocks if b.class_name == INPUT_IMAGE_CLASS_NAME),
-        None,
+    _emit_scope_elements(
+        scope,
+        elements=elements,
+        parent_container_block_id=None,
+        parent_collapsed=False,
+        selected_block_id=selected_block_id,
+        selected_edge_id=selected_edge_id,
+        issue_by_block=issue_by_block,
+        registry=registry,
+        registry_key=registry_key,
     )
-    if input_block is not None:
-        frontier = [input_block.block_id]
-        visited: set[str] = set()
-        while frontier:
-            curr = frontier.pop()
-            if curr in visited:
-                continue
-            visited.add(curr)
-            for out_edge in image_edges_by_source.get(curr, []):
-                main_path_edges.add(out_edge.edge_id)
-                frontier.append(out_edge.target_block_id)
 
-    # ── 1. Emit one cytoscape node per block (including the InputImage
-    #       sentinel).  Container blocks have no ``parent`` field — they ARE
-    #       the parent; their inner blocks get a ``data.parent = <container
-    #       block_id>`` reference when rendered.  Containers render
-    #       always-expanded until the collapse interaction ships.
-    for block in scope.blocks:
-        block_issues = issue_by_block.get(block.block_id, [])
-        has_issue = bool(block_issues)
-        issue_severity = "error"
-        has_stub_issue = False
-        if has_issue:
-            # Pick worst severity; stub gets the dashed-border treatment.
-            severities = {getattr(iss, "severity", "error") for iss in block_issues}
-            issue_severity = "advisory" if severities == {"advisory"} else "error"
-            kinds = {getattr(iss, "kind", "") for iss in block_issues}
-            has_stub_issue = "stub" in kinds
-
-        is_aux_consumed = block.block_id in aux_consumed_block_ids
-        classes = _dag_block_classes(
-            block,
-            is_aux_consumed=is_aux_consumed,
-            has_issue=has_issue,
-            issue_severity=issue_severity,
-            has_stub_issue=has_stub_issue,
-        )
-        if block.block_id == selected_block_id:
-            classes.append("selected")
-
-        # Container blocks render an expand chevron + folder glyph in
-        # their label; regular blocks fall back to their label/class.
-        if block.class_name == PIPELINE_CLASS_NAME:
-            base_label = block.label or block.class_name
-            label = f"▼ Pipeline — {base_label}"
-        elif block.class_name == INPUT_IMAGE_CLASS_NAME:
-            label = block.label or _DAG_INPUT_IMAGE_LABEL
-        else:
-            label = block.label or block.class_name
-
-        stage = _safe_stage(block.class_name)
-        node_data: Dict[str, Any] = {
-            "id": block.block_id,
-            "label": label,
-            "block_id": block.block_id,
-            "class_name": block.class_name,
-            "stage": stage,
-            "bg": _STAGE_COLORS.get(stage, _STAGE_COLORS["ops"]),
-            "parent": None,
-        }
-        elements.append(
-            {
-                "data": node_data,
-                "classes": " ".join(classes),
-                "grabbable": True,
-                "selectable": True,
-            }
-        )
-
-    # ── 2. Emit port sub-nodes per block.  Cytoscape compound children
-    #       set ``data.parent = <parent_block_id>``.  Each port carries
-    #       structured data so callbacks reading ``tapNodeData`` recover
-    #       the block_id + port name.
-    for block in scope.blocks:
-        if block.class_name != INPUT_IMAGE_CLASS_NAME:
-            elements.append(
-                _build_image_port_subnode(
-                    block.block_id, "in", "image-in",
-                    css_class="dag-port--input",
-                )
-            )
-        # The InputImage sentinel still gets an output port — it's the
-        # source of the main spine.
-        elements.append(
-            _build_image_port_subnode(
-                block.block_id, "out", "image-out",
-                css_class="dag-port--output",
-            )
-        )
-
-        # Aux ports: one per op-typed parameter on the consumer (block).
-        if block.class_name in (INPUT_IMAGE_CLASS_NAME, PIPELINE_CLASS_NAME):
-            continue
-        info = registry.get(block.class_name)
-        if info is None:
-            continue
-        # Wired counts were bucketed in the initial ``scope.edges`` walk
-        # above (avoids the per-block O(E) re-scan that this loop used
-        # to do).
-        wired_count_by_port = aux_wired_counts.get(block.block_id, {})
-        for param_name, param_info in info.parameters.items():
-            if not (param_info.is_operation or param_info.is_pipeline):
-                continue
-            cached_accepts = _resolve_dag_accepts_for_class_port(
-                block.class_name, param_name, registry_key
-            )
-            if cached_accepts is None:
-                # Cache signalled a registry-id mismatch (tests
-                # monkeypatch ``get_registry``); fall back to a direct
-                # uncached resolve.
-                accepts: List[str] = _resolve_dag_accepts(
-                    param_info, registry
-                )
-            else:
-                accepts = list(cached_accepts)
-            wired_count = wired_count_by_port.get(param_name, 0)
-            wired = wired_count > 0
-            required = not param_info.has_default
-            classes = _aux_port_classes(
-                wired=wired,
-                required=required,
-                is_list=param_info.is_list,
-            )
-            elements.append(
-                {
-                    "data": {
-                        "id": ids.block_port_id(block.block_id, param_name),
-                        "parent": block.block_id,
-                        "block_id": block.block_id,
-                        "port": param_name,
-                        "port_kind": "aux",
-                        # ``is_port`` is read by ``viewport_ops.js`` to
-                        # skip ports during the dagre rank assignment.
-                        "is_port": True,
-                        "is_list": param_info.is_list,
-                        "is_required": required,
-                        "accepts": accepts,
-                        "wired_count": wired_count,
-                    },
-                    "classes": " ".join(classes),
-                    "selectable": False,
-                    "grabbable": False,
-                }
-            )
-
-    # ── 3. Emit one cytoscape edge per :class:`Edge`.  Edges carry
-    #       ``data.kind`` (image|aux) + ``data.target_slot`` so the
-    #       stylesheet can pick blue-solid (image) vs purple-dashed
-    #       (aux); ``wire_drawing.js`` reads the slot during drag-replace
-    #       gestures.
-    for edge in scope.edges:
-        edge_classes = ["dag-wire"]
-        if edge.kind == "image":
-            edge_classes.append("dag-wire--image")
-        else:
-            edge_classes.append("dag-wire--aux")
-        if edge.edge_id in main_path_edges:
-            edge_classes.append("dag-wire--main")
-        if edge.edge_id == selected_edge_id:
-            edge_classes.append("selected")
-        elements.append(
-            {
-                "data": {
-                    "id": ids.edge_id(edge.edge_id),
-                    "source": edge.source_block_id,
-                    "target": edge.target_block_id,
-                    "edge_id": edge.edge_id,
-                    "kind": edge.kind,
-                    "target_slot": edge.target_slot,
-                    "target_port": edge.target_port,
-                    "source_port": edge.source_port,
-                    "is_main": edge.edge_id in main_path_edges,
-                },
-                "classes": " ".join(edge_classes),
-                "selectable": True,
-                "grabbable": False,
-            }
-        )
-
-    # ── 4. Emit issue-badge sub-nodes.  Each block with one or more
-    #       issues gets one compound child badge whose ``data`` lists
-    #       the rule kind / severity / detail (badge collapses multiple
-    #       issues into one row — the tooltip lists them all).
+    # Issue badges: one per block with one or more issues.  Walks the
+    # full tree's bucket so nested-block badges appear too.  The
+    # cytoscape stylesheet's ``[?parent_collapsed]`` hides badges that
+    # belong to a hidden child; the aggregate count surfaces on the
+    # container instead via ``inner_error_count`` / ``inner_hint_count``.
     for block_id, block_issues in issue_by_block.items():
         if not block_issues:
             continue
@@ -2568,6 +3026,216 @@ def _empty_state_card_for_dag() -> dbc.Card:
     )
 
 
+def _summarise_nested_scope(
+    nested: Optional["_DagBuilderScope"],
+) -> str:
+    """Render the inner-scope summary string for the container card.
+
+    Spec §4.5 calls for ``"3 ops, 1 aux pipeline"``-style summaries.
+    The breakdown is computed from the registry-inferred stage of
+    each non-InputImage block: ops/meas/post counts, and a separate
+    nested-container count so the user can spot aux-of-aux structures.
+
+    Args:
+        nested: The container's :attr:`BlockNode.nested` scope, or
+            ``None`` when the container has not yet been materialised
+            (degraded state — surfaced as ``"empty"``).
+
+    Returns:
+        Human-readable summary, e.g. ``"2 ops, 1 measurement, 1 aux
+        pipeline"``.  Returns ``"empty"`` for a scope holding only the
+        auto-seeded ``InputImage`` (typical fresh-container case).
+    """
+
+    if nested is None:
+        return "empty"
+    op_count = 0
+    meas_count = 0
+    post_count = 0
+    container_count = 0
+    for block in nested.blocks:
+        if block.class_name == INPUT_IMAGE_CLASS_NAME:
+            continue
+        if block.class_name == PIPELINE_CLASS_NAME:
+            container_count += 1
+            continue
+        stage = _safe_stage(block.class_name)
+        if stage == "meas":
+            meas_count += 1
+        elif stage == "post":
+            post_count += 1
+        else:
+            op_count += 1
+    parts: List[str] = []
+    if op_count:
+        parts.append(f"{op_count} op{'s' if op_count != 1 else ''}")
+    if meas_count:
+        parts.append(
+            f"{meas_count} measurement{'s' if meas_count != 1 else ''}"
+        )
+    if post_count:
+        parts.append(
+            f"{post_count} post-step{'s' if post_count != 1 else ''}"
+        )
+    if container_count:
+        parts.append(
+            f"{container_count} aux pipeline"
+            f"{'s' if container_count != 1 else ''}"
+        )
+    if not parts:
+        return "empty"
+    return ", ".join(parts)
+
+
+def _build_container_inspector_card(
+    state: "_DagBuilderState",
+    block: "BlockNode",
+) -> html.Div:
+    """Render the inspector card for a selected container block.
+
+    Spec §4.5 — container selection card:
+
+    * **Label edit** — the visible title-bar text (``BlockNode.label``).
+    * **Pipeline name / desc** — bound to the nested scope's
+      ``BuilderScope.name`` / ``.desc``.  Suppressed when the container
+      is missing a nested scope (degraded state).
+    * **Inner scope summary** — e.g. ``"3 ops, 1 aux pipeline"``.
+    * **Aggregated inner issue count** — sourced from the live
+      :data:`STORE_ISSUES` (passed through to the rendered card by the
+      enclosing callback).
+    * **``Drill in →`` button** carrying :data:`BTN_DRILL_IN_CONTAINER`
+      — wired by Agent 5B to dispatch ``drill_into_container``.
+    * **No ``nrows`` / ``ncols`` fields** — those only make sense at
+      the root scope (spec §4.5).  Hidden ``INPUT_NROWS`` / ``INPUT_NCOLS``
+      placeholders are emitted by the param form for non-container
+      branches; on the container branch the inspector's enclosing
+      build_inspector path is responsible.
+
+    Args:
+        state: The full :class:`_DagBuilderState`.  Needed in addition
+            to *block* so the issue-count aggregate can be computed
+            against the live store (Phase 6 will plumb the store into
+            this card; for now the count is computed locally from
+            ``state.toast_queue`` shape).
+        block: The selected container :class:`BlockNode`.  Must satisfy
+            ``block.class_name == PIPELINE_CLASS_NAME``.
+
+    Returns:
+        :class:`html.Div` ready to drop into ``INSPECTOR_CONTAINER``.
+    """
+
+    nested = block.nested
+    nested_name = nested.name if nested is not None else ""
+    nested_desc = nested.desc if nested is not None else ""
+    summary = _summarise_nested_scope(nested)
+    # ``state.toast_queue`` is unused here today; the aggregate issue
+    # count is owned by Phase 6's STORE_ISSUES plumbing.  We emit a
+    # placeholder row keyed for a future callback to fill.
+    _unused_state = state  # noqa: F841 — reserved for Phase 6 wiring.
+
+    label_value = block.label if block.label else block.class_name
+    inner_block_count = 0 if nested is None else sum(
+        1 for b in nested.blocks if b.class_name != INPUT_IMAGE_CLASS_NAME
+    )
+
+    header_children: List[Any] = [
+        html.H5("Pipeline container", className="card-title mb-3"),
+        dbc.InputGroup(
+            [
+                dbc.InputGroupText("Label"),
+                dbc.Input(
+                    id=ids.INPUT_NODE_LABEL,
+                    type="text",
+                    value=label_value,
+                    debounce=True,
+                ),
+            ],
+            className="mb-2",
+        ),
+        dbc.InputGroup(
+            [
+                dbc.InputGroupText("Name"),
+                dbc.Input(
+                    id=ids.INPUT_CONTAINER_NAME,
+                    type="text",
+                    value=nested_name,
+                    debounce=True,
+                ),
+            ],
+            className="mb-2",
+        ),
+        dbc.InputGroup(
+            [
+                dbc.InputGroupText("Description"),
+                dbc.Textarea(
+                    id=ids.INPUT_CONTAINER_DESC,
+                    value=nested_desc,
+                    rows=2,
+                    style={"fontSize": FONT_SIZE_LABEL},
+                ),
+            ],
+            className="mb-3",
+        ),
+    ]
+
+    body_children: List[Any] = [
+        *header_children,
+        html.Div(
+            [
+                html.Span("Inner scope: ", className="text-muted small"),
+                html.Strong(summary, className="small"),
+            ],
+            className="mb-1 inspector-container-summary",
+        ),
+        html.Div(
+            [
+                html.Span(
+                    f"{inner_block_count} inner block"
+                    f"{'s' if inner_block_count != 1 else ''}",
+                    className="text-muted small",
+                ),
+            ],
+            className="mb-2",
+        ),
+        # Aggregated inner-issue count placeholder.  Phase 6 wires
+        # STORE_ISSUES → this row; for Phase 5 we render the zero-state
+        # text so the row is part of the visible chrome.
+        html.Div(
+            "0 inner issues",
+            id=f"inspector-container-issues-{block.block_id}",
+            className="inspector-container-issues text-muted small mb-3",
+        ),
+        dbc.Button(
+            "Drill in →",
+            id=ids.BTN_DRILL_IN_CONTAINER,
+            color="primary",
+            outline=True,
+            n_clicks=0,
+            className="me-2",
+        ),
+        # Hidden placeholder so the legacy fan-in callback's
+        # ``Input(BTN_DRILL_IN)`` resolves even on the container card
+        # branch (5B can choose to reuse this id or dispatch from
+        # BTN_DRILL_IN_CONTAINER — either way the legacy id stays
+        # mounted as a hidden anchor).
+        dbc.Button(id=ids.BTN_DRILL_IN, n_clicks=0, style=_HIDDEN_STYLE),
+        html.Hr(),
+        html.Div(id=ids.INSPECTOR_PARAM_FORM),
+        html.Div(id=ids.INSPECTOR_PREVIEW, className="mt-3"),
+        # Documentation section: containers have no docstring; emit
+        # the hidden placeholders so the doc-toggle callback resolves.
+        *_doc_section_widgets(None),
+    ]
+
+    return html.Div(
+        dbc.Card(
+            dbc.CardBody(body_children),
+            className="h-100 inspector-container-card",
+        ),
+        id=ids.INSPECTOR_CONTAINER,
+    )
+
+
 def _build_dag_inspector(
     state: "_DagBuilderState",
     registry: "OperationRegistry",
@@ -2678,34 +3346,13 @@ def _build_dag_inspector(
             id=ids.INSPECTOR_CONTAINER,
         )
 
-    # Container blocks render a drill-in affordance + nested-scope
-    # summary; param form is suppressed (containers have no scalar params).
+    # Container blocks render the dedicated container inspector card
+    # (label + name + desc + summary + drill-in).  Spec §4.5 suppresses
+    # ``nrows`` / ``ncols`` on container scopes — the
+    # :func:`_build_container_inspector_card` helper emits only the
+    # surface relevant to a Pipeline container.
     if block.class_name == PIPELINE_CLASS_NAME:
-        nested_len = (
-            len(block.nested.blocks) if block.nested is not None else 0
-        )
-        body_children = [
-            *header_children,
-            html.P(
-                f"Nested scope: {nested_len} block(s).",
-                className="text-muted small",
-            ),
-            dbc.Button(
-                "Drill in →",
-                id=ids.BTN_DRILL_IN,
-                color="primary",
-                outline=True,
-                n_clicks=0,
-            ),
-            html.Hr(),
-            html.Div(id=ids.INSPECTOR_PARAM_FORM),
-            html.Div(id=ids.INSPECTOR_PREVIEW, className="mt-3"),
-            *_doc_section_widgets(None),
-        ]
-        return html.Div(
-            dbc.Card(dbc.CardBody(body_children), className="h-100"),
-            id=ids.INSPECTOR_CONTAINER,
-        )
+        return _build_container_inspector_card(state, block)
 
     # Ordinary op block: param form + aux ports section + hidden
     # placeholders for the doc-section / drill-in widgets so the
@@ -3568,23 +4215,17 @@ def build_app_layout(
             className="pheno-palette-section",
         )
 
-    # ``+ Pipeline`` adds a nested ImagePipeline node — conceptually a
-    # palette item, but kept as a sticky button above the Operations
-    # accordion so it's never hidden by a collapsed section.
-    new_pipeline_btn = dbc.Button(
-        "+ Pipeline",
-        id=ids.BTN_NEW_PIPELINE_NODE,
-        color="primary",
-        outline=True,
-        size="sm",
-        n_clicks=0,
-        className="w-100 mb-2",
-        title="Add a nested ImagePipeline container to the chain",
-    )
+    # ``+ New Pipeline`` adds a nested ImagePipeline container — conceptually
+    # a palette item, but kept as a sticky button above the Operations
+    # accordion so it's never hidden by a collapsed section.  The DAG
+    # palette factory carries the ``draggable`` + ``data-palette-class``
+    # attributes that ``palette_dnd.js`` looks for; the same ``id`` keeps
+    # the keyboard-fallback callback working when the user clicks the
+    # button rather than dragging it.
     operations_section = html.Div(
         [
             html.H6("Operations", className="mb-2"),
-            new_pipeline_btn,
+            build_new_pipeline_palette_button(),
             build_palette(registry),
         ],
         className="pheno-palette-section",
@@ -3896,6 +4537,7 @@ def build_app_layout(
 
 __all__ = [
     "build_palette",
+    "build_new_pipeline_palette_button",
     "build_canvas",
     "build_canvas_elements",
     "build_canvas_elements_dag",

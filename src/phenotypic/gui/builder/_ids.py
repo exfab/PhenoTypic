@@ -166,6 +166,27 @@ BTN_CONFIRM_DELETE = "btn-confirm-delete"
 #: ``state.pending_delete_block_id`` so the modal closes.
 BTN_CANCEL_DELETE = "btn-cancel-delete"
 
+#: Visible "Drill in →" button on the inspector container card (spec §4.5).
+#: Rendered by :func:`phenotypic.gui.builder._layout._build_dag_inspector`
+#: when the selected block is a :data:`PIPELINE_CLASS_NAME` container.
+#: Distinct from :data:`BTN_DRILL_IN` (which dispatches the legacy
+#: ``drill_in`` for nested-pipeline ``StepNode`` selections) so the
+#: Phase 5 container dispatcher can subscribe without spurious triggers
+#: from the legacy path.  Agent 5B wires this to dispatch
+#: ``drill_into_container``.
+BTN_DRILL_IN_CONTAINER = "btn-drill-in-container"
+
+#: Container-name text input inside the inspector container card.  Bound
+#: to ``BuilderScope.name`` of the selected container's nested scope
+#: (spec §4.5).  Agent 5B's dispatcher reads this to update
+#: ``block.nested.name`` on debounce.
+INPUT_CONTAINER_NAME = "input-container-name"
+
+#: Container-description text input inside the inspector container card.
+#: Bound to ``BuilderScope.desc`` of the selected container's nested
+#: scope (spec §4.5).
+INPUT_CONTAINER_DESC = "input-container-desc"
+
 # NOTE: ``STORE_EDGE_EVENT`` is declared higher up in this module.
 # The inspector pane writes into the same store via the kinds
 # ``edge_delete``, ``list_aux_add_empty_slot``, and ``list_aux_reorder``
@@ -966,6 +987,9 @@ __all__ = [
     "CONFIRM_DELETE_MODAL_ID",
     "BTN_CONFIRM_DELETE",
     "BTN_CANCEL_DELETE",
+    "BTN_DRILL_IN_CONTAINER",
+    "INPUT_CONTAINER_NAME",
+    "INPUT_CONTAINER_DESC",
     "block_port_id",
     "edge_id",
     # DAG canvas wire + inspector additions
