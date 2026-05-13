@@ -1077,6 +1077,11 @@ def _dispatch_block_reparent(
             e for e in source_scope.get("edges", []) or []
             if e.get("edge_id") not in orphan_ids
         ]
+        # Clear any selection that would dangle after the orphan deletion
+        # (mirrors ``edge_delete`` / ``block_delete_confirm`` cleanup so
+        # the inspector wire card doesn't try to render a stale edge).
+        if out.get("selected_edge_id") in orphan_ids:
+            out["selected_edge_id"] = None
         joined = ", ".join(sorted(set(other_labels)))
         _queue_toast(
             out,
@@ -2155,6 +2160,15 @@ def _dispatch_state_update(
             b for b in scope_dict.get("blocks", []) or []
             if b.get("block_id") != block_id
         ]
+        # Identify incident edge ids before removing them so we can also
+        # clear ``selected_edge_id`` when it points at one of the wires we
+        # are about to drop (spec §5.6: ``block_delete_confirm`` clears
+        # both ``selected_block_id`` and ``selected_edge_id`` if matching).
+        removed_edge_ids = {
+            e.get("edge_id") for e in scope_dict.get("edges", []) or []
+            if e.get("source_block_id") == block_id
+            or e.get("target_block_id") == block_id
+        }
         scope_dict["edges"] = [
             e for e in scope_dict.get("edges", []) or []
             if e.get("source_block_id") != block_id
@@ -2162,6 +2176,8 @@ def _dispatch_state_update(
         ]
         if out.get("selected_block_id") == block_id:
             out["selected_block_id"] = None
+        if out.get("selected_edge_id") in removed_edge_ids:
+            out["selected_edge_id"] = None
         if out.get("pending_delete_block_id") == block_id:
             out["pending_delete_block_id"] = None
         return out
