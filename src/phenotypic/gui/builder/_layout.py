@@ -4119,8 +4119,15 @@ def build_app_layout(
     # The two halves both use ``flex: 1 1 0`` so the split is exact regardless
     # of content size; ``min-height: 0`` lets each half shrink without the
     # inspector content forcing growth.
+    # Duck-type the selection field: DAG state carries ``selected_block_id``;
+    # legacy state carries ``selected_node_id``.  Either works for the
+    # initial-paint preset positioning (both fall through to dagre on the
+    # next mutation anyway).
+    initial_selection = getattr(state, "selected_node_id", None) or getattr(
+        state, "selected_block_id", None
+    )
     top_half = html.Div(
-        build_canvas_section(state.root, state.selected_node_id),
+        build_canvas_section(state.root, initial_selection),
         style={
             "flex": "1 1 0",
             "minHeight": 0,

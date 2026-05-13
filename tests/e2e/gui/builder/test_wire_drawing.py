@@ -18,9 +18,10 @@ underlying logic is covered by ``tests/unit/gui/builder/test_dispatch.py``.
 
 Run gates:
 * ``PLAYWRIGHT=1`` env (handled by the parent
-  ``tests/e2e/gui/conftest.py``).
-* ``PHENOTYPIC_GUI_DAG=1`` is set on the live server via
-  ``env_overrides`` so the DAG canvas + dispatch path is active.
+  ``tests/e2e/gui/conftest.py``).  (The ``PHENOTYPIC_GUI_DAG`` feature
+  flag earlier versions of this module set on the live server was
+  retired in Phase 8; the DAG canvas + dispatch path is now the only
+  renderer.)
 """
 
 from __future__ import annotations
@@ -49,12 +50,9 @@ def wire_drawing_sandbox(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 @pytest.fixture(scope="module")
 def live_server(wire_drawing_sandbox: Path) -> Iterator[str]:
-    """Spawn ``phenotypic-gui`` with ``PHENOTYPIC_GUI_DAG=1``."""
+    """Spawn ``phenotypic-gui`` against the wire-drawing sandbox."""
 
-    yield from _start_live_server(
-        wire_drawing_sandbox,
-        env_overrides={"PHENOTYPIC_GUI_DAG": "1"},
-    )
+    yield from _start_live_server(wire_drawing_sandbox)
 
 
 @pytest.fixture(scope="module")

@@ -22,8 +22,9 @@ Coordination:
 
 Run gates:
 * ``PLAYWRIGHT=1`` env (handled by ``tests/e2e/gui/conftest.py``).
-* ``PHENOTYPIC_GUI_DAG=1`` set on the live server via ``env_overrides``
-  so the DAG canvas + dispatcher path is active.
+  (The ``PHENOTYPIC_GUI_DAG`` feature flag earlier versions of this
+  module set on the live server was retired in Phase 8; the DAG canvas
+  + dispatcher are now the only renderer.)
 
 Pattern matches Phase 3/4: tests that need to inject complex starting
 state via ``window.phenoSetState`` skip gracefully when the helper
@@ -56,12 +57,9 @@ def containers_sandbox(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 @pytest.fixture(scope="module")
 def live_server(containers_sandbox: Path) -> Iterator[str]:
-    """Spawn ``phenotypic-gui`` with ``PHENOTYPIC_GUI_DAG=1``."""
+    """Spawn ``phenotypic-gui`` against the containers sandbox."""
 
-    yield from _start_live_server(
-        containers_sandbox,
-        env_overrides={"PHENOTYPIC_GUI_DAG": "1"},
-    )
+    yield from _start_live_server(containers_sandbox)
 
 
 @pytest.fixture(scope="module")

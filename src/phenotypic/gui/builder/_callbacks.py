@@ -73,6 +73,7 @@ from phenotypic.gui.builder._layout import (
     _sort_issues_for_badge,
     build_breadcrumb,
     build_canvas_elements,
+    build_canvas_elements_dag,
     build_inspector,
     build_issue_badge,
 )
@@ -1968,7 +1969,12 @@ def _render_views(state: BuilderState) -> Tuple[Any, List[dict], Any]:
     """Re-render breadcrumb, canvas, and inspector for a given state.
 
     Args:
-        state: Live :class:`BuilderState` object.
+        state: Live :class:`BuilderState` object.  Post-Phase-8 ``BuilderState``
+            is permanently aliased to ``_DagBuilderState``; the legacy
+            attribute names (``selected_node_id``, ``scope.nodes``) are
+            gracefully handled via duck-typing so the function remains
+            tolerant of the legacy fixture states used by the
+            migration-test suite.
 
     Returns:
         Tuple ``(breadcrumb_children, canvas_elements, inspector)``.
@@ -1983,18 +1989,42 @@ def _render_views(state: BuilderState) -> Tuple[Any, List[dict], Any]:
     """
 
     registry = _registry()
+    is_dag = hasattr(state, "selected_block_id")
     try:
         scope = current_scope(state)
     except KeyError:
-        # Stale breadcrumb — fall back to the root.
-        state = BuilderState(
-            root=state.root,
-            breadcrumb=[],
-            selected_node_id=None,
-        )
+        # Stale breadcrumb — fall back to the root.  Rebuild the state
+        # under the right schema so subsequent attribute lookups don't
+        # cross legacy/DAG boundaries.
+        if is_dag:
+            from phenotypic.gui.builder._state import _DagBuilderState
+
+            state = _DagBuilderState(
+                root=state.root,
+                breadcrumb=[],
+                selected_block_id=None,
+                selected_edge_id=None,
+                pending_delete_block_id=None,
+                toast_queue=[],
+            )
+        else:
+            state = BuilderState(
+                root=state.root,
+                breadcrumb=[],
+                selected_node_id=None,
+            )
         scope = state.root
 
-    canvas_elements = build_canvas_elements(scope, state.selected_node_id)
+    if is_dag:
+        canvas_elements = build_canvas_elements_dag(
+            scope,
+            selected_block_id=getattr(state, "selected_block_id", None),
+            selected_edge_id=getattr(state, "selected_edge_id", None),
+        )
+    else:
+        canvas_elements = build_canvas_elements(
+            scope, getattr(state, "selected_node_id", None),
+        )
     inspector = build_inspector(state, registry)
     breadcrumb = build_breadcrumb(state).children
     return breadcrumb, canvas_elements, inspector
@@ -5063,8 +5093,10 @@ def _bake_preview_cache(
       preview; the inspector shows their preview via the consumer's
       intermediate cache entry instead.
     * **Legacy schema** — walks ``state.root.nodes`` in declaration order
-      and keys the cache by 8-char ``StepNode.node_id``. Kept until the
-      feature flag is retired in Phase 8.
+      and keys the cache by 8-char ``StepNode.node_id``. Retained for the
+      back-compat migration fixtures (``test_legacy_pipeline_json``); no
+      active runtime callback feeds legacy state through this helper
+      after Phase 8 retired the feature flag.
 
     Args:
         state: The deserialised :class:`BuilderState` driving the preview.

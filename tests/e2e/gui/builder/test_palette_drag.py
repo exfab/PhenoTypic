@@ -7,9 +7,9 @@ can grep for missing coverage.
 Run gates:
 * ``PLAYWRIGHT=1`` env (handled by the parent
   ``tests/e2e/gui/conftest.py``).
-* The ``PHENOTYPIC_GUI_DAG`` env var must be ``1`` for the DAG canvas
-  / palette buttons / dispatcher path to be active.  We set it on the
-  ``live_server`` subprocess via a function-scoped override below.
+* The ``PHENOTYPIC_GUI_DAG`` env var that earlier versions of this
+  module set on the live server was retired in Phase 8; the DAG canvas
+  / palette buttons / dispatcher path is now the only renderer.
 
 Coordination:
 * The clientside HTML5 drag glue lives in
@@ -35,12 +35,11 @@ from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
 
 
 # ---------------------------------------------------------------------------
-# Live-server override: enable PHENOTYPIC_GUI_DAG=1 for the duration of
-# the module so the DAG canvas, palette buttons, and dispatcher path
-# are all active. The parent conftest's ``live_server`` fixture does
-# not flip the feature flag, so we delegate to ``_start_live_server``
-# with an ``env_overrides`` payload — no re-implementation of the
-# subprocess boilerplate.
+# Live-server override: the module needs its own function-scoped
+# sandbox (``palette_dnd_sandbox``), so we override the parent
+# ``live_server`` fixture rather than depend on the parent's default
+# sandbox. ``_start_live_server`` is reused so the subprocess boot
+# logic stays centralised.
 # ---------------------------------------------------------------------------
 
 
@@ -54,16 +53,13 @@ def palette_dnd_sandbox(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 @pytest.fixture(scope="module")
 def live_server(palette_dnd_sandbox: Path) -> Iterator[str]:
-    """Spawn ``phenotypic-gui`` with ``PHENOTYPIC_GUI_DAG=1``.
+    """Spawn ``phenotypic-gui`` against the palette-dnd sandbox.
 
     Overrides the parent module's ``live_server`` fixture (same fixture
     name on a function-scoped basis — pytest picks the closer scope).
     """
 
-    yield from _start_live_server(
-        palette_dnd_sandbox,
-        env_overrides={"PHENOTYPIC_GUI_DAG": "1"},
-    )
+    yield from _start_live_server(palette_dnd_sandbox)
 
 
 @pytest.fixture(scope="module")

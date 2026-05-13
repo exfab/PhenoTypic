@@ -4,9 +4,12 @@ Mirrors spec ``2026-05-12-builder-dag-redesign-design.md`` §5.3: every
 rule has a positive (issue emitted) and negative (issue absent) case,
 plus a recursion test that exercises ``scope_path``.
 
-The tests construct ``_DagBuilderState`` instances directly so the
-feature flag (``PHENOTYPIC_GUI_DAG``) does not need to be on for
-imports to resolve to the DAG classes.  All registry-dependent rules
+The tests construct ``_DagBuilderState`` instances directly under the
+stable underscore-prefixed name.  Phase 8 retired the
+``PHENOTYPIC_GUI_DAG`` feature flag and the public ``BuilderState``
+alias now resolves to the DAG class permanently; importing the
+underscore name keeps these rule tests resilient to any future alias
+re-binding.  All registry-dependent rules
 (Rule 3, Rule 7) monkeypatch the validation module's
 ``get_registry`` symbol so the tests don't depend on the registry's
 current operation inventory — that way new ops or signature changes

@@ -10,7 +10,9 @@ canonical place for "what happens when ``wire_drawing.js`` /
 phases extend this file with the companion checks for
 ``viewport_ops.js`` failure modes and dagre absence.
 
-Run gates: ``PLAYWRIGHT=1`` + ``PHENOTYPIC_GUI_DAG=1``.
+Run gates: ``PLAYWRIGHT=1``.  (The ``PHENOTYPIC_GUI_DAG`` feature flag
+that earlier versions of this module set on the live server was
+retired in Phase 8; the DAG canvas is the only renderer now.)
 """
 
 from __future__ import annotations
@@ -39,12 +41,9 @@ def resilience_sandbox(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 @pytest.fixture(scope="module")
 def live_server(resilience_sandbox: Path) -> Iterator[str]:
-    """Spawn ``phenotypic-gui`` with ``PHENOTYPIC_GUI_DAG=1``."""
+    """Spawn ``phenotypic-gui`` against the resilience sandbox."""
 
-    yield from _start_live_server(
-        resilience_sandbox,
-        env_overrides={"PHENOTYPIC_GUI_DAG": "1"},
-    )
+    yield from _start_live_server(resilience_sandbox)
 
 
 @pytest.fixture(scope="module")

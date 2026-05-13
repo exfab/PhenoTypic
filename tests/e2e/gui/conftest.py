@@ -175,9 +175,11 @@ def _start_live_server(
     Args:
         sandbox: Path passed as ``--root`` to ``phenotypic-gui``.
         env_overrides: Optional mapping merged on top of ``os.environ``
-            for the subprocess. Use this to flip feature flags such as
-            ``PHENOTYPIC_GUI_DAG=1`` without re-implementing the boot
-            logic in the calling test module.
+            for the subprocess. Lets a calling test module flip env
+            vars on the spawned hub without re-implementing the boot
+            logic. (The ``PHENOTYPIC_GUI_DAG`` feature flag this
+            originally serviced was retired in Phase 8; the parameter
+            stays for future use.)
     """
     port = _free_port()
     cmd = [

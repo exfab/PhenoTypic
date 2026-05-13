@@ -18,7 +18,9 @@ without loss, including:
 
 Run gates:
 * ``PLAYWRIGHT=1`` env (handled by parent ``tests/e2e/gui/conftest.py``).
-* ``PHENOTYPIC_GUI_DAG=1`` for the DAG canvas + dispatcher.
+  (The ``PHENOTYPIC_GUI_DAG`` feature flag earlier versions of this
+  module set on the live server was retired in Phase 8; the DAG canvas
+  + dispatcher are now the only renderer.)
 
 Tests that depend on ``window.phenoSetState`` (server-side state
 injection) ``pytest.skip`` per the established Phase 3/4/5/6 pattern;
@@ -51,12 +53,9 @@ def legacy_load_sandbox(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 @pytest.fixture(scope="module")
 def live_server(legacy_load_sandbox: Path) -> Iterator[str]:
-    """Spawn ``phenotypic-gui`` with ``PHENOTYPIC_GUI_DAG=1``."""
+    """Spawn ``phenotypic-gui`` against the legacy-load sandbox."""
 
-    yield from _start_live_server(
-        legacy_load_sandbox,
-        env_overrides={"PHENOTYPIC_GUI_DAG": "1"},
-    )
+    yield from _start_live_server(legacy_load_sandbox)
 
 
 @pytest.fixture(scope="module")

@@ -4,9 +4,11 @@ These tests exercise the new schema introduced in Phase 1 of the
 Pipeline Builder DAG redesign (see
 ``docs/superpowers/specs/2026-05-12-builder-dag-redesign-design.md``).
 The DAG types are imported under their stable underscore-prefixed
-names (``_DagBuilderScope`` / ``_DagBuilderState``) so the tests work
-regardless of whether the ``PHENOTYPIC_GUI_DAG`` feature flag is on
-during the test run.
+names (``_DagBuilderScope`` / ``_DagBuilderState``).  Phase 8 retired
+the ``PHENOTYPIC_GUI_DAG`` feature flag and made the public
+``BuilderScope`` / ``BuilderState`` aliases resolve to the DAG types
+permanently; importing the underscore names directly keeps these
+round-trip tests resilient to any future alias re-binding.
 """
 
 from __future__ import annotations

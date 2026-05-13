@@ -12,8 +12,9 @@ expose a stable selector to drive drag-handles programmatically, those
 tests skip gracefully and the underlying dispatcher logic is covered by
 ``tests/unit/gui/builder/test_dispatch.py``.
 
-Run gates: ``PLAYWRIGHT=1`` + ``PHENOTYPIC_GUI_DAG=1`` (set on the
-live server via ``env_overrides``).
+Run gates: ``PLAYWRIGHT=1``.  (The ``PHENOTYPIC_GUI_DAG`` feature flag
+that earlier versions of this module set on the live server was
+retired in Phase 8; the DAG canvas is the only renderer now.)
 """
 
 from __future__ import annotations
@@ -42,12 +43,9 @@ def list_aux_sandbox(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 @pytest.fixture(scope="module")
 def live_server(list_aux_sandbox: Path) -> Iterator[str]:
-    """Spawn ``phenotypic-gui`` with ``PHENOTYPIC_GUI_DAG=1``."""
+    """Spawn ``phenotypic-gui`` against the list-aux sandbox."""
 
-    yield from _start_live_server(
-        list_aux_sandbox,
-        env_overrides={"PHENOTYPIC_GUI_DAG": "1"},
-    )
+    yield from _start_live_server(list_aux_sandbox)
 
 
 @pytest.fixture(scope="module")
