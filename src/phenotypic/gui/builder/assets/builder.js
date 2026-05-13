@@ -257,9 +257,10 @@
      *  in ``_callbacks.asset_status_disables`` consumes. */
     const ASSET_READY_FLAGS = {
         viewport_ops: "phenotypic_viewport_ops_ready",
-        // ``palette_dnd`` and ``wire_drawing`` are filled in as their
-        // IIFEs ship; meanwhile ``collectAssetStatus`` defaults them to
-        // true so the banner stays clear.
+        palette_dnd: "phenotypic_palette_dnd_ready",
+        // ``wire_drawing`` is filled in once Phase 4's IIFE ships;
+        // meanwhile ``collectAssetStatus`` defaults it to true so the
+        // banner stays clear.
     };
 
     /** Auxiliary "extension missing" flags. Asset-specific: an asset
@@ -279,9 +280,9 @@
     function collectAssetStatus() {
         const status = {};
         // Default unimplemented assets to ``true`` so they don't trip
-        // the banner before their IIFE ships.
+        // the banner before their IIFE ships (wire_drawing ships in
+        // Phase 4).
         status.wire_drawing = true;
-        status.palette_dnd = true;
         for (const name in ASSET_READY_FLAGS) {
             status[name] = Boolean(window[ASSET_READY_FLAGS[name]]);
         }
