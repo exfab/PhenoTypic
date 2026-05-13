@@ -32,7 +32,8 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import Input, Output, dcc, html
 from dash.development.base_component import Component
 
-from phenotypic.gui._config import MOUNT_HOME, SSH_TUNNEL_HINT
+from phenotypic.gui._config import CFG_QC_RECIPE, MOUNT_HOME, SSH_TUNNEL_HINT
+from phenotypic.gui._qc_recipe import QcRecipe
 from phenotypic.gui._schema_cache import MeasurementSchema
 from phenotypic.gui._shared import SHARED_LOGO_PATH
 from phenotypic.gui._design import (
@@ -47,6 +48,7 @@ from phenotypic.gui._design import (
 from phenotypic.gui.results_viewer import _filter_panel, _ids as ids, colony_view
 from phenotypic.gui.results_viewer._heatmap_tab import build_heatmap_tab_body
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.results_viewer._qc_tab import build_qc_tab_body
 from phenotypic.gui.results_viewer.colony_view import _layout as _colony_layout  # noqa: F401
 
 if TYPE_CHECKING:
@@ -336,6 +338,25 @@ def _resolve_measurement_schema(output_root: OutputRoot) -> MeasurementSchema:
     return MeasurementSchema(output_root=Path(output_root.root))
 
 
+def _resolve_qc_recipe(output_root: OutputRoot) -> QcRecipe:
+    """Return the QC recipe for the active output root.
+
+    Prefer the app-config-stashed instance (set by :func:`._app.create_app`)
+    so layout and callbacks share the same in-memory object. Falls back
+    to a fresh :meth:`QcRecipe.load` for tests or standalone callers that
+    invoke :func:`build_app_layout` without the app factory.
+    """
+    try:
+        from flask import current_app
+
+        recipe = current_app.config.get(CFG_QC_RECIPE)
+        if isinstance(recipe, QcRecipe):
+            return recipe
+    except RuntimeError:
+        pass  # No application context (test harness, etc.).
+    return QcRecipe.load(Path(output_root.root))
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -382,6 +403,7 @@ def build_app_layout(
     # keeps the cache hits warm across tabs.
     schema = _resolve_measurement_schema(output_root)
     heatmap_tab_body = build_heatmap_tab_body(output_root, schema)
+    qc_tab_body = build_qc_tab_body(_resolve_qc_recipe(output_root))
     stores = _build_stores(filtered_state)
 
     tabs = dbc.Tabs(
@@ -395,6 +417,11 @@ def build_app_layout(
                 colony_tab_body,
                 label="Colony",
                 tab_id=ids.TAB_COLONY_ID,
+            ),
+            dbc.Tab(
+                qc_tab_body,
+                label="QC",
+                tab_id=ids.TAB_QC_ID,
             ),
             dbc.Tab(
                 heatmap_tab_body,

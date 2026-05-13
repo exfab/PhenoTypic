@@ -41,11 +41,14 @@ from phenotypic.gui._config import (
     CFG_MEASUREMENT_SCHEMA,
     CFG_OUTPUT_ROOT,
     CFG_QC_AUGMENTED_FRAME,
+    CFG_QC_INSTANCES_CACHE,
+    CFG_QC_RECIPE,
     CFG_URL_PREFIX,
     MOUNT_HOME,
     SANDBOX_API_VIEWER_OUTPUT_ROOT,
     TITLE_VIEWER,
 )
+from phenotypic.gui._qc_recipe import QcRecipe
 from phenotypic.gui._schema_cache import MeasurementSchema
 from phenotypic.gui._design import COLOR_BLUE, COLOR_SURFACE, inject_design_tokens
 from phenotypic.gui._shared import register_shared_static
@@ -188,6 +191,12 @@ def create_app(
     # fills it on its first card refresh. The heatmap render callback
     # gracefully falls back to the plain filtered frame until then.
     app.server.config.setdefault(CFG_QC_AUGMENTED_FRAME, None)
+
+    # QC recipe sidecar + per-revision instance cache. Loading is cheap
+    # (a single JSON read) and the cache is keyed on the recipe revision
+    # counter so a stale entry can never serve a moved configuration.
+    app.server.config[CFG_QC_RECIPE] = QcRecipe.load(Path(output_root.root))
+    app.server.config.setdefault(CFG_QC_INSTANCES_CACHE, {})
 
     app.layout = build_app_layout(output_root, filtered_state, url_prefix=url_prefix)
     register_callbacks(app, output_root)
