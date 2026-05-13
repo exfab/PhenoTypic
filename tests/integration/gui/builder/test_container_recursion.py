@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 
 import pytest
 
@@ -167,14 +167,6 @@ def test_container_fixture_renders_one_compound_parent_per_container(
     )
 
 
-@pytest.mark.xfail(
-    reason=(
-        "Phase 5A in flight: build_canvas_elements_dag's recursion into "
-        "container.nested.blocks not yet wiring data.parent. Expected to "
-        "pass once 5A's chrome rendering lands."
-    ),
-    strict=False,
-)
 @pytest.mark.parametrize(
     "fixture_name",
     ["nested_container", "container_main_flow", "container_aux_mode"],
@@ -183,71 +175,49 @@ def test_inner_ops_carry_container_parent_when_rendered_in_outer_scope(
     fixture_name: str,
 ) -> None:
     """Inner ops rendered in the outer scope carry ``data.parent =
-    <container_block_id>``.
+    <immediate_container_block_id>``.
 
     Spec §4.4 + §5.5 — when the renderer recurses into a container's
-    nested scope (Agent 5A), the inner blocks must emit
-    ``data.parent`` pointing to their enclosing container's block_id
-    so cytoscape's compound layout groups them correctly.
-
-    This test is intentionally permissive about whether the recursive
-    rendering is in place yet: if inner blocks DON'T appear in the
-    outer-scope render (pre-recursion baseline), the test asserts
-    nothing.  If they DO appear, every such inner block must carry
-    the right parent reference.  Either branch is a valid state of
-    the rendering pipeline; the test fails only when inner blocks
-    surface without a parent (the "broken" middle ground).
+    nested scope, the inner blocks emit ``data.parent`` pointing to
+    their IMMEDIATE enclosing container's block_id (cytoscape's
+    compound layout handles transitive grouping automatically via
+    parent-of-parent chains).
     """
 
     state = _load_state(fixture_name)
     elements = build_canvas_elements_dag(state.root)
     block_elems = _block_elements(elements)
 
-    # Build a map of every block_id known to the OUTER scope so we can
-    # detect inner-scope blocks that surfaced in the render.
-    outer_block_ids = {b.block_id for b in state.root.blocks}
-
-    # Map each container's block_id to the set of inner-block block_ids
-    # owned by its nested scope (recursive).
-    container_to_inner: Dict[str, set[str]] = {}
+    # Map each block_id to the block_id of its IMMEDIATE enclosing
+    # container (or None for root-scope blocks).
+    immediate_parent: Dict[str, Optional[str]] = {}
+    for b in state.root.blocks:
+        immediate_parent[b.block_id] = None
     for container in _container_blocks(state.root.blocks):
         if container.nested is None:
             continue
-        inner_ids: set[str] = set()
-        stack: List[BlockNode] = list(container.nested.blocks)
+        stack: List[Tuple[BlockNode, str]] = [
+            (child, container.block_id) for child in container.nested.blocks
+        ]
         while stack:
-            block = stack.pop()
-            inner_ids.add(block.block_id)
+            block, parent_id = stack.pop()
+            immediate_parent[block.block_id] = parent_id
             if block.nested is not None:
-                stack.extend(block.nested.blocks)
-        container_to_inner[container.block_id] = inner_ids
+                stack.extend((c, block.block_id) for c in block.nested.blocks)
 
-    # Walk every rendered block element; if its id is owned by a
-    # container's inner scope, assert it parents to that container.
     for elem in block_elems:
         elem_id = elem["data"]["id"]
-        if elem_id in outer_block_ids:
-            continue  # outer-scope blocks have no parent
-        for container_id, inner_ids in container_to_inner.items():
-            if elem_id in inner_ids:
-                # Inner block surfaced in the outer render → must
-                # carry the container as its compound parent.
-                assert elem["data"].get("parent") == container_id, (
-                    f"{fixture_name}: inner block {elem_id} (a child "
-                    f"of container {container_id}) was rendered "
-                    f"without setting data.parent = {container_id}; "
-                    f"got data.parent = {elem['data'].get('parent')!r}"
-                )
-                break
+        if elem_id not in immediate_parent:
+            continue
+        expected_parent = immediate_parent[elem_id]
+        actual_parent = elem["data"].get("parent")
+        assert actual_parent == expected_parent, (
+            f"{fixture_name}: block {elem_id} should have "
+            f"data.parent = {expected_parent!r} (its immediate "
+            f"container per spec §4.4), got {actual_parent!r}"
+        )
 
 
-@pytest.mark.xfail(
-    reason=(
-        "Phase 5A in flight: inner nested-scope render assertion depends "
-        "on build_canvas_elements_dag's recursion landing."
-    ),
-    strict=False,
-)
 @pytest.mark.parametrize(
     "fixture_name",
     ["nested_container", "container_main_flow", "container_aux_mode"],
@@ -276,12 +246,15 @@ def test_container_nested_scope_renders_independently(fixture_name: str) -> None
         inner_block_elems = _block_elements(inner_elements)
 
         # Every inner BlockNode resolves to one cytoscape element.
+        # Recursive rendering may also surface grandchildren (blocks
+        # inside a nested container's own nested scope), so the
+        # declared inner ids must be a subset of what was rendered.
         inner_ids = {b.block_id for b in container.nested.blocks}
         rendered_ids = {e["data"]["id"] for e in inner_block_elems}
-        assert inner_ids == rendered_ids, (
+        assert inner_ids <= rendered_ids, (
             f"{fixture_name}: container {container.block_id}'s nested "
-            f"scope rendered block ids {rendered_ids} but state has "
-            f"{inner_ids}"
+            f"scope rendered block ids {rendered_ids} missing "
+            f"{inner_ids - rendered_ids}"
         )
 
         # Rule 6 — the nested scope must have an InputImage sentinel
@@ -293,21 +266,13 @@ def test_container_nested_scope_renders_independently(fixture_name: str) -> None
         )
 
 
-@pytest.mark.xfail(
-    reason=(
-        "Phase 5A in flight: 2-level compound-parent emission requires "
-        "the recursive nested-scope rendering not yet completed."
-    ),
-    strict=False,
-)
 def test_two_level_nesting_produces_two_compound_parents() -> None:
     """``nested_container.json`` is the canonical 2-level nesting fixture.
 
     Spec §4.4 — containers nest arbitrarily; rendering uses cytoscape's
-    compound parent feature.  The combined cytoscape tree across the
-    outer scope + every nested scope must expose exactly 2 compound
-    parents (the outer ``OuterContainer`` + the inner
-    ``InnerContainer``), each carrying ``dag-block--container``.
+    compound parent feature.  A single recursive render of the root
+    scope must surface both containers as compound parents (outer +
+    inner) so the cytoscape tree can group them in one layout pass.
     """
 
     state = _load_state("nested_container")
@@ -327,48 +292,19 @@ def test_two_level_nesting_produces_two_compound_parents() -> None:
         f"blocks across the full tree, found {len(container_blocks)}"
     )
 
-    # Render the OUTER scope and verify the outer container surfaces
-    # with the container class.
-    outer_elements = build_canvas_elements_dag(state.root)
-    outer_block_elems = _block_elements(outer_elements)
-    outer_containers_rendered = [
-        e for e in outer_block_elems
+    # A single recursive render of the root surfaces both compound
+    # parents in one cytoscape elements list.
+    elements = build_canvas_elements_dag(state.root)
+    block_elems = _block_elements(elements)
+    containers_rendered = [
+        e for e in block_elems
         if "dag-block--container" in _classes_of(e)
     ]
-    assert len(outer_containers_rendered) == 1, (
-        "outer scope render should expose exactly one compound parent "
-        f"for the outer container, got {len(outer_containers_rendered)}"
-    )
-
-    # Render the outer container's nested scope and verify the inner
-    # container is exposed there with the container class.
-    outer_container = next(
-        b for b in state.root.blocks if b.class_name == PIPELINE_CLASS_NAME
-    )
-    assert outer_container.nested is not None
-    middle_elements = build_canvas_elements_dag(outer_container.nested)
-    middle_block_elems = _block_elements(middle_elements)
-    middle_containers_rendered = [
-        e for e in middle_block_elems
-        if "dag-block--container" in _classes_of(e)
-    ]
-    assert len(middle_containers_rendered) == 1, (
-        "middle scope render (inside outer container) should expose "
-        "exactly one compound parent for the inner container, got "
-        f"{len(middle_containers_rendered)}"
-    )
-
-    # Combined view across the 2-level scope tree: each scope render
-    # contributes one compound parent, so 2 compound parents exist in
-    # the full cytoscape tree (matches the 2 containers in state).
-    combined_compound_ids = {
-        e["data"]["id"] for e in outer_containers_rendered
-    } | {e["data"]["id"] for e in middle_containers_rendered}
+    rendered_ids = {e["data"]["id"] for e in containers_rendered}
     expected_ids = {b.block_id for b in container_blocks}
-    assert combined_compound_ids == expected_ids, (
-        "combined compound parent ids across nested-scope renders "
-        f"({combined_compound_ids}) do not match the 2 fixture "
-        f"container block_ids ({expected_ids})"
+    assert rendered_ids == expected_ids, (
+        "recursive render of the root scope should surface both "
+        f"compound parents ({expected_ids}); got {rendered_ids}"
     )
 
 
