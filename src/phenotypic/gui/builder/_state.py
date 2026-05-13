@@ -1632,7 +1632,9 @@ def state_to_json(state: Any) -> Dict[str, Any]:
             dataclasses.
     """
 
-    if isinstance(state, _DagBuilderState):
+    # Duck-typed dispatch (resilient to ``importlib.reload`` in tests that
+    # would otherwise spawn fresh class objects and break ``isinstance``).
+    if hasattr(state, "selected_block_id"):
         return {
             "_schema": "dag",
             "root": _dag_scope_to_dict(state.root),
@@ -1642,7 +1644,7 @@ def state_to_json(state: Any) -> Dict[str, Any]:
             "pending_delete_block_id": state.pending_delete_block_id,
             "toast_queue": list(state.toast_queue),
         }
-    if isinstance(state, _LegacyBuilderState):
+    if hasattr(state, "selected_node_id"):
         return {
             "_schema": "legacy",
             "root": _scope_to_dict(state.root),
