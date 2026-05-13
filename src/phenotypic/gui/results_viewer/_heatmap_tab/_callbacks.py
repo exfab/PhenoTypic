@@ -36,6 +36,7 @@ from phenotypic.gui._config import (
     CFG_QC_AUGMENTED_FRAME,
 )
 from phenotypic.gui.results_viewer import _ids as viewer_ids
+from phenotypic.gui.results_viewer._filtered_state import get_curated_frame
 from phenotypic.gui.results_viewer._heatmap_tab import _ids as ids
 from phenotypic.gui.results_viewer._heatmap_tab._figure import (
     AggregatorName,
@@ -232,7 +233,7 @@ def _resolve_frame() -> pl.DataFrame | None:
     if filtered is None or output_root is None:
         return None
     try:
-        return filtered.filtered_df(output_root.master_df)
+        return get_curated_frame(filtered, output_root)
     except Exception:  # noqa: BLE001 - defensive: stale config keys.
         logger.warning("filtered_df lookup failed", exc_info=True)
         return None

@@ -54,6 +54,7 @@ from phenotypic.gui._operation_registry import OperationRegistry
 from phenotypic.gui._param_forms import param_form, parse_widget_value
 from phenotypic.gui._qc_recipe import QcRecipe
 from phenotypic.gui.results_viewer import _ids as viewer_ids
+from phenotypic.gui.results_viewer._filtered_state import get_curated_frame
 from phenotypic.gui.results_viewer._qc_tab import _ids as ids
 from phenotypic.gui.results_viewer._qc_tab._check_card import build_check_card
 from phenotypic.gui.results_viewer._qc_tab._layout import (
@@ -399,7 +400,7 @@ def register_qc_callbacks(app: dash.Dash) -> None:
                 (aug_rev or 0) + 1,
             )
 
-        augmented = filtered.filtered_df(output_root.master_df)
+        augmented = get_curated_frame(filtered, output_root)
         try:
             pandas_frame = augmented.to_pandas()
         except Exception as exc:  # noqa: BLE001
@@ -788,7 +789,7 @@ def register_qc_callbacks(app: dash.Dash) -> None:
         check = instances.get(instance_id)
         if check is None:
             raise PreventUpdate
-        frame = filtered.filtered_df(output_root.master_df).to_pandas()
+        frame = get_curated_frame(filtered, output_root).to_pandas()
         try:
             check.analyze(frame)
         except Exception as exc:  # noqa: BLE001
@@ -873,7 +874,7 @@ def _export_qc_report(
     parquet_path = root / "qc.parquet"
     summary_path = root / "qc_summary.json"
 
-    pandas_frame = filtered.filtered_df(output_root.master_df).to_pandas()
+    pandas_frame = get_curated_frame(filtered, output_root).to_pandas()
     instances = dict(recipe.instantiate())
 
     parts: list[pd.DataFrame] = []
