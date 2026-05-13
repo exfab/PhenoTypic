@@ -73,8 +73,9 @@
      *  drop-on-wire side-effect of selecting the wire. */
     const STORE_BUILDER_STATE_ID = "store-builder-state";
 
-    /** Server-rendered palette buttons carry this attribute (Agent 3B
-     *  ensures it lands on the dbc.Button DOM). */
+    /** Server-rendered palette buttons carry this attribute on the
+     *  underlying ``<button>`` DOM element (see
+     *  ``_layout._palette_for_categories``). */
     const PALETTE_CLASS_ATTR = "data-palette-class";
 
     /** Cytoscape class on container compound nodes. Matches
@@ -109,6 +110,18 @@
     // -----------------------------------------------------------------
     let activeDrag = null; // {className, startX, startY, ts}
     let hoverContainerId = null; // cytoscape node id of currently hovered container
+
+    // ``dragover`` fires continuously during a drag (every ~16-50ms).
+    // Each fire would otherwise re-run ``findInnermostContainer``, which
+    // iterates every ``.dag-block--container`` and calls
+    // ``boundingBox()`` per node — O(V) cytoscape-internal work.  We
+    // coalesce via ``requestAnimationFrame`` so the hit-test runs at most
+    // once per animation frame regardless of how many dragover events
+    // the browser delivers.  The pending state captures the latest cursor
+    // coords; older queued coords are discarded (only the freshest position
+    // matters for the hover decoration).
+    let dragoverRafId = null;
+    let dragoverPending = null; // {clientX, clientY}
 
     // -----------------------------------------------------------------
     // Helpers.
@@ -389,6 +402,15 @@
         // Clear hover decoration even on cancellation.
         const cy = window.phenoGetCy && window.phenoGetCy();
         if (cy) clearHoverHighlight(cy);
+        // Cancel any pending dragover hit-test so the rAF callback can't
+        // fire after the drag is over (would be a no-op due to the
+        // ``activeDrag`` null-guard, but explicit cancel avoids the
+        // wasted frame callback).
+        if (dragoverRafId !== null) {
+            cancelAnimationFrame(dragoverRafId);
+            dragoverRafId = null;
+        }
+        dragoverPending = null;
         activeDrag = null;
     }
 
@@ -422,18 +444,15 @@
     // -----------------------------------------------------------------
     // Canvas event handlers.
     // -----------------------------------------------------------------
-    function onCanvasDragOver(event) {
-        if (!activeDrag) return;
-        // ``preventDefault`` is required to mark the wrapper as a valid
-        // drop target. Without it the browser silently rejects drops.
-        event.preventDefault();
-        if (event.dataTransfer) {
-            event.dataTransfer.dropEffect = "copy";
-        }
-
+    /** Hit-test + hover-decoration swap for the latest dragover coords.
+     *  Called from the ``requestAnimationFrame`` callback in
+     *  :func:`onCanvasDragOver` so the O(V) bounding-box scan runs at
+     *  most once per animation frame regardless of how many dragover
+     *  events the browser fires. */
+    function runDragoverHitTest(clientX, clientY) {
         const cy = window.phenoGetCy && window.phenoGetCy();
         if (!cy) return;
-        const graph = clientToGraph(cy, event.clientX, event.clientY);
+        const graph = clientToGraph(cy, clientX, clientY);
         if (!graph) return;
 
         const container = findInnermostContainer(cy, graph.x, graph.y);
@@ -446,6 +465,29 @@
             container.addClass(CONTAINER_HOVER_CLASS);
             hoverContainerId = container.id();
         }
+    }
+
+    function onCanvasDragOver(event) {
+        if (!activeDrag) return;
+        // ``preventDefault`` is required to mark the wrapper as a valid
+        // drop target. Without it the browser silently rejects drops.
+        event.preventDefault();
+        if (event.dataTransfer) {
+            event.dataTransfer.dropEffect = "copy";
+        }
+
+        // Coalesce: capture the freshest cursor coords and schedule a
+        // single rAF-bound hit-test.  If a rAF is already pending, the
+        // existing one will pick up the updated ``dragoverPending``.
+        dragoverPending = { clientX: event.clientX, clientY: event.clientY };
+        if (dragoverRafId !== null) return;
+        dragoverRafId = requestAnimationFrame(function () {
+            dragoverRafId = null;
+            const pending = dragoverPending;
+            dragoverPending = null;
+            if (!activeDrag || pending === null) return;
+            runDragoverHitTest(pending.clientX, pending.clientY);
+        });
     }
 
     function onCanvasDragLeave(event) {
@@ -468,6 +510,14 @@
     function onCanvasDrop(event) {
         event.preventDefault();
         if (!activeDrag) return;
+
+        // Cancel any queued dragover hit-test — the drop supersedes it
+        // and we don't need the hover decoration once the drag ends.
+        if (dragoverRafId !== null) {
+            cancelAnimationFrame(dragoverRafId);
+            dragoverRafId = null;
+        }
+        dragoverPending = null;
 
         const cy = window.phenoGetCy && window.phenoGetCy();
         if (!cy) {
