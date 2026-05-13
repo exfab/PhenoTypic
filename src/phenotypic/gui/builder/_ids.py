@@ -91,7 +91,7 @@ STORE_ISSUES = "store-issues"
 #: ``dbc.Badge`` rendered in the canvas toolbar showing the live issue
 #: count (e.g. ``"3 issues, 1 hint"``).  Click acts as a tooltip target —
 #: hovering pops :data:`ISSUE_BADGE_TOOLTIP` listing one row per issue.
-#: Phase 6 wires the badge label + tooltip rows from :data:`STORE_ISSUES`.
+#: ``update_issue_badge`` wires the label + tooltip rows from :data:`STORE_ISSUES`.
 ISSUE_BADGE = "issue-badge"
 
 #: ``dbc.Popover`` (anchored at :data:`ISSUE_BADGE`) listing one
@@ -299,9 +299,9 @@ def issue_row_id(block_id: Optional[str], kind: str, idx: int) -> Dict[str, Any]
 
     Returns:
         Dict of shape ``{"type": "issue-row", "block_id": str,
-        "kind": str, "idx": int}``.  Phase 6 callbacks match
-        ``Input({"type": "issue-row", "block_id": ALL, "kind": ALL,
-        "idx": ALL}, "n_clicks")``.
+        "kind": str, "idx": int}``.  :func:`issue_row_click_dispatch`
+        matches ``Input({"type": "issue-row", "block_id": ALL,
+        "kind": ALL, "idx": ALL}, "n_clicks")``.
     """
 
     return {

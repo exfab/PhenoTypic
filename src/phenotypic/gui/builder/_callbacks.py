@@ -2273,6 +2273,12 @@ def _format_exception(exc: BaseException) -> str:
     return f"{type(exc).__name__}: {exc}"
 
 
+#: Auto-dismiss duration (ms) for toasts surfaced from the FIFO queue,
+#: per spec §5.1.  Distinct from the static toast's ``duration=5000`` so
+#: queue-driven toasts drain faster than ad-hoc Run/Save notifications.
+_TOAST_QUEUE_DURATION_MS = 3000
+
+
 # ---------------------------------------------------------------------------
 # Run preview / Save gating (spec §5.6)
 # ---------------------------------------------------------------------------
@@ -2353,6 +2359,31 @@ def _gate_toast_for_issue(action: str, issue: Any) -> Tuple[bool, str, str, str]
         ok=False,
         header="Validation",
     )
+
+
+def _toast_queue_from_state(
+    state_data: Optional[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Extract a normalised ``toast_queue`` from a state-store payload.
+
+    Shared by :func:`surface_toast_queue_head` and
+    :func:`pop_toast_queue_on_dismiss` so the same null-tolerance and
+    type-check rules apply to both ends of the FIFO consumer pair.
+
+    Args:
+        state_data: ``state_to_json`` payload from
+            :data:`ids.STORE_BUILDER_STATE`.  ``None`` / non-dict yields
+            an empty list.
+
+    Returns:
+        List of queue entries (each a dict).  Empty when the state has
+        no queue or the payload is malformed.
+    """
+
+    if not isinstance(state_data, dict):
+        return []
+    queue = state_data.get("toast_queue") or []
+    return list(queue)
 
 
 # ---------------------------------------------------------------------------
@@ -5826,9 +5857,7 @@ def register_callbacks(app: dash.Dash) -> None:
             every output when the queue is empty.
         """
 
-        if not isinstance(state_data, dict):
-            return (no_update,) * 5
-        queue = state_data.get("toast_queue") or []
+        queue = _toast_queue_from_state(state_data)
         if not queue:
             return (no_update,) * 5
         head = queue[0]
@@ -5838,9 +5867,9 @@ def register_callbacks(app: dash.Dash) -> None:
         kind = str(head.get("kind", "info"))
         ok = kind not in {"error", "warning"}
         # _toast returns (is_open, children, icon, header) — splice
-        # the 3000ms duration on so the toast auto-dismisses per spec.
+        # the queue-toast duration on so it auto-dismisses per spec.
         toast_outputs = _toast(text, ok=ok)
-        return (*toast_outputs, 3000)
+        return (*toast_outputs, _TOAST_QUEUE_DURATION_MS)
 
     # ----------------------------------------------------------------------
     # 14. Toast dismiss → pop the queue head
@@ -5889,13 +5918,14 @@ def register_callbacks(app: dash.Dash) -> None:
 
         if is_open:
             return no_update
-        if not isinstance(state_data, dict):
-            return no_update
-        queue = state_data.get("toast_queue") or []
+        queue = _toast_queue_from_state(state_data)
         if not queue:
             return no_update
-        new_state = dict(state_data)
-        new_state["toast_queue"] = list(queue[1:])
+        # ``state_data`` is dict here — the helper returns an empty
+        # queue when the payload is non-dict, so we already short-
+        # circuited above.
+        new_state = dict(state_data)  # type: ignore[arg-type]
+        new_state["toast_queue"] = queue[1:]
         return new_state
 
 
