@@ -15,7 +15,7 @@ emitted Dash component tree is checked, not the actual op behaviour.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Iterable, List, Optional
+from typing import Any, Optional
 
 
 from phenotypic.gui._operation_registry import OperationInfo, ParamInfo
@@ -33,6 +33,10 @@ from phenotypic.gui.builder._state import (
     _DagBuilderState,
     _new_block_id,
 )
+
+# Component-tree walking helpers shared with ``test_inspector_wire_card.py``;
+# see ``conftest.py`` in this directory.
+from .conftest import _collect_text, _find_by_id, _find_by_type_key
 
 
 @dataclass
@@ -78,58 +82,6 @@ def _make_op_info(name: str, params: dict) -> OperationInfo:
         docstring="",
         parameters=params,
     )
-
-
-def _walk(component: Any) -> Iterable[Any]:
-    """Yield *component* and every descendant component recursively."""
-
-    yield component
-    children = getattr(component, "children", None)
-    if children is None:
-        return
-    if isinstance(children, (list, tuple)):
-        for child in children:
-            if child is None or isinstance(child, (str, int, float, bool)):
-                continue
-            yield from _walk(child)
-    elif not isinstance(children, (str, int, float, bool)):
-        yield from _walk(children)
-
-
-def _find_by_id(component: Any, target_id: Any) -> List[Any]:
-    hits: List[Any] = []
-    for node in _walk(component):
-        node_id = getattr(node, "id", None)
-        if isinstance(target_id, dict):
-            if isinstance(node_id, dict) and node_id == target_id:
-                hits.append(node)
-        elif node_id == target_id:
-            hits.append(node)
-    return hits
-
-
-def _find_by_type_key(component: Any, type_key: str) -> List[Any]:
-    """Return every descendant whose dict-shaped id carries ``type==type_key``."""
-
-    hits: List[Any] = []
-    for node in _walk(component):
-        node_id = getattr(node, "id", None)
-        if isinstance(node_id, dict) and node_id.get("type") == type_key:
-            hits.append(node)
-    return hits
-
-
-def _collect_text(component: Any) -> str:
-    parts: List[str] = []
-    for node in _walk(component):
-        children = getattr(node, "children", None)
-        if isinstance(children, str):
-            parts.append(children)
-        elif isinstance(children, (list, tuple)):
-            for child in children:
-                if isinstance(child, str):
-                    parts.append(child)
-    return " ".join(parts)
 
 
 # ---------------------------------------------------------------------------

@@ -476,7 +476,7 @@ def _find_block_in_tree(
     Depth-first search rooted at *root_scope_dict*; recurses into every
     container's ``nested`` scope so callers can look up blocks anywhere
     in the state tree without knowing the breadcrumb depth.  Used by
-    the Phase 4 edge dispatchers (``edge_create``, ``edge_delete``,
+    the edge dispatchers (``edge_create``, ``edge_delete``,
     ``list_aux_reorder``, etc.) which all need the block dict plus its
     enclosing scope (to read/write that scope's ``edges`` list and
     enforce the spec §4.4 cross-scope rule).

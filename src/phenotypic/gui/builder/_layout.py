@@ -1985,14 +1985,12 @@ def _build_wire_card(
                     color="primary" if edge.kind == "image" else "secondary",
                     className="mb-3",
                 ),
-                html.Div(
-                    dbc.Button(
-                        "Disconnect",
-                        id=ids.inspector_disconnect_id(edge.edge_id),
-                        color="danger",
-                        outline=True,
-                        n_clicks=0,
-                    )
+                dbc.Button(
+                    "Disconnect",
+                    id=ids.inspector_disconnect_id(edge.edge_id),
+                    color="danger",
+                    outline=True,
+                    n_clicks=0,
                 ),
             ]
         ),

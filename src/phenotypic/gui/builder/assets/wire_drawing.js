@@ -657,7 +657,6 @@
             svgRoot: liveWire.svg,
             pathEl: liveWire.path,
             candidates: new Map(),
-            lastHoverKind: null,  // "image" | "aux" | null
         };
 
         setCyPanning(cy, false);
@@ -678,11 +677,15 @@
     }
 
     /** rAF-coalesced mousemove handler.  Updates the live wire's
-     *  endpoint to track the cursor and re-applies the hover-port
-     *  glow / dim affordance.  The cy-scope-wide port-set is decorated
-     *  once on dragstart; the per-frame work here is updating the wire
-     *  geometry + tracking which port the cursor is over for the drop
-     *  hit-test. */
+     *  endpoint to track the cursor.  Pointer events fire 60-100Hz; the
+     *  cy-scope-wide port set is decorated once on dragstart, so the
+     *  per-frame work is just the SVG path geometry (a single DOM
+     *  attribute write).  Hover hit-testing is deferred to ``mouseup``
+     *  so we don't pay O(P) ``renderedBoundingBox`` calls per animation
+     *  frame just to keep ``lastHoverKind`` warm — that metadata is
+     *  only consulted on cancellation paths that pass an explicit
+     *  ``cancelKind`` or where ``null`` is a perfectly fine fallback
+     *  (Esc / off-wrapper / empty-canvas — all UI-cosmetic). */
     function onDocMouseMove(event) {
         if (!activeDrag) return;
         mousemovePending = { clientX: event.clientX, clientY: event.clientY };
@@ -702,20 +705,6 @@
                 activeDrag.sourcePoint,
                 cursorPoint
             );
-            // Track which port (if any) is currently under the cursor so
-            // the wire-drop event can announce the intended kind even
-            // on a cancellation.
-            const cy = window.phenoGetCy && window.phenoGetCy();
-            if (!cy) return;
-            const hover = findPortAt(cy, pending.clientX, pending.clientY);
-            if (hover && hover.data("is_port")) {
-                const kind = hover.data("port_kind");
-                if (kind === PORT_KIND_IN) {
-                    activeDrag.lastHoverKind = "image";
-                } else if (kind === PORT_KIND_AUX) {
-                    activeDrag.lastHoverKind = "aux";
-                }
-            }
         });
     }
 
@@ -832,9 +821,13 @@
             // fade so the swap reads as continuous.
             teardownLiveWire(activeDrag.svgRoot, false);
         } else {
-            // Cancellation path — fade out.
+            // Cancellation path — fade out.  ``cancelKind`` is supplied
+            // explicitly by callers that already hit-tested the drop
+            // target (incompatible drop, self-wire); Esc / off-wrapper /
+            // empty-canvas cancellations pass ``undefined`` and emit
+            // ``kind: null``, matching the documented contract.
             teardownLiveWire(activeDrag.svgRoot, false);
-            emitWireDrop(false, cancelKind || activeDrag.lastHoverKind || null);
+            emitWireDrop(false, cancelKind || null);
         }
 
         activeDrag = null;
