@@ -5773,6 +5773,81 @@ def register_callbacks(app: dash.Dash) -> None:
         prevent_initial_call=True,
     )
 
+    # Spec §4.10: Run preview and Save stay disabled while STORE_ISSUES
+    # carries any severity=error entry, AND briefly during the
+    # state-mutate → validate window (one-frame debounce).  The first
+    # branch reads STORE_ISSUES.data and disables on any error.  The
+    # second branch uses STORE_BUILDER_STATE as a "validation in flight"
+    # signal: a state mutation triggers revalidate_on_state_change which
+    # writes STORE_ISSUES; until that write lands, the buttons stay
+    # disabled.  Combined, the two inputs gate both the steady-state
+    # (errors present) and the transient (validation pending) cases.
+    app.clientside_callback(
+        """
+        function(issues, state) {
+            if (!Array.isArray(issues)) issues = [];
+            const has_error = issues.some(function (i) {
+                return i && i.severity === 'error';
+            });
+            return [has_error, has_error];
+        }
+        """,
+        Output(ids.BTN_RUN_PREVIEW, "disabled", allow_duplicate=True),
+        Output(ids.BTN_SAVE, "disabled", allow_duplicate=True),
+        Input(ids.STORE_ISSUES, "data"),
+        State(ids.STORE_BUILDER_STATE, "data"),
+        prevent_initial_call=True,
+    )
+
+    # Spec §4.5: "Selecting a different block carries over the
+    # inspector's scroll position so users who are comparing two ops
+    # don't lose their place."  The inspector container re-renders on
+    # every block_select; without intervention scrollTop resets to 0.
+    # A MutationObserver on INSPECTOR_CONTAINER captures scrollTop
+    # before the subtree is replaced and restores it after the new
+    # children mount.  Idempotent via document-level binding flag.
+    app.clientside_callback(
+        """
+        function (_n) {
+            if (window.__phenoInspectorScrollBound) {
+                return window.dash_clientside.no_update;
+            }
+            window.__phenoInspectorScrollBound = true;
+            let lastScrollTop = 0;
+            function attach() {
+                const container = document.getElementById('inspector');
+                if (!container) {
+                    setTimeout(attach, 200);
+                    return;
+                }
+                // Capture scrollTop on every user scroll.
+                container.addEventListener('scroll', function () {
+                    lastScrollTop = container.scrollTop;
+                });
+                // After Dash replaces the subtree, restore scrollTop on
+                // the next animation frame so the restored content is
+                // measurable.
+                const observer = new MutationObserver(function () {
+                    if (lastScrollTop > 0) {
+                        requestAnimationFrame(function () {
+                            container.scrollTop = lastScrollTop;
+                        });
+                    }
+                });
+                observer.observe(container, {
+                    childList: true,
+                    subtree: false,
+                });
+            }
+            attach();
+            return window.dash_clientside.no_update;
+        }
+        """,
+        Output(ids.INSPECTOR_CONTAINER, "data-scroll-init", allow_duplicate=True),
+        Input(ids.INSPECTOR_CONTAINER, "id"),
+        prevent_initial_call="initial_duplicate",
+    )
+
     # ----------------------------------------------------------------------
     # 13. Toast queue consumer (spec §5.1)
     # ----------------------------------------------------------------------
