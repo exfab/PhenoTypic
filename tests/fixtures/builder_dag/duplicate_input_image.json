@@ -1,0 +1,27 @@
+{
+  "blocks": [
+    {
+      "block_id": "00000000000000000000000000000001",
+      "class_name": "InputImage",
+      "params": {},
+      "label": null,
+      "nested": null,
+      "collapsed": false,
+      "list_slot_counts": {}
+    },
+    {
+      "block_id": "00000000000000000000000000000002",
+      "class_name": "InputImage",
+      "params": {},
+      "label": "Second Input",
+      "nested": null,
+      "collapsed": false,
+      "list_slot_counts": {}
+    }
+  ],
+  "edges": [],
+  "name": "Pipeline",
+  "desc": "",
+  "nrows": null,
+  "ncols": null
+}

@@ -1,0 +1,73 @@
+{
+  "blocks": [
+    {
+      "block_id": "00000000000000000000000000000001",
+      "class_name": "InputImage",
+      "params": {},
+      "label": null,
+      "nested": null,
+      "collapsed": false,
+      "list_slot_counts": {}
+    },
+    {
+      "block_id": "00000000000000000000000000000002",
+      "class_name": "GaussianBlur",
+      "params": {"sigma": 1.5},
+      "label": "GaussianBlur",
+      "nested": null,
+      "collapsed": false,
+      "list_slot_counts": {}
+    },
+    {
+      "block_id": "00000000000000000000000000000003",
+      "class_name": "OtsuDetector",
+      "params": {},
+      "label": "OtsuDetector",
+      "nested": null,
+      "collapsed": false,
+      "list_slot_counts": {}
+    },
+    {
+      "block_id": "00000000000000000000000000000004",
+      "class_name": "MeasureSize",
+      "params": {},
+      "label": "MeasureSize",
+      "nested": null,
+      "collapsed": false,
+      "list_slot_counts": {}
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "00000000000000000000000000000101",
+      "source_block_id": "00000000000000000000000000000001",
+      "source_port": "out",
+      "target_block_id": "00000000000000000000000000000002",
+      "target_port": "in",
+      "target_slot": null,
+      "kind": "image"
+    },
+    {
+      "edge_id": "00000000000000000000000000000102",
+      "source_block_id": "00000000000000000000000000000002",
+      "source_port": "out",
+      "target_block_id": "00000000000000000000000000000003",
+      "target_port": "in",
+      "target_slot": null,
+      "kind": "image"
+    },
+    {
+      "edge_id": "00000000000000000000000000000103",
+      "source_block_id": "00000000000000000000000000000003",
+      "source_port": "out",
+      "target_block_id": "00000000000000000000000000000004",
+      "target_port": "in",
+      "target_slot": null,
+      "kind": "image"
+    }
+  ],
+  "name": "Pipeline",
+  "desc": "",
+  "nrows": null,
+  "ncols": null
+}
