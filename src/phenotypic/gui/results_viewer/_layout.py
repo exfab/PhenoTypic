@@ -24,6 +24,7 @@ ends up as a thin orchestrator.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import dash
@@ -32,6 +33,7 @@ from dash import Input, Output, dcc, html
 from dash.development.base_component import Component
 
 from phenotypic.gui._config import MOUNT_HOME, SSH_TUNNEL_HINT
+from phenotypic.gui._schema_cache import MeasurementSchema
 from phenotypic.gui._shared import SHARED_LOGO_PATH
 from phenotypic.gui._design import (
     COLOR_BG,
@@ -43,6 +45,7 @@ from phenotypic.gui._design import (
     FONT_SIZE_LABEL,
 )
 from phenotypic.gui.results_viewer import _filter_panel, _ids as ids, colony_view
+from phenotypic.gui.results_viewer._heatmap_tab import build_heatmap_tab_body
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer.colony_view import _layout as _colony_layout  # noqa: F401
 
@@ -302,8 +305,35 @@ def _build_stores(filtered_state: "FilteredMeasurements") -> Component:
                 data=[],
                 storage_type="memory",
             ),
+            # QC revision tickers - mounted by Wave D so the Heatmap
+            # tab's callbacks can subscribe before Wave E ships the QC
+            # tab proper. Wave E mutates these stores from the QC card
+            # callbacks; until then they stay at 0.
+            dcc.Store(
+                id=ids.STORE_QC_RECIPE_REVISION,
+                data=0,
+                storage_type="memory",
+            ),
+            dcc.Store(
+                id=ids.STORE_QC_AUGMENTED_REVISION,
+                data=0,
+                storage_type="memory",
+            ),
         ]
     )
+
+
+def _resolve_measurement_schema(output_root: OutputRoot) -> MeasurementSchema:
+    """Return the measurement-schema cache for the active output root.
+
+    Created at layout build time and intentionally NOT stashed on
+    ``app.server.config`` here - the schema is read by callbacks that
+    pull it from the config directly (see
+    :func:`._heatmap_tab._callbacks._refresh_heatmap_controls`); the
+    Dash app factory in :mod:`._app` is responsible for the stash so
+    construction stays a layout-time concern.
+    """
+    return MeasurementSchema(output_root=Path(output_root.root))
 
 
 # ---------------------------------------------------------------------------
@@ -345,6 +375,13 @@ def build_app_layout(
     sidebar = _filter_panel.layout(output_root)
     cards_column = _build_cards_column()
     colony_tab_body = colony_view._layout.layout(output_root)
+
+    # Heatmap tab uses the measurement-schema cache; lazily attach it to
+    # ``app.server.config`` here if ``create_app`` did not. The
+    # analysis sub-app already stashes one when mounted; reusing it
+    # keeps the cache hits warm across tabs.
+    schema = _resolve_measurement_schema(output_root)
+    heatmap_tab_body = build_heatmap_tab_body(output_root, schema)
     stores = _build_stores(filtered_state)
 
     tabs = dbc.Tabs(
@@ -358,6 +395,11 @@ def build_app_layout(
                 colony_tab_body,
                 label="Colony",
                 tab_id=ids.TAB_COLONY_ID,
+            ),
+            dbc.Tab(
+                heatmap_tab_body,
+                label="Heatmap",
+                tab_id=ids.TAB_HEATMAP_ID,
             ),
         ],
         id=ids.TABS_ID,

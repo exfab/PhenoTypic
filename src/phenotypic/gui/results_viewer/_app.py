@@ -38,12 +38,15 @@ from dash import Input, Output, State
 
 from phenotypic.gui._config import (
     CFG_FILTERED_STATE,
+    CFG_MEASUREMENT_SCHEMA,
     CFG_OUTPUT_ROOT,
+    CFG_QC_AUGMENTED_FRAME,
     CFG_URL_PREFIX,
     MOUNT_HOME,
     SANDBOX_API_VIEWER_OUTPUT_ROOT,
     TITLE_VIEWER,
 )
+from phenotypic.gui._schema_cache import MeasurementSchema
 from phenotypic.gui._design import COLOR_BLUE, COLOR_SURFACE, inject_design_tokens
 from phenotypic.gui._shared import register_shared_static
 from phenotypic.gui.results_viewer import _ids as ids, _tile_routes
@@ -172,6 +175,19 @@ def create_app(
     filtered_state = FilteredMeasurements.load(output_root.root, output_root.master_df)
     app.server.config[CFG_FILTERED_STATE] = filtered_state
     colony_crop_routes.register(app, output_root)
+
+    # MeasurementSchema cache shared by the Heatmap tab (and a future
+    # QC tab) - lazily built once per app instance. Idempotent: do not
+    # clobber an existing instance e.g. when the analysis sub-app has
+    # already populated the key.
+    if app.server.config.get(CFG_MEASUREMENT_SCHEMA) is None:
+        app.server.config[CFG_MEASUREMENT_SCHEMA] = MeasurementSchema(
+            output_root=Path(output_root.root)
+        )
+    # QC tab's augmented-frame cache starts empty; Wave E's QC writer
+    # fills it on its first card refresh. The heatmap render callback
+    # gracefully falls back to the plain filtered frame until then.
+    app.server.config.setdefault(CFG_QC_AUGMENTED_FRAME, None)
 
     app.layout = build_app_layout(output_root, filtered_state, url_prefix=url_prefix)
     register_callbacks(app, output_root)
