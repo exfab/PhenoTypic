@@ -4241,10 +4241,7 @@ def build_app_layout(
             # keyboard / button-driven mutations.  Carries a
             # discriminated-union payload routed by ``payload["kind"]``
             # to the appropriate ``edge_*`` / ``list_aux_*`` /
-            # ``wire_select`` / ``block_select`` dispatch.  Mounted
-            # unconditionally so the callbacks never error on a missing
-            # input; until the feature flag is on, the store stays at
-            # ``None`` and downstream dispatches no-op.
+            # ``wire_select`` / ``block_select`` dispatch.
             dcc.Store(
                 id=ids.STORE_EDGE_EVENT,
                 data=None,

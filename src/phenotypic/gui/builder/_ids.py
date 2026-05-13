@@ -42,9 +42,10 @@ STORE_INTERMEDIATE_KEYS = "store-intermediate-keys"
 # ---------------------------------------------------------------------------
 #
 # The popover-era stores (``PORT_CLICK_STORE`` / ``POPOVER_*``) were
-# retired in Phase 7. The DAG path is now the only renderer; the feature
-# flag ``phenotypic.gui.builder._state.PHENOTYPIC_GUI_DAG`` still selects
-# between legacy and DAG state schemas until Phase 8.
+# retired in Phase 7. The DAG path is the only renderer since Phase 8
+# (the ``PHENOTYPIC_GUI_DAG`` feature flag and the legacy linear-list
+# canvas were retired together; only the legacy migration tests still
+# reach those code paths).
 
 #: ``dcc.Store`` written by the clientside ``viewport_ops.js`` glue when the
 #: user (or a server-side callback) requests a viewport-level operation such
