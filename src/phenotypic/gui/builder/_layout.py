@@ -3637,8 +3637,9 @@ def build_inspector(
       placeholder when neither is set (spec §4.5).
     * **Legacy state** (the popover-anchored model) → the original
       consumer / aux-focus dispatch is preserved verbatim below so the
-      ``PHENOTYPIC_GUI_DAG`` flag can stay off in production until the
-      DAG path is fully shipped.
+      ``test_legacy_pipeline_json`` migration tests still hit a working
+      legacy inspector code path.  No active runtime callback feeds
+      legacy state into this branch since Phase 8.
 
     Args:
         state: The full builder state (legacy or DAG schema).
@@ -3651,10 +3652,9 @@ def build_inspector(
 
     # Duck-typed dispatch — same pattern as ``state_to_json`` in _state.py
     # to stay resilient against importlib.reload in tests.  The
-    # ``# type: ignore[arg-type]`` is needed because mypy resolves
-    # ``BuilderState`` to the legacy class when ``PHENOTYPIC_GUI_DAG=0``
-    # (the static default); the duck-typed branch is only reachable
-    # when the runtime state IS a ``_DagBuilderState``.
+    # ``# type: ignore[arg-type]`` is needed because mypy can't narrow
+    # the runtime branch; only the legacy fixture tests ever reach the
+    # ``selected_node_id`` block below.
     if hasattr(state, "selected_block_id"):
         return _build_dag_inspector(state, registry)  # type: ignore[arg-type]
 
@@ -4207,10 +4207,7 @@ def build_app_layout(
                 data="",
             ),
             # DAG-redesign stores (spec §6).  Mounted on every render
-            # path regardless of ``PHENOTYPIC_GUI_DAG`` so the new
-            # callbacks never error on missing inputs.  Until the flag
-            # is on, the stores stay at their initial values and the
-            # downstream callbacks no-op.
+            # path so the DAG callbacks never error on missing inputs.
             dcc.Store(
                 id=ids.STORE_VIEWPORT_OP,
                 data=None,
