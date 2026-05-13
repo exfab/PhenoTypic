@@ -80,6 +80,7 @@ from phenotypic.gui.builder._layout import (
     build_breadcrumb,
     build_canvas_elements,
     build_inspector,
+    build_issue_badge,
     build_popover_contents,
 )
 from phenotypic.gui.builder._modal_browser import (
@@ -2869,6 +2870,214 @@ def register_callbacks(app: dash.Dash) -> None:
         if prev_issues is not None and prev_issues == new_issues:
             return no_update
         return new_issues
+
+    # ----------------------------------------------------------------------
+    # 2a-bis. Toolbar issue badge update (spec §4.6)
+    # ----------------------------------------------------------------------
+    #
+    # Re-renders the toolbar issue badge widget (count chip + popover
+    # listing one row per issue) whenever ``STORE_ISSUES`` changes.
+    # The badge itself lives inside the canvas-section header (a
+    # sibling of the relayout button); we splice its updated children
+    # back onto a wrapping ``html.Span``.  The wrapping span uses the
+    # static id :data:`ids.ISSUE_BADGE` for the badge chip and
+    # :data:`ids.ISSUE_BADGE_TOOLTIP` for the popover, both of which
+    # the row-click callback below subscribes to.
+    #
+    # ``build_issue_badge`` produces an ``html.Span([badge, popover])``;
+    # we publish that span's children to a wrapping ``html.Span`` we
+    # mount inside the toolbar.  Because Dash's ``Output`` targets a
+    # single id, we publish the badge's ``children`` (the [badge,
+    # popover] list) directly to the wrapping span's ``children``.
+    #
+    # NB: we INTENTIONALLY swap the entire badge+popover content on
+    # every issue change.  The popover's child rows carry
+    # pattern-matched ids (see :func:`ids.issue_row_id`); recreating
+    # them is the correct way to keep the pattern-match callback's
+    # input list in sync with the live issue list.
+
+    @app.callback(
+        Output(ids.ISSUE_BADGE, "children", allow_duplicate=True),
+        Output(ids.ISSUE_BADGE, "color", allow_duplicate=True),
+        Output(ids.ISSUE_BADGE_TOOLTIP, "children", allow_duplicate=True),
+        Input(ids.STORE_ISSUES, "data"),
+        State(ids.STORE_BUILDER_STATE, "data"),
+        prevent_initial_call=True,
+    )
+    def update_issue_badge(
+        issues: Optional[List[Dict[str, Any]]],
+        state_data: Optional[Dict[str, Any]],
+    ) -> Tuple[Any, Any, Any]:
+        """Mirror the live ``STORE_ISSUES`` list onto the toolbar badge.
+
+        Splits the rendered ``build_issue_badge(...)`` span back into
+        its sub-pieces and publishes:
+
+        * the badge label (``html.Span`` text content) → ``ISSUE_BADGE.children``
+        * the badge severity colour (``"danger"`` / ``"warning"`` / ``"secondary"``)
+          → ``ISSUE_BADGE.color``
+        * the popover body rows → ``ISSUE_BADGE_TOOLTIP.children``
+
+        Args:
+            issues: Live :data:`STORE_ISSUES` payload (list of dicts
+                shaped by ``revalidate_on_state_change``).  ``None``
+                before the first publish.
+            state_data: Live ``STORE_BUILDER_STATE`` dump used to
+                resolve ``block_id`` → block label for each row.
+
+        Returns:
+            Tuple of (badge label, badge color, popover children).
+        """
+
+        try:
+            state: Optional[BuilderState] = None
+            if state_data is not None:
+                try:
+                    state = state_from_json(state_data)
+                except Exception:  # noqa: BLE001
+                    # Stale / corrupt state still lets us render the
+                    # badge — block_label fallback handles missing
+                    # block_ids gracefully.
+                    state = None
+            badge_span = build_issue_badge(issues=issues or [], state=state)
+        except Exception:  # noqa: BLE001
+            logger.exception("update_issue_badge failed")
+            return no_update, no_update, no_update
+
+        # The wrapping span contains [badge, popover] in order. Each
+        # has its own typed children we need to project back through
+        # the static outputs.
+        badge_widget = badge_span.children[0]
+        popover_widget = badge_span.children[1]
+        return (
+            badge_widget.children,
+            badge_widget.color,
+            popover_widget.children,
+        )
+
+    # ----------------------------------------------------------------------
+    # 2a-ter. Issue badge row click → scroll_to dispatch (spec §4.6, §5.6)
+    # ----------------------------------------------------------------------
+    #
+    # Each tooltip row carries the pattern-matched id from
+    # :func:`ids.issue_row_id`.  A click writes a ``scroll_to`` payload
+    # to ``STORE_VIEWPORT_OP``; 6B's clientside ``phenotypicScrollTo``
+    # consumes it (mount scrim → ``drill_to_scope`` if cross-breadcrumb
+    # → expand collapsed containers → ``cy.fit`` → dismiss scrim →
+    # emit ``phenotypic:scroll-to-complete``).
+    #
+    # The row id encodes (block_id, kind, idx) — the click callback
+    # walks the active ``STORE_ISSUES`` list to recover the issue's
+    # ``scope_path`` (which becomes ``target_breadcrumb`` per spec §5.6:
+    # the chain compares against ``state.breadcrumb`` and only drills
+    # when different).  ``block_id`` "__scope__" sentinel (used for
+    # scope-level findings like ``missing_input``) translates back to
+    # ``None`` so the clientside chain just pops the breadcrumb without
+    # selecting a specific block.
+
+    @app.callback(
+        Output(ids.STORE_VIEWPORT_OP, "data", allow_duplicate=True),
+        Input(
+            {
+                "type": "issue-row",
+                "block_id": ALL,
+                "kind": ALL,
+                "idx": ALL,
+            },
+            "n_clicks",
+        ),
+        State(ids.STORE_ISSUES, "data"),
+        prevent_initial_call=True,
+    )
+    def issue_row_click_dispatch(
+        n_clicks_list: List[Optional[int]],
+        issues: Optional[List[Dict[str, Any]]],
+    ) -> Any:
+        """Translate an issue-row click into a ``scroll_to`` viewport op.
+
+        Reads :data:`dash.callback_context.triggered_id` to identify the
+        clicked row, then walks the live ``STORE_ISSUES`` list to
+        recover the matching issue's ``scope_path``.  Emits a payload
+        of the form:
+
+        .. code-block:: python
+
+            {
+                "kind": "scroll_to",
+                "block_id": <BlockNode.block_id or None>,
+                "scope_path": <list[str]>,
+                "target_breadcrumb": <list[str]>,
+                "ts": <ms timestamp>,
+            }
+
+        Per spec §5.6, ``target_breadcrumb`` is set to the issue's
+        ``scope_path`` unconditionally — the clientside chain compares
+        against the current state breadcrumb and only dispatches
+        ``drill_to_scope`` when the two differ.
+
+        Args:
+            n_clicks_list: Pattern-match ``n_clicks`` values; only used
+                to gate against initial render (``ctx.triggered`` is the
+                authoritative trigger source).
+            issues: Live ``STORE_ISSUES`` list to recover full issue
+                metadata (``scope_path`` is needed for the payload but
+                not encoded in the row id).
+
+        Returns:
+            ``scroll_to`` payload as a plain dict, or :data:`no_update`
+            when the trigger is the initial render or the issues list
+            is unavailable.
+        """
+
+        # Initial render fires every pattern with ``n_clicks=None`` /
+        # ``0`` — short-circuit before doing any work.
+        if not ctx.triggered:
+            return no_update
+        triggered_value = ctx.triggered[0].get("value")
+        if not triggered_value:
+            return no_update
+        triggered_id = ctx.triggered_id
+        if not isinstance(triggered_id, dict):
+            return no_update
+        if triggered_id.get("type") != "issue-row":
+            return no_update
+
+        raw_block_id = triggered_id.get("block_id")
+        clicked_kind = triggered_id.get("kind")
+        clicked_idx = triggered_id.get("idx")
+        block_id: Optional[str] = (
+            None if raw_block_id == "__scope__" else raw_block_id
+        )
+
+        # Recover ``scope_path`` from the live issues list.  Match on
+        # ``(kind, block_id)`` and fall back to the ``idx`` ordering
+        # produced by ``_sort_issues_for_badge`` (i.e. the position in
+        # the badge tooltip).  The match must align with the order
+        # rendered into the tooltip — that's also the order the
+        # pattern-match Inputs see.
+        from phenotypic.gui.builder._layout import _sort_issues_for_badge
+
+        sorted_issues = _sort_issues_for_badge(issues or [])
+        scope_path: List[str] = []
+        if (
+            isinstance(clicked_idx, int)
+            and 0 <= clicked_idx < len(sorted_issues)
+        ):
+            issue = sorted_issues[clicked_idx]
+            if (
+                issue.get("kind") == clicked_kind
+                and (issue.get("block_id") or None) == block_id
+            ):
+                scope_path = list(issue.get("scope_path") or [])
+
+        payload: Dict[str, Any] = {
+            "kind": "scroll_to",
+            "block_id": block_id,
+            "scope_path": scope_path,
+            "target_breadcrumb": list(scope_path),
+            "ts": int(time.time() * 1000),
+        }
+        return payload
 
     # ----------------------------------------------------------------------
     # 2a-i. Inspector wire / aux ports button → STORE_EDGE_EVENT

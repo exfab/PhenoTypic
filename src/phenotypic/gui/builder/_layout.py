@@ -2047,6 +2047,253 @@ def build_canvas(
     )
 
 
+# ---------------------------------------------------------------------------
+# Issue badge (spec §4.6)
+# ---------------------------------------------------------------------------
+#
+# The toolbar issue badge surfaces the aggregated validation findings in
+# a single chip — clicking opens a popover listing one row per issue.
+# Phase 6's revalidate_on_state_change callback feeds STORE_ISSUES; the
+# badge label and tooltip rows are computed from that store and drive
+# the click → scroll_to dispatch chain (consumed by 6B's
+# ``phenotypicScrollTo`` clientside chain).
+
+#: Display names for each :class:`Issue.kind` shown in tooltip rows.
+#: Mirrors the spec §4.6 short-name table.  Defined as a module-level
+#: constant so the tests can monkey-patch / introspect without
+#: duplicating the mapping.
+_ISSUE_RULE_SHORT_NAMES: Dict[str, str] = {
+    "fork": "Fork",
+    "stub": "Unreachable",
+    "required_aux": "Missing aux",
+    "cycle": "Cycle",
+    "container_mode": "Container mode",
+    "missing_input": "No Input Image",
+    "duplicate_input": "Extra Input Image",
+    "stage_order_hint": "Stage order",
+    "unknown_class": "Unknown class",
+}
+
+
+def _format_issue_badge_label(n_issues: int, n_hints: int) -> str:
+    """Render the toolbar badge label per spec §4.6.
+
+    Examples (all keyed to the singular/plural rules called out in the
+    spec):
+
+    * ``(0, 0) -> "0 issues"``
+    * ``(1, 0) -> "1 issue"``
+    * ``(3, 0) -> "3 issues"``
+    * ``(0, 1) -> "0 issues, 1 hint"``
+    * ``(1, 1) -> "1 issue, 1 hint"``
+    * ``(3, 2) -> "3 issues, 2 hints"``
+
+    Args:
+        n_issues: Count of ``severity == "error"`` issues.
+        n_hints: Count of ``severity == "advisory"`` issues.
+
+    Returns:
+        Human-readable label suitable for the badge component.
+    """
+
+    issue_word = "issue" if n_issues == 1 else "issues"
+    if n_hints == 0:
+        return f"{n_issues} {issue_word}"
+    hint_word = "hint" if n_hints == 1 else "hints"
+    return f"{n_issues} {issue_word}, {n_hints} {hint_word}"
+
+
+def _issue_row_block_label(
+    issue: Dict[str, Any], state: Optional[BuilderState]
+) -> str:
+    """Resolve a human-readable block label for a tooltip row.
+
+    Walks the DAG state to find the offender ``BlockNode`` so the row
+    can show ``"GaussianBlur#abc12345"`` (label or class_name + short
+    block_id suffix) rather than a raw 32-character UUID.  Falls back
+    to the rule short name for scope-level issues
+    (``missing_input`` has ``block_id == None``).
+
+    Args:
+        issue: Issue dict as published to :data:`STORE_ISSUES`.
+        state: Live :class:`BuilderState` (DAG schema) — used to resolve
+            ``block_id`` → ``BlockNode``.  ``None`` falls back to a
+            shortened block_id literal.
+
+    Returns:
+        Label text rendered inside the tooltip row.
+    """
+
+    block_id = issue.get("block_id")
+    if block_id is None:
+        return "Scope"
+    if state is None:
+        return f"Block {str(block_id)[:8]}"
+    scope_path = issue.get("scope_path") or []
+    scope = state.root
+    for parent_id in scope_path:
+        parent = next(
+            (b for b in getattr(scope, "blocks", []) if b.block_id == parent_id),
+            None,
+        )
+        if parent is None or parent.nested is None:
+            break
+        scope = parent.nested
+    block = next(
+        (b for b in getattr(scope, "blocks", []) if b.block_id == block_id),
+        None,
+    )
+    if block is None:
+        return f"Block {str(block_id)[:8]}"
+    if block.label:
+        return block.label
+    return block.class_name
+
+
+def _sort_issues_for_badge(
+    issues: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Order issues for the tooltip per spec §4.6.
+
+    Rules:
+
+    * Issues (severity == ``"error"``) come before hints
+      (severity == ``"advisory"``).
+    * Within each severity bucket, sort alphabetically by ``kind``.
+    * Original list order acts as a stable tiebreaker so reproducing the
+      tooltip across two renders of the same state never permutes rows.
+
+    Args:
+        issues: Raw issue list from :data:`STORE_ISSUES`.
+
+    Returns:
+        New sorted list (input is not mutated).
+    """
+
+    enumerated = sorted(
+        enumerate(issues),
+        key=lambda pair: (
+            0 if pair[1].get("severity", "error") == "error" else 1,
+            pair[1].get("kind", ""),
+            pair[0],
+        ),
+    )
+    return [pair[1] for pair in enumerated]
+
+
+def build_issue_badge(
+    issues: Optional[List[Dict[str, Any]]] = None,
+    state: Optional[BuilderState] = None,
+) -> html.Span:
+    """Render the toolbar issue badge + its popover-style tooltip.
+
+    The badge is a count chip whose label follows the §4.6 grammar
+    ("``N issues``" or "``N issues, M hints``"); the tooltip target is
+    a :class:`dbc.Popover` listing one row per issue.  Each row carries
+    a pattern-matched id from :func:`issue_row_id` so a server-side
+    callback can dispatch ``scroll_to`` against the offender on click.
+
+    Args:
+        issues: Live issue list (matches :data:`STORE_ISSUES` payload
+            schema — list of dicts with ``kind`` / ``block_id`` /
+            ``detail`` / ``scope_path`` / ``severity`` keys).  Defaults
+            to an empty list so first-paint renders with ``"0 issues"``.
+        state: Optional :class:`BuilderState` used to resolve
+            ``block_id`` → ``BlockNode.label`` / ``class_name`` for
+            the row's left column.  Falls back to a short-uuid literal
+            when ``None`` or when the block has been deleted since the
+            issues snapshot.
+
+    Returns:
+        An :class:`html.Span` carrying the badge + the popover.  Mounted
+        once per builder render into the canvas toolbar header next to
+        the :data:`BTN_RELAYOUT` button.
+    """
+
+    issue_list = list(issues or [])
+    sorted_issues = _sort_issues_for_badge(issue_list)
+    n_issues = sum(
+        1 for i in sorted_issues if i.get("severity", "error") == "error"
+    )
+    n_hints = sum(
+        1 for i in sorted_issues if i.get("severity", "error") == "advisory"
+    )
+    label = _format_issue_badge_label(n_issues, n_hints)
+
+    # Colour signals severity: red badge when there are blocking issues,
+    # warning when only hints remain, secondary (grey) when fully clean.
+    if n_issues > 0:
+        color = "danger"
+    elif n_hints > 0:
+        color = "warning"
+    else:
+        color = "secondary"
+
+    rows: List[Any] = []
+    for idx, issue in enumerate(sorted_issues):
+        kind = str(issue.get("kind", ""))
+        rule_name = _ISSUE_RULE_SHORT_NAMES.get(kind, kind)
+        block_label = _issue_row_block_label(issue, state)
+        detail = str(issue.get("detail", ""))
+        rows.append(
+            html.Div(
+                [
+                    html.Span(
+                        block_label,
+                        className="issue-row-block fw-bold me-2",
+                    ),
+                    html.Span(
+                        rule_name,
+                        className="issue-row-rule text-muted me-2",
+                    ),
+                    html.Span(
+                        detail,
+                        className="issue-row-detail small",
+                    ),
+                ],
+                id=ids.issue_row_id(issue.get("block_id"), kind, idx),
+                n_clicks=0,
+                className="issue-row d-flex align-items-baseline px-2 py-1",
+                style={"cursor": "pointer"},
+                **{  # type: ignore[arg-type]
+                    "data-testid": "issue-row",
+                    "data-rule": kind,
+                },
+            )
+        )
+
+    if not rows:
+        rows = [
+            html.Div(
+                "No issues",
+                className="issue-row-empty text-muted small px-2 py-1",
+            )
+        ]
+
+    badge = dbc.Badge(
+        label,
+        id=ids.ISSUE_BADGE,
+        color=color,
+        className="issue-badge me-1",
+        style={"cursor": "pointer"},
+        n_clicks=0,
+        **{"data-testid": "issue-badge"},  # type: ignore[arg-type]
+    )
+
+    popover = dbc.Popover(
+        [
+            dbc.PopoverHeader("Validation issues"),
+            dbc.PopoverBody(rows, className="p-1"),
+        ],
+        id=ids.ISSUE_BADGE_TOOLTIP,
+        target=ids.ISSUE_BADGE,
+        trigger="hover focus",
+        placement="bottom",
+    )
+
+    return html.Span([badge, popover], className="issue-badge-wrap")
+
+
 def build_canvas_section(
     scope: BuilderScope, selected_node_id: Optional[str]
 ) -> html.Div:
@@ -2110,11 +2357,20 @@ def build_canvas_section(
         title="Re-run the dagre layout pass and fit to viewport",
     )
 
+    # Issue badge sits at the rightmost end of the toolbar so it draws
+    # the user's eye when validation flips red.  Mounted on every render
+    # path; the live count + tooltip rows are wired by Phase 6's
+    # ``revalidate_on_state_change`` → ``update_issue_badge`` callback
+    # against ``STORE_ISSUES``.  An initial empty list is rendered here so
+    # the badge has stable chrome (``"0 issues"``, secondary colour) on
+    # the first paint before any state has been published.
+    issue_badge = build_issue_badge(issues=[], state=None)
+
     header = html.Div(
         [
             html.H6("Canvas", className="mb-0"),
             html.Div(
-                [controls, delete_btn, relayout_btn],
+                [controls, delete_btn, relayout_btn, issue_badge],
                 className="d-flex align-items-center gap-2",
             ),
         ],
@@ -4617,6 +4873,7 @@ __all__ = [
     "build_breadcrumb",
     "build_footer",
     "build_app_layout",
+    "build_issue_badge",
     "build_popover_contents",
     "build_asset_status_banner",
     "build_confirm_delete_modal",

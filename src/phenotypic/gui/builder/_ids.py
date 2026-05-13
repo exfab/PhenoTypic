@@ -88,6 +88,19 @@ STORE_VIEWPORT_OP = "store-viewport-op"
 #: issue badge count + tooltip rows + per-block red/yellow border decoration.
 STORE_ISSUES = "store-issues"
 
+#: ``dbc.Badge`` rendered in the canvas toolbar showing the live issue
+#: count (e.g. ``"3 issues, 1 hint"``).  Click acts as a tooltip target —
+#: hovering pops :data:`ISSUE_BADGE_TOOLTIP` listing one row per issue.
+#: Phase 6 wires the badge label + tooltip rows from :data:`STORE_ISSUES`.
+ISSUE_BADGE = "issue-badge"
+
+#: ``dbc.Popover`` (anchored at :data:`ISSUE_BADGE`) listing one
+#: :func:`issue_row_id` row per :class:`Issue` in :data:`STORE_ISSUES`.
+#: Issues sort first (by ``kind`` alphabetically), then hints.  Each
+#: row click writes a ``scroll_to`` payload to :data:`STORE_VIEWPORT_OP`
+#: so 6B's ``phenotypicScrollTo`` chain consumes it.
+ISSUE_BADGE_TOOLTIP = "issue-badge-tooltip"
+
 #: ``dcc.Store`` written by the asset-readiness polling loop in
 #: ``assets/builder.js``.  Data shape:
 #: ``{"wire_drawing": bool, "palette_dnd": bool, "viewport_ops": bool,
@@ -235,6 +248,45 @@ BTN_INSPECTOR_LIST_MOVE = "btn-inspector-list-move"
 #: here without churn to the inspector callback; the arrow-button
 #: fallback uses :data:`BTN_INSPECTOR_LIST_MOVE` instead.
 STORE_INSPECTOR_LIST_REORDER = "store-inspector-list-reorder"
+
+
+def issue_row_id(block_id: Optional[str], kind: str, idx: int) -> Dict[str, Any]:
+    """Build the pattern-matching id for a single issue-tooltip row.
+
+    Each row inside :data:`ISSUE_BADGE_TOOLTIP` carries a structured id
+    so the click-dispatch callback (spec §4.6, §5.6) can recover the
+    issue identity without parsing the DOM.  The row id pattern is
+    matched in :mod:`_callbacks` to write a ``scroll_to`` payload to
+    :data:`STORE_VIEWPORT_OP`.
+
+    Args:
+        block_id: ``BlockNode.block_id`` of the offender, or ``None``
+            for scope-level findings (e.g. ``missing_input``).  ``None``
+            is mangled to the literal string ``"__scope__"`` because
+            Dash pattern-matched ids must be JSON-serialisable and Dash
+            rejects ``None`` as a key value in some store-write paths.
+        kind: The :class:`Issue.kind` string (e.g. ``"fork"``,
+            ``"stub"``, ``"missing_input"``).  Matches one entry in
+            :data:`~phenotypic.gui.builder._validation.IssueKind`.
+        idx: Position in the rendered tooltip list (0-based).  Required
+            because multiple issues can share ``(block_id, kind)`` —
+            e.g. two ``fork`` issues on the same source block (one for
+            image-out, one for image-in).  Each row needs a unique id
+            so the pattern-match callback can disambiguate.
+
+    Returns:
+        Dict of shape ``{"type": "issue-row", "block_id": str,
+        "kind": str, "idx": int}``.  Phase 6 callbacks match
+        ``Input({"type": "issue-row", "block_id": ALL, "kind": ALL,
+        "idx": ALL}, "n_clicks")``.
+    """
+
+    return {
+        "type": "issue-row",
+        "block_id": block_id if block_id is not None else "__scope__",
+        "kind": kind,
+        "idx": idx,
+    }
 
 
 def inspector_disconnect_id(edge_id: str) -> Dict[str, Any]:
@@ -989,6 +1041,9 @@ __all__ = [
     "BTN_DRILL_IN_CONTAINER",
     "INPUT_CONTAINER_NAME",
     "INPUT_CONTAINER_DESC",
+    "ISSUE_BADGE",
+    "ISSUE_BADGE_TOOLTIP",
+    "issue_row_id",
     "block_port_id",
     "edge_id",
     # DAG canvas wire + inspector additions
