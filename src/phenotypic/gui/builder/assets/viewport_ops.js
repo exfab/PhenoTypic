@@ -9,7 +9,7 @@
  *     block sits centered on the canvas.
  *   * ``window.phenotypicBlockCollapsedToggle(blockId)`` — flip the
  *     ``dag-block--collapsed`` CSS class on the container block; the body's
- *     ``display: none`` is handled by Agent 2A's CSS.
+ *     ``display: none`` is handled by ``builder.css``.
  *   * ``window.phenotypicScrollTo(...)`` and ``window.phenotypicDrillToScope(...)``
  *     are Phase-2 stubs; Phase 6 fills in the full expand-chain + scrim flow.
  *
@@ -45,8 +45,8 @@
     const ANIMATION_DURATION = 200;
     const ANIMATION_EASING = "ease-out";
 
-    /** CSS class toggled on the compound parent during collapse. Agent 2A's
-     *  builder.css owns the visibility rule:
+    /** CSS class toggled on the compound parent during collapse.
+     *  ``builder.css`` owns the visibility rule:
      *      .dag-block--collapsed > .dag-block__body { display: none; } */
     const COLLAPSED_CLASS = "dag-block--collapsed";
 
@@ -171,10 +171,9 @@
         cy.nodes().forEach(function (node) {
             // Skip the port/aux sub-nodes — they're rendered as part of
             // the parent block's chrome and shouldn't participate in
-            // the dagre rank assignment. Agent 2A injects ports as
-            // dependent sub-nodes of each block, so they all share a
-            // parent block id. We filter via ``data.is_port`` (the
-            // server-side flag) — undefined treated as "not a port".
+            // the dagre rank assignment. Ports are emitted as compound
+            // children of their parent block; we filter via
+            // ``data.is_port`` (undefined treated as "not a port").
             if (node.data("is_port")) return;
             // Only laid-out elements are the block compounds + their
             // direct atoms. Compounds themselves *are* laid out by the
@@ -274,10 +273,10 @@
         });
 
         // Step 4 — Propagate inner sizes to each compound. cytoscape's
-        // stylesheet inspects ``data.compound_width`` / ``data.compound_height``
-        // to set ``width`` / ``height`` (Agent 2A's CSS — until that
-        // lands we just write the data values so the next outer pass
-        // reads them via cy's positioning engine).
+        // stylesheet inspects ``data.compound_width`` /
+        // ``data.compound_height`` to set ``width`` / ``height`` once
+        // the stylesheet ships; meanwhile the next outer pass reads
+        // these data values via cy's positioning engine.
         innerBBoxes.forEach(function (size, parentId) {
             const compound = cy.getElementById(parentId);
             if (!compound || !compound.length) return;
@@ -343,11 +342,12 @@
         });
     }
 
-    /** Toggle the ``dag-block--collapsed`` CSS class on the block's DOM
-     *  node. Agent 2A's CSS rule (``.dag-block--collapsed > .dag-block__body
-     *  { display: none; }``) hides the inner ports + body. Cytoscape
-     *  doesn't expose a node's DOM directly, so we apply a ``classes``
-     *  toggle and rely on the canvas stylesheet selectors. */
+    /** Toggle the ``dag-block--collapsed`` CSS class on the block's
+     *  cytoscape node. ``builder.css``'s rule
+     *  (``.dag-block--collapsed > .dag-block__body { display: none; }``)
+     *  hides the inner ports + body. Cytoscape doesn't expose a node's
+     *  DOM directly, so we apply a ``classes`` toggle and rely on the
+     *  canvas stylesheet selectors. */
     function phenotypicBlockCollapsedToggle(blockId) {
         if (!blockId) return;
         whenCyReady(function (cy) {
@@ -424,7 +424,7 @@
 
     whenCyReady(function (_cy) {
         // Publish viewport-op handlers under the documented namespace.
-        // Agent 2A's clientside callback dispatches these from a
+        // The server-side clientside callback dispatches these from a
         // ``STORE_VIEWPORT_OP`` payload (kind switch).
         window.phenotypicRelayout = phenotypicRelayout;
         window.phenotypicReanchor = phenotypicReanchor;

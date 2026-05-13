@@ -20,9 +20,10 @@ Layout is composed top-to-bottom as:
 
 from __future__ import annotations
 
+import functools
 import inspect
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 import dash_cytoscape as cyto  # type: ignore[import-untyped]
@@ -97,12 +98,19 @@ _STAGE_BUTTON_OUTLINE_COLOR = {
 # ---------------------------------------------------------------------------
 
 
+@functools.lru_cache(maxsize=256)
 def _safe_stage(class_name: str) -> str:
     """Return a stage label for *class_name*, falling back to ``"ops"``.
 
     :func:`stage_of` raises ``KeyError`` for unknown classes (and we can't
     pretend a class we don't know is a measurement op). Layout code should
     degrade gracefully on stale state, so we collapse the error to ``"ops"``.
+
+    Cached because :func:`build_canvas_elements_dag` calls this twice per
+    block per render (once for the class list, once for ``data.bg``) and
+    :func:`stage_of` itself walks the registry on every call. The cache
+    is keyed only on ``class_name`` — stage membership is a property of
+    the operation class and never changes at runtime.
     """
 
     if class_name == PIPELINE_CLASS_NAME:
@@ -697,15 +705,61 @@ def build_canvas_elements(
 # scope's blocks visually nest inside the container's bounding box.
 #
 # This implementation is **layout-agnostic** — no ``position`` is emitted
-# on any element.  The clientside ``viewport_ops.js`` (Agent 2B) runs a
-# per-scope dagre pass at first paint and after every state mutation; the
-# DAG canvas's stylesheet treats compound parents as auto-sized nodes so
+# on any element.  The clientside ``viewport_ops.js`` runs a per-scope
+# dagre pass at first paint and after every state mutation; the DAG
+# canvas's stylesheet treats compound parents as auto-sized nodes so
 # dagre's per-scope output fits inside the outer scope's pass.
 
-#: Stage tints reused for DAG block classes (spec §4.1).  Mirrors
-#: ``_STAGE_COLORS`` so a glance at the canvas tells the user which stage
-#: of the pipeline a block belongs to.
+#: Default label for the auto-seeded InputImage sentinel block when its
+#: own ``label`` field is empty (spec §4.1).
 _DAG_INPUT_IMAGE_LABEL = "Input Image"
+
+
+@functools.lru_cache(maxsize=512)
+def _resolve_dag_accepts_for_class_port(
+    class_name: str,
+    port_name: str,
+    registry_id: int,
+) -> Tuple[str, ...]:
+    """Cached wrapper around :func:`_resolve_dag_accepts` keyed on
+    ``(class_name, port_name, id(registry))``.
+
+    :func:`build_canvas_elements_dag` is called on every state mutation,
+    and each consumer block re-resolves its aux ports' accept lists from
+    the operation registry. The walk costs ~12 microseconds per port but
+    is redundant — the answer is invariant for a given (class, port)
+    pair on a given registry instance. Caching collapses repeated
+    renders into a single resolution per (class, port).
+
+    ``registry_id`` is :func:`id(registry)` so a registry-instance swap
+    (vanishingly rare — only happens in tests via monkeypatch) bypasses
+    the cache automatically. The cache returns an immutable tuple so
+    callers cannot mutate the cached value.
+
+    Returns:
+        Sorted tuple of accepted class names, or ``()`` when the
+        caller's registry diverges from the live registry (signals the
+        caller should fall back to the uncached path).
+    """
+
+    # Import lazily so the module's top-level import graph stays Dash-only.
+    from phenotypic.gui._operation_registry import get_registry
+
+    live = get_registry()
+    if id(live) != registry_id:
+        # ``id(registry)`` mismatch — the caller passed a stand-in
+        # registry (the test suite monkeypatches ``get_registry``).
+        # The cache cannot serve that instance, so signal a miss; the
+        # caller falls back to a direct ``_resolve_dag_accepts`` call.
+        return ()
+
+    info = live.get(class_name)
+    if info is None:
+        return ()
+    param_info = info.parameters.get(port_name)
+    if param_info is None:
+        return ()
+    return tuple(_resolve_dag_accepts(param_info, live))
 
 
 def _resolve_dag_accepts(
@@ -918,6 +972,29 @@ def _aux_port_classes(
     return classes
 
 
+def _build_image_port_subnode(
+    block_id: str, port: str, port_kind: str, *, css_class: str
+) -> dict:
+    """Return the cytoscape element for an image-in / image-out port.
+
+    Centralises the dict shape so the per-block emission loop in
+    :func:`build_canvas_elements_dag` stays focussed on layout logic.
+    """
+
+    return {
+        "data": {
+            "id": ids.block_port_id(block_id, port),
+            "parent": block_id,
+            "block_id": block_id,
+            "port": port,
+            "port_kind": port_kind,
+        },
+        "classes": f"dag-port {css_class}",
+        "selectable": False,
+        "grabbable": False,
+    }
+
+
 def build_canvas_elements_dag(
     scope: "_DagBuilderScope",
     *,
@@ -928,20 +1005,19 @@ def build_canvas_elements_dag(
 ) -> List[dict]:
     """Compute the cytoscape ``elements`` list for a DAG-shaped scope.
 
-    Phase 2 of the builder redesign — see spec §5.5.  Renders every
-    :class:`BlockNode` as a cytoscape node, every aux/image port as a
-    cytoscape compound child of its parent block, and every
-    :class:`Edge` as a cytoscape edge.  Container blocks become
-    compound parents whose inner blocks visually nest inside the
-    container's bounding box.
+    See spec §5.5.  Renders every :class:`BlockNode` as a cytoscape
+    node, every aux/image port as a cytoscape compound child of its
+    parent block, and every :class:`Edge` as a cytoscape edge.
+    Container blocks become compound parents whose inner blocks
+    visually nest inside the container's bounding box.
 
     Key design notes:
 
     * **No positions emitted.** The clientside ``viewport_ops.js``
-      (Agent 2B) runs a per-scope ``cytoscape-dagre`` pass at first
-      paint and after every state mutation.  Returning positionless
-      elements lets the layout owner stay clientside without server-
-      side coordination.
+      runs a per-scope ``cytoscape-dagre`` pass at first paint and
+      after every state mutation.  Returning positionless elements
+      lets the layout owner stay clientside without server-side
+      coordination.
     * **Aux ports carry ``data.accepts``.**  Each op-typed param on a
       consumer block emits one aux-port sub-node carrying
       ``data.accepts: List[str]`` — the list of registry class names
@@ -950,8 +1026,8 @@ def build_canvas_elements_dag(
       ports glow vs. dim.
     * **Issue badges.** Per spec §4.6, each block with an issue gets a
       sub-node ``dag-issue`` carrying ``data: {rule_kind, severity,
-      block_id, detail}``.  Phase 2 emits the elements; Phase 6 wires
-      the click-to-pan interactions.
+      block_id, detail}``.  Click-to-pan wiring lives in the
+      validation-badge callback.
     * **Main-path emphasis.**  Edges on the path from ``Input Image``
       to the chain's terminal carry ``data.is_main: True`` so the
       cytoscape stylesheet can render them at ``width: 3px``; aux + non-
@@ -1001,10 +1077,21 @@ def build_canvas_elements_dag(
     # Compute the main-path edge set for the width: 3px emphasis.
     main_path_edges: set[str] = set()
 
+    # Bucket aux wired counts by (target_block_id, target_port) up-front
+    # so the port-emission loop below stays O(V + E) rather than
+    # re-walking ``scope.edges`` once per block (O(V × E)).  Indexed by
+    # ``target_block_id`` -> {port_name: count}.
+    aux_wired_counts: Dict[str, Dict[str, int]] = {}
     image_edges_by_source: Dict[str, List[Edge]] = {}
     for edge in scope.edges:
         if edge.kind == "aux":
             aux_consumed_block_ids.add(edge.source_block_id)
+            block_ports = aux_wired_counts.setdefault(
+                edge.target_block_id, {}
+            )
+            block_ports[edge.target_port] = (
+                block_ports.get(edge.target_port, 0) + 1
+            )
         elif edge.kind == "image":
             image_edges_by_source.setdefault(edge.source_block_id, []).append(edge)
 
@@ -1420,12 +1507,12 @@ def build_canvas_section(
         title="Remove the selected node from the pipeline",
     )
 
-    # Phase 2 DAG-redesign: ``Re-layout`` re-runs the dagre pass via
-    # ``viewport_ops.js``.  The button is mounted on every render path
-    # regardless of the feature flag so ``asset_status_disables``'s
-    # output always resolves.  When the flag is off, the button stays
-    # visually inert (clicks no-op because ``viewport_ops.js`` only
-    # binds its listener when ``window.phenotypicGuiDag`` is true).
+    # ``Re-layout`` re-runs the dagre pass via ``viewport_ops.js``.
+    # The button is mounted on every render path regardless of the
+    # ``PHENOTYPIC_GUI_DAG`` flag so ``asset_status_disables``'s output
+    # always resolves.  When the flag is off the button stays visually
+    # inert (clicks no-op because ``viewport_ops.js`` only binds its
+    # listener when ``window.phenotypicGuiDag`` is true).
     relayout_btn = dbc.Button(
         "Re-layout",
         id=ids.BTN_RELAYOUT,
@@ -1487,10 +1574,10 @@ def build_canvas_section(
             "position": "relative",
         },
     )
-    # Phase 2 asset-status banner sits between the header and the canvas
-    # slot.  Mounted on every render path so the
-    # ``asset_status_disables`` callback's Output resolves; visibility
-    # is driven by the callback (hidden when all assets ready).
+    # Asset-status banner sits between the header and the canvas slot.
+    # Mounted on every render path so the ``asset_status_disables``
+    # callback's Output resolves; visibility is driven by the callback
+    # (hidden when all assets ready).
     banner = build_asset_status_banner()
     return html.Div(
         [header, banner, cytoscape_slot, popover_container],
@@ -2757,10 +2844,9 @@ def build_app_layout(
                 id=ids.POPOVER_ACTION_STORE,
                 data=None,
             ),
-            # Phase 2 DAG-redesign stores (spec §6).  Mounted on every
-            # render path regardless of the feature flag so the new
-            # callbacks (``asset_status_disables`` + Phase 5-6 fan-in
-            # routing) never error on missing inputs.  Until the flag
+            # DAG-redesign stores (spec §6).  Mounted on every render
+            # path regardless of ``PHENOTYPIC_GUI_DAG`` so the new
+            # callbacks never error on missing inputs.  Until the flag
             # is on, the stores stay at their initial values and the
             # downstream callbacks no-op.
             dcc.Store(
@@ -2808,12 +2894,11 @@ def build_app_layout(
             load_picker_modal(image_root),
             load_image_modal(image_root),
             build_point_picker_modal(),
-            # Phase 2 DAG redesign: confirm-delete modal mounted once
-            # at app boot; visibility driven by
-            # ``STORE_BUILDER_STATE.pending_delete_block_id`` (Phase 5
-            # callback wires this up — Phase 2 only mounts the
-            # scaffold so the ``BTN_CONFIRM_DELETE`` / ``BTN_CANCEL_DELETE``
-            # ids resolve).
+            # Confirm-delete modal mounted once at app boot; visibility
+            # driven by ``STORE_BUILDER_STATE.pending_delete_block_id``.
+            # The block-delete dispatcher wires the open / close
+            # behaviour; mounting here keeps
+            # ``BTN_CONFIRM_DELETE`` / ``BTN_CANCEL_DELETE`` resolvable.
             build_confirm_delete_modal(),
         ]
     )

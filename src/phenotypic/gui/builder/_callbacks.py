@@ -2970,7 +2970,7 @@ def register_callbacks(app: dash.Dash) -> None:
         return not is_open
 
     # ----------------------------------------------------------------------
-    # 11. Asset-status disable wiring (Phase 2 of DAG redesign — spec §6).
+    # 11. Asset-status disable wiring (spec §6).
     # ----------------------------------------------------------------------
     # Subscribes to ``STORE_ASSET_STATUS`` (written by ``assets/builder.js``'s
     # readiness-poll loop with shape
@@ -2986,9 +2986,9 @@ def register_callbacks(app: dash.Dash) -> None:
     #   to handle a port mousedown anyway); the banner above the canvas
     #   surfaces the failure text.
     #
-    # Phase 2 wires the callback in; the visible elements (``BTN_RELAYOUT``,
-    # ``PALETTE_CONTAINER``, ``BANNER_ASSET_STATUS``) are guaranteed to
-    # exist on every render path so the callback inputs always resolve.
+    # The visible elements (``BTN_RELAYOUT``, ``PALETTE_CONTAINER``,
+    # ``BANNER_ASSET_STATUS``) are guaranteed to exist on every render
+    # path so the callback inputs always resolve.
     @app.callback(
         Output(ids.BTN_RELAYOUT, "disabled"),
         Output(ids.PALETTE_CONTAINER, "style", allow_duplicate=True),
