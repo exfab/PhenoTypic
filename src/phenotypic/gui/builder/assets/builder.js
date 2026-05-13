@@ -224,3 +224,165 @@
         start();
     }
 })();
+
+
+/* PhenoTypic Pipeline Builder — asset-readiness poller (spec §5.5).
+ *
+ * Each new DAG-canvas JS asset (currently ``viewport_ops.js``; later
+ * ``palette_dnd.js``, ``wire_drawing.js``) writes a sentinel onto
+ * ``window`` when its IIFE finishes binding:
+ *
+ *   * ``window.phenotypic_viewport_ops_ready = true``
+ *   * ``window.phenotypic_palette_dnd_ready  = true``  (Phase 3)
+ *   * ``window.phenotypic_wire_drawing_ready = true``  (Phase 4)
+ *
+ *  ``viewport_ops.js`` may additionally set
+ *  ``window.phenotypic_viewport_ops_dagre_missing = true`` if the
+ *  vendored ``cytoscape-dagre.min.js`` failed to register; the asset is
+ *  still "ready" in that case but degraded, and the toolbar banner
+ *  surfaces a separate "Layout extension missing" row.
+ *
+ *  This routine polls every 500ms for the first 1500ms after page load,
+ *  then writes the final missing-asset list (an empty list = all green)
+ *  into ``STORE_ASSET_STATUS`` via ``dash_clientside.set_props``. Agent
+ *  2A's server-side wiring (``asset_status_disables`` callback, asset-
+ *  status banner in ``_layout.py``) reads the store and disables the
+ *  relayout button + shows banner rows as needed.
+ *
+ *  The poll interval is short (500ms) and only runs three iterations
+ *  total, so the cost is negligible. The window flags themselves are
+ *  always available, so any future code (e.g. graceful-degradation
+ *  shortcircuits in ``wire_drawing.js``) can read them directly without
+ *  going through the store. */
+(function () {
+    "use strict";
+
+    /** Mirror of ``builder/_ids.py`` — ``STORE_ASSET_STATUS`` is a new
+     *  store id added in Phase 2 (Agent 2A's responsibility). Kept as a
+     *  constant here so a future rename only touches one place. */
+    const STORE_ASSET_STATUS_ID = "store-asset-status";
+
+    /** Map of asset name -> {ready_flag, dagre_flag?}. The ``dagre_flag``
+     *  is asset-specific: only ``viewport_ops`` consults it. When the
+     *  dagre extension is missing we still report ``viewport_ops`` as
+     *  ready (degraded), but emit a separate ``cytoscape-dagre`` entry
+     *  in the missing-list. */
+    const ASSETS = [
+        {
+            name: "viewport_ops",
+            ready_flag: "phenotypic_viewport_ops_ready",
+            extension_flag: "phenotypic_viewport_ops_dagre_missing",
+            extension_label: "cytoscape-dagre",
+        },
+        // Phase 3 / Phase 4 will append palette_dnd + wire_drawing.
+    ];
+
+    /** Total poll budget. Matches spec §5.5 (1500ms ceiling). */
+    const TOTAL_BUDGET_MS = 1500;
+    const POLL_INTERVAL_MS = 500;
+
+    /** Construct the missing-asset list from the current ``window``
+     *  sentinels. Returns ``{missing: string[], degraded: string[]}``
+     *  where ``missing`` are assets whose ready flag is still false and
+     *  ``degraded`` are auxiliary extensions (e.g. cytoscape-dagre) that
+     *  reported themselves missing. */
+    function collectAssetStatus() {
+        const missing = [];
+        const degraded = [];
+        for (const asset of ASSETS) {
+            if (!window[asset.ready_flag]) {
+                missing.push(asset.name);
+            }
+            if (asset.extension_flag && window[asset.extension_flag]) {
+                degraded.push(asset.extension_label);
+            }
+        }
+        return { missing: missing, degraded: degraded };
+    }
+
+    /** Write the final status into ``STORE_ASSET_STATUS`` via Dash's
+     *  ``set_props`` clientside hook (Dash 2.18+). The payload shape:
+     *
+     *    {missing: string[], degraded: string[], ts: number}
+     *
+     *  - ``missing``: names of asset files whose IIFE never ran to
+     *    completion (e.g. CDN cache eviction blocked the load).
+     *  - ``degraded``: auxiliary extension names that reported their
+     *    own absence (currently ``cytoscape-dagre`` only).
+     *  - ``ts``: monotonic timestamp so the server-side callback can
+     *    distinguish "first write" vs. "no change". */
+    function publishAssetStatus(status) {
+        if (
+            !(
+                window.dash_clientside &&
+                typeof window.dash_clientside.set_props === "function"
+            )
+        ) {
+            // Dash older than 2.18 — fall back to a plain ``dcc.Store``
+            // mutation via a CustomEvent that the asset-status callback
+            // can listen for. We do not attempt to install the event
+            // listener here; Phase 2's Agent 2A wires the store at
+            // server-render time. The fallback path is documented for
+            // future graceful-degradation work.
+            return;
+        }
+        try {
+            window.dash_clientside.set_props(STORE_ASSET_STATUS_ID, {
+                data: {
+                    missing: status.missing,
+                    degraded: status.degraded,
+                    ts: Date.now(),
+                },
+            });
+        } catch (err) {
+            // STORE_ASSET_STATUS hasn't been rendered yet (e.g. legacy
+            // popover route active, or initial page render still in
+            // flight). The poll routine will retry on the next tick
+            // until either the store exists or the budget is exhausted.
+        }
+    }
+
+    /** Drive the poll loop. Runs every ``POLL_INTERVAL_MS`` for at
+     *  most ``TOTAL_BUDGET_MS`` total; whichever comes first:
+     *   - all assets report ready (early exit + final publish), or
+     *   - the budget is exhausted (final publish with whatever's still
+     *     missing).
+     *  The final publish is unconditional so the asset-status banner
+     *  always reflects an authoritative state. */
+    function pollAssetStatus() {
+        const start = Date.now();
+        let last;
+        const handle = setInterval(function () {
+            const status = collectAssetStatus();
+            const allReady = status.missing.length === 0;
+            const elapsed = Date.now() - start;
+            // Publish on every iteration so the banner clears as soon as
+            // each asset reports ready (not just at the budget cap).
+            if (
+                !last ||
+                last.missing.length !== status.missing.length ||
+                last.degraded.length !== status.degraded.length
+            ) {
+                publishAssetStatus(status);
+                last = status;
+            }
+            if (allReady || elapsed >= TOTAL_BUDGET_MS) {
+                clearInterval(handle);
+                // Final write — guarantees the store reflects the
+                // post-budget state even if no transitions happened.
+                publishAssetStatus(status);
+            }
+        }, POLL_INTERVAL_MS);
+    }
+
+    // Defer the first poll one tick so cytoscape + Dash have had a
+    // chance to materialise the store DOM. ``setTimeout(_, 0)`` is
+    // enough; subsequent iterations rely on ``setInterval``.
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", function () {
+            setTimeout(pollAssetStatus, 0);
+        });
+    } else {
+        setTimeout(pollAssetStatus, 0);
+    }
+})();
