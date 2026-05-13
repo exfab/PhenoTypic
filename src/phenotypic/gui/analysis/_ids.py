@@ -43,6 +43,13 @@ ANALYSIS_RECOMPILE_BANNER = "analysis-recompile-banner"
 #: matches what the session loaded — a CLI re-run happened under us.
 ANALYSIS_STALE_BANNER = "analysis-stale-banner"
 
+#: Banner shown when one or more analyzer entries in ``pipeline.json``
+#: reference a class that can no longer be resolved (rename or removal).
+#: Renders the list of missing classes plus the path to ``pipeline.json``
+#: so the user can manually re-add a replacement. Hidden when no
+#: warnings were collected during load.
+ANALYSIS_LOAD_WARNINGS_BANNER = "analysis-load-warnings-banner"
+
 # ---------------------------------------------------------------------------
 # Section stacks
 # ---------------------------------------------------------------------------
@@ -124,6 +131,7 @@ __all__ = [
     "ANALYSIS_PIPELINE_HEADER",
     "ANALYSIS_RECOMPILE_BANNER",
     "ANALYSIS_STALE_BANNER",
+    "ANALYSIS_LOAD_WARNINGS_BANNER",
     "ANALYSIS_POST_STACK",
     "ANALYSIS_FILTER_STACK",
     "ANALYSIS_MODEL_SECTION",
