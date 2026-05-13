@@ -99,6 +99,17 @@ STORE_ISSUES = "store-issues"
 #: and the palette ``pointer-events`` style.
 STORE_ASSET_STATUS = "store-asset-status"
 
+#: ``dcc.Store`` written by the clientside ``palette_dnd.js`` glue when
+#: a user drops a palette button onto the canvas (or fires the
+#: keyboard fallback). Server-side callbacks subscribe to it to route
+#: through ``_dispatch_state_update`` with the ``block_create`` kind.
+#: Data shape (per spec §5.5):
+#: ``{"kind": "block_create", "class_name": str, "x": float, "y": float,
+#: "container_block_id": str | None, "ts": int}`` — ``None`` between
+#: drops.  ``ts`` is a monotonic timestamp so repeat drops of the same
+#: class still trigger change detection.
+STORE_PALETTE_DROP = "store-palette-drop"
+
 #: Toolbar button that re-runs the dagre layout pass + ``cy.fit()``.  Wired
 #: to the ``relayout`` payload in ``STORE_VIEWPORT_OP``; disabled by the
 #: ``asset_status_disables`` callback when ``viewport_ops.js`` or the
@@ -752,6 +763,7 @@ __all__ = [
     "STORE_VIEWPORT_OP",
     "STORE_ISSUES",
     "STORE_ASSET_STATUS",
+    "STORE_PALETTE_DROP",
     "BTN_RELAYOUT",
     "BANNER_ASSET_STATUS",
     "CONFIRM_DELETE_MODAL_ID",

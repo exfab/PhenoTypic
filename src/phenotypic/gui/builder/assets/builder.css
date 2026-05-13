@@ -900,3 +900,65 @@ code, pre, .text-monospace, .font-monospace {
 .aux-port-clickable {
     cursor: pointer;
 }
+
+/* ===========================================================================
+ * Palette drag-and-drop (spec §4.8 + §5.5)
+ * ===========================================================================
+ *
+ * Native HTML5 dnd from palette buttons to the cytoscape canvas. The
+ * server renders each draggable palette button with
+ * ``draggable="true"`` and ``data-palette-class="<ClassName>"`` (see
+ * ``_layout.build_palette``); ``palette_dnd.js`` reads those attributes
+ * on ``dragstart``, mounts a ghost element as the drag image, and
+ * dispatches to ``STORE_PALETTE_DROP`` on drop. */
+
+/* Cursor affordance + subtle hover lift on draggable palette buttons.
+ * Bootstrap already applies its own hover style; we add a grab cursor
+ * so the affordance is discoverable and a tighter focus ring so
+ * keyboard users see the Tab landing target. */
+.palette-button[draggable="true"],
+[data-palette-class][draggable="true"] {
+    cursor: grab;
+}
+.palette-button[draggable="true"]:active,
+[data-palette-class][draggable="true"]:active {
+    cursor: grabbing;
+}
+.palette-button[draggable="true"]:focus-visible,
+[data-palette-class][draggable="true"]:focus-visible {
+    outline: 2px solid var(--color-blue);
+    outline-offset: 2px;
+}
+
+/* Ghost element rendered briefly during ``setDragImage``. Positioned
+ * off-screen by ``palette_dnd.js`` so the rasterised drag image is the
+ * only visible surface; these rules style the rasterised card. */
+[data-testid="palette-ghost"] {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--sp-1) var(--sp-3);
+    background: var(--color-surface);
+    border: 1.5px solid var(--color-blue);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    color: var(--color-navy);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    font-weight: 500;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* Container drag-over highlight. ``palette_dnd.js`` toggles
+ * ``.dag-block--container-hover`` on the innermost container compound
+ * whose bounding box contains the cursor; this rule lifts the
+ * container's outer chrome so the user sees adoption is offered. The
+ * cytoscape stylesheet (``_layout.py``) controls the canvas-side
+ * border / fill; the DOM rule below covers any DOM overlay anchored
+ * to a hovered container (cursor + outline affordance). */
+.dag-block--container-hover {
+    cursor: copy;
+    outline: 2px dashed var(--color-blue);
+    outline-offset: 2px;
+    background: rgba(27, 117, 188, 0.06);
+}
