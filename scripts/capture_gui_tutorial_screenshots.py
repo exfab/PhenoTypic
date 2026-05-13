@@ -276,6 +276,9 @@ def capture_workflow_screenshots(base_url: str, headed: bool = False) -> None:
             _capture_pick_points(context, base_url)
             _capture_analysis(context, base_url)
             _capture_aux_ports(context, base_url)
+            _capture_aux_wire_in_dag(context, base_url)
+            _capture_wire_pipeline_as_aux(context, base_url)
+            _capture_fix_validation_issues(context, base_url)
         finally:
             browser.close()
 
@@ -1048,6 +1051,389 @@ def _aux_ports_list_scenarios(
         except Exception:  # pragma: no cover - best-effort
             page.wait_for_timeout(600)
     _save(page, "aux_ports", "09_per_slot_disconnect.png")
+
+
+def _capture_aux_wire_in_dag(context, base_url: str) -> None:
+    """Drive the post-redesign aux-wiring DAG workflow and capture 3 PNGs.
+
+    Mirrors the post-popover aux flow described in
+    ``docs/source/tutorials/gui/10_aux_wire_in_dag.md``: every operation
+    (including the aux producer) is mounted as a draggable block on the
+    canvas, and the aux assignment is expressed as a purple wire drawn
+    from the producer's right-edge output port to the consumer's
+    bottom-edge aux port. There is no popover class palette in v2 — the
+    detector lives on the canvas as a first-class block and can be
+    inspected / drilled / disconnected like any other block.
+
+    The captured PNGs document a minimal 3-step authoring trip:
+
+    1. ``01_main_with_consumer.png`` — palette + canvas with the main
+       image-flow ribbon plus a free-floating consumer (FFD) whose aux
+       port is hollow purple, waiting on a wire.
+    2. ``02_detector_dropped.png`` — an ``OtsuDetector`` block has been
+       added to the canvas with no incoming wire yet. The block's
+       right-edge output port and the consumer's bottom-edge aux port
+       are both highlighted as wire-eligible.
+    3. ``03_aux_wired.png`` — a purple aux wire runs from the detector's
+       output port to the consumer's aux port. The toolbar issue badge
+       has cleared and the inspector preview thumbnail is enabled.
+
+    The capture is best-effort: if the post-redesign DAG cytoscape
+    surface isn't yet wired into the running hub (it ships in Phase
+    1-7 of the builder DAG redesign), the helper saves what it can and
+    closes the page so CI keeps running. The PNGs are deterministic
+    placeholders until the redesign lands in main; once it does, a
+    workstation re-capture refreshes them in-place.
+    """
+    print("[shot] workflow=aux-wire-in-dag")
+    page = _new_page(context, base_url, "/builder/")
+
+    page.wait_for_selector("#palette", timeout=15_000)
+    page.wait_for_timeout(500)
+
+    # Expand every palette accordion so detector + consumer adds work.
+    for header_text in ("Corrector", "Detector", "Enhancer", "Refiner", "Measure"):
+        header = page.locator(
+            f'button.accordion-button:has-text("{header_text}")'
+        ).first
+        if header.count() > 0:
+            try:
+                cls = header.get_attribute("class") or ""
+                if "collapsed" in cls:
+                    header.click()
+                    page.wait_for_timeout(250)
+            except Exception:  # pragma: no cover - best-effort
+                pass
+    page.wait_for_timeout(300)
+
+    def _add_op(class_name: str) -> None:
+        sel = (
+            f'button[id*="\\"type\\":\\"palette-add\\""]'
+            f'[id*="\\"class_name\\":\\"{class_name}\\""]'
+        )
+        loc = page.locator(sel)
+        if loc.count() > 0:
+            loc.first.click()
+            page.wait_for_timeout(600)
+
+    # 1) Main ribbon + free-floating consumer (FFD).
+    for cls in ("GaussianBlur", "ContrastStretching", "FilamentousFungiDetector"):
+        _add_op(cls)
+    page.wait_for_timeout(800)
+    _save(page, "aux-wire-in-dag", "01_main_with_consumer.png")
+
+    # 2) Add the aux producer (OtsuDetector). At this point it has no
+    #    incoming or outgoing wire — it's a free-floating block on the
+    #    canvas with a hollow right-edge image-output port.
+    _add_op("OtsuDetector")
+    page.wait_for_timeout(800)
+    _save(page, "aux-wire-in-dag", "02_detector_dropped.png")
+
+    # 3) Best-effort: draw an aux wire from the detector's output port
+    #    to the FFD's aux port via the live cytoscape instance. The
+    #    DAG redesign's wire-draw is dispatched by ``cy.add({...})``
+    #    against the post-redesign aux edge class. If the surface isn't
+    #    available, fall back to capturing the canvas state as-is so
+    #    the screenshot is still meaningful (block placement is the
+    #    key visual signal).
+    page.evaluate(
+        """
+        () => {
+            const cy = window.phenoGetCy && window.phenoGetCy();
+            if (!cy) return;
+            const otsu = cy.nodes('[class_name = "OtsuDetector"]').last();
+            const ffd = cy.nodes('[class_name = "FilamentousFungiDetector"]').last();
+            if (!otsu || !ffd || otsu.length === 0 || ffd.length === 0) return;
+            try {
+                cy.add({
+                    group: 'edges',
+                    data: {
+                        source: otsu.id(),
+                        target: ffd.id(),
+                        port_kind: 'aux',
+                    },
+                    classes: 'wire-aux',
+                });
+            } catch (e) {
+                // Phase 1-7 redesign not yet on this branch; capture
+                // the unwired state instead.
+            }
+        }
+        """
+    )
+    page.wait_for_timeout(800)
+    _save(page, "aux-wire-in-dag", "03_aux_wired.png")
+    page.close()
+
+
+def _capture_wire_pipeline_as_aux(context, base_url: str) -> None:
+    """Drive the Pipeline-container-as-aux workflow and capture 3 PNGs.
+
+    Mirrors the post-redesign workflow described in
+    ``docs/source/tutorials/gui/11_wire_pipeline_as_aux.md``: a
+    Pipeline container is dropped on the canvas, a multi-step chain is
+    moved into its nested scope, then a purple aux wire is drawn from
+    the container's right-edge output port to a consumer's aux port.
+    The container's inner ``consumer-fed`` dot lights up to confirm
+    the container is in aux mode (not image-flow mode).
+
+    The captured PNGs document the authoring trip:
+
+    1. ``01_empty_container.png`` — palette + canvas with an empty
+       Pipeline container (just an ``Input Image`` sentinel inside).
+    2. ``02_chain_in_container.png`` — the container now holds a
+       3-step chain (``GaussianBlur → OtsuDetector → SizeFilter``)
+       wired left-to-right inside its nested scope.
+    3. ``03_pipeline_wired_as_aux.png`` — the container is wired as
+       aux to a consumer (FFD) outside the container. The consumer-fed
+       dot is lit purple to confirm aux mode.
+
+    Best-effort like ``_capture_aux_wire_in_dag``: if the post-redesign
+    container affordance isn't yet on this branch, the helper saves
+    the closest-available state and moves on.
+    """
+    print("[shot] workflow=wire-pipeline-as-aux")
+    page = _new_page(context, base_url, "/builder/")
+
+    page.wait_for_selector("#palette", timeout=15_000)
+    page.wait_for_timeout(500)
+
+    for header_text in ("Corrector", "Detector", "Enhancer", "Refiner", "Measure"):
+        header = page.locator(
+            f'button.accordion-button:has-text("{header_text}")'
+        ).first
+        if header.count() > 0:
+            try:
+                cls = header.get_attribute("class") or ""
+                if "collapsed" in cls:
+                    header.click()
+                    page.wait_for_timeout(250)
+            except Exception:  # pragma: no cover - best-effort
+                pass
+    page.wait_for_timeout(300)
+
+    def _add_op(class_name: str) -> None:
+        sel = (
+            f'button[id*="\\"type\\":\\"palette-add\\""]'
+            f'[id*="\\"class_name\\":\\"{class_name}\\""]'
+        )
+        loc = page.locator(sel)
+        if loc.count() > 0:
+            loc.first.click()
+            page.wait_for_timeout(600)
+
+    # 1) Empty Pipeline container. The "+ Pipeline" / "+ New Pipeline"
+    #    button lives in the Structure card on the builder toolbar.
+    #    Click it once to mint a fresh container at the top level; if
+    #    the button isn't present (older builder build), capture the
+    #    empty canvas as a graceful fallback.
+    new_pipeline_btn = page.locator("#btn-new-pipeline")
+    if new_pipeline_btn.count() == 0:
+        new_pipeline_btn = page.locator(
+            'button:has-text("New Pipeline"), button:has-text("+ Pipeline")'
+        ).first
+    if new_pipeline_btn.count() > 0:
+        try:
+            new_pipeline_btn.first.click()
+            page.wait_for_timeout(600)
+        except Exception:  # pragma: no cover - best-effort
+            pass
+    _save(page, "wire-pipeline-as-aux", "01_empty_container.png")
+
+    # 2) Drop a 3-step chain that will live inside the container's
+    #    nested scope. The post-redesign builder absorbs newly-added
+    #    palette ops into whichever scope is currently active; drilling
+    #    in via the container's drill button puts subsequent adds
+    #    inside the nested scope. Best-effort drill via cy:
+    page.evaluate(
+        """
+        () => {
+            const cy = window.phenoGetCy && window.phenoGetCy();
+            if (!cy) return;
+            const container = cy.nodes('[class_name = "Pipeline"], [type = "container"]').last();
+            if (!container || container.length === 0) return;
+            try {
+                container.emit('dbltap');
+            } catch (e) {
+                // Drill-in not wired yet; subsequent ops will land in
+                // the top-level scope (good enough for the screenshot).
+            }
+        }
+        """
+    )
+    page.wait_for_timeout(400)
+    for cls in ("GaussianBlur", "OtsuDetector"):
+        _add_op(cls)
+    # SizeFilter lives in Refiner; if it's not exposed yet, fall back
+    # to a second refiner-class op for visual continuity.
+    sf_btn_sel = (
+        'button[id*="\\"type\\":\\"palette-add\\""]'
+        '[id*="\\"class_name\\":\\"SizeFilter\\""]'
+    )
+    if page.locator(sf_btn_sel).count() > 0:
+        _add_op("SizeFilter")
+    page.wait_for_timeout(800)
+    _save(page, "wire-pipeline-as-aux", "02_chain_in_container.png")
+
+    # 3) Drill back out + add a consumer + wire the container into its
+    #    aux port. The drill-out button is rendered as the first
+    #    breadcrumb crumb on the builder toolbar; clicking it pops the
+    #    canvas back to the outer scope. Best-effort:
+    crumbs = page.locator(".pheno-breadcrumb button")
+    if crumbs.count() > 0:
+        try:
+            crumbs.first.click()
+            page.wait_for_timeout(400)
+        except Exception:  # pragma: no cover - best-effort
+            pass
+    _add_op("FilamentousFungiDetector")
+    page.wait_for_timeout(600)
+    page.evaluate(
+        """
+        () => {
+            const cy = window.phenoGetCy && window.phenoGetCy();
+            if (!cy) return;
+            const container = cy.nodes('[class_name = "Pipeline"], [type = "container"]').last();
+            const ffd = cy.nodes('[class_name = "FilamentousFungiDetector"]').last();
+            if (!container || !ffd || container.length === 0 || ffd.length === 0) return;
+            try {
+                cy.add({
+                    group: 'edges',
+                    data: {
+                        source: container.id(),
+                        target: ffd.id(),
+                        port_kind: 'aux',
+                    },
+                    classes: 'wire-aux',
+                });
+            } catch (e) {
+                // Phase 1-7 redesign not yet on this branch.
+            }
+        }
+        """
+    )
+    page.wait_for_timeout(800)
+    _save(page, "wire-pipeline-as-aux", "03_pipeline_wired_as_aux.png")
+    page.close()
+
+
+def _capture_fix_validation_issues(context, base_url: str) -> None:
+    """Drive the validation-issue triage workflow and capture 3 PNGs.
+
+    Mirrors ``docs/source/tutorials/gui/12_fix_validation_issues.md``:
+    introduce a violation by adding a stranded block (no incoming
+    image wire), see the validation badge spin up + red border on the
+    offender, click the toolbar issue row to pan to the offender, then
+    delete the orphan to clear the badge and re-enable the preview
+    button.
+
+    The captured PNGs document the triage trip:
+
+    1. ``01_issue_introduced.png`` — canvas with the offending stranded
+       block visible; toolbar shows the issue count badge in red.
+    2. ``02_issue_focused.png`` — same canvas after clicking the issue
+       row; the offender now carries a red border + ``!`` marker, and
+       the inspector / preview area shows the validator's explanation
+       of the failure.
+    3. ``03_issue_resolved.png`` — orphan deleted; toolbar badge is
+       gone, red border has cleared, and the inspector's preview
+       thumbnail / Run-preview button is re-enabled.
+
+    Best-effort: the validator + toolbar issue badge ship in Phase 6A
+    of the redesign. If they're not yet wired, the helper still
+    captures the visible canvas state so the tutorial page has frames
+    to embed; a workstation re-capture refreshes them once the gates
+    land.
+    """
+    print("[shot] workflow=fix-validation-issues")
+    page = _new_page(context, base_url, "/builder/")
+
+    page.wait_for_selector("#palette", timeout=15_000)
+    page.wait_for_timeout(500)
+
+    for header_text in ("Corrector", "Detector", "Enhancer", "Refiner", "Measure"):
+        header = page.locator(
+            f'button.accordion-button:has-text("{header_text}")'
+        ).first
+        if header.count() > 0:
+            try:
+                cls = header.get_attribute("class") or ""
+                if "collapsed" in cls:
+                    header.click()
+                    page.wait_for_timeout(250)
+            except Exception:  # pragma: no cover - best-effort
+                pass
+    page.wait_for_timeout(300)
+
+    def _add_op(class_name: str) -> None:
+        sel = (
+            f'button[id*="\\"type\\":\\"palette-add\\""]'
+            f'[id*="\\"class_name\\":\\"{class_name}\\""]'
+        )
+        loc = page.locator(sel)
+        if loc.count() > 0:
+            loc.first.click()
+            page.wait_for_timeout(600)
+
+    # 1) Build a main ribbon + a stranded block (the orphan). The
+    #    stranded block has no incoming image-flow wire and therefore
+    #    fails Rule 1 of the DAG validator (every consumer needs at
+    #    least one image input). The toolbar's issue badge picks this
+    #    up immediately on canvas mutate.
+    for cls in ("GaussianBlur", "OtsuDetector"):
+        _add_op(cls)
+    page.wait_for_timeout(400)
+    # Add the orphan last — it will land to the right of the existing
+    # ribbon but with no auto-wire to the OtsuDetector since the
+    # post-redesign builder doesn't auto-chain Refiners.
+    _add_op("SizeFilter")
+    page.wait_for_timeout(800)
+    _save(page, "fix-validation-issues", "01_issue_introduced.png")
+
+    # 2) Click the issue row in the toolbar issue badge so the canvas
+    #    pans to the offender + the offender renders with a red border
+    #    and a ``!`` marker. The badge button is rendered as
+    #    ``#toolbar-issue-badge`` in the post-redesign chrome.
+    issue_badge = page.locator("#toolbar-issue-badge")
+    if issue_badge.count() == 0:
+        issue_badge = page.locator(
+            'button[id*="issue-badge"], button:has-text("issue")'
+        ).first
+    if issue_badge.count() > 0:
+        try:
+            issue_badge.first.click()
+            page.wait_for_timeout(600)
+        except Exception:  # pragma: no cover - best-effort
+            pass
+    _save(page, "fix-validation-issues", "02_issue_focused.png")
+
+    # 3) Delete the offender via the toolbar's "Delete selected" button.
+    #    Selection is set by the issue-row click in step 2 (the click
+    #    selects the offender as a side-effect). If the delete button
+    #    isn't available, fall back to cy.remove on the orphan.
+    delete_btn = page.locator("#btn-delete-selected")
+    if delete_btn.count() == 0:
+        delete_btn = page.locator('button:has-text("Delete selected")').first
+    if delete_btn.count() > 0:
+        try:
+            delete_btn.first.click()
+            page.wait_for_timeout(600)
+        except Exception:  # pragma: no cover - best-effort
+            pass
+    else:
+        page.evaluate(
+            """
+            () => {
+                const cy = window.phenoGetCy && window.phenoGetCy();
+                if (!cy) return;
+                const orphan = cy.nodes('[class_name = "SizeFilter"]').last();
+                if (orphan && orphan.length > 0) orphan.remove();
+            }
+            """
+        )
+        page.wait_for_timeout(600)
+    _save(page, "fix-validation-issues", "03_issue_resolved.png")
+    page.close()
 
 
 def _capture_analysis(context, base_url: str) -> None:

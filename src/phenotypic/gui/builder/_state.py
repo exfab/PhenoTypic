@@ -8,45 +8,33 @@ fidelity.
 
 The module imports only stdlib + ``phenotypic``; no Dash dependencies.
 
-This module is currently in a **transitional shape** (Phase 1 of the
-Pipeline Builder DAG redesign — see
-``docs/superpowers/specs/2026-05-12-builder-dag-redesign-design.md``):
+The **DAG** schema (:class:`BlockNode`, :class:`Edge`,
+``_DagBuilderScope``, ``_DagBuilderState``) is the only active model.
+The exported ``BuilderScope`` / ``BuilderState`` symbols are permanent
+aliases for the DAG variants.
 
-* The **legacy** linear-list schema (``_LegacyStepNode`` /
-  ``_LegacyBuilderScope`` / ``_LegacyBuilderState``) is still the active
-  model when the ``PHENOTYPIC_GUI_DAG`` env var is unset (or anything
-  other than the literal ``"1"``).
-* The new **DAG** schema (:class:`BlockNode`, :class:`Edge`,
-  ``_DagBuilderScope``, ``_DagBuilderState``) is always defined so
-  sibling modules can import the dataclasses regardless of flag state.
-* The exported ``BuilderScope`` / ``BuilderState`` symbols resolve at
-  import time to either the legacy or DAG variant depending on the
-  flag.  The legacy ``StepNode`` symbol is permanently aliased to
-  ``_LegacyStepNode`` for back-compat.
-* ``to_pipeline`` / ``from_pipeline`` continue to operate on the legacy
-  types; new DAG conversion lives in ``_conversion_dag.py``.
+The legacy linear-list types (``_LegacyStepNode`` / ``_LegacyBuilderScope``
+/ ``_LegacyBuilderState``) and their ``to_pipeline`` / ``from_pipeline``
+helpers remain defined for back-compat: they back the
+``test_legacy_pipeline_json`` migration tests and the legacy preview
+fixture.  No active code path references them.  The ``StepNode`` public
+alias still points at ``_LegacyStepNode`` so existing imports keep
+working.
 
 Examples:
-    Build a tiny scope and round-trip it through an ``ImagePipeline``
-    (legacy path):
+    Build a tiny DAG scope and inspect its auto-seeded input image:
 
     >>> from phenotypic.gui.builder._state import (
-    ...     _LegacyBuilderScope, _LegacyStepNode, to_pipeline, from_pipeline,
+    ...     BuilderScope, BuilderState, INPUT_IMAGE_CLASS_NAME,
     ... )
-    >>> scope = _LegacyBuilderScope(
-    ...     nodes=[_LegacyStepNode(node_id="a1", class_name="GaussianBlur",
-    ...                            params={"sigma": 1.5})],
-    ...     name="demo",
-    ... )
-    >>> pipeline = to_pipeline(scope)
-    >>> from_pipeline(pipeline).nodes[0].class_name
-    'GaussianBlur'
+    >>> scope = BuilderScope(name="demo")
+    >>> scope.blocks[0].class_name == INPUT_IMAGE_CLASS_NAME
+    True
 """
 
 from __future__ import annotations
 
 import logging
-import os
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Literal, Optional
@@ -61,14 +49,6 @@ from phenotypic.gui._operation_registry import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Feature flag (spec §5.7a) — read ONCE at module import. Subsequent env-var
-# changes are ignored for the lifetime of the process.
-# ---------------------------------------------------------------------------
-
-PHENOTYPIC_GUI_DAG: bool = os.environ.get("PHENOTYPIC_GUI_DAG", "0") == "1"
 
 
 # Sentinel class names. ``PIPELINE_CLASS_NAME`` predates the redesign and
@@ -347,9 +327,10 @@ def _find_container_scope_by_block_id(
 
 
 # ---------------------------------------------------------------------------
-# Legacy schema (linear list + embedded aux_ports) — renamed in place so
-# the new DAG types can claim the public ``BuilderScope`` / ``BuilderState``
-# symbols when the flag is on.
+# Legacy schema (linear list + embedded aux_ports) — kept defined so the
+# back-compat migration test fixtures (``test_legacy_pipeline_json``) and
+# the legacy preview bake helper still resolve their imports.  No active
+# code path uses these types since Phase 8 retired the feature flag.
 # ---------------------------------------------------------------------------
 
 
@@ -476,20 +457,17 @@ class _LegacyBuilderState:
 
 
 # ---------------------------------------------------------------------------
-# Public ``BuilderScope`` / ``BuilderState`` aliases — resolve to the DAG
-# types when the flag is on, otherwise to the legacy types.  ``StepNode`` is
-# permanently aliased to the legacy step node (no DAG counterpart — the
-# DAG model uses :class:`BlockNode` instead).
+# Public ``BuilderScope`` / ``BuilderState`` aliases — permanent DAG types.
+# ``StepNode`` is permanently aliased to the legacy step node (no DAG
+# counterpart — the DAG model uses :class:`BlockNode` instead).  The legacy
+# alias is kept so back-compat tests (``test_legacy_pipeline_json``) and
+# the legacy preview bake fixture still resolve their imports.
 # ---------------------------------------------------------------------------
 
 StepNode = _LegacyStepNode
 
-if PHENOTYPIC_GUI_DAG:
-    BuilderScope = _DagBuilderScope  # type: ignore[misc,assignment]
-    BuilderState = _DagBuilderState  # type: ignore[misc,assignment]
-else:
-    BuilderScope = _LegacyBuilderScope  # type: ignore[misc,assignment]
-    BuilderState = _LegacyBuilderState  # type: ignore[misc,assignment]
+BuilderScope = _DagBuilderScope  # type: ignore[misc,assignment]
+BuilderState = _DagBuilderState  # type: ignore[misc,assignment]
 
 
 # ---------------------------------------------------------------------------

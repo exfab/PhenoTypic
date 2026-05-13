@@ -25,6 +25,9 @@ the images aligned with the implementation.
 | [Pick points](07_pick_points.md) | Curate detected colonies manually with the in-builder point picker. |
 | [Analysis](08_analysis.md) | Compose `phenotypic.analysis` filters + endpoint model and emit `analysis.{csv,parquet}`. |
 | [Aux ports](09_aux_ports.md) | Wire operation-typed parameters (e.g. `FilamentousFungiDetector.inoculum_detector`) via Galaxy-style aux input ports. |
+| [Wire an aux in the DAG](10_aux_wire_in_dag.md) | Drag a detector block onto the canvas, draw a purple aux wire to a consumer's bottom-edge aux port (post-redesign primary aux flow). |
+| [Wire a Pipeline as aux](11_wire_pipeline_as_aux.md) | Wrap a multi-step chain inside a `Pipeline` container, then wire the container as a single aux producer. |
+| [Fix validation issues](12_fix_validation_issues.md) | Triage the toolbar issue badge — pan to the offending block, see the validator's explanation, resolve, re-enable preview. |
 
 ## Prerequisites
 
@@ -49,4 +52,7 @@ hub, see the [GUI hub guide](../../how_to/pages/gui_hub.md). This walkthrough is
 07_pick_points
 08_analysis
 09_aux_ports
+10_aux_wire_in_dag
+11_wire_pipeline_as_aux
+12_fix_validation_issues
 ```

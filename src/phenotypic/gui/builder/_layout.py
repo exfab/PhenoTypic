@@ -2274,11 +2274,8 @@ def build_canvas_section(
     )
 
     # ``Re-layout`` re-runs the dagre pass via ``viewport_ops.js``.
-    # The button is mounted on every render path regardless of the
-    # ``PHENOTYPIC_GUI_DAG`` flag so ``asset_status_disables``'s output
-    # always resolves.  When the flag is off the button stays visually
-    # inert (clicks no-op because ``viewport_ops.js`` only binds its
-    # listener when ``window.phenotypicGuiDag`` is true).
+    # The button is mounted on every render path so
+    # ``asset_status_disables``'s output always resolves.
     relayout_btn = dbc.Button(
         "Re-layout",
         id=ids.BTN_RELAYOUT,
