@@ -77,6 +77,7 @@ from phenotypic.gui.builder._image_renderer import (
 )
 from phenotypic.gui.builder._layout import (
     INSPECTOR_FOCUS_AUX_BANNER_ID,
+    _sort_issues_for_badge,
     build_breadcrumb,
     build_canvas_elements,
     build_inspector,
@@ -3026,14 +3027,18 @@ def register_callbacks(app: dash.Dash) -> None:
             logger.exception("update_issue_badge failed")
             return no_update, no_update, no_update
 
-        # The wrapping span contains [badge, popover] in order. Each
-        # has its own typed children we need to project back through
-        # the static outputs.
-        badge_widget = badge_span.children[0]
+        # The wrapping span contains [badge_wrapper, popover] in order.
+        # ``badge_wrapper`` is an ``html.Span`` whose single child is the
+        # ``dbc.Badge`` chip carrying both the label (``children``) and
+        # severity colour (``color``).  Reach through the wrapper so we
+        # read the props off the badge itself — ``html.Span`` has no
+        # ``color`` prop and would raise ``AttributeError`` on access.
+        badge_wrapper = badge_span.children[0]
         popover_widget = badge_span.children[1]
+        badge_chip = badge_wrapper.children
         return (
-            badge_widget.children,
-            badge_widget.color,
+            badge_chip.children,
+            badge_chip.color,
             popover_widget.children,
         )
 
@@ -3137,8 +3142,6 @@ def register_callbacks(app: dash.Dash) -> None:
         # the badge tooltip).  The match must align with the order
         # rendered into the tooltip — that's also the order the
         # pattern-match Inputs see.
-        from phenotypic.gui.builder._layout import _sort_issues_for_badge
-
         sorted_issues = _sort_issues_for_badge(issues or [])
         scope_path: List[str] = []
         if (

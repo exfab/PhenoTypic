@@ -2212,12 +2212,18 @@ def build_issue_badge(
 
     issue_list = list(issues or [])
     sorted_issues = _sort_issues_for_badge(issue_list)
-    n_issues = sum(
-        1 for i in sorted_issues if i.get("severity", "error") == "error"
-    )
-    n_hints = sum(
-        1 for i in sorted_issues if i.get("severity", "error") == "advisory"
-    )
+    # Single pass severity tally — avoids two extra O(N) sweeps after sort
+    # (each ``sum`` would otherwise iterate the full sorted list).  The
+    # default severity ``"error"`` matches the sort key so untagged
+    # legacy issues keep counting as blocking.
+    n_issues = 0
+    n_hints = 0
+    for issue in sorted_issues:
+        severity = issue.get("severity", "error")
+        if severity == "error":
+            n_issues += 1
+        elif severity == "advisory":
+            n_hints += 1
     label = _format_issue_badge_label(n_issues, n_hints)
 
     # Colour signals severity: red badge when there are blocking issues,
@@ -2229,11 +2235,25 @@ def build_issue_badge(
     else:
         color = "secondary"
 
+    # Memoise (scope_path, block_id) -> rendered block label.  Each
+    # ``_issue_row_block_label`` call walks the scope tree O(depth × |blocks|);
+    # repeated issues on the same block (typical for fork / cycle rules
+    # which emit multiple findings per offender) would otherwise repeat
+    # the same walk.  The cache key is the tuple form of ``scope_path``
+    # (which is JSON-list shaped on the wire) plus ``block_id``.
+    label_cache: Dict[Tuple[Tuple[str, ...], Optional[str]], str] = {}
     rows: List[Any] = []
     for idx, issue in enumerate(sorted_issues):
         kind = str(issue.get("kind", ""))
         rule_name = _ISSUE_RULE_SHORT_NAMES.get(kind, kind)
-        block_label = _issue_row_block_label(issue, state)
+        cache_key = (
+            tuple(issue.get("scope_path") or ()),
+            issue.get("block_id"),
+        )
+        block_label = label_cache.get(cache_key)
+        if block_label is None:
+            block_label = _issue_row_block_label(issue, state)
+            label_cache[cache_key] = block_label
         detail = str(issue.get("detail", ""))
         rows.append(
             html.Div(
