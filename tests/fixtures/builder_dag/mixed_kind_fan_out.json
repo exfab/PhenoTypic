@@ -1,0 +1,49 @@
+{
+  "name": "mixed_kind_fan_out",
+  "desc": "A source wired to one image-in AND one aux-in.",
+  "blocks": [
+    {
+      "block_id": "input",
+      "class_name": "InputImage",
+      "label": "Input Image"
+    },
+    {
+      "block_id": "mixed_src",
+      "class_name": "GaussianBlur",
+      "label": "mixed_src"
+    },
+    {
+      "block_id": "image_downstream",
+      "class_name": "GaussianBlur",
+      "label": "image_downstream"
+    },
+    {
+      "block_id": "aux_consumer",
+      "class_name": "NeedsAux",
+      "label": "aux_consumer"
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "e1",
+      "source_block_id": "input",
+      "target_block_id": "mixed_src",
+      "target_port": "in",
+      "kind": "image"
+    },
+    {
+      "edge_id": "e2",
+      "source_block_id": "mixed_src",
+      "target_block_id": "image_downstream",
+      "target_port": "in",
+      "kind": "image"
+    },
+    {
+      "edge_id": "e3",
+      "source_block_id": "mixed_src",
+      "target_block_id": "aux_consumer",
+      "target_port": "required_param",
+      "kind": "aux"
+    }
+  ]
+}

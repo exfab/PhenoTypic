@@ -1,0 +1,49 @@
+{
+  "name": "fork_offender",
+  "desc": "An image-flow source with 2 outgoing wires.",
+  "blocks": [
+    {
+      "block_id": "input",
+      "class_name": "InputImage",
+      "label": "Input Image"
+    },
+    {
+      "block_id": "fork_src",
+      "class_name": "GaussianBlur",
+      "label": "fork_src"
+    },
+    {
+      "block_id": "leg_a",
+      "class_name": "GaussianBlur",
+      "label": "leg_a"
+    },
+    {
+      "block_id": "leg_b",
+      "class_name": "GaussianBlur",
+      "label": "leg_b"
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "e1",
+      "source_block_id": "input",
+      "target_block_id": "fork_src",
+      "target_port": "in",
+      "kind": "image"
+    },
+    {
+      "edge_id": "e2",
+      "source_block_id": "fork_src",
+      "target_block_id": "leg_a",
+      "target_port": "in",
+      "kind": "image"
+    },
+    {
+      "edge_id": "e3",
+      "source_block_id": "fork_src",
+      "target_block_id": "leg_b",
+      "target_port": "in",
+      "kind": "image"
+    }
+  ]
+}

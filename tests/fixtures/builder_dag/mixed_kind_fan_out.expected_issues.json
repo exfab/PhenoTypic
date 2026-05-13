@@ -1,0 +1,10 @@
+{
+  "issues": [
+    {
+      "kind": "fork",
+      "severity": "error",
+      "block_label": "mixed_src",
+      "scope_path": []
+    }
+  ]
+}

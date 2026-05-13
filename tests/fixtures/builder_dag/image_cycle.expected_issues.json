@@ -1,0 +1,22 @@
+{
+  "issues": [
+    {
+      "kind": "cycle",
+      "severity": "error",
+      "block_label": "A",
+      "scope_path": []
+    },
+    {
+      "kind": "cycle",
+      "severity": "error",
+      "block_label": "B",
+      "scope_path": []
+    },
+    {
+      "kind": "fork",
+      "severity": "error",
+      "block_label": "A",
+      "scope_path": []
+    }
+  ]
+}
