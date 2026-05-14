@@ -31,11 +31,15 @@ from typing import Iterator
 import pytest
 from playwright.sync_api import Page, expect
 
-from tests.e2e.gui.conftest import (
-    _build_sandbox,
-    _start_live_server,
-    expand_palette_accordions,
+from tests.e2e.gui.builder.conftest import (
+    _canvas_box,
+    _click_new_pipeline_button,
+    _drag_palette_to_canvas,
+    _open_builder,
+    _palette_button,
+    _publish_palette_drop,
 )
+from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
 
 
 # ---------------------------------------------------------------------------
@@ -74,108 +78,11 @@ def hub_url(live_server: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _open_builder(page: Page, hub_url: str) -> None:
-    """Navigate to ``/builder/`` and wait for the canvas to render.
-
-    The canvas wrapper has a stable id; we also pause briefly for
-    ``palette_dnd.js`` to set its readiness sentinel so the test runs
-    against a fully-bootstrapped client.
-    """
-
-    page.goto(hub_url + "/builder/")
-    page.wait_for_selector("#canvas-cytoscape", timeout=15_000)
-    # Wait for ``palette_dnd.js`` IIFE to flip its readiness flag. The
-    # asset poller in ``builder.js`` consumes this, but tests don't
-    # need to wait for the poll cycle — the flag flips synchronously
-    # at IIFE end.
-    page.wait_for_function(
-        "() => window.phenotypic_palette_dnd_ready === true",
-        timeout=15_000,
-    )
-    # Palette categories past the first start collapsed; expand them so
-    # buttons like ``GaussianBlur`` (Enhancer) are visible + draggable.
-    expand_palette_accordions(page)
-
-
-def _palette_button_locator(page: Page, class_name: str):
-    """Locate a palette button by its ``data-palette-class`` attribute.
-
-    Uses the attribute selector so we don't depend on the
-    pattern-matching Dash id encoding (which serialises the id dict
-    into a JSON string that can shift between Dash versions).
-    """
-
-    return page.locator(f"[data-palette-class='{class_name}']")
-
-
-def _canvas_box(page: Page) -> dict:
-    """Return the cytoscape canvas wrapper's bounding box."""
-
-    box = page.locator("#canvas-cytoscape").bounding_box()
-    assert box is not None, "Canvas wrapper not on screen"
-    return box
-
-
-def _drag_palette_to_canvas(
-    page: Page,
-    class_name: str,
-    canvas_x: float,
-    canvas_y: float,
-) -> None:
-    """Synthesize an HTML5 drag from a palette button to a canvas point.
-
-    Playwright's high-level ``drag_to`` does not synthesise
-    ``DragEvent`` objects (which ``palette_dnd.js`` listens for), so
-    we manually invoke ``mouse.down`` / ``mouse.move`` / ``mouse.up``
-    with ``hover`` priming so the browser registers the dragstart.
-    """
-
-    palette = _palette_button_locator(page, class_name)
-    palette.hover()
-    page.mouse.down()
-    box = _canvas_box(page)
-    target_x = box["x"] + canvas_x
-    target_y = box["y"] + canvas_y
-    # Two-step move so the browser sees a non-zero delta (some
-    # browsers cancel a one-shot drag that doesn't move past a
-    # threshold).
-    page.mouse.move(target_x - 5, target_y - 5, steps=5)
-    page.mouse.move(target_x, target_y, steps=5)
-    page.mouse.up()
-
-
-def _publish_palette_drop(page: Page, payload: dict) -> None:
-    """Write a ``block_create`` payload into ``STORE_PALETTE_DROP``.
-
-    Mirrors what ``palette_dnd.js`` emits on a real drop, bypassing the
-    browser's native HTML5 drag machinery — Playwright's synthesized
-    pointer events do not reliably trigger ``DragEvent``s, especially
-    for a drop that must hit-test *inside* a compound container.  This
-    deterministically exercises the same server-side ``block_create``
-    dispatch (incl. ``container_block_id`` adoption) the drag would.
-    """
-
-    page.evaluate(
-        """(payload) => {
-            if (
-                window.dash_clientside &&
-                typeof window.dash_clientside.set_props === 'function'
-            ) {
-                window.dash_clientside.set_props(
-                    'store-palette-drop', { data: payload }
-                );
-            }
-        }""",
-        payload,
-    )
-
-
-# ---------------------------------------------------------------------------
 # 8.3.1 — Palette → canvas: positive cases
+#
+# Shared canvas helpers (``_open_builder``, ``_palette_button``,
+# ``_canvas_box``, ``_drag_palette_to_canvas``, ``_publish_palette_drop``,
+# ``_click_new_pipeline_button``) live in ``builder/conftest.py``.
 # ---------------------------------------------------------------------------
 
 
@@ -210,17 +117,11 @@ def test_palette_drag_drop_inside_container(page: Page, hub_url: str) -> None:
     """
 
     _open_builder(page, hub_url)
-    # Click "New Pipeline" so the canvas has a container to drop into.
-    page.locator("#btn-new-pipeline-node").click()
-    # Wait for the container to appear on the canvas.
-    page.wait_for_function(
-        """() => {
-            const cy = window.phenoGetCy && window.phenoGetCy();
-            if (!cy) return false;
-            return cy.nodes().some(n => n.data('class_name') === 'ImagePipeline');
-        }""",
-        timeout=10_000,
-    )
+    # Click "New Pipeline" so the canvas has a container to drop into;
+    # the helper waits for the container to materialise + the network to
+    # idle, then returns its block_id.
+    container_id = _click_new_pipeline_button(page)
+    assert container_id, "New Pipeline should mint an ImagePipeline container"
     # Adopt a GaussianBlur into the container's nested scope.  We
     # dispatch the ``block_create`` payload directly (with the resolved
     # ``container_block_id``) rather than synthesising an HTML5 drag:
@@ -229,16 +130,6 @@ def test_palette_drag_drop_inside_container(page: Page, hub_url: str) -> None:
     # that must hit-test *inside* a compound container is the flakiest
     # case.  This still exercises the real server-side ``block_create``
     # container-adoption dispatch.
-    container_id = page.evaluate(
-        """() => {
-            const cy = window.phenoGetCy();
-            const cont = cy.nodes().filter(
-                n => n.data('class_name') === 'ImagePipeline'
-            )[0];
-            return cont ? (cont.data('block_id') || cont.id()) : null;
-        }"""
-    )
-    assert container_id, "New Pipeline should mint an ImagePipeline container"
     _publish_palette_drop(
         page,
         {
@@ -372,7 +263,7 @@ def test_palette_drag_drop_outside_cy_slot_cancels(
     before = page.evaluate(
         "() => window.phenoGetCy().nodes().length"
     )
-    palette = _palette_button_locator(page, "GaussianBlur")
+    palette = _palette_button(page, "GaussianBlur")
     palette.hover()
     page.mouse.down()
     # Move far above the canvas wrapper (no drop target).
@@ -395,7 +286,7 @@ def test_palette_drag_esc_during_drag_cancels(page: Page, hub_url: str) -> None:
     before = page.evaluate(
         "() => window.phenoGetCy().nodes().length"
     )
-    palette = _palette_button_locator(page, "GaussianBlur")
+    palette = _palette_button(page, "GaussianBlur")
     palette.hover()
     page.mouse.down()
     page.mouse.move(50, 50, steps=3)
@@ -423,7 +314,7 @@ def test_palette_keyboard_fallback(page: Page, hub_url: str) -> None:
     # ``data-palette-class`` lives on the draggable wrapper ``<div>``
     # (not focusable); the focusable, ``Enter``-activatable element is
     # the ``<button>`` it wraps.  Focus that.
-    palette_button = _palette_button_locator(page, "GaussianBlur").locator(
+    palette_button = _palette_button(page, "GaussianBlur").locator(
         "button"
     )
     palette_button.focus()
@@ -443,7 +334,7 @@ def test_palette_no_input_image_button(page: Page, hub_url: str) -> None:
     """
 
     _open_builder(page, hub_url)
-    expect(_palette_button_locator(page, "InputImage")).to_have_count(0)
+    expect(_palette_button(page, "InputImage")).to_have_count(0)
 
 
 def test_palette_dispatch_rejects_input_image_class_name(

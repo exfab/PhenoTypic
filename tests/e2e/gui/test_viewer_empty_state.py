@@ -24,13 +24,18 @@ def test_phenotypic_app_prefix_is_injected(page: Page, hub_url: str) -> None:
     assert prefix == "/results/"
 
 
-def test_other_mounts_do_not_inject_prefix(page: Page, hub_url: str) -> None:
-    """Builder + Run console index pages should NOT inject the prefix —
-    only the viewer has the JS-pad assets that need it."""
+def test_each_mount_injects_its_own_prefix(page: Page, hub_url: str) -> None:
+    """Each mount that has prefix-dependent JS assets injects its OWN prefix.
+
+    The viewer needs it for hub-aware DZI tile URLs; the builder needs it
+    so ``point_picker.js`` can resolve the vendored OpenSeadragon icon
+    assets (see ``builder/_app.py`` ``_index_string_with_prefix``). The run
+    console ships no prefix-dependent JS, so it must NOT inject the global.
+    """
     page.goto(hub_url + "/builder/")
     page.wait_for_selector("#shell-top-bar")
     builder_prefix = page.evaluate("() => window.__phenotypicAppPrefix || null")
-    assert builder_prefix is None
+    assert builder_prefix == "/builder/"
 
     page.goto(hub_url + "/run/")
     page.wait_for_selector("#shell-top-bar")

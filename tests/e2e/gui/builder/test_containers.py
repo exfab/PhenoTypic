@@ -39,11 +39,15 @@ from typing import Iterator
 import pytest
 from playwright.sync_api import Page
 
-from tests.e2e.gui.conftest import (
-    _build_sandbox,
-    _start_live_server,
-    expand_palette_accordions,
+from tests.e2e.gui.builder.conftest import (
+    _canvas_box,
+    _click_new_pipeline_button,
+    _drag_palette_to_canvas,
+    _has_state_injection_helper,
+    _open_builder,
+    _publish_palette_drop,
 )
+from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
 
 
 # ---------------------------------------------------------------------------
@@ -74,126 +78,13 @@ def hub_url(live_server: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _open_builder(page: Page, hub_url: str) -> None:
-    """Navigate to ``/builder/`` and wait for the canvas + palette JS."""
-
-    page.goto(hub_url + "/builder/")
-    page.wait_for_selector("#canvas-cytoscape", timeout=15_000)
-    page.wait_for_function(
-        "() => window.phenotypic_palette_dnd_ready === true",
-        timeout=15_000,
-    )
-    # Palette categories past the first start collapsed; expand them so
-    # buttons like ``GaussianBlur`` (Enhancer) are visible + draggable.
-    expand_palette_accordions(page)
-
-
-def _palette_button(page: Page, class_name: str):
-    """Locate a palette button by its ``data-palette-class`` attribute."""
-
-    return page.locator(f"[data-palette-class='{class_name}']")
-
-
-def _canvas_box(page: Page) -> dict:
-    """Return the cytoscape canvas wrapper's bounding box."""
-
-    box = page.locator("#canvas-cytoscape").bounding_box()
-    assert box is not None, "Canvas wrapper not on screen"
-    return box
-
-
-def _drag_palette_to_canvas(
-    page: Page, class_name: str, canvas_x: float, canvas_y: float,
-) -> None:
-    """Synthesize an HTML5 palette → canvas drag (mirrors palette tests)."""
-
-    palette = _palette_button(page, class_name)
-    palette.hover()
-    page.mouse.down()
-    box = _canvas_box(page)
-    target_x = box["x"] + canvas_x
-    target_y = box["y"] + canvas_y
-    page.mouse.move(target_x - 5, target_y - 5, steps=5)
-    page.mouse.move(target_x, target_y, steps=5)
-    page.mouse.up()
-
-
-def _has_state_injection_helper(page: Page) -> bool:
-    """Return True iff ``window.phenoSetState`` is exposed.
-
-    Phase 3/4 used this convention; Phase 5 tests follow it.  Many
-    container scenarios need a precise starting state (e.g. two nested
-    containers + an inner edge) that's tedious to build via drag
-    gestures; ``phenoSetState`` lets tests skip the choreography.
-    Tests that don't have it should skip rather than fail — the
-    underlying server-side logic is unit-tested.
-    """
-
-    return page.evaluate(
-        "() => typeof window.phenoSetState === 'function'"
-    )
-
-
-def _publish_palette_drop(page: Page, payload: dict) -> None:
-    """Write a ``block_create`` payload into ``STORE_PALETTE_DROP``.
-
-    Mirrors the JS publish path so tests can synthesise palette drops
-    when the visual drag is unreliable.  Used by container-creation
-    setup paths.
-    """
-
-    page.evaluate(
-        """(payload) => {
-            if (
-                window.dash_clientside &&
-                typeof window.dash_clientside.set_props === 'function'
-            ) {
-                window.dash_clientside.set_props(
-                    'store-palette-drop', { data: payload }
-                );
-            }
-        }""",
-        payload,
-    )
-
-
-def _publish_edge_event(page: Page, payload: dict) -> None:
-    """Write into ``STORE_EDGE_EVENT`` to drive a wire dispatch."""
-
-    page.evaluate(
-        """(payload) => {
-            if (
-                window.dash_clientside &&
-                typeof window.dash_clientside.set_props === 'function'
-            ) {
-                window.dash_clientside.set_props(
-                    'store-edge-event', { data: payload }
-                );
-            }
-        }""",
-        payload,
-    )
-
-
-def _click_new_pipeline_button(page: Page) -> None:
-    """Click the ``+ New Pipeline`` palette button (creates a container).
-
-    Spec §4.4: dropping the button on the canvas mints an
-    ``ImagePipeline`` container in the current scope.  The button has
-    the dual contract of being draggable AND clickable (keyboard
-    fallback), so ``.click()`` is enough to make a container in the
-    common case without driving cytoscape geometry.
-    """
-
-    page.locator("#btn-new-pipeline-node").click()
-
-
-# ---------------------------------------------------------------------------
 # 8.3.4 — Container creation (1)
+#
+# Shared canvas helpers (``_open_builder``, ``_canvas_box``,
+# ``_drag_palette_to_canvas``, ``_has_state_injection_helper``,
+# ``_publish_palette_drop``, ``_click_new_pipeline_button``) live in
+# ``builder/conftest.py``. ``_click_new_pipeline_button`` now waits for the
+# container to materialise + the network to idle and returns its block_id.
 # ---------------------------------------------------------------------------
 
 
@@ -242,17 +133,11 @@ def test_container_drag_op_into_expanded_body_adopts(
 
     _open_builder(page, hub_url)
     # Create the container via the keyboard fallback (clicking the
-    # palette button is equivalent to drop-at-viewport-centre).
-    _click_new_pipeline_button(page)
-    page.wait_for_function(
-        """() => {
-            const cy = window.phenoGetCy();
-            return cy && cy.nodes().some(
-                n => n.data('class_name') === 'ImagePipeline'
-            );
-        }""",
-        timeout=10_000,
-    )
+    # palette button is equivalent to drop-at-viewport-centre); the
+    # helper waits for it to materialise + the network to idle and
+    # returns its block_id.
+    container_id = _click_new_pipeline_button(page)
+    assert container_id, "New Pipeline should mint an ImagePipeline container"
     # Adopt a GaussianBlur into the container's nested scope.  We
     # dispatch the ``block_create`` payload directly (with the resolved
     # ``container_block_id``) rather than synthesising an HTML5 drag —
@@ -261,16 +146,6 @@ def test_container_drag_op_into_expanded_body_adopts(
     # that must hit-test *inside* a compound container is the flakiest
     # case.  This still exercises the real server-side ``block_create``
     # container-adoption dispatch.
-    container_id = page.evaluate(
-        """() => {
-            const cy = window.phenoGetCy();
-            const cont = cy.nodes().filter(
-                n => n.data('class_name') === 'ImagePipeline'
-            )[0];
-            return cont ? (cont.data('block_id') || cont.id()) : null;
-        }"""
-    )
-    assert container_id, "New Pipeline should mint an ImagePipeline container"
     _publish_palette_drop(
         page,
         {
@@ -422,15 +297,6 @@ def test_container_drill_in_via_double_click_body(
 
     _open_builder(page, hub_url)
     _click_new_pipeline_button(page)
-    page.wait_for_function(
-        """() => {
-            const cy = window.phenoGetCy();
-            return cy && cy.nodes().some(
-                n => n.data('class_name') === 'ImagePipeline'
-            );
-        }""",
-        timeout=10_000,
-    )
     if not _has_state_injection_helper(page):
         pytest.skip(
             "Double-click drill-in requires cytoscape compound-node "
@@ -537,15 +403,6 @@ def test_container_delete_with_children_confirms(
 
     _open_builder(page, hub_url)
     _click_new_pipeline_button(page)
-    page.wait_for_function(
-        """() => {
-            const cy = window.phenoGetCy();
-            return cy && cy.nodes().some(
-                n => n.data('class_name') === 'ImagePipeline'
-            );
-        }""",
-        timeout=10_000,
-    )
     if not _has_state_injection_helper(page):
         pytest.skip(
             "Non-empty container delete modal requires container-with-"
@@ -570,15 +427,6 @@ def test_container_delete_empty_skips_modal(
 
     _open_builder(page, hub_url)
     _click_new_pipeline_button(page)
-    page.wait_for_function(
-        """() => {
-            const cy = window.phenoGetCy();
-            return cy && cy.nodes().some(
-                n => n.data('class_name') === 'ImagePipeline'
-            );
-        }""",
-        timeout=10_000,
-    )
     if not _has_state_injection_helper(page):
         pytest.skip(
             "Empty-container delete auto-confirm covered by "

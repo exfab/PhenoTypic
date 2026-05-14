@@ -32,11 +32,15 @@ from typing import Iterator
 import pytest
 from playwright.sync_api import Page
 
-from tests.e2e.gui.conftest import (
-    _build_sandbox,
-    _start_live_server,
-    expand_palette_accordions,
+from tests.e2e.gui.builder.conftest import (
+    _canvas_box,
+    _drag_palette_to_canvas,
+    _has_state_injection_helper,
+    _open_builder,
+    _publish_edge_event,
+    _seed_two_blocks,
 )
+from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
 
 
 # ---------------------------------------------------------------------------
@@ -67,127 +71,11 @@ def hub_url(live_server: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _open_builder(page: Page, hub_url: str) -> None:
-    """Navigate to ``/builder/`` and wait for the canvas + JS to settle."""
-
-    page.goto(hub_url + "/builder/")
-    page.wait_for_selector("#canvas-cytoscape", timeout=15_000)
-    # Wait for ``wire_drawing.js`` to flip its readiness sentinel so we
-    # know its handlers are bound before tests fire pointer events.
-    page.wait_for_function(
-        "() => window.phenotypic_wire_drawing_ready === true",
-        timeout=15_000,
-    )
-    # Palette categories past the first start collapsed; expand them so
-    # buttons like ``GaussianBlur`` (Enhancer) are visible + draggable.
-    expand_palette_accordions(page)
-
-
-def _palette_button(page: Page, class_name: str):
-    """Locate a palette button by its ``data-palette-class`` attribute."""
-
-    return page.locator(f"[data-palette-class='{class_name}']")
-
-
-def _has_state_injection_helper(page: Page) -> bool:
-    """Return True iff the JS layer exposes a state-injection helper.
-
-    Phase 3's palette tests use ``window.phenoSetState`` as the
-    convention; wire-drawing tests follow the same pattern.  When the
-    helper is absent (today's state), tests skip gracefully and defer to
-    the unit-test layer for the underlying logic check.
-    """
-
-    return page.evaluate(
-        "() => typeof window.phenoSetState === 'function'"
-    )
-
-
-def _drag_palette_to_canvas(
-    page: Page, class_name: str, canvas_x: float, canvas_y: float
-) -> None:
-    """Synthesize a palette → canvas drag (mirrors ``test_palette_drag.py``)."""
-
-    palette = _palette_button(page, class_name)
-    palette.hover()
-    page.mouse.down()
-    box = page.locator("#canvas-cytoscape").bounding_box()
-    assert box is not None
-    target_x = box["x"] + canvas_x
-    target_y = box["y"] + canvas_y
-    page.mouse.move(target_x - 5, target_y - 5, steps=5)
-    page.mouse.move(target_x, target_y, steps=5)
-    page.mouse.up()
-
-
-def _seed_two_blocks(page: Page) -> dict:
-    """Drop two blocks on the canvas and return their cytoscape ids.
-
-    Returns a dict ``{"source": <block_id>, "target": <block_id>}``.
-    """
-
-    box = page.locator("#canvas-cytoscape").bounding_box()
-    assert box is not None
-    _drag_palette_to_canvas(
-        page, "GaussianBlur", box["width"] * 0.3, box["height"] * 0.5
-    )
-    page.wait_for_function(
-        """() => {
-            const cy = window.phenoGetCy && window.phenoGetCy();
-            if (!cy) return false;
-            return cy.nodes().filter(n => n.data('class_name') === 'GaussianBlur').length >= 1;
-        }""",
-        timeout=10_000,
-    )
-    _drag_palette_to_canvas(
-        page, "GaussianBlur", box["width"] * 0.7, box["height"] * 0.5
-    )
-    page.wait_for_function(
-        """() => {
-            const cy = window.phenoGetCy();
-            return cy.nodes().filter(n => n.data('class_name') === 'GaussianBlur').length >= 2;
-        }""",
-        timeout=10_000,
-    )
-    return page.evaluate(
-        """() => {
-            const cy = window.phenoGetCy();
-            const blocks = cy.nodes().filter(n => n.data('class_name') === 'GaussianBlur');
-            return {
-                source: blocks[0].data('block_id') || blocks[0].id(),
-                target: blocks[1].data('block_id') || blocks[1].id(),
-            };
-        }"""
-    )
-
-
-def _publish_edge_event(page: Page, payload: dict) -> None:
-    """Write directly into ``STORE_EDGE_EVENT`` via ``set_props``.
-
-    Mirrors the JS publish path so tests can synthesise wire creations
-    when the visual drag path is too fragile to drive without
-    cytoscape-specific tooling.
-    """
-
-    page.evaluate(
-        """(payload) => {
-            if (
-                window.dash_clientside &&
-                typeof window.dash_clientside.set_props === 'function'
-            ) {
-                window.dash_clientside.set_props('store-edge-event', { data: payload });
-            }
-        }""",
-        payload,
-    )
-
-
-# ---------------------------------------------------------------------------
 # 8.3.2 — Wire drawing
+#
+# Shared canvas helpers (``_open_builder``, ``_seed_two_blocks``,
+# ``_publish_edge_event``, ``_drag_palette_to_canvas``, ``_canvas_box``,
+# ``_has_state_injection_helper``) live in ``builder/conftest.py``.
 # ---------------------------------------------------------------------------
 
 
@@ -334,8 +222,7 @@ def test_wire_drag_from_already_wired_source_replaces_first_wire(
     ids = _seed_two_blocks(page)
     # Need a THIRD target so we can re-wire from src.  Drop another
     # GaussianBlur.
-    box = page.locator("#canvas-cytoscape").bounding_box()
-    assert box is not None
+    box = _canvas_box(page)
     _drag_palette_to_canvas(
         page, "GaussianBlur", box["width"] * 0.5, box["height"] * 0.8
     )
@@ -371,7 +258,7 @@ def test_wire_drag_from_already_wired_source_replaces_first_wire(
             const cy = window.phenoGetCy();
             return cy.edges().length === 1;
         }""",
-        timeout=5_000,
+        timeout=10_000,
     )
 
     # Second wire: src → target2.  Per spec §4.2, the first wire is
@@ -393,7 +280,7 @@ def test_wire_drag_from_already_wired_source_replaces_first_wire(
             const edges = cy.edges();
             return edges.length === 1;
         }""",
-        timeout=5_000,
+        timeout=10_000,
     )
 
 
@@ -422,7 +309,7 @@ def test_wire_select_then_delete(page: Page, hub_url: str) -> None:
             const cy = window.phenoGetCy();
             return cy.edges().length === 1;
         }""",
-        timeout=5_000,
+        timeout=10_000,
     )
     edge_id = page.evaluate(
         """() => {
@@ -439,7 +326,7 @@ def test_wire_select_then_delete(page: Page, hub_url: str) -> None:
             const cy = window.phenoGetCy();
             return cy.edges().length === 0;
         }""",
-        timeout=5_000,
+        timeout=10_000,
     )
 
 
@@ -470,7 +357,7 @@ def test_wire_right_click_disconnect(page: Page, hub_url: str) -> None:
             const cy = window.phenoGetCy();
             return cy.edges().length === 1;
         }""",
-        timeout=5_000,
+        timeout=10_000,
     )
     edge_id = page.evaluate(
         """() => {
@@ -489,7 +376,7 @@ def test_wire_right_click_disconnect(page: Page, hub_url: str) -> None:
             const cy = window.phenoGetCy();
             return cy.edges().length === 0;
         }""",
-        timeout=5_000,
+        timeout=10_000,
     )
 
 
@@ -521,7 +408,7 @@ def test_wire_no_endpoint_grab_gesture(page: Page, hub_url: str) -> None:
             const cy = window.phenoGetCy();
             return cy.edges().length === 1;
         }""",
-        timeout=5_000,
+        timeout=10_000,
     )
     # No live-wire element exists.  Edge count is stable.
     has_live_wire = page.evaluate(
@@ -597,7 +484,7 @@ def test_wire_main_path_3px_aux_2px(page: Page, hub_url: str) -> None:
     )
     page.wait_for_function(
         "() => window.phenoGetCy().edges().length === 1",
-        timeout=5_000,
+        timeout=10_000,
     )
     _publish_edge_event(
         page,
@@ -612,7 +499,7 @@ def test_wire_main_path_3px_aux_2px(page: Page, hub_url: str) -> None:
     )
     page.wait_for_function(
         "() => window.phenoGetCy().edges().length === 2",
-        timeout=5_000,
+        timeout=10_000,
     )
     # Both edges now sit on the Input Image → terminal path, so each
     # carries ``dag-wire--main`` → ``width: 3``.

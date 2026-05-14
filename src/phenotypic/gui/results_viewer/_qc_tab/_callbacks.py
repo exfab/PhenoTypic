@@ -494,6 +494,13 @@ def register_qc_callbacks(app: dash.Dash) -> None:
         if triggered is None:
             raise PreventUpdate
 
+        # Pattern-matching callbacks always fire once at boot with all
+        # ``n_clicks`` at ``None`` (the ``qc-card-edit`` ALL set populates
+        # when the cards first render); skip when no actual click is
+        # recorded so the modal never opens on initial layout.
+        if not any(item.get("value") for item in ctx.triggered or []):
+            raise PreventUpdate
+
         # Cancel -> just close.
         if triggered == ids.QC_MODAL_CANCEL_BTN_ID:
             return False, "Add QC check", no_update, no_update, None
