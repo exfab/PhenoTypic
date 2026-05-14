@@ -1,0 +1,152 @@
+{
+  "root": {
+    "blocks": [
+      {
+        "block_id": "00000000000000000000000000000040",
+        "class_name": "InputImage",
+        "params": {},
+        "label": null,
+        "nested": null,
+        "collapsed": false,
+        "list_slot_counts": {}
+      },
+      {
+        "block_id": "00000000000000000000000000000041",
+        "class_name": "CompositeDetector",
+        "params": {},
+        "label": "Outer",
+        "nested": null,
+        "collapsed": false,
+        "list_slot_counts": {"detectors": 1}
+      },
+      {
+        "block_id": "00000000000000000000000000000042",
+        "class_name": "ImagePipeline",
+        "params": {},
+        "label": "OuterContainer",
+        "nested": {
+          "blocks": [
+            {
+              "block_id": "00000000000000000000000000000043",
+              "class_name": "InputImage",
+              "params": {},
+              "label": null,
+              "nested": null,
+              "collapsed": false,
+              "list_slot_counts": {}
+            },
+            {
+              "block_id": "00000000000000000000000000000044",
+              "class_name": "CompositeDetector",
+              "params": {},
+              "label": "InnerComposite",
+              "nested": null,
+              "collapsed": false,
+              "list_slot_counts": {"detectors": 1}
+            },
+            {
+              "block_id": "00000000000000000000000000000045",
+              "class_name": "ImagePipeline",
+              "params": {},
+              "label": "InnerContainer",
+              "nested": {
+                "blocks": [
+                  {
+                    "block_id": "00000000000000000000000000000046",
+                    "class_name": "InputImage",
+                    "params": {},
+                    "label": null,
+                    "nested": null,
+                    "collapsed": false,
+                    "list_slot_counts": {}
+                  },
+                  {
+                    "block_id": "00000000000000000000000000000047",
+                    "class_name": "OtsuDetector",
+                    "params": {},
+                    "label": "InnerOtsu",
+                    "nested": null,
+                    "collapsed": false,
+                    "list_slot_counts": {}
+                  }
+                ],
+                "edges": [
+                  {
+                    "edge_id": "e0000000000000000000000000000047",
+                    "source_block_id": "00000000000000000000000000000046",
+                    "source_port": "out",
+                    "target_block_id": "00000000000000000000000000000047",
+                    "target_port": "in",
+                    "target_slot": null,
+                    "kind": "image"
+                  }
+                ],
+                "name": "innermost",
+                "desc": "",
+                "nrows": null,
+                "ncols": null
+              },
+              "collapsed": false,
+              "list_slot_counts": {}
+            }
+          ],
+          "edges": [
+            {
+              "edge_id": "e0000000000000000000000000000044",
+              "source_block_id": "00000000000000000000000000000043",
+              "source_port": "out",
+              "target_block_id": "00000000000000000000000000000044",
+              "target_port": "in",
+              "target_slot": null,
+              "kind": "image"
+            },
+            {
+              "edge_id": "e0000000000000000000000000000045",
+              "source_block_id": "00000000000000000000000000000045",
+              "source_port": "out",
+              "target_block_id": "00000000000000000000000000000044",
+              "target_port": "detectors",
+              "target_slot": 0,
+              "kind": "aux"
+            }
+          ],
+          "name": "outerContainer",
+          "desc": "",
+          "nrows": null,
+          "ncols": null
+        },
+        "collapsed": false,
+        "list_slot_counts": {}
+      }
+    ],
+    "edges": [
+      {
+        "edge_id": "e0000000000000000000000000000040",
+        "source_block_id": "00000000000000000000000000000040",
+        "source_port": "out",
+        "target_block_id": "00000000000000000000000000000041",
+        "target_port": "in",
+        "target_slot": null,
+        "kind": "image"
+      },
+      {
+        "edge_id": "e0000000000000000000000000000041",
+        "source_block_id": "00000000000000000000000000000042",
+        "source_port": "out",
+        "target_block_id": "00000000000000000000000000000041",
+        "target_port": "detectors",
+        "target_slot": 0,
+        "kind": "aux"
+      }
+    ],
+    "name": "Pipeline",
+    "desc": "",
+    "nrows": null,
+    "ncols": null
+  },
+  "breadcrumb": [],
+  "selected_block_id": null,
+  "selected_edge_id": null,
+  "pending_delete_block_id": null,
+  "toast_queue": []
+}

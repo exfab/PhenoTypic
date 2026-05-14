@@ -1,0 +1,44 @@
+{
+  "name": "image_cycle",
+  "desc": "An image cycle between two blocks reachable from InputImage.",
+  "blocks": [
+    {
+      "block_id": "input",
+      "class_name": "InputImage",
+      "label": "Input Image"
+    },
+    {
+      "block_id": "a",
+      "class_name": "GaussianBlur",
+      "label": "A"
+    },
+    {
+      "block_id": "b",
+      "class_name": "GaussianBlur",
+      "label": "B"
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "e1",
+      "source_block_id": "input",
+      "target_block_id": "a",
+      "target_port": "in",
+      "kind": "image"
+    },
+    {
+      "edge_id": "e2",
+      "source_block_id": "a",
+      "target_block_id": "b",
+      "target_port": "in",
+      "kind": "image"
+    },
+    {
+      "edge_id": "e3",
+      "source_block_id": "b",
+      "target_block_id": "a",
+      "target_port": "in",
+      "kind": "image"
+    }
+  ]
+}

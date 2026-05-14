@@ -8,20 +8,28 @@ fidelity.
 
 The module imports only stdlib + ``phenotypic``; no Dash dependencies.
 
+The **DAG** schema (:class:`BlockNode`, :class:`Edge`,
+``_DagBuilderScope``, ``_DagBuilderState``) is the only active model.
+The exported ``BuilderScope`` / ``BuilderState`` symbols are permanent
+aliases for the DAG variants.
+
+The legacy linear-list types (``_LegacyStepNode`` / ``_LegacyBuilderScope``
+/ ``_LegacyBuilderState``) and their ``to_pipeline`` / ``from_pipeline``
+helpers remain defined for back-compat: they back the
+``test_legacy_pipeline_json`` migration tests and the legacy preview
+fixture.  No active code path references them.  The ``StepNode`` public
+alias still points at ``_LegacyStepNode`` so existing imports keep
+working.
+
 Examples:
-    Build a tiny scope and round-trip it through an ``ImagePipeline``:
+    Build a tiny DAG scope and inspect its auto-seeded input image:
 
     >>> from phenotypic.gui.builder._state import (
-    ...     BuilderScope, StepNode, to_pipeline, from_pipeline,
+    ...     BuilderScope, BuilderState, INPUT_IMAGE_CLASS_NAME,
     ... )
-    >>> scope = BuilderScope(
-    ...     nodes=[StepNode(node_id="a1", class_name="GaussianBlur",
-    ...                     params={"sigma": 1.5})],
-    ...     name="demo",
-    ... )
-    >>> pipeline = to_pipeline(scope)
-    >>> from_pipeline(pipeline).nodes[0].class_name
-    'GaussianBlur'
+    >>> scope = BuilderScope(name="demo")
+    >>> scope.blocks[0].class_name == INPUT_IMAGE_CLASS_NAME
+    True
 """
 
 from __future__ import annotations
@@ -29,7 +37,7 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from phenotypic.gui.builder._ids import StageName
 
@@ -43,84 +51,374 @@ from phenotypic.gui._operation_registry import (
 logger = logging.getLogger(__name__)
 
 
-# Sentinel class name used for nested ``ImagePipeline`` step nodes.
+# Sentinel class names. ``PIPELINE_CLASS_NAME`` predates the redesign and
+# names nested ``ImagePipeline`` step nodes; ``INPUT_IMAGE_CLASS_NAME`` is
+# new (Rule 6 / spec §4.1) — every DAG scope auto-seeds one such block.
 PIPELINE_CLASS_NAME = "ImagePipeline"
+INPUT_IMAGE_CLASS_NAME = "InputImage"
+
+
+# ---------------------------------------------------------------------------
+# DAG schema (spec §5.1) — always defined so sibling modules can import.
+# ---------------------------------------------------------------------------
+
+
+def _new_block_id() -> str:
+    """Return a fresh 32-character DAG block identifier.
+
+    The DAG schema uses full 32-character UUID4 hex strings (distinct from
+    the legacy 8-character ``StepNode.node_id`` slice) to eliminate the
+    risk of collisions across nested scopes after migration.
+
+    Returns:
+        32-character lowercase hex string.
+    """
+
+    return uuid.uuid4().hex
 
 
 @dataclass
-class StepNode:
-    """One step in a builder canvas.
+class BlockNode:
+    """One canvas block — single op, container, or Input Image source.
 
-    A ``StepNode`` is the canvas-layer counterpart of a single operation in an
-    :class:`~phenotypic.ImagePipeline`.  It captures the class to instantiate,
-    the parameter values entered by the user, and (when the step is itself a
-    nested pipeline) the inner :class:`BuilderScope`.
+    A ``BlockNode`` is the DAG-canvas counterpart of a single operation
+    (or the Input Image sentinel, or a Pipeline container) in an
+    :class:`~phenotypic.ImagePipeline`.  It captures the class to
+    instantiate, the scalar parameter values entered by the user, and
+    (when the block is a Pipeline container) the inner
+    :class:`_DagBuilderScope`.
+
+    Aux wiring is **not** stored on the block — it lives on the
+    enclosing scope's ``edges`` list as one :class:`Edge` per wire.
+
+    Attributes:
+        block_id: Stable identifier (``uuid.uuid4().hex`` — 32 chars).
+        class_name: Registry key (e.g. ``"GaussianBlur"``), the
+            ``"ImagePipeline"`` sentinel for container blocks, or the
+            ``"InputImage"`` sentinel for the scope's source block.
+        params: Scalar parameter values (no op-typed values — those come
+            from edges now).
+        label: User-editable display name; ``None`` falls back to
+            ``class_name`` at render time.
+        nested: Inner :class:`_DagBuilderScope` populated only when
+            ``class_name == "ImagePipeline"``.
+        collapsed: Container-only flag; ``True`` hides children on the
+            canvas.
+        list_slot_counts: Per list-aux param name, the total slot count
+            for layout.  Empty slots = slot positions in ``[0, count)``
+            not covered by any :class:`Edge`.  Increments on
+            ``list_aux_add_empty_slot`` / ``edge_create`` to a list
+            port; never decrements except via slot delete.
+    """
+
+    block_id: str
+    class_name: str
+    params: Dict[str, Any]
+    label: Optional[str] = None
+    nested: Optional["_DagBuilderScope"] = None
+    collapsed: bool = False
+    list_slot_counts: Dict[str, int] = field(default_factory=dict)
+
+
+@dataclass
+class Edge:
+    """One wire between two block ports within a scope.
+
+    Wires connect either an image-out port to an image-in port (``kind
+    == "image"``) or an image-out port to an aux-in port (``kind ==
+    "aux"``).  ``target_slot`` is set for list-typed aux ports (0-based)
+    and ``None`` for scalar aux + all image-flow edges.
+
+    Attributes:
+        edge_id: Stable identifier.  Generated as ``uuid.uuid4().hex``
+            on creation but accepted as-is on JSON round-trip.
+        source_block_id: ``block_id`` of the upstream block.
+        source_port: Source port name — currently always ``"out"`` (one
+            image-output per block).  Field kept for future
+            multi-output ops.
+        target_block_id: ``block_id`` of the downstream block.  The
+            default of ``""`` is a dataclass-ordering artifact (Python
+            forbids non-default fields after defaulted ones); the
+            ``__post_init__`` asserts the value is non-empty.
+        target_port: Target port name: ``"in"`` for image-flow,
+            ``"<param>"`` for aux (scalar or list — list slot index is
+            in ``target_slot``).
+        target_slot: List-aux slot index (0-based); ``None`` for scalar
+            aux and for image-flow.
+        kind: Edge kind — ``"image"`` for blue image-flow wires,
+            ``"aux"`` for purple consumer-into-aux wires.  Redundant
+            with ``target_port`` semantics but kept explicit for fast
+            validation.
+    """
+
+    edge_id: str
+    source_block_id: str
+    source_port: str = "out"
+    target_block_id: str = ""
+    target_port: str = ""
+    target_slot: Optional[int] = None
+    kind: Literal["image", "aux"] = "image"
+
+    def __post_init__(self) -> None:
+        if not self.target_block_id:
+            raise ValueError(
+                "Edge.target_block_id is mandatory (per spec §5.1); "
+                "the default keyword exists only so the dataclass field "
+                "ordering is valid."
+            )
+
+
+@dataclass
+class _DagBuilderScope:
+    """A DAG of blocks + edges (per scope).
+
+    A scope corresponds to one :class:`~phenotypic.ImagePipeline` once
+    converted via the DAG conversion path (``_conversion_dag.py``).
+    Stage (``ops``/``meas``/``post``) is inferred per block from its
+    class via the operation registry at convert time; the canvas does
+    not constrain block ordering by stage.
+
+    Every scope (root *and* every nested container scope) auto-seeds an
+    :class:`BlockNode` with ``class_name == INPUT_IMAGE_CLASS_NAME`` at
+    construction time via :func:`_seed_input_image` (called from
+    :meth:`__post_init__`).  The Rule 6 idempotency invariant is
+    therefore established eagerly.
+
+    Attributes:
+        blocks: Ordered :class:`BlockNode` list.  The order is *not*
+            execution order — the DAG's image-flow edges dictate
+            execution order during conversion.  The first block is
+            (post-seed) always the ``InputImage`` sentinel.
+        edges: :class:`Edge` list backing every wire on the canvas.
+        name: Pipeline ``name`` to assign on conversion.
+        desc: Pipeline ``desc`` to assign on conversion.
+        nrows: Optional grid row preset (forwarded to ``ImagePipeline``
+            on the root scope; ignored for nested container scopes).
+        ncols: Optional grid column preset (root scope only — see
+            §4.5 of the spec).
+    """
+
+    blocks: List[BlockNode] = field(default_factory=list)
+    edges: List[Edge] = field(default_factory=list)
+    name: str = "Pipeline"
+    desc: str = ""
+    nrows: Optional[int] = None
+    ncols: Optional[int] = None
+
+    def __post_init__(self) -> None:
+        # Nested scopes seed themselves via their own ``__post_init__``;
+        # JSON-loaded trees also pick up the seed via
+        # :func:`_heal_dag_scope_tree`. We only need to seed *this*
+        # scope here.
+        _seed_input_image(self)
+
+
+@dataclass
+class _DagBuilderState:
+    """Top-level DAG state for the Dash builder.
+
+    Mirrors the legacy :class:`_LegacyBuilderState` surface but with
+    block_ids / edge_ids instead of node_ids.  The popover-era
+    ``inspector_focus_aux`` override is gone — the DAG path edits aux
+    parameters via the inspector aux-ports section directly.
+
+    Attributes:
+        root: Outermost :class:`_DagBuilderScope` (what the user sees
+            when ``breadcrumb`` is empty).
+        breadcrumb: Ordered list of container block_ids the user has
+            drilled into.  Each entry is the ``BlockNode.block_id`` of
+            a Pipeline container in the next-outer scope.  An empty
+            list means "viewing ``root``".
+        selected_block_id: ``BlockNode.block_id`` of the currently
+            focused block (op, container, or Input Image), if any.
+            Mutually exclusive with ``selected_edge_id``.
+        selected_edge_id: ``Edge.edge_id`` of the currently focused
+            wire, if any.  Mutually exclusive with ``selected_block_id``.
+        pending_delete_block_id: Set by ``block_delete_request`` for
+            non-empty containers; drives the confirm-delete modal's
+            visibility.  Cleared on Confirm/Cancel.
+        toast_queue: FIFO queue of toast payloads (one visible at a
+            time, 3000ms auto-dismiss).  Each entry is a free-form dict
+            shaped by the callback that enqueued it; the Dash callback
+            that binds to the toast component pops the head.
+    """
+
+    root: _DagBuilderScope = field(default_factory=_DagBuilderScope)
+    breadcrumb: List[str] = field(default_factory=list)
+    selected_block_id: Optional[str] = None
+    selected_edge_id: Optional[str] = None
+    pending_delete_block_id: Optional[str] = None
+    toast_queue: List[Dict[str, Any]] = field(default_factory=list)
+
+
+def _seed_input_image(scope: _DagBuilderScope) -> None:
+    """Idempotently add an ``InputImage`` block at the head of *scope*.
+
+    Rule 6 of the validation suite (spec §4.6) requires exactly one
+    ``InputImage`` block per scope.  This helper enforces the
+    invariant by:
+
+    * Doing nothing if *scope* already has at least one block whose
+      ``class_name == INPUT_IMAGE_CLASS_NAME`` — extras are detected
+      and reported by the validator, not pruned here.
+    * Otherwise inserting a fresh ``InputImage`` block at index 0.
+
+    Called from :meth:`_DagBuilderScope.__post_init__` and from every
+    deserialisation path (see :func:`state_from_json` for the DAG
+    branch) so corrupted JSON missing an Input Image self-heals on
+    load.
+
+    Args:
+        scope: The scope to seed in place.
+    """
+
+    if any(b.class_name == INPUT_IMAGE_CLASS_NAME for b in scope.blocks):
+        return
+    scope.blocks.insert(
+        0,
+        BlockNode(
+            block_id=_new_block_id(),
+            class_name=INPUT_IMAGE_CLASS_NAME,
+            params={},
+            label=None,
+        ),
+    )
+
+
+def _find_container_scope_by_block_id(
+    root: _DagBuilderScope, block_id: str
+) -> Optional[_DagBuilderScope]:
+    """Depth-first search for a container's *nested* scope by ``block_id``.
+
+    Callers (palette drop, future re-parent dispatches) resolve a
+    ``container_block_id`` payload field to the scope the new block
+    should be appended to.  This helper walks the tree rooted at *root*
+    and returns the first ``nested`` scope it finds whose parent
+    :class:`BlockNode` has the matching ``block_id``.
+
+    The search is recursive through every container's ``nested`` scope;
+    only blocks whose ``class_name == PIPELINE_CLASS_NAME`` have a
+    non-``None`` ``nested`` field, so the walk naturally restricts itself
+    to container blocks.  Lookup is O(N) in the number of blocks across
+    every scope, which is fine: typical pipelines have <50 blocks and
+    the search runs once per drop.
+
+    Args:
+        root: The outermost :class:`_DagBuilderScope` (usually
+            ``state.root``).
+        block_id: The container ``BlockNode.block_id`` whose nested
+            scope is being looked up.
+
+    Returns:
+        The matching container's :class:`_DagBuilderScope`, or ``None``
+        when *block_id* doesn't resolve to a container in the tree
+        (stale id, regular op block, or :data:`INPUT_IMAGE_CLASS_NAME`
+        sentinel).
+    """
+
+    for block in root.blocks:
+        if block.block_id == block_id:
+            return block.nested
+        if block.nested is not None:
+            hit = _find_container_scope_by_block_id(block.nested, block_id)
+            if hit is not None:
+                return hit
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Legacy schema (linear list + embedded aux_ports) — kept defined so the
+# back-compat migration test fixtures (``test_legacy_pipeline_json``) and
+# the legacy preview bake helper still resolve their imports.  No active
+# code path uses these types since Phase 8 retired the feature flag.
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class _LegacyStepNode:
+    """One step in a builder canvas (legacy linear-list schema).
+
+    A ``_LegacyStepNode`` is the canvas-layer counterpart of a single
+    operation in an :class:`~phenotypic.ImagePipeline`.  It captures the
+    class to instantiate, the parameter values entered by the user, and
+    (when the step is itself a nested pipeline) the inner
+    :class:`_LegacyBuilderScope`.
+
+    Re-exported under the public name :data:`StepNode` for back-compat.
 
     Attributes:
         node_id: Short, stable identifier (8-char hex slice of a UUID4).
-            Used as the cytoscape node id and to address sub-scopes via the
-            breadcrumb path.
-        class_name: Registry key (e.g. ``"GaussianBlur"``) or the sentinel
-            ``"ImagePipeline"`` when the node represents a nested pipeline.
+            Used as the cytoscape node id and to address sub-scopes via
+            the breadcrumb path.
+        class_name: Registry key (e.g. ``"GaussianBlur"``) or the
+            sentinel ``"ImagePipeline"`` when the node represents a
+            nested pipeline.
         params: Raw parameter values.  Scalars are stored as-is; values
-            corresponding to operation-typed parameters are stored as JSON
-            dicts shaped like ``{"__type__": "operation", "class_name": ...,
-            "params": {...}}`` ONLY when nothing is wired through
-            ``aux_ports`` for that parameter.  When an aux port is wired,
-            the consumer's ``params[<port>]`` entry is absent: the
-            embedded :class:`StepNode` in ``aux_ports`` is the source of
+            corresponding to operation-typed parameters are stored as
+            JSON dicts shaped like
+            ``{"__type__": "operation", "class_name": ..., "params":
+            {...}}`` ONLY when nothing is wired through ``aux_ports``
+            for that parameter.  When an aux port is wired, the
+            consumer's ``params[<port>]`` entry is absent: the embedded
+            :class:`_LegacyStepNode` in ``aux_ports`` is the source of
             truth and is folded back into a marker dict at
             :func:`to_pipeline` time.
-        label: User-editable display name.  ``None`` means the canvas should
-            fall back to ``class_name``.
-        nested: Inner :class:`BuilderScope` populated only when
+        label: User-editable display name.  ``None`` means the canvas
+            should fall back to ``class_name``.
+        nested: Inner :class:`_LegacyBuilderScope` populated only when
             ``class_name == "ImagePipeline"``.
         aux_ports: Per-aux-port slot occupancy. Keys are the names of
             aux-port-eligible parameters (those with
-            ``param_info.is_operation or param_info.is_pipeline``).  Values
-            are lists whose entries are EITHER an embedded aux
-            :class:`StepNode` (the wired aux source) OR ``None`` (empty
-            slot).  Non-list ports always carry a length-1 list
-            (``[step_node]`` or ``[None]``).  List-typed ports grow/shrink
-            via UI ``+`` / ``×`` controls and may be any length ≥ 0.
-            Recursive aux is supported: an embedded aux ``StepNode`` may
-            itself carry its own ``aux_ports`` map.
+            ``param_info.is_operation or param_info.is_pipeline``).
+            Values are lists whose entries are EITHER an embedded aux
+            :class:`_LegacyStepNode` (the wired aux source) OR ``None``
+            (empty slot).  Non-list ports always carry a length-1 list
+            (``[step_node]`` or ``[None]``).  List-typed ports
+            grow/shrink via UI ``+`` / ``×`` controls and may be any
+            length ≥ 0.  Recursive aux is supported: an embedded aux
+            ``_LegacyStepNode`` may itself carry its own ``aux_ports``
+            map.
     """
 
     node_id: str
     class_name: str
     params: Dict[str, Any] = field(default_factory=dict)
     label: Optional[str] = None
-    nested: Optional["BuilderScope"] = None
-    aux_ports: Dict[str, List[Optional["StepNode"]]] = field(default_factory=dict)
+    nested: Optional["_LegacyBuilderScope"] = None
+    aux_ports: Dict[str, List[Optional["_LegacyStepNode"]]] = field(
+        default_factory=dict
+    )
 
 
 @dataclass
-class BuilderScope:
-    """Linear ordered list of steps mixing ops/meas/post.
+class _LegacyBuilderScope:
+    """Linear ordered list of steps mixing ops/meas/post (legacy schema).
 
-    A scope corresponds to a single :class:`~phenotypic.ImagePipeline` once
-    converted via :func:`to_pipeline`.  Stage (ops/meas/post) is inferred per
-    node from its class via the operation registry.
+    A scope corresponds to a single :class:`~phenotypic.ImagePipeline`
+    once converted via :func:`to_pipeline`.  Stage (ops/meas/post) is
+    inferred per node from its class via the operation registry.
 
     Aux operations (op-typed parameters of a consumer node, e.g.
-    ``FilamentousFungiDetector.inoculum_detector``) are NOT stored in this
-    scope as peer nodes. They live as embedded :class:`StepNode` instances
-    inside the consumer's ``aux_ports`` map. This eliminates the previous
-    ID-reference indirection (free-floating aux + ``aux_nodes`` list) and
-    means aux configuration only exists while wired.
+    ``FilamentousFungiDetector.inoculum_detector``) are NOT stored in
+    this scope as peer nodes.  They live as embedded
+    :class:`_LegacyStepNode` instances inside the consumer's
+    ``aux_ports`` map.  This eliminates the previous ID-reference
+    indirection (free-floating aux + ``aux_nodes`` list) and means aux
+    configuration only exists while wired.
 
     Attributes:
-        nodes: Ordered :class:`StepNode` list.  Insertion order is the
-            execution order; partitioning into ops/meas/post happens at
-            convert time.
+        nodes: Ordered :class:`_LegacyStepNode` list.  Insertion order
+            is the execution order; partitioning into ops/meas/post
+            happens at convert time.
         name: Pipeline ``name`` to assign on conversion.
         desc: Pipeline ``desc`` to assign on conversion.
-        nrows: Optional grid row preset (forwarded to ``ImagePipeline``).
-        ncols: Optional grid column preset (forwarded to ``ImagePipeline``).
+        nrows: Optional grid row preset (forwarded to
+            ``ImagePipeline``).
+        ncols: Optional grid column preset (forwarded to
+            ``ImagePipeline``).
     """
 
-    nodes: List[StepNode] = field(default_factory=list)
+    nodes: List[_LegacyStepNode] = field(default_factory=list)
     name: str = "Pipeline"
     desc: str = ""
     nrows: Optional[int] = None
@@ -128,68 +426,62 @@ class BuilderScope:
 
 
 @dataclass
-class BuilderState:
-    """Top-level state for the Dash builder.
+class _LegacyBuilderState:
+    """Top-level state for the Dash builder (legacy schema).
 
     Attributes:
-        root: The outermost :class:`BuilderScope`; what the user sees when
-            the breadcrumb is empty.
-        breadcrumb: Ordered list of breadcrumb segments describing how the
-            user has drilled into nested scopes.  Each segment is a dict of
-            one of two shapes:
+        root: The outermost :class:`_LegacyBuilderScope`; what the user
+            sees when the breadcrumb is empty.
+        breadcrumb: Ordered list of breadcrumb segments describing how
+            the user has drilled into nested scopes.  Each segment is a
+            dict of one of two shapes:
 
             * ``{"node_id": <id>, "param": <param_name | None>}`` —
-              regular ``ImagePipeline`` drill-in when ``param=None`` (uses
-              ``StepNode.nested``); op-typed parameter drill via the
-              legacy ``_PARAM_SCOPE_KEY`` machinery when ``param=<name>``
-              (kept for back-compat; new code should prefer the aux-slot
-              form below).
-            * ``{"target_node_id": <id>, "param": <name>, "slot": <int>}``
-              — aux-slot drill: descend into the embedded aux
-              :class:`StepNode` at ``consumer.aux_ports[param][slot]``.
+              regular ``ImagePipeline`` drill-in when ``param=None``
+              (uses ``_LegacyStepNode.nested``); the popover-era
+              op-typed parameter drill (``param=<name>``) was retired
+              in Phase 7 and is now treated as a no-op by the walker.
+            * ``{"target_node_id": <id>, "param": <name>, "slot":
+              <int>}`` — aux-slot drill: descend into the embedded aux
+              :class:`_LegacyStepNode` at
+              ``consumer.aux_ports[param][slot]``.
 
             Empty list means "viewing ``root``".
-        selected_node_id: ``node_id`` of the currently focused step in the
-            visible scope, if any.
-        inspector_focus_aux: When non-``None``, the inspector pane mirrors
-            the wired aux at the given slot instead of the canvas
-            selection. Shape: ``{"target_node_id": str, "param": str,
-            "slot": int}``. Driven by the ``set_inspector_focus``
-            dispatch kind — set when the user opens a popover with a
-            wired slot (or wires a new aux), cleared when the popover
-            dismisses, when the wired aux is disconnected, or when the
-            user drills into the aux (canvas scope swap takes over).
+        selected_node_id: ``node_id`` of the currently focused step in
+            the visible scope, if any.
     """
 
-    root: BuilderScope = field(default_factory=BuilderScope)
+    root: _LegacyBuilderScope = field(default_factory=_LegacyBuilderScope)
     breadcrumb: List[Dict[str, Any]] = field(default_factory=list)
     selected_node_id: Optional[str] = None
-    inspector_focus_aux: Optional[Dict[str, Any]] = None
-
-
-# Sentinel key used to store synthesized singleton :class:`BuilderScope` dicts
-# inside a non-pipeline node's ``params`` while the user is editing an
-# operation-typed parameter through the legacy drill-down path.  Stripped
-# before :func:`to_pipeline` so the underlying ``ImagePipeline`` never sees
-# it.  LEGACY: superseded by the embedded-aux model (see
-# ``StepNode.aux_ports``); kept here because ``_callbacks.py`` and
-# ``_layout.py`` still reference it.  Will be removed once those modules
-# migrate to the popover-anchored aux flow (Wave 3/4 of the popover
-# redesign).
-_PARAM_SCOPE_KEY = "__op_param_scope__"
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Public ``BuilderScope`` / ``BuilderState`` aliases — permanent DAG types.
+# ``StepNode`` is permanently aliased to the legacy step node (no DAG
+# counterpart — the DAG model uses :class:`BlockNode` instead).  The legacy
+# alias is kept so back-compat tests (``test_legacy_pipeline_json``) and
+# the legacy preview bake fixture still resolve their imports.
+# ---------------------------------------------------------------------------
+
+StepNode = _LegacyStepNode
+
+BuilderScope = _DagBuilderScope  # type: ignore[misc,assignment]
+BuilderState = _DagBuilderState  # type: ignore[misc,assignment]
+
+
+# ---------------------------------------------------------------------------
+# Helpers (legacy)
 # ---------------------------------------------------------------------------
 
 
 def _new_node_id() -> str:
-    """Return a fresh 8-character node identifier.
+    """Return a fresh 8-character node identifier (legacy schema).
 
     Returns:
-        Short hex string suitable for use as both ``StepNode.node_id`` and
-        the corresponding cytoscape node id.
+        Short hex string suitable for use as both
+        :attr:`_LegacyStepNode.node_id` and the corresponding cytoscape
+        node id.
     """
 
     return uuid.uuid4().hex[:8]
@@ -199,11 +491,13 @@ def _is_operation_param_marker(value: Any) -> bool:
     """Check if *value* is an op-typed parameter dict marker.
 
     Args:
-        value: Candidate parameter value pulled from ``StepNode.params``.
+        value: Candidate parameter value pulled from
+            :attr:`_LegacyStepNode.params`.
 
     Returns:
-        ``True`` when *value* looks like ``{"__type__": "operation", ...}``
-        (with either ``class_name`` or ``class``), otherwise ``False``.
+        ``True`` when *value* looks like ``{"__type__": "operation",
+        ...}`` (with either ``class_name`` or ``class``), otherwise
+        ``False``.
     """
 
     if not isinstance(value, dict):
@@ -217,11 +511,12 @@ def _is_pipeline_param_marker(value: Any) -> bool:
     """Check if *value* is a pipeline-typed parameter dict marker.
 
     Args:
-        value: Candidate parameter value pulled from ``StepNode.params``.
+        value: Candidate parameter value pulled from
+            :attr:`_LegacyStepNode.params`.
 
     Returns:
         ``True`` when *value* looks like a serialized nested pipeline
-        carrying a ``BuilderScope`` payload.
+        carrying a :class:`_LegacyBuilderScope` payload.
     """
 
     if not isinstance(value, dict):
@@ -234,10 +529,11 @@ def _is_pipeline_param_marker(value: Any) -> bool:
 def _looks_like_marker(value: Any) -> bool:
     """Return ``True`` when *value* is a serialized op or pipeline marker dict.
 
-    Convenience predicate used by :func:`from_pipeline` to decide whether a
-    ``_serialize_param_value`` result should be promoted into an embedded
-    aux :class:`StepNode`; folds the operation/pipeline checks into one
-    call so the branches at extraction time stay readable.
+    Convenience predicate used by :func:`from_pipeline` to decide
+    whether a ``_serialize_param_value`` result should be promoted into
+    an embedded aux :class:`_LegacyStepNode`; folds the
+    operation/pipeline checks into one call so the branches at
+    extraction time stay readable.
     """
 
     return _is_operation_param_marker(value) or _is_pipeline_param_marker(value)
@@ -248,14 +544,16 @@ def _resolve_param_value(
 ) -> Any:
     """Recursively turn a stored param value into a runtime object.
 
-    Operation markers (``{"__type__": "operation", ...}``) are converted into
-    real :class:`~phenotypic.abc_.ImageOperation` instances; pipeline markers
-    are converted into :class:`~phenotypic.ImagePipeline` instances; scalars
-    pass through unchanged.
+    Operation markers (``{"__type__": "operation", ...}``) are converted
+    into real :class:`~phenotypic.abc_.ImageOperation` instances;
+    pipeline markers are converted into
+    :class:`~phenotypic.ImagePipeline` instances; scalars pass through
+    unchanged.
 
     Args:
-        value: Raw parameter value from a :class:`StepNode`.
-        registry: Operation registry used for class lookup / instantiation.
+        value: Raw parameter value from a :class:`_LegacyStepNode`.
+        registry: Operation registry used for class lookup /
+            instantiation.
 
     Returns:
         The resolved runtime value.
@@ -288,14 +586,15 @@ def _operation_to_param_dict(op: Any, registry: OperationRegistry) -> Dict[str, 
     Used by :func:`from_pipeline` when capturing operation-typed params.
 
     Args:
-        op: An :class:`ImageOperation` (or :class:`ImagePipeline`) instance.
-        registry: Registry used to enumerate the inner op's parameters so we
-            can recurse cleanly through nested op-typed values.
+        op: An :class:`ImageOperation` (or :class:`ImagePipeline`)
+            instance.
+        registry: Registry used to enumerate the inner op's parameters
+            so we can recurse cleanly through nested op-typed values.
 
     Returns:
         A dict of shape ``{"__type__": "operation", "class_name": ...,
-        "params": {...}}`` (or ``{"__type__": "pipeline", "scope": ...}`` for
-        nested pipelines).
+        "params": {...}}`` (or ``{"__type__": "pipeline", "scope":
+        ...}`` for nested pipelines).
     """
 
     if isinstance(op, ImagePipeline):
@@ -357,40 +656,40 @@ def _serialize_param_value(value: Any, registry: OperationRegistry) -> Any:
 
 
 # ---------------------------------------------------------------------------
-# Public conversion API
+# Public conversion API (legacy)
 # ---------------------------------------------------------------------------
 
 
 def _aux_step_node_to_marker(
-    aux_node: StepNode, registry: OperationRegistry
+    aux_node: _LegacyStepNode, registry: OperationRegistry
 ) -> Dict[str, Any]:
-    """Serialize an embedded aux :class:`StepNode` into a runtime marker.
+    """Serialize an embedded aux :class:`_LegacyStepNode` into a runtime marker.
 
     Mirrors the shape produced by :func:`_serialize_param_value` for
-    operation/pipeline instances so that :func:`_resolve_param_value` can
-    instantiate the value during :func:`to_pipeline`.  Recursively folds
-    the aux node's own ``aux_ports`` (aux-of-aux) into its params before
-    emitting the marker so nested wiring round-trips correctly.
+    operation/pipeline instances so that :func:`_resolve_param_value`
+    can instantiate the value during :func:`to_pipeline`.  Recursively
+    folds the aux node's own ``aux_ports`` (aux-of-aux) into its params
+    before emitting the marker so nested wiring round-trips correctly.
 
     Args:
-        aux_node: An aux :class:`StepNode` embedded inside a consumer's
-            ``aux_ports`` slot.
+        aux_node: An aux :class:`_LegacyStepNode` embedded inside a
+            consumer's ``aux_ports`` slot.
         registry: Registry used by recursive aux folds (for nested aux
             scopes that themselves carry op-typed parameters).
 
     Returns:
         A JSON-friendly dict of shape
-        ``{"__type__": "operation", "class_name": ..., "params": {...}}`` for
-        non-pipeline aux nodes, or
+        ``{"__type__": "operation", "class_name": ..., "params":
+        {...}}`` for non-pipeline aux nodes, or
         ``{"__type__": "pipeline", "class_name": "ImagePipeline",
-          "scope": ...}`` for pipeline aux nodes.
+        "scope": ...}`` for pipeline aux nodes.
     """
 
     if aux_node.class_name == PIPELINE_CLASS_NAME:
         return {
             "__type__": "pipeline",
             "class_name": PIPELINE_CLASS_NAME,
-            "scope": _scope_to_dict(aux_node.nested or BuilderScope()),
+            "scope": _scope_to_dict(aux_node.nested or _LegacyBuilderScope()),
         }
 
     # Recursively fold the aux's own aux_ports so aux-of-aux wiring lands
@@ -399,29 +698,30 @@ def _aux_step_node_to_marker(
     return {
         "__type__": "operation",
         "class_name": aux_node.class_name,
-        "params": {k: v for k, v in folded_params.items() if k != _PARAM_SCOPE_KEY},
+        "params": dict(folded_params),
     }
 
 
 def _fold_aux_ports_for_node(
-    node: StepNode, registry: OperationRegistry
+    node: _LegacyStepNode, registry: OperationRegistry
 ) -> Dict[str, Any]:
     """Collapse a node's embedded ``aux_ports`` into a ``params`` dict.
 
-    Each slot's embedded :class:`StepNode` is serialised into a marker dict
-    via :func:`_aux_step_node_to_marker` (which recurses, so aux-of-aux
-    is supported).  Scalar ports collapse to a single marker (or ``None``
-    when the slot is empty); list-typed ports collapse to a Python list of
-    markers, skipping ``None`` slots.
+    Each slot's embedded :class:`_LegacyStepNode` is serialised into a
+    marker dict via :func:`_aux_step_node_to_marker` (which recurses,
+    so aux-of-aux is supported).  Scalar ports collapse to a single
+    marker (or ``None`` when the slot is empty); list-typed ports
+    collapse to a Python list of markers, skipping ``None`` slots.
 
     Args:
-        node: The :class:`StepNode` whose ``aux_ports`` should be folded.
-        registry: Registry used to inspect the consumer class so we know
-            which params are list-typed.
+        node: The :class:`_LegacyStepNode` whose ``aux_ports`` should be
+            folded.
+        registry: Registry used to inspect the consumer class so we
+            know which params are list-typed.
 
     Returns:
-        A ``params``-shaped dict mirroring ``node.params`` but with each
-        aux-eligible port overlaid with the wired marker(s).
+        A ``params``-shaped dict mirroring ``node.params`` but with
+        each aux-eligible port overlaid with the wired marker(s).
     """
 
     folded = dict(node.params)
@@ -455,23 +755,24 @@ def _fold_aux_ports_for_node(
     return folded
 
 
-def to_pipeline(scope: BuilderScope) -> ImagePipeline:
-    """Convert a :class:`BuilderScope` into an :class:`ImagePipeline`.
+def to_pipeline(scope: _LegacyBuilderScope) -> ImagePipeline:
+    """Convert a :class:`_LegacyBuilderScope` into an :class:`ImagePipeline`.
 
-    Each :class:`StepNode` is instantiated through the operation registry;
-    nested :class:`BuilderScope` references recurse to produce inner
-    :class:`ImagePipeline` instances.  Aux-port wires (embedded
-    :class:`StepNode` instances in each consumer's ``aux_ports`` map) are
-    folded back into inline op markers via
+    Each :class:`_LegacyStepNode` is instantiated through the operation
+    registry; nested :class:`_LegacyBuilderScope` references recurse to
+    produce inner :class:`ImagePipeline` instances.  Aux-port wires
+    (embedded :class:`_LegacyStepNode` instances in each consumer's
+    ``aux_ports`` map) are folded back into inline op markers via
     :func:`_fold_aux_ports_for_node` so the runtime pipeline never sees
     them.  The resulting instance list is partitioned by ``isinstance``
     against :class:`~phenotypic.abc_.MeasureFeatures` /
-    :class:`~phenotypic.abc_.PostMeasurement` (everything else falls into
-    ``ops``, including nested pipelines), then handed to
-    :class:`ImagePipeline` so that ``__make_unique`` mints dict keys for us.
+    :class:`~phenotypic.abc_.PostMeasurement` (everything else falls
+    into ``ops``, including nested pipelines), then handed to
+    :class:`ImagePipeline` so that ``__make_unique`` mints dict keys
+    for us.
 
     Args:
-        scope: The :class:`BuilderScope` to materialize.
+        scope: The :class:`_LegacyBuilderScope` to materialize.
 
     Returns:
         A fresh :class:`ImagePipeline` with ``ops``/``meas``/``post``
@@ -483,7 +784,7 @@ def to_pipeline(scope: BuilderScope) -> ImagePipeline:
 
     for node in scope.nodes:
         if node.class_name == PIPELINE_CLASS_NAME:
-            inner_scope = node.nested or BuilderScope()
+            inner_scope = node.nested or _LegacyBuilderScope()
             instances.append(to_pipeline(inner_scope))
             continue
 
@@ -491,7 +792,6 @@ def to_pipeline(scope: BuilderScope) -> ImagePipeline:
         resolved_params = {
             name: _resolve_param_value(value, registry)
             for name, value in folded_params.items()
-            if name != _PARAM_SCOPE_KEY
         }
         instance = registry.create_instance(node.class_name, **resolved_params)
         instances.append(instance)
@@ -519,25 +819,25 @@ def to_pipeline(scope: BuilderScope) -> ImagePipeline:
     )
 
 
-def _marker_to_aux_step_node(marker: Dict[str, Any]) -> StepNode:
+def _marker_to_aux_step_node(marker: Dict[str, Any]) -> _LegacyStepNode:
     """Materialise a serialised op/pipeline marker into an embedded aux node.
 
     Mirror of :func:`_aux_step_node_to_marker`.  Used by
-    :func:`from_pipeline` when extracting op-typed parameter values from a
-    runtime :class:`~phenotypic.ImagePipeline` so they can be embedded in
-    the consumer's ``aux_ports`` map.  Recursively extracts any nested
-    op-typed params on the aux node itself into its own ``aux_ports``
-    (aux-of-aux).
+    :func:`from_pipeline` when extracting op-typed parameter values
+    from a runtime :class:`~phenotypic.ImagePipeline` so they can be
+    embedded in the consumer's ``aux_ports`` map.  Recursively extracts
+    any nested op-typed params on the aux node itself into its own
+    ``aux_ports`` (aux-of-aux).
 
     Args:
         marker: A dict produced by :func:`_serialize_param_value` /
-            :func:`_operation_to_param_dict`.  May be either an operation
-            marker (``{"__type__": "operation", "class_name": ...,
-            "params": {...}}``) or a pipeline marker
+            :func:`_operation_to_param_dict`.  May be either an
+            operation marker (``{"__type__": "operation", "class_name":
+            ..., "params": {...}}``) or a pipeline marker
             (``{"__type__": "pipeline", "scope": {...}}``).
 
     Returns:
-        A fresh :class:`StepNode` ready to be stored inline in a
+        A fresh :class:`_LegacyStepNode` ready to be stored inline in a
         consumer's ``aux_ports[<param>][<slot>]`` entry.
     """
 
@@ -545,7 +845,7 @@ def _marker_to_aux_step_node(marker: Dict[str, Any]) -> StepNode:
     if _is_pipeline_param_marker(marker):
         scope_dict = marker.get("scope") or {}
         nested = _scope_from_dict(scope_dict)
-        return StepNode(
+        return _LegacyStepNode(
             node_id=node_id,
             class_name=PIPELINE_CLASS_NAME,
             params={},
@@ -562,7 +862,7 @@ def _marker_to_aux_step_node(marker: Dict[str, Any]) -> StepNode:
     info = registry.get(class_name)
 
     if info is None:
-        return StepNode(
+        return _LegacyStepNode(
             node_id=node_id,
             class_name=class_name,
             params=inner_params_raw,
@@ -570,7 +870,7 @@ def _marker_to_aux_step_node(marker: Dict[str, Any]) -> StepNode:
         )
 
     own_params: Dict[str, Any] = {}
-    own_aux_ports: Dict[str, List[Optional[StepNode]]] = {}
+    own_aux_ports: Dict[str, List[Optional[_LegacyStepNode]]] = {}
 
     for param_name, param_info in info.parameters.items():
         if param_name not in inner_params_raw:
@@ -588,7 +888,7 @@ def _marker_to_aux_step_node(marker: Dict[str, Any]) -> StepNode:
 
         if param_info.is_list:
             seq = current if isinstance(current, (list, tuple)) else []
-            slot_steps: List[Optional[StepNode]] = []
+            slot_steps: List[Optional[_LegacyStepNode]] = []
             for item in seq:
                 if _looks_like_marker(item):
                     slot_steps.append(_marker_to_aux_step_node(item))
@@ -613,7 +913,7 @@ def _marker_to_aux_step_node(marker: Dict[str, Any]) -> StepNode:
         ):
             own_params[k] = v
 
-    return StepNode(
+    return _LegacyStepNode(
         node_id=node_id,
         class_name=class_name,
         params=own_params,
@@ -622,30 +922,31 @@ def _marker_to_aux_step_node(marker: Dict[str, Any]) -> StepNode:
     )
 
 
-def from_pipeline(pipeline: ImagePipeline) -> BuilderScope:
-    """Convert an :class:`ImagePipeline` back into a :class:`BuilderScope`.
+def from_pipeline(pipeline: ImagePipeline) -> _LegacyBuilderScope:
+    """Convert an :class:`ImagePipeline` back into a :class:`_LegacyBuilderScope`.
 
-    Walks ``pipeline.get_ops()`` then ``get_meas()`` then ``get_post()`` to
-    preserve execution order and produces one :class:`StepNode` per entry.
-    Nested :class:`ImagePipeline` values inside ``_ops`` recurse via this
-    function; operation-typed parameters (per the registry) are captured
-    as embedded aux :class:`StepNode` instances directly inside the
-    consumer's ``aux_ports`` map.  The marker dict is stripped from the
-    consumer's ``params`` after extraction so the runtime ``params`` dict
-    no longer carries it — the ``aux_ports`` map is the source of truth at
+    Walks ``pipeline.get_ops()`` then ``get_meas()`` then ``get_post()``
+    to preserve execution order and produces one
+    :class:`_LegacyStepNode` per entry.  Nested :class:`ImagePipeline`
+    values inside ``_ops`` recurse via this function; operation-typed
+    parameters (per the registry) are captured as embedded aux
+    :class:`_LegacyStepNode` instances directly inside the consumer's
+    ``aux_ports`` map.  The marker dict is stripped from the consumer's
+    ``params`` after extraction so the runtime ``params`` dict no
+    longer carries it — the ``aux_ports`` map is the source of truth at
     edit time.
 
     Args:
         pipeline: The pipeline to mirror.
 
     Returns:
-        A :class:`BuilderScope` whose ``nodes`` reproduce the pipeline's
-        contents in execution order, with aux-port wires extracted into
-        each consumer's ``aux_ports``.
+        A :class:`_LegacyBuilderScope` whose ``nodes`` reproduce the
+        pipeline's contents in execution order, with aux-port wires
+        extracted into each consumer's ``aux_ports``.
     """
 
     registry = get_registry()
-    nodes: List[StepNode] = []
+    nodes: List[_LegacyStepNode] = []
 
     pairs: List[tuple[str, Any]] = []
     pairs.extend(pipeline.get_ops().items())
@@ -657,7 +958,7 @@ def from_pipeline(pipeline: ImagePipeline) -> BuilderScope:
 
         if isinstance(op, ImagePipeline):
             nodes.append(
-                StepNode(
+                _LegacyStepNode(
                     node_id=node_id,
                     class_name=PIPELINE_CLASS_NAME,
                     params={},
@@ -670,7 +971,7 @@ def from_pipeline(pipeline: ImagePipeline) -> BuilderScope:
         class_name = type(op).__name__
         info = registry.get(class_name)
         params: Dict[str, Any] = {}
-        node_aux_ports: Dict[str, List[Optional[StepNode]]] = {}
+        node_aux_ports: Dict[str, List[Optional[_LegacyStepNode]]] = {}
 
         if info is None:
             # Unknown to the registry: fall back to ``vars`` introspection.
@@ -699,7 +1000,7 @@ def from_pipeline(pipeline: ImagePipeline) -> BuilderScope:
                     continue
 
                 if param_info.is_list:
-                    slot_steps: List[Optional[StepNode]] = []
+                    slot_steps: List[Optional[_LegacyStepNode]] = []
                     seq = current if isinstance(current, (list, tuple)) else []
                     for item in seq:
                         serialized = _serialize_param_value(item, registry)
@@ -728,7 +1029,7 @@ def from_pipeline(pipeline: ImagePipeline) -> BuilderScope:
                     params[param_name] = serialized
 
         nodes.append(
-            StepNode(
+            _LegacyStepNode(
                 node_id=node_id,
                 class_name=class_name,
                 params=params,
@@ -738,7 +1039,7 @@ def from_pipeline(pipeline: ImagePipeline) -> BuilderScope:
             )
         )
 
-    return BuilderScope(
+    return _LegacyBuilderScope(
         nodes=nodes,
         name=pipeline.name,
         desc=pipeline._desc if pipeline._desc is not None else "",
@@ -757,7 +1058,7 @@ def _normalize_breadcrumb_segment(seg: Any) -> Dict[str, Any]:
     * Dict with ``node_id`` key (regular drill into a main-ribbon node):
       ``{"node_id": ..., "param": ... | None}``.
     * Dict with ``target_node_id`` key (aux-slot drill into an embedded
-      aux :class:`StepNode`):
+      aux :class:`_LegacyStepNode`):
       ``{"target_node_id": <id>, "param": <name>, "slot": <int>}``.
 
     Args:
@@ -783,132 +1084,37 @@ def _normalize_breadcrumb_segment(seg: Any) -> Dict[str, Any]:
     raise ValueError(f"unrecognised breadcrumb segment: {seg!r}")
 
 
-def _ensure_param_scope(node: StepNode, param_name: str) -> BuilderScope:
-    """Return (creating if absent) the synthesized scope for an op-typed param.
-
-    LEGACY: predates the embedded-aux model.  The scope lives under
-    ``node.params[_PARAM_SCOPE_KEY][param_name]`` as a dict produced by
-    :func:`_scope_to_dict` so it round-trips through JSON cleanly.  This
-    helper rehydrates it into a :class:`BuilderScope` and seeds it from
-    any existing operation-marker stored in ``node.params[param_name]``.
-
-    Kept here because ``_layout.py`` and ``_callbacks.py`` still call this
-    function via the old ``param`` breadcrumb segment shape.  New code
-    should prefer the aux-slot drill (``{"target_node_id", "param",
-    "slot"}`` segment) which descends directly into the embedded
-    ``StepNode`` in ``aux_ports``.
-
-    Args:
-        node: Parent step node that owns the parameter slot.
-        param_name: Name of the operation-typed parameter being edited.
-
-    Returns:
-        The synthesised :class:`BuilderScope` (one node max).
-    """
-
-    scopes = node.params.setdefault(_PARAM_SCOPE_KEY, {})
-    scope_dict = scopes.get(param_name)
-    if scope_dict is None:
-        seed_node: Optional[StepNode] = None
-        existing = node.params.get(param_name)
-        if isinstance(existing, dict) and _is_operation_param_marker(existing):
-            class_name = existing.get("class_name") or existing.get("class")
-            seed_node = StepNode(
-                node_id=_new_node_id(),
-                class_name=str(class_name),
-                params=dict(existing.get("params") or {}),
-                label=str(class_name),
-            )
-        elif isinstance(existing, dict) and _is_pipeline_param_marker(existing):
-            seed_node = StepNode(
-                node_id=_new_node_id(),
-                class_name=PIPELINE_CLASS_NAME,
-                params={},
-                label=PIPELINE_CLASS_NAME,
-                nested=_scope_from_dict(existing.get("scope") or {}),
-            )
-        scope = BuilderScope(
-            nodes=[seed_node] if seed_node is not None else [],
-            name=f"{node.label or node.class_name}.{param_name}",
-        )
-        scopes[param_name] = _scope_to_dict(scope)
-        return scope
-    return _scope_from_dict(scope_dict)
-
-
-def _commit_param_scope(node: StepNode, param_name: str) -> None:
-    """Mirror the singleton scope back into ``node.params[param_name]``.
-
-    LEGACY: pairs with :func:`_ensure_param_scope`.  Called when the user
-    drills out of an operation-typed-parameter scope so the canonical
-    serialised form (an operation marker dict) reflects whatever the user
-    assembled inside the singleton.  Kept here because the legacy
-    breadcrumb drill machinery in ``_callbacks.py`` still relies on it.
-
-    Args:
-        node: Parent step node owning the param slot.
-        param_name: Operation-typed parameter being committed.
-    """
-
-    scopes = node.params.get(_PARAM_SCOPE_KEY) or {}
-    scope_dict = scopes.get(param_name)
-    if scope_dict is None:
-        return
-
-    scope = _scope_from_dict(scope_dict)
-    if not scope.nodes:
-        node.params[param_name] = None
-        return
-
-    inner = scope.nodes[0]
-    if inner.class_name == PIPELINE_CLASS_NAME:
-        node.params[param_name] = {
-            "__type__": "pipeline",
-            "class_name": PIPELINE_CLASS_NAME,
-            "scope": _scope_to_dict(inner.nested or BuilderScope()),
-        }
-    else:
-        node.params[param_name] = {
-            "__type__": "operation",
-            "class_name": inner.class_name,
-            "params": {
-                k: v for k, v in inner.params.items() if k != _PARAM_SCOPE_KEY
-            },
-        }
-
-
-def current_scope(state: BuilderState) -> BuilderScope:
+def current_scope(state: _LegacyBuilderState) -> _LegacyBuilderScope:
     """Resolve the breadcrumb to the scope the user is currently editing.
 
     Walks each segment in turn:
 
     * For a regular pipeline drill (``node_id=<id>``, ``param=None``),
       descends into ``match.nested``.
-    * For the LEGACY op-typed parameter drill (``node_id=<id>``,
-      ``param=<name>``), descends into the synthesised singleton scope
-      stored under ``match.params[_PARAM_SCOPE_KEY][param]`` (created
-      lazily on first visit, seeded from any existing operation-marker
-      dict at ``match.params[param]``).  Kept for back-compat; new code
-      should prefer the aux-slot form below.
-    * For an aux-slot drill (``target_node_id=<id>``, ``param=<name>``,
-      ``slot=<int>``), descends into the embedded aux :class:`StepNode`
-      stored at ``consumer.aux_ports[param][slot]``.  If that aux node
-      has ``nested`` (it's an ImagePipeline aux), descends into
-      ``nested``.  Otherwise (single-op aux), synthesises a single-node
-      :class:`BuilderScope` wrapping the aux node so the canvas can
-      render it as a 1-step ribbon.
+    * For an op-typed parameter drill (``node_id=<id>``,
+      ``param=<name>``), the legacy popover-era synthesized scope is no
+      longer supported (Phase 7 retired the popover wire flow); the
+      segment is treated as a no-op so older saved state still loads.
+    * For an aux-slot drill (``target_node_id=<id>``,
+      ``param=<name>``, ``slot=<int>``), descends into the embedded
+      aux :class:`_LegacyStepNode` stored at
+      ``consumer.aux_ports[param][slot]``.  If that aux node has
+      ``nested`` (it's an ImagePipeline aux), descends into
+      ``nested``.  Otherwise (single-op aux), synthesises a
+      single-node :class:`_LegacyBuilderScope` wrapping the aux node
+      so the canvas can render it as a 1-step ribbon.
 
     Args:
-        state: The full :class:`BuilderState`.
+        state: The full :class:`_LegacyBuilderState`.
 
     Returns:
-        The :class:`BuilderScope` referenced by the breadcrumb.
+        The :class:`_LegacyBuilderScope` referenced by the breadcrumb.
 
     Raises:
-        KeyError: If a ``node_id`` / ``target_node_id`` in the breadcrumb
-            cannot be located in its parent scope, if the matching
-            pipeline node has no nested scope, or if the aux slot is
-            empty or out of range.
+        KeyError: If a ``node_id`` / ``target_node_id`` in the
+            breadcrumb cannot be located in its parent scope, if the
+            matching pipeline node has no nested scope, or if the aux
+            slot is empty or out of range.
     """
 
     scope = state.root
@@ -949,7 +1155,7 @@ def current_scope(state: BuilderState) -> BuilderScope:
             else:
                 # Single-op aux: wrap it as a 1-step scope so the canvas
                 # renders a 1-step ribbon.
-                scope = BuilderScope(
+                scope = _LegacyBuilderScope(
                     nodes=[aux_step],
                     name=aux_step.label or aux_step.class_name,
                 )
@@ -969,7 +1175,11 @@ def current_scope(state: BuilderState) -> BuilderScope:
                 )
             scope = match.nested
         else:
-            scope = _ensure_param_scope(match, str(param))
+            # Op-typed parameter drill via the legacy popover-era synthesized
+            # scope is no longer supported (Phase 7 retired the popover
+            # path). Stale ``param`` segments loaded from older saved state
+            # are treated as no-ops so the walker doesn't crash.
+            continue
     return scope
 
 
@@ -982,8 +1192,9 @@ def stage_of(class_name: str) -> StageName:
 
     Returns:
         ``"meas"`` if the class is a :class:`MeasureFeatures` subclass,
-        ``"post"`` if it's a :class:`PostMeasurement` subclass, otherwise
-        ``"ops"`` (which is also the bucket for nested pipelines).
+        ``"post"`` if it's a :class:`PostMeasurement` subclass,
+        otherwise ``"ops"`` (which is also the bucket for nested
+        pipelines).
 
     Raises:
         KeyError: If *class_name* is not registered (and is not the
@@ -1007,19 +1218,19 @@ def stage_of(class_name: str) -> StageName:
 
 
 # ---------------------------------------------------------------------------
-# JSON serialization for ``dcc.Store``
+# JSON serialization for ``dcc.Store`` (legacy + DAG, dispatching by schema)
 # ---------------------------------------------------------------------------
 
 
-def _scope_to_dict(scope: BuilderScope) -> Dict[str, Any]:
-    """Recursively dump a :class:`BuilderScope` to a JSON-friendly dict.
+def _scope_to_dict(scope: _LegacyBuilderScope) -> Dict[str, Any]:
+    """Recursively dump a :class:`_LegacyBuilderScope` to a JSON-friendly dict.
 
     Args:
         scope: The scope to serialize.
 
     Returns:
-        A nested dict mirroring the :class:`BuilderScope` shape.  Aux
-        operations are serialised inline inside each consumer's
+        A nested dict mirroring the :class:`_LegacyBuilderScope` shape.
+        Aux operations are serialised inline inside each consumer's
         ``aux_ports`` entry (no separate ``aux_nodes`` list).
     """
 
@@ -1032,17 +1243,17 @@ def _scope_to_dict(scope: BuilderScope) -> Dict[str, Any]:
     }
 
 
-def _node_to_dict(node: StepNode) -> Dict[str, Any]:
-    """Recursively dump a :class:`StepNode` to a JSON-friendly dict.
+def _node_to_dict(node: _LegacyStepNode) -> Dict[str, Any]:
+    """Recursively dump a :class:`_LegacyStepNode` to a JSON-friendly dict.
 
-    Aux ports' embedded :class:`StepNode` slots recurse via this same
-    function so the entire aux subtree round-trips through JSON.
+    Aux ports' embedded :class:`_LegacyStepNode` slots recurse via this
+    same function so the entire aux subtree round-trips through JSON.
 
     Args:
         node: The node to serialize.
 
     Returns:
-        A dict mirroring the :class:`StepNode` shape.
+        A dict mirroring the :class:`_LegacyStepNode` shape.
     """
 
     aux_ports_serialised: Dict[str, List[Optional[Dict[str, Any]]]] = {}
@@ -1061,19 +1272,19 @@ def _node_to_dict(node: StepNode) -> Dict[str, Any]:
     }
 
 
-def _scope_from_dict(data: Dict[str, Any]) -> BuilderScope:
+def _scope_from_dict(data: Dict[str, Any]) -> _LegacyBuilderScope:
     """Inverse of :func:`_scope_to_dict`.
 
     Args:
-        data: Dict previously produced by :func:`_scope_to_dict` (or an
-            equivalent JSON payload).
+        data: Dict previously produced by :func:`_scope_to_dict` (or
+            an equivalent JSON payload).
 
     Returns:
-        A reconstructed :class:`BuilderScope`.
+        A reconstructed :class:`_LegacyBuilderScope`.
     """
 
     nodes = [_node_from_dict(n) for n in data.get("nodes", [])]
-    return BuilderScope(
+    return _LegacyBuilderScope(
         nodes=nodes,
         name=data.get("name", "Pipeline"),
         desc=data.get("desc", ""),
@@ -1082,29 +1293,30 @@ def _scope_from_dict(data: Dict[str, Any]) -> BuilderScope:
     )
 
 
-def _node_from_dict(data: Dict[str, Any]) -> StepNode:
+def _node_from_dict(data: Dict[str, Any]) -> _LegacyStepNode:
     """Inverse of :func:`_node_to_dict`.
 
-    Recursively reconstructs embedded aux :class:`StepNode` slots from
-    their serialised form so the full aux subtree survives JSON round-trip.
+    Recursively reconstructs embedded aux :class:`_LegacyStepNode`
+    slots from their serialised form so the full aux subtree survives
+    JSON round-trip.
 
     Args:
         data: Dict previously produced by :func:`_node_to_dict`.
 
     Returns:
-        A reconstructed :class:`StepNode` (with nested scope and embedded
-        aux slots recursed).
+        A reconstructed :class:`_LegacyStepNode` (with nested scope and
+        embedded aux slots recursed).
     """
 
     nested_data = data.get("nested")
     nested = _scope_from_dict(nested_data) if nested_data is not None else None
     raw_aux = data.get("aux_ports") or {}
-    aux_ports: Dict[str, List[Optional[StepNode]]] = {}
+    aux_ports: Dict[str, List[Optional[_LegacyStepNode]]] = {}
     for port_name, slots in raw_aux.items():
         aux_ports[str(port_name)] = [
             _node_from_dict(s) if isinstance(s, dict) else None for s in slots
         ]
-    return StepNode(
+    return _LegacyStepNode(
         node_id=data["node_id"],
         class_name=data["class_name"],
         params=data.get("params", {}) or {},
@@ -1114,49 +1326,341 @@ def _node_from_dict(data: Dict[str, Any]) -> StepNode:
     )
 
 
-def state_to_json(state: BuilderState) -> Dict[str, Any]:
-    """Convert a :class:`BuilderState` into a JSON-friendly dict.
+# ---------------------------------------------------------------------------
+# DAG JSON encoding helpers (spec §8.4 fixture shape)
+# ---------------------------------------------------------------------------
 
-    Suitable for round-tripping through ``dcc.Store``; the output contains
-    only stdlib-compatible types (``dict``, ``list``, ``str``, ``int``,
-    ``float``, ``bool``, ``None``) provided the underlying ``StepNode.params``
-    values are themselves JSON-friendly (which is the contract for the GUI
-    layer).
+
+def _dag_scope_to_dict(scope: _DagBuilderScope) -> Dict[str, Any]:
+    """Recursively dump a :class:`_DagBuilderScope` to a JSON-friendly dict.
 
     Args:
-        state: The state to serialize.
+        scope: The scope to serialize.
 
     Returns:
-        Dict with ``root``, ``breadcrumb``, ``selected_node_id``, and
-        ``inspector_focus_aux`` keys.
+        ``{"blocks": [...], "edges": [...], "name": ..., "desc": ...,
+        "nrows": ..., "ncols": ...}``.  Each block's ``nested`` field
+        recurses to the same shape, or ``null``.
     """
 
     return {
-        "root": _scope_to_dict(state.root),
-        "breadcrumb": list(state.breadcrumb),
-        "selected_node_id": state.selected_node_id,
-        "inspector_focus_aux": state.inspector_focus_aux,
+        "blocks": [_dag_block_to_dict(b) for b in scope.blocks],
+        "edges": [_dag_edge_to_dict(e) for e in scope.edges],
+        "name": scope.name,
+        "desc": scope.desc,
+        "nrows": scope.nrows,
+        "ncols": scope.ncols,
     }
 
 
-def state_from_json(data: Dict[str, Any]) -> BuilderState:
+def _dag_block_to_dict(block: BlockNode) -> Dict[str, Any]:
+    """Recursively dump a :class:`BlockNode` to a JSON-friendly dict.
+
+    Args:
+        block: The block to serialize.
+
+    Returns:
+        A dict mirroring the :class:`BlockNode` shape; ``nested`` is
+        either the recursive scope dict or ``None``.
+    """
+
+    return {
+        "block_id": block.block_id,
+        "class_name": block.class_name,
+        "params": block.params,
+        "label": block.label,
+        "nested": (
+            _dag_scope_to_dict(block.nested) if block.nested is not None else None
+        ),
+        "collapsed": block.collapsed,
+        "list_slot_counts": dict(block.list_slot_counts),
+    }
+
+
+def _dag_edge_to_dict(edge: Edge) -> Dict[str, Any]:
+    """Dump an :class:`Edge` to a JSON-friendly dict.
+
+    Args:
+        edge: The edge to serialize.
+
+    Returns:
+        A dict mirroring the :class:`Edge` shape.
+    """
+
+    return {
+        "edge_id": edge.edge_id,
+        "source_block_id": edge.source_block_id,
+        "source_port": edge.source_port,
+        "target_block_id": edge.target_block_id,
+        "target_port": edge.target_port,
+        "target_slot": edge.target_slot,
+        "kind": edge.kind,
+    }
+
+
+def _dag_scope_from_dict(data: Dict[str, Any]) -> _DagBuilderScope:
+    """Inverse of :func:`_dag_scope_to_dict`.
+
+    The constructed :class:`_DagBuilderScope` runs its
+    :meth:`__post_init__` and therefore calls :func:`_seed_input_image`
+    after loading — corrupt payloads missing an ``InputImage`` block
+    are healed in place.
+
+    Args:
+        data: Dict previously produced by :func:`_dag_scope_to_dict`
+            (or an equivalent JSON payload).
+
+    Returns:
+        A reconstructed :class:`_DagBuilderScope` with the Rule 6
+        invariant restored.
+    """
+
+    blocks = [_dag_block_from_dict(b) for b in data.get("blocks", [])]
+    edges = [_dag_edge_from_dict(e) for e in data.get("edges", [])]
+    return _DagBuilderScope(
+        blocks=blocks,
+        edges=edges,
+        name=data.get("name", "Pipeline"),
+        desc=data.get("desc", ""),
+        nrows=data.get("nrows"),
+        ncols=data.get("ncols"),
+    )
+
+
+def _dag_block_from_dict(data: Dict[str, Any]) -> BlockNode:
+    """Inverse of :func:`_dag_block_to_dict`.
+
+    Recursively reconstructs nested scopes so the entire container tree
+    survives JSON round-trip.
+
+    Args:
+        data: Dict previously produced by :func:`_dag_block_to_dict`.
+
+    Returns:
+        A reconstructed :class:`BlockNode`.
+    """
+
+    nested_data = data.get("nested")
+    nested = (
+        _dag_scope_from_dict(nested_data) if nested_data is not None else None
+    )
+    return BlockNode(
+        block_id=data["block_id"],
+        class_name=data["class_name"],
+        params=data.get("params", {}) or {},
+        label=data.get("label"),
+        nested=nested,
+        collapsed=bool(data.get("collapsed", False)),
+        list_slot_counts=dict(data.get("list_slot_counts") or {}),
+    )
+
+
+def _dag_edge_from_dict(data: Dict[str, Any]) -> Edge:
+    """Inverse of :func:`_dag_edge_to_dict`.
+
+    Args:
+        data: Dict previously produced by :func:`_dag_edge_to_dict`.
+
+    Returns:
+        A reconstructed :class:`Edge`.
+    """
+
+    kind_raw = data.get("kind", "image")
+    if kind_raw not in {"image", "aux"}:
+        raise ValueError(
+            f"Edge.kind must be 'image' or 'aux', got {kind_raw!r}"
+        )
+    return Edge(
+        edge_id=data["edge_id"],
+        source_block_id=data["source_block_id"],
+        source_port=data.get("source_port", "out"),
+        target_block_id=data["target_block_id"],
+        target_port=data.get("target_port", ""),
+        target_slot=data.get("target_slot"),
+        kind=kind_raw,  # type: ignore[arg-type]  # Literal narrowing above.
+    )
+
+
+def _heal_dag_scope_tree(scope: _DagBuilderScope) -> None:
+    """Recursively re-run :func:`_seed_input_image` on every nested scope.
+
+    :meth:`_DagBuilderScope.__post_init__` only fires the seed pass on
+    the scope itself; if a container's ``nested`` scope was constructed
+    via ``_dag_scope_from_dict`` it will have its own ``__post_init__``
+    fire automatically.  This helper exists for callers that hand-roll
+    a tree (e.g. the deserialiser branch in :func:`state_from_json`)
+    and want a defense-in-depth pass over every descendant scope.
+
+    Args:
+        scope: The root scope to heal in place.
+    """
+
+    _seed_input_image(scope)
+    for block in scope.blocks:
+        if block.nested is not None:
+            _heal_dag_scope_tree(block.nested)
+
+
+def state_to_json(state: Any) -> Dict[str, Any]:
+    """Convert a :class:`_LegacyBuilderState` or :class:`_DagBuilderState`
+    into a JSON-friendly dict.
+
+    The returned shape carries a top-level ``"_schema"`` discriminator
+    so :func:`state_from_json` can decode unambiguously:
+
+    * ``"_schema": "legacy"`` — encoded legacy linear-list state.
+    * ``"_schema": "dag"`` — encoded DAG state.
+
+    Suitable for round-tripping through ``dcc.Store``; the output
+    contains only stdlib-compatible types provided the underlying
+    ``params`` values are themselves JSON-friendly.
+
+    Args:
+        state: A :class:`_LegacyBuilderState` or :class:`_DagBuilderState`
+            instance.
+
+    Returns:
+        Dict with ``"_schema"`` plus schema-specific keys (``root``,
+        ``breadcrumb``, ``selected_node_id`` / ``selected_block_id``,
+        etc.).
+
+    Raises:
+        TypeError: If *state* is not one of the recognised state
+            dataclasses.
+    """
+
+    # Duck-typed dispatch (resilient to ``importlib.reload`` in tests that
+    # would otherwise spawn fresh class objects and break ``isinstance``).
+    if hasattr(state, "selected_block_id"):
+        return {
+            "_schema": "dag",
+            "root": _dag_scope_to_dict(state.root),
+            "breadcrumb": list(state.breadcrumb),
+            "selected_block_id": state.selected_block_id,
+            "selected_edge_id": state.selected_edge_id,
+            "pending_delete_block_id": state.pending_delete_block_id,
+            "toast_queue": list(state.toast_queue),
+        }
+    if hasattr(state, "selected_node_id"):
+        return {
+            "_schema": "legacy",
+            "root": _scope_to_dict(state.root),
+            "breadcrumb": list(state.breadcrumb),
+            "selected_node_id": state.selected_node_id,
+        }
+    raise TypeError(
+        f"state_to_json expects a _LegacyBuilderState or _DagBuilderState; "
+        f"got {type(state).__name__}"
+    )
+
+
+def state_from_json(data: Dict[str, Any]) -> Any:
     """Inverse of :func:`state_to_json`.
+
+    Dispatches by the top-level ``"_schema"`` key.  When the key is
+    absent, the loader inspects the root dict's keys: ``"blocks"`` /
+    ``"edges"`` mean DAG; ``"nodes"`` means legacy.  This guarantees
+    forward-compatibility with older payloads that predated the
+    discriminator while keeping the new schema unambiguous.
+
+    After decoding a DAG payload, :func:`_heal_dag_scope_tree` walks
+    every reachable scope so Rule 6 (one ``InputImage`` per scope) is
+    re-established even if the JSON arrived corrupt.
 
     Args:
         data: Dict previously produced by :func:`state_to_json` or an
             equivalent JSON payload.
 
     Returns:
-        A reconstructed :class:`BuilderState`.
+        A reconstructed :class:`_LegacyBuilderState` or
+        :class:`_DagBuilderState` depending on the encoded schema.
+    """
+
+    schema = data.get("_schema")
+    if schema == "dag" or _looks_like_dag_payload(data):
+        return _state_from_json_dag(data)
+    return _state_from_json_legacy(data)
+
+
+def _looks_like_dag_payload(data: Dict[str, Any]) -> bool:
+    """Heuristic dispatch for legacy payloads that predate ``_schema``.
+
+    A DAG-shaped payload has either a top-level ``root.blocks`` /
+    ``root.edges`` (the canonical case) or, when the payload IS the
+    scope itself (no wrapping ``BuilderState``), top-level ``blocks`` /
+    ``edges``.
+
+    Args:
+        data: A loaded JSON payload.
+
+    Returns:
+        ``True`` if *data* matches a DAG shape, ``False`` otherwise.
+    """
+
+    if "blocks" in data and "edges" in data:
+        return True
+    root = data.get("root")
+    if isinstance(root, dict) and "blocks" in root and "edges" in root:
+        return True
+    return False
+
+
+def _state_from_json_dag(data: Dict[str, Any]) -> _DagBuilderState:
+    """Decode a DAG-shaped state payload.
+
+    Accepts both the full-state shape (``{"_schema": "dag", "root":
+    {...}, ...}``) and a bare scope dict (``{"blocks": [...], "edges":
+    [...]}``); the latter is the on-disk shape of the per-fixture
+    files under ``tests/fixtures/builder_dag/``.
+
+    Args:
+        data: The loaded JSON payload.
+
+    Returns:
+        A reconstructed :class:`_DagBuilderState`.
+    """
+
+    if "blocks" in data and "edges" in data and "root" not in data:
+        # Bare scope payload — wrap it in a state with default everything.
+        root = _dag_scope_from_dict(data)
+        state = _DagBuilderState(root=root)
+        _heal_dag_scope_tree(state.root)
+        return state
+
+    root_data = data.get("root") or {}
+    root = _dag_scope_from_dict(root_data)
+    state = _DagBuilderState(
+        root=root,
+        breadcrumb=list(data.get("breadcrumb") or []),
+        selected_block_id=data.get("selected_block_id"),
+        selected_edge_id=data.get("selected_edge_id"),
+        pending_delete_block_id=data.get("pending_delete_block_id"),
+        toast_queue=list(data.get("toast_queue") or []),
+    )
+    _heal_dag_scope_tree(state.root)
+    return state
+
+
+def _state_from_json_legacy(data: Dict[str, Any]) -> _LegacyBuilderState:
+    """Decode a legacy linear-list state payload.
+
+    Args:
+        data: The loaded JSON payload.
+
+    Returns:
+        A reconstructed :class:`_LegacyBuilderState`.
     """
 
     root_data = data.get("root")
-    root = _scope_from_dict(root_data) if root_data is not None else BuilderScope()
+    root = (
+        _scope_from_dict(root_data)
+        if root_data is not None
+        else _LegacyBuilderScope()
+    )
     raw_crumbs = data.get("breadcrumb", []) or []
     crumbs = [_normalize_breadcrumb_segment(seg) for seg in raw_crumbs]
-    return BuilderState(
+    return _LegacyBuilderState(
         root=root,
         breadcrumb=crumbs,
         selected_node_id=data.get("selected_node_id"),
-        inspector_focus_aux=data.get("inspector_focus_aux"),
     )

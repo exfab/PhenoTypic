@@ -37,31 +37,411 @@ STORE_SESSION_ID = "store-session-id"
 #: List of ``node_id`` values that have a cached intermediate this session.
 STORE_INTERMEDIATE_KEYS = "store-intermediate-keys"
 
-#: ``dcc.Store`` written by the clientside ``aux_popover.js`` glue when the
-#: user taps an aux port on the canvas. Server-side callbacks read this to
-#: figure out which port was tapped and open the popover. Data shape:
-#: ``{"target_node_id": str, "param": str, "ts": float}`` where ``ts`` is a
-#: monotonic timestamp so repeat clicks on the same port still trigger
-#: change detection. ``None`` while no port is selected.
-PORT_CLICK_STORE = "store-port-click"
+# ---------------------------------------------------------------------------
+# DAG-redesign ids (spec §6)
+# ---------------------------------------------------------------------------
+#
+# The popover-era stores (``PORT_CLICK_STORE`` / ``POPOVER_*``) were
+# retired in Phase 7. The DAG path is the only renderer since Phase 8
+# (the ``PHENOTYPIC_GUI_DAG`` feature flag and the legacy linear-list
+# canvas were retired together; only the legacy migration tests still
+# reach those code paths).
 
-#: DOM id of the popover's anchor element — a ``html.Div`` that
-#: ``cytoscape-popper`` positions relative to the aux port. Lives inside the
-#: canvas wrapper so the popover pans/zooms with the cytoscape view.
-POPOVER_CONTAINER = "cy-popover-container"
+#: ``dcc.Store`` written by the clientside ``viewport_ops.js`` glue when the
+#: user (or a server-side callback) requests a viewport-level operation such
+#: as ``scroll_to``, ``relayout``, ``reanchor``, ``drill_to_scope``, or
+#: ``block_collapsed_toggle``.  Server-side callbacks subscribe to it to
+#: route through ``_dispatch_state_update`` (or, for purely visual ops, to
+#: forward the payload back to the clientside).  See spec §5.5 "Clientside
+#: event contract" for the exact payload schema.
+STORE_VIEWPORT_OP = "store-viewport-op"
 
-#: ``dcc.Store`` written by the clientside ``aux_popover.js`` glue when the
-#: popover should dismiss (click-outside / Escape / cytoscape pan). Holds a
-#: monotonic timestamp; server-side callbacks read it to clear popover state.
-POPOVER_DISMISS_STORE = "store-popover-dismiss"
+#: ``dcc.Store`` holding the most recent ``List[Issue]`` produced by
+#: :func:`phenotypic.gui.builder._validation.validate`.  Drives the toolbar
+#: issue badge count + tooltip rows + per-block red/yellow border decoration.
+STORE_ISSUES = "store-issues"
 
-#: ``dcc.Store`` written by the clientside ``aux_popover.js`` glue when the
-#: user clicks an action button inside the popover (wire / disconnect /
-#: drill / pick-class). Server-side callbacks read this to dispatch the
-#: corresponding action. Data shape:
-#: ``{"kind": "wire"|"disconnect"|"drill"|"pick_class", "target_node_id": str,
-#: "param": str, "slot": int, "class_name": str | None, "ts": float}``.
-POPOVER_ACTION_STORE = "store-popover-action"
+#: ``dbc.Badge`` rendered in the canvas toolbar showing the live issue
+#: count (e.g. ``"3 issues, 1 hint"``).  Click acts as a tooltip target —
+#: hovering pops :data:`ISSUE_BADGE_TOOLTIP` listing one row per issue.
+#: ``update_issue_badge`` wires the label + tooltip rows from :data:`STORE_ISSUES`.
+ISSUE_BADGE = "issue-badge"
+
+#: ``dbc.Popover`` (anchored at :data:`ISSUE_BADGE`) listing one
+#: :func:`issue_row_id` row per :class:`Issue` in :data:`STORE_ISSUES`.
+#: Issues sort first (by ``kind`` alphabetically), then hints.  Each
+#: row click writes a ``scroll_to`` payload to :data:`STORE_VIEWPORT_OP`
+#: so 6B's ``phenotypicScrollTo`` chain consumes it.
+ISSUE_BADGE_TOOLTIP = "issue-badge-tooltip"
+
+#: ``dcc.Store`` written by the asset-readiness polling loop in
+#: ``assets/builder.js``.  Data shape:
+#: ``{"wire_drawing": bool, "palette_dnd": bool, "viewport_ops": bool,
+#: "dagre_missing": bool}`` — ``True`` means the asset's IIFE registered
+#: the ``window.phenotypic_<name>_ready`` sentinel within the polling
+#: window (``False`` means missing / failed to load).  Consumed by
+#: :func:`phenotypic.gui.builder._layout.build_asset_status_banner` and by
+#: the ``asset_status_disables`` callback to gate the ``Re-layout`` button
+#: and the palette ``pointer-events`` style.
+STORE_ASSET_STATUS = "store-asset-status"
+
+#: ``dcc.Store`` written by the clientside ``palette_dnd.js`` glue when
+#: a user drops a palette button onto the canvas (or fires the
+#: keyboard fallback). Server-side callbacks subscribe to it to route
+#: through ``_dispatch_state_update`` with the ``block_create`` kind.
+#: Data shape (per spec §5.5):
+#: ``{"kind": "block_create", "class_name": str, "x": float, "y": float,
+#: "container_block_id": str | None, "ts": int}`` — ``None`` between
+#: drops.  ``ts`` is a monotonic timestamp so repeat drops of the same
+#: class still trigger change detection.
+STORE_PALETTE_DROP = "store-palette-drop"
+
+#: ``dcc.Store`` written by the clientside ``wire_drawing.js`` glue when
+#: the user completes (or cancels) a wire-drag gesture, **or** when an
+#: inspector wire-card / aux-card action triggers an edge mutation.
+#: Server-side callbacks subscribe to it to route through
+#: ``_dispatch_state_update`` with the appropriate ``edge_*`` /
+#: ``list_aux_*`` / ``wire_select`` / ``block_select`` kind.  See spec
+#: §5.5 (clientside event contract) and §5.6 (dispatch table).  Data
+#: shape varies by ``kind``:
+#:
+#: * ``{"kind": "edge_create", "source_block_id": str,
+#:   "target_block_id": str, "target_port": str, "edge_kind":
+#:   "image" | "aux", "ts": int}`` — note ``edge_kind`` is the wire
+#:   kind (image/aux); ``kind`` is reserved for the dispatch
+#:   discriminator at the top level.
+#: * ``{"kind": "edge_delete", "edge_id": str, "ts": int}``.
+#: * ``{"kind": "list_aux_reorder", "block_id": str, "param": str,
+#:   "new_order": List[str | None], "ts": int}``.
+#: * ``{"kind": "list_aux_add_empty_slot", "block_id": str,
+#:   "param": str, "ts": int}``.
+#: * ``{"kind": "wire_select", "edge_id": str | None, "ts": int}``.
+#: * ``{"kind": "block_select", "block_id": str | None, "ts": int}``.
+#:
+#: ``None`` between events.  The fan-in callback routes on
+#: ``payload["kind"]`` so the single store carries every wire-related
+#: mutation; this keeps the JS surface tiny and lets the inspector
+#: emit dispatches through the same channel rather than needing a
+#: parallel store.
+STORE_EDGE_EVENT = "store-edge-event"
+
+#: Toolbar button that re-runs the dagre layout pass + ``cy.fit()``.  Wired
+#: to the ``relayout`` payload in ``STORE_VIEWPORT_OP``; disabled by the
+#: ``asset_status_disables`` callback when ``viewport_ops.js`` or the
+#: ``cytoscape-dagre`` extension is missing.
+BTN_RELAYOUT = "btn-relayout"
+
+#: Button inside the Input Image inspector card (spec §4.5) that
+#: dispatches a ``reanchor`` payload to :data:`STORE_VIEWPORT_OP` so the
+#: clientside viewport-ops chain pans / zooms the cytoscape view to
+#: centre on the auto-seeded Input Image block.  Distinct from
+#: :data:`BTN_RELAYOUT` (which re-runs dagre on the full graph) so the
+#: dispatcher / clientside can subscribe to each independently.
+BTN_REANCHOR = "btn-reanchor"
+
+#: Container wrapping the inspector "empty-state" placeholder card
+#: shown when neither a block nor a wire is selected (spec §4.5).
+#: Carries the "Drag an operation from the palette to begin." prompt
+#: plus a one-line hint pointing at the toolbar validation badge.
+#: Used as a stable handle for integration tests that assert the
+#: empty-state branch is rendering.
+INSPECTOR_EMPTY_STATE = "inspector-empty-state"
+
+#: Container wrapping the inspector "Input Image — pipeline source"
+#: card (spec §4.5).  Rendered when ``selected_block_id`` resolves to
+#: a block with ``class_name == INPUT_IMAGE_CLASS_NAME``.  The card
+#: carries the Re-layout + Re-anchor buttons (no param form, no
+#: delete button) and is a stable handle for integration tests.
+INSPECTOR_INPUT_IMAGE_CARD = "inspector-input-image-card"
+
+#: ``html.Div`` row sitting above the canvas that surfaces missing-asset
+#: messages (one row per missing JS file).  Subscribes to
+#: :data:`STORE_ASSET_STATUS`; hidden when all assets ready.  Rendered by
+#: :func:`phenotypic.gui.builder._layout.build_asset_status_banner`.
+BANNER_ASSET_STATUS = "banner-asset-status"
+
+#: ``dbc.Modal`` housing the confirm-delete prompt shown when the user
+#: requests deletion of a non-empty :class:`~phenotypic.ImagePipeline`
+#: container block.  Mounted once at app boot; ``is_open`` driven by
+#: ``STORE_BUILDER_STATE.pending_delete_block_id``.  See spec §6
+#: "Confirm-delete modal" row.
+CONFIRM_DELETE_MODAL_ID = "confirm-delete-modal"
+
+#: Primary action button inside :data:`CONFIRM_DELETE_MODAL_ID`.  Dispatches
+#: ``block_delete_confirm``.
+BTN_CONFIRM_DELETE = "btn-confirm-delete"
+
+#: Cancel button inside :data:`CONFIRM_DELETE_MODAL_ID`.  Clears
+#: ``state.pending_delete_block_id`` so the modal closes.
+BTN_CANCEL_DELETE = "btn-cancel-delete"
+
+#: Visible "Drill in →" button on the inspector container card (spec §4.5).
+#: Rendered by :func:`phenotypic.gui.builder._layout._build_dag_inspector`
+#: when the selected block is a :data:`PIPELINE_CLASS_NAME` container.
+#: Distinct from :data:`BTN_DRILL_IN` (which dispatches the legacy
+#: ``drill_in`` for nested-pipeline ``StepNode`` selections) so the
+#: container dispatcher can subscribe without spurious triggers
+#: from the legacy path.  Dispatches ``drill_into_container``.
+BTN_DRILL_IN_CONTAINER = "btn-drill-in-container"
+
+#: Container-name text input inside the inspector container card.  Bound
+#: to ``BuilderScope.name`` of the selected container's nested scope
+#: (spec §4.5).  The dispatcher reads this to update
+#: ``block.nested.name`` on debounce.
+INPUT_CONTAINER_NAME = "input-container-name"
+
+#: Container-description text input inside the inspector container card.
+#: Bound to ``BuilderScope.desc`` of the selected container's nested
+#: scope (spec §4.5).
+INPUT_CONTAINER_DESC = "input-container-desc"
+
+# NOTE: ``STORE_EDGE_EVENT`` is declared higher up in this module.
+# The inspector pane writes into the same store via the kinds
+# ``edge_delete``, ``list_aux_add_empty_slot``, and ``list_aux_reorder``
+# so the clientside ``wire_drawing.js`` glue and the server-side
+# inspector callbacks share a single mutation channel.
+
+#: ``html.Div`` wrapping the inspector wire-card. Mounted by
+#: :func:`phenotypic.gui.builder._layout.build_inspector` (DAG branch)
+#: only when ``state.selected_edge_id`` resolves to an :class:`Edge`
+#: in the active scope.  Carries the wire's source/target labels,
+#: kind tag, and a ``Disconnect`` button.
+INSPECTOR_WIRE_CARD = "inspector-wire-card"
+
+#: ``html.Div`` wrapping the inspector aux-ports section.  Mounted by
+#: :func:`phenotypic.gui.builder._layout.build_inspector` (DAG branch)
+#: only when ``state.selected_block_id`` resolves to a :class:`BlockNode`
+#: that exposes one or more op-typed parameters.  Enumerates each aux
+#: port (scalar or list-typed) with the wired edges + the ``+ Add
+#: empty slot`` affordance.
+INSPECTOR_AUX_SECTION = "inspector-aux-section"
+
+#: Pattern-match ``type`` key for the wire-card / list-row ``Disconnect``
+#: buttons.  Both surfaces dispatch ``edge_delete`` against a specific
+#: :class:`Edge.edge_id`; the inspector callback matches
+#: ``Input({"type": BTN_INSPECTOR_DISCONNECT, "edge_id": ALL}, "n_clicks")``.
+BTN_INSPECTOR_DISCONNECT = "btn-inspector-disconnect"
+
+#: Pattern-match ``type`` key for the list-aux per-row remove buttons
+#: (``✕``).  Distinguished from :data:`BTN_INSPECTOR_DISCONNECT` so
+#: both surfaces can co-exist in the same DOM without callback id
+#: collisions.
+BTN_INSPECTOR_LIST_REMOVE = "btn-inspector-list-remove"
+
+#: Pattern-match ``type`` key for the ``+ Add empty slot`` buttons inside
+#: the aux ports section.  Keyed by ``(block_id, param)`` so the
+#: dispatcher knows which list-aux port to extend.
+BTN_INSPECTOR_ADD_EMPTY_SLOT = "btn-inspector-add-empty-slot"
+
+#: Pattern-match ``type`` key for the per-row ``▲``/``▼`` move
+#: buttons (drag-handle fallback).  Each id carries ``edge_id`` +
+#: ``direction`` so a single callback can dispatch the right reorder.
+BTN_INSPECTOR_LIST_MOVE = "btn-inspector-list-move"
+
+#: Pattern-match ``type`` key for the hidden ``dcc.Store`` rendered once
+#: per list-typed op-param on the selected block.  Future HTML5 drag
+#: glue can write the new permutation as a ``List[str]`` of edge_ids
+#: here without churn to the inspector callback; the arrow-button
+#: fallback uses :data:`BTN_INSPECTOR_LIST_MOVE` instead.
+STORE_INSPECTOR_LIST_REORDER = "store-inspector-list-reorder"
+
+
+def issue_row_id(block_id: Optional[str], kind: str, idx: int) -> Dict[str, Any]:
+    """Build the pattern-matching id for a single issue-tooltip row.
+
+    Each row inside :data:`ISSUE_BADGE_TOOLTIP` carries a structured id
+    so the click-dispatch callback (spec §4.6, §5.6) can recover the
+    issue identity without parsing the DOM.  The row id pattern is
+    matched in :mod:`_callbacks` to write a ``scroll_to`` payload to
+    :data:`STORE_VIEWPORT_OP`.
+
+    Args:
+        block_id: ``BlockNode.block_id`` of the offender, or ``None``
+            for scope-level findings (e.g. ``missing_input``).  ``None``
+            is mangled to the literal string ``"__scope__"`` because
+            Dash pattern-matched ids must be JSON-serialisable and Dash
+            rejects ``None`` as a key value in some store-write paths.
+        kind: The :class:`Issue.kind` string (e.g. ``"fork"``,
+            ``"stub"``, ``"missing_input"``).  Matches one entry in
+            :data:`~phenotypic.gui.builder._validation.IssueKind`.
+        idx: Position in the rendered tooltip list (0-based).  Required
+            because multiple issues can share ``(block_id, kind)`` —
+            e.g. two ``fork`` issues on the same source block (one for
+            image-out, one for image-in).  Each row needs a unique id
+            so the pattern-match callback can disambiguate.
+
+    Returns:
+        Dict of shape ``{"type": "issue-row", "block_id": str,
+        "kind": str, "idx": int}``.  :func:`issue_row_click_dispatch`
+        matches ``Input({"type": "issue-row", "block_id": ALL,
+        "kind": ALL, "idx": ALL}, "n_clicks")``.
+    """
+
+    return {
+        "type": "issue-row",
+        "block_id": block_id if block_id is not None else "__scope__",
+        "kind": kind,
+        "idx": idx,
+    }
+
+
+def inspector_disconnect_id(edge_id: str) -> Dict[str, Any]:
+    """Build the pattern-matching id for the inspector ``Disconnect`` button.
+
+    The wire-card and the per-row ``✕`` remove button inside the
+    aux ports section both dispatch ``edge_delete`` for a specific
+    :class:`Edge`.  Both call into this helper so callbacks can match
+    against ``Input({"type": BTN_INSPECTOR_DISCONNECT, "edge_id": ALL},
+    "n_clicks")`` regardless of which surface emitted the click.
+
+    Args:
+        edge_id: The :class:`Edge.edge_id` value of the wire to delete.
+
+    Returns:
+        Dict of shape ``{"type": BTN_INSPECTOR_DISCONNECT, "edge_id":
+        edge_id}``.
+    """
+
+    return {"type": BTN_INSPECTOR_DISCONNECT, "edge_id": edge_id}
+
+
+def inspector_list_remove_id(edge_id: str) -> Dict[str, Any]:
+    """Build the pattern-matching id for the list-aux row ``✕`` button.
+
+    Rendered once per edge inside the aux ports section's list-aux row
+    enumeration.  Distinguished from :func:`inspector_disconnect_id` by
+    the ``type`` key so the inspector can render *both* in the same
+    DOM (wire-card Disconnect + per-row remove) without callback
+    pattern-match collisions.
+
+    Args:
+        edge_id: The :class:`Edge.edge_id` value of the list-aux row.
+
+    Returns:
+        Dict of shape ``{"type": BTN_INSPECTOR_LIST_REMOVE, "edge_id":
+        edge_id}``.
+    """
+
+    return {"type": BTN_INSPECTOR_LIST_REMOVE, "edge_id": edge_id}
+
+
+def inspector_add_empty_slot_id(block_id: str, param: str) -> Dict[str, Any]:
+    """Build the pattern-matching id for the ``+ Add empty slot`` button.
+
+    Rendered once per list-typed op-param on the selected block.
+    Carries enough context (block_id + param name) for the dispatcher
+    to know which port to extend without consulting
+    ``selected_block_id`` at click-time.
+
+    Args:
+        block_id: ``BlockNode.block_id`` the slot belongs to.
+        param: Op-typed parameter name on that block.
+
+    Returns:
+        Dict of shape ``{"type": BTN_INSPECTOR_ADD_EMPTY_SLOT,
+        "block_id": block_id, "param": param}``.
+    """
+
+    return {
+        "type": BTN_INSPECTOR_ADD_EMPTY_SLOT,
+        "block_id": block_id,
+        "param": param,
+    }
+
+
+def inspector_list_move_id(
+    edge_id: str, direction: str
+) -> Dict[str, Any]:
+    """Build the pattern-matching id for a list-aux row up/down arrow.
+
+    The ordered-list section ships with arrow-button reorder as a
+    fallback for the drag-handles called out in spec §4.5.  Each row
+    carries an ``▲`` (up) and ``▼`` (down) button keyed by
+    ``edge_id`` + direction so a single pattern-match callback can
+    dispatch the right reorder.
+
+    Args:
+        edge_id: The :class:`Edge.edge_id` value of the wire to move.
+        direction: ``"up"`` or ``"down"``.
+
+    Returns:
+        Dict of shape ``{"type": BTN_INSPECTOR_LIST_MOVE, "edge_id":
+        edge_id, "direction": direction}``.
+    """
+
+    return {
+        "type": BTN_INSPECTOR_LIST_MOVE,
+        "edge_id": edge_id,
+        "direction": direction,
+    }
+
+
+def inspector_list_reorder_store_id(
+    block_id: str, param: str
+) -> Dict[str, Any]:
+    """Build the pattern-matching id for the list-aux reorder ``dcc.Store``.
+
+    A hidden ``dcc.Store`` rendered once per list-typed op-param on the
+    selected block.  Future HTML5 drag glue (or the existing arrow-
+    button fallback) can write the new permutation here; the server-
+    side callback dispatches ``list_aux_reorder`` against the same
+    ``(block_id, param)`` without re-walking the selected-block layout.
+
+    Args:
+        block_id: ``BlockNode.block_id`` the slot list belongs to.
+        param: Op-typed parameter name on that block.
+
+    Returns:
+        Dict of shape ``{"type": STORE_INSPECTOR_LIST_REORDER,
+        "block_id": block_id, "param": param}``.
+    """
+
+    return {
+        "type": STORE_INSPECTOR_LIST_REORDER,
+        "block_id": block_id,
+        "param": param,
+    }
+
+
+def block_port_id(block_id: str, port: str) -> str:
+    """Return the cytoscape node id for a DAG block's port sub-node.
+
+    The DAG redesign renders every port (image-in, image-out, aux) as a
+    cytoscape compound child of its parent block.  Each port carries a
+    deterministic id derived from the parent ``BlockNode.block_id`` and
+    the port name so callbacks reading ``tapNodeData`` can recover the
+    structured pair via ``id.split("__")``.
+
+    Args:
+        block_id: 32-character ``BlockNode.block_id`` of the parent block.
+        port: Logical port name — ``"in"`` for image-input, ``"out"`` for
+            image-output, the parameter name for aux ports (with a
+            ``"[<i>]"`` suffix for list-aux slots).
+
+    Returns:
+        Flat string ``"port__<block_id>__<port>"`` suitable as a
+        cytoscape element id.
+    """
+
+    return f"port__{block_id}__{port}"
+
+
+def edge_id(eid: str) -> str:
+    """Return the cytoscape edge id for a DAG :class:`Edge`.
+
+    Cytoscape requires every edge to carry a stable string id; the DAG
+    schema generates random 32-character UUID hex strings for
+    ``Edge.edge_id`` and the canvas wraps them in a short prefix so the
+    cytoscape id namespace doesn't collide with block / port ids.
+
+    Args:
+        eid: ``Edge.edge_id`` value.
+
+    Returns:
+        Flat string ``"edge__<eid>"``.
+    """
+
+    return f"edge__{eid}"
 
 
 # ---------------------------------------------------------------------------
@@ -370,7 +750,7 @@ def prefab_card_id(class_name: str) -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Aux-port / main-port pattern-matching helpers
+# Main-port pattern-matching helpers
 # ---------------------------------------------------------------------------
 #
 # Cytoscape elements require flat string ids (cytoscape rejects dict ids
@@ -379,15 +759,7 @@ def prefab_card_id(class_name: str) -> Dict[str, Any]:
 # recover the structured form via the decoder helpers without a lookup
 # table. Choice of ``__`` as separator avoids collision with single
 # underscores in realistic class/param names.
-#
-# These id concerns previously lived in ``_layout.py`` alongside legacy
-# port-handle helpers, but in the popover-driven design the cytoscape ids
-# are written by both the layout (when emitting nodes) and the callbacks
-# (when dispatching against tap events), so they belong here.
 
-
-#: Prefix for cytoscape bottom-edge aux port node ids.
-_AUX_PORT_PREFIX: str = "aux-port"
 
 #: Prefix for cytoscape main-input port node ids.
 _MAIN_INPUT_PREFIX: str = "main-input"
@@ -398,34 +770,6 @@ _MAIN_OUTPUT_PREFIX: str = "main-output"
 #: Separator used to delimit fields inside the encoded flat string ids.
 #: Mirrors the convention previously used for ``port-handle__...`` ids.
 _PORT_ID_SEP: str = "__"
-
-
-def aux_port_id(target_node_id: str, param: str) -> Dict[str, Any]:
-    """Build the pattern-matching id for a bottom-edge aux-port marker.
-
-    Each consumer node renders exactly one aux port marker per op-typed
-    parameter (regardless of slot cardinality — list-typed params still
-    use a single bottom-edge square; slot management happens inside the
-    popover). Tapping the marker opens the canvas-anchored popover.
-
-    Args:
-        target_node_id: ``node_id`` of the consumer operation the port
-            attaches to.
-        param: Name of the consumer's op-typed parameter the port
-            represents.
-
-    Returns:
-        Dict of shape ``{"type": "aux-port", "target_node_id":
-        target_node_id, "param": param}``. Phase 4 callbacks should match
-        ``Input({"type": "aux-port", "target_node_id": ALL, "param": ALL},
-        "n_clicks")``.
-    """
-
-    return {
-        "type": "aux-port",
-        "target_node_id": target_node_id,
-        "param": param,
-    }
 
 
 def main_input_port_id(node_id: str) -> str:
@@ -466,55 +810,6 @@ def main_output_port_id(node_id: str) -> str:
     return _encode_main_port_id(_MAIN_OUTPUT_PREFIX, node_id)
 
 
-def _encode_aux_port_id(target_node_id: str, param: str) -> str:
-    """Mangle (target_node_id, param) into a flat cytoscape id.
-
-    The clientside ``aux_popover.js`` glue and any callbacks reading
-    cytoscape ``tapNodeData`` can use :func:`_decode_aux_port_id` to
-    recover the structured pair. The matching dict id for Dash
-    pattern-matched callbacks is :func:`aux_port_id`.
-
-    Args:
-        target_node_id: Consumer node identifier the aux port attaches to.
-        param: Name of the consumer's op-typed parameter the port
-            represents.
-
-    Returns:
-        Flat string ``"aux-port__<target_node_id>__<param>"``.
-    """
-
-    return _PORT_ID_SEP.join([_AUX_PORT_PREFIX, target_node_id, param])
-
-
-def _decode_aux_port_id(encoded: str) -> Optional[tuple[str, str]]:
-    """Reverse of :func:`_encode_aux_port_id`.
-
-    Returns ``None`` for any string that doesn't match the encoding (e.g.
-    a tap on a ribbon node or a main-I/O port).
-
-    Args:
-        encoded: Cytoscape element id string.
-
-    Returns:
-        ``(target_node_id, param)`` tuple when *encoded* is an aux-port id,
-        otherwise ``None``.
-    """
-
-    if not encoded.startswith(_AUX_PORT_PREFIX + _PORT_ID_SEP):
-        return None
-    parts = encoded.split(_PORT_ID_SEP)
-    # Expected shape: [_AUX_PORT_PREFIX, target_node_id, *param_parts].
-    # Param names CAN contain the separator (legitimately though uncommon),
-    # so we re-join everything past the node_id rather than strictly requiring
-    # len(parts) == 3. Mirrors the JS-side decoder in ``aux_popover.js`` which
-    # uses ``parts.slice(2).join("__")``.
-    if len(parts) < 3:
-        return None
-    target_node_id = parts[1]
-    param = _PORT_ID_SEP.join(parts[2:])
-    return target_node_id, param
-
-
 def _encode_main_port_id(prefix: str, node_id: str) -> str:
     """Mangle (prefix, node_id) into a flat cytoscape id for a main port.
 
@@ -537,7 +832,7 @@ def _decode_main_port_id(encoded: str) -> Optional[tuple[str, str]]:
     """Reverse of :func:`_encode_main_port_id`.
 
     Returns ``None`` for any string that doesn't match the main-input or
-    main-output encoding (e.g. an aux port or a ribbon node).
+    main-output encoding (e.g. a ribbon node).
 
     Args:
         encoded: Cytoscape element id string.
@@ -560,10 +855,6 @@ __all__ = [
     "STORE_BUILDER_STATE",
     "STORE_SESSION_ID",
     "STORE_INTERMEDIATE_KEYS",
-    "PORT_CLICK_STORE",
-    "POPOVER_CONTAINER",
-    "POPOVER_DISMISS_STORE",
-    "POPOVER_ACTION_STORE",
     "BREADCRUMB_CONTAINER",
     "PALETTE_CONTAINER",
     "CANVAS_CYTOSCAPE",
@@ -636,11 +927,43 @@ __all__ = [
     "palette_button_id",
     "breadcrumb_link_id",
     "prefab_card_id",
-    "aux_port_id",
     "main_input_port_id",
     "main_output_port_id",
-    "_encode_aux_port_id",
-    "_decode_aux_port_id",
     "_encode_main_port_id",
     "_decode_main_port_id",
+    # Phase 2 DAG redesign additions
+    "STORE_VIEWPORT_OP",
+    "STORE_ISSUES",
+    "STORE_ASSET_STATUS",
+    "STORE_PALETTE_DROP",
+    "BTN_RELAYOUT",
+    "BTN_REANCHOR",
+    "INSPECTOR_EMPTY_STATE",
+    "INSPECTOR_INPUT_IMAGE_CARD",
+    "BANNER_ASSET_STATUS",
+    "CONFIRM_DELETE_MODAL_ID",
+    "BTN_CONFIRM_DELETE",
+    "BTN_CANCEL_DELETE",
+    "BTN_DRILL_IN_CONTAINER",
+    "INPUT_CONTAINER_NAME",
+    "INPUT_CONTAINER_DESC",
+    "ISSUE_BADGE",
+    "ISSUE_BADGE_TOOLTIP",
+    "issue_row_id",
+    "block_port_id",
+    "edge_id",
+    # DAG canvas wire + inspector additions
+    "STORE_EDGE_EVENT",
+    "INSPECTOR_WIRE_CARD",
+    "INSPECTOR_AUX_SECTION",
+    "BTN_INSPECTOR_DISCONNECT",
+    "BTN_INSPECTOR_LIST_REMOVE",
+    "BTN_INSPECTOR_ADD_EMPTY_SLOT",
+    "BTN_INSPECTOR_LIST_MOVE",
+    "STORE_INSPECTOR_LIST_REORDER",
+    "inspector_disconnect_id",
+    "inspector_list_remove_id",
+    "inspector_add_empty_slot_id",
+    "inspector_list_move_id",
+    "inspector_list_reorder_store_id",
 ]

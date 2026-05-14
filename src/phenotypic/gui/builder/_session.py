@@ -1,11 +1,13 @@
 """Per-session in-memory caches for images and pre-baked previews.
 
 The Dash builder needs server-side storage for two things that are too big or
-too type-rich to round-trip through ``dcc.Store`` JSON:
+to round-trip through ``dcc.Store`` JSON:
 
 - The currently loaded :class:`phenotypic.Image` (or :class:`GridImage`).
-- The map of ``node_id -> rendered preview`` produced after
-  :meth:`ImagePipeline.apply_with_intermediates`.
+- The map of ``<step-or-block id> -> rendered preview`` produced after
+  :meth:`ImagePipeline.apply_with_intermediates`.  Legacy
+  ``_LegacyBuilderState`` callers key by 8-char ``StepNode.node_id``;
+  DAG callers key by 32-char ``BlockNode.block_id``.
 
 Both live in a single :class:`IntermediatesCache` keyed by a per-tab uuid that
 the front end persists in a ``dcc.Store(storage_type='session')``. The cache
@@ -73,13 +75,18 @@ class SessionData:
             :class:`GridImage`); ``None`` when nothing is loaded yet.
         image_path: Path string from which ``image`` was loaded (informational).
             ``None`` when ``image`` came from the synthetic plate fallback.
-        intermediates: ``node_id -> CachedPreview`` map of per-step
-            pre-baked previews. Each value is :class:`bytes` (PNG) for ops
-            nodes, a :class:`pandas.DataFrame` for measurement / post nodes,
-            or :class:`PreviewRenderError` when rendering failed. Eviction
-            order is LRU (oldest accessed first). Maintained as an
-            :class:`OrderedDict` so :meth:`set_intermediate` can move accessed
-            keys to the end without copying.
+        intermediates: ``<step-or-block id> -> CachedPreview`` map of
+            per-step pre-baked previews. Each value is :class:`bytes`
+            (PNG) for ops nodes, a :class:`pandas.DataFrame` for
+            measurement / post nodes, or :class:`PreviewRenderError`
+            when rendering failed. Eviction order is LRU (oldest
+            accessed first). Maintained as an :class:`OrderedDict` so
+            :meth:`set_intermediate` can move accessed keys to the end
+            without copying.  Keys are 8-char ``StepNode.node_id``
+            strings on the legacy path and 32-char ``BlockNode.block_id``
+            strings on the DAG path; the cache does not enforce a
+            scheme, so a process restart (or feature-flag flip) silently
+            invalidates the cache by rotating the keys.
     """
 
     image: Optional["Image"] = None

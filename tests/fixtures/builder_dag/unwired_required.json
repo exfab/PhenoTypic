@@ -1,0 +1,25 @@
+{
+  "name": "unwired_required",
+  "desc": "A block whose required aux port has no incoming wire.",
+  "blocks": [
+    {
+      "block_id": "input",
+      "class_name": "InputImage",
+      "label": "Input Image"
+    },
+    {
+      "block_id": "consumer",
+      "class_name": "NeedsAux",
+      "label": "consumer"
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "e1",
+      "source_block_id": "input",
+      "target_block_id": "consumer",
+      "target_port": "in",
+      "kind": "image"
+    }
+  ]
+}

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import gc
 import weakref
+from pathlib import Path
 
 import pandas as pd
 
@@ -128,3 +129,93 @@ def test_bake_preview_cache_renders_independently_of_run_preview_callback():
         assert not isinstance(
             cache.get_intermediate("sess-2", key), PreviewRenderError
         )
+
+
+# ---------------------------------------------------------------------------
+# DAG-path regression: Phase 7 cache key migration
+# ---------------------------------------------------------------------------
+#
+# Phase 7 retired the popover-era flow and split ``_bake_preview_cache`` into
+# a legacy and a DAG branch (see :func:`_bake_preview_cache_dag`).  The DAG
+# path must key the cache by the 32-char ``BlockNode.block_id`` (not the
+# legacy 8-char ``StepNode.node_id`` slice) so the inspector's block-selection
+# lookup hits without an id-translation step.  These tests pin that invariant.
+
+
+def test_bake_preview_cache_dag_uses_32char_block_id_keys():
+    """DAG path keys the cache by ``BlockNode.block_id`` (32-char hex).
+
+    Regression test for the Phase 7 cache key migration. A DAG state run
+    through ``_bake_preview_cache`` must populate cache slots keyed by
+    the *full* ``block_id`` (not a truncated slice, not the class name,
+    not the ``InputImage`` block which has no main-flow intermediate).
+    """
+    import json
+
+    from phenotypic.gui.builder._conversion_dag import to_pipeline_dag
+    from phenotypic.gui.builder._state import (
+        INPUT_IMAGE_CLASS_NAME,
+        state_from_json,
+    )
+
+    # ``linear_chain.json`` is a fully wired DAG fixture:
+    # InputImage -> GaussianBlur -> OtsuDetector -> MeasureSize.
+    fixture = (
+        Path(__file__).resolve().parents[2]
+        / "fixtures"
+        / "builder_dag"
+        / "linear_chain.json"
+    )
+    state = state_from_json(json.loads(fixture.read_text()))
+    pipeline = to_pipeline_dag(state)
+    result = pipeline.apply_with_intermediates(load_synth_yeast_plate())
+
+    cache = IntermediatesCache()
+    _bake_preview_cache(state, pipeline, result, "sess-dag", cache)
+
+    keys = set(cache.known_intermediate_keys("sess-dag"))
+
+    # InputImage has no main-flow intermediate (Phase 7 skip rule).
+    input_ids = {
+        b.block_id for b in state.root.blocks
+        if b.class_name == INPUT_IMAGE_CLASS_NAME
+    }
+    expected_block_ids = {
+        b.block_id for b in state.root.blocks
+        if b.class_name != INPUT_IMAGE_CLASS_NAME
+    }
+
+    assert keys == expected_block_ids, (
+        f"DAG cache keys {keys} did not equal non-input block_ids "
+        f"{expected_block_ids}"
+    )
+    # All DAG keys are 32-char lowercase hex (uuid4().hex contract).
+    for key in keys:
+        assert len(key) == 32, f"DAG cache key {key!r} is not 32 chars"
+        assert all(c in "0123456789abcdef" for c in key), (
+            f"DAG cache key {key!r} is not lowercase hex"
+        )
+    # And the InputImage block_id is *not* in the cache.
+    assert keys.isdisjoint(input_ids)
+
+
+def test_bake_preview_cache_legacy_uses_8char_node_id_keys():
+    """Legacy path still keys the cache by 8-char ``StepNode.node_id``.
+
+    Confirms ``_bake_preview_cache`` duck-types correctly: a legacy
+    state (no ``selected_block_id`` attribute) routes to the legacy
+    branch whose keys remain the short node_ids.
+    """
+    state = _seed_pipeline_state()
+    assert not hasattr(state, "selected_block_id"), (
+        "Test premise: legacy state must lack ``selected_block_id``."
+    )
+
+    pipeline = to_pipeline(state.root)
+    result = pipeline.apply_with_intermediates(load_synth_yeast_plate())
+    cache = IntermediatesCache()
+    _bake_preview_cache(state, pipeline, result, "sess-legacy", cache)
+
+    keys = set(cache.known_intermediate_keys("sess-legacy"))
+    # Legacy keys are the 3-char node_ids from ``_seed_pipeline_state``.
+    assert keys == {"aaa", "bbb", "ccc"}
