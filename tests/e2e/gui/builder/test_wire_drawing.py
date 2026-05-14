@@ -32,7 +32,11 @@ from typing import Iterator
 import pytest
 from playwright.sync_api import Page
 
-from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
+from tests.e2e.gui.conftest import (
+    _build_sandbox,
+    _start_live_server,
+    expand_palette_accordions,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -78,6 +82,9 @@ def _open_builder(page: Page, hub_url: str) -> None:
         "() => window.phenotypic_wire_drawing_ready === true",
         timeout=15_000,
     )
+    # Palette categories past the first start collapsed; expand them so
+    # buttons like ``GaussianBlur`` (Enhancer) are visible + draggable.
+    expand_palette_accordions(page)
 
 
 def _palette_button(page: Page, class_name: str):
@@ -550,15 +557,48 @@ def test_wire_blue_throughout_past_measure_boundary(
 
 
 def test_wire_main_path_3px_aux_2px(page: Page, hub_url: str) -> None:
-    """Main-path wires render 3px; aux wires render 2px (spec §4.3).
+    """Main-path wires render 3px (spec §4.3).
 
-    The cytoscape stylesheet maps ``kind == "image"`` → 3px and
-    ``kind == "aux"`` → 2px.  We assert the rendered SVG width by
-    inspecting cytoscape's edge style.
+    Only edges on the ``Input Image`` → terminal path carry the
+    ``dag-wire--main`` class (and its ``width: 3``); a free-floating
+    image edge stays at the ``dag-wire`` base ``width: 2``.  So we wire
+    the seeded chain in from the scope's auto-seeded ``Input Image``
+    block — that puts the seeded edges on the main path — and assert
+    their rendered width.
     """
 
     _open_builder(page, hub_url)
     ids = _seed_two_blocks(page)
+    input_image_id = page.evaluate(
+        """() => {
+            const cy = window.phenoGetCy();
+            const ii = cy.nodes().filter(
+                n => n.data('class_name') === 'InputImage'
+            )[0];
+            return ii ? (ii.data('block_id') || ii.id()) : null;
+        }"""
+    )
+    assert input_image_id, "every scope auto-seeds an Input Image block"
+    # Input Image → source → target: both edges land on the main path.
+    # The two dispatches go through the *same* ``STORE_EDGE_EVENT`` store,
+    # so we wait for the first edge to materialise before publishing the
+    # second — otherwise the second ``set_props`` overwrites the store
+    # before the first dispatch's callback has run.
+    _publish_edge_event(
+        page,
+        {
+            "kind": "edge_create",
+            "source_block_id": input_image_id,
+            "target_block_id": ids["source"],
+            "target_port": "in",
+            "edge_kind": "image",
+            "ts": 0,
+        },
+    )
+    page.wait_for_function(
+        "() => window.phenoGetCy().edges().length === 1",
+        timeout=5_000,
+    )
     _publish_edge_event(
         page,
         {
@@ -567,24 +607,23 @@ def test_wire_main_path_3px_aux_2px(page: Page, hub_url: str) -> None:
             "target_block_id": ids["target"],
             "target_port": "in",
             "edge_kind": "image",
-            "ts": 0,
+            "ts": 1,
         },
     )
     page.wait_for_function(
-        """() => {
-            const cy = window.phenoGetCy();
-            return cy.edges().length === 1;
-        }""",
+        "() => window.phenoGetCy().edges().length === 2",
         timeout=5_000,
     )
+    # Both edges now sit on the Input Image → terminal path, so each
+    # carries ``dag-wire--main`` → ``width: 3``.
     width_str = page.evaluate(
         """() => {
             const cy = window.phenoGetCy();
             return cy.edges()[0].style('width') || cy.edges()[0].numericStyle('width');
         }"""
     )
-    # Stylesheet maps image edges to 3px; the value may come back as a
-    # numeric string ("3"), a pixel string ("3px"), or a number.
+    # Stylesheet maps main-path edges to 3px; the value may come back as
+    # a numeric string ("3"), a pixel string ("3px"), or a number.
     if width_str is None:
         pytest.skip(
             "Stylesheet did not surface a width attribute; visual width "
@@ -594,5 +633,5 @@ def test_wire_main_path_3px_aux_2px(page: Page, hub_url: str) -> None:
     # Allow some tolerance — cytoscape may report fractional widths
     # when stylesheets layer multiple selectors.
     assert width_num >= 2.5, (
-        f"Image-flow wire should render >= 2.5px (spec says 3px); got {width_str!r}"
+        f"Main-path wire should render >= 2.5px (spec says 3px); got {width_str!r}"
     )

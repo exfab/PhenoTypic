@@ -240,6 +240,41 @@ def hub_url(live_server: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Builder palette helpers
+# ---------------------------------------------------------------------------
+
+def expand_palette_accordions(page) -> None:
+    """Expand every collapsed palette accordion section on the builder.
+
+    The builder palette groups operations under ``dbc.Accordion``
+    sections.  ``always_open=True`` auto-expands only the *first* item;
+    the rest start ``collapsed`` (``display: none``).  A palette button
+    in a non-first category (e.g. ``GaussianBlur`` under Enhancer) is
+    therefore present in the DOM but not *visible*, so a Playwright
+    ``hover`` / drag against it times out with "element is not visible".
+
+    Builder-canvas E2E modules call this from their ``_open_builder``
+    helper so palette buttons in any category are interactable.  The
+    accordion is plain Bootstrap collapse chrome — independent of
+    ``palette_dnd.js`` — so this works even in the asset-failure
+    resilience tests.
+    """
+    for header_text in ("Corrector", "Detector", "Enhancer", "Refiner", "Measure"):
+        header = page.locator(
+            f'button.accordion-button:has-text("{header_text}")'
+        ).first
+        if header.count() > 0:
+            try:
+                cls = header.get_attribute("class") or ""
+                if "collapsed" in cls:
+                    header.click()
+                    page.wait_for_timeout(150)
+            except Exception:  # pragma: no cover - best-effort
+                pass
+    page.wait_for_timeout(150)
+
+
+# ---------------------------------------------------------------------------
 # Browser context overrides for pytest-playwright
 # ---------------------------------------------------------------------------
 

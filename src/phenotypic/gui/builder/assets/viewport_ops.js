@@ -118,9 +118,26 @@
     /** Custom-event name emitted on a successful chain settle. */
     const SCROLL_TO_COMPLETE_EVENT = "phenotypic:scroll-to-complete";
 
+    /** Custom-event name emitted once ``leafFirstDagre`` settles, so tests
+     *  can ``page.waitForEvent`` on a relayout completing (spec §5.5). */
+    const RELAYOUT_COMPLETE_EVENT = "phenotypic:relayout-complete";
+
     // -----------------------------------------------------------------
     // Helpers.
     // -----------------------------------------------------------------
+    /** Dispatch a ``CustomEvent`` on ``document`` so tests can
+     *  ``page.waitForEvent`` on viewport-op lifecycle signals (spec §5.5).
+     *  Wrapped in try/catch for older browsers that lack the
+     *  ``CustomEvent`` constructor — the events are observe-only, so a
+     *  failed dispatch is silently ignored. */
+    function dispatchDomEvent(name, detail) {
+        try {
+            document.dispatchEvent(new CustomEvent(name, { detail: detail || {} }));
+        } catch (err) {
+            // No CustomEvent constructor — ignore.
+        }
+    }
+
     /** Resolve the live cytoscape instance via the shared accessor
      *  ``window.phenoWhenCyReady`` exposed by ``builder.js`` (with a
      *  defensive inline fallback for the cold-load case where this asset
@@ -493,13 +510,7 @@
 
         // Emit the completion event so tests can ``page.waitForEvent``
         // on it (spec §5.5 custom DOM events).
-        try {
-            document.dispatchEvent(
-                new CustomEvent("phenotypic:relayout-complete", { detail: {} })
-            );
-        } catch (err) {
-            // Older browsers without CustomEvent constructor — ignore.
-        }
+        dispatchDomEvent(RELAYOUT_COMPLETE_EVENT);
     }
 
     // -----------------------------------------------------------------
@@ -806,34 +817,24 @@
                 });
             }
         } catch (err) {
-            // Aborted or timed out — fall through to scrim removal +
-            // emit no completion event.  The toast queue already
-            // surfaced the user-facing message; nothing else to do.
+            // Aborted or timed out — the ``finally`` below still removes
+            // the scrim, but we ``return`` early so NO completion event
+            // fires.  The toast queue already surfaced the user-facing
+            // message; nothing else to do.
+            return;
+        } finally {
+            // (5) Dismiss the scrim on BOTH the success and abort paths —
+            // a pointer-blocking overlay must never outlive the chain.
             try {
                 scrim.remove();
             } catch (cleanupErr) {
                 // Scrim already detached — ignore.
             }
-            return;
         }
 
-        // (5) Dismiss the scrim.
-        try {
-            scrim.remove();
-        } catch (err) {
-            // Scrim already detached — ignore.
-        }
-
-        // (6) Emit the completion event.
-        try {
-            document.dispatchEvent(
-                new CustomEvent(SCROLL_TO_COMPLETE_EVENT, {
-                    detail: { block_id: blockId },
-                })
-            );
-        } catch (err) {
-            // Older browsers — ignore.
-        }
+        // (6) Emit the completion event — reached only on the success
+        // path (the abort path ``return``s out of the try above).
+        dispatchDomEvent(SCROLL_TO_COMPLETE_EVENT, { block_id: blockId });
     }
 
     /** Atomic breadcrumb replacement (spec §5.6 ``drill_to_scope`` row).
@@ -877,13 +878,7 @@
     // sentinel.  That function dispatches the DOM event our
     // ``waitForLayoutstopOrAbort`` helper races against.
     function phenotypicScrollToAbortedRelay() {
-        try {
-            document.dispatchEvent(
-                new CustomEvent(SCROLL_TO_ABORTED_EVENT, { detail: {} })
-            );
-        } catch (err) {
-            // Older browsers without CustomEvent constructor — ignore.
-        }
+        dispatchDomEvent(SCROLL_TO_ABORTED_EVENT);
     }
 
     // -----------------------------------------------------------------
@@ -937,12 +932,15 @@
             try {
                 leafFirstDagre(_cy);
             } finally {
-                // Defer clearing the guard so trailing synchronous
-                // ``layoutstop`` events from our own sub-passes stay
-                // suppressed.
-                setTimeout(function () {
-                    suppressAutoRelayout = false;
-                }, 0);
+                // ``leafFirstDagre`` is fully synchronous — every
+                // per-scope sub-pass runs with ``animate: false`` and
+                // ``cy.fit()`` emits no ``layoutstop`` — so by the time
+                // it returns, every ``layoutstop`` it could emit has
+                // already fired and been suppressed.  Clearing the guard
+                // synchronously (rather than via ``setTimeout(0)``)
+                // leaves no async window in which a straggler could
+                // schedule a re-entrant relayout.
+                suppressAutoRelayout = false;
             }
         }
         function scheduleAutoRelayout() {

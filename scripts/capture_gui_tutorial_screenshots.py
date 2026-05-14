@@ -321,6 +321,18 @@ def _new_page(context, base_url: str, path: str = "/"):
     return page
 
 
+def _emit_empty_state_shot(
+    context, base_url: str, path: str, workflow: str, name: str, *, log: str
+) -> None:
+    """Open ``path``, save a single screenshot, close.  The shared shape of
+    the empty-state hub captures (setup landing, results viewer, analysis
+    hand-off banner) which only need one shot of the page as-mounted."""
+    print(log)
+    page = _new_page(context, base_url, path)
+    _save(page, workflow, name)
+    page.close()
+
+
 # ---------------------------------------------------------------------------
 # DAG builder interaction helpers
 # ---------------------------------------------------------------------------
@@ -339,6 +351,19 @@ def _new_page(context, base_url: str, path: str = "/"):
 # below dispatch the *same payloads* the JS would emit — exercising the real
 # server-side dispatcher (``_dispatch_state_update``) and clientside layout
 # path, just without synthesising raw pointer events.
+
+
+def _new_builder_page(context, base_url: str):
+    """Open ``/builder/`` and block until the palette has mounted.
+
+    The shared opener for the DAG-builder capture helpers: a fresh page,
+    a wait on ``#palette`` (15s — the operation registry scan is slow on
+    a cold boot), then a short settle for the canvas's first dagre pass.
+    """
+    page = _new_page(context, base_url, "/builder/")
+    page.wait_for_selector("#palette", timeout=15_000)
+    page.wait_for_timeout(500)
+    return page
 
 
 def _relayout_canvas(page) -> None:
@@ -455,10 +480,10 @@ def _tap_block(page, block_id: str) -> None:
 # --- setup --------------------------------------------------------------
 
 def _capture_setup(context, base_url: str) -> None:
-    print("[shot] workflow=setup")
-    page = _new_page(context, base_url, "/")
-    _save(page, "setup", "01_landing_page.png")
-    page.close()
+    _emit_empty_state_shot(
+        context, base_url, "/", "setup", "01_landing_page.png",
+        log="[shot] workflow=setup",
+    )
 
 
 # --- file explorer ------------------------------------------------------
@@ -578,10 +603,10 @@ def _capture_view_results(context, base_url: str) -> None:
     is not wired), so we boot the standalone viewer pointed at the real
     CLI output for the populated screenshots.
     """
-    print("[shot] workflow=view_results (empty state via hub)")
-    page = _new_page(context, base_url, "/results/")
-    _save(page, "view_results", "01_viewer_empty.png")
-    page.close()
+    _emit_empty_state_shot(
+        context, base_url, "/results/", "view_results", "01_viewer_empty.png",
+        log="[shot] workflow=view_results (empty state via hub)",
+    )
 
 
 def _capture_pick_points(context, base_url: str) -> None:
@@ -812,9 +837,7 @@ def _capture_aux_ports(context, base_url: str) -> None:
     emit — see the "DAG builder interaction helpers" section above.
     """
     print("[shot] workflow=aux_ports")
-    page = _new_page(context, base_url, "/builder/")
-    page.wait_for_selector("#palette", timeout=15_000)
-    page.wait_for_timeout(500)
+    page = _new_builder_page(context, base_url)
 
     # 1) Empty canvas — same starting point as the Build Pipeline tutorial.
     _relayout_canvas(page)
@@ -1031,9 +1054,7 @@ def _capture_aux_wire_in_dag(context, base_url: str) -> None:
        badge clears.
     """
     print("[shot] workflow=aux-wire-in-dag")
-    page = _new_page(context, base_url, "/builder/")
-    page.wait_for_selector("#palette", timeout=15_000)
-    page.wait_for_timeout(500)
+    page = _new_builder_page(context, base_url)
     _expand_palette_accordions(page)
 
     # 1) Main ribbon + the consumer whose aux port we will feed.
@@ -1084,9 +1105,7 @@ def _capture_wire_pipeline_as_aux(context, base_url: str) -> None:
        its ``inoculum_detector`` port.
     """
     print("[shot] workflow=wire-pipeline-as-aux")
-    page = _new_page(context, base_url, "/builder/")
-    page.wait_for_selector("#palette", timeout=15_000)
-    page.wait_for_timeout(500)
+    page = _new_builder_page(context, base_url)
 
     # 1) Empty Pipeline container.  ``ImagePipeline`` is the container
     #    sentinel class (builder/_state.PIPELINE_CLASS_NAME).
@@ -1152,9 +1171,7 @@ def _capture_fix_validation_issues(context, base_url: str) -> None:
        clean.
     """
     print("[shot] workflow=fix-validation-issues")
-    page = _new_page(context, base_url, "/builder/")
-    page.wait_for_selector("#palette", timeout=15_000)
-    page.wait_for_timeout(500)
+    page = _new_builder_page(context, base_url)
     _expand_palette_accordions(page)
 
     # 1) Clean ribbon, then a stranded orphan block (raw block_create,
@@ -1203,10 +1220,10 @@ def _capture_analysis(context, base_url: str) -> None:
     a bound ``output_root`` and the unified hub does not preconfigure
     the sidebar selection at startup.
     """
-    print("[shot] workflow=analysis (empty state via hub)")
-    page = _new_page(context, base_url, "/analysis/")
-    _save(page, "analysis", "01_analysis_empty.png")
-    page.close()
+    _emit_empty_state_shot(
+        context, base_url, "/analysis/", "analysis", "01_analysis_empty.png",
+        log="[shot] workflow=analysis (empty state via hub)",
+    )
 
 
 def capture_standalone_analysis_screenshots(headed: bool = False) -> None:

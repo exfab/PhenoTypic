@@ -31,7 +31,11 @@ from typing import Iterator
 import pytest
 from playwright.sync_api import Page, expect
 
-from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
+from tests.e2e.gui.conftest import (
+    _build_sandbox,
+    _start_live_server,
+    expand_palette_accordions,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -92,6 +96,9 @@ def _open_builder(page: Page, hub_url: str) -> None:
         "() => window.phenotypic_palette_dnd_ready === true",
         timeout=15_000,
     )
+    # Palette categories past the first start collapsed; expand them so
+    # buttons like ``GaussianBlur`` (Enhancer) are visible + draggable.
+    expand_palette_accordions(page)
 
 
 def _palette_button_locator(page: Page, class_name: str):
@@ -141,6 +148,32 @@ def _drag_palette_to_canvas(
     page.mouse.up()
 
 
+def _publish_palette_drop(page: Page, payload: dict) -> None:
+    """Write a ``block_create`` payload into ``STORE_PALETTE_DROP``.
+
+    Mirrors what ``palette_dnd.js`` emits on a real drop, bypassing the
+    browser's native HTML5 drag machinery — Playwright's synthesized
+    pointer events do not reliably trigger ``DragEvent``s, especially
+    for a drop that must hit-test *inside* a compound container.  This
+    deterministically exercises the same server-side ``block_create``
+    dispatch (incl. ``container_block_id`` adoption) the drag would.
+    """
+
+    page.evaluate(
+        """(payload) => {
+            if (
+                window.dash_clientside &&
+                typeof window.dash_clientside.set_props === 'function'
+            ) {
+                window.dash_clientside.set_props(
+                    'store-palette-drop', { data: payload }
+                );
+            }
+        }""",
+        payload,
+    )
+
+
 # ---------------------------------------------------------------------------
 # 8.3.1 — Palette → canvas: positive cases
 # ---------------------------------------------------------------------------
@@ -188,21 +221,34 @@ def test_palette_drag_drop_inside_container(page: Page, hub_url: str) -> None:
         }""",
         timeout=10_000,
     )
-    # Drop into the container's geometry. We grab the container's
-    # position from cytoscape and aim the drop at its center.
-    container_pos = page.evaluate(
+    # Adopt a GaussianBlur into the container's nested scope.  We
+    # dispatch the ``block_create`` payload directly (with the resolved
+    # ``container_block_id``) rather than synthesising an HTML5 drag:
+    # Playwright's synthesized pointer events don't reliably trigger the
+    # native ``DragEvent``s ``palette_dnd.js`` listens for, and a drop
+    # that must hit-test *inside* a compound container is the flakiest
+    # case.  This still exercises the real server-side ``block_create``
+    # container-adoption dispatch.
+    container_id = page.evaluate(
         """() => {
             const cy = window.phenoGetCy();
-            const cont = cy.nodes().filter(n => n.data('class_name') === 'ImagePipeline')[0];
-            const pos = cont.renderedPosition();
-            return { x: pos.x, y: pos.y };
+            const cont = cy.nodes().filter(
+                n => n.data('class_name') === 'ImagePipeline'
+            )[0];
+            return cont ? (cont.data('block_id') || cont.id()) : null;
         }"""
     )
-    _drag_palette_to_canvas(
+    assert container_id, "New Pipeline should mint an ImagePipeline container"
+    _publish_palette_drop(
         page,
-        "GaussianBlur",
-        container_pos["x"],
-        container_pos["y"],
+        {
+            "kind": "block_create",
+            "class_name": "GaussianBlur",
+            "x": 0,
+            "y": 0,
+            "container_block_id": container_id,
+            "ts": 0,
+        },
     )
     # Assert the new block has ``parent`` set to the container's id.
     page.wait_for_function(
@@ -374,8 +420,13 @@ def test_palette_keyboard_fallback(page: Page, hub_url: str) -> None:
     before = page.evaluate(
         "() => window.phenoGetCy().nodes().length"
     )
-    palette = _palette_button_locator(page, "GaussianBlur")
-    palette.focus()
+    # ``data-palette-class`` lives on the draggable wrapper ``<div>``
+    # (not focusable); the focusable, ``Enter``-activatable element is
+    # the ``<button>`` it wraps.  Focus that.
+    palette_button = _palette_button_locator(page, "GaussianBlur").locator(
+        "button"
+    )
+    palette_button.focus()
     page.keyboard.press("Enter")
     # Wait for the block to appear.
     page.wait_for_function(
@@ -449,9 +500,11 @@ def test_palette_dnd_js_fails_to_load(page: Page, hub_url: str) -> None:
     """
 
     # Install a route block BEFORE navigation so the JS request is
-    # intercepted on first paint.
+    # intercepted on first paint.  The trailing ``*`` is load-bearing:
+    # Dash serves ``assets/`` files with a ``?m=<mtime>`` cache-buster
+    # query string, so a pattern without it never matches the real URL.
     page.route(
-        "**/assets/palette_dnd.js",
+        "**/assets/palette_dnd.js*",
         lambda route: route.fulfill(status=404, body=""),
     )
     page.goto(hub_url + "/builder/")

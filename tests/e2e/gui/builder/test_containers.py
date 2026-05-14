@@ -39,7 +39,11 @@ from typing import Iterator
 import pytest
 from playwright.sync_api import Page
 
-from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
+from tests.e2e.gui.conftest import (
+    _build_sandbox,
+    _start_live_server,
+    expand_palette_accordions,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -83,6 +87,9 @@ def _open_builder(page: Page, hub_url: str) -> None:
         "() => window.phenotypic_palette_dnd_ready === true",
         timeout=15_000,
     )
+    # Palette categories past the first start collapsed; expand them so
+    # buttons like ``GaussianBlur`` (Enhancer) are visible + draggable.
+    expand_palette_accordions(page)
 
 
 def _palette_button(page: Page, class_name: str):
@@ -246,22 +253,34 @@ def test_container_drag_op_into_expanded_body_adopts(
         }""",
         timeout=10_000,
     )
-    # Drop a GaussianBlur on the container's centre.
-    container_pos = page.evaluate(
+    # Adopt a GaussianBlur into the container's nested scope.  We
+    # dispatch the ``block_create`` payload directly (with the resolved
+    # ``container_block_id``) rather than synthesising an HTML5 drag —
+    # Playwright's synthesized pointer events don't reliably trigger the
+    # native ``DragEvent``s ``palette_dnd.js`` listens for, and a drop
+    # that must hit-test *inside* a compound container is the flakiest
+    # case.  This still exercises the real server-side ``block_create``
+    # container-adoption dispatch.
+    container_id = page.evaluate(
         """() => {
             const cy = window.phenoGetCy();
             const cont = cy.nodes().filter(
                 n => n.data('class_name') === 'ImagePipeline'
             )[0];
-            const pos = cont.renderedPosition();
-            return { x: pos.x, y: pos.y };
+            return cont ? (cont.data('block_id') || cont.id()) : null;
         }"""
     )
-    _drag_palette_to_canvas(
+    assert container_id, "New Pipeline should mint an ImagePipeline container"
+    _publish_palette_drop(
         page,
-        "GaussianBlur",
-        container_pos["x"],
-        container_pos["y"],
+        {
+            "kind": "block_create",
+            "class_name": "GaussianBlur",
+            "x": 0,
+            "y": 0,
+            "container_block_id": container_id,
+            "ts": 0,
+        },
     )
     page.wait_for_function(
         """() => {

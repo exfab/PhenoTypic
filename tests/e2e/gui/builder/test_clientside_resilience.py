@@ -70,9 +70,11 @@ def test_clientside_wire_drawing_js_fails_to_load(
     """
 
     # Install a route block BEFORE navigation so the JS request is
-    # intercepted on first paint.
+    # intercepted on first paint.  The trailing ``*`` is load-bearing:
+    # Dash serves ``assets/`` files with a ``?m=<mtime>`` cache-buster
+    # query string, so a pattern without it never matches the real URL.
     page.route(
-        "**/assets/wire_drawing.js",
+        "**/assets/wire_drawing.js*",
         lambda route: route.fulfill(status=404, body=""),
     )
     page.goto(hub_url + "/builder/")
