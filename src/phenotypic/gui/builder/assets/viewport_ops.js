@@ -960,6 +960,111 @@
         // one pass now to seed the dagre layout + port/issue placement.
         runLeafFirstDagreGuarded();
 
+        // -------------------------------------------------------------
+        // dash-cytoscape #106 workaround — canvas-elements bridge.
+        // -------------------------------------------------------------
+        // dash-cytoscape's ``elements``-prop diff drops edges on a
+        // wholly-new list (plotly/dash-cytoscape#106).  Mutation
+        // callbacks therefore never write the ``elements`` prop; the
+        // server callback ``mirror_canvas_elements_to_bridge`` instead
+        // writes the JSON-serialised elements list into the hidden
+        // ``#canvas-elements-bridge`` element.  We watch that element
+        // and reconcile the live cytoscape graph ourselves with an
+        // explicit ``cy.remove`` / ``cy.add`` / data-update diff.
+        //
+        // A ``MutationObserver`` (not a clientside Dash callback) is the
+        // consumer because a clientside ``Input(store)`` callback
+        // silently drops rapid successive updates, whereas
+        // ``MutationObserver`` delivers every DOM mutation.  The
+        // ``cy.add`` / ``cy.remove`` calls fire the ``add`` / ``remove``
+        // events the auto-relayout above already listens for, so layout
+        // + ``cy.fit`` follow structural changes without an explicit
+        // fit here (attribute-only updates emit no add/remove, so the
+        // user's pan/zoom is preserved).
+        function reconcileCanvasElements(cy, pending) {
+            const wantById = {};
+            pending.forEach(function (el) {
+                wantById[el.data.id] = el;
+            });
+            cy.batch(function () {
+                // Remove elements no longer wanted.  Removing a node
+                // also drops its incident edges (cytoscape); fine —
+                // build_canvas_elements_dag is internally consistent.
+                cy.elements().forEach(function (el) {
+                    if (!wantById.hasOwnProperty(el.id())) {
+                        el.remove();
+                    }
+                });
+                // Add elements not present yet.  build_canvas_elements_dag
+                // orders nodes before edges, so cy.add() sees each edge's
+                // endpoints already added.
+                const toAdd = pending.filter(function (el) {
+                    return cy.getElementById(el.data.id).length === 0;
+                });
+                if (toAdd.length) {
+                    cy.add(toAdd);
+                }
+                // Re-sync mutable data + classes on surviving elements so
+                // attribute-only updates (e.g. a dag-wire--main /
+                // aux-port--wired class flip) land without a remove/re-add
+                // that would reset positions.
+                pending.forEach(function (el) {
+                    const live = cy.getElementById(el.data.id);
+                    if (!live.length) {
+                        return;
+                    }
+                    if (typeof el.classes === "string") {
+                        live.classes(el.classes);
+                    }
+                    Object.keys(el.data).forEach(function (key) {
+                        // id / source / target are immutable post-creation.
+                        if (
+                            key === "id" ||
+                            key === "source" ||
+                            key === "target"
+                        ) {
+                            return;
+                        }
+                        live.data(key, el.data[key]);
+                    });
+                });
+            });
+        }
+
+        function syncCanvasFromBridge() {
+            const bridge = document.getElementById("canvas-elements-bridge");
+            if (!bridge) return;
+            const text = bridge.textContent;
+            if (!text) return;
+            let pending;
+            try {
+                pending = JSON.parse(text);
+            } catch (err) {
+                return;
+            }
+            if (!Array.isArray(pending)) return;
+            const cy = window.phenoGetCy && window.phenoGetCy();
+            if (!cy) return;
+            try {
+                reconcileCanvasElements(cy, pending);
+            } catch (err) {
+                // cy may be mid-mutation / disposed; the next bridge
+                // write reconciles.
+            }
+        }
+
+        const bridgeEl = document.getElementById("canvas-elements-bridge");
+        if (bridgeEl) {
+            new MutationObserver(syncCanvasFromBridge).observe(bridgeEl, {
+                childList: true,
+                characterData: true,
+                subtree: true,
+            });
+            // A mutation may have landed before this observer bound —
+            // reconcile once now so nothing is missed.
+            syncCanvasFromBridge();
+        }
+
         // Signal readiness — builder.js poller writes the missing-asset
         // list to STORE_ASSET_STATUS based on these sentinels.
         window.phenotypic_viewport_ops_ready = true;

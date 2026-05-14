@@ -4388,6 +4388,27 @@ def build_app_layout(
                 id=ids.STORE_EDGE_EVENT,
                 data=None,
             ),
+            # dash-cytoscape #106 workaround: every mutation callback
+            # publishes its freshly-rendered ``elements`` here instead of
+            # writing the canvas ``elements`` prop directly; a clientside
+            # callback then applies the list via ``cy.json({elements})``
+            # so dash-cytoscape's buggy ``elements``-prop diff never runs.
+            dcc.Store(
+                id=ids.STORE_PENDING_CANVAS_ELEMENTS,
+                data=None,
+            ),
+            # Bridge for the dash-cytoscape #106 workaround: the server
+            # callback ``mirror_canvas_elements_to_bridge`` writes the
+            # JSON-serialised elements list into this hidden element's
+            # ``children``; a MutationObserver in viewport_ops.js watches
+            # it and reconciles the live cytoscape graph.  A DOM element +
+            # MutationObserver is used instead of a clientside callback
+            # because a clientside Input(store) callback silently drops
+            # rapid successive updates.
+            html.Div(
+                id=ids.CANVAS_ELEMENTS_BRIDGE,
+                style={"display": "none"},
+            ),
         ]
     )
 

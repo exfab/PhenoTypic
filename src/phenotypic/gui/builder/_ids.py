@@ -125,6 +125,28 @@ STORE_PALETTE_DROP = "store-palette-drop"
 #: parallel store.
 STORE_EDGE_EVENT = "store-edge-event"
 
+#: ``dcc.Store`` holding the freshly-rendered cytoscape ``elements`` list
+#: a mutation callback wants drawn.  Every mutation callback publishes
+#: here instead of writing :data:`CANVAS_CYTOSCAPE` ``elements`` directly:
+#: dash-cytoscape's ``elements``-prop diff retains stale element state and,
+#: on a wholly-new list, re-adds edges before their endpoint nodes —
+#: silently dropping the edges (plotly/dash-cytoscape#106, still open).
+#: The server callback ``mirror_canvas_elements_to_bridge`` serialises
+#: this list into the :data:`CANVAS_ELEMENTS_BRIDGE` hidden element; a
+#: ``MutationObserver`` in ``viewport_ops.js`` then reconciles the live
+#: cytoscape graph with ``cy.add`` / ``cy.remove``.  The bridge is a DOM
+#: element rather than a clientside callback because a clientside
+#: ``Input(store)`` callback silently drops rapid successive updates,
+#: whereas server callbacks + ``MutationObserver`` both deliver every one.
+STORE_PENDING_CANVAS_ELEMENTS = "store-pending-canvas-elements"
+
+#: Hidden ``html.Div`` whose ``children`` carries the JSON-serialised
+#: cytoscape ``elements`` list.  ``mirror_canvas_elements_to_bridge``
+#: writes it; a ``MutationObserver`` in ``viewport_ops.js`` watches it
+#: and reconciles the cytoscape graph.  See
+#: :data:`STORE_PENDING_CANVAS_ELEMENTS`.
+CANVAS_ELEMENTS_BRIDGE = "canvas-elements-bridge"
+
 #: Toolbar button that re-runs the dagre layout pass + ``cy.fit()``.  Wired
 #: to the ``relayout`` payload in ``STORE_VIEWPORT_OP``; disabled by the
 #: ``asset_status_disables`` callback when ``viewport_ops.js`` or the
@@ -954,6 +976,8 @@ __all__ = [
     "edge_id",
     # DAG canvas wire + inspector additions
     "STORE_EDGE_EVENT",
+    "STORE_PENDING_CANVAS_ELEMENTS",
+    "CANVAS_ELEMENTS_BRIDGE",
     "INSPECTOR_WIRE_CARD",
     "INSPECTOR_AUX_SECTION",
     "BTN_INSPECTOR_DISCONNECT",

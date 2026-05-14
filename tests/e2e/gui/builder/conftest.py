@@ -80,8 +80,8 @@ def _builder_failure_diagnostics(request, page: Page):  # noqa: ANN001, ANN201
     if rep is None or not rep.failed:
         return
     print("\n========== builder-test failure diagnostics ==========")
-    print(f"--- browser console ({len(console)} msgs, last 60) ---")
-    for line in console[-60:]:
+    print(f"--- browser console ({len(console)} msgs, last 250) ---")
+    for line in console[-250:]:
         print(line)
     if "hub_url" in request.fixturenames:
         hub_url = request.getfixturevalue("hub_url")
