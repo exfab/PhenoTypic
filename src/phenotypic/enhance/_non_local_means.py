@@ -85,6 +85,7 @@ class NonLocalMeansDenoiser(_GATSupportMixin, ImageDenoiser):
             *,
             fast_mode: bool = False,
             sigma: float = 0.0,
+            use_gat: bool = False,
             **kwargs,
     ):
         """
@@ -101,9 +102,14 @@ class NonLocalMeansDenoiser(_GATSupportMixin, ImageDenoiser):
             sigma (float): Noise standard deviation. If provided (> 0),
                 improves patch weighting. Default: 0.0. Retargets to 1.0
                 when ``use_gat=True``.
-            **kwargs: Forwarded to :class:`_GATSupportMixin`.
+            use_gat (bool): Wrap denoising in the Generalized Anscombe
+                Transform for Poisson-Gaussian noise. Default False. See
+                :class:`phenotypic.tools_.mixin._GATSupportMixin`.
+            **kwargs: GAT tuning parameters forwarded to
+                :class:`_GATSupportMixin` (``gat_gain``, ``gat_mu``,
+                ``gat_read_sigma``, ``gat_scale_factor``).
         """
-        super().__init__(**kwargs)
+        super().__init__(use_gat=use_gat, **kwargs)
         self.patch_size = int(patch_size)
         self.search_dist = int(search_dist)
         self.h = float(h)

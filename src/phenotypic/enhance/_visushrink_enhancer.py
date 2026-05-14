@@ -85,6 +85,7 @@ class VisuShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
             wavelet_levels: int | None = None,
             clip: bool = True,
             rescale_sigma: bool = True,
+            use_gat: bool = False,
             **kwargs,
     ):
         """Initialize VisuShrink wavelet denoiser.
@@ -103,9 +104,14 @@ class VisuShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
             rescale_sigma (bool): skimage flag to rescale sigma to the wavelet
                 decomposition scale. Default True. Automatically set to False
                 when ``use_gat=True``.
-            **kwargs: Forwarded to :class:`_GATSupportMixin`.
+            use_gat (bool): Wrap denoising in the Generalized Anscombe
+                Transform for Poisson-Gaussian noise. Default False. See
+                :class:`phenotypic.tools_.mixin._GATSupportMixin`.
+            **kwargs: GAT tuning parameters forwarded to
+                :class:`_GATSupportMixin` (``gat_gain``, ``gat_mu``,
+                ``gat_read_sigma``, ``gat_scale_factor``).
         """
-        super().__init__(**kwargs)
+        super().__init__(use_gat=use_gat, **kwargs)
         self.sigma = sigma
         self.wavelet = wavelet
         self.mode = mode

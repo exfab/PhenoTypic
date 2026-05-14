@@ -90,6 +90,7 @@ class BayesShrinkCorrector(_GATSupportMixin, ImageCorrector):
         convert2ycbcr: bool = True,
         rescale_sigma: bool = True,
         clip: bool = True,
+        use_gat: bool = False,
         **kwargs,
     ):
         """Initialize BayesShrink adaptive corrector for all image components.
@@ -103,9 +104,15 @@ class BayesShrinkCorrector(_GATSupportMixin, ImageCorrector):
             convert2ycbcr (bool): Denoise RGB in YCbCr (default True).
             rescale_sigma (bool): skimage internal flag. Default True.
                 Auto-deferred during GAT.
-            **kwargs: Forwarded to :class:`_GATSupportMixin`.
+            use_gat (bool): Wrap gray and detect_mat denoising in the
+                Generalized Anscombe Transform for Poisson-Gaussian noise.
+                RGB is not transformed. Default False. See
+                :class:`phenotypic.tools_.mixin._GATSupportMixin`.
+            **kwargs: GAT tuning parameters forwarded to
+                :class:`_GATSupportMixin` (``gat_gain``, ``gat_mu``,
+                ``gat_read_sigma``, ``gat_scale_factor``).
         """
-        super().__init__(**kwargs)
+        super().__init__(use_gat=use_gat, **kwargs)
         self.sigma = sigma
         self.wavelet = wavelet
         self.mode = mode
