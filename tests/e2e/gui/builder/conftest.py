@@ -33,9 +33,70 @@ of a prior Dash callback:
 """
 from __future__ import annotations
 
+import tempfile
+from pathlib import Path
+
+import pytest
 from playwright.sync_api import Page
 
 from tests.e2e.gui.conftest import expand_palette_accordions
+
+
+# ---------------------------------------------------------------------------
+# TEMP DIAGNOSTIC (PR #95 cluster-2 E2E flake)
+# ---------------------------------------------------------------------------
+# The builder-canvas tests flake only in CI: a test's ``set_props`` publish
+# into ``store-edge-event`` / ``store-palette-drop`` doesn't take effect and
+# the post-publish ``wait_for_function`` times out. Static analysis can't pin
+# the race (it passes locally), so we need CI-side evidence. On any builder-
+# test failure this dumps (a) the browser console + page errors collected
+# during the test and (b) the tail of the GUI subprocess log
+# (``_start_live_server`` redirects its stdout+stderr there) — which carries
+# the ``fan_in_state_mutation`` trigger log. Remove this whole block once the
+# flake is root-caused and fixed.
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):  # noqa: ANN001, ANN201
+    """Stash each phase's report on the item so fixtures can read the outcome."""
+
+    outcome = yield
+    rep = outcome.get_result()
+    setattr(item, f"_rep_{rep.when}", rep)
+
+
+@pytest.fixture(autouse=True)
+def _builder_failure_diagnostics(request, page: Page):  # noqa: ANN001, ANN201
+    """On a builder-test failure, dump the browser console + GUI server log."""
+
+    console: list[str] = []
+    page.on(
+        "console",
+        lambda msg: console.append(f"[console:{msg.type}] {msg.text}"),
+    )
+    page.on("pageerror", lambda exc: console.append(f"[pageerror] {exc}"))
+    yield
+    rep = getattr(request.node, "_rep_call", None)
+    if rep is None or not rep.failed:
+        return
+    print("\n========== builder-test failure diagnostics ==========")
+    print(f"--- browser console ({len(console)} msgs, last 60) ---")
+    for line in console[-60:]:
+        print(line)
+    if "hub_url" in request.fixturenames:
+        hub_url = request.getfixturevalue("hub_url")
+        port = hub_url.rsplit(":", 1)[-1]
+        log_path = Path(tempfile.gettempdir()) / f"phenotypic-gui-e2e-{port}.log"
+        print(f"--- GUI server log: {log_path} (last 150 lines) ---")
+        if log_path.exists():
+            lines = log_path.read_text(
+                encoding="utf-8", errors="replace"
+            ).splitlines()
+            for line in lines[-150:]:
+                print(line)
+        else:
+            print("(log file not found)")
+    print("======================================================")
 
 
 def _open_builder(page: Page, hub_url: str) -> None:
@@ -141,6 +202,12 @@ def _publish_edge_event(page: Page, payload: dict) -> None:
                     + 'STORE_EDGE_EVENT'
                 );
             }
+            // TEMP DIAGNOSTIC (PR #95 cluster-2 flake): mark the publish in
+            // the browser console so the failure-diagnostics fixture can
+            // correlate it against the server-side fan_in trigger log.
+            console.log(
+                '[e2e] publish store-edge-event ' + JSON.stringify(payload)
+            );
             window.dash_clientside.set_props(
                 'store-edge-event', { data: payload }
             );
@@ -170,6 +237,12 @@ def _publish_palette_drop(page: Page, payload: dict) -> None:
                     + 'STORE_PALETTE_DROP'
                 );
             }
+            // TEMP DIAGNOSTIC (PR #95 cluster-2 flake): mark the publish in
+            // the browser console so the failure-diagnostics fixture can
+            // correlate it against the server-side fan_in trigger log.
+            console.log(
+                '[e2e] publish store-palette-drop ' + JSON.stringify(payload)
+            );
             window.dash_clientside.set_props(
                 'store-palette-drop', { data: payload }
             );

@@ -2299,6 +2299,20 @@ def register_callbacks(app: dash.Dash) -> None:
         See module docstring for the dispatch table.
         """
 
+        # TEMP DIAGNOSTIC (PR #95 cluster-2 E2E flake): log every invocation's
+        # trigger + store payloads so the CI GUI server log reveals whether a
+        # test's ``set_props`` publish reached this callback and with what
+        # ``triggered_id`` (coalescing with the ``elements`` self-Input is the
+        # leading hypothesis). Remove once the builder-canvas flake is fixed.
+        logger.warning(
+            "fan_in_state_mutation: triggered_id=%r all_triggered=%r "
+            "palette_drop=%r edge_event=%r",
+            ctx.triggered_id,
+            [t.get("prop_id") for t in (ctx.triggered or [])],
+            palette_drop,
+            edge_event,
+        )
+
         if state_data is None or ctx.triggered_id is None:
             return _NOOP_FAN_IN
 
