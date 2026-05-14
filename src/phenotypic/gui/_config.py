@@ -288,8 +288,14 @@ DASHBOARD_FILENAME: str = DASHBOARD_HTML
 #: Full Flask route for the sandbox API viewer output-root handoff endpoint.
 SANDBOX_API_VIEWER_OUTPUT_ROOT: str = f"{SANDBOX_API_PREFIX}/viewer/output-root"
 
-#: URL prefix for the builder's DZI tile blueprint.
-BUILDER_TILES_PREFIX: str = f"{MOUNT_BUILDER}tiles"
+#: URL prefix where the builder's DZI tile blueprint mounts on the Flask
+#: app — the path the Flask server sees AFTER the hub
+#: :class:`DispatcherMiddleware` strips the mount prefix. The browser-
+#: facing URL is ``<requests_pathname_prefix>tiles/...``; standalone
+#: launches collapse ``requests_pathname_prefix`` to ``/``, hub mode
+#: prepends ``/builder/``. Mirrors :data:`VIEWER_TILES_PREFIX` so both
+#: tile blueprints follow the same routing convention.
+BUILDER_TILES_PREFIX: str = "/tiles"
 
 #: URL prefix for the results-viewer's DZI tile blueprint. Distinct from
 #: ``BUILDER_TILES_PREFIX`` because the viewer's tile cache and route
