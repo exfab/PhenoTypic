@@ -2249,8 +2249,16 @@ def register_callbacks(app: dash.Dash) -> None:
         Input({"type": "breadcrumb-link", "depth": ALL}, "n_clicks"),
         # delete
         Input(ids.BTN_DELETE_NODE, "n_clicks"),
-        # reorder via canvas elements
-        Input(ids.CANVAS_CYTOSCAPE, "elements"),
+        # NB: ``Input(CANVAS_CYTOSCAPE, "elements")`` was deliberately
+        # removed. The DAG canvas is driven by the
+        # ``CANVAS_ELEMENTS_BRIDGE`` + MutationObserver path (see section
+        # 2a-0); dash-cytoscape still reports ``elements`` back up when
+        # that observer's ``cy.add`` / ``cy.remove`` mutates the graph,
+        # and re-triggering ``fan_in`` from that report made Dash
+        # supersede (drop) the in-flight mutation invocation's
+        # ``CANVAS_ELEMENTS_BRIDGE`` write — silently losing edges. The
+        # branch it fed (``_maybe_reorder_from_elements``) is a no-op for
+        # DAG state anyway.
         # parameter edits (one input per widget kind)
         Input({"type": "param-bool", "prefix": ALL, "name": ALL}, "value"),
         Input({"type": "param-num", "prefix": ALL, "name": ALL}, "n_blur"),
@@ -2286,7 +2294,6 @@ def register_callbacks(app: dash.Dash) -> None:
         _drill_out_clicks: Optional[int],
         _crumb_clicks: List[int],
         _delete_clicks: Optional[int],
-        elements: Optional[List[Dict[str, Any]]],
         bool_vals: List[Any],
         _num_blurs: List[Any],
         _str_blurs: List[Any],
@@ -2501,7 +2508,10 @@ def register_callbacks(app: dash.Dash) -> None:
                     state_data, "add_pipeline", {}
                 )
             elif triggered == ids.CANVAS_CYTOSCAPE:
-                # Disambiguate tap (selection) vs elements (reorder).
+                # Only ``tapNodeData`` (node selection) feeds this branch.
+                # ``Input(CANVAS_CYTOSCAPE, "elements")`` was removed — see
+                # the decorator comment — so the elements-driven reorder
+                # path is gone (it was a no-op for DAG state anyway).
                 trigger_prop = ctx.triggered[0]["prop_id"].split(".")[-1]
                 if trigger_prop == "tapNodeData":
                     if not tap_node_data:
@@ -2517,12 +2527,6 @@ def register_callbacks(app: dash.Dash) -> None:
                         "select_node",
                         {"node_id": tapped_id},
                     )
-                elif trigger_prop == "elements":
-                    new_state_dict = _maybe_reorder_from_elements(
-                        state_data, elements
-                    )
-                    if new_state_dict is state_data:
-                        return _NOOP_FAN_IN
                 else:
                     return _NOOP_FAN_IN
             elif triggered == ids.BTN_DRILL_IN:
@@ -5529,50 +5533,6 @@ def _pipeline_uses_grid(pipeline: Any, grid_op_cls: type) -> bool:
                 if _pipeline_uses_grid(op, grid_op_cls):
                     return True
     return False
-
-
-def _maybe_reorder_from_elements(
-    state_data: Dict[str, Any], elements: Optional[List[Dict[str, Any]]]
-) -> Dict[str, Any]:
-    """Compute a reorder mutation from a cytoscape ``elements`` payload.
-
-    Returns *state_data* unchanged when no positional change is detectable;
-    otherwise returns a new state dict with the current scope's nodes
-    re-ordered to match the visual left-to-right sequence.
-    """
-
-    if not elements:
-        return state_data
-
-    # DAG canvas drags don't imply a linear reorder — the graph order is
-    # implicit in the edges, not in left-to-right layout. Drag positions
-    # are ephemeral (spec §4.7) so reordering would corrupt the DAG.
-    if _is_dag_state_dict(state_data):
-        return state_data
-
-    # Filter to node entries with positions.
-    node_entries = [
-        e for e in elements if "data" in e and "source" not in e.get("data", {})
-    ]
-    positioned = [e for e in node_entries if "position" in e]
-    if len(positioned) < 2:
-        return state_data
-
-    positioned.sort(key=lambda e: e["position"].get("x", 0.0))
-    new_order = [e["data"]["id"] for e in positioned]
-
-    breadcrumb = list(state_data.get("breadcrumb", []) or [])
-    scope = _scope_at_breadcrumb(state_data, breadcrumb)
-    existing_order = [n["node_id"] for n in scope["nodes"]]
-    if new_order == existing_order:
-        return state_data
-
-    # Only reorder if the *set* matches — guards against transient cytoscape
-    # element pruning.
-    if set(new_order) != set(existing_order):
-        return state_data
-
-    return _dispatch_state_update(state_data, "reorder", {"order": new_order})
 
 
 def _handle_param_edit(
