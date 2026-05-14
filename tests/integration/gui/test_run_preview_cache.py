@@ -21,10 +21,17 @@ import pandas as pd
 from phenotypic.data._synthetic_data import load_synth_yeast_plate
 from phenotypic.gui.builder._callbacks import _bake_preview_cache
 from phenotypic.gui.builder._session import IntermediatesCache, PreviewRenderError
+
+# The public ``BuilderScope`` / ``BuilderState`` names are permanent aliases
+# for the DAG schema.  The legacy-path tests below exercise
+# ``_bake_preview_cache_legacy``, which still walks the linear-list model, so
+# they bind the ``_Legacy*`` types directly (same pattern as
+# ``test_doc_section.py`` / ``test_state_dataclasses.py``).  ``to_pipeline``
+# already operates on the legacy scope.
 from phenotypic.gui.builder._state import (
-    BuilderScope,
-    BuilderState,
-    StepNode,
+    _LegacyBuilderScope as BuilderScope,
+    _LegacyBuilderState as BuilderState,
+    _LegacyStepNode as StepNode,
     to_pipeline,
 )
 
