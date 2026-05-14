@@ -505,7 +505,7 @@ def _capture_pick_points(context, base_url: str) -> None:
     page.evaluate(
         """
         () => {
-            const cy = window.cy || (window._cy_instances && window._cy_instances[0]);
+            const cy = window.phenoGetCy && window.phenoGetCy();
             if (!cy) return;
             const nodes = cy.nodes(`[label *= "ManualSelector"], [class_name = "ManualSelector"]`);
             if (nodes.length > 0) {
