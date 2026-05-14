@@ -518,6 +518,15 @@ def _capture_pick_points(context, base_url: str) -> None:
     page.wait_for_timeout(800)
     _save(page, "pick_points", "03_param_form.png")
 
+    # Load the synthetic plate so Run preview has an image to apply the
+    # pipeline against. Without an image, OtsuDetector's intermediate is
+    # never cached and the picker modal opens against an empty OSD
+    # canvas (timeout on ``[data-testid="point-picker-osd-canvas"]``).
+    synth_btn = page.locator("#btn-use-synthetic")
+    if synth_btn.count() > 0:
+        synth_btn.click()
+        page.wait_for_timeout(800)
+
     # Run preview once so OtsuDetector caches its intermediate. The
     # picker modal needs the predecessor cache to enable the
     # "Input to this op" radio option.
