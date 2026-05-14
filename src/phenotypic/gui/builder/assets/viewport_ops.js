@@ -965,22 +965,26 @@
         // -------------------------------------------------------------
         // dash-cytoscape's ``elements``-prop diff drops edges on a
         // wholly-new list (plotly/dash-cytoscape#106).  Mutation
-        // callbacks therefore never write the ``elements`` prop; the
-        // server callback ``mirror_canvas_elements_to_bridge`` instead
-        // writes the JSON-serialised elements list into the hidden
-        // ``#canvas-elements-bridge`` element.  We watch that element
-        // and reconcile the live cytoscape graph ourselves with an
-        // explicit ``cy.remove`` / ``cy.add`` / data-update diff.
+        // callbacks therefore never write the ``elements`` prop; each
+        // one writes the JSON-serialised elements list straight into the
+        // hidden ``#canvas-elements-bridge`` element's text content.  We
+        // watch that element and reconcile the live cytoscape graph
+        // ourselves with an explicit ``cy.remove`` / ``cy.add`` /
+        // data-update diff.
         //
-        // A ``MutationObserver`` (not a clientside Dash callback) is the
-        // consumer because a clientside ``Input(store)`` callback
-        // silently drops rapid successive updates, whereas
-        // ``MutationObserver`` delivers every DOM mutation.  The
-        // ``cy.add`` / ``cy.remove`` calls fire the ``add`` / ``remove``
-        // events the auto-relayout above already listens for, so layout
-        // + ``cy.fit`` follow structural changes without an explicit
-        // fit here (attribute-only updates emit no add/remove, so the
-        // user's pan/zoom is preserved).
+        // A ``MutationObserver`` (not a Dash callback) is the consumer,
+        // and the mutation callbacks write the DOM element directly
+        // (not via an intermediate ``dcc.Store`` + a downstream
+        // callback), because dash-renderer coalesces rapid store-update
+        // -> downstream-callback chains and drops updates — verified in
+        // CI for both a clientside and a server downstream callback.
+        // The mutation callbacks themselves fire for every trigger and
+        // ``MutationObserver`` delivers every DOM mutation, so this path
+        // loses nothing.  The ``cy.add`` / ``cy.remove`` calls fire the
+        // ``add`` / ``remove`` events the auto-relayout above already
+        // listens for, so layout + ``cy.fit`` follow structural changes
+        // without an explicit fit here (attribute-only updates emit no
+        // add/remove, so the user's pan/zoom is preserved).
         function reconcileCanvasElements(cy, pending) {
             const wantById = {};
             pending.forEach(function (el) {

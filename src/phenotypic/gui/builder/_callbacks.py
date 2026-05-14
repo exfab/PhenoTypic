@@ -2066,7 +2066,7 @@ def _render_tree_body(
     )
 
 
-def _render_views(state: BuilderState) -> Tuple[Any, List[dict], Any]:
+def _render_views(state: BuilderState) -> Tuple[Any, str, Any]:
     """Re-render breadcrumb, canvas, and inspector for a given state.
 
     Args:
@@ -2078,15 +2078,23 @@ def _render_views(state: BuilderState) -> Tuple[Any, List[dict], Any]:
             migration-test suite.
 
     Returns:
-        Tuple ``(breadcrumb_children, canvas_elements, inspector)``.
-        ``canvas_elements`` is the raw cytoscape elements list — callers
-        wire it to
-        ``Output(ids.CANVAS_CYTOSCAPE, "elements", allow_duplicate=True)``
-        so dash-cytoscape applies the diff against the live cytoscape.js
-        instance (mounted once by :func:`build_canvas_section`). The
-        breadcrumb callback target is the existing nav's ``children``
-        property, so returning a full nav here would nest the breadcrumb
-        inside itself on every update.
+        Tuple ``(breadcrumb_children, canvas_elements_json, inspector)``.
+        ``canvas_elements_json`` is the cytoscape elements list
+        **JSON-serialised to a string** — callers wire it to
+        ``Output(ids.CANVAS_ELEMENTS_BRIDGE, "children",
+        allow_duplicate=True)``.  A ``MutationObserver`` in
+        ``viewport_ops.js`` watches that hidden element and reconciles
+        the live cytoscape.js graph (mounted once by
+        :func:`build_canvas_section`).  The ``CANVAS_CYTOSCAPE``
+        ``elements`` prop is never written by a callback —
+        dash-cytoscape's diff drops edges on a wholly-new list
+        (plotly/dash-cytoscape#106) — and the bridge is a DOM element
+        rather than a ``dcc.Store`` because dash-renderer coalesces
+        rapid store-update -> downstream-callback chains and drops
+        updates, whereas ``MutationObserver`` delivers every DOM
+        mutation.  The breadcrumb callback target is the existing nav's
+        ``children`` property, so returning a full nav here would nest
+        the breadcrumb inside itself on every update.
     """
 
     registry = _registry()
@@ -2128,12 +2136,14 @@ def _render_views(state: BuilderState) -> Tuple[Any, List[dict], Any]:
         )
     inspector = build_inspector(state, registry)
     breadcrumb = build_breadcrumb(state).children
-    return breadcrumb, canvas_elements, inspector
+    # JSON-serialise here so every caller writes the string straight to
+    # ``CANVAS_ELEMENTS_BRIDGE.children`` — see this function's Returns.
+    return breadcrumb, json.dumps(canvas_elements), inspector
 
 
 def _state_replacement_payload(
     pipeline: Any,
-) -> Tuple[Dict[str, Any], Any, List[dict], Any]:
+) -> Tuple[Dict[str, Any], Any, str, Any]:
     """Build the re-render tuple for a freshly-loaded pipeline.
 
     Both the JSON-load and prefab-load callbacks blow away the current
@@ -2142,9 +2152,11 @@ def _state_replacement_payload(
     this helper centralises the conversion + view rendering.
 
     Returns:
-        Tuple ``(state_dict, breadcrumb, canvas_elements, inspector)``.
-        ``canvas_elements`` is the cytoscape elements list applied via
-        ``Output(ids.CANVAS_CYTOSCAPE, "elements")``.
+        Tuple ``(state_dict, breadcrumb, canvas_elements_json,
+        inspector)``.  ``canvas_elements_json`` is the JSON-serialised
+        cytoscape elements list applied via
+        ``Output(ids.CANVAS_ELEMENTS_BRIDGE, "children")`` — see
+        :func:`_render_views`.
     """
 
     scope = from_pipeline(pipeline)
@@ -2209,7 +2221,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data"),
         Output(ids.BREADCRUMB_CONTAINER, "children"),
-        Output(ids.STORE_PENDING_CANVAS_ELEMENTS, "data", allow_duplicate=True),
+        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children"),
         # Toast outputs surface mutation errors to the user; success path leaves
         # them as ``no_update`` so they don't clobber other callbacks' toasts.
@@ -2552,26 +2564,6 @@ def register_callbacks(app: dash.Dash) -> None:
             # --- Render ----------------------------------------------
             new_state = state_from_json(new_state_dict)
             breadcrumb, canvas_elements, inspector = _render_views(new_state)
-            # TEMP DIAGNOSTIC (PR #95 cluster-2 flake): log the rendered
-            # element counts so the CI server log shows definitively whether
-            # an edge_create dispatch produced an edge in the canvas elements
-            # (server side) vs. the edge never reaching cytoscape (client).
-            logger.warning(
-                "fan_in render: triggered=%r -> %d nodes, %d edges",
-                ctx.triggered_id,
-                sum(
-                    1
-                    for e in (canvas_elements or [])
-                    if isinstance(e, dict)
-                    and not e.get("data", {}).get("source")
-                ),
-                sum(
-                    1
-                    for e in (canvas_elements or [])
-                    if isinstance(e, dict)
-                    and e.get("data", {}).get("source")
-                ),
-            )
             return (
                 new_state_dict,
                 breadcrumb,
@@ -2605,61 +2597,25 @@ def register_callbacks(app: dash.Dash) -> None:
     # dash-cytoscape's ``elements``-prop diff retains stale element state
     # (to animate position changes) and, on a wholly-new list, re-adds
     # edges before their endpoint nodes — silently dropping the edges
-    # (plotly/dash-cytoscape#106, still open).  Every mutation callback
-    # therefore publishes its freshly-rendered elements to
-    # ``STORE_PENDING_CANVAS_ELEMENTS`` rather than writing the
-    # ``CANVAS_CYTOSCAPE`` ``elements`` prop, and this callback mirrors
-    # that list — JSON-serialised — into the hidden
-    # ``CANVAS_ELEMENTS_BRIDGE`` element.  A ``MutationObserver`` in
-    # ``viewport_ops.js`` watches the bridge and reconciles the live
-    # cytoscape graph with an explicit ``cy.remove`` / ``cy.add`` /
-    # data-update diff.  Because no callback ever writes the ``elements``
-    # prop after the initial layout, dash-cytoscape's buggy
-    # ``componentDidUpdate`` add/remove path never runs.
+    # (plotly/dash-cytoscape#106, still open).  So no callback ever writes
+    # the ``CANVAS_CYTOSCAPE`` ``elements`` prop after the initial layout.
     #
-    # Why a DOM bridge rather than a clientside callback: a clientside
-    # ``Input(store)`` callback silently drops rapid successive updates
-    # (verified locally — three quick block drops fired the callback only
-    # twice).  A server callback fires for every update and
-    # ``MutationObserver`` delivers every DOM mutation, so the bridge
-    # path loses nothing.
-    @app.callback(
-        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children"),
-        Input(ids.STORE_PENDING_CANVAS_ELEMENTS, "data"),
-        prevent_initial_call=True,
-    )
-    def mirror_canvas_elements_to_bridge(
-        pending: Optional[List[Dict[str, Any]]],
-    ) -> Any:
-        """Serialise the pending canvas elements into the DOM bridge.
-
-        See the section comment above — works around
-        plotly/dash-cytoscape#106.  The ``MutationObserver`` in
-        ``viewport_ops.js`` reconciles cytoscape from this element's
-        text content.
-        """
-
-        if pending is None:
-            return no_update
-        # TEMP DIAGNOSTIC (PR #95 cluster-2): confirm this server callback
-        # fires for every STORE_PENDING update (incl. the edge_create one)
-        # and what it carries. Remove once the e2e job is green.
-        _nodes = sum(
-            1
-            for e in pending
-            if isinstance(e, dict) and not e.get("data", {}).get("source")
-        )
-        _edges = sum(
-            1
-            for e in pending
-            if isinstance(e, dict) and e.get("data", {}).get("source")
-        )
-        logger.warning(
-            "mirror_canvas_elements_to_bridge: %d nodes, %d edges",
-            _nodes,
-            _edges,
-        )
-        return json.dumps(pending)
+    # Instead every mutation callback writes its freshly-rendered
+    # elements — JSON-serialised by :func:`_render_views` — straight into
+    # the hidden ``CANVAS_ELEMENTS_BRIDGE`` element's ``children``.  A
+    # ``MutationObserver`` in ``viewport_ops.js`` watches that element and
+    # reconciles the live cytoscape graph with an explicit ``cy.remove``
+    # / ``cy.add`` / data-update diff.
+    #
+    # Why the callbacks write the DOM element *directly* (no intermediate
+    # ``dcc.Store`` + a single mirror callback): dash-renderer coalesces
+    # rapid store-update -> downstream-callback chains — verified in CI, a
+    # store fed by four rapid ``fan_in`` outputs fired the downstream
+    # callback only three times, dropping the edge_create update (this
+    # held for both a clientside *and* a server downstream callback).
+    # The mutation callbacks themselves *do* fire for every trigger, and
+    # ``MutationObserver`` delivers every DOM mutation, so writing the
+    # bridge straight from each mutation callback loses nothing.
 
     # ----------------------------------------------------------------------
     # 2a. Validation pipeline (spec §5.6 + §5.3)
@@ -3238,7 +3194,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.STORE_PENDING_CANVAS_ELEMENTS, "data", allow_duplicate=True),
+        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -3362,7 +3318,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.STORE_PENDING_CANVAS_ELEMENTS, "data", allow_duplicate=True),
+        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -3626,7 +3582,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.STORE_PENDING_CANVAS_ELEMENTS, "data", allow_duplicate=True),
+        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Input(ids.BTN_CONFIRM_DELETE, "n_clicks"),
         State(ids.STORE_BUILDER_STATE, "data"),
@@ -3703,7 +3659,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.STORE_PENDING_CANVAS_ELEMENTS, "data", allow_duplicate=True),
+        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -3782,7 +3738,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.STORE_PENDING_CANVAS_ELEMENTS, "data", allow_duplicate=True),
+        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -3847,7 +3803,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.STORE_PENDING_CANVAS_ELEMENTS, "data", allow_duplicate=True),
+        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -3914,7 +3870,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.STORE_PENDING_CANVAS_ELEMENTS, "data", allow_duplicate=True),
+        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "children", allow_duplicate=True),
@@ -4531,7 +4487,7 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.STORE_BROWSE_DIR_JSON, "data", allow_duplicate=True),
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.STORE_PENDING_CANVAS_ELEMENTS, "data", allow_duplicate=True),
+        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.MODAL_LOAD_PICKER, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
@@ -4602,7 +4558,7 @@ def register_callbacks(app: dash.Dash) -> None:
     @app.callback(
         Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
         Output(ids.BREADCRUMB_CONTAINER, "children", allow_duplicate=True),
-        Output(ids.STORE_PENDING_CANVAS_ELEMENTS, "data", allow_duplicate=True),
+        Output(ids.CANVAS_ELEMENTS_BRIDGE, "children", allow_duplicate=True),
         Output(ids.INSPECTOR_CONTAINER, "children", allow_duplicate=True),
         Output(ids.MODAL_LOAD_PICKER, "is_open", allow_duplicate=True),
         Output(ids.TOAST_NOTIFICATION, "is_open", allow_duplicate=True),
@@ -4897,12 +4853,12 @@ def register_callbacks(app: dash.Dash) -> None:
     # 8b. Canvas element application
     # ----------------------------------------------------------------------
     # Canvas elements are applied by the ``MutationObserver`` in
-    # ``viewport_ops.js``: every mutation callback publishes to
-    # ``STORE_PENDING_CANVAS_ELEMENTS``, the ``mirror_canvas_elements_to_
-    # bridge`` server callback (section 2a-0) serialises that into the
-    # ``CANVAS_ELEMENTS_BRIDGE`` hidden element, and the observer
-    # reconciles the cytoscape graph.  The ``elements`` prop is never
-    # written post-init, so dash-cytoscape's buggy diff never runs.
+    # ``viewport_ops.js``: every mutation callback writes the
+    # JSON-serialised elements list (from :func:`_render_views`) straight
+    # into the ``CANVAS_ELEMENTS_BRIDGE`` hidden element's ``children``
+    # (see section 2a-0), and the observer reconciles the cytoscape
+    # graph.  The ``CANVAS_CYTOSCAPE`` ``elements`` prop is never written
+    # post-init, so dash-cytoscape's buggy diff never runs.
 
     # ----------------------------------------------------------------------
     # 9. Point picker — clientside lifecycle callbacks
