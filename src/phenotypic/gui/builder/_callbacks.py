@@ -2461,6 +2461,26 @@ def register_callbacks(app: dash.Dash) -> None:
                     "block_select",
                 }:
                     return _NOOP_FAN_IN
+                # TEMP DIAGNOSTIC (PR #95 cluster-2 flake): for edge_create,
+                # log whether the payload's endpoints resolve against the
+                # *current* root-scope blocks. If a test's set_props publish
+                # races ahead of STORE_BUILDER_STATE being updated with the
+                # just-seeded blocks, the endpoints won't be found and the
+                # dispatch silently produces no edge — confirm or refute that.
+                if event_kind == "edge_create" and isinstance(state_data, dict):
+                    _root = state_data.get("root", {}) or {}
+                    _block_ids = {
+                        b.get("block_id") for b in _root.get("blocks", []) or []
+                    }
+                    logger.warning(
+                        "fan_in edge_create: source=%r target=%r "
+                        "root_block_ids=%r src_found=%s tgt_found=%s",
+                        edge_event.get("source_block_id"),
+                        edge_event.get("target_block_id"),
+                        sorted(b for b in _block_ids if b),
+                        edge_event.get("source_block_id") in _block_ids,
+                        edge_event.get("target_block_id") in _block_ids,
+                    )
                 new_state_dict = _dispatch_state_update(
                     state_data, event_kind, edge_event
                 )
@@ -2532,6 +2552,26 @@ def register_callbacks(app: dash.Dash) -> None:
             # --- Render ----------------------------------------------
             new_state = state_from_json(new_state_dict)
             breadcrumb, canvas_elements, inspector = _render_views(new_state)
+            # TEMP DIAGNOSTIC (PR #95 cluster-2 flake): log the rendered
+            # element counts so the CI server log shows definitively whether
+            # an edge_create dispatch produced an edge in the canvas elements
+            # (server side) vs. the edge never reaching cytoscape (client).
+            logger.warning(
+                "fan_in render: triggered=%r -> %d nodes, %d edges",
+                ctx.triggered_id,
+                sum(
+                    1
+                    for e in (canvas_elements or [])
+                    if isinstance(e, dict)
+                    and not e.get("data", {}).get("source")
+                ),
+                sum(
+                    1
+                    for e in (canvas_elements or [])
+                    if isinstance(e, dict)
+                    and e.get("data", {}).get("source")
+                ),
+            )
             return (
                 new_state_dict,
                 breadcrumb,

@@ -96,6 +96,30 @@ def _builder_failure_diagnostics(request, page: Page):  # noqa: ANN001, ANN201
                 print(line)
         else:
             print("(log file not found)")
+    # Clientside snapshot: what does the live cytoscape instance actually
+    # hold at timeout? Splits "server produced no edge" from "edge never
+    # reached cytoscape".
+    try:
+        cy_state = page.evaluate(
+            """() => {
+                const cy = window.phenoGetCy && window.phenoGetCy();
+                if (!cy) {
+                    return { phenoGetCy: typeof window.phenoGetCy, cy: null };
+                }
+                return {
+                    cy: true,
+                    nodes: cy.nodes().length,
+                    edges: cy.edges().length,
+                    node_classes: cy.nodes().map(n => n.data('class_name')),
+                    edge_endpoints: cy.edges().map(
+                        e => e.data('source') + '->' + e.data('target')
+                    ),
+                };
+            }"""
+        )
+    except Exception as exc:  # noqa: BLE001 - best-effort diagnostic
+        cy_state = f"(clientside snapshot failed: {exc})"
+    print(f"--- clientside cytoscape state: {cy_state}")
     print("======================================================")
 
 
