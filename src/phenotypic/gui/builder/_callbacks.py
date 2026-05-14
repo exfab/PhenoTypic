@@ -2213,11 +2213,54 @@ def register_callbacks(app: dash.Dash) -> None:
                     # render of the palette button group).
                     if not ctx.triggered[0]["value"]:
                         return _NOOP_FAN_IN
+                    # Keyboard-fallback for the DAG palette: clicks land
+                    # in the current scope's root.  The drag-and-drop path
+                    # writes a richer ``block_create`` payload through
+                    # ``STORE_PALETTE_DROP``; clicks just need
+                    # ``class_name`` because the dispatcher treats a None
+                    # ``container_block_id`` as the root scope.  We also
+                    # auto-wire the new block to the previous tail of the
+                    # scope so the keyboard flow produces a valid linear
+                    # chain — drag-drop leaves wiring to the user since
+                    # they pick the drop position explicitly.
+                    root_scope = state_data.get("root", {}) if isinstance(
+                        state_data, dict
+                    ) else {}
+                    prev_blocks = list(root_scope.get("blocks", []) or [])
+                    prev_edges = list(root_scope.get("edges", []) or [])
+                    sources_with_outgoing = {
+                        e.get("source_block_id")
+                        for e in prev_edges
+                        if e.get("kind") == "image"
+                    }
+                    prev_tail_id: Optional[str] = None
+                    for blk in reversed(prev_blocks):
+                        bid = blk.get("block_id")
+                        if bid and bid not in sources_with_outgoing:
+                            prev_tail_id = bid
+                            break
                     new_state_dict = _dispatch_state_update(
                         state_data,
-                        "add_node",
-                        {"class_name": triggered["class_name"]},
+                        "block_create",
+                        {
+                            "kind": "block_create",
+                            "class_name": triggered["class_name"],
+                            "container_block_id": None,
+                        },
                     )
+                    new_block_id = new_state_dict.get("selected_block_id")
+                    if prev_tail_id and new_block_id:
+                        new_state_dict = _dispatch_state_update(
+                            new_state_dict,
+                            "edge_create",
+                            {
+                                "kind": "edge_create",
+                                "source_block_id": prev_tail_id,
+                                "target_block_id": new_block_id,
+                                "target_port": "in",
+                                "edge_kind": "image",
+                            },
+                        )
                 elif t_type == "breadcrumb-link":
                     # Pattern-matched Inputs fire on initial render of newly
                     # added matching components — e.g. drilling pushes a new

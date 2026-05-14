@@ -220,23 +220,24 @@ def _palette_for_categories(
                 )
                 button_class = f"{button_class} builder-op-pickable"
             # ``draggable`` + ``data-palette-class`` enable the HTML5
-            # drag-and-drop bridge in ``assets/palette_dnd.js``.
-            # ``dbc.Button`` forwards arbitrary ``**kwargs`` through to
-            # the underlying ``<button>`` element so these attributes
-            # survive Dash's component layer.
+            # drag-and-drop bridge in ``assets/palette_dnd.js``.  dbc
+            # components reject unknown kwargs, so the HTML attributes
+            # live on an ``html.Div`` wrapper; ``palette_dnd.js`` uses
+            # ``closest("[data-palette-class]")`` so the ancestor lookup
+            # finds the wrapper from any descendant element.
             buttons.append(
-                dbc.Button(
-                    button_children,
-                    id=ids.palette_button_id(op_info.name),
-                    color=_STAGE_BUTTON_OUTLINE_COLOR.get(stage, "primary"),
-                    outline=True,
-                    size="sm",
-                    n_clicks=0,
-                    className=button_class,
-                    **{
-                        "draggable": "true",
-                        "data-palette-class": op_info.name,
-                    },
+                html.Div(
+                    dbc.Button(
+                        button_children,
+                        id=ids.palette_button_id(op_info.name),
+                        color=_STAGE_BUTTON_OUTLINE_COLOR.get(stage, "primary"),
+                        outline=True,
+                        size="sm",
+                        n_clicks=0,
+                        className=button_class,
+                    ),
+                    draggable="true",
+                    **{"data-palette-class": op_info.name},
                 )
             )
 
@@ -303,26 +304,27 @@ def build_new_pipeline_palette_button() -> dbc.Button:
         accordion in the palette column.
     """
 
-    return dbc.Button(
-        [html.Span("⛓"), html.Span(" + New Pipeline", className="ms-1")],
-        id=ids.BTN_NEW_PIPELINE_NODE,
-        color="primary",
-        outline=True,
-        size="sm",
-        n_clicks=0,
-        className="w-100 mb-2 palette-button palette-button--pipeline",
-        title=(
-            "Drag onto the canvas to add a nested ImagePipeline "
-            "container (or click to drop in the current scope)."
+    # ``draggable="true"`` + ``data-palette-class="ImagePipeline"`` are
+    # read by ``assets/palette_dnd.js`` via ``closest("[data-palette-
+    # class]")`` so the wrapping ``html.Div`` is the ancestor the event
+    # delegate finds.  dbc components reject unknown kwargs, hence the
+    # wrapper (matches the per-op palette buttons above).
+    return html.Div(
+        dbc.Button(
+            [html.Span("⛓"), html.Span(" + New Pipeline", className="ms-1")],
+            id=ids.BTN_NEW_PIPELINE_NODE,
+            color="primary",
+            outline=True,
+            size="sm",
+            n_clicks=0,
+            className="w-100 mb-2 palette-button palette-button--pipeline",
+            title=(
+                "Drag onto the canvas to add a nested ImagePipeline "
+                "container (or click to drop in the current scope)."
+            ),
         ),
-        # ``draggable="true"`` + ``data-palette-class="ImagePipeline"``
-        # are read by ``assets/palette_dnd.js``; they survive Dash's
-        # component layer because ``dbc.Button`` forwards ``**kwargs``
-        # through to the underlying ``<button>`` element.
-        **{
-            "draggable": "true",
-            "data-palette-class": PIPELINE_CLASS_NAME,
-        },
+        draggable="true",
+        **{"data-palette-class": PIPELINE_CLASS_NAME},
     )
 
 
@@ -1914,11 +1916,20 @@ def build_canvas(
 
     return cyto.Cytoscape(
         id=ids.CANVAS_CYTOSCAPE,
-        elements=build_canvas_elements(scope, selected_node_id),
+        elements=build_canvas_elements_dag(
+            scope, selected_block_id=selected_node_id
+        ),
+        # ``build_canvas_elements_dag`` emits positionless elements;
+        # ``viewport_ops.js`` runs ``cytoscape-dagre`` on first paint
+        # when the extension is registered.  ``breadthfirst`` is the
+        # core-cytoscape fallback so the canvas still lays blocks out
+        # left-to-right even when the dagre asset fails to register.
         layout={
-            "name": "preset",
+            "name": "breadthfirst",
+            "directed": True,
             "fit": True,
             "padding": 24,
+            "spacingFactor": 1.4,
         },
         # Absolutely position the cytoscape inside its (relative-positioned)
         # ``cytoscape_slot`` parent so it fills the slot regardless of
