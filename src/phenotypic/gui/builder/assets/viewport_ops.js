@@ -63,6 +63,24 @@
     /** Padding (px) ``cy.fit()`` reserves around the final bounding box. */
     const FIT_PADDING = 24;
 
+    /** Block-body geometry — must match ``_canvas_stylesheet``'s
+     *  ``node.dag-block`` width/height and ``node.dag-port`` /
+     *  ``node.dag-issue`` sizes so ``positionBlockChrome`` can snap the
+     *  port + issue-badge sub-nodes flush onto the body's edges. */
+    const BLOCK_WIDTH = 180;
+    const BLOCK_HEIGHT = 54;
+    const PORT_SIZE = 13;
+    const ISSUE_SIZE = 18;
+
+    /** Debounce window (ms) for the auto-relayout that fires when
+     *  dash-cytoscape swaps the ``elements`` prop after a state
+     *  mutation.  Long enough to coalesce the add/remove burst *and*
+     *  dash-cytoscape's own ``breadthfirst`` pass of a single dispatch
+     *  into one leaf-first dagre run, short enough to feel immediate.
+     *  (A 90 ms window let the relayout fire mid-mutation and dagre
+     *  scrambled the chain order — 200 ms reliably lands after settle.) */
+    const AUTO_RELAYOUT_DEBOUNCE_MS = 200;
+
     /** Padding (px) the ``scroll_to`` chain reserves around the offender
      *  block once the expand chain resolves and ``cy.fit()`` zooms in. */
     const SCROLL_TO_FIT_PADDING = 60;
@@ -122,37 +140,54 @@
         }, 100);
     }
 
-    /** Best-effort check that the ``cytoscape-dagre`` extension registered
-     *  with the global cytoscape lib. Tries the documented spec check
-     *  (``window.cytoscape.layouts.dagre``) first; if cytoscape's API
-     *  doesn't expose ``layouts`` directly (older builds keep extension
-     *  metadata on a private map), falls back to attempting a no-op
-     *  ``cy.layout({name: "dagre"})`` on an empty cy clone, catching the
-     *  "No such layout" error class. Returns ``true`` when dagre appears
-     *  registered. */
-    function isDagreRegistered(cy) {
-        const csc = window.cytoscape;
-        if (!csc) return false;
-        // Spec-prescribed check — works on the vendored cytoscape build
-        // (it exposes ``cytoscape.layouts`` once an extension has been
-        // registered via ``cytoscape("layout", "dagre", ...)``).
-        if (csc.layouts && typeof csc.layouts.dagre === "function") {
-            return true;
+    /** Probe whether the ``cytoscape-dagre`` layout is registered with
+     *  the bundled cytoscape build by *constructing* (not running) a
+     *  ``dagre`` layout and catching cytoscape's "No such layout `dagre`"
+     *  error. ``cy.layout()`` is cheap — it only builds the layout
+     *  object. Returns ``true`` when dagre is available. */
+    function probeDagre(cy) {
+        if (!cy || typeof cy.layout !== "function") return false;
+        try {
+            const probe = cy.layout({ name: "dagre", animate: false });
+            return !!(probe && typeof probe.run === "function");
+        } catch (err) {
+            return false;
         }
-        // Fallback: probe ``cy.layout()`` and detect cytoscape's
-        // "No such layout `dagre`" exception. ``cy.layout()`` itself
-        // is cheap — it just constructs the layout object, no run.
-        if (cy && typeof cy.layout === "function") {
+    }
+
+    /** Ensure the vendored ``cytoscape-dagre`` extension is registered
+     *  against the cytoscape build dash-cytoscape actually uses.
+     *
+     *  ``cytoscape-dagre.min.js`` is a UMD bundle: in a browser it only
+     *  publishes ``window.cytoscapeDagre`` (its registrar) and expects a
+     *  global ``window.cytoscape`` to auto-register against. dash-cytoscape
+     *  bundles its *own* cytoscape and never exposes that global, so the
+     *  registrar sits unused and ``cy.layout({name:"dagre"})`` throws
+     *  "No such layout `dagre`".
+     *
+     *  cytoscape's extension registry is module-level and shared by every
+     *  ``Core`` instance of a given build, and each instance carries the
+     *  registrar as ``cy.extension(type, name, impl)``. We shim that onto
+     *  the ``cytoscape("layout", name, impl)`` call shape the registrar
+     *  expects — registering dagre against the right build. Idempotent:
+     *  safe to call on every layout pass. */
+    function ensureDagreRegistered(cy) {
+        if (probeDagre(cy)) return true;
+        const registrar = window.cytoscapeDagre;
+        if (
+            typeof registrar === "function" &&
+            cy &&
+            typeof cy.extension === "function"
+        ) {
             try {
-                const probe = cy.layout({ name: "dagre", animate: false });
-                // If layout() returns a real object with a run() method,
-                // dagre is registered. Don't actually call run().
-                return !!(probe && typeof probe.run === "function");
+                registrar(function (type, name, impl) {
+                    return cy.extension(type, name, impl);
+                });
             } catch (err) {
                 return false;
             }
         }
-        return false;
+        return probeDagre(cy);
     }
 
     /** Pre-set the sentinel up-front; the IIFE replaces this with the
@@ -163,6 +198,84 @@
     // The ``_dagre_missing`` flag is intentionally NOT initialised here —
     // a missing flag means "dagre status unknown" (asset still loading);
     // an explicit ``true`` means "we checked, dagre is gone".
+
+    /** Snap every port + issue-badge sub-node onto its parent block's
+     *  chrome (spec §4.2 / §4.6).
+     *
+     *  ``leafFirstDagre`` ranks only the block *bodies* — it skips
+     *  ``is_port`` sub-nodes (see step 1) and the ``dag-issue`` badges.
+     *  Without this pass those sub-nodes keep their stale
+     *  ``breadthfirst`` coordinates and pile up over the block label,
+     *  which is exactly the "featureless grey rectangle" symptom.
+     *
+     *  Placement, relative to each leaf block's centre:
+     *    * image-in  → left-edge midpoint
+     *    * image-out → right-edge midpoint
+     *    * aux       → spread along the bottom edge
+     *    * issue     → top-right corner, tucked just inside the body
+     *
+     *  Every leaf block's centre is snapshotted *before* any child
+     *  moves: a block is a cytoscape *compound parent* of these
+     *  sub-nodes, so moving one child shifts the centroid the next
+     *  read would return.  Snapshotting keeps the pass
+     *  order-independent, and because ``leafFirstDagre`` re-derives
+     *  block positions from scratch on every call (dagre's
+     *  ``longest-path`` ranker ignores prior coords) the small
+     *  compound-centroid drift never accumulates. */
+    function positionBlockChrome(cy) {
+        if (!cy) return;
+        const halfW = BLOCK_WIDTH / 2;
+        const halfH = BLOCK_HEIGHT / 2;
+        // Snapshot every leaf (non-container) block's centre up front.
+        const centre = {};
+        cy.nodes(".dag-block").forEach(function (b) {
+            if (b.data("is_container")) return;
+            centre[b.id()] = { x: b.position("x"), y: b.position("y") };
+        });
+        // Group aux ports per block so they spread along the bottom edge.
+        const auxByBlock = {};
+        cy.nodes(".dag-port--aux").forEach(function (p) {
+            const bid = p.data("block_id");
+            if (bid) {
+                (auxByBlock[bid] = auxByBlock[bid] || []).push(p);
+            }
+        });
+        cy.batch(function () {
+            cy.nodes().forEach(function (node) {
+                const isPort = !!node.data("is_port");
+                const isIssue = node.hasClass("dag-issue");
+                if (!isPort && !isIssue) return;
+                const c = centre[node.data("block_id")];
+                if (!c) return;
+                if (isIssue) {
+                    node.position({
+                        x: c.x + halfW - ISSUE_SIZE / 2,
+                        y: c.y - halfH + ISSUE_SIZE / 2,
+                    });
+                    return;
+                }
+                const kind = node.data("port_kind");
+                if (kind === "image-in") {
+                    node.position({ x: c.x - halfW + PORT_SIZE / 2, y: c.y });
+                } else if (kind === "image-out") {
+                    node.position({ x: c.x + halfW - PORT_SIZE / 2, y: c.y });
+                } else if (kind === "aux") {
+                    const sibs = auxByBlock[node.data("block_id")] || [node];
+                    const i = sibs.indexOf(node);
+                    const n = sibs.length;
+                    const span = BLOCK_WIDTH * 0.7;
+                    const x =
+                        n > 1
+                            ? c.x - span / 2 + (span / (n - 1)) * i
+                            : c.x;
+                    node.position({
+                        x: x,
+                        y: c.y + halfH - PORT_SIZE / 2,
+                    });
+                }
+            });
+        });
+    }
 
     // -----------------------------------------------------------------
     // Leaf-first dagre compound layout (spec §4.7).
@@ -201,7 +314,7 @@
         // positions; the spec says we lean on ``cy.fit()`` to at least
         // recentre the view. Surface the degraded state via the sentinel
         // flag so the asset-status banner can warn the user.
-        if (!isDagreRegistered(cy)) {
+        if (!ensureDagreRegistered(cy)) {
             window.phenotypic_viewport_ops_dagre_missing = true;
             try {
                 cy.layout({ name: "preset", animate: false }).run();
@@ -209,9 +322,16 @@
                 // Preset can't fail on a sane cy — but we swallow because
                 // the relayout path is purely cosmetic.
             }
+            // Even without dagre the port + issue sub-nodes still need
+            // snapping onto the block edges, or they obscure the body.
+            positionBlockChrome(cy);
             cy.fit(undefined, FIT_PADDING);
             return;
         }
+        // Registration succeeded (or was already in place) — clear any
+        // stale "missing" sentinel so builder.js's asset-status poller
+        // drops the "Layout extension missing" banner.
+        window.phenotypic_viewport_ops_dagre_missing = false;
 
         // Step 1 — Enumerate scopes. A scope is identified by its
         // compound parent (``null`` = root scope). We bucket every node
@@ -281,22 +401,47 @@
                     childIds.has(e.target().id())
                 );
             });
-            const eles = children.add(edges);
+            // Pull each block's port / issue-badge sub-nodes into the
+            // layout set.  cytoscape-dagre mis-ranks compound parents
+            // whose children are absent from ``eles`` — the chain comes
+            // out scrambled (a 3-op ribbon lands as OtsuDetector,
+            // InputImage, GaussianBlur instead of left-to-right order).
+            // The sub-nodes carry no edges so they ride inside their
+            // parent without affecting rank assignment.  Container
+            // blocks are skipped here: their nested-scope children are
+            // laid out by their own earlier (leaf-first) pass.
+            let eles = children.add(edges);
+            children.forEach(function (block) {
+                eles = eles.add(
+                    block.children().filter(function (c) {
+                        return c.data("is_port") || c.hasClass("dag-issue");
+                    })
+                );
+            });
 
             // Per-scope dagre. ``ranker: "longest-path"`` gives the
-            // determinism the spec wants; ``nodeSep`` / ``rankSep``
+            // determinism the spec wants; ``nodesep`` / ``ranksep``
             // keep blocks readable without forcing the user to scroll
             // for short chains.
+            //
+            // NB: the vendored cytoscape-dagre build passes options
+            // straight through to dagre, which expects the *lowercase*
+            // ``rankdir`` / ``nodesep`` / ``ranksep`` / ``edgesep``
+            // keys.  The camelCase cytoscape-dagre-style spellings are
+            // not just ignored — when present they shadow the lowercase
+            // ones and dagre falls back to its ``rankdir: "TB"`` default,
+            // rendering the chain as a vertical column instead of a
+            // left-to-right ribbon.  Send the lowercase keys *only*.
             try {
                 eles
                     .layout({
                         name: "dagre",
-                        rankDir: DAGRE_DIRECTION,
+                        rankdir: DAGRE_DIRECTION,
                         animate: false,
                         ranker: "longest-path",
-                        nodeSep: DAGRE_NODE_SEP,
-                        rankSep: DAGRE_RANK_SEP,
-                        edgeSep: DAGRE_EDGE_SEP,
+                        nodesep: DAGRE_NODE_SEP,
+                        ranksep: DAGRE_RANK_SEP,
+                        edgesep: DAGRE_EDGE_SEP,
                         // ``fit: false`` keeps the *outer* scope's pan
                         // intact while we lay out an inner one — only
                         // the final root-level pass calls cy.fit().
@@ -334,12 +479,17 @@
             compound.data("compound_height", size.h);
         });
 
-        // Step 5/6 — Root scope animated fit. Per spec, only the final
-        // pan / zoom animates; per-scope passes ran synchronously above.
-        cy.animate(
-            { fit: { eles: cy.elements(), padding: FIT_PADDING } },
-            { duration: ANIMATION_DURATION, easing: ANIMATION_EASING }
-        );
+        // Step 4.5 — Snap port + issue sub-nodes onto each block's
+        // edges.  dagre ranked only the block bodies; this places the
+        // chrome that hangs off them (see positionBlockChrome).
+        positionBlockChrome(cy);
+
+        // Step 5/6 — Root scope fit.  ``cy.animate({fit: …})`` is
+        // unreliable on the bundled cytoscape build (it leaves zoom
+        // pinned at 1 and pans the graph clean off the viewport); the
+        // plain synchronous ``cy.fit()`` honours ``minZoom`` /
+        // ``maxZoom`` and recentres correctly.
+        cy.fit(cy.elements(), FIT_PADDING);
 
         // Emit the completion event so tests can ``page.waitForEvent``
         // on it (spec §5.5 custom DOM events).
@@ -739,20 +889,22 @@
     // -----------------------------------------------------------------
     // Module init.
     // -----------------------------------------------------------------
-    // Eagerly probe the dagre extension presence — sets the sentinel
-    // even if no cytoscape instance exists yet (e.g. asset gate check on
-    // the empty-canvas placeholder route).
-    if (!(window.cytoscape && window.cytoscape.layouts && window.cytoscape.layouts.dagre)) {
-        // cytoscape-dagre.min.js failed to load OR did not auto-register
-        // with the cytoscape global. Don't abort the IIFE — we still
-        // want the other viewport ops (reanchor, block toggle) to work.
-        // The relayout path falls back to ``preset`` (see leafFirstDagre).
-        // builder.js's asset-status poller reads this flag and surfaces
-        // the "Layout extension missing" banner.
-        window.phenotypic_viewport_ops_dagre_missing = true;
-    }
+    // The dagre extension can only be probed/registered against a live
+    // cytoscape instance (dash-cytoscape bundles its own build and never
+    // exposes a ``window.cytoscape`` global — see ensureDagreRegistered).
+    // We therefore defer the dagre status decision to ``whenCyReady``
+    // below; until then the ``_dagre_missing`` flag stays unset, which
+    // builder.js's poller reads as "status unknown / still loading"
+    // rather than "missing entirely".
 
     whenCyReady(function (_cy) {
+        // Register the vendored cytoscape-dagre extension against the
+        // live build now that a Core instance exists, and record the
+        // result so builder.js's asset-status poller can surface the
+        // "Layout extension missing" banner only when it genuinely
+        // failed (e.g. the vendored asset was blocked from loading).
+        window.phenotypic_viewport_ops_dagre_missing = !ensureDagreRegistered(_cy);
+
         // Publish viewport-op handlers under the documented namespace.
         // The server-side clientside callback dispatches these from a
         // ``STORE_VIEWPORT_OP`` payload (kind switch).
@@ -762,6 +914,53 @@
         window.phenotypicScrollTo = phenotypicScrollTo;
         window.phenotypicDrillToScope = phenotypicDrillToScope;
         window.phenotypicScrollToAbortedRelay = phenotypicScrollToAbortedRelay;
+
+        // Auto-relayout on every state mutation (spec §4.7: "Every state
+        // mutation re-runs a layered topological layout").  After each
+        // dispatch dash-cytoscape swaps the ``elements`` prop, adds /
+        // removes the elements, and re-runs its own ``breadthfirst``
+        // pass.  We listen to BOTH the ``add`` / ``remove`` burst and
+        // the ``layoutstop`` that follows dash-cytoscape's pass, then
+        // debounce: by the time the window elapses the topology is
+        // complete and consistent, so the leaf-first dagre run produces
+        // the correct left-to-right chain.  (Reacting to ``add`` /
+        // ``remove`` directly fired the relayout mid-mutation and dagre
+        // scrambled the chain order.)
+        //
+        // ``leafFirstDagre`` runs its own per-scope dagre sub-passes,
+        // each of which emits ``layoutstop`` — ``suppressAutoRelayout``
+        // guards against that re-entrancy.
+        let autoRelayoutTimer = null;
+        let suppressAutoRelayout = false;
+        function runLeafFirstDagreGuarded() {
+            suppressAutoRelayout = true;
+            try {
+                leafFirstDagre(_cy);
+            } finally {
+                // Defer clearing the guard so trailing synchronous
+                // ``layoutstop`` events from our own sub-passes stay
+                // suppressed.
+                setTimeout(function () {
+                    suppressAutoRelayout = false;
+                }, 0);
+            }
+        }
+        function scheduleAutoRelayout() {
+            if (suppressAutoRelayout) return;
+            if (autoRelayoutTimer) {
+                clearTimeout(autoRelayoutTimer);
+            }
+            autoRelayoutTimer = setTimeout(function () {
+                autoRelayoutTimer = null;
+                runLeafFirstDagreGuarded();
+            }, AUTO_RELAYOUT_DEBOUNCE_MS);
+        }
+        _cy.on("add remove", scheduleAutoRelayout);
+        _cy.on("layoutstop", scheduleAutoRelayout);
+        // First paint: this listener may bind after dash-cytoscape's
+        // initial ``breadthfirst`` layoutstop has already fired, so run
+        // one pass now to seed the dagre layout + port/issue placement.
+        runLeafFirstDagreGuarded();
 
         // Signal readiness — builder.js poller writes the missing-asset
         // list to STORE_ASSET_STATUS based on these sentinels.

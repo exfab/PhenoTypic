@@ -32,12 +32,16 @@ from dash import dcc, html
 from phenotypic.gui._design import (
     COLOR_BLUE,
     COLOR_BORDER,
+    COLOR_GOLD,
     COLOR_MUTED,
     COLOR_NAVY,
     COLOR_SURFACE,
+    COLOR_WHITE,
     FONT_FAMILY_MONO,
     FONT_SIZE_LABEL,
+    OI_GREEN,
     OI_PURPLE,
+    OI_VERMILION,
 )
 from phenotypic.gui._shared import SHARED_LOGO_PATH
 from phenotypic.gui.builder import _ids as ids
@@ -354,52 +358,136 @@ def build_post_palette(registry: "OperationRegistry") -> dbc.Accordion:
 
 
 def _canvas_stylesheet() -> List[dict]:
-    """Cytoscape stylesheet used by :func:`build_canvas` (legacy path).
+    """Cytoscape stylesheet for the DAG builder canvas (:func:`build_canvas`).
 
-    The legacy ribbon canvas renders one extra visible marker pair per
-    consumer node:
+    Renders the spec §4.1–§4.6 visual language:
 
-    * **Main I/O ports** — small blue circles on the left (input) and
-      right (output) edges of every ribbon node. Image-flow edges connect
-      the previous node's main-output port to the next node's main-input
-      port (the wire visibly *enters* and *exits* each operation rather
-      than routing through node centers).
+    * **Blocks** (``node.dag-block``) — stage-tinted 180×54 rounded
+      rectangles carrying the op label.  ``min-width`` / ``min-height``
+      pin the body size: every block is a cytoscape *compound parent*
+      of its port sub-nodes, and cytoscape would otherwise shrink the
+      body down to the bounding box of those tiny children.
+    * **Ports** (``node.dag-port``) — small edge markers: a filled blue
+      image-in circle, a hollow image-out circle, a purple aux square.
+      ``viewport_ops.js`` snaps them onto the block's edges after each
+      dagre pass (dagre itself skips ``is_port`` sub-nodes).
+    * **Issue badges** (``node.dag-issue``) — a red ``!`` / amber ``?``
+      chip pinned to the block's top-right corner (spec §4.6).
+    * **Wires** (``edge.dag-wire``) — blue-solid image flow, purple-
+      dashed aux; 3 px on the main spine, 2 px elsewhere (spec §4.3).
+    * **Containers** — purple-bordered compound groups; see the
+      ``dag-block--container`` family below.
 
-    Phase 7 retired the popover-anchored aux flow; the bottom-edge
-    aux-port markers and their purple-square stylesheet rules are gone
-    (the DAG path renders aux wiring as first-class ``block_port``
-    elements + the inspector aux-ports section). Main I/O port markers
-    still live as additional cytoscape *nodes* (not edges) so they're
-    positionable independently. The cytoscape side intentionally
-    references ``OI_PURPLE`` directly (the value behind
-    ``--color-interactive`` / ``--oi-purple``) because cytoscape's canvas
-    renderer cannot resolve CSS custom properties.
+    cytoscape's canvas renderer cannot resolve CSS custom properties, so
+    the rules reference ``_design`` colour constants directly.
     """
 
     return [
+        # ── Generic node base ──────────────────────────────────────────
+        # Deliberately minimal: blocks, ports and issue badges are all
+        # cytoscape ``node``s but want very different chrome, so the
+        # base only carries font defaults shared by every node.  Note
+        # there is *no* ``label: data(label)`` mapping here — ports /
+        # badges have no ``label`` data field and a base mapper would
+        # spam "no mapping for label" warnings on every render.
         {
             "selector": "node",
+            "style": {
+                "shape": "round-rectangle",
+                "font-family": FONT_FAMILY_MONO,
+                # Cytoscape canvas-renders labels and only accepts pixel
+                # values for font-size; rem units silently fall back.
+                "font-size": "12px",
+                "color": COLOR_NAVY,
+                "border-color": COLOR_BORDER,
+                "border-width": 1,
+                "background-color": COLOR_SURFACE,
+            },
+        },
+        # ── Block body (spec §4.1) ─────────────────────────────────────
+        # 180×54 stage-tinted card.  ``min-width`` / ``min-height`` are
+        # the load-bearing properties: each block is a compound parent
+        # of its port sub-nodes, so without a floor cytoscape collapses
+        # the body to the ports' (tiny) bounding box.  ``padding: 0``
+        # keeps the compound box flush with the ports that
+        # ``viewport_ops.js`` snaps onto its edges.
+        {
+            "selector": "node.dag-block",
             "style": {
                 "shape": "round-rectangle",
                 "label": "data(label)",
                 "text-valign": "center",
                 "text-halign": "center",
                 "text-wrap": "ellipsis",
-                "text-max-width": 160,
+                "text-max-width": 150,
                 "background-color": "data(bg)",
-                "border-color": COLOR_BORDER,
+                "border-color": COLOR_NAVY,
                 "border-width": 1,
-                "padding": "8px",
-                "font-family": FONT_FAMILY_MONO,
-                # Cytoscape canvas-renders labels and only accepts pixel
-                # values for font-size; rem units silently fall back.
-                "font-size": "12px",
                 "font-weight": "500",
-                # Fixed-width ribbon nodes so I/O port placement is
-                # predictable (text-wrap kicks in for long class names).
                 "width": 180,
                 "height": 54,
-                "color": COLOR_NAVY,
+                "min-width": 180,
+                "min-height": 54,
+                "padding": 0,
+            },
+        },
+        # Stage-coloured borders (spec §4.2: "1px stage-coloured border
+        # for main-flow ops").  The stage tint already lands via
+        # ``data(bg)``; the border echoes it a shade darker.
+        {
+            "selector": "node.dag-block.stage--meas",
+            "style": {"border-color": COLOR_GOLD},
+        },
+        {
+            "selector": "node.dag-block.stage--post",
+            "style": {"border-color": OI_GREEN},
+        },
+        # Input Image sentinel — green "source" tag (spec §4.1 chevron).
+        {
+            "selector": "node.dag-block--input-image",
+            "style": {
+                "shape": "round-tag",
+                "background-color": "#d6efe4",
+                "border-color": OI_GREEN,
+                "border-width": 1.5,
+            },
+        },
+        # Aux-consumed block — solid purple 1.5px border (spec §4.2):
+        # this block's output feeds an aux port, so it lives off the
+        # main spine.
+        {
+            "selector": "node.dag-block--aux-consumed",
+            "style": {
+                "border-color": OI_PURPLE,
+                "border-width": 1.5,
+                "border-style": "solid",
+            },
+        },
+        # Advisory issue — yellow 1.5px border (spec §4.2 / Rule 7).
+        {
+            "selector": "node.dag-block--advisory",
+            "style": {
+                "border-color": COLOR_GOLD,
+                "border-width": 1.5,
+            },
+        },
+        # Blocking issue — solid red 2.5px border (spec §4.2 Rules 1-6).
+        {
+            "selector": "node.dag-block--error",
+            "style": {
+                "border-color": OI_VERMILION,
+                "border-width": 2.5,
+                "border-style": "solid",
+            },
+        },
+        # Stub (unreachable from Input Image) — dashed red 2.5px border
+        # (spec §4.2: reads as "draft" rather than "broken").
+        {
+            "selector": "node.dag-block--stub",
+            "style": {
+                "border-color": OI_VERMILION,
+                "border-width": 2.5,
+                "border-style": "dashed",
             },
         },
         {
@@ -407,6 +495,105 @@ def _canvas_stylesheet() -> List[dict]:
             "style": {
                 "border-color": COLOR_BLUE,
                 "border-width": 3,
+            },
+        },
+        # ── Ports (spec §4.2) ──────────────────────────────────────────
+        # Small edge markers.  ``min-width`` / ``min-height`` are reset
+        # here too: a port is a leaf node, but it shares the cascade
+        # with ``node.dag-block`` only via the generic ``node`` base —
+        # explicit small dimensions keep it a discrete dot.
+        {
+            "selector": "node.dag-port",
+            "style": {
+                "label": "",
+                "width": 13,
+                "height": 13,
+                "min-width": 13,
+                "min-height": 13,
+                "padding": 0,
+                "border-width": 1.5,
+                "z-index": 10,
+            },
+        },
+        # Image-input port — filled blue circle, left edge.
+        {
+            "selector": "node.dag-port--input",
+            "style": {
+                "shape": "ellipse",
+                "background-color": COLOR_BLUE,
+                "border-color": COLOR_BLUE,
+            },
+        },
+        # Image-output port — hollow neutral circle, right edge (the
+        # port itself is neutral; the *wire* colour follows the target).
+        {
+            "selector": "node.dag-port--output",
+            "style": {
+                "shape": "ellipse",
+                "background-color": COLOR_SURFACE,
+                "border-color": COLOR_MUTED,
+            },
+        },
+        # Aux-input port — purple rounded square, bottom edge.  Hollow
+        # when empty so a dense canvas still reads "needs an aux here".
+        {
+            "selector": "node.dag-port--aux",
+            "style": {
+                "shape": "round-rectangle",
+                "background-color": COLOR_SURFACE,
+                "border-color": OI_PURPLE,
+            },
+        },
+        # Required + empty aux port — red ring (spec §4.2 / Rule 3).
+        {
+            "selector": "node.dag-port--aux.dag-port--required",
+            "style": {"border-color": OI_VERMILION},
+        },
+        # Wired aux port — solid purple fill (any slot non-empty).
+        {
+            "selector": "node.dag-port--aux.dag-port--wired",
+            "style": {
+                "background-color": OI_PURPLE,
+                "border-color": OI_PURPLE,
+            },
+        },
+        # ── Issue badges (spec §4.6) ───────────────────────────────────
+        # A small chip pinned to the block's top-right corner by
+        # ``viewport_ops.js``.  Blocking issues read ``!`` on red;
+        # advisory hints read ``?`` on amber.
+        {
+            "selector": "node.dag-issue",
+            "style": {
+                "shape": "ellipse",
+                "width": 18,
+                "height": 18,
+                "min-width": 18,
+                "min-height": 18,
+                "padding": 0,
+                "border-width": 1,
+                "font-weight": "bold",
+                "font-size": "13px",
+                "text-valign": "center",
+                "text-halign": "center",
+                "z-index": 20,
+            },
+        },
+        {
+            "selector": "node.dag-issue--error",
+            "style": {
+                "label": "!",
+                "background-color": OI_VERMILION,
+                "border-color": OI_VERMILION,
+                "color": COLOR_WHITE,
+            },
+        },
+        {
+            "selector": "node.dag-issue--advisory",
+            "style": {
+                "label": "?",
+                "background-color": COLOR_GOLD,
+                "border-color": COLOR_GOLD,
+                "color": COLOR_NAVY,
             },
         },
         {
@@ -417,69 +604,6 @@ def _canvas_stylesheet() -> List[dict]:
                 "target-arrow-color": COLOR_MUTED,
                 "line-color": COLOR_MUTED,
                 "width": 1.5,
-            },
-        },
-        # Image-flow edges between consecutive main-ribbon nodes. Endpoints
-        # are the upstream node's main-output port and the downstream
-        # node's main-input port (small blue circles) — the wire visibly
-        # exits the upstream op on its right and enters the downstream
-        # op on its left. ``outside-to-node`` keeps the endpoint clean
-        # against the port marker rather than routing through it.
-        {
-            "selector": "edge.image-flow",
-            "style": {
-                "curve-style": "bezier",
-                "target-arrow-shape": "triangle",
-                "target-arrow-color": COLOR_MUTED,
-                "line-color": COLOR_MUTED,
-                "width": 1.5,
-                "source-endpoint": "outside-to-node",
-                "target-endpoint": "outside-to-node",
-            },
-        },
-        # Main I/O port: small blue circle on the LEFT (input) or RIGHT
-        # (output) edge of every ribbon node. Always filled — wired state
-        # for the image flow lives in the edge, not in the port itself.
-        # No label and no padding so the marker reads as a discrete dot
-        # rather than a tiny rectangle.
-        {
-            "selector": "node.main-port",
-            "style": {
-                "shape": "ellipse",
-                "label": "",
-                "width": 10,
-                "height": 10,
-                "background-color": COLOR_BLUE,
-                "border-color": COLOR_BLUE,
-                "border-width": 1,
-                "padding": 0,
-            },
-        },
-        # Bottom-edge aux port: small purple rounded-square marker. One
-        # per op-typed parameter on the consumer (regardless of slot
-        # cardinality). Empty (no slot wired) renders hollow — gray fill
-        # with a purple border — so users can scan a dense canvas and
-        # tell at a glance which consumers still need an aux configured.
-        {
-            "selector": "node.aux-port",
-            "style": {
-                "shape": "round-rectangle",
-                "label": "",
-                "width": 10,
-                "height": 10,
-                "background-color": COLOR_BORDER,
-                "border-color": OI_PURPLE,
-                "border-width": 1.5,
-                "padding": 0,
-            },
-        },
-        # Wired aux port: solid purple fill. Any slot non-empty flips the
-        # marker from hollow to filled so the canvas state mirrors the
-        # popover state without needing the popover to be open.
-        {
-            "selector": "node.aux-port.aux-port--wired",
-            "style": {
-                "background-color": OI_PURPLE,
             },
         },
         # DAG-redesign wires (spec §4.3).  Image-flow wires render blue

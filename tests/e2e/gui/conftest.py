@@ -34,6 +34,7 @@ import os
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Iterator
@@ -194,13 +195,21 @@ def _start_live_server(
         "127.0.0.1",
     ]
     env = {**os.environ, **(env_overrides or {})} if env_overrides else None
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
-        text=True,
-        env=env,
-    )
+    # Redirect the GUI subprocess' stdout+stderr to a temp log file, NOT
+    # an in-process ``subprocess.PIPE``.  Werkzeug logs every request to
+    # stderr; an undrained pipe fills its ~64 KB OS buffer after a few
+    # hundred requests, at which point the GUI blocks on its next stderr
+    # write and every later ``page.goto`` in the module times out.  A
+    # module-scoped server serves enough requests to hit this reliably.
+    log_path = Path(tempfile.gettempdir()) / f"phenotypic-gui-e2e-{port}.log"
+    with log_path.open("w", encoding="utf-8") as gui_log:
+        proc = subprocess.Popen(
+            cmd,
+            stdout=gui_log,
+            stderr=subprocess.STDOUT,
+            text=True,
+            env=env,
+        )
     base_url = f"http://127.0.0.1:{port}"
     try:
         _wait_for_http_200(base_url + "/", timeout=20.0)

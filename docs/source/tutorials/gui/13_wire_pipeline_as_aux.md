@@ -9,7 +9,7 @@ container serialises as a nested `ImagePipeline` inside the
 consumer's `aux_ports`.
 
 This tutorial walks through wiring a 3-step preprocessing chain
-(`GaussianBlur → OtsuDetector → SizeFilter`) into a
+(`GaussianBlur → OtsuDetector`) into a
 `FilamentousFungiDetector.inoculum_detector` slot.
 
 ## Step 1 — Create an empty container
@@ -33,11 +33,11 @@ ribbon).
 
 Double-click the container (or click its `Drill in →` button) to
 descend into its nested scope. Drop `GaussianBlur → OtsuDetector →
-SizeFilter` and wire them left-to-right starting from the
+OtsuDetector` and wire them left-to-right starting from the
 `Input Image` sentinel. The breadcrumb at the top of the builder
 shows the drill path (e.g. `Pipeline / nested_pipeline_xyz`).
 
-![Container drilled in; nested scope holds GaussianBlur → OtsuDetector → SizeFilter wired left-to-right.](../../_static/gui_images/wire-pipeline-as-aux/02_chain_in_container.png)
+![Container drilled in; nested scope holds GaussianBlur → OtsuDetector wired left-to-right.](../../_static/gui_images/wire-pipeline-as-aux/02_chain_in_container.png)
 
 Operations inside a container behave exactly like operations in the
 outer scope: they have I/O ports, can themselves carry aux slots, and
@@ -68,7 +68,7 @@ When the pipeline saves, the wired container serialises as a nested
           "pipe_cfgs": {
             "GaussianBlur": {"class": "GaussianBlur", "params": {"sigma": 2}},
             "OtsuDetector": {"class": "OtsuDetector", "params": {}},
-            "SizeFilter": {"class": "SizeFilter", "params": {"min_area": 50}}
+            "OtsuDetector": {"class": "OtsuDetector", "params": {}}
           }
         }
       }

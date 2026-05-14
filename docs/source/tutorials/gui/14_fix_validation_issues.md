@@ -13,12 +13,12 @@ validator's complaint, and clearing it.
 ## Step 1 — Introduce an issue
 
 Drop a `GaussianBlur → OtsuDetector` ribbon, then add a third block
-(`SizeFilter`) without wiring it into the existing ribbon. The
-`SizeFilter` is now **stranded**: it has no incoming image flow, so
+(`SmallObjectRemover`) without wiring it into the existing ribbon. The
+`SmallObjectRemover` is now **stranded**: it has no incoming image flow, so
 its preview can never resolve. The toolbar issue badge lights up
 showing the issue count.
 
-![Canvas with GaussianBlur + OtsuDetector wired left-to-right and a stranded SizeFilter block to the right. The toolbar shows a red "1 issue" badge.](../../_static/gui_images/fix-validation-issues/01_issue_introduced.png)
+![Canvas with GaussianBlur + OtsuDetector wired left-to-right and a stranded SmallObjectRemover block to the right. The toolbar shows a red "1 issue" badge.](../../_static/gui_images/fix-validation-issues/01_issue_introduced.png)
 
 The validator runs against the canvas state on every mutation, so
 the badge updates within ~50 ms of the drop. Issues are categorised
@@ -34,7 +34,7 @@ highlights with a red border + `!` marker, and the inspector shows
 the validator's explanation (e.g. "Block has no incoming image wire;
 either wire it from a producer or delete it").
 
-![SizeFilter block with red border and "!" marker; inspector explains "Block has no incoming image wire".](../../_static/gui_images/fix-validation-issues/02_issue_focused.png)
+![SmallObjectRemover block with red border and "!" marker; inspector explains "Block has no incoming image wire".](../../_static/gui_images/fix-validation-issues/02_issue_focused.png)
 
 The issue-click is non-destructive — you can use it as a navigation
 aid even when you don't intend to resolve the issue immediately
@@ -43,12 +43,12 @@ aid even when you don't intend to resolve the issue immediately
 ## Step 3 — Resolve the issue
 
 Either wire the orphan into the main ribbon (drag from the
-`OtsuDetector` output port to the `SizeFilter` input port) or delete
+`OtsuDetector` output port to the `SmallObjectRemover` input port) or delete
 it via `Delete selected` in the toolbar. The validator re-runs on
 mutation, clears the issue, hides the red border, and re-enables
 `Run preview` + `Save`.
 
-![Canvas after deleting the SizeFilter orphan; toolbar badge is gone, ribbon is GaussianBlur → OtsuDetector only, and the inspector's Run preview button is re-enabled.](../../_static/gui_images/fix-validation-issues/03_issue_resolved.png)
+![Canvas after deleting the SmallObjectRemover orphan; toolbar badge is gone, ribbon is GaussianBlur → OtsuDetector only, and the inspector's Run preview button is re-enabled.](../../_static/gui_images/fix-validation-issues/03_issue_resolved.png)
 
 The cleared state restores the canvas to a runnable pipeline. The
 inspector's preview thumbnail repopulates the next time you click
