@@ -2641,6 +2641,24 @@ def register_callbacks(app: dash.Dash) -> None:
 
         if pending is None:
             return no_update
+        # TEMP DIAGNOSTIC (PR #95 cluster-2): confirm this server callback
+        # fires for every STORE_PENDING update (incl. the edge_create one)
+        # and what it carries. Remove once the e2e job is green.
+        _nodes = sum(
+            1
+            for e in pending
+            if isinstance(e, dict) and not e.get("data", {}).get("source")
+        )
+        _edges = sum(
+            1
+            for e in pending
+            if isinstance(e, dict) and e.get("data", {}).get("source")
+        )
+        logger.warning(
+            "mirror_canvas_elements_to_bridge: %d nodes, %d edges",
+            _nodes,
+            _edges,
+        )
         return json.dumps(pending)
 
     # ----------------------------------------------------------------------

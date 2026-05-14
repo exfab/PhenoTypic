@@ -1044,12 +1044,32 @@
             }
             if (!Array.isArray(pending)) return;
             const cy = window.phenoGetCy && window.phenoGetCy();
-            if (!cy) return;
+            if (!cy) {
+                console.log("[bridge] sync: no cy yet");
+                return;
+            }
+            // TEMP DIAGNOSTIC (PR #95 cluster-2): trace the observer ->
+            // reconcile path so the CI failure dump shows where the edge
+            // is lost. Remove once the e2e job is green.
+            var _edges = pending.filter(function (e) {
+                return e.data && e.data.source;
+            }).length;
+            console.log(
+                "[bridge] sync: pending=" + pending.length +
+                " edges=" + _edges +
+                " cy_before=" + cy.nodes().length + "n/" +
+                cy.edges().length + "e"
+            );
             try {
                 reconcileCanvasElements(cy, pending);
+                console.log(
+                    "[bridge] reconciled; cy_after=" +
+                    cy.nodes().length + "n/" + cy.edges().length + "e"
+                );
             } catch (err) {
                 // cy may be mid-mutation / disposed; the next bridge
                 // write reconciles.
+                console.log("[bridge] reconcile ERROR " + err);
             }
         }
 
