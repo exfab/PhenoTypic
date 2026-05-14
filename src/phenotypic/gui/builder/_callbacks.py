@@ -97,6 +97,7 @@ from phenotypic.gui.builder._state import (
     state_to_json,
     to_pipeline,
 )
+from phenotypic.gui.builder._conversion_dag import to_pipeline_dag
 from phenotypic.gui.builder._validation import validate
 
 logger = logging.getLogger(__name__)
@@ -957,6 +958,25 @@ DispatchKind: TypeAlias = Literal[
 ]
 
 
+def _is_dag_state_dict(state_dict: Dict[str, Any]) -> bool:
+    """Return ``True`` when *state_dict* carries the DAG schema.
+
+    Mirrors the duck-typed dispatch in :func:`state_from_json`:
+    explicit ``_schema`` discriminator first, then heuristic
+    ``root.blocks`` presence for older payloads that predated the
+    discriminator. Used by :func:`_dispatch_state_update` to translate
+    legacy dispatch kinds to their DAG equivalents.
+    """
+
+    schema = state_dict.get("_schema")
+    if schema == "dag":
+        return True
+    if schema == "legacy":
+        return False
+    root = state_dict.get("root")
+    return isinstance(root, dict) and "blocks" in root
+
+
 def _dispatch_state_update(
     state_dict: Dict[str, Any], kind: DispatchKind, payload: Dict[str, Any]
 ) -> Dict[str, Any]:
@@ -1024,6 +1044,87 @@ def _dispatch_state_update(
     """
 
     out = deepcopy(state_dict)
+    is_dag = _is_dag_state_dict(out)
+
+    # When state carries the DAG schema, translate legacy dispatch kinds
+    # to their DAG equivalents so callers that don't know about the
+    # state shape (toolbar buttons, label / param edit inputs, the
+    # canvas tap callback, breadcrumb-link clicks, etc.) continue to
+    # mutate state correctly instead of raising ``KeyError: 'nodes'``
+    # against a DAG scope dict. Legacy-only kinds without a DAG analogue
+    # are short-circuited to a no-op so unit tests that drive the
+    # dispatcher directly don't trip over them either.
+    if is_dag:
+        if kind == "select_node":
+            kind = "block_select"
+            payload = {"block_id": payload.get("node_id")}
+        elif kind == "delete_node":
+            sel = out.get("selected_block_id")
+            if sel is None:
+                return out
+            kind = "block_delete_request"
+            payload = {"block_id": sel}
+        elif kind == "drill_in":
+            sel = out.get("selected_block_id")
+            if sel is None:
+                return out
+            kind = "drill_into_container"
+            payload = {"block_id": sel}
+        elif kind == "drill_out":
+            existing = list(out.get("breadcrumb", []) or [])
+            if existing:
+                existing = existing[:-1]
+            kind = "drill_to_scope"
+            payload = {"target_breadcrumb": existing}
+        elif kind == "breadcrumb_to":
+            depth = int(payload.get("depth", 0))
+            existing = list(out.get("breadcrumb", []) or [])[:depth]
+            kind = "drill_to_scope"
+            payload = {"target_breadcrumb": existing}
+        elif kind == "edit_param":
+            block_id = payload.get("node_id")
+            root_scope = out.get("root")
+            if not isinstance(root_scope, dict) or not isinstance(
+                block_id, str
+            ):
+                return out
+            hit = _find_block_in_tree(root_scope, block_id)
+            if hit is None:
+                return out
+            _, block = hit
+            if payload.get("omit"):
+                block.setdefault("params", {}).pop(payload["name"], None)
+            else:
+                block.setdefault("params", {})[payload["name"]] = (
+                    payload.get("value")
+                )
+            return out
+        elif kind == "edit_label":
+            block_id = payload.get("node_id")
+            root_scope = out.get("root")
+            if not isinstance(root_scope, dict) or not isinstance(
+                block_id, str
+            ):
+                return out
+            hit = _find_block_in_tree(root_scope, block_id)
+            if hit is None:
+                return out
+            _, block = hit
+            block["label"] = payload.get("label") or None
+            return out
+        elif kind in {
+            "add_node",
+            "add_pipeline",
+            "reorder",
+            "port_slot_add",
+            "port_slot_remove",
+        }:
+            # No DAG analogue. ``block_create`` / ``edge_create`` /
+            # dispatcher-handled aux flow supersede these kinds; callers
+            # that still emit them against DAG state (e.g. legacy unit
+            # tests) get a clean no-op instead of an exception.
+            return out
+
     breadcrumb = list(out.get("breadcrumb", []) or [])
     scope = _scope_at_breadcrumb(out, breadcrumb)
 
@@ -2392,13 +2493,22 @@ def register_callbacks(app: dash.Dash) -> None:
                 )
             elif triggered == ids.INPUT_NODE_LABEL:
                 state = state_from_json(state_data)
-                if state.selected_node_id is None:
+                # Duck-type the selection id: DAG state exposes
+                # ``selected_block_id``, legacy state exposes
+                # ``selected_node_id``. The dispatcher's edit_label
+                # translation works for both shapes.
+                selected_id = getattr(
+                    state,
+                    "selected_block_id",
+                    getattr(state, "selected_node_id", None),
+                )
+                if selected_id is None:
                     return _NOOP_FAN_IN
                 new_state_dict = _dispatch_state_update(
                     state_data,
                     "edit_label",
                     {
-                        "node_id": state.selected_node_id,
+                        "node_id": selected_id,
                         "label": label_value,
                     },
                 )
@@ -3808,7 +3918,14 @@ def register_callbacks(app: dash.Dash) -> None:
 
             t0 = time.time()
             state = state_from_json(state_data)
-            pipeline = to_pipeline(state.root)
+            # Duck-type the schema: DAG state needs the DAG converter
+            # (which walks ``state.root.blocks`` + ``edges`` topologically);
+            # the legacy converter walks ``state.root.nodes`` and would
+            # AttributeError on a ``_DagBuilderScope``.
+            if hasattr(state, "selected_block_id"):
+                pipeline = to_pipeline_dag(state)
+            else:
+                pipeline = to_pipeline(state.root)
             uses_grid = _pipeline_uses_grid(pipeline, GridOperation)
 
             image = _load_preview_image(image_path, uses_grid, nrows, ncols)
@@ -3871,7 +3988,18 @@ def register_callbacks(app: dash.Dash) -> None:
         except Exception:  # noqa: BLE001
             return no_update
 
-        if state.selected_node_id is None:
+        # Duck-type the selection id: DAG state exposes
+        # ``selected_block_id``, legacy state exposes
+        # ``selected_node_id``. Both shapes share the preview cache by
+        # the same string id (block_id / node_id are interchangeable
+        # opaque strings keyed into ``IntermediatesCache``).
+        selected_id = getattr(
+            state,
+            "selected_block_id",
+            getattr(state, "selected_node_id", None),
+        )
+
+        if selected_id is None:
             last = _preview_render_keys.get(session_id)
             if last is not None and last[0] is None:
                 return no_update
@@ -3881,23 +4009,33 @@ def register_callbacks(app: dash.Dash) -> None:
                 className="text-muted",
             )
 
-        try:
-            scope = current_scope(state)
-        except KeyError:
-            return no_update
-        node = next(
-            (n for n in scope.nodes if n.node_id == state.selected_node_id),
-            None,
-        )
-        if node is None:
-            return no_update
+        # Verify the selection still exists in the state tree. For DAG
+        # state walk the block tree by id; for legacy state walk the
+        # breadcrumb-resolved scope's node list.
+        if hasattr(state, "selected_block_id"):
+            root_dict = state_data.get("root")
+            if not isinstance(root_dict, dict):
+                return no_update
+            if _find_block_in_tree(root_dict, selected_id) is None:
+                return no_update
+        else:
+            try:
+                scope = current_scope(state)
+            except KeyError:
+                return no_update
+            node = next(
+                (n for n in scope.nodes if n.node_id == selected_id),
+                None,
+            )
+            if node is None:
+                return no_update
 
-        cached = get_cache().get_intermediate(session_id, state.selected_node_id)
+        cached = get_cache().get_intermediate(session_id, selected_id)
         cache_token = id(cached) if cached is not None else 0
         last = _preview_render_keys.get(session_id)
-        if last == (state.selected_node_id, cache_token):
+        if last == (selected_id, cache_token):
             return no_update
-        _preview_render_keys[session_id] = (state.selected_node_id, cache_token)
+        _preview_render_keys[session_id] = (selected_id, cache_token)
         if cached is None:
             return html.Div(
                 "No preview yet — click Run preview.",
@@ -3932,7 +4070,7 @@ def register_callbacks(app: dash.Dash) -> None:
         logger.warning(  # pragma: no cover
             "Unexpected cache payload type %s for node %s",
             type(cached).__name__,
-            state.selected_node_id,
+            selected_id,
         )
         return no_update  # pragma: no cover
 
@@ -4063,7 +4201,10 @@ def register_callbacks(app: dash.Dash) -> None:
             # The pre-save orphan walk that used to live here has been
             # removed.
             state = state_from_json(state_data)
-            pipeline = to_pipeline(state.root)
+            if hasattr(state, "selected_block_id"):
+                pipeline = to_pipeline_dag(state)
+            else:
+                pipeline = to_pipeline(state.root)
             target = (Path(dir_value).expanduser() / filename_value).resolve()
 
             # Defense-in-depth: reject targets outside ``--image-root`` before
@@ -5355,6 +5496,12 @@ def _maybe_reorder_from_elements(
     if not elements:
         return state_data
 
+    # DAG canvas drags don't imply a linear reorder — the graph order is
+    # implicit in the edges, not in left-to-right layout. Drag positions
+    # are ephemeral (spec §4.7) so reordering would corrupt the DAG.
+    if _is_dag_state_dict(state_data):
+        return state_data
+
     # Filter to node entries with positions.
     node_entries = [
         e for e in elements if "data" in e and "source" not in e.get("data", {})
@@ -5420,15 +5567,27 @@ def _handle_param_edit(
         return state_data
 
     # Resolve ParamInfo to coerce the raw value back to a Python type.
-    state = state_from_json(state_data)
-    try:
-        scope = current_scope(state)
-    except KeyError:
-        return state_data
-    node = next((n for n in scope.nodes if n.node_id == prefix), None)
-    if node is None:
-        return state_data
-    info = get_registry().get(node.class_name)
+    # DAG state uses block_id as the prefix and lives in ``root.blocks``;
+    # legacy state walks the breadcrumb-resolved scope's nodes list.
+    if _is_dag_state_dict(state_data):
+        root_dict = state_data.get("root")
+        if not isinstance(root_dict, dict):
+            return state_data
+        hit = _find_block_in_tree(root_dict, prefix)
+        if hit is None:
+            return state_data
+        class_name = hit[1].get("class_name", "")
+    else:
+        state = state_from_json(state_data)
+        try:
+            scope = current_scope(state)
+        except KeyError:
+            return state_data
+        node = next((n for n in scope.nodes if n.node_id == prefix), None)
+        if node is None:
+            return state_data
+        class_name = node.class_name
+    info = get_registry().get(class_name)
     if info is None:
         return state_data
     p = info.parameters.get(name)

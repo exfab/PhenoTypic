@@ -1,7 +1,12 @@
-"""Verify the /builder/tiles blueprint serves DZI manifests for staged PNGs.
+"""Verify the builder tiles blueprint serves DZI manifests for staged PNGs.
 
-Drives the blueprint via Flask's :class:`flask.testing.FlaskClient` so the
-DZI generation path is exercised end-to-end without a browser.
+The blueprint mounts at ``/tiles`` on the builder Flask app — the path
+the server sees AFTER the hub :class:`DispatcherMiddleware` strips the
+``/builder/`` mount prefix. This test drives Flask's
+:class:`flask.testing.FlaskClient` directly (no dispatcher in the
+loop), so the test URLs use the bare blueprint path. Browser-facing
+URLs are ``<requests_pathname_prefix>tiles/...`` — see
+:func:`phenotypic.gui.builder._point_picker._dzi_url`.
 """
 
 from __future__ import annotations
@@ -43,7 +48,7 @@ def test_dzi_manifest_served(app_with_tmp_root, tmp_path):
     sid = "deadbeef-1234-5678-9abc-deadbeef0000"
     _stage_png(tmp_path, sid, "rgb")
     client = app_with_tmp_root.server.test_client()
-    resp = client.get(f"/builder/tiles/{sid}/rgb.dzi")
+    resp = client.get(f"/tiles/{sid}/rgb.dzi")
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
     assert "<Image" in body
@@ -56,7 +61,7 @@ def test_unknown_source_rejected(app_with_tmp_root):
     """``<source>`` outside the rgb/intermediate allow-list returns 404."""
     sid = "deadbeef-1234-5678-9abc-deadbeef0000"
     client = app_with_tmp_root.server.test_client()
-    resp = client.get(f"/builder/tiles/{sid}/badsource.dzi")
+    resp = client.get(f"/tiles/{sid}/badsource.dzi")
     assert resp.status_code == 404
 
 
@@ -70,13 +75,13 @@ def test_unsafe_session_id_rejected(app_with_tmp_root):
     """
     client = app_with_tmp_root.server.test_client()
     # ``..`` is a literal parent-dir reference per :func:`_is_safe_path_component`.
-    resp_dotdot = client.get("/builder/tiles/../rgb.dzi")
+    resp_dotdot = client.get("/tiles/../rgb.dzi")
     assert resp_dotdot.status_code == 404
     # Leading-dot id (``.hidden``) — also rejected.
-    resp_hidden = client.get("/builder/tiles/.hidden/rgb.dzi")
+    resp_hidden = client.get("/tiles/.hidden/rgb.dzi")
     assert resp_hidden.status_code == 404
     # Special chars not in the safe charset.
-    resp_special = client.get("/builder/tiles/has$dollar/rgb.dzi")
+    resp_special = client.get("/tiles/has$dollar/rgb.dzi")
     assert resp_special.status_code == 404
 
 
@@ -86,7 +91,7 @@ def test_too_short_session_id_rejected(app_with_tmp_root, tmp_path):
     # is policy-based, not "PNG missing".
     _stage_png(tmp_path, "short", "rgb")
     client = app_with_tmp_root.server.test_client()
-    resp = client.get("/builder/tiles/short/rgb.dzi")
+    resp = client.get("/tiles/short/rgb.dzi")
     assert resp.status_code == 404
 
 
@@ -94,7 +99,7 @@ def test_missing_png_returns_404(app_with_tmp_root):
     """Missing source PNG returns 404 rather than a partially-tiled directory."""
     client = app_with_tmp_root.server.test_client()
     resp = client.get(
-        "/builder/tiles/deadbeef-1234-5678-9abc-deadbeef0000/rgb.dzi"
+        "/tiles/deadbeef-1234-5678-9abc-deadbeef0000/rgb.dzi"
     )
     assert resp.status_code == 404
 
@@ -105,7 +110,7 @@ def test_tile_endpoint_serves_after_manifest(app_with_tmp_root, tmp_path):
     _stage_png(tmp_path, sid, "rgb")
     client = app_with_tmp_root.server.test_client()
     # Generate the pyramid via the manifest endpoint.
-    manifest_resp = client.get(f"/builder/tiles/{sid}/rgb.dzi")
+    manifest_resp = client.get(f"/tiles/{sid}/rgb.dzi")
     assert manifest_resp.status_code == 200
 
     # Look up which level files actually exist (the tiler picks levels
@@ -121,7 +126,7 @@ def test_tile_endpoint_serves_after_manifest(app_with_tmp_root, tmp_path):
     rel_filename = sample_tile.name
 
     tile_resp = client.get(
-        f"/builder/tiles/{sid}/rgb_files/{rel_level}/{rel_filename}"
+        f"/tiles/{sid}/rgb_files/{rel_level}/{rel_filename}"
     )
     assert tile_resp.status_code == 200
     assert tile_resp.mimetype == "image/png"
@@ -133,9 +138,9 @@ def test_tile_endpoint_rejects_unsafe_filename(app_with_tmp_root, tmp_path):
     _stage_png(tmp_path, sid, "rgb")
     client = app_with_tmp_root.server.test_client()
     # Make sure tiles exist so a real route resolution would otherwise succeed.
-    client.get(f"/builder/tiles/{sid}/rgb.dzi")
+    client.get(f"/tiles/{sid}/rgb.dzi")
 
     bad_resp = client.get(
-        f"/builder/tiles/{sid}/rgb_files/0/not-a-tile.png"
+        f"/tiles/{sid}/rgb_files/0/not-a-tile.png"
     )
     assert bad_resp.status_code == 404

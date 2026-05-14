@@ -5,7 +5,8 @@ Owns:
 * :func:`build_point_picker_modal` — the ``dbc.Modal`` shell with stores,
   channel radio, action buttons, and the OSD mount div.
 * :func:`register_point_picker_routes` — Flask blueprint mounted at
-  ``/builder/tiles`` that lazily tiles per-session preview PNGs into DZI
+  ``/tiles`` (post-dispatcher mount; browser hits ``/builder/tiles``)
+  that lazily tiles per-session preview PNGs into DZI
   pyramids using :mod:`phenotypic.gui.results_viewer._dzi_tiler`.
 * :func:`register_point_picker_callbacks` — Dash callbacks for modal open,
   channel toggle, clear / undo, count label, cancel, and confirm.
@@ -32,13 +33,14 @@ import dash
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 import numpy as np
 from dash import ALL, Input, Output, State, ctx, dcc, html, no_update
-from flask import Blueprint, Response, send_from_directory
+from flask import Blueprint, Response, current_app, send_from_directory
 from PIL import Image as PILImage
 from werkzeug.utils import secure_filename
 
 from phenotypic.gui._config import (
     BUILDER_TILES_PREFIX,
     CFG_IMAGE_ROOT,
+    CFG_URL_PREFIX,
     SANDBOX_BUILDER_TILES_SUBDIR,
     SANDBOX_GUI_DIRNAME,
 )
@@ -379,11 +381,14 @@ def register_point_picker_routes(
     is the responsibility of the modal-open / channel-toggle Dash
     callbacks (which know which session and which preview image to use).
 
-    Two routes are exposed under ``/builder/tiles``:
+    Two routes are exposed under :data:`BUILDER_TILES_PREFIX` (``/tiles``
+    after the dispatcher strips ``/builder/``); browser-facing URLs
+    therefore include the Dash app's ``requests_pathname_prefix`` —
+    ``/builder/tiles/...`` in hub mode, ``/tiles/...`` standalone:
 
-    * ``GET /builder/tiles/<session_id>/<source>.dzi`` — DZI XML manifest.
-    * ``GET /builder/tiles/<session_id>/<source>_files/<level>/<filename>``
-      — a single tile PNG.
+    * ``GET /tiles/<session_id>/<source>.dzi`` — DZI XML manifest.
+    * ``GET /tiles/<session_id>/<source>_files/<level>/<filename>`` —
+      a single tile PNG.
 
     Args:
         app: The :class:`dash.Dash` instance whose Flask server should be
@@ -448,8 +453,9 @@ def register_point_picker_routes(
 
     app.server.register_blueprint(bp)
     logger.debug(
-        "Registered builder point-picker tile routes under /builder/tiles "
+        "Registered builder point-picker tile routes under %s "
         "(image_root=%s)",
+        BUILDER_TILES_PREFIX,
         image_root,
     )
 
@@ -480,6 +486,38 @@ def _resolve_node_and_predecessor(
         state = state_from_json(state_data)
     except Exception:  # noqa: BLE001
         return (None, None)
+
+    # DAG state: walk the block tree by id and resolve the predecessor
+    # via the image edge whose target is this block. Legacy state uses
+    # the linear ribbon — predecessor is just the previous node.
+    if hasattr(state, "selected_block_id"):
+        root_dict = state_data.get("root")
+        if not isinstance(root_dict, dict):
+            return (None, None)
+        from phenotypic.gui.builder._callbacks import _find_block_in_tree
+
+        hit = _find_block_in_tree(root_dict, node_id)
+        if hit is None:
+            return (None, None)
+        scope_dict, block = hit
+        class_name = block.get("class_name", "")
+        prev_id: Optional[str] = None
+        for edge in scope_dict.get("edges", []) or []:
+            if (
+                edge.get("kind") == "image"
+                and edge.get("target_block_id") == node_id
+                and edge.get("target_port") == "in"
+            ):
+                prev_id = edge.get("source_block_id")
+                break
+        return (
+            {
+                "node_id": node_id,
+                "class_name": class_name,
+                "is_pipeline": class_name == PIPELINE_CLASS_NAME,
+            },
+            prev_id,
+        )
 
     try:
         scope = current_scope(state)
@@ -593,14 +631,26 @@ def _stage_intermediate_png_bytes(
 def _dzi_url(session_id: str, source: str) -> str:
     """Build the DZI manifest URL the JS layer should mount.
 
+    The blueprint mounts at :data:`BUILDER_TILES_PREFIX` (``/tiles``)
+    on the builder Flask app — the path the server sees after the hub
+    :class:`DispatcherMiddleware` strips the mount prefix. The
+    browser-facing URL must therefore be prefixed with the Dash app's
+    ``requests_pathname_prefix`` (``/`` standalone, ``/builder/`` in
+    hub mode) so OpenSeadragon's fetch lands on the dispatcher's
+    builder mount before being forwarded to the blueprint.
+
     Args:
         session_id: Per-tab uuid (already validated).
         source: One of :data:`_VALID_SOURCES`.
 
     Returns:
-        URL string of the form ``/builder/tiles/<session_id>/<source>.dzi``.
+        URL string of the form
+        ``<requests_pathname_prefix>tiles/<session_id>/<source>.dzi``.
     """
-    return f"{BUILDER_TILES_PREFIX}/{session_id}/{source}.dzi"
+    url_prefix = current_app.config.get(CFG_URL_PREFIX, "/")
+    if not url_prefix.endswith("/"):
+        url_prefix = f"{url_prefix}/"
+    return f"{url_prefix}tiles/{session_id}/{source}.dzi"
 
 
 # ---------------------------------------------------------------------------
