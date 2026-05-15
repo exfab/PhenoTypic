@@ -414,3 +414,6 @@ class DoubleSoftplus(_LinearSoftplusBase):
             ("mode", DOUBLE_SOFTPLUS_MODEL.mode, ""),
             ("RMSE", MODEL_METRICS.RMSE, ".4f"),
         ]
+
+
+DoubleSoftplus.__doc__ = DOUBLE_SOFTPLUS_MODEL.append_rst_to_doc(DoubleSoftplus)

@@ -110,14 +110,14 @@ class LogGrowthModel(ModelFitter):
             n_jobs: Number of parallel workers for per-group fits.
         """
         super().__init__(
-            on=on,
-            groupby=groupby,
-            time_label=time_label,
-            agg_func=agg_func,
-            n_jobs=n_jobs,
-            loss=loss,
-            f_scale=f_scale,
-            verbose=verbose,
+                on=on,
+                groupby=groupby,
+                time_label=time_label,
+                agg_func=agg_func,
+                n_jobs=n_jobs,
+                loss=loss,
+                f_scale=f_scale,
+                verbose=verbose,
         )
         self.lam = lam
         self.beta = beta
@@ -230,17 +230,17 @@ class LogGrowthModel(ModelFitter):
     ) -> Dict[Any, float]:
         r, K, N0 = float(x[0]), float(x[1]), float(x[2])
         return {
-            LOG_GROWTH_MODEL.R_FIT: r,
-            LOG_GROWTH_MODEL.K_FIT: K,
-            LOG_GROWTH_MODEL.N0_FIT: N0,
+            LOG_GROWTH_MODEL.R_FIT      : r,
+            LOG_GROWTH_MODEL.K_FIT      : K,
+            LOG_GROWTH_MODEL.N0_FIT     : N0,
             LOG_GROWTH_MODEL.GROWTH_RATE: (r * K) / 4,
-            LOG_GROWTH_MODEL.K_MAX: self._kmax_for(group),
+            LOG_GROWTH_MODEL.K_MAX      : self._kmax_for(group),
         }
 
     def _predict_kwargs(self, row) -> Dict[str, float]:
         return {
-            "r": row[LOG_GROWTH_MODEL.R_FIT],
-            "K": row[LOG_GROWTH_MODEL.K_FIT],
+            "r" : row[LOG_GROWTH_MODEL.R_FIT],
+            "K" : row[LOG_GROWTH_MODEL.K_FIT],
             "N0": row[LOG_GROWTH_MODEL.N0_FIT],
         }
 
@@ -249,7 +249,7 @@ class LogGrowthModel(ModelFitter):
 
     def _post_fit_columns(self) -> Dict[Any, float]:
         return {
-            LOG_GROWTH_MODEL.LAM: self.lam,
+            LOG_GROWTH_MODEL.LAM : self.lam,
             LOG_GROWTH_MODEL.BETA: self.beta,
         }
 
@@ -266,3 +266,6 @@ class LogGrowthModel(ModelFitter):
             ("µmax", LOG_GROWTH_MODEL.GROWTH_RATE, ".4f"),
             ("RMSE", MODEL_METRICS.RMSE, ".4f"),
         ]
+
+
+LogGrowthModel.__doc__ = LOG_GROWTH_MODEL.append_rst_to_doc(LogGrowthModel)
