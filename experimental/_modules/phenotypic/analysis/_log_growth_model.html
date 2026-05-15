@@ -641,14 +641,14 @@
 <span class="sd">            n_jobs: Number of parallel workers for per-group fits.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="n">on</span><span class="o">=</span><span class="n">on</span><span class="p">,</span>
-            <span class="n">groupby</span><span class="o">=</span><span class="n">groupby</span><span class="p">,</span>
-            <span class="n">time_label</span><span class="o">=</span><span class="n">time_label</span><span class="p">,</span>
-            <span class="n">agg_func</span><span class="o">=</span><span class="n">agg_func</span><span class="p">,</span>
-            <span class="n">n_jobs</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">,</span>
-            <span class="n">loss</span><span class="o">=</span><span class="n">loss</span><span class="p">,</span>
-            <span class="n">f_scale</span><span class="o">=</span><span class="n">f_scale</span><span class="p">,</span>
-            <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+                <span class="n">on</span><span class="o">=</span><span class="n">on</span><span class="p">,</span>
+                <span class="n">groupby</span><span class="o">=</span><span class="n">groupby</span><span class="p">,</span>
+                <span class="n">time_label</span><span class="o">=</span><span class="n">time_label</span><span class="p">,</span>
+                <span class="n">agg_func</span><span class="o">=</span><span class="n">agg_func</span><span class="p">,</span>
+                <span class="n">n_jobs</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">,</span>
+                <span class="n">loss</span><span class="o">=</span><span class="n">loss</span><span class="p">,</span>
+                <span class="n">f_scale</span><span class="o">=</span><span class="n">f_scale</span><span class="p">,</span>
+                <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">lam</span> <span class="o">=</span> <span class="n">lam</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">beta</span> <span class="o">=</span> <span class="n">beta</span>
@@ -765,17 +765,17 @@
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
         <span class="n">r</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">N0</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
         <span class="k">return</span> <span class="p">{</span>
-            <span class="n">LOG_GROWTH_MODEL</span><span class="o">.</span><span class="n">R_FIT</span><span class="p">:</span> <span class="n">r</span><span class="p">,</span>
-            <span class="n">LOG_GROWTH_MODEL</span><span class="o">.</span><span class="n">K_FIT</span><span class="p">:</span> <span class="n">K</span><span class="p">,</span>
-            <span class="n">LOG_GROWTH_MODEL</span><span class="o">.</span><span class="n">N0_FIT</span><span class="p">:</span> <span class="n">N0</span><span class="p">,</span>
+            <span class="n">LOG_GROWTH_MODEL</span><span class="o">.</span><span class="n">R_FIT</span>      <span class="p">:</span> <span class="n">r</span><span class="p">,</span>
+            <span class="n">LOG_GROWTH_MODEL</span><span class="o">.</span><span class="n">K_FIT</span>      <span class="p">:</span> <span class="n">K</span><span class="p">,</span>
+            <span class="n">LOG_GROWTH_MODEL</span><span class="o">.</span><span class="n">N0_FIT</span>     <span class="p">:</span> <span class="n">N0</span><span class="p">,</span>
             <span class="n">LOG_GROWTH_MODEL</span><span class="o">.</span><span class="n">GROWTH_RATE</span><span class="p">:</span> <span class="p">(</span><span class="n">r</span> <span class="o">*</span> <span class="n">K</span><span class="p">)</span> <span class="o">/</span> <span class="mi">4</span><span class="p">,</span>
-            <span class="n">LOG_GROWTH_MODEL</span><span class="o">.</span><span class="n">K_MAX</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kmax_for</span><span class="p">(</span><span class="n">group</span><span class="p">),</span>
+            <span class="n">LOG_GROWTH_MODEL</span><span class="o">.</span><span class="n">K_MAX</span>      <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kmax_for</span><span class="p">(</span><span class="n">group</span><span class="p">),</span>
         <span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_predict_kwargs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
         <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="n">LOG_GROWTH_MODEL</span><span class="o">.</span><span class="n">R_FIT</span><span class="p">],</span>
-            <span class="s2">&quot;K&quot;</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="n">LOG_GROWTH_MODEL</span><span class="o">.</span><span class="n">K_FIT</span><span class="p">],</span>
+            <span class="s2">&quot;r&quot;</span> <span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="n">LOG_GROWTH_MODEL</span><span class="o">.</span><span class="n">R_FIT</span><span class="p">],</span>
+            <span class="s2">&quot;K&quot;</span> <span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="n">LOG_GROWTH_MODEL</span><span class="o">.</span><span class="n">K_FIT</span><span class="p">],</span>
             <span class="s2">&quot;N0&quot;</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="n">LOG_GROWTH_MODEL</span><span class="o">.</span><span class="n">N0_FIT</span><span class="p">],</span>
         <span class="p">}</span>
 
@@ -784,7 +784,7 @@
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_post_fit_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
         <span class="k">return</span> <span class="p">{</span>
-            <span class="n">LOG_GROWTH_MODEL</span><span class="o">.</span><span class="n">LAM</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">lam</span><span class="p">,</span>
+            <span class="n">LOG_GROWTH_MODEL</span><span class="o">.</span><span class="n">LAM</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">lam</span><span class="p">,</span>
             <span class="n">LOG_GROWTH_MODEL</span><span class="o">.</span><span class="n">BETA</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">beta</span><span class="p">,</span>
         <span class="p">}</span>
 
@@ -802,6 +802,9 @@
             <span class="p">(</span><span class="s2">&quot;RMSE&quot;</span><span class="p">,</span> <span class="n">MODEL_METRICS</span><span class="o">.</span><span class="n">RMSE</span><span class="p">,</span> <span class="s2">&quot;.4f&quot;</span><span class="p">),</span>
         <span class="p">]</span></div>
 
+
+
+<span class="n">LogGrowthModel</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">LOG_GROWTH_MODEL</span><span class="o">.</span><span class="n">append_rst_to_doc</span><span class="p">(</span><span class="n">LogGrowthModel</span><span class="p">)</span>
 </pre></div>
 
                 </article>
