@@ -341,3 +341,6 @@ class LinearSoftplus(_LinearSoftplusBase):
             ("alpha", LINEAR_SOFTPLUS_MODEL.alpha, ".2f"),
             ("RMSE", MODEL_METRICS.RMSE, ".4f"),
         ]
+
+
+LinearSoftplus.__doc__ = LINEAR_SOFTPLUS_MODEL.append_rst_to_doc(LinearSoftplus)
