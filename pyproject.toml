@@ -155,6 +155,7 @@ addopts = "--verbose --capture=no -m 'not slow'"
 markers = [
     "smoke: basic operation test",
     "slow: heavy parametrize sweep, excluded from PR runs by default",
+    "ci_flaky: e2e tests that pass locally but flake on shared CI runners (Playwright DOM polls); CI workflow deselects via `-m 'not ci_flaky'`. See tests/CLAUDE.md.",
 ]
 filterwarnings = [
     "ignore::SyntaxWarning:mahotas",
