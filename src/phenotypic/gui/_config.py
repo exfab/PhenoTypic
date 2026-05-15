@@ -78,6 +78,9 @@ __all__ = [
     "CFG_FILTERED_STATE",
     "CFG_RECIPE_STATE",
     "CFG_MEASUREMENT_SCHEMA",
+    "CFG_QC_RECIPE",
+    "CFG_QC_INSTANCES_CACHE",
+    "CFG_QC_AUGMENTED_FRAME",
     # Sandbox subdirectories
     "SANDBOX_GUI_DIRNAME",
     "SANDBOX_PRESETS_SUBDIR",
@@ -204,12 +207,28 @@ CFG_FILTERED_STATE: str = "filtered_state"
 CFG_RECIPE_STATE: str = "recipe_state"
 
 #: ``app.server.config`` key holding the analysis sub-app's
-#: :class:`~phenotypic.gui.analysis._schema_cache.MeasurementSchema` —
+#: :class:`~phenotypic.gui._schema_cache.MeasurementSchema` —
 #: a lazy mtime-keyed cache of column lists from
 #: ``measurements.parquet`` / ``master_measurements.parquet`` (with CSV
 #: fallback). Drives the column-aware dropdowns on filter / model
 #: section forms.
 CFG_MEASUREMENT_SCHEMA: str = "pheno_measurement_schema"
+
+#: ``app.server.config[CFG_QC_RECIPE]`` — :class:`QcRecipe` instance
+#: for the active output directory. Loaded at create_app() boot and
+#: mutated by QC tab callbacks (add/remove/update). Spec lines 751-759.
+CFG_QC_RECIPE: str = "pheno_qc_recipe"
+
+#: ``app.server.config[CFG_QC_INSTANCES_CACHE]`` — a single dict
+#: ``{revision: list[QualityCheck]}`` invalidated on every recipe-revision
+#: change (read-then-discard, not unbounded). Spec lines 753-755.
+CFG_QC_INSTANCES_CACHE: str = "pheno_qc_instances"
+
+#: ``app.server.config[CFG_QC_AUGMENTED_FRAME]`` — latest merged
+#: filtered + QC-columns frame consumed by the Heatmap tab. Single
+#: value, overwritten on every QC card-body refresh; sized cap-at-one
+#: enforced. Spec lines 756-759.
+CFG_QC_AUGMENTED_FRAME: str = "pheno_qc_augmented_frame"
 
 # ---------------------------------------------------------------------------
 # Sandbox subdirectories
@@ -269,8 +288,14 @@ DASHBOARD_FILENAME: str = DASHBOARD_HTML
 #: Full Flask route for the sandbox API viewer output-root handoff endpoint.
 SANDBOX_API_VIEWER_OUTPUT_ROOT: str = f"{SANDBOX_API_PREFIX}/viewer/output-root"
 
-#: URL prefix for the builder's DZI tile blueprint.
-BUILDER_TILES_PREFIX: str = f"{MOUNT_BUILDER}tiles"
+#: URL prefix where the builder's DZI tile blueprint mounts on the Flask
+#: app — the path the Flask server sees AFTER the hub
+#: :class:`DispatcherMiddleware` strips the mount prefix. The browser-
+#: facing URL is ``<requests_pathname_prefix>tiles/...``; standalone
+#: launches collapse ``requests_pathname_prefix`` to ``/``, hub mode
+#: prepends ``/builder/``. Mirrors :data:`VIEWER_TILES_PREFIX` so both
+#: tile blueprints follow the same routing convention.
+BUILDER_TILES_PREFIX: str = "/tiles"
 
 #: URL prefix for the results-viewer's DZI tile blueprint. Distinct from
 #: ``BUILDER_TILES_PREFIX`` because the viewer's tile cache and route

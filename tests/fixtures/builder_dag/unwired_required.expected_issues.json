@@ -1,0 +1,10 @@
+{
+  "issues": [
+    {
+      "kind": "required_aux",
+      "severity": "error",
+      "block_label": "consumer",
+      "scope_path": []
+    }
+  ]
+}

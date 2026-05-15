@@ -277,9 +277,16 @@
 
         el.setAttribute("aria-busy", "true");
 
+        // OSD's `prefixUrl` resolves the icon images for the zoom/home/
+        // fullpage buttons. The vendored icon set lives under the
+        // results-viewer's assets tree (the OSD-JS bundle does too —
+        // see `loadOpenSeadragon` in section (A)), so reuse that path
+        // verbatim instead of `appPrefix + "assets/..."` — the builder
+        // assets folder does not vendor the icons and the hub mounts the
+        // viewer under a fixed `/results/` prefix.
         viewer = window.OpenSeadragon({
             element: el,
-            prefixUrl: appPrefix + "assets/openseadragon/images/",
+            prefixUrl: "/results/assets/openseadragon/images/",
             tileSources: dziUrl,
             showNavigator: false,
             showRotationControl: false,

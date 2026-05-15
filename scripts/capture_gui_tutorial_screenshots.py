@@ -29,6 +29,7 @@ import json
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -207,6 +208,20 @@ def _wait_for_http_200(url: str, *, timeout: float = 30.0) -> None:
     )
 
 
+def _gui_log_sink(port: int) -> Path:
+    """Return the temp log path for a GUI subprocess booted on *port*.
+
+    The GUI's stdout+stderr are redirected to this file rather than an
+    in-process ``subprocess.PIPE``.  An undrained pipe deadlocks the GUI
+    once Werkzeug's per-request logging fills the OS pipe buffer
+    (~64 KB): the process blocks on its next ``stderr`` write and every
+    subsequent ``page.goto`` times out (this is exactly what stalled the
+    last capture workflow before this fix).  A file sink has no such
+    bound and doubles as a triage artifact for failed runs.
+    """
+    return Path(tempfile.gettempdir()) / f"phenotypic-gui-capture-{port}.log"
+
+
 def boot_gui(root: Path) -> tuple[subprocess.Popen[str], str]:
     """Boot ``phenotypic-gui`` on a free port. Returns (process, base_url)."""
     port = _free_port()
@@ -221,13 +236,18 @@ def boot_gui(root: Path) -> tuple[subprocess.Popen[str], str]:
         "--host",
         "127.0.0.1",
     ]
+    log_path = _gui_log_sink(port)
     print(f"[gui] booting: {' '.join(cmd)}")
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
+    print(f"[gui]   logs -> {log_path}")
+    # ``subprocess.Popen`` dups the file descriptor for the child, so the
+    # parent handle can be closed immediately — the GUI keeps writing.
+    with log_path.open("w", encoding="utf-8") as gui_log:
+        proc = subprocess.Popen(
+            cmd,
+            stdout=gui_log,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
     base_url = f"http://127.0.0.1:{port}"
     _wait_for_http_200(base_url + "/", timeout=30.0)
     print(f"[gui]   ready at {base_url}")
@@ -276,6 +296,11 @@ def capture_workflow_screenshots(base_url: str, headed: bool = False) -> None:
             _capture_pick_points(context, base_url)
             _capture_analysis(context, base_url)
             _capture_aux_ports(context, base_url)
+            _capture_qc_curation_loop(context, base_url)
+            _capture_heatmap_exploration(context, base_url)
+            _capture_aux_wire_in_dag(context, base_url)
+            _capture_wire_pipeline_as_aux(context, base_url)
+            _capture_fix_validation_issues(context, base_url)
         finally:
             browser.close()
 
@@ -296,13 +321,169 @@ def _new_page(context, base_url: str, path: str = "/"):
     return page
 
 
+def _emit_empty_state_shot(
+    context, base_url: str, path: str, workflow: str, name: str, *, log: str
+) -> None:
+    """Open ``path``, save a single screenshot, close.  The shared shape of
+    the empty-state hub captures (setup landing, results viewer, analysis
+    hand-off banner) which only need one shot of the page as-mounted."""
+    print(log)
+    page = _new_page(context, base_url, path)
+    _save(page, workflow, name)
+    page.close()
+
+
+# ---------------------------------------------------------------------------
+# DAG builder interaction helpers
+# ---------------------------------------------------------------------------
+#
+# The post-redesign builder canvas is a dash-cytoscape graph driven by three
+# clientside ``dcc.Store`` components (spec §5.5 "Clientside event contract"):
+#
+#   * ``store-palette-drop``  — ``block_create`` payloads (palette → canvas).
+#   * ``store-edge-event``    — ``edge_create`` / ``edge_delete`` (wire draw).
+#   * ``store-builder-state`` — ``block_select`` / ``block_delete_request`` …
+#
+# ``palette_dnd.js`` / ``wire_drawing.js`` write to these stores via
+# ``window.dash_clientside.set_props`` in response to native drag-and-drop
+# and port-mousedown gestures.  Playwright cannot faithfully replay HTML5
+# drag-and-drop against a ``<canvas>``-backed graph, so the capture helpers
+# below dispatch the *same payloads* the JS would emit — exercising the real
+# server-side dispatcher (``_dispatch_state_update``) and clientside layout
+# path, just without synthesising raw pointer events.
+
+
+def _new_builder_page(context, base_url: str):
+    """Open ``/builder/`` and block until the palette has mounted.
+
+    The shared opener for the DAG-builder capture helpers: a fresh page,
+    a wait on ``#palette`` (15s — the operation registry scan is slow on
+    a cold boot), then a short settle for the canvas's first dagre pass.
+    """
+    page = _new_page(context, base_url, "/builder/")
+    page.wait_for_selector("#palette", timeout=15_000)
+    page.wait_for_timeout(500)
+    return page
+
+
+def _relayout_canvas(page) -> None:
+    """Re-run the leaf-first dagre layout and wait for it to settle.
+
+    ``viewport_ops.js`` auto-relayouts on every mutation, but it debounces
+    behind dash-cytoscape's own ``breadthfirst`` pass; calling
+    ``phenotypicRelayout()`` explicitly before a screenshot guarantees the
+    canvas shows the final dagre layout + port placement deterministically.
+    """
+    page.evaluate(
+        "() => window.phenotypicRelayout && window.phenotypicRelayout()"
+    )
+    page.wait_for_timeout(900)
+
+
+def _dispatch_block_create(
+    page, class_name: str, *, container_block_id: str | None = None
+) -> None:
+    """Mint a DAG block via ``store-palette-drop`` (``block_create``).
+
+    Mirrors the payload ``palette_dnd.js`` emits on a palette drop.  Unlike
+    the ``palette-add`` keyboard-fallback click (which auto-wires the new
+    block onto the current scope tail), a raw ``block_create`` lands the
+    block free-floating — exactly what the aux-producer / stranded-block
+    tutorials need.  ``container_block_id`` drops the block into that
+    container's nested scope.
+    """
+    page.evaluate(
+        """([cn, cbid]) => {
+            window.dash_clientside.set_props('store-palette-drop', {
+                data: {
+                    kind: 'block_create',
+                    class_name: cn,
+                    x: 0, y: 0,
+                    container_block_id: cbid,
+                    ts: Date.now(),
+                },
+            });
+        }""",
+        [class_name, container_block_id],
+    )
+    page.wait_for_timeout(900)
+
+
+def _dispatch_edge_create(
+    page,
+    source_block_id: str,
+    target_block_id: str,
+    target_port: str,
+    edge_kind: str,
+) -> None:
+    """Draw a wire via ``store-edge-event`` (``edge_create``).
+
+    ``edge_kind`` is ``"image"`` (blue image-flow wire into the ``"in"``
+    port) or ``"aux"`` (purple wire into a named aux port).  Mirrors the
+    payload ``wire_drawing.js`` emits on a compatible port drop.
+    """
+    page.evaluate(
+        """([s, t, port, ek]) => {
+            window.dash_clientside.set_props('store-edge-event', {
+                data: {
+                    kind: 'edge_create',
+                    source_block_id: s,
+                    target_block_id: t,
+                    target_port: port,
+                    edge_kind: ek,
+                    ts: Date.now(),
+                },
+            });
+        }""",
+        [source_block_id, target_block_id, target_port, edge_kind],
+    )
+    page.wait_for_timeout(900)
+
+
+def _block_id(page, class_name: str, which: str = "last") -> str:
+    """Resolve a block's cytoscape id by ``class_name`` (``"first"`` / ``"last"``).
+
+    DAG blocks get a fresh 8-char hex id at creation time, so capture
+    helpers resolve ids from the live cy instance rather than hardcoding.
+    """
+    return page.evaluate(
+        """([cn, which]) => {
+            const cy = window.phenoGetCy && window.phenoGetCy();
+            if (!cy) return '';
+            const ns = cy.nodes('[class_name = "' + cn + '"]');
+            if (!ns || ns.length === 0) return '';
+            return (which === 'first' ? ns.first() : ns.last()).id();
+        }""",
+        [class_name, which],
+    )
+
+
+def _tap_block(page, block_id: str) -> None:
+    """Select a block by emitting a ``tap`` on its cytoscape node.
+
+    dash-cytoscape mirrors cytoscape ``tap`` events onto its ``tapNodeData``
+    prop, which the builder's canvas-tap callback routes to a
+    ``block_select`` dispatch — the same path a real click takes.
+    """
+    page.evaluate(
+        """(bid) => {
+            const cy = window.phenoGetCy && window.phenoGetCy();
+            if (!cy) return;
+            const n = cy.getElementById(bid);
+            if (n && n.length) { cy.elements().unselect(); n.emit('tap'); }
+        }""",
+        block_id,
+    )
+    page.wait_for_timeout(700)
+
+
 # --- setup --------------------------------------------------------------
 
 def _capture_setup(context, base_url: str) -> None:
-    print("[shot] workflow=setup")
-    page = _new_page(context, base_url, "/")
-    _save(page, "setup", "01_landing_page.png")
-    page.close()
+    _emit_empty_state_shot(
+        context, base_url, "/", "setup", "01_landing_page.png",
+        log="[shot] workflow=setup",
+    )
 
 
 # --- file explorer ------------------------------------------------------
@@ -353,6 +534,10 @@ def _capture_file_explorer(context, base_url: str) -> None:
 def _capture_build_pipeline(context, base_url: str) -> None:
     print("[shot] workflow=build_pipeline")
     page = _new_page(context, base_url, "/builder/")
+    page.wait_for_selector("#palette", timeout=15_000)
+    # Settle the dagre layout so the auto-seeded Input Image block sits
+    # cleanly centred rather than at the breadthfirst fallback origin.
+    _relayout_canvas(page)
     _save(page, "build_pipeline", "01_builder_empty.png")
     page.close()
 
@@ -418,10 +603,10 @@ def _capture_view_results(context, base_url: str) -> None:
     is not wired), so we boot the standalone viewer pointed at the real
     CLI output for the populated screenshots.
     """
-    print("[shot] workflow=view_results (empty state via hub)")
-    page = _new_page(context, base_url, "/results/")
-    _save(page, "view_results", "01_viewer_empty.png")
-    page.close()
+    _emit_empty_state_shot(
+        context, base_url, "/results/", "view_results", "01_viewer_empty.png",
+        log="[shot] workflow=view_results (empty state via hub)",
+    )
 
 
 def _capture_pick_points(context, base_url: str) -> None:
@@ -488,30 +673,29 @@ def _capture_pick_points(context, base_url: str) -> None:
 
     for cls in ("GaussianBlur", "OtsuDetector", "ManualSelector"):
         _add_op(cls)
-    page.wait_for_timeout(600)
+    # Re-run the leaf-first dagre layout so the ribbon shows the settled
+    # left-to-right chain rather than dash-cytoscape's breadthfirst pass.
+    _relayout_canvas(page)
     _save(page, "pick_points", "02_pipeline_with_selector.png")
 
-    # 3) Inspector param form for ManualSelector. Click the node on the
-    # canvas so the inspector opens against it. Cytoscape renders nodes as
-    # SVG groups; the simplest reliable handle is the node label
-    # rendered inside Cytoscape — but Cytoscape uses a canvas backend
-    # without per-node DOM nodes, so we trigger selection programmatically
-    # via the cy instance.
-    page.evaluate(
-        """
-        () => {
-            const cy = window.cy || (window._cy_instances && window._cy_instances[0]);
-            if (!cy) return;
-            const nodes = cy.nodes(`[label *= "ManualSelector"], [class_name = "ManualSelector"]`);
-            if (nodes.length > 0) {
-                cy.elements().unselect();
-                nodes[0].select();
-            }
-        }
-        """
-    )
-    page.wait_for_timeout(800)
+    # 3) Inspector param form for ManualSelector. Tap the block so the
+    # canvas-tap callback dispatches ``block_select`` and the inspector
+    # re-renders against it (a clientside-only ``cy ... .select()`` would
+    # not update the server-side ``selected_block_id``).
+    selector_id = _block_id(page, "ManualSelector")
+    if selector_id:
+        _tap_block(page, selector_id)
+    page.wait_for_timeout(600)
     _save(page, "pick_points", "03_param_form.png")
+
+    # Load the synthetic plate so Run preview has an image to apply the
+    # pipeline against. Without an image, OtsuDetector's intermediate is
+    # never cached and the picker modal opens against an empty OSD
+    # canvas (timeout on ``[data-testid="point-picker-osd-canvas"]``).
+    synth_btn = page.locator("#btn-use-synthetic")
+    if synth_btn.count() > 0:
+        synth_btn.click()
+        page.wait_for_timeout(800)
 
     # Run preview once so OtsuDetector caches its intermediate. The
     # picker modal needs the predecessor cache to enable the
@@ -624,89 +808,188 @@ def _capture_pick_points(context, base_url: str) -> None:
 
 
 def _capture_aux_ports(context, base_url: str) -> None:
-    """Drive the aux-port popover workflow and capture nine PNGs.
+    """Drive the aux-port wiring + inspector workflow and capture 4 PNGs.
 
-    The shots demonstrate the canvas-anchored aux popover flow described
-    in ``docs/source/tutorials/gui/09_aux_ports.md``. Eight PNGs total
-    cover the scalar-aux flow plus the list-typed multi-slot scenario:
+    Spec §4.2 / §4.5.  Phase 7 retired the canvas-anchored popover; in the
+    post-redesign builder an operation-typed parameter (e.g.
+    ``FilamentousFungiDetector.inoculum_detector``) is a bottom-edge aux
+    port, the aux producer is a first-class canvas block, and the wired
+    aux surfaces in the inspector's **Aux ports section** (where the
+    ``Disconnect`` action now lives — it moved off the popover).
 
-    1. ``01_initial.png`` — empty builder canvas with the palette visible.
-    2. ``02_main_pipeline.png`` — four ribbon ops (``GaussianBlur`` →
-       ``ContrastStretching`` → ``FilamentousFungiDetector`` →
-       ``MeasureSize``) wired left-to-right; the FFD node carries a
-       hollow purple ``aux-port`` square on its bottom edge.
-    3. ``03_popover_empty.png`` — the FFD aux port has been tapped; the
-       canvas-anchored popover is open in palette mode listing every
-       compatible ``ObjectDetector`` / ``ImagePipeline`` class.
-    4. ``04_popover_wired.png`` — ``OtsuDetector`` picked from the
-       palette; popover transitions to its wired-row state (class label
-       plus ``Edit`` / ``Drill in`` / ``Disconnect`` actions). Aux port
-       marker flips to the filled ``aux-port--wired`` variant.
-    5. ``05_drill_in.png`` — ``Drill in →`` clicked; canvas swaps to the
-       drilled aux scope (single-op ribbon with just ``OtsuDetector``)
-       and the breadcrumb shows the drill path. To extend a scalar aux
-       into a multi-step inline pipeline, the user picks ``ImagePipeline``
-       from the popover palette instead of a concrete detector class —
-       drilling into an ``ImagePipeline`` aux opens a writable nested
-       scope that accepts palette adds. (Single-op auxes are surfaced
-       as a 1-step wrapper for visual continuity but are not editable
-       in place.)
-    6. ``06_drill_out.png`` — first breadcrumb crumb clicked; canvas
-       restores to the original 4-step main ribbon with the aux port
-       still in its wired (filled-purple) state.
-    7. ``07_list_port_popover.png`` — a ``CompositeDetector`` is added
-       to the ribbon and its ``detectors`` aux port tapped; the popover
-       opens in list mode with a ``+ Add slot`` button (the empty
-       placeholder is the bootstrap affordance for a list-typed param).
-    8. ``08_list_port_two_wired.png`` — two slots wired via ``+ Add slot``
-       + class pick (``OtsuDetector`` at slot 0, ``WatershedDetector``
-       at slot 1); per-slot ``✎ / → / ⨯`` actions are visible on every
-       wired row.
-    9. ``09_per_slot_disconnect.png`` — slot 0's per-slot ⨯ Disconnect
-       clicked; that slot's row reverts to the class palette while
-       slot 1 stays wired (per-slot independence inside one popover).
+    Steps exercised against the real dispatcher:
 
-    Implementation notes
-    --------------------
-    Aux ports are rendered as cytoscape *nodes* (not DOM elements) with
-    flat ids of the form ``"aux-port__<target_node_id>__<param>"`` (see
-    :func:`phenotypic.gui.builder._ids._encode_aux_port_id`). Because
-    cytoscape paints to a single ``<canvas>`` element, the only reliable
-    way to click an aux port from Playwright is to emit a ``tap`` event
-    on the node via the live cy instance — exposed by
-    ``window.phenoGetCy()`` from ``assets/builder.js`` and bound by
-    ``assets/aux_popover.js`` on every cy refresh.
+    1. ``01_initial.png`` — empty builder canvas + palette.
+    2. ``02_main_pipeline.png`` — palette clicks build the ribbon
+       ``Input Image → GaussianBlur → FilamentousFungiDetector``; FFD's
+       required ``inoculum_detector`` aux port renders as an empty
+       red-ringed square (Rule 3) on its bottom edge.
+    3. ``03_aux_wired.png`` — an ``OtsuDetector`` block is minted
+       free-floating and an ``edge_create`` of kind ``aux`` wires it into
+       ``FilamentousFungiDetector.inoculum_detector``; the aux port flips
+       to filled purple and the producer block's border turns purple.
+    4. ``04_inspector_aux.png`` — the consumer block is selected; the
+       inspector's Aux ports section shows the wired ``OtsuDetector`` row
+       with its ``Disconnect`` action.
 
-    The popover container itself (id ``cy-popover-container``, class
-    ``cy-popover``) IS a DOM element, so its action buttons can be
-    located with normal CSS selectors. Each action button's id is a
-    Dash pattern-matching dict serialised to JSON:
-    ``{"type": "popover-action", "action": "pick_class" | "edit" |
-    "drill" | "disconnect" | "add_slot", "target_node_id": ...,
-    "param": ..., "slot": ..., "class_name": ...}``.
-
-    Wait-target selectors used below:
-      * ``.cy-popover-palette`` — palette-mode popover body.
-      * ``.cy-popover-wired-row`` — wired-mode popover body.
-      * ``.pheno-breadcrumb`` — scope breadcrumb nav (always present).
+    The capture dispatches the same ``store-palette-drop`` /
+    ``store-edge-event`` payloads ``palette_dnd.js`` / ``wire_drawing.js``
+    emit — see the "DAG builder interaction helpers" section above.
     """
     print("[shot] workflow=aux_ports")
-    page = _new_page(context, base_url, "/builder/")
-
-    # Wait for the palette to populate.
-    page.wait_for_selector("#palette", timeout=15_000)
-    page.wait_for_timeout(500)
+    page = _new_builder_page(context, base_url)
 
     # 1) Empty canvas — same starting point as the Build Pipeline tutorial.
+    _relayout_canvas(page)
     _save(page, "aux_ports", "01_initial.png")
 
-    # Open every Operations / Measurements accordion section so palette
-    # buttons for ops in any category are reachable.
-    # ``always_open=True`` only auto-expands the first item — clicking
-    # the headers expands the rest. The Measure palette ("Measurements")
-    # lives in a separate accordion (``palette-meas``) from the image-
-    # ops palette (``palette``); a single accordion-button header
-    # selector covers both.
+    _expand_palette_accordions(page)
+
+    # 2) Main ribbon with the aux-consuming op (FFD) on the tail.  FFD's
+    #    ``inoculum_detector`` is a required aux port — it renders empty
+    #    (red ring) until wired.
+    for cls in ("GaussianBlur", "FilamentousFungiDetector"):
+        _add_palette_op(page, cls)
+    _relayout_canvas(page)
+    _save(page, "aux_ports", "02_main_pipeline.png")
+
+    # 3) Free-floating aux producer + the purple aux wire into the
+    #    consumer's bottom-edge port.
+    _dispatch_block_create(page, "OtsuDetector")
+    otsu_id = _block_id(page, "OtsuDetector")
+    ffd_id = _block_id(page, "FilamentousFungiDetector")
+    if otsu_id and ffd_id:
+        _dispatch_edge_create(page, otsu_id, ffd_id, "inoculum_detector", "aux")
+        _relayout_canvas(page)
+    else:  # pragma: no cover - best-effort
+        print("[shot]   aux_ports: could not resolve block ids")
+    _save(page, "aux_ports", "03_aux_wired.png")
+
+    # 4) Select the consumer so the inspector's Aux ports section renders
+    #    the wired-row + Disconnect action (spec §4.5 — the popover's
+    #    wired-row moved here).
+    if ffd_id:
+        _tap_block(page, ffd_id)
+        page.wait_for_timeout(600)
+    _save(page, "aux_ports", "04_inspector_aux.png")
+    page.close()
+
+
+def _capture_qc_curation_loop(context, base_url: str) -> None:
+    """Capture the QC curation loop workflow.
+
+    Spec §1232. Drives the Results Viewer's QC tab through the
+    add-check / curate / re-render loop. The tab body composes one
+    Plotly card per configured :class:`QualityCheck`; each card
+    subscribes to ``STORE_REMOVED_KEYS`` so removing a colony from
+    the measurements table triggers an automatic figure refresh
+    without a manual reload.
+
+    Three screenshots illustrate the workflow:
+
+    1. ``01_empty_state.png`` — the Viewer mounted in empty state
+       with the QC tab selected so the reader sees what "no checks
+       configured" looks like (the hub-mounted viewer has no
+       ``output_root`` until the sidebar binds one).
+    2. ``02_add_check_modal.png`` — the ``+ Add check`` modal open
+       in add mode, showing the class picker dropdown that lists
+       every concrete ``QualityCheck`` subclass.
+    3. ``03_card_after_add.png`` — the QC tab body after the modal
+       has been dismissed, illustrating the "no cards" placeholder
+       remains when the user closes the modal without picking a
+       class (the empty hub-mounted viewer cannot persist a real
+       recipe entry — see the tutorial page for the full add-and-
+       curate flow).
+    """
+    print("[shot] workflow=qc_curation_loop")
+    page = _new_page(context, base_url, "/results/")
+    # The hub viewer mounts in empty state until the sidebar binds an
+    # ``output_root``. The QC tab is still selectable; it renders the
+    # "no checks configured" placeholder which is the natural empty
+    # state shot for the tutorial.
+    page.wait_for_timeout(800)
+    _save(page, "qc_curation_loop", "01_empty_state.png")
+
+    # Try to click the QC tab if it's mounted (the hub viewer's empty
+    # state may render the tab strip even without an ``output_root``).
+    # dbc.Tab anchors don't carry a stable id, so match by visible text.
+    qc_tab = page.locator('a[role="tab"]:has-text("QC")').first
+    if qc_tab.count() > 0:
+        try:
+            qc_tab.click(timeout=2000)
+            page.wait_for_timeout(600)
+            _save(page, "qc_curation_loop", "02_qc_tab_selected.png")
+        except Exception:  # pragma: no cover - best-effort
+            pass
+
+    # Try to open the Add check modal so the reader sees the picker.
+    add_btn = page.locator("#qc-add-check-btn")
+    if add_btn.count() > 0:
+        try:
+            add_btn.click(timeout=2000)
+            page.wait_for_timeout(700)
+            _save(page, "qc_curation_loop", "03_add_check_modal.png")
+        except Exception:  # pragma: no cover - best-effort
+            pass
+
+    page.close()
+
+
+def _capture_heatmap_exploration(context, base_url: str) -> None:
+    """Capture the Heatmap exploration workflow.
+
+    Spec §1233. Drives the Results Viewer's Heatmap tab so the
+    reader sees the color / image / aggregator pickers and the
+    plate-shaped heatmap output. Removed cells overlay as
+    ``COLOR_MUTED`` × markers so the visual distinction between
+    "curated" and "low value" cells is clear.
+
+    Two screenshots illustrate the workflow:
+
+    1. ``01_default_view.png`` — the Heatmap tab on first open,
+       showing the empty-state explanation when ``Grid_RowNum`` /
+       ``Grid_ColNum`` are missing (the synthetic tutorial dataset
+       does not run ``GridMeasureFeatures``).
+    2. ``02_color_picker_open.png`` — the color column dropdown
+       open so the reader can see the measurement / QC severity
+       union the dropdown surfaces.
+    """
+    print("[shot] workflow=heatmap_exploration")
+    page = _new_page(context, base_url, "/results/")
+    page.wait_for_timeout(800)
+
+    # Switch to the Heatmap tab.
+    heatmap_tab = page.locator('a[role="tab"]:has-text("Heatmap")').first
+    if heatmap_tab.count() > 0:
+        try:
+            heatmap_tab.click(timeout=2000)
+            page.wait_for_timeout(600)
+        except Exception:  # pragma: no cover - best-effort
+            pass
+    _save(page, "heatmap_exploration", "01_default_view.png")
+
+    # Open the color picker dropdown so the reader sees the union of
+    # measurement columns + QC severity columns.
+    color_picker = page.locator("#heatmap-color-picker")
+    if color_picker.count() > 0:
+        try:
+            color_picker.click(timeout=2000)
+            page.wait_for_timeout(500)
+            _save(page, "heatmap_exploration", "02_color_picker_open.png")
+        except Exception:  # pragma: no cover - best-effort
+            pass
+
+    page.close()
+
+
+def _expand_palette_accordions(page) -> None:
+    """Open every collapsed palette accordion section.
+
+    ``dbc.Accordion(always_open=True)`` auto-expands only the first item;
+    the rest start ``collapsed`` (``display: none``), so palette-add
+    clicks against ops in those categories would miss.  Clicking each
+    collapsed header opens it.
+    """
     for header_text in ("Corrector", "Detector", "Enhancer", "Refiner", "Measure"):
         header = page.locator(
             f'button.accordion-button:has-text("{header_text}")'
@@ -716,338 +999,214 @@ def _capture_aux_ports(context, base_url: str) -> None:
                 cls = header.get_attribute("class") or ""
                 if "collapsed" in cls:
                     header.click()
-                    page.wait_for_timeout(250)
+                    page.wait_for_timeout(200)
             except Exception:  # pragma: no cover - best-effort
                 pass
-    page.wait_for_timeout(300)
+    page.wait_for_timeout(250)
 
-    # Helper: add a palette op by class_name. Mirrors _capture_pick_points.
-    def _add_op(class_name: str) -> None:
-        sel = (
-            f'button[id*="\\"type\\":\\"palette-add\\""]'
-            f'[id*="\\"class_name\\":\\"{class_name}\\""]'
-        )
-        loc = page.locator(sel)
-        if loc.count() > 0:
-            loc.first.click()
-            page.wait_for_timeout(600)
 
-    # Helper: tap an aux port via the live cytoscape instance.
-    # Aux port nodes have ids of the form
-    # ``aux-port__<target_node_id>__<param>`` and the popover's
-    # clientside glue (``aux_popover.js``) binds ``cy.on('tap', 'node[id
-    # ^= "aux-port__"]', ...)``. Emitting a ``tap`` event programmatically
-    # exercises the same code path as a real click.
-    def _click_aux_port(target_node_id: str, param: str) -> None:
-        page.evaluate(
-            f"""
-            () => {{
-                const cy = window.phenoGetCy && window.phenoGetCy();
-                if (!cy) return;
-                const port = cy.getElementById(
-                    'aux-port__{target_node_id}__{param}'
-                );
-                if (port && port.length > 0) {{
-                    port.emit('tap');
-                }}
-            }}
-            """
-        )
-        page.wait_for_timeout(500)
+def _add_palette_op(page, class_name: str) -> None:
+    """Add an op via its palette button (keyboard-fallback click path).
 
-    # Helper: resolve the node id of the most recently-added ribbon op
-    # for *class_name*. Dash assigns each StepNode a fresh 8-char hex id
-    # at construction time, so screenshots can't hardcode it.
-    def _last_main_node_id(class_name: str) -> str:
-        return page.evaluate(
-            f"""
-            () => {{
-                const cy = window.phenoGetCy && window.phenoGetCy();
-                if (!cy) return '';
-                const nodes = cy.nodes('[class_name = "{class_name}"]');
-                if (!nodes || nodes.length === 0) return '';
-                return nodes.last().id();
-            }}
-            """
-        )
-
-    # 2) Build the 4-step main pipeline. Order matters — the screenshot
-    #    is taken after all four are wired left-to-right so the image-
-    #    flow edges are visible.
-    for cls in (
-        "GaussianBlur",
-        "ContrastStretching",
-        "FilamentousFungiDetector",
-        "MeasureSize",
-    ):
-        _add_op(cls)
-    page.wait_for_timeout(800)
-    _save(page, "aux_ports", "02_main_pipeline.png")
-
-    # 3) Resolve the FFD consumer node id, tap its aux port, and wait
-    #    for the popover palette to mount.
-    ffd_node_id = _last_main_node_id("FilamentousFungiDetector")
-    if not ffd_node_id:
-        # Defensive: if cy isn't ready or class_name lookup misses,
-        # skip the popover-driven shots rather than emit duplicates.
-        print(
-            "[shot]   aux_ports: could not resolve FFD node id — "
-            "popover screenshots skipped"
-        )
-        page.close()
-        return
-    _click_aux_port(ffd_node_id, "inoculum_detector")
-    try:
-        page.wait_for_selector(
-            "#cy-popover-container .cy-popover-palette",
-            timeout=5_000,
-        )
-    except Exception:  # pragma: no cover - best-effort
-        page.wait_for_timeout(800)
-    _save(page, "aux_ports", "03_popover_empty.png")
-
-    # 4) Click the ``OtsuDetector`` palette button in the popover.
-    #    The popover action button ids are pattern-matching dicts of the
-    #    form {"type": "popover-action", "action": "pick_class",
-    #    "target_node_id": ..., "param": ..., "slot": 0,
-    #    "class_name": "OtsuDetector"}. Match by the two id segments
-    #    most likely to be unique on this popover.
-    pick_btn_sel = (
-        '#cy-popover-container '
-        'button[id*="\\"type\\":\\"popover-action\\""]'
-        '[id*="\\"action\\":\\"pick_class\\""]'
-        '[id*="\\"class_name\\":\\"OtsuDetector\\""]'
+    The ``palette-add`` click dispatches ``block_create`` *and* auto-wires
+    the new block onto the current scope's tail (handoff fix) — so a
+    sequence of ``_add_palette_op`` calls builds a connected main ribbon
+    ``Input Image → … → tail``.  For a *free-floating* block (an aux
+    producer, a stranded orphan) use :func:`_dispatch_block_create`
+    instead.
+    """
+    sel = (
+        f'button[id*="\\"type\\":\\"palette-add\\""]'
+        f'[id*="\\"class_name\\":\\"{class_name}\\""]'
     )
-    pick_btn = page.locator(pick_btn_sel)
-    if pick_btn.count() > 0:
-        pick_btn.first.click()
-        try:
-            page.wait_for_selector(
-                "#cy-popover-container .cy-popover-wired-row",
-                timeout=8_000,
-            )
-        except Exception:  # pragma: no cover - best-effort
-            page.wait_for_timeout(1000)
-    else:
-        # Popover container might have been wiped by an earlier callback
-        # (see ``test_aux_port_e2e`` Wave 3 bug note). The screenshot
-        # will document whatever state the GUI is in.
-        page.wait_for_timeout(800)
-    _save(page, "aux_ports", "04_popover_wired.png")
+    loc = page.locator(sel)
+    if loc.count() > 0:
+        loc.first.click()
+        page.wait_for_timeout(700)
+    else:  # pragma: no cover - best-effort
+        print(f"[shot]   palette button for {class_name} not found")
 
-    # 5) Drill in via the popover's drill action button. The canvas
-    #    re-renders to the drilled aux scope and the popover dismisses.
-    drill_btn_sel = (
-        '#cy-popover-container '
-        'button[id*="\\"type\\":\\"popover-action\\""]'
-        '[id*="\\"action\\":\\"drill\\""]'
-    )
-    drill_btn = page.locator(drill_btn_sel)
-    if drill_btn.count() > 0:
-        drill_btn.first.click()
-        # Drill-in fires a scope swap; the breadcrumb is always rendered
-        # but the canvas takes a tick to re-layout. Wait for the
-        # popover to dismiss as the scope-swap signal.
-        try:
-            page.wait_for_function(
-                """
-                () => {
-                    const el = document.getElementById('cy-popover-container');
-                    if (!el) return true;
-                    return getComputedStyle(el).display === 'none';
-                }
-                """,
-                timeout=5_000,
-            )
-        except Exception:  # pragma: no cover - best-effort
-            page.wait_for_timeout(800)
-        page.wait_for_timeout(600)
-    _save(page, "aux_ports", "05_drill_in.png")
 
-    # 6) Drill back out by clicking the first breadcrumb crumb. The
-    #    breadcrumb's non-leaf segments are rendered as ``dbc.Button``s
-    #    with a ``{"type": "breadcrumb-link", "depth": N}`` pattern-
-    #    matching id; ``.pheno-breadcrumb button`` is a deliberately
-    #    schema-agnostic selector that survives future id renames.
-    crumbs = page.locator(".pheno-breadcrumb button")
-    if crumbs.count() > 0:
-        crumbs.first.click()
-        page.wait_for_timeout(800)
-    _save(page, "aux_ports", "06_drill_out.png")
+def _capture_aux_wire_in_dag(context, base_url: str) -> None:
+    """Drive the post-redesign aux-wiring DAG workflow and capture 3 PNGs.
 
-    # 7-9) Multi-slot list-typed aux ports. ``CompositeDetector.detectors``
-    # is a ``list[ObjectDetector]`` aux — the popover renders one row per
-    # slot plus a ``+ Add slot`` button so the user can wire any number
-    # of detectors and per-slot disconnect / drill in independently.
-    _aux_ports_list_scenarios(page, _add_op, _click_aux_port, _last_main_node_id)
+    Mirrors the post-popover aux flow in
+    ``docs/source/tutorials/gui/12_aux_wire_in_dag.md`` (spec §4.2-§4.3):
+    every operation — including the aux producer — is a first-class block
+    on the canvas, and the aux assignment is a purple wire drawn from the
+    producer's output port to the consumer's bottom-edge aux port.  There
+    is no popover class palette in v2.
 
+    Steps exercised against the real dispatcher:
+
+    1. ``01_main_with_consumer.png`` — palette clicks build the main
+       ribbon ``Input Image → GaussianBlur → ContrastStretching →
+       FilamentousFungiDetector``.  FFD's required ``inoculum_detector``
+       aux port renders as an empty red-ringed square and the toolbar
+       issue badge lights up (Rule 3).
+    2. ``02_detector_dropped.png`` — an ``OtsuDetector`` block is minted
+       free-floating via a raw ``block_create`` (no auto-wire), ready to
+       feed the aux port.
+    3. ``03_aux_wired.png`` — an ``edge_create`` of kind ``aux`` draws
+       the purple wire ``OtsuDetector → FilamentousFungiDetector
+       .inoculum_detector``; the aux port flips to filled purple, the
+       producer's border turns purple (aux-consumed), and the issue
+       badge clears.
+    """
+    print("[shot] workflow=aux-wire-in-dag")
+    page = _new_builder_page(context, base_url)
+    _expand_palette_accordions(page)
+
+    # 1) Main ribbon + the consumer whose aux port we will feed.
+    for cls in ("GaussianBlur", "ContrastStretching", "FilamentousFungiDetector"):
+        _add_palette_op(page, cls)
+    _relayout_canvas(page)
+    _save(page, "aux-wire-in-dag", "01_main_with_consumer.png")
+
+    # 2) Free-floating aux producer — a raw block_create, NOT a palette
+    #    click, so it is not auto-wired into the main ribbon.
+    _dispatch_block_create(page, "OtsuDetector")
+    _relayout_canvas(page)
+    _save(page, "aux-wire-in-dag", "02_detector_dropped.png")
+
+    # 3) Draw the purple aux wire: OtsuDetector.output →
+    #    FilamentousFungiDetector.inoculum_detector.
+    otsu_id = _block_id(page, "OtsuDetector")
+    ffd_id = _block_id(page, "FilamentousFungiDetector")
+    if otsu_id and ffd_id:
+        _dispatch_edge_create(page, otsu_id, ffd_id, "inoculum_detector", "aux")
+        _relayout_canvas(page)
+    else:  # pragma: no cover - best-effort
+        print("[shot]   aux-wire-in-dag: could not resolve block ids")
+    _save(page, "aux-wire-in-dag", "03_aux_wired.png")
     page.close()
 
 
-def _aux_ports_list_scenarios(
-    page,
-    add_op,
-    click_aux_port,
-    last_main_node_id,
-) -> None:
-    """Capture the list-typed aux port (multi-slot) screenshots 07-09.
+def _capture_wire_pipeline_as_aux(context, base_url: str) -> None:
+    """Drive the Pipeline-container-as-aux workflow and capture 3 PNGs.
 
-    Continues from a builder canvas that already has the 4-step main
-    pipeline + a wired ``FilamentousFungiDetector.inoculum_detector``.
-    Adds ``CompositeDetector`` as a 5th ribbon node so its
-    ``detectors: list[ObjectDetector | ImagePipeline]`` aux port can be
-    exercised:
+    Mirrors ``docs/source/tutorials/gui/13_wire_pipeline_as_aux.md``
+    (spec §4.4): a ``Pipeline`` container holds a multi-step chain in its
+    nested scope, and the whole container is wired as a single aux
+    producer into a consumer outside it.
 
-    * Empty list port → popover renders the ``+ Add slot`` button plus a
-      "No slots yet" placeholder (one-step bootstrap affordance).
-    * Two ``+ Add slot`` + pick-class cycles wire ``OtsuDetector`` at
-      slot 0 and ``WatershedDetector`` at slot 1; both wired-rows are
-      visible inside one popover.
-    * Per-slot ⨯ Disconnect on slot 0 reverts that slot to the palette
-      while leaving slot 1 wired — demonstrates slot independence.
+    Steps exercised against the real dispatcher:
 
-    The selectors mirror those used in ``_capture_aux_ports`` above and
-    in the e2e suite. ``CompositeDetector`` lives in the ``Detector``
-    palette accordion, which the parent function already expanded, so
-    no extra accordion-open is needed here.
+    1. ``01_empty_container.png`` — a ``block_create`` for the
+       ``ImagePipeline`` sentinel mints an empty container; its nested
+       scope is auto-seeded with a consumer-fed ``Input Image`` dot and
+       it renders the ``+ drop ops here`` placeholder.
+    2. ``02_chain_in_container.png`` — two ops are dropped into the
+       container's nested scope (``container_block_id`` set) and wired
+       ``Input Image → GaussianBlur → OtsuDetector`` inside it.
+    3. ``03_pipeline_wired_as_aux.png`` — a free-floating
+       ``FilamentousFungiDetector`` consumer is added at the root scope
+       and an ``edge_create`` of kind ``aux`` wires the *container* into
+       its ``inoculum_detector`` port.
     """
-    add_op("CompositeDetector")
-    page.wait_for_timeout(800)
+    print("[shot] workflow=wire-pipeline-as-aux")
+    page = _new_builder_page(context, base_url)
 
-    composite_node_id = last_main_node_id("CompositeDetector")
-    if not composite_node_id:
-        print(
-            "[shot]   aux_ports: could not resolve CompositeDetector node id — "
-            "list-port screenshots skipped"
-        )
-        return
+    # 1) Empty Pipeline container.  ``ImagePipeline`` is the container
+    #    sentinel class (builder/_state.PIPELINE_CLASS_NAME).
+    _dispatch_block_create(page, "ImagePipeline")
+    _relayout_canvas(page)
+    _save(page, "wire-pipeline-as-aux", "01_empty_container.png")
 
-    # 7) Tap the list-typed ``detectors`` aux port. With no slots yet,
-    #    the popover surfaces the ``+ Add slot`` affordance + a muted
-    #    "No slots yet" placeholder so the user has somewhere to start.
-    click_aux_port(composite_node_id, "detectors")
-    try:
-        page.wait_for_selector(
-            "#cy-popover-container .cy-popover-add-slot",
-            timeout=5_000,
-        )
-    except Exception:  # pragma: no cover - best-effort
-        page.wait_for_timeout(800)
-    _save(page, "aux_ports", "07_list_port_popover.png")
+    container_id = _block_id(page, "ImagePipeline")
+    # The container's nested scope auto-seeds its own Input Image; it is
+    # the most-recently-created InputImage block (the root one predates it).
+    nested_input = _block_id(page, "InputImage", which="last")
 
-    # Helper: click ``+ Add slot`` once and wait for a fresh empty-slot
-    # palette to mount.
-    def _add_slot_and_wait_for_palette(prev_slot_count: int) -> None:
-        add_slot_btn = page.locator(
-            "#cy-popover-container .cy-popover-add-slot"
+    # 2) Drop a 2-step chain into the container's nested scope and wire
+    #    it left-to-right inside the container.
+    if container_id:
+        _dispatch_block_create(page, "GaussianBlur", container_block_id=container_id)
+        _dispatch_block_create(page, "OtsuDetector", container_block_id=container_id)
+        gb_id = _block_id(page, "GaussianBlur")
+        od_id = _block_id(page, "OtsuDetector")
+        if nested_input and gb_id:
+            _dispatch_edge_create(page, nested_input, gb_id, "in", "image")
+        if gb_id and od_id:
+            _dispatch_edge_create(page, gb_id, od_id, "in", "image")
+        _relayout_canvas(page)
+    else:  # pragma: no cover - best-effort
+        print("[shot]   wire-pipeline-as-aux: container id unresolved")
+    _save(page, "wire-pipeline-as-aux", "02_chain_in_container.png")
+
+    # 3) Add the consumer at root scope and wire the whole container into
+    #    its aux port.
+    _dispatch_block_create(page, "FilamentousFungiDetector")
+    ffd_id = _block_id(page, "FilamentousFungiDetector")
+    if container_id and ffd_id:
+        _dispatch_edge_create(
+            page, container_id, ffd_id, "inoculum_detector", "aux"
         )
-        if add_slot_btn.count() == 0:
-            return
-        add_slot_btn.first.click()
+        _relayout_canvas(page)
+    _save(page, "wire-pipeline-as-aux", "03_pipeline_wired_as_aux.png")
+    page.close()
+
+
+def _capture_fix_validation_issues(context, base_url: str) -> None:
+    """Drive the validation-issue triage workflow and capture 3 PNGs.
+
+    Mirrors ``docs/source/tutorials/gui/14_fix_validation_issues.md``
+    (spec §4.6): a stranded block trips a blocking validation rule, the
+    toolbar issue badge surfaces the count, and deleting the orphan
+    clears it and re-enables ``Run preview``.
+
+    Steps exercised against the real dispatcher:
+
+    1. ``01_issue_introduced.png`` — palette clicks build a clean ribbon
+       ``Input Image → GaussianBlur → OtsuDetector``; then a
+       ``SmallObjectRemover`` block is minted free-floating via a raw
+       ``block_create``.  With no incoming image wire it is unreachable
+       from ``Input Image`` (Rule 2) — it renders with a dashed red
+       border + ``!`` badge and the toolbar issue badge shows the count.
+    2. ``02_issue_focused.png`` — the toolbar issue badge is clicked,
+       surfacing the issue-row tooltip listing the offender.
+    3. ``03_issue_resolved.png`` — the stranded ``SmallObjectRemover``
+       block is selected and deleted via the toolbar ``Delete selected``
+       button; the issue badge returns to ``0 issues`` and the ribbon is
+       clean.
+    """
+    print("[shot] workflow=fix-validation-issues")
+    page = _new_builder_page(context, base_url)
+    _expand_palette_accordions(page)
+
+    # 1) Clean ribbon, then a stranded orphan block (raw block_create,
+    #    so it is NOT auto-wired into the ribbon).
+    for cls in ("GaussianBlur", "OtsuDetector"):
+        _add_palette_op(page, cls)
+    _dispatch_block_create(page, "SmallObjectRemover")
+    _relayout_canvas(page)
+    _save(page, "fix-validation-issues", "01_issue_introduced.png")
+
+    # 2) Click the toolbar issue badge to surface the issue list.
+    issue_badge = page.locator("#issue-badge")
+    if issue_badge.count() > 0:
         try:
-            page.wait_for_function(
-                f"""
-                () => {{
-                    const rows = document.querySelectorAll(
-                        '#cy-popover-container .cy-popover-slot-row'
-                    );
-                    return rows.length > {prev_slot_count};
-                }}
-                """,
-                timeout=5_000,
-            )
+            issue_badge.first.click()
+            page.wait_for_timeout(700)
         except Exception:  # pragma: no cover - best-effort
-            page.wait_for_timeout(800)
+            pass
+    _save(page, "fix-validation-issues", "02_issue_focused.png")
 
-    # Helper: pick *class_name* in the *slot_idx* slot's palette. Each
-    # slot row carries its own palette while empty, so we scope the
-    # button match to the row matching ``data-slot=<slot_idx>`` when
-    # available, falling back to the first matching pick_class button.
-    def _pick_class_for_slot(slot_idx: int, class_name: str) -> None:
-        slot_pick_sel = (
-            "#cy-popover-container "
-            'button[id*="\\"type\\":\\"popover-action\\""]'
-            '[id*="\\"action\\":\\"pick_class\\""]'
-            f'[id*="\\"slot\\":{slot_idx}"]'
-            f'[id*="\\"class_name\\":\\"{class_name}\\""]'
-        )
-        loc = page.locator(slot_pick_sel)
-        if loc.count() == 0:
-            return
-        loc.first.click()
-        # Wait for the popover to re-render with the wired-row for this
-        # slot (the row's row-class flips from palette-mode to wired).
-        try:
-            page.wait_for_function(
-                f"""
-                () => {{
-                    const wired = document.querySelectorAll(
-                        '#cy-popover-container .cy-popover-wired-row'
-                    );
-                    return wired.length > {slot_idx};
-                }}
-                """,
-                timeout=6_000,
-            )
-        except Exception:  # pragma: no cover - best-effort
-            page.wait_for_timeout(800)
-
-    # 8) Wire two slots: OtsuDetector at slot 0, WatershedDetector at
-    #    slot 1. The popover stays open between picks; only the per-slot
-    #    rows transition from palette to wired state.
-    _add_slot_and_wait_for_palette(prev_slot_count=0)
-    _pick_class_for_slot(0, "OtsuDetector")
-    _add_slot_and_wait_for_palette(prev_slot_count=1)
-    _pick_class_for_slot(1, "WatershedDetector")
-    page.wait_for_timeout(400)
-    _save(page, "aux_ports", "08_list_port_two_wired.png")
-
-    # Re-tap the aux port so the popover's inspector focus jumps to
-    # the FIRST wired slot (slot 0). Without this, the focus is still
-    # on slot 1 (it was set when we picked WatershedDetector there),
-    # and ``wire_delete`` clears the focus when it disconnects the
-    # focused slot — dismissing the popover entirely. Tapping again
-    # re-runs ``open_popover_from_port_click`` which sets focus to the
-    # first wired slot (slot 0), so the subsequent slot-1 disconnect
-    # leaves the focus unchanged and the popover stays open.
-    click_aux_port(composite_node_id, "detectors")
-    page.wait_for_timeout(400)
-
-    # 9) Disconnect slot 1 via its per-slot ⨯ button. Slot 1's row
-    #    reverts to the class palette while slot 0 stays wired —
-    #    showcases slot-level independence inside one popover.
-    #    (We disconnect the LAST slot rather than the first so that
-    #    the compact wired-row for slot 0 stays visible at the top of
-    #    the popover; the ~60-button palette that mounts in the
-    #    disconnected slot is large enough to push lower-numbered
-    #    wired-rows off-screen otherwise.)
-    disconnect_sel = (
-        "#cy-popover-container "
-        'button[id*="\\"type\\":\\"popover-action\\""]'
-        '[id*="\\"action\\":\\"disconnect\\""]'
-        '[id*="\\"slot\\":1"]'
-    )
-    disconnect_btn = page.locator(disconnect_sel)
-    if disconnect_btn.count() > 0:
-        disconnect_btn.first.click()
-        try:
-            page.wait_for_function(
-                """
-                () => {
-                    // Slot 1 should drop back to palette mode; slot 0
-                    // stays wired. We expect exactly one wired row
-                    // remaining.
-                    const wired = document.querySelectorAll(
-                        '#cy-popover-container .cy-popover-wired-row'
-                    );
-                    return wired.length === 1;
-                }
-                """,
-                timeout=5_000,
-            )
-        except Exception:  # pragma: no cover - best-effort
-            page.wait_for_timeout(600)
-    _save(page, "aux_ports", "09_per_slot_disconnect.png")
+    # 3) Select the orphan and delete it via the toolbar button; the
+    #    validator re-runs and the badge clears.
+    orphan_id = _block_id(page, "SmallObjectRemover")
+    if orphan_id:
+        _tap_block(page, orphan_id)
+        delete_btn = page.locator("#btn-delete-node")
+        if delete_btn.count() > 0:
+            try:
+                delete_btn.first.click()
+                page.wait_for_timeout(700)
+            except Exception:  # pragma: no cover - best-effort
+                pass
+    _relayout_canvas(page)
+    _save(page, "fix-validation-issues", "03_issue_resolved.png")
+    page.close()
 
 
 def _capture_analysis(context, base_url: str) -> None:
@@ -1061,10 +1220,10 @@ def _capture_analysis(context, base_url: str) -> None:
     a bound ``output_root`` and the unified hub does not preconfigure
     the sidebar selection at startup.
     """
-    print("[shot] workflow=analysis (empty state via hub)")
-    page = _new_page(context, base_url, "/analysis/")
-    _save(page, "analysis", "01_analysis_empty.png")
-    page.close()
+    _emit_empty_state_shot(
+        context, base_url, "/analysis/", "analysis", "01_analysis_empty.png",
+        log="[shot] workflow=analysis (empty state via hub)",
+    )
 
 
 def capture_standalone_analysis_screenshots(headed: bool = False) -> None:
@@ -1186,12 +1345,16 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
         "--host",
         "127.0.0.1",
     ]
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
+    # Redirect to a file sink, not an undrained PIPE — see _gui_log_sink.
+    log_path = _gui_log_sink(port)
+    print(f"[shot]   standalone viewer logs -> {log_path}")
+    with log_path.open("w", encoding="utf-8") as gui_log:
+        proc = subprocess.Popen(
+            cmd,
+            stdout=gui_log,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
     base_url = f"http://127.0.0.1:{port}"
     try:
         _wait_for_http_200(base_url + "/", timeout=30.0)
@@ -1230,6 +1393,20 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
                 page.mouse.wheel(0, 800)
                 page.wait_for_timeout(500)
                 _save(page, "view_results", "03_measurement_table.png")
+
+                # While the standalone viewer is still up and the page is
+                # populated, capture the loaded-state versions of the QC
+                # and Heatmap tab tutorials. The hub-mounted captures
+                # above only see the empty state because the hub viewer
+                # is unbound at startup; the standalone launcher has a
+                # real ``output_root`` and renders the tab strip, so QC
+                # / Heatmap controls are reachable from here.
+                page.mouse.wheel(0, -800)
+                page.wait_for_timeout(400)
+
+                _qc_curation_loop_loaded_shots(page)
+                _heatmap_exploration_loaded_shots(page)
+
                 page.close()
             finally:
                 browser.close()
@@ -1240,6 +1417,87 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait(timeout=5.0)
+
+
+def _qc_curation_loop_loaded_shots(page) -> None:
+    """Capture loaded-state QC tab screenshots inside the standalone viewer.
+
+    The hub-mounted ``_capture_qc_curation_loop`` only sees the empty
+    state because the hub viewer is unbound at startup. The standalone
+    viewer has a real ``output_root``, so the tab strip mounts and the
+    QC top-strip buttons (``+ Add check`` / ``Export QC report``) are
+    reachable. Three additional screenshots cover the loaded state:
+
+    * ``02_qc_tab_selected.png`` — empty cards container with the top
+      strip visible.
+    * ``03_add_check_modal.png`` — the add-check modal open in add
+      mode showing the class picker.
+    """
+    qc_tab = page.locator('a[role="tab"]:has-text("QC")').first
+    if qc_tab.count() == 0:
+        print("[shot]   qc_curation_loop: QC tab not found — loaded captures skipped")
+        return
+    try:
+        qc_tab.click(timeout=3000)
+        page.wait_for_timeout(800)
+    except Exception:  # pragma: no cover - best-effort
+        pass
+    _save(page, "qc_curation_loop", "02_qc_tab_selected.png")
+
+    add_btn = page.locator("#qc-add-check-btn")
+    if add_btn.count() > 0:
+        try:
+            add_btn.click(timeout=2000)
+            # Wait for the modal to mount.
+            page.wait_for_selector("#qc-add-check-modal", timeout=4000)
+            page.wait_for_timeout(500)
+        except Exception:  # pragma: no cover - best-effort
+            pass
+    _save(page, "qc_curation_loop", "03_add_check_modal.png")
+
+    # Close the modal so the next workflow's screenshots aren't polluted.
+    cancel = page.locator("#qc-add-check-cancel")
+    if cancel.count() > 0:
+        try:
+            cancel.click(timeout=2000)
+            page.wait_for_timeout(400)
+        except Exception:  # pragma: no cover - best-effort
+            pass
+
+
+def _heatmap_exploration_loaded_shots(page) -> None:
+    """Capture loaded-state Heatmap tab screenshots inside the standalone viewer.
+
+    Mirrors :func:`_qc_curation_loop_loaded_shots`: switches to the
+    Heatmap tab in the standalone viewer (where the tab strip is
+    mounted) and captures the controls + figure. The synthetic
+    tutorial dataset does not run ``GridMeasureFeatures``, so the
+    populated state still renders the empty-state explanation card
+    rather than a real heatmap — but the captures reach more of the
+    real DOM than the empty-hub fallback.
+    """
+    heatmap_tab = page.locator('a[role="tab"]:has-text("Heatmap")').first
+    if heatmap_tab.count() == 0:
+        print(
+            "[shot]   heatmap_exploration: Heatmap tab not found — loaded captures skipped"
+        )
+        return
+    try:
+        heatmap_tab.click(timeout=3000)
+        page.wait_for_timeout(800)
+    except Exception:  # pragma: no cover - best-effort
+        pass
+    _save(page, "heatmap_exploration", "02_heatmap_tab_loaded.png")
+
+    # Try opening the color picker so the dropdown options are visible.
+    color_picker = page.locator("#heatmap-color-picker")
+    if color_picker.count() > 0:
+        try:
+            color_picker.click(timeout=2000)
+            page.wait_for_timeout(500)
+            _save(page, "heatmap_exploration", "03_color_picker_open.png")
+        except Exception:  # pragma: no cover - best-effort
+            pass
 
 
 # ---------------------------------------------------------------------------

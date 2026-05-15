@@ -1,0 +1,10 @@
+{
+  "issues": [
+    {
+      "kind": "duplicate_input",
+      "block_label": "Second Input",
+      "severity": "error",
+      "scope_path": []
+    }
+  ]
+}

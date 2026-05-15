@@ -1,0 +1,48 @@
+{
+  "name": "mixed_container_mode",
+  "desc": "Container's left port wired AND its right wires to an aux port.",
+  "blocks": [
+    {
+      "block_id": "input",
+      "class_name": "InputImage",
+      "label": "Input Image"
+    },
+    {
+      "block_id": "container",
+      "class_name": "ImagePipeline",
+      "label": "container",
+      "nested": {
+        "name": "inner",
+        "blocks": [
+          {
+            "block_id": "inner_input",
+            "class_name": "InputImage",
+            "label": "Input Image"
+          }
+        ],
+        "edges": []
+      }
+    },
+    {
+      "block_id": "aux_consumer",
+      "class_name": "NeedsAux",
+      "label": "aux_consumer"
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "e1",
+      "source_block_id": "input",
+      "target_block_id": "container",
+      "target_port": "in",
+      "kind": "image"
+    },
+    {
+      "edge_id": "e2",
+      "source_block_id": "container",
+      "target_block_id": "aux_consumer",
+      "target_port": "required_param",
+      "kind": "aux"
+    }
+  ]
+}

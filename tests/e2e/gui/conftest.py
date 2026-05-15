@@ -34,6 +34,7 @@ import os
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Iterator
@@ -160,13 +161,26 @@ def _wait_for_http_200(url: str, *, timeout: float = 20.0) -> None:
     )
 
 
-def _start_live_server(sandbox: Path) -> Iterator[str]:
+def _start_live_server(
+    sandbox: Path,
+    *,
+    env_overrides: dict[str, str] | None = None,
+) -> Iterator[str]:
     """Generator that spawns ``phenotypic-gui`` against ``sandbox`` and yields
     the base URL. SIGTERMs the child on teardown; SIGKILLs after 5s.
 
     Public so a test module that overrides :func:`fake_sandbox` with a
     function-scoped variant can also override :func:`live_server` and reuse
     the same boot logic.
+
+    Args:
+        sandbox: Path passed as ``--root`` to ``phenotypic-gui``.
+        env_overrides: Optional mapping merged on top of ``os.environ``
+            for the subprocess. Lets a calling test module flip env
+            vars on the spawned hub without re-implementing the boot
+            logic. (The ``PHENOTYPIC_GUI_DAG`` feature flag this
+            originally serviced was retired in Phase 8; the parameter
+            stays for future use.)
     """
     port = _free_port()
     cmd = [
@@ -180,12 +194,22 @@ def _start_live_server(sandbox: Path) -> Iterator[str]:
         "--host",
         "127.0.0.1",
     ]
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
+    env = {**os.environ, **(env_overrides or {})} if env_overrides else None
+    # Redirect the GUI subprocess' stdout+stderr to a temp log file, NOT
+    # an in-process ``subprocess.PIPE``.  Werkzeug logs every request to
+    # stderr; an undrained pipe fills its ~64 KB OS buffer after a few
+    # hundred requests, at which point the GUI blocks on its next stderr
+    # write and every later ``page.goto`` in the module times out.  A
+    # module-scoped server serves enough requests to hit this reliably.
+    log_path = Path(tempfile.gettempdir()) / f"phenotypic-gui-e2e-{port}.log"
+    with log_path.open("w", encoding="utf-8") as gui_log:
+        proc = subprocess.Popen(
+            cmd,
+            stdout=gui_log,
+            stderr=subprocess.STDOUT,
+            text=True,
+            env=env,
+        )
     base_url = f"http://127.0.0.1:{port}"
     try:
         _wait_for_http_200(base_url + "/", timeout=20.0)
@@ -213,6 +237,41 @@ def live_server(fake_sandbox: Path) -> Iterator[str]:
 def hub_url(live_server: str) -> str:
     """Convenience alias when a test only needs the base URL string."""
     return live_server
+
+
+# ---------------------------------------------------------------------------
+# Builder palette helpers
+# ---------------------------------------------------------------------------
+
+def expand_palette_accordions(page) -> None:
+    """Expand every collapsed palette accordion section on the builder.
+
+    The builder palette groups operations under ``dbc.Accordion``
+    sections.  ``always_open=True`` auto-expands only the *first* item;
+    the rest start ``collapsed`` (``display: none``).  A palette button
+    in a non-first category (e.g. ``GaussianBlur`` under Enhancer) is
+    therefore present in the DOM but not *visible*, so a Playwright
+    ``hover`` / drag against it times out with "element is not visible".
+
+    Builder-canvas E2E modules call this from their ``_open_builder``
+    helper so palette buttons in any category are interactable.  The
+    accordion is plain Bootstrap collapse chrome — independent of
+    ``palette_dnd.js`` — so this works even in the asset-failure
+    resilience tests.
+    """
+    for header_text in ("Corrector", "Detector", "Enhancer", "Refiner", "Measure"):
+        header = page.locator(
+            f'button.accordion-button:has-text("{header_text}")'
+        ).first
+        if header.count() > 0:
+            try:
+                cls = header.get_attribute("class") or ""
+                if "collapsed" in cls:
+                    header.click()
+                    page.wait_for_timeout(150)
+            except Exception:  # pragma: no cover - best-effort
+                pass
+    page.wait_for_timeout(150)
 
 
 # ---------------------------------------------------------------------------

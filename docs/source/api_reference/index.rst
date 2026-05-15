@@ -32,6 +32,14 @@ ImagePipeline
 
    core/image_pipeline_methods
 
+GUI internals
+-------------
+
+.. toctree::
+   :maxdepth: 1
+
+   gui/index
+
 Reference Pages
 ---------------
 

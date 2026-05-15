@@ -26,6 +26,7 @@ from phenotypic.gui._design import (
     COLOR_SURFACE,
     COLOR_WHITE,
     FONT_SIZE_HEADER_2,
+    OI_VERMILION,
 )
 from phenotypic.gui._operation_registry import OperationRegistry, get_registry
 from phenotypic.gui._param_forms import param_form
@@ -39,10 +40,15 @@ if TYPE_CHECKING:
 #: Type alias for the column-list provider plumbed into ``param_form``.
 ColumnsProvider = Callable[[str], list[str]]
 
-# Class names for analysis filter / model registries (v1 fixed list).
-_FILTER_CHOICES = ["EdgeCorrector", "TukeyOutlierRemover"]
-_MODEL_CHOICES = ["LogGrowthModel", "LinearSoftplus", "DoubleSoftplus"]
-_POST_CHOICES = ["PrependString", "AppendString", "ExpandMetadata", "MergeMetadata"]
+def _choices_for_category(category: str) -> list[str]:
+    """Return sorted analyzer/post class names registered under ``category``.
+
+    Pulled from the shared :class:`OperationRegistry` so any
+    ``SetAnalyzer`` / ``ModelFitter`` / ``PostMeasurement`` subclass
+    discoverable in ``phenotypic.analysis`` / ``phenotypic.post`` is
+    automatically offered in the analysis sub-app's add-dropdowns.
+    """
+    return sorted(info.name for info in get_registry().get_by_category(category))
 
 
 def build_app_layout(
@@ -79,6 +85,7 @@ def build_app_layout(
             _build_output_header(output_root, url_prefix=url_prefix),
             _build_pipeline_header(recipe),
             _build_stale_banner(),
+            _build_load_warnings_banner(recipe),
             _build_recompile_banner(),
             _build_post_panel(recipe),
             _build_filter_panel(recipe, columns_provider=columns_provider),
@@ -266,11 +273,67 @@ def _build_stale_banner() -> html.Div:
     )
 
 
+def _build_load_warnings_banner(recipe: "RecipeState") -> html.Div:
+    """Banner listing analyzer entries dropped during pipeline load.
+
+    Renders only when ``recipe.load_warnings`` is non-empty. Each entry
+    names the missing class plus its slot (filter vs model) so the user
+    can manually re-add a replacement. The on-disk ``pipeline.json`` is
+    left untouched — any subsequent user-driven save will persist the
+    pruned pipeline.
+    """
+    if not recipe.load_warnings:
+        return html.Div(
+            id=ids.ANALYSIS_LOAD_WARNINGS_BANNER,
+            className="analysis-load-warnings-banner",
+            style={"display": "none"},
+        )
+
+    bullets = [
+        html.Li(
+            [
+                html.Code(w.class_name),
+                f" (slot: {w.slot}",
+                f", key: {w.name}" if w.slot == "filter" else "",
+                ")",
+            ]
+        )
+        for w in recipe.load_warnings
+    ]
+    return html.Div(
+        [
+            html.Strong("Skipped unknown analyzer entries"),
+            html.Div(
+                [
+                    "These classes were referenced in ",
+                    html.Code(str(recipe.path)),
+                    " but are no longer available in this version of "
+                    "phenotypic. They were dropped from the loaded "
+                    "pipeline; the file on disk is unchanged. Re-add a "
+                    "replacement, or remove the stale entries by saving "
+                    "any edit.",
+                ],
+                style={"marginTop": "0.25rem", "fontSize": "0.9em"},
+            ),
+            html.Ul(bullets, style={"margin": "0.5rem 0 0 1rem"}),
+        ],
+        id=ids.ANALYSIS_LOAD_WARNINGS_BANNER,
+        className="analysis-load-warnings-banner",
+        style={
+            "padding": "0.5rem 1rem",
+            "background": "#fff5f0",
+            "borderLeft": f"4px solid {OI_VERMILION}",
+            "margin": "0.5rem 1rem",
+            "color": COLOR_NAVY,
+        },
+    )
+
+
 def _build_post_panel(recipe: "RecipeState") -> html.Div:
     return _build_section_panel(
         title="Post operations (metadata transforms)",
         section_label="post",
-        choices=_POST_CHOICES,
+        choices=_choices_for_category("Post"),
         add_dropdown_id=ids.ANALYSIS_POST_ADD_DROPDOWN,
         stack_id=ids.ANALYSIS_POST_STACK,
         recipe=recipe,
@@ -285,7 +348,7 @@ def _build_filter_panel(
     return _build_section_panel(
         title="Filters",
         section_label="filter",
-        choices=_FILTER_CHOICES,
+        choices=_choices_for_category("Filter"),
         add_dropdown_id=ids.ANALYSIS_FILTER_ADD_DROPDOWN,
         stack_id=ids.ANALYSIS_FILTER_STACK,
         recipe=recipe,
@@ -467,7 +530,7 @@ def _build_model_panel(
                             {"label": "(no model)", "value": ""},
                             *(
                                 {"label": c, "value": c}
-                                for c in _MODEL_CHOICES
+                                for c in _choices_for_category("Model")
                             ),
                         ],
                         value=type(model).__name__ if model is not None else "",

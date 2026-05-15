@@ -1,0 +1,80 @@
+{
+  "root": {
+    "blocks": [
+      {
+        "block_id": "00000000000000000000000000000030",
+        "class_name": "InputImage",
+        "params": {},
+        "label": null,
+        "nested": null,
+        "collapsed": false,
+        "list_slot_counts": {}
+      },
+      {
+        "block_id": "00000000000000000000000000000031",
+        "class_name": "CompositeDetector",
+        "params": {},
+        "label": "CompositeDetector",
+        "nested": null,
+        "collapsed": false,
+        "list_slot_counts": {"detectors": 3}
+      },
+      {
+        "block_id": "00000000000000000000000000000032",
+        "class_name": "OtsuDetector",
+        "params": {},
+        "label": "OtsuDetector_0",
+        "nested": null,
+        "collapsed": false,
+        "list_slot_counts": {}
+      },
+      {
+        "block_id": "00000000000000000000000000000033",
+        "class_name": "OtsuDetector",
+        "params": {},
+        "label": "OtsuDetector_2",
+        "nested": null,
+        "collapsed": false,
+        "list_slot_counts": {}
+      }
+    ],
+    "edges": [
+      {
+        "edge_id": "e0000000000000000000000000000030",
+        "source_block_id": "00000000000000000000000000000030",
+        "source_port": "out",
+        "target_block_id": "00000000000000000000000000000031",
+        "target_port": "in",
+        "target_slot": null,
+        "kind": "image"
+      },
+      {
+        "edge_id": "e0000000000000000000000000000031",
+        "source_block_id": "00000000000000000000000000000032",
+        "source_port": "out",
+        "target_block_id": "00000000000000000000000000000031",
+        "target_port": "detectors",
+        "target_slot": 0,
+        "kind": "aux"
+      },
+      {
+        "edge_id": "e0000000000000000000000000000032",
+        "source_block_id": "00000000000000000000000000000033",
+        "source_port": "out",
+        "target_block_id": "00000000000000000000000000000031",
+        "target_port": "detectors",
+        "target_slot": 2,
+        "kind": "aux"
+      }
+    ],
+    "name": "Pipeline",
+    "desc": "",
+    "nrows": null,
+    "ncols": null
+  },
+  "breadcrumb": [],
+  "selected_block_id": null,
+  "selected_edge_id": null,
+  "pending_delete_block_id": null,
+  "toast_queue": []
+}

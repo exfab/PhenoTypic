@@ -84,6 +84,7 @@ class BilateralDenoise(_GATSupportMixin, ImageDenoiser):
             mode: str = "constant",
             cval: float = 0,
             clip: bool = True,
+            use_gat: bool = False,
             **kwargs,
     ):
         """
@@ -100,7 +101,12 @@ class BilateralDenoise(_GATSupportMixin, ImageDenoiser):
             cval (float): Fill value for 'constant' mode. Default: 0.
             clip (bool): Whether to clip output to [0, 1] range. Default
                 True. Automatically deferred when ``use_gat=True``.
-            **kwargs: Forwarded to :class:`_GATSupportMixin`.
+            use_gat (bool): Wrap denoising in the Generalized Anscombe
+                Transform for Poisson-Gaussian noise. Default False. See
+                :class:`phenotypic.tools_.mixin._GATSupportMixin`.
+            **kwargs: GAT tuning parameters forwarded to
+                :class:`_GATSupportMixin` (``gat_gain``, ``gat_mu``,
+                ``gat_read_sigma``, ``gat_scale_factor``).
         """
         if sigma_spatial <= 0:
             raise ValueError("sigma_spatial must be > 0")
@@ -114,7 +120,7 @@ class BilateralDenoise(_GATSupportMixin, ImageDenoiser):
                     f'"wrap"; got {mode!r}'
             )
 
-        super().__init__(**kwargs)
+        super().__init__(use_gat=use_gat, **kwargs)
         self.sigma_color = sigma_color
         self.sigma_spatial = float(sigma_spatial)
         self.win_size = win_size

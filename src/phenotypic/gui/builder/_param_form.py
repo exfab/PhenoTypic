@@ -111,13 +111,10 @@ def param_form(
     (analysis sub-app) call the shared function directly without the
     picker injection.
 
-    In the popover-anchored aux design, this renders the parameter form
-    for *one* node at a time — either the consumer or a wired aux node
-    that the inspector is currently focused on. The caller (the layout's
-    inspector builder) picks which node's params to render based on the
-    ``inspector_focus_aux`` field on :class:`BuilderState`. All aux-port
-    wiring affordances (palette, disconnect, slot-add) live in the
-    popover renderer, not in the inline param form.
+    Renders the parameter form for *one* block / step at a time. Aux-port
+    wiring affordances (per-row Disconnect / reorder) live in the
+    inspector's dedicated aux-ports section on the DAG path — they are
+    not rendered inline by this function.
 
     Args:
         op_info: Registry metadata for the operation being edited.

@@ -93,6 +93,7 @@ class BM3DDenoiser(_GATSupportMixin, ImageDenoiser):
             *,
             stage_arg: Literal["all_stages", "hard_thresholding"] = "all_stages",
             clip: bool = True,
+            use_gat: bool = False,
             **kwargs,
     ):
         """
@@ -108,9 +109,12 @@ class BM3DDenoiser(_GATSupportMixin, ImageDenoiser):
                 plate analysis.
             clip (bool): Whether to clip output to [0, 1] range. Default True.
                 Automatically deferred when ``use_gat=True``.
-            **kwargs: Forwarded to :class:`_GATSupportMixin` (``use_gat``,
-                ``gat_gain``, ``gat_mu``, ``gat_read_sigma``,
-                ``gat_scale_factor``).
+            use_gat (bool): Wrap denoising in the Generalized Anscombe
+                Transform for Poisson-Gaussian noise. Default False. See
+                :class:`phenotypic.tools_.mixin._GATSupportMixin`.
+            **kwargs: GAT tuning parameters forwarded to
+                :class:`_GATSupportMixin` (``gat_gain``, ``gat_mu``,
+                ``gat_read_sigma``, ``gat_scale_factor``).
         """
         if not isinstance(sigma_psd, (int, float)):
             raise TypeError("sigma_psd must be a number or None")
@@ -121,7 +125,7 @@ class BM3DDenoiser(_GATSupportMixin, ImageDenoiser):
                 "stage_arg must be 'all_stages' or 'hard_thresholding'"
             )
 
-        super().__init__(**kwargs)
+        super().__init__(use_gat=use_gat, **kwargs)
         self.sigma_psd = float(sigma_psd)
         self.stage_arg = stage_arg
         self.block_size = block_size

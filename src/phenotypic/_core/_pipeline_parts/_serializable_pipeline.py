@@ -3,8 +3,9 @@ from __future__ import annotations
 import inspect
 import json
 import importlib
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Union, Optional, TYPE_CHECKING
+from typing import Dict, List, Union, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
@@ -20,6 +21,32 @@ from ._napari_pipeline_viewer import NapariPipelineViewer
 import phenotypic
 
 __version__ = phenotypic.__version__
+
+
+@dataclass(frozen=True)
+class PipelineLoadWarning:
+    """A single skipped analyzer entry from :meth:`SerializablePipeline.from_json`.
+
+    Emitted when ``from_json`` is called with ``skip_unknown_analyzers=True``
+    and a filter/model class referenced by the JSON cannot be resolved in
+    the live ``phenotypic`` namespace (e.g. the class was renamed or
+    removed since the pipeline was saved). The caller decides whether to
+    surface the warning, prune the JSON, or rebuild the entry under its
+    new name.
+
+    Attributes:
+        slot: Which pipeline section the entry came from — ``"filter"``
+            for an entry in the ``filters`` dict, ``"model"`` for the
+            single ``model`` field.
+        name: The dict key the entry was stored under in the JSON.
+            For the model slot this is always ``"model"``.
+        class_name: The unresolved class name from the JSON's ``class``
+            field.
+    """
+
+    slot: str
+    name: str
+    class_name: str
 
 
 class SerializablePipeline(NapariPipelineViewer):
@@ -116,6 +143,9 @@ class SerializablePipeline(NapariPipelineViewer):
             json_data: Union[str, Path, dict],
             benchmark: bool = False,
             verbose: bool = False,
+            *,
+            skip_unknown_analyzers: bool = False,
+            load_warnings: Optional[List[PipelineLoadWarning]] = None,
     ) -> ImagePipeline:
         """
         Deserialize a pipeline from JSON format.
@@ -128,6 +158,20 @@ class SerializablePipeline(NapariPipelineViewer):
             json_data: A JSON string, path to a JSON file, or a pre-parsed dict.
             benchmark: Whether to enable benchmarking for the pipeline. Defaults to False.
             verbose: Whether to enable verbose output. Defaults to False.
+            skip_unknown_analyzers: When True, filter and model entries whose
+                class cannot be resolved in the live ``phenotypic`` namespace
+                are dropped silently instead of raising
+                :class:`AttributeError`. Useful for forward-compatible loaders
+                (e.g. the analysis GUI) that prefer to render a partial
+                pipeline plus a warning over a hard 500. Operations,
+                measurements, and post entries are *not* covered — they
+                still raise on unknown class. Defaults to False (raise on
+                unknown analyzer class, preserving the historical contract).
+            load_warnings: Optional list to be populated with one
+                :class:`PipelineLoadWarning` per skipped analyzer entry.
+                Only consulted when ``skip_unknown_analyzers`` is True.
+                The on-disk JSON is never modified — the caller decides
+                whether to re-save the pruned pipeline.
 
         Returns:
             SerializablePipeline: A new pipeline instance with the loaded configuration.
@@ -178,17 +222,30 @@ class SerializablePipeline(NapariPipelineViewer):
         # Analysis chain — filters/model default to empty/None for backward compat
         from phenotypic.analysis.abc_._model_fitter import ModelFitter
 
-        filters = cls._deserialize_analyzers(config.get("filters", {}) or {})
+        skipped: Optional[List[PipelineLoadWarning]] = (
+            load_warnings if skip_unknown_analyzers else None
+        )
+        filters = cls._deserialize_analyzers(
+            config.get("filters", {}) or {},
+            skipped=skipped,
+        )
         model_data = config.get("model")
         model: Optional[ModelFitter] = None
         if model_data:
-            candidate = cls._deserialize_analyzer(model_data)
-            if not isinstance(candidate, ModelFitter):
+            candidate = cls._deserialize_analyzer(
+                model_data, skipped=skipped, slot_name="model"
+            )
+            if candidate is None:
+                # Class wasn't found and skip mode swallowed it; the warning
+                # has already been recorded in ``skipped``.
+                model = None
+            elif not isinstance(candidate, ModelFitter):
                 raise TypeError(
                     f"pipeline 'model' must deserialize to a ModelFitter, "
                     f"got {type(candidate).__name__}"
                 )
-            model = candidate
+            else:
+                model = candidate
         name = config.get("name", None)
         desc = config.get("desc", None)
         reset = config.get("reset", False)  # Default False for backwards compatibility
@@ -743,7 +800,10 @@ class SerializablePipeline(NapariPipelineViewer):
     @classmethod
     def _deserialize_analyzer(
             cls, serialized: Dict[str, object],
-    ) -> Union["SetAnalyzer", "ModelFitter"]:
+            *,
+            skipped: Optional[List[PipelineLoadWarning]] = None,
+            slot_name: Optional[str] = None,
+    ) -> Union["SetAnalyzer", "ModelFitter", None]:
         """Reconstruct one analyzer instance from a ``{class, params}`` dict.
 
         Introspects the target class's constructor signature, picks matching
@@ -752,6 +812,18 @@ class SerializablePipeline(NapariPipelineViewer):
         ``cls(**kwargs)``. Any leftover
         keys are restored via ``setattr`` so internal attributes (e.g. fitted
         results that were JSON-serializable) survive the round-trip.
+
+        Args:
+            serialized: ``{"class": ..., "params": {...}}`` dict.
+            skipped: When provided, unresolved-class errors are appended to
+                this list as :class:`PipelineLoadWarning` and the method
+                returns ``None`` instead of raising. When ``None`` (the
+                historical default), unresolved classes raise
+                :class:`AttributeError`.
+            slot_name: The dict-key the entry was stored under (``"model"``
+                for the single model field, or the filter chain key).
+                Only used to populate the warning's ``name`` field; ignored
+                when ``skipped`` is ``None``.
         """
         class_name = serialized["class"]
         if not isinstance(class_name, str):
@@ -761,6 +833,15 @@ class SerializablePipeline(NapariPipelineViewer):
 
         op_class = cls._find_class_in_phenotypic(class_name)
         if op_class is None:
+            if skipped is not None:
+                skipped.append(
+                    PipelineLoadWarning(
+                        slot="model" if slot_name == "model" else "filter",
+                        name=slot_name or class_name,
+                        class_name=class_name,
+                    )
+                )
+                return None
             raise AttributeError(
                 f"Class '{class_name}' not found in phenotypic namespace. "
                 f"Make sure it's properly exported from phenotypic.analysis."
@@ -796,9 +877,21 @@ class SerializablePipeline(NapariPipelineViewer):
     @classmethod
     def _deserialize_analyzers(
             cls, serialized: Dict[str, Dict[str, object]],
+            *,
+            skipped: Optional[List[PipelineLoadWarning]] = None,
     ) -> Dict[str, Union["SetAnalyzer", "ModelFitter"]]:
-        """Reconstruct a name-keyed dict of analyzers (the filter chain)."""
-        return {
-            name: cls._deserialize_analyzer(entry)
-            for name, entry in serialized.items()
-        }
+        """Reconstruct a name-keyed dict of analyzers (the filter chain).
+
+        When ``skipped`` is provided, entries whose class can't be
+        resolved are dropped from the returned dict and recorded as a
+        :class:`PipelineLoadWarning`. Otherwise (the default), an
+        unresolved class raises :class:`AttributeError`.
+        """
+        result: Dict[str, Union["SetAnalyzer", "ModelFitter"]] = {}
+        for name, entry in serialized.items():
+            instance = cls._deserialize_analyzer(
+                entry, skipped=skipped, slot_name=name
+            )
+            if instance is not None:
+                result[name] = instance
+        return result

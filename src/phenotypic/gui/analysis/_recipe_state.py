@@ -28,8 +28,11 @@ import logging
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional
 
+from phenotypic._core._pipeline_parts._serializable_pipeline import (
+    PipelineLoadWarning,
+)
 from phenotypic.gui._config import PIPELINE_JSON
 
 if TYPE_CHECKING:
@@ -60,6 +63,13 @@ class RecipeState:
     #: read this for the ``ANALYSIS_PIPELINE_STORE`` payload instead of
     #: re-serializing the pipeline a second time.
     last_json: str = ""
+    #: Filter / model entries that the on-disk JSON referenced but whose
+    #: class could not be resolved in the live ``phenotypic`` namespace
+    #: (typical cause: an analyzer was renamed or removed since the
+    #: pipeline was saved). The analysis page renders a banner listing
+    #: these so the user can manually re-add a replacement; the file on
+    #: disk is left untouched until the next user-driven save.
+    load_warnings: List[PipelineLoadWarning] = field(default_factory=list)
     _lock: threading.RLock = field(
         default_factory=threading.RLock, repr=False
     )
@@ -89,10 +99,23 @@ class RecipeState:
         from phenotypic._core._image_pipeline import ImagePipeline
 
         pipeline_path = output_dir / PIPELINE_JSON
+        load_warnings: List[PipelineLoadWarning] = []
 
         if pipeline_path.exists():
-            pipeline = ImagePipeline.from_json(pipeline_path)
+            pipeline = ImagePipeline.from_json(
+                pipeline_path,
+                skip_unknown_analyzers=True,
+                load_warnings=load_warnings,
+            )
             mtime = pipeline_path.stat().st_mtime_ns
+            if load_warnings:
+                logger.warning(
+                    "%s referenced %d unknown analyzer class(es); the "
+                    "analysis page will render a banner. Skipped: %s",
+                    pipeline_path,
+                    len(load_warnings),
+                    ", ".join(w.class_name for w in load_warnings),
+                )
         else:
             pipeline = ImagePipeline(name=f"analysis-{output_dir.name}")
             mtime = None
@@ -101,6 +124,7 @@ class RecipeState:
             path=pipeline_path,
             pipeline=pipeline,
             seed_mtime_ns=mtime,
+            load_warnings=load_warnings,
         )
 
     def is_stale(self) -> bool:
@@ -173,11 +197,17 @@ class RecipeState:
         with self._lock:
             from phenotypic._core._image_pipeline import ImagePipeline
 
+            fresh_warnings: List[PipelineLoadWarning] = []
             if self.path.exists():
-                self.pipeline = ImagePipeline.from_json(self.path)
+                self.pipeline = ImagePipeline.from_json(
+                    self.path,
+                    skip_unknown_analyzers=True,
+                    load_warnings=fresh_warnings,
+                )
                 self.seed_mtime_ns = self.path.stat().st_mtime_ns
             else:
                 self.pipeline = ImagePipeline(
                     name=f"analysis-{self.path.parent.name}"
                 )
                 self.seed_mtime_ns = None
+            self.load_warnings = fresh_warnings

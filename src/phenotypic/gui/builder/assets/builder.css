@@ -515,276 +515,343 @@ code, pre, .text-monospace, .font-monospace {
     z-index: 5;
 }
 
-/* ===========================================================================
- * Aux input ports — popover-anchored design
- * ===========================================================================
+/* ─── DAG redesign canvas (spec §5.5) ──────────────────────────────────
  *
- * Op-typed parameters (e.g. ``FilamentousFungiDetector.inoculum_detector``,
- * ``CompositeDetector.detectors``) surface as small purple squares on the
- * BOTTOM edge of consumer nodes (one square per op-typed param, regardless
- * of slot cardinality). Clicking a port opens a canvas-anchored popover
- * (positioned via ``cytoscape-popper`` + ``@popperjs/core`` — see
- * ``aux_popover.js``) that hosts the class palette, wired-class actions,
- * and per-slot rows for list-typed ports.
+ * The DAG canvas renders every block + port + wire as a first-class
+ * cytoscape element.  Cytoscape's canvas renderer ignores DOM CSS for
+ * *most* visual properties — those live in the cytoscape stylesheet
+ * inside ``_layout.py``.  The rules below cover the DOM-side
+ * affordances:
  *
- * Main image-flow I/O ports (small blue circles on left/right edges of
- * every operation node) are styled inside the cytoscape stylesheet
- * (Python ``_canvas_stylesheet`` in ``_layout.py``). These DOM-side rules
- * cover only the popover overlay, the inspector focus-override hint, and
- * a cursor affordance for cytoscape-anchored DOM overlays.
+ *   .dag-block, .dag-port*, .dag-wire, .dag-issue cursor + outline
+ *     affordances for the cytoscape-DOM hybrid layer.
+ *   .dag-scrim full-canvas overlay used by ``viewport_ops.js``'s
+ *     scroll-to chain to suppress interactions while expanding
+ *     collapsed containers (spec §5.6 ``scroll_to``).
  *
- * Color choice: ``--color-interactive`` (aliased to ``--oi-purple`` for
- * the point-picker mixin in the :root override above) is the project's
- * "purple UI accent" token and the natural fit for the aux semantic —
- * an op-typed parameter is conceptually an "interactive configuration
- * input", in the same family as the point-picker capability. */
-
-/* ─── Canvas-anchored popover ───────────────────────────────────────── */
-
-/* The popover root is a DOM card positioned by ``cytoscape-popper``
- * (via popper.js) so it tracks its anchor aux port through canvas
- * pan/zoom. ``position: absolute`` lets popper.js own the coords;
- * we just style the card. */
-.cy-popover {
+ * Color tokens come from the shared design system — never hardcode hex
+ * values; if a new accent is needed, add it to ``_design.py`` first. */
+.dag-block {
+    /* Block-level affordance: cursor changes to indicate selectability.
+     * Visual styling (background tint, border colour) is owned by the
+     * cytoscape stylesheet in ``_layout.py``. */
+    cursor: pointer;
+}
+.dag-port {
+    /* Port markers are non-selectable cytoscape sub-nodes; the DOM
+     * affordance is "show the user the port is interactive" via cursor
+     * + outline-on-focus.  Border / background colours per port kind
+     * are emitted by the cytoscape stylesheet. */
+    cursor: crosshair;
+}
+.dag-port--input {
+    /* Image-input port — blue circle on the block's left edge.  The
+     * DOM-side rule just narrows the cursor so the user knows this is
+     * a drop target during a wire drag. */
+    cursor: cell;
+}
+.dag-port--output {
+    /* Image-output port — neutral circle on the block's right edge;
+     * ``wire_drawing.js`` starts a wire drag on mousedown. */
+    cursor: grab;
+}
+.dag-port--aux {
+    /* Aux-input port — purple square on the block's bottom edge.
+     * Carries ``data.accepts: List[str]`` so the wire-drag JS can
+     * decide which ports glow vs. dim on dragstart. */
+    cursor: cell;
+}
+.dag-port--glow {
+    /* Set by ``wire_drawing.js`` during a drag when the dragged source
+     * is compatible with this port.  Adds a soft halo so the user can
+     * see the legal targets across the canvas at a glance.  Cytoscape
+     * canvas-rendered ports also get an inline ``border-color`` /
+     * ``border-width`` override applied by the wire-drag IIFE so the
+     * affordance survives the canvas renderer that ignores DOM CSS. */
+    filter: drop-shadow(0 0 6px var(--oi-purple));
+    transition: filter var(--transition);
+}
+.dag-port--dim {
+    /* Set by ``wire_drawing.js`` during a drag for incompatible ports
+     * — drops to 30% opacity so the legal target set reads clearly. */
+    opacity: 0.3;
+    transition: opacity var(--transition);
+}
+.dag-port--red-flash {
+    /* Brief ~300ms red pulse on a port that just rejected a wire drop
+     * (spec §4.3).  Cytoscape canvas-rendered ports also receive an
+     * inline ``border-color: var(--oi-vermilion)`` override from
+     * ``wire_drawing.js`` so the user sees the rejection on the canvas
+     * surface.  The DOM-side rule keeps the affordance consistent for
+     * any future DOM overlays anchored to a rejected port. */
+    filter: drop-shadow(0 0 6px var(--oi-vermilion));
+    transition: filter var(--transition);
+}
+.dag-wire {
+    /* Wires (edges) are cytoscape edges — most visual styling lives in
+     * the cytoscape stylesheet.  The DOM-side rule applies only to the
+     * thin DOM overlay used during wire-drag (live-wire SVG) plus the
+     * cursor affordance when hovering an edge for click-to-select. */
+    cursor: pointer;
+}
+.dag-wire--image {
+    /* Image-flow edge — solid blue.  Cytoscape canvas-side colour comes
+     * from the ``edge.image-flow`` stylesheet rule in ``_layout.py``;
+     * this DOM rule narrows the cursor + preserves the colour token
+     * for any DOM overlay anchored to an image-flow wire. */
+    cursor: pointer;
+}
+.dag-wire--aux {
+    /* Aux edge — purple dashed.  Cytoscape canvas-side colour is
+     * driven by the cytoscape stylesheet; the DOM rule mirrors the
+     * cursor / token convention for any DOM overlay. */
+    cursor: pointer;
+}
+.dag-wire--selected {
+    /* Click-selected wire (spec §4.3): stroke widens to 4px + brightens
+     * to navy so the user sees which wire ``Delete`` will affect.
+     * Cytoscape canvas applies the actual width/colour via inline
+     * style from ``wire_drawing.js`` (the cytoscape stylesheet doesn't
+     * carry this selector); the DOM rule mirrors the affordance for
+     * any future DOM-side wire chrome. */
+    filter: drop-shadow(0 0 3px var(--color-navy));
+}
+.dag-issue {
+    /* Issue badges are cytoscape sub-nodes that overlay the block's
+     * top-right corner — the DOM-side rule just changes the cursor on
+     * hover so the user knows clicking is interactive (the validation
+     * callback dispatches ``scroll_to`` on click). */
+    cursor: pointer;
+}
+.dag-scrim,
+[data-testid="dag-scrim"] {
+    /* Full-canvas overlay mounted by ``viewport_ops.js`` during the
+     * ``scroll_to`` chain.  Suppresses pointer events so a user drag
+     * cannot interleave with the expand chain; the chain is typically
+     * 200-600ms for 2-3 collapsed levels (spec §5.6 ``scroll_to``).
+     *
+     * Per spec §5.6: the scrim:
+     *   - Covers the entire canvas (``position: absolute`` over the
+     *     ``#canvas-cytoscape`` parent, which ``viewport_ops.js``
+     *     ensures has ``position: relative``).
+     *   - Captures every pointer gesture (``pointer-events: auto``) so
+     *     palette drop, port mousedown, and wire-drag are all suppressed
+     *     while the chain runs.
+     *   - Sits above every canvas-anchored DOM overlay (toolbar caps
+     *     at lower z-indices); ``9999`` keeps the scrim above any
+     *     future overlay without re-tuning.
+     *   - Surfaces a faint dark tint so the user can see the chain is
+     *     in progress without obscuring the canvas state.
+     *   - ``cursor: wait`` (matched by ``progress`` on older browsers)
+     *     signals the in-progress chain. */
     position: absolute;
-    z-index: 200;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-md);
-    padding: var(--sp-2);
-    min-width: 220px;
-    max-width: 320px;
-    font-family: var(--font-body);
-    font-size: var(--font-size-body);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.15);
+    z-index: 9999;
+    pointer-events: auto;
+    cursor: wait;
+}
+
+/* Asset-status banner above the canvas (spec §6 row).  Surfaces the
+ * "Wire drawing offline" / "Layout offline" / "Layout extension
+ * missing" strings when a JS file fails to register its readiness
+ * sentinel within ~1500ms.  Hidden when ``STORE_ASSET_STATUS`` reports
+ * every asset ready. */
+.builder-asset-status {
+    background: rgba(213, 94, 0, 0.08);  /* OI_VERMILION at low opacity */
+    border-left: 3px solid var(--oi-vermilion);
     color: var(--color-body);
-}
-
-/* Header row: monospace param-name label on the left, close button
- * (×) on the right. */
-.cy-popover-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--sp-2);
-    padding-bottom: var(--sp-1);
+    padding: var(--sp-1) var(--sp-3);
     margin-bottom: var(--sp-2);
-    border-bottom: 1px solid var(--color-rule);
-}
-
-.cy-popover-header__title {
     font-family: var(--font-mono);
     font-size: var(--font-size-caption);
-    color: var(--color-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    line-height: 1.2;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.cy-popover-header__close {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.25rem;
-    height: 1.25rem;
-    padding: 0;
-    background: transparent;
-    border: none;
     border-radius: var(--radius-sm);
-    color: var(--color-muted);
-    font-family: var(--font-body);
-    font-size: var(--font-size-body);
-    line-height: 1;
-    cursor: pointer;
-    transition: var(--transition);
 }
-.cy-popover-header__close:hover,
-.cy-popover-header__close:focus {
-    background: var(--color-bg);
-    color: var(--color-heading);
-    outline: none;
-}
-
-/* Class palette for empty (unwired) ports: a wrapping grid of compatible
- * concrete classes that satisfy the port's type contract. */
-.cy-popover-palette {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--sp-1);
+.builder-asset-status > div {
     padding: var(--sp-1) 0;
 }
-
-.cy-popover-palette-button {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.25rem 0.6rem;
-    background: transparent;
-    color: var(--color-interactive);
-    border: 1.5px solid var(--color-interactive);
-    border-radius: var(--radius);
-    font-family: var(--font-mono);
-    font-size: var(--font-size-caption);
-    cursor: pointer;
-    transition: var(--transition);
-}
-.cy-popover-palette-button:hover,
-.cy-popover-palette-button:focus {
-    background: var(--color-interactive);
-    color: var(--color-white);
-    outline: none;
-}
-
-/* Wired-row variant for a scalar (or single-slot) port: the wired class
- * name stacks on its own row, with the per-row action buttons
- * (Edit / Drill / Disconnect) on the line below. The actions can wrap
- * onto additional rows once the popover gets too narrow to fit them. */
-.cy-popover-wired-row {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--sp-1);
-    padding: var(--sp-2);
-    background: var(--color-bg);
-    border-left: 3px solid var(--color-interactive);
-    border-radius: var(--radius-sm);
-    margin-bottom: var(--sp-1);
-}
-
-.cy-popover-wired-row__class-name {
-    font-family: var(--font-mono);
-    font-size: var(--font-size-body);
-    color: var(--color-heading);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.cy-popover-wired-row__actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--sp-1);
-}
-
-/* Slot-row container for list-typed ports: each slot (wired or empty)
- * stacks its ``SLOT N`` index label on top with the body (palette or
- * wired-row) on the line below, so the body has the full popover width
- * to render its actions / palette pills without being squeezed by the
- * fixed-width index label. */
-.cy-popover-slot-row {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--sp-1);
-    padding: var(--sp-1) var(--sp-2);
-    border-radius: var(--radius-sm);
-    margin-bottom: var(--sp-1);
-}
-.cy-popover-slot-row + .cy-popover-slot-row {
-    border-top: 1px solid var(--color-rule);
-}
-
-.cy-popover-slot-row__index {
-    font-family: var(--font-mono);
-    font-size: var(--font-size-caption);
-    color: var(--color-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-}
-
-/* "+ Add slot" affordance under the last slot row of a list-typed
- * popover. Dashed outline mirrors the empty-slot inspector affordance
- * removed in this redesign. */
-.cy-popover-add-slot {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--sp-1);
-    margin-top: var(--sp-1);
-    padding: 0.2rem 0.6rem;
-    background: transparent;
-    color: var(--color-muted);
-    border: 1px dashed var(--color-border);
-    border-radius: var(--radius);
-    font-family: var(--font-mono);
-    font-size: var(--font-size-caption);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    cursor: pointer;
-    transition: var(--transition);
-}
-.cy-popover-add-slot:hover,
-.cy-popover-add-slot:focus {
-    color: var(--color-interactive);
-    border-color: var(--color-interactive);
-    border-style: solid;
-    background: rgba(204, 121, 167, 0.04);
-    outline: none;
-}
-
-/* Triangle arrow pointing at the anchor port. Popper.js manages
- * placement via the ``data-popper-arrow`` attribute; this rule just
- * styles the wedge. */
-.cy-popover-arrow {
-    position: absolute;
-    width: 10px;
-    height: 10px;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-top: none;
-    border-left: none;
-    transform: rotate(45deg);
-}
-
-/* Small breadcrumb shown when the inspector is mirroring this aux's
- * params (i.e. ``inspector_focus_aux`` is pointing at this port). */
-.cy-popover__inspector-focused-hint {
-    margin-top: var(--sp-1);
-    padding: var(--sp-1) var(--sp-2);
-    background: var(--color-bg);
-    border-left: 3px solid var(--color-interactive);
-    border-radius: var(--radius-sm);
-    font-family: var(--font-mono);
-    font-size: var(--font-size-caption);
-    color: var(--color-muted);
-}
-
-/* ─── Inspector focus-override hint ─────────────────────────────────── */
-
-/* Small breadcrumb header that appears at the top of the inspector pane
- * when it's temporarily showing a wired aux's params instead of the
- * canvas-selected consumer's params (i.e.
- * ``inspector_focus_aux = {focus: "aux", ...}``). The ← back link
- * dispatches ``set_inspector_focus(focus="consumer", ...)`` to revert. */
-.inspector-focus-aux-banner {
-    background: var(--color-bg);
-    border-left: 3px solid var(--color-interactive);
-    padding: var(--sp-1) var(--sp-2);
-    margin-bottom: var(--sp-2);
-    font-family: var(--font-mono);
-    font-size: var(--font-size-caption);
-    color: var(--color-muted);
-}
-
-.inspector-focus-aux-banner__back {
-    color: var(--color-interactive);
-    cursor: pointer;
-    text-decoration: none;
-}
-.inspector-focus-aux-banner__back:hover,
-.inspector-focus-aux-banner__back:focus {
-    text-decoration: underline;
-    outline: none;
+.builder-asset-status > div + div {
+    border-top: 1px dashed var(--color-rule);
 }
 
 /* ─── Cytoscape-anchored DOM overlays (cursor affordance) ──────────── */
 
 /* Main I/O port + bottom aux port visuals are driven by the cytoscape
  * stylesheet in ``_layout.py``. The only DOM-side concern is that any
- * overlay anchor (e.g. the invisible popper-target wrapper around an
- * aux port) should advertise that it's clickable. */
+ * overlay anchor should advertise that it's clickable. */
 .aux-port-clickable {
     cursor: pointer;
+}
+
+/* ===========================================================================
+ * Palette drag-and-drop (spec §4.8 + §5.5)
+ * ===========================================================================
+ *
+ * Native HTML5 dnd from palette buttons to the cytoscape canvas. The
+ * server renders each draggable palette button with
+ * ``draggable="true"`` and ``data-palette-class="<ClassName>"`` (see
+ * ``_layout.build_palette``); ``palette_dnd.js`` reads those attributes
+ * on ``dragstart``, mounts a ghost element as the drag image, and
+ * dispatches to ``STORE_PALETTE_DROP`` on drop. */
+
+/* Cursor affordance + subtle hover lift on draggable palette buttons.
+ * Bootstrap already applies its own hover style; we add a grab cursor
+ * so the affordance is discoverable and a tighter focus ring so
+ * keyboard users see the Tab landing target. */
+.palette-button[draggable="true"],
+[data-palette-class][draggable="true"] {
+    cursor: grab;
+}
+.palette-button[draggable="true"]:active,
+[data-palette-class][draggable="true"]:active {
+    cursor: grabbing;
+}
+.palette-button[draggable="true"]:focus-visible,
+[data-palette-class][draggable="true"]:focus-visible {
+    outline: 2px solid var(--color-blue);
+    outline-offset: 2px;
+}
+
+/* Ghost element rendered briefly during ``setDragImage``. Positioned
+ * off-screen by ``palette_dnd.js`` so the rasterised drag image is the
+ * only visible surface; these rules style the rasterised card. */
+[data-testid="palette-ghost"] {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--sp-1) var(--sp-3);
+    background: var(--color-surface);
+    border: 1.5px solid var(--color-blue);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    color: var(--color-navy);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    font-weight: 500;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* Container drag-over highlight. ``palette_dnd.js`` toggles
+ * ``.dag-block--container-hover`` on the innermost container compound
+ * whose bounding box contains the cursor; this rule lifts the
+ * container's outer chrome so the user sees adoption is offered. The
+ * cytoscape stylesheet (``_layout.py``) controls the canvas-side
+ * border / fill; the DOM rule below covers any DOM overlay anchored
+ * to a hovered container (cursor + outline affordance). */
+.dag-block--container-hover {
+    cursor: copy;
+    outline: 2px dashed var(--color-blue);
+    outline-offset: 2px;
+    background: rgba(27, 117, 188, 0.06);
+}
+
+/* ─── Pipeline container chrome (spec §4.4, §4.5, §4.7) ───────────────
+ *
+ * Container blocks (``class_name == "ImagePipeline"``) render as
+ * cytoscape compound parents.  Most of the visual styling
+ * (border colour, padding, title bar position) lives in the
+ * cytoscape stylesheet inside ``_layout.py`` because cytoscape's
+ * canvas renderer ignores DOM CSS for in-graph elements.  The DOM-
+ * side rules below cover the affordances that *do* land on the
+ * DOM layer (cursor, focus rings on the inspector container card)
+ * plus the title-bar styling for any future DOM-anchored overlay. */
+
+.dag-block--container {
+    /* Container blocks select the entire compound (title bar + body)
+     * with a single click — same affordance as ordinary blocks. */
+    cursor: pointer;
+}
+
+.dag-block--container.dag-block--collapsed {
+    /* Collapsed containers behave as a single-row block.  The width
+     * / height / padding overrides land in the cytoscape stylesheet;
+     * this rule narrows the cursor so the hover affordance reads
+     * "click to select" rather than "click to expand body". */
+    cursor: pointer;
+}
+
+.dag-block__title-bar {
+    /* Reserved class for any DOM overlay that anchors to a container's
+     * title bar (the title text ships inside the cytoscape compound's
+     * ``label`` data field — see ``_layout.py``).  Future inline-rename
+     * glue (spec §4.4) hangs off this hook. */
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    font-weight: 600;
+    color: var(--color-navy);
+}
+
+.dag-block__collapse-chevron {
+    /* The collapse chevron is encoded in the title-bar text (▼ vs ▶
+     * — see ``_DAG_CONTAINER_TITLE_EXPANDED`` / ``..._COLLAPSED`` in
+     * ``_layout.py``).  This class is reserved for any DOM hover
+     * affordance attached to a future click-target overlay. */
+    cursor: pointer;
+    color: var(--color-navy);
+    transition: transform var(--transition);
+}
+
+.dag-block__consumer-fed-dot {
+    /* The container-scope ``InputImage`` sentinel renders as a small
+     * purple dot anchored to the container's inner-left edge.  The
+     * cytoscape stylesheet paints the dot itself (round, 12×12,
+     * purple); the DOM-side rule supplies the cursor affordance for
+     * any DOM overlay that anchors to it. */
+    cursor: default;
+}
+
+.dag-block__placeholder {
+    /* ``+ drop ops here`` placeholder rendered inside an empty
+     * container.  Non-selectable on the canvas side; the DOM rule
+     * mirrors that with ``pointer-events: none`` so palette drops
+     * still hit-test against the container instead of the
+     * placeholder.  ``user-select`` blocks accidental selection
+     * during DnD. */
+    pointer-events: none;
+    user-select: none;
+    color: var(--color-muted);
+    font-style: italic;
+}
+
+.dag-block--container-empty {
+    /* Empty-state container chrome: the user has created the container
+     * but not yet dropped any real ops inside.  The ``+ drop ops here``
+     * placeholder inside the body advertises the drop target; the
+     * outer ``dag-block--container-empty`` selector is the hook for
+     * any DOM-side outline / hover affordance the cytoscape compound
+     * cannot express.  Most of the visual chrome stays in the
+     * cytoscape stylesheet; this DOM rule narrows the cursor to ``copy``
+     * so the user understands the entire compound is a valid drop
+     * target. */
+    cursor: copy;
+}
+
+.dag-block__chain-glyph {
+    /* Compact chain-glyph badge surfaced on collapsed containers
+     * (spec §4.4).  The glyph text + inner-op count live in the
+     * cytoscape compound's ``data.label`` field today; this CSS class
+     * is reserved for any future DOM overlay (e.g. a popover triggered
+     * by hovering the collapsed chain glyph).  Keeping the class in the
+     * stylesheet means a future enhancement can ship without touching
+     * the cytoscape stylesheet. */
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
+    letter-spacing: 0.04em;
+}
+
+/* Inspector container card (spec §4.5).  The card holds the label /
+ * name / desc inputs, the inner-scope summary, the aggregated
+ * inner-issue count, and the ``Drill in →`` button.  Tighter spacing
+ * than the standard inspector card so the surface stays compact for
+ * a feature that's typically used at-a-glance. */
+.inspector-container-card .inspector-container-summary {
+    line-height: 1.4;
+}
+.inspector-container-card .inspector-container-issues {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
 }

@@ -4,6 +4,14 @@
  * ``_callbacks.py``) can drive the cytoscape canvas directly via its native
  * API — ``cy.fit()`` / ``cy.zoom()`` — instead of fighting dash-cytoscape's
  * prop change detection.
+ *
+ * Also exposes ``window.phenoWhenCyReady(cb)`` — a shared accessor that
+ * polls ``phenoGetCy()`` every 100ms and invokes ``cb(cy)`` once the
+ * cytoscape instance has mounted.  All three IIFE assets
+ * (``viewport_ops.js``, ``palette_dnd.js``, ``wire_drawing.js``) used to
+ * carry an identical copy of this pattern; centralising it here keeps
+ * load-order tolerance in one place and means new assets only need to
+ * call ``window.phenoWhenCyReady`` rather than re-implement the loop.
  */
 
 (function () {
@@ -52,6 +60,25 @@
             if (node.sibling) stack.push(node.sibling);
         }
         return null;
+    };
+
+    /** Poll ``window.phenoGetCy`` every 100ms and invoke ``cb(cy)`` once
+     *  the cytoscape instance has mounted.  Shared by every asset that
+     *  binds clientside handlers but doesn't know whether the canvas
+     *  has rendered yet (load-order tolerance).
+     *
+     *  Idempotency: each asset's IIFE is expected to call this exactly
+     *  once at bind time; the recursive ``setTimeout`` walks at most
+     *  one outstanding chain at a time per caller. */
+    window.phenoWhenCyReady = function phenoWhenCyReady(cb) {
+        const cy = window.phenoGetCy && window.phenoGetCy();
+        if (cy) {
+            cb(cy);
+            return;
+        }
+        setTimeout(function () {
+            window.phenoWhenCyReady(cb);
+        }, 100);
     };
 
     /* Watch the cytoscape container for size changes (the layout settles
@@ -222,5 +249,140 @@
         document.addEventListener("DOMContentLoaded", start);
     } else {
         start();
+    }
+})();
+
+
+/* PhenoTypic Pipeline Builder — asset-readiness poller (spec §5.5).
+ *
+ * Each new DAG-canvas JS asset writes a sentinel onto ``window`` when
+ * its IIFE finishes binding (``phenotypic_<name>_ready``); ``viewport_ops``
+ * additionally exposes a ``phenotypic_viewport_ops_dagre_missing``
+ * flag when the vendored ``cytoscape-dagre.min.js`` failed to register.
+ *
+ * The poll publishes ``STORE_ASSET_STATUS`` as a boolean-flag dict
+ * matching the server callback's contract (see
+ * ``_callbacks.asset_status_disables``):
+ *
+ *    {wire_drawing: bool, palette_dnd: bool, viewport_ops: bool,
+ *     dagre_missing: bool}
+ *
+ * ``dash_clientside.set_props`` is the publish channel (Dash 2.18+).
+ * The poll runs every 500ms for at most 1500ms total; an asset whose
+ * IIFE has not shipped (e.g. palette_dnd before Phase 3) defaults to
+ * ``true`` so it doesn't trip the banner prematurely. */
+(function () {
+    "use strict";
+
+    /** Mirror of ``builder/_ids.STORE_ASSET_STATUS``. Kept as a
+     *  constant here so a future rename only touches one place. */
+    const STORE_ASSET_STATUS_ID = "store-asset-status";
+
+    /** Asset name → ``window`` sentinel that the corresponding IIFE
+     *  raises once it has bound its handlers. Each key matches a
+     *  field in the ``STORE_ASSET_STATUS`` payload the Python callback
+     *  in ``_callbacks.asset_status_disables`` consumes. */
+    const ASSET_READY_FLAGS = {
+        viewport_ops: "phenotypic_viewport_ops_ready",
+        palette_dnd: "phenotypic_palette_dnd_ready",
+        wire_drawing: "phenotypic_wire_drawing_ready",
+    };
+
+    /** Auxiliary "extension missing" flags. Asset-specific: an asset
+     *  may still report ``ready`` while an optional dependency (e.g.
+     *  cytoscape-dagre) reported itself absent. */
+    const ASSET_DEGRADED_FLAGS = {
+        dagre_missing: "phenotypic_viewport_ops_dagre_missing",
+    };
+
+    const TOTAL_BUDGET_MS = 1500;
+    const POLL_INTERVAL_MS = 500;
+
+    /** Read each sentinel from ``window`` and emit the boolean-flag
+     *  payload the server-side callback expects. The shape mirrors the
+     *  initial ``STORE_ASSET_STATUS.data`` value mounted in
+     *  ``_layout.build_app_layout``. */
+    function collectAssetStatus() {
+        const status = {};
+        for (const name in ASSET_READY_FLAGS) {
+            status[name] = Boolean(window[ASSET_READY_FLAGS[name]]);
+        }
+        for (const name in ASSET_DEGRADED_FLAGS) {
+            status[name] = Boolean(window[ASSET_DEGRADED_FLAGS[name]]);
+        }
+        return status;
+    }
+
+    /** Push ``status`` into ``STORE_ASSET_STATUS`` via the
+     *  ``set_props`` clientside hook (Dash 2.18+). Older Dash builds
+     *  silently skip publishing — the callback then keeps the default
+     *  "everything ready" state. */
+    function publishAssetStatus(status) {
+        if (
+            !(
+                window.dash_clientside &&
+                typeof window.dash_clientside.set_props === "function"
+            )
+        ) {
+            return;
+        }
+        try {
+            window.dash_clientside.set_props(STORE_ASSET_STATUS_ID, {
+                data: status,
+            });
+        } catch (err) {
+            // STORE_ASSET_STATUS not rendered yet — the poll keeps
+            // retrying until either it exists or the budget runs out.
+        }
+    }
+
+    /** Cheap shallow-equality probe used to skip redundant publishes. */
+    function statusEqual(a, b) {
+        if (!a || !b) return false;
+        for (const key in a) {
+            if (a[key] !== b[key]) return false;
+        }
+        for (const key in b) {
+            if (a[key] !== b[key]) return false;
+        }
+        return true;
+    }
+
+    /** Drive the poll loop. Runs every ``POLL_INTERVAL_MS`` for at
+     *  most ``TOTAL_BUDGET_MS`` total; whichever comes first:
+     *   - all assets report ready (early exit + final publish), or
+     *   - the budget is exhausted (final publish with whatever's still
+     *     missing). */
+    function pollAssetStatus() {
+        const start = Date.now();
+        let last;
+        const handle = setInterval(function () {
+            const status = collectAssetStatus();
+            const allReady =
+                status.viewport_ops &&
+                status.palette_dnd &&
+                status.wire_drawing &&
+                !status.dagre_missing;
+            const elapsed = Date.now() - start;
+            if (!statusEqual(last, status)) {
+                publishAssetStatus(status);
+                last = status;
+            }
+            if (allReady || elapsed >= TOTAL_BUDGET_MS) {
+                clearInterval(handle);
+                publishAssetStatus(status);
+            }
+        }, POLL_INTERVAL_MS);
+    }
+
+    // Defer the first poll one tick so cytoscape + Dash have had a
+    // chance to materialise the store DOM. ``setTimeout(_, 0)`` is
+    // enough; subsequent iterations rely on ``setInterval``.
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", function () {
+            setTimeout(pollAssetStatus, 0);
+        });
+    } else {
+        setTimeout(pollAssetStatus, 0);
     }
 })();

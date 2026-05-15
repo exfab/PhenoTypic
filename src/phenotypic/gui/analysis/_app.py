@@ -39,7 +39,7 @@ from phenotypic.gui.analysis._layout import (
     build_empty_state_layout,
 )
 from phenotypic.gui.analysis._recipe_state import RecipeState
-from phenotypic.gui.analysis._schema_cache import MeasurementSchema
+from phenotypic.gui._schema_cache import MeasurementSchema
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.shell._ids import SHELL_SIDEBAR_SELECTION_STORE
 

@@ -192,7 +192,7 @@ Downloadable Notebooks
     .. grid-item-card:: How To: Manual Grid Detection When Automatic Fails
         :shadow: md
 
-        When automatic grid detection does not find the correct grid layout, use `ManualGridPointDetector` to specify colony positions explicitly.
+        When automatic grid detection does not find the correct grid layout, use `ManualGridDetector` to specify colony positions explicitly.
 
         +++
         :download:`Download notebook <how_to/notebooks/manual_grid_detection.ipynb>`

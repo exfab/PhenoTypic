@@ -145,7 +145,7 @@ class TestInspectorRenderPathsEmitDocIds:
 
     def test_empty_inspector_branch_emits_doc_ids_once(self, registry):
         from phenotypic.gui.builder._layout import build_inspector
-        from phenotypic.gui.builder._state import BuilderScope, BuilderState
+        from phenotypic.gui.builder._state import _LegacyBuilderScope as BuilderScope, _LegacyBuilderState as BuilderState
 
         state = BuilderState(
             root=BuilderScope(nodes=[]),
@@ -159,10 +159,10 @@ class TestInspectorRenderPathsEmitDocIds:
     def test_pipeline_node_branch_emits_doc_ids_once(self, registry):
         from phenotypic.gui.builder._layout import build_inspector
         from phenotypic.gui.builder._state import (
-            BuilderScope,
-            BuilderState,
+            _LegacyBuilderScope as BuilderScope,
+            _LegacyBuilderState as BuilderState,
+            _LegacyStepNode as StepNode,
             PIPELINE_CLASS_NAME,
-            StepNode,
             _new_node_id,
         )
 
@@ -183,9 +183,9 @@ class TestInspectorRenderPathsEmitDocIds:
     def test_operation_node_with_docstring_emits_doc_ids_once(self, registry):
         from phenotypic.gui.builder._layout import build_inspector
         from phenotypic.gui.builder._state import (
-            BuilderScope,
-            BuilderState,
-            StepNode,
+            _LegacyBuilderScope as BuilderScope,
+            _LegacyBuilderState as BuilderState,
+            _LegacyStepNode as StepNode,
             _new_node_id,
         )
 

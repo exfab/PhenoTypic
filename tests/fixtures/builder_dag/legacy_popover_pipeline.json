@@ -1,0 +1,56 @@
+{
+  "version": "0.15.1",
+  "name": "legacy_test",
+  "desc": "A legacy pipeline.json saved by the popover builder.",
+  "reset": false,
+  "pipe_cfgs": {
+    "GaussianBlur": {
+      "class": "GaussianBlur",
+      "params": {
+        "sigma": 1.5,
+        "mode": "reflect",
+        "cval": 0.0,
+        "truncate": 4.0
+      }
+    },
+    "FilamentousFungiDetector": {
+      "class": "FilamentousFungiDetector",
+      "params": {
+        "inoculum_detector": {
+          "__type__": "operation",
+          "class": "OtsuDetector",
+          "params": {
+            "ignore_zeros": false,
+            "ignore_borders": true
+          }
+        },
+        "max_colony_radius_px": 250.0,
+        "min_branch_width_px": 3,
+        "ignore_borders": true,
+        "edge_noise_threshold": 6.0,
+        "reconnection_tolerance": 2.5,
+        "max_gap_length": 30,
+        "border_margin_px": 50,
+        "frag_reach_px": 10,
+        "gap_crossing_penalty": 4.0,
+        "gauss_sigma": 300.0,
+        "tile_size": 1200,
+        "tile_overlap": 600,
+        "pct_min_wavelength": 6.0,
+        "mad_window": 7,
+        "path_dilation_radius": 2,
+        "snr_margin": 2,
+        "coherence_window_radius": 15
+      }
+    }
+  },
+  "meas": {
+    "MeasureSize": {
+      "class": "MeasureSize",
+      "params": {}
+    }
+  },
+  "post": {},
+  "filters": {},
+  "model": null
+}

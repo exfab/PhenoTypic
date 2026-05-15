@@ -1,0 +1,10 @@
+{
+  "issues": [
+    {
+      "kind": "container_mode",
+      "severity": "error",
+      "block_label": "container",
+      "scope_path": []
+    }
+  ]
+}
