@@ -1,0 +1,1212 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.gui.builder._validation &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=fb952d1c"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/gui/builder/_validation';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/gui/builder/_validation.html" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.15.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../how_to/index.html">
+          How-To Guides
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../explanation/index.html">
+          Explanation
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../extending/index.html">
+          Extending PhenoTypic
+        </a>
+      </li>
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../../gui.html" class="nav-link">phenotypic.gui</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../builder.html" class="nav-link">phenotypic.gui.builder</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.gui.builder._validation</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.gui.builder._validation</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Pure-Python validation layer for the DAG builder.</span>
+
+<span class="sd">Validation is a free function over a :class:`BuilderState`; every state</span>
+<span class="sd">mutation through the dispatcher pipes the new state through</span>
+<span class="sd">:func:`validate` and the resulting list of :class:`Issue` objects drives</span>
+<span class="sd">the canvas&#39;s red/yellow border decoration plus the toolbar&#39;s</span>
+<span class="sd">preview/save enable state.</span>
+
+<span class="sd">The seven blocking rules + two advisory rules are enumerated in spec</span>
+<span class="sd">``2026-05-12-builder-dag-redesign-design.md`` §5.3. This module contains</span>
+<span class="sd">no side effects; it depends only on :mod:`phenotypic.gui.builder._state`</span>
+<span class="sd">(the dataclasses) and the operation registry (for required-aux</span>
+<span class="sd">introspection and stage classification).</span>
+
+<span class="sd">Examples:</span>
+<span class="sd">    Empty scope (only auto-seeded ``InputImage``) is valid:</span>
+
+<span class="sd">    &gt;&gt;&gt; from phenotypic.gui.builder._state import BuilderScope, BuilderState</span>
+<span class="sd">    &gt;&gt;&gt; from phenotypic.gui.builder._validation import validate</span>
+<span class="sd">    &gt;&gt;&gt; state = BuilderState(root=BuilderScope())</span>
+<span class="sd">    &gt;&gt;&gt; validate(state)</span>
+<span class="sd">    []</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">defaultdict</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureFeatures</span><span class="p">,</span> <span class="n">PostMeasurement</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._operation_registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">OperationInfo</span><span class="p">,</span> <span class="n">get_registry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.builder._state</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">BlockNode</span><span class="p">,</span>
+    <span class="n">BuilderScope</span><span class="p">,</span>
+    <span class="n">BuilderState</span><span class="p">,</span>
+    <span class="n">INPUT_IMAGE_CLASS_NAME</span><span class="p">,</span>
+    <span class="n">PIPELINE_CLASS_NAME</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="n">IssueKind</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span>
+    <span class="s2">&quot;fork&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;stub&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;required_aux&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;cycle&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;container_mode&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;missing_input&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;duplicate_input&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;stage_order_hint&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;unknown_class&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+<span class="n">IssueSeverity</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="s2">&quot;advisory&quot;</span><span class="p">]</span>
+<span class="n">StageName</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;ops&quot;</span><span class="p">,</span> <span class="s2">&quot;meas&quot;</span><span class="p">,</span> <span class="s2">&quot;post&quot;</span><span class="p">,</span> <span class="s2">&quot;pipeline&quot;</span><span class="p">]</span>
+
+<span class="n">_STAGE_ORDER</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">StageName</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;ops&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="s2">&quot;meas&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s2">&quot;post&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="s2">&quot;pipeline&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="Issue">
+<a class="viewcode-back" href="../../../../api_reference/gui/generated/phenotypic.gui.builder._validation.Issue.html#phenotypic.gui.builder._validation.Issue">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Issue</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A single validation finding for a block or scope.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        kind: One of the nine taxonomy entries (see :data:`IssueKind`).</span>
+<span class="sd">            The first seven are blocking errors that disable preview/save;</span>
+<span class="sd">            ``stage_order_hint`` and ``unknown_class`` are advisories and</span>
+<span class="sd">            decorate with a yellow border instead of red.</span>
+<span class="sd">        block_id: ``None`` for scope-level findings (the only one that</span>
+<span class="sd">            actually uses ``None`` is ``missing_input``); otherwise the</span>
+<span class="sd">            offender&#39;s block id.</span>
+<span class="sd">        detail: Free-form human-readable explanation. Used by tooltips</span>
+<span class="sd">            and toasts; not part of the test-normalisation key.</span>
+<span class="sd">        scope_path: List of container block_id values walked from the</span>
+<span class="sd">            root scope to the offender&#39;s scope. Empty when the issue</span>
+<span class="sd">            lives in the root scope. The UI consumes this to pan/zoom</span>
+<span class="sd">            across container boundaries when a badge is clicked.</span>
+<span class="sd">        severity: ``&quot;error&quot;`` for the seven blocking rules,</span>
+<span class="sd">            ``&quot;advisory&quot;`` for ``stage_order_hint`` and</span>
+<span class="sd">            ``unknown_class``. Populated by the rule that emits the</span>
+<span class="sd">            issue; callers gate Run/Save by filtering on this field.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">kind</span><span class="p">:</span> <span class="n">IssueKind</span>
+    <span class="n">block_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">detail</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">scope_path</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">severity</span><span class="p">:</span> <span class="n">IssueSeverity</span> <span class="o">=</span> <span class="s2">&quot;error&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="validate">
+<a class="viewcode-back" href="../../../../api_reference/gui/generated/phenotypic.gui.builder._validation.validate.html#phenotypic.gui.builder._validation.validate">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">BuilderState</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Issue</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run all validation rules across every scope reachable from the root.</span>
+
+<span class="sd">    Returns issues with ``scope_path`` populated so the UI can pan/zoom</span>
+<span class="sd">    across container boundaries when an issue badge is clicked.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        state: The current :class:`BuilderState`. Only the</span>
+<span class="sd">            ``state.root`` scope (and its transitively nested scopes via</span>
+<span class="sd">            ``BlockNode.nested``) is inspected; ``selected_block_id``,</span>
+<span class="sd">            ``breadcrumb``, ``toast_queue`` etc. are ignored.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A flat list of :class:`Issue` records in deterministic order:</span>
+<span class="sd">        rules emit in the order ``missing_input`` / ``duplicate_input``</span>
+<span class="sd">        → ``fork`` → ``stub`` → ``required_aux`` / ``unknown_class`` →</span>
+<span class="sd">        ``cycle`` → ``container_mode`` → ``stage_order_hint``, and</span>
+<span class="sd">        nested-scope issues are appended after the parent scope&#39;s</span>
+<span class="sd">        issues. The ordering is stable for snapshot-style tests.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        An empty scope (only the auto-seeded ``InputImage`` block)</span>
+<span class="sd">        passes every rule and returns an empty issue list. The</span>
+<span class="sd">        synth-yeast fixture is loaded only to anchor the example in</span>
+<span class="sd">        the project&#39;s microbiology context — validation does not</span>
+<span class="sd">        touch image data:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.gui.builder._state import (</span>
+<span class="sd">        ...     BuilderScope, BuilderState,</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.gui.builder._validation import validate</span>
+<span class="sd">        &gt;&gt;&gt; state = BuilderState(root=BuilderScope())</span>
+<span class="sd">        &gt;&gt;&gt; validate(state)</span>
+<span class="sd">        []</span>
+<span class="sd">        &gt;&gt;&gt; _ = load_synth_yeast_plate()  # microbiology context anchor</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="n">_validate_scope</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="n">scope_path</span><span class="o">=</span><span class="p">[])</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_validate_scope</span><span class="p">(</span><span class="n">scope</span><span class="p">:</span> <span class="n">BuilderScope</span><span class="p">,</span> <span class="n">scope_path</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Issue</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply every rule to a single scope, then recurse into containers.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        scope: The scope under inspection (root or nested).</span>
+<span class="sd">        scope_path: List of container ``block_id``s walked from the root</span>
+<span class="sd">            to this scope. Each emitted :class:`Issue` copies this list</span>
+<span class="sd">            into its own ``scope_path`` field.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List of :class:`Issue` records for this scope and its</span>
+<span class="sd">        transitively nested scopes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">issues</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Issue</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">registry</span> <span class="o">=</span> <span class="n">get_registry</span><span class="p">()</span>
+
+    <span class="c1"># Single-pass edge index reused by Rules 1/2/3/4/5/7. Building the</span>
+    <span class="c1"># adjacency / reverse-adjacency / counters / aux-wired map ONCE</span>
+    <span class="c1"># collapses the rules&#39; total cost from O(V·E) (Rule 2&#39;s BFS used</span>
+    <span class="c1"># to scan ``scope.edges`` on every frontier expansion) to O(V+E).</span>
+    <span class="n">image_out_count</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">image_in_count</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">total_out_count</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">aux_wired</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="c1"># ``adjacency`` is the unified ``source -&gt; [target, ...]`` map over</span>
+    <span class="c1"># ALL edges; consumed by the cycle detector (Rule 4).</span>
+    <span class="n">adjacency</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+    <span class="c1"># Image-flow forward edges only (Rule 2 walks image edges forward).</span>
+    <span class="n">image_forward</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+    <span class="c1"># Aux edges keyed by their consumer (target) — Rule 2 walks aux</span>
+    <span class="c1"># backwards from a consumer to its aux source. Each entry is the</span>
+    <span class="c1"># list of source block ids that feed *target* over an aux wire.</span>
+    <span class="n">aux_reverse</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+    <span class="c1"># Pipeline container left/right wiring buckets (Rule 5).</span>
+    <span class="n">container_left_wired</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">container_right_kinds</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">set</span><span class="p">]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">set</span><span class="p">)</span>
+
+    <span class="n">pipeline_block_ids</span><span class="p">:</span> <span class="nb">set</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">b</span><span class="o">.</span><span class="n">block_id</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">scope</span><span class="o">.</span><span class="n">blocks</span> <span class="k">if</span> <span class="n">b</span><span class="o">.</span><span class="n">class_name</span> <span class="o">==</span> <span class="n">PIPELINE_CLASS_NAME</span>
+    <span class="p">}</span>
+
+    <span class="k">for</span> <span class="n">edge</span> <span class="ow">in</span> <span class="n">scope</span><span class="o">.</span><span class="n">edges</span><span class="p">:</span>
+        <span class="n">src</span> <span class="o">=</span> <span class="n">edge</span><span class="o">.</span><span class="n">source_block_id</span>
+        <span class="n">tgt</span> <span class="o">=</span> <span class="n">edge</span><span class="o">.</span><span class="n">target_block_id</span>
+        <span class="n">total_out_count</span><span class="p">[</span><span class="n">src</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">adjacency</span><span class="p">[</span><span class="n">src</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tgt</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">edge</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s2">&quot;image&quot;</span><span class="p">:</span>
+            <span class="n">image_out_count</span><span class="p">[</span><span class="n">src</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">image_in_count</span><span class="p">[(</span><span class="n">tgt</span><span class="p">,</span> <span class="n">edge</span><span class="o">.</span><span class="n">target_port</span><span class="p">)]</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">image_forward</span><span class="p">[</span><span class="n">src</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tgt</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">tgt</span> <span class="ow">in</span> <span class="n">pipeline_block_ids</span> <span class="ow">and</span> <span class="n">edge</span><span class="o">.</span><span class="n">target_port</span> <span class="o">==</span> <span class="s2">&quot;in&quot;</span><span class="p">:</span>
+                <span class="n">container_left_wired</span><span class="p">[</span><span class="n">tgt</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># aux</span>
+            <span class="n">aux_wired</span><span class="p">[(</span><span class="n">tgt</span><span class="p">,</span> <span class="n">edge</span><span class="o">.</span><span class="n">target_port</span><span class="p">)]</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">aux_reverse</span><span class="p">[</span><span class="n">tgt</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">src</span> <span class="ow">in</span> <span class="n">pipeline_block_ids</span><span class="p">:</span>
+            <span class="n">container_right_kinds</span><span class="p">[</span><span class="n">src</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">edge</span><span class="o">.</span><span class="n">kind</span><span class="p">)</span>
+
+    <span class="c1"># Rule 6 — exactly one Input Image per scope.</span>
+    <span class="n">input_blocks</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">scope</span><span class="o">.</span><span class="n">blocks</span> <span class="k">if</span> <span class="n">b</span><span class="o">.</span><span class="n">class_name</span> <span class="o">==</span> <span class="n">INPUT_IMAGE_CLASS_NAME</span>
+    <span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">input_blocks</span><span class="p">:</span>
+        <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">Issue</span><span class="p">(</span>
+                <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;missing_input&quot;</span><span class="p">,</span>
+                <span class="n">block_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;scope has no Input Image&quot;</span><span class="p">,</span>
+                <span class="n">scope_path</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">scope_path</span><span class="p">),</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">input_blocks</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">extra</span> <span class="ow">in</span> <span class="n">input_blocks</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+            <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">Issue</span><span class="p">(</span>
+                    <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;duplicate_input&quot;</span><span class="p">,</span>
+                    <span class="n">block_id</span><span class="o">=</span><span class="n">extra</span><span class="o">.</span><span class="n">block_id</span><span class="p">,</span>
+                    <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;extra Input Image&quot;</span><span class="p">,</span>
+                    <span class="n">scope_path</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">scope_path</span><span class="p">),</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+    <span class="n">root_id</span> <span class="o">=</span> <span class="n">input_blocks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">block_id</span> <span class="k">if</span> <span class="n">input_blocks</span> <span class="k">else</span> <span class="kc">None</span>
+
+    <span class="c1"># Rule 1 — image-flow forks.</span>
+    <span class="c1">#</span>
+    <span class="c1"># Three sub-cases all reported as ``kind=&quot;fork&quot;``:</span>
+    <span class="c1">#   (a) a single source has &gt;1 outgoing ``image`` edge.</span>
+    <span class="c1">#   (b) a single ``(target_block_id, &quot;in&quot;)`` port has &gt;1 incoming</span>
+    <span class="c1">#       ``image`` edge.</span>
+    <span class="c1">#   (c) a single source has &gt;1 outgoing wires *total* across image</span>
+    <span class="c1">#       and aux (spec §4.2 — &quot;at most one outgoing wire, total&quot;).</span>
+    <span class="n">seen_fork_source</span><span class="p">:</span> <span class="nb">set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">block_id</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">image_out_count</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">Issue</span><span class="p">(</span>
+                    <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;fork&quot;</span><span class="p">,</span>
+                    <span class="n">block_id</span><span class="o">=</span><span class="n">block_id</span><span class="p">,</span>
+                    <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;image-out has &gt;1 wire&quot;</span><span class="p">,</span>
+                    <span class="n">scope_path</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">scope_path</span><span class="p">),</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">seen_fork_source</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">block_id</span><span class="p">)</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">block_id</span><span class="p">,</span> <span class="n">port</span><span class="p">),</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">image_in_count</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">port</span> <span class="o">==</span> <span class="s2">&quot;in&quot;</span><span class="p">:</span>
+            <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">Issue</span><span class="p">(</span>
+                    <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;fork&quot;</span><span class="p">,</span>
+                    <span class="n">block_id</span><span class="o">=</span><span class="n">block_id</span><span class="p">,</span>
+                    <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;image-in has &gt;1 wire&quot;</span><span class="p">,</span>
+                    <span class="n">scope_path</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">scope_path</span><span class="p">),</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+    <span class="k">for</span> <span class="n">block_id</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">total_out_count</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="c1"># Skip sources we already flagged for &quot;image-out has &gt;1 wire&quot; so</span>
+        <span class="c1"># we don&#39;t double-count the same logical fork. ``mixed_kind``</span>
+        <span class="c1"># fan-out (one image-out + one aux-out from the same source)</span>
+        <span class="c1"># ends up here.</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">block_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">seen_fork_source</span><span class="p">:</span>
+            <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">Issue</span><span class="p">(</span>
+                    <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;fork&quot;</span><span class="p">,</span>
+                    <span class="n">block_id</span><span class="o">=</span><span class="n">block_id</span><span class="p">,</span>
+                    <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;block has &gt;1 outgoing wires (image + aux combined)&quot;</span><span class="p">,</span>
+                    <span class="n">scope_path</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">scope_path</span><span class="p">),</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+    <span class="c1"># Rule 2 — stubs. BFS from the InputImage block. Image edges only</span>
+    <span class="c1"># forward; aux edges traversed both forward and backward so an</span>
+    <span class="c1"># aux-producer (sink in image flow) is still reachable from a</span>
+    <span class="c1"># consumer along the chain. Uses the prebuilt indices so the walk is</span>
+    <span class="c1"># O(V+E) instead of O(V·E).</span>
+    <span class="n">reachable</span><span class="p">:</span> <span class="nb">set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">root_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">frontier</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">root_id</span><span class="p">]</span>
+        <span class="k">while</span> <span class="n">frontier</span><span class="p">:</span>
+            <span class="n">curr</span> <span class="o">=</span> <span class="n">frontier</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">curr</span> <span class="ow">in</span> <span class="n">reachable</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">reachable</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">curr</span><span class="p">)</span>
+            <span class="c1"># Forward across all edges (image + aux outgoing).</span>
+            <span class="n">frontier</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">adjacency</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">curr</span><span class="p">,</span> <span class="p">()))</span>
+            <span class="c1"># Backward across aux edges so an aux producer (no image</span>
+            <span class="c1"># output, only an aux wire feeding a consumer) is still</span>
+            <span class="c1"># reachable from its consumer.</span>
+            <span class="n">frontier</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">aux_reverse</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">curr</span><span class="p">,</span> <span class="p">()))</span>
+    <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="n">scope</span><span class="o">.</span><span class="n">blocks</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">block</span><span class="o">.</span><span class="n">block_id</span> <span class="ow">in</span> <span class="n">reachable</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="c1"># Extra ``InputImage`` blocks are already reported as</span>
+        <span class="c1"># ``duplicate_input`` (Rule 6) — flagging them additionally as a</span>
+        <span class="c1"># stub is redundant noise.  Skip them here so the badge count</span>
+        <span class="c1"># accurately reflects the user&#39;s mental model: one offence per</span>
+        <span class="c1"># extra Input Image.</span>
+        <span class="k">if</span> <span class="n">block</span><span class="o">.</span><span class="n">class_name</span> <span class="o">==</span> <span class="n">INPUT_IMAGE_CLASS_NAME</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">Issue</span><span class="p">(</span>
+                <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;stub&quot;</span><span class="p">,</span>
+                <span class="n">block_id</span><span class="o">=</span><span class="n">block</span><span class="o">.</span><span class="n">block_id</span><span class="p">,</span>
+                <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;not reachable from Input Image&quot;</span><span class="p">,</span>
+                <span class="n">scope_path</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">scope_path</span><span class="p">),</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Rule 3 — required aux ports must be wired.</span>
+    <span class="c1">#</span>
+    <span class="c1"># ``ParamInfo.default`` is normalised to ``None`` by the registry</span>
+    <span class="c1"># (line ~404 of ``_operation_registry.py``); the right predicate is</span>
+    <span class="c1"># ``not p.has_default``, NOT ``p.default is inspect.Parameter.empty``.</span>
+    <span class="c1"># The latter is always False on a ParamInfo instance because the</span>
+    <span class="c1"># registry replaced ``inspect.Parameter.empty`` with ``None`` before</span>
+    <span class="c1"># it stored the value.</span>
+    <span class="c1"># ``aux_wired`` is the (target, port) -&gt; count map built in the</span>
+    <span class="c1"># top-of-function single-pass scan; reused here as-is.</span>
+    <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="n">scope</span><span class="o">.</span><span class="n">blocks</span><span class="p">:</span>
+        <span class="c1"># The InputImage sentinel never has registered params; skip it</span>
+        <span class="c1"># so we don&#39;t emit a spurious ``unknown_class`` advisory.</span>
+        <span class="k">if</span> <span class="n">block</span><span class="o">.</span><span class="n">class_name</span> <span class="o">==</span> <span class="n">INPUT_IMAGE_CLASS_NAME</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="c1"># The Pipeline sentinel represents a container; its &quot;params&quot; are</span>
+        <span class="c1"># the nested scope&#39;s blocks. We don&#39;t enforce required aux on</span>
+        <span class="c1"># containers themselves — the nested scope&#39;s own validation</span>
+        <span class="c1"># walks its inner blocks.</span>
+        <span class="k">if</span> <span class="n">block</span><span class="o">.</span><span class="n">class_name</span> <span class="o">==</span> <span class="n">PIPELINE_CLASS_NAME</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">block</span><span class="o">.</span><span class="n">class_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">info</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">Issue</span><span class="p">(</span>
+                    <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;unknown_class&quot;</span><span class="p">,</span>
+                    <span class="n">block_id</span><span class="o">=</span><span class="n">block</span><span class="o">.</span><span class="n">block_id</span><span class="p">,</span>
+                    <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;class &#39;</span><span class="si">{</span><span class="n">block</span><span class="o">.</span><span class="n">class_name</span><span class="si">}</span><span class="s2">&#39; not in registry&quot;</span><span class="p">,</span>
+                    <span class="n">scope_path</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">scope_path</span><span class="p">),</span>
+                    <span class="n">severity</span><span class="o">=</span><span class="s2">&quot;advisory&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="k">for</span> <span class="n">param_name</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">info</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">is_operation</span> <span class="ow">or</span> <span class="n">p</span><span class="o">.</span><span class="n">is_pipeline</span><span class="p">):</span>
+                <span class="c1"># Scalar param — out of scope for Rule 3.</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">has_default</span><span class="p">:</span>
+                <span class="c1"># Optional aux — empty is fine.</span>
+                <span class="k">continue</span>
+            <span class="c1"># Required aux. Count wired edges into this port.</span>
+            <span class="k">if</span> <span class="n">aux_wired</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">block</span><span class="o">.</span><span class="n">block_id</span><span class="p">,</span> <span class="n">param_name</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">Issue</span><span class="p">(</span>
+                        <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;required_aux&quot;</span><span class="p">,</span>
+                        <span class="n">block_id</span><span class="o">=</span><span class="n">block</span><span class="o">.</span><span class="n">block_id</span><span class="p">,</span>
+                        <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">param_name</span><span class="si">}</span><span class="s2"> is required&quot;</span><span class="p">,</span>
+                        <span class="n">scope_path</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">scope_path</span><span class="p">),</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+
+    <span class="c1"># Rule 4 — cycle detection over ALL edges (image + aux).</span>
+    <span class="c1">#</span>
+    <span class="c1"># We use Tarjan&#39;s strongly-connected-components algorithm: O(V+E)</span>
+    <span class="c1"># iterative, no risk of recursion-limit issues even on deeply</span>
+    <span class="c1"># nested scopes. Any node that participates in a non-trivial SCC</span>
+    <span class="c1"># (size &gt; 1, OR size 1 with a self-loop) is reported as</span>
+    <span class="c1"># ``kind=&quot;cycle&quot;``. ``adjacency`` was built in the top-of-function</span>
+    <span class="c1"># single-pass scan; reused here.</span>
+    <span class="n">cycle_members</span> <span class="o">=</span> <span class="n">_find_cycle_nodes</span><span class="p">(</span><span class="n">adjacency</span><span class="p">,</span> <span class="n">scope</span><span class="o">.</span><span class="n">blocks</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">block_id</span> <span class="ow">in</span> <span class="n">cycle_members</span><span class="p">:</span>
+        <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">Issue</span><span class="p">(</span>
+                <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;cycle&quot;</span><span class="p">,</span>
+                <span class="n">block_id</span><span class="o">=</span><span class="n">block_id</span><span class="p">,</span>
+                <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;block participates in a cycle&quot;</span><span class="p">,</span>
+                <span class="n">scope_path</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">scope_path</span><span class="p">),</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Rule 5 — container left/right wiring consistency.</span>
+    <span class="c1">#</span>
+    <span class="c1"># A pipeline container has two operating modes:</span>
+    <span class="c1">#   * &quot;Consumer-fed&quot; (left wired image-in): the container is fed</span>
+    <span class="c1">#     downstream as a single op; its right ports must wire image-out</span>
+    <span class="c1">#     (blue). Wiring aux out is illegal.</span>
+    <span class="c1">#   * &quot;Aux-fed&quot; (left unwired): the container&#39;s right wire is an</span>
+    <span class="c1">#     aux marker for a consumer; image-out is illegal.</span>
+    <span class="c1"># Either incoherent combination raises ``kind=&quot;container_mode&quot;``.</span>
+    <span class="c1"># ``container_left_wired`` / ``container_right_kinds`` were built</span>
+    <span class="c1"># in the top-of-function single-pass scan; reused here.</span>
+    <span class="k">for</span> <span class="n">block_id</span> <span class="ow">in</span> <span class="n">pipeline_block_ids</span><span class="p">:</span>
+        <span class="n">left_wired</span> <span class="o">=</span> <span class="n">container_left_wired</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">block_id</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="n">right_kinds</span> <span class="o">=</span> <span class="n">container_right_kinds</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">block_id</span><span class="p">,</span> <span class="p">())</span>
+        <span class="k">if</span> <span class="n">left_wired</span> <span class="ow">and</span> <span class="s2">&quot;aux&quot;</span> <span class="ow">in</span> <span class="n">right_kinds</span><span class="p">:</span>
+            <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">Issue</span><span class="p">(</span>
+                    <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;container_mode&quot;</span><span class="p">,</span>
+                    <span class="n">block_id</span><span class="o">=</span><span class="n">block_id</span><span class="p">,</span>
+                    <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;left wired but right wires to aux&quot;</span><span class="p">,</span>
+                    <span class="n">scope_path</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">scope_path</span><span class="p">),</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">left_wired</span> <span class="ow">and</span> <span class="s2">&quot;image&quot;</span> <span class="ow">in</span> <span class="n">right_kinds</span><span class="p">:</span>
+            <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">Issue</span><span class="p">(</span>
+                    <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;container_mode&quot;</span><span class="p">,</span>
+                    <span class="n">block_id</span><span class="o">=</span><span class="n">block_id</span><span class="p">,</span>
+                    <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;right wires to image but left is unwired&quot;</span><span class="p">,</span>
+                    <span class="n">scope_path</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">scope_path</span><span class="p">),</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+    <span class="c1"># Rule 7 (advisory) — stage ordering hint.</span>
+    <span class="c1">#</span>
+    <span class="c1"># Walk every image-flow edge; if the source&#39;s stage &gt; the target&#39;s</span>
+    <span class="c1"># stage, emit a yellow-border advisory. The runtime partitions by</span>
+    <span class="c1"># ``isinstance`` so a misordered chain still works (each stage runs</span>
+    <span class="c1"># in its own block), but the canvas warns the user that the visual</span>
+    <span class="c1"># ordering does not match the execution ordering. ``image_forward``</span>
+    <span class="c1"># was built in the top-of-function single-pass scan; reused here.</span>
+    <span class="k">if</span> <span class="n">root_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">order_of</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="n">scope</span><span class="o">.</span><span class="n">blocks</span><span class="p">:</span>
+            <span class="n">stage</span> <span class="o">=</span> <span class="n">_safe_stage</span><span class="p">(</span><span class="n">block</span><span class="o">.</span><span class="n">class_name</span><span class="p">,</span> <span class="n">registry</span><span class="o">=</span><span class="n">registry</span><span class="p">)</span>
+            <span class="n">order_of</span><span class="p">[</span><span class="n">block</span><span class="o">.</span><span class="n">block_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">_STAGE_ORDER</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">stage</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">source_id</span><span class="p">,</span> <span class="n">targets</span> <span class="ow">in</span> <span class="n">image_forward</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">src_stage</span> <span class="o">=</span> <span class="n">order_of</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">source_id</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">src_stage</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">for</span> <span class="n">target_id</span> <span class="ow">in</span> <span class="n">targets</span><span class="p">:</span>
+                <span class="n">tgt_stage</span> <span class="o">=</span> <span class="n">order_of</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">target_id</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">tgt_stage</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">src_stage</span> <span class="o">&gt;</span> <span class="n">tgt_stage</span><span class="p">:</span>
+                    <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">Issue</span><span class="p">(</span>
+                            <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;stage_order_hint&quot;</span><span class="p">,</span>
+                            <span class="n">block_id</span><span class="o">=</span><span class="n">source_id</span><span class="p">,</span>
+                            <span class="n">detail</span><span class="o">=</span><span class="p">(</span>
+                                <span class="s2">&quot;runs in a later stage than its downstream &quot;</span>
+                                <span class="s2">&quot;block; runtime partitions by isinstance.&quot;</span>
+                            <span class="p">),</span>
+                            <span class="n">scope_path</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">scope_path</span><span class="p">),</span>
+                            <span class="n">severity</span><span class="o">=</span><span class="s2">&quot;advisory&quot;</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+
+    <span class="c1"># Recurse into containers AFTER the parent scope&#39;s rules so the</span>
+    <span class="c1"># parent scope&#39;s issues are listed before the child scope&#39;s.</span>
+    <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="n">scope</span><span class="o">.</span><span class="n">blocks</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">block</span><span class="o">.</span><span class="n">nested</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">issues</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+                <span class="n">_validate_scope</span><span class="p">(</span>
+                    <span class="n">block</span><span class="o">.</span><span class="n">nested</span><span class="p">,</span>
+                    <span class="n">scope_path</span><span class="o">=</span><span class="p">[</span><span class="o">*</span><span class="n">scope_path</span><span class="p">,</span> <span class="n">block</span><span class="o">.</span><span class="n">block_id</span><span class="p">],</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+    <span class="k">return</span> <span class="n">issues</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_safe_stage</span><span class="p">(</span>
+    <span class="n">class_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">registry</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StageName</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Classify an operation by stage for Rule 7&#39;s ordering hint.</span>
+
+<span class="sd">    Sentinels (``InputImage``, ``ImagePipeline``) collapse to ``&quot;ops&quot;``</span>
+<span class="sd">    so they don&#39;t trip the advisory at the head of every chain. Real</span>
+<span class="sd">    operation classes are looked up in the registry and then matched</span>
+<span class="sd">    against :class:`~phenotypic.abc_.MeasureFeatures` and</span>
+<span class="sd">    :class:`~phenotypic.abc_.PostMeasurement`; everything else falls</span>
+<span class="sd">    back to ``&quot;ops&quot;``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        class_name: Block&#39;s ``class_name`` (registry key or sentinel).</span>
+<span class="sd">        registry: Optional pre-fetched registry; useful for tests that</span>
+<span class="sd">            inject a fake or for hot loops that have already called</span>
+<span class="sd">            :func:`get_registry`. Defaults to the singleton.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        One of ``&quot;ops&quot;``, ``&quot;meas&quot;``, ``&quot;post&quot;``, or ``&quot;pipeline&quot;``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">class_name</span> <span class="o">==</span> <span class="n">INPUT_IMAGE_CLASS_NAME</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;ops&quot;</span>
+    <span class="k">if</span> <span class="n">class_name</span> <span class="o">==</span> <span class="n">PIPELINE_CLASS_NAME</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;pipeline&quot;</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">registry</span> <span class="k">if</span> <span class="n">registry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">get_registry</span><span class="p">()</span>
+    <span class="n">info</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">OperationInfo</span><span class="p">]</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">class_name</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">info</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;ops&quot;</span>
+    <span class="bp">cls</span> <span class="o">=</span> <span class="n">info</span><span class="o">.</span><span class="n">cls</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">issubclass</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">PostMeasurement</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s2">&quot;post&quot;</span>
+        <span class="k">if</span> <span class="nb">issubclass</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">MeasureFeatures</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s2">&quot;meas&quot;</span>
+    <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+        <span class="c1"># ``cls`` is not a class (e.g. a stub for unknown_class); fall</span>
+        <span class="c1"># back to ops.</span>
+        <span class="k">return</span> <span class="s2">&quot;ops&quot;</span>
+    <span class="k">return</span> <span class="s2">&quot;ops&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_find_cycle_nodes</span><span class="p">(</span>
+    <span class="n">adjacency</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span>
+    <span class="n">blocks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">BlockNode</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the ``block_id``s that participate in any cycle.</span>
+
+<span class="sd">    Implements Tarjan&#39;s strongly-connected-components algorithm</span>
+<span class="sd">    iteratively to avoid Python&#39;s recursion limit on deep graphs. A</span>
+<span class="sd">    block participates in a cycle iff it is in an SCC of size &gt; 1 OR</span>
+<span class="sd">    it is a single-node SCC with a self-loop.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        adjacency: Directed graph as ``source_block_id -&gt; [target_block_id, ...]``.</span>
+<span class="sd">            Only blocks with outgoing edges need to appear as keys;</span>
+<span class="sd">            sinks are inferred from ``blocks``.</span>
+<span class="sd">        blocks: All blocks in the scope (so isolated nodes that don&#39;t</span>
+<span class="sd">            appear in ``adjacency`` still enter the search and we don&#39;t</span>
+<span class="sd">            miss a self-loop on a node with no outgoing edges other</span>
+<span class="sd">            than to itself).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Sorted list of block_ids in cycles.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Collect every node mentioned by either ``blocks`` or</span>
+    <span class="c1"># ``adjacency`` so the SCC search visits the full vertex set.</span>
+    <span class="n">all_nodes</span><span class="p">:</span> <span class="nb">set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">block_id</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">blocks</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">src</span><span class="p">,</span> <span class="n">targets</span> <span class="ow">in</span> <span class="n">adjacency</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">all_nodes</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">targets</span><span class="p">:</span>
+            <span class="n">all_nodes</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+
+    <span class="n">index_counter</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">stack</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">on_stack</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">indices</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">lowlinks</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">result</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Iterative Tarjan: each &quot;call&quot; is a (node, neighbour-iterator)</span>
+    <span class="c1"># frame on ``work_stack``. We pop a frame, advance to the next</span>
+    <span class="c1"># neighbour, and either push a child frame or backtrack and update</span>
+    <span class="c1"># the parent&#39;s lowlink.</span>
+    <span class="k">for</span> <span class="n">start</span> <span class="ow">in</span> <span class="n">all_nodes</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">start</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">work_stack</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[(</span><span class="n">start</span><span class="p">,</span> <span class="mi">0</span><span class="p">)]</span>
+        <span class="c1"># When we encounter ``start`` for the first time, initialise its</span>
+        <span class="c1"># SCC bookkeeping; the rest of the algorithm operates on the</span>
+        <span class="c1"># invariant that any node on ``work_stack`` already has indices.</span>
+        <span class="n">indices</span><span class="p">[</span><span class="n">start</span><span class="p">]</span> <span class="o">=</span> <span class="n">index_counter</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">lowlinks</span><span class="p">[</span><span class="n">start</span><span class="p">]</span> <span class="o">=</span> <span class="n">index_counter</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">index_counter</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">start</span><span class="p">)</span>
+        <span class="n">on_stack</span><span class="p">[</span><span class="n">start</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">while</span> <span class="n">work_stack</span><span class="p">:</span>
+            <span class="n">node</span><span class="p">,</span> <span class="n">neighbour_idx</span> <span class="o">=</span> <span class="n">work_stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">neighbours</span> <span class="o">=</span> <span class="n">adjacency</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="k">if</span> <span class="n">neighbour_idx</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">neighbours</span><span class="p">):</span>
+                <span class="c1"># Advance the parent&#39;s neighbour cursor BEFORE the</span>
+                <span class="c1"># potential recursion so we resume at the right spot.</span>
+                <span class="n">work_stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">neighbour_idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="n">child</span> <span class="o">=</span> <span class="n">neighbours</span><span class="p">[</span><span class="n">neighbour_idx</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">child</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">:</span>
+                    <span class="n">indices</span><span class="p">[</span><span class="n">child</span><span class="p">]</span> <span class="o">=</span> <span class="n">index_counter</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="n">lowlinks</span><span class="p">[</span><span class="n">child</span><span class="p">]</span> <span class="o">=</span> <span class="n">index_counter</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="n">index_counter</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">child</span><span class="p">)</span>
+                    <span class="n">on_stack</span><span class="p">[</span><span class="n">child</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="n">work_stack</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">child</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+                <span class="k">elif</span> <span class="n">on_stack</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+                    <span class="n">lowlinks</span><span class="p">[</span><span class="n">node</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">lowlinks</span><span class="p">[</span><span class="n">node</span><span class="p">],</span> <span class="n">indices</span><span class="p">[</span><span class="n">child</span><span class="p">])</span>
+                <span class="c1"># else: cross-edge to a finished SCC; ignore.</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># All neighbours processed; finalise this node.</span>
+                <span class="k">if</span> <span class="n">lowlinks</span><span class="p">[</span><span class="n">node</span><span class="p">]</span> <span class="o">==</span> <span class="n">indices</span><span class="p">[</span><span class="n">node</span><span class="p">]:</span>
+                    <span class="c1"># Pop the SCC rooted at ``node``.</span>
+                    <span class="n">scc</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+                    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                        <span class="n">w</span> <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+                        <span class="n">on_stack</span><span class="p">[</span><span class="n">w</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+                        <span class="n">scc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">w</span> <span class="o">==</span> <span class="n">node</span><span class="p">:</span>
+                            <span class="k">break</span>
+                    <span class="c1"># Determine cycle-ness.</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">scc</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="n">result</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">scc</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">scc</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="c1"># Single-node SCC: cycle iff it has a self-loop.</span>
+                        <span class="n">only</span> <span class="o">=</span> <span class="n">scc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="n">only</span> <span class="ow">in</span> <span class="n">adjacency</span> <span class="ow">and</span> <span class="n">only</span> <span class="ow">in</span> <span class="n">adjacency</span><span class="p">[</span><span class="n">only</span><span class="p">]:</span>
+                            <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">only</span><span class="p">)</span>
+                <span class="c1"># Backtrack: update parent&#39;s lowlink with ours.</span>
+                <span class="n">work_stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">work_stack</span><span class="p">:</span>
+                    <span class="n">parent</span> <span class="o">=</span> <span class="n">work_stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="n">lowlinks</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">lowlinks</span><span class="p">[</span><span class="n">parent</span><span class="p">],</span> <span class="n">lowlinks</span><span class="p">[</span><span class="n">node</span><span class="p">])</span>
+
+    <span class="c1"># Deterministic ordering for snapshot-style tests.</span>
+    <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;Issue&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;IssueKind&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;IssueSeverity&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;StageName&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;validate&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

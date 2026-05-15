@@ -624,6 +624,7 @@
             <span class="o">*</span><span class="p">,</span>
             <span class="n">stage_arg</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;all_stages&quot;</span><span class="p">,</span> <span class="s2">&quot;hard_thresholding&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;all_stages&quot;</span><span class="p">,</span>
             <span class="n">clip</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="n">use_gat</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
             <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -639,9 +640,12 @@
 <span class="sd">                plate analysis.</span>
 <span class="sd">            clip (bool): Whether to clip output to [0, 1] range. Default True.</span>
 <span class="sd">                Automatically deferred when ``use_gat=True``.</span>
-<span class="sd">            **kwargs: Forwarded to :class:`_GATSupportMixin` (``use_gat``,</span>
-<span class="sd">                ``gat_gain``, ``gat_mu``, ``gat_read_sigma``,</span>
-<span class="sd">                ``gat_scale_factor``).</span>
+<span class="sd">            use_gat (bool): Wrap denoising in the Generalized Anscombe</span>
+<span class="sd">                Transform for Poisson-Gaussian noise. Default False. See</span>
+<span class="sd">                :class:`phenotypic.tools_.mixin._GATSupportMixin`.</span>
+<span class="sd">            **kwargs: GAT tuning parameters forwarded to</span>
+<span class="sd">                :class:`_GATSupportMixin` (``gat_gain``, ``gat_mu``,</span>
+<span class="sd">                ``gat_read_sigma``, ``gat_scale_factor``).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sigma_psd</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
             <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;sigma_psd must be a number or None&quot;</span><span class="p">)</span>
@@ -652,7 +656,7 @@
                 <span class="s2">&quot;stage_arg must be &#39;all_stages&#39; or &#39;hard_thresholding&#39;&quot;</span>
             <span class="p">)</span>
 
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">use_gat</span><span class="o">=</span><span class="n">use_gat</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sigma_psd</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">sigma_psd</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">stage_arg</span> <span class="o">=</span> <span class="n">stage_arg</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">block_size</span> <span class="o">=</span> <span class="n">block_size</span>

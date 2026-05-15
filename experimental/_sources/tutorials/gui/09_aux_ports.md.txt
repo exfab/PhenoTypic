@@ -3,162 +3,104 @@
 Some operations accept another operation as a constructor parameter —
 e.g. `FilamentousFungiDetector.inoculum_detector` takes an
 `ObjectDetector` or `ImagePipeline`. The builder surfaces these slots
-as small **aux ports** on the consumer node. Clicking an aux port
-opens a **popover** to pick a class, edit a wired aux's params, or
-drill into a multi-step aux pipeline.
+as small **aux ports** on the bottom edge of the consumer block. In the
+DAG builder the aux producer is a **first-class block on the canvas**,
+the assignment is a **purple wire** from the producer's output port to
+the consumer's aux port, and the wired aux is managed from the
+**inspector's Aux ports section** — there is no popover.
 
-This tutorial covers three flavours of aux wiring:
-
-1. **Scalar aux** — a single-slot op param (`FilamentousFungiDetector.inoculum_detector`).
-2. **Drill-in + extend** — turning a wired scalar aux into a
-   multi-step inline pipeline.
-3. **List-typed aux** — multi-slot ports
-   (`CompositeDetector.detectors`) with per-slot wire / drill /
-   disconnect actions.
+This tutorial covers the scalar-aux flow end to end: surfacing an empty
+required aux port, wiring a producer into it, and managing the wired
+aux from the inspector.
 
 ## Step 1 — Empty canvas
 
 Open the `Builder` tab (or navigate to `/builder/`):
 
-![Empty builder canvas — palette on the left, nothing on the ribbon.](../../_static/gui_images/aux_ports/01_initial.png)
+![Empty builder canvas — palette on the left, the Input Image source block on the ribbon.](../../_static/gui_images/aux_ports/01_initial.png)
 
 The palette groups ops by `Corrector` / `Detector` / `Enhancer` /
-`Refiner`. No aux UI yet — it only appears once a consumer with
-op-typed params lands on the canvas.
+`Refiner`. Every scope auto-seeds one `Input Image` source block; no
+aux UI appears until a consumer with op-typed params lands on the
+canvas.
 
 ## Step 2 — Add the main pipeline
 
-Drop the following four ops in order:
+Drop `GaussianBlur` then `FilamentousFungiDetector` onto the canvas.
+Each palette add wires onto the current ribbon tail, so the chain is
+`Input Image → GaussianBlur → FilamentousFungiDetector`.
 
-1. `GaussianBlur`
-2. `ContrastStretching`
-3. `FilamentousFungiDetector`
-4. `MeasureColonySize`
+![Main ribbon wired left-to-right by blue image-flow wires; FilamentousFungiDetector shows an empty red-ringed aux port on its bottom edge and the toolbar issue badge shows one issue.](../../_static/gui_images/aux_ports/02_main_pipeline.png)
 
-![Four-node main pipeline ribbon with image-flow edges between blue I/O ports; FilamentousFungiDetector shows a purple aux port on its bottom edge.](../../_static/gui_images/aux_ports/02_main_pipeline.png)
+`FilamentousFungiDetector` carries one **aux port** on its bottom edge
+— the `inoculum_detector` op-typed param. Because that parameter is
+**required** (no registry default), the port renders with a **red
+ring** while empty and the toolbar issue badge lights up: Rule 3 of
+the validator ("required aux ports must be wired") is unsatisfied, so
+`Run preview` and `Save` are disabled.
 
-Four ribbon nodes wired left-to-right by solid image-flow edges
-between their **blue I/O ports** (input left, output right).
-`FilamentousFungiDetector` carries one **purple aux port** on its
-bottom edge — the `inoculum_detector` op-typed param, rendered
-**hollow** since nothing is wired yet.
+## Step 3 — Wire an aux producer
 
-## Step 3 — Open the aux popover
+Drag an `OtsuDetector` from the palette onto an empty patch of canvas
+— it lands as a **free-floating block** with no incoming image wire
+(it is not part of the main spine). Then draw a wire from its
+right-edge **output port** to the `inoculum_detector` aux port on
+`FilamentousFungiDetector`.
 
-Click the aux port on `FilamentousFungiDetector`:
+![A free-floating OtsuDetector block wired by a purple dashed wire into FilamentousFungiDetector's bottom-edge aux port; the aux port is now filled purple, the OtsuDetector block has a purple border, and the toolbar issue badge reads "0 issues".](../../_static/gui_images/aux_ports/03_aux_wired.png)
 
-![Popover anchored to the aux port showing a palette of compatible ObjectDetector and ImagePipeline classes.](../../_static/gui_images/aux_ports/03_popover_empty.png)
+On drop the wire **snaps purple-dashed** (its colour follows the
+target — a purple aux port). Three things change at once:
 
-A popover appears anchored to the port. Since the slot is empty, it
-shows a **class palette** filtered to types that satisfy the port —
-every `ObjectDetector` subclass plus `ImagePipeline`. The inspector
-stays on `FilamentousFungiDetector` until something is wired.
+- the consumer's aux port flips from hollow red-ring to **filled
+  purple**;
+- the `OtsuDetector` block's border turns **solid purple** — the
+  "aux-consumed" cue (spec §4.2): this block lives off the main spine;
+- the toolbar issue badge clears to `0 issues` and `Run preview`
+  re-enables.
 
-## Step 4 — Pick a class
+## Step 4 — Inspect the wired consumer
 
-Click `OtsuDetector` in the popover palette:
+Click the `FilamentousFungiDetector` block to select it:
 
-![Popover in the wired state showing OtsuDetector with Edit, Drill in, and Disconnect actions; inspector swaps to OtsuDetector params with a breadcrumb header.](../../_static/gui_images/aux_ports/04_popover_wired.png)
+![Inspector pane showing FilamentousFungiDetector's parameter form, with the inoculum_detector op-typed parameter listed alongside its registry documentation and a "Use default" toggle.](../../_static/gui_images/aux_ports/04_inspector_aux.png)
 
-The popover flips to **wired** state — class name plus three actions:
-`✎ Edit`, `Drill in →`, `⨯ Disconnect`. The inspector swaps to
-`OtsuDetector`'s param form with a breadcrumb header
-`← FilamentousFungiDetector.inoculum_detector / slot 0` so the
-edited slot is unambiguous. The aux port on the consumer flips to
-**filled purple**.
-
-## Step 5 — Drill in to inspect the aux scope
-
-Click `Drill in →` in the popover:
-
-![Canvas drilled into the aux scope — one-node OtsuDetector ribbon; top-of-builder breadcrumb shows Pipeline / FilamentousFungiDetector / inoculum_detector / slot 0.](../../_static/gui_images/aux_ports/05_drill_in.png)
-
-The popover dismisses and the canvas swaps to a one-step ribbon of
-just `OtsuDetector`. The builder breadcrumb shows the drilled path:
-`Pipeline / FilamentousFungiDetector / inoculum_detector / slot 0`.
-The inspector now edits the aux's params directly (every aux is
-surfaced as a 1-step ribbon for visual continuity even when it's a
-single op).
-
-To **extend** an aux into a multi-step inline pipeline, pick
-`ImagePipeline` from the popover palette in step 4 instead of a
-concrete detector class. Drilling into an `ImagePipeline` aux opens a
-*writable* nested scope where the palette can append ops; the same
-breadcrumb / drill-in mechanics apply. Single-op auxes (like the
-`OtsuDetector` here) are surfaced read-only — replacing the wired
-class via `⨯ Disconnect → pick new class` is the way to swap them.
-
-## Step 6 — Drill out and save
-
-Click `FilamentousFungiDetector` in the breadcrumb to drill back out:
-
-![Main 4-step ribbon restored; the aux port on FilamentousFungiDetector is filled with a "1" badge indicating one wired slot.](../../_static/gui_images/aux_ports/06_drill_out.png)
-
-The canvas restores to the 4-step main ribbon. The aux port stays
-filled purple and now carries a small `1` badge for the one wired
-slot. Saving (`Pipeline I/O → Save`) preserves the wired aux as a
-standard `__op_param_scope__` marker inside the consumer's params —
-the JSON round-trips byte-identically.
-
-## Step 7 — Multi-slot aux: list-typed params
-
-Some consumers accept a *list* of ops, not just one. `CompositeDetector`
-takes `detectors: list[ObjectDetector | ImagePipeline]` so a single
-detection step can vote across several detectors. Add a
-`CompositeDetector` to the ribbon (it appears as a 5th main node), then
-click its bottom-edge aux port:
-
-![Popover open over the CompositeDetector aux port in list mode; "No slots yet" placeholder above a "+ Add slot" button.](../../_static/gui_images/aux_ports/07_list_port_popover.png)
-
-The popover renders in **list mode**: there are no slots yet, so the
-body shows a muted "No slots yet — add one to start wiring." line plus
-a `+ Add slot` button. Adding the first slot mounts an empty row with
-its own class palette — list ports are scalar-popovers stacked
-vertically.
-
-## Step 8 — Wire two slots
-
-Click `+ Add slot`, pick `OtsuDetector` for slot 0; click `+ Add slot`
-again, pick `WatershedDetector` for slot 1:
-
-![Popover with two stacked wired-rows — slot 0 shows OtsuDetector with Edit / Drill / Disconnect actions, slot 1 shows WatershedDetector with the same actions; the "+ Add slot" button is still at the bottom for adding a third detector.](../../_static/gui_images/aux_ports/08_list_port_two_wired.png)
-
-Both slots are independent: each carries its own
-`✎ Edit / Drill in → / ⨯ Disconnect` actions, and clicking `Drill in →`
-on either drills into THAT slot's scope. The `+ Add slot` button stays
-at the bottom for adding more.
-
-## Step 9 — Per-slot disconnect
-
-Click `⨯ Disconnect` on slot 1's row only:
-
-![Popover after per-slot disconnect — slot 0's OtsuDetector wired-row stays at the top while slot 1 has reverted to the class palette below.](../../_static/gui_images/aux_ports/09_per_slot_disconnect.png)
-
-Slot 0 stays wired to `OtsuDetector` (compact wired-row at the top of
-the popover); slot 1 reverts to its palette state ready to accept a
-different class. The slot order survives the disconnect — slot 1 is
-still slot 1, just empty again — so any drill / edit references to
-slot 0 stay valid.
+Selecting the consumer opens its inspector. The `inoculum_detector`
+op-typed parameter appears in the parameter form with its registry
+documentation and a `Use default` toggle — when the aux port is wired
+the slot follows the wired producer; toggling `Use default` (or
+deleting the aux wire) falls the slot back to the registry default.
+To remove the wire entirely, select it on the canvas and press
+`Delete`, or use `Delete selected` in the toolbar — the aux port
+reverts to its empty red-ring state and the validation badge fires
+again.
 
 ## Reference
 
-- **Aux port indicator** — purple square on the consumer's bottom
-  edge. Hollow = empty, filled = wired (badge shows slot count).
-- **Popover dismissal** — click outside, press `Esc`, or click a
-  different aux port to swap focus.
-- **List-typed params** — for `list[ObjectDetector | ImagePipeline]`
-  params like `CompositeDetector.detectors`, the popover stacks every
-  slot vertically with per-slot `✎ / → / ⨯` actions plus a `+ Add
-  slot` button. Empty slots are folded out on save.
-- **Nested aux of aux** — drill-in recurses. An aux's own op-typed
-  params get aux ports inside the drilled scope; the breadcrumb
-  grows another segment.
+- **Aux port indicator** — a square on the consumer's bottom edge.
+  Hollow purple = optional + empty; red ring = required + empty;
+  filled purple = wired.
+- **Aux wire colour** — wires are neutral grey while dragging and snap
+  to their settled colour on drop: blue-solid into a blue image-input
+  port, purple-dashed into a purple aux port.
+- **Aux-consumed border** — a block whose output feeds an aux port
+  carries a solid purple border so you can tell "this is aux" from the
+  block chrome alone, without following the wire.
+- **List-typed aux** — params annotated `list[ObjectDetector | …]`
+  (e.g. `CompositeDetector.detectors`) accept many wires; the inspector
+  renders them as an ordered, reorderable list with a `+ Add empty
+  slot` button.
+- **Containers as aux** — an `ImagePipeline` container can be wired as
+  a single aux producer; see
+  [Wire a Pipeline as aux](13_wire_pipeline_as_aux.md).
 
 ## Where to next
 
 - [Build a Pipeline](03_build_pipeline.md) — the basics of the main
   image-flow ribbon.
-- [Pick Points](07_pick_points.md) — another consumer-with-config
-  pattern (manual curation).
+- [Wire an aux in the DAG](12_aux_wire_in_dag.md) — the same aux flow
+  with more on the wire-drawing gesture and the validation badge.
+- [Wire a Pipeline as aux](13_wire_pipeline_as_aux.md) — wrap a
+  multi-step chain in a container and wire the whole container as aux.
 - [GUI hub guide](../../how_to/pages/gui_hub.md) — full reference for
   every panel, store, and admonition in the hub.

@@ -1,0 +1,42 @@
+phenotypic.analysis.ReplicateAgreement
+======================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autoclass:: ReplicateAgreement
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ReplicateAgreement.__init__
+      ~ReplicateAgreement.analyze
+      ~ReplicateAgreement.dash
+      ~ReplicateAgreement.flag_col
+      ~ReplicateAgreement.flagged_keys
+      ~ReplicateAgreement.results
+      ~ReplicateAgreement.severity_col
+      ~ReplicateAgreement.show
+      ~ReplicateAgreement.status_col
+      ~ReplicateAgreement.summary
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ReplicateAgreement.name
+      ~ReplicateAgreement.severity_fail
+      ~ReplicateAgreement.severity_warn
+   
+   

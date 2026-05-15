@@ -616,6 +616,7 @@
             <span class="o">*</span><span class="p">,</span>
             <span class="n">fast_mode</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
             <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="n">use_gat</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
             <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -632,9 +633,14 @@
 <span class="sd">            sigma (float): Noise standard deviation. If provided (&gt; 0),</span>
 <span class="sd">                improves patch weighting. Default: 0.0. Retargets to 1.0</span>
 <span class="sd">                when ``use_gat=True``.</span>
-<span class="sd">            **kwargs: Forwarded to :class:`_GATSupportMixin`.</span>
+<span class="sd">            use_gat (bool): Wrap denoising in the Generalized Anscombe</span>
+<span class="sd">                Transform for Poisson-Gaussian noise. Default False. See</span>
+<span class="sd">                :class:`phenotypic.tools_.mixin._GATSupportMixin`.</span>
+<span class="sd">            **kwargs: GAT tuning parameters forwarded to</span>
+<span class="sd">                :class:`_GATSupportMixin` (``gat_gain``, ``gat_mu``,</span>
+<span class="sd">                ``gat_read_sigma``, ``gat_scale_factor``).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">use_gat</span><span class="o">=</span><span class="n">use_gat</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">patch_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">patch_size</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">search_dist</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">search_dist</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>

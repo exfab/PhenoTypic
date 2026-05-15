@@ -504,6 +504,27 @@
 </details></li>
 </ul>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../gui/index.html">GUI internals</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../gui/builder.html">phenotypic.gui.builder</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../gui/generated/phenotypic.gui.builder._state.BlockNode.html">phenotypic.gui.builder._state.BlockNode</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gui/generated/phenotypic.gui.builder._state.Edge.html">phenotypic.gui.builder._state.Edge</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gui/generated/phenotypic.gui.builder._state._DagBuilderScope.html">phenotypic.gui.builder._state._DagBuilderScope</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gui/generated/phenotypic.gui.builder._state._DagBuilderState.html">phenotypic.gui.builder._state._DagBuilderState</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gui/generated/phenotypic.gui.builder._state.INPUT_IMAGE_CLASS_NAME.html">phenotypic.gui.builder._state.INPUT_IMAGE_CLASS_NAME</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gui/generated/phenotypic.gui.builder._state.PIPELINE_CLASS_NAME.html">phenotypic.gui.builder._state.PIPELINE_CLASS_NAME</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gui/generated/phenotypic.gui.builder._state._seed_input_image.html">phenotypic.gui.builder._state._seed_input_image</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gui/generated/phenotypic.gui.builder._conversion_dag.to_pipeline_dag.html">phenotypic.gui.builder._conversion_dag.to_pipeline_dag</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gui/generated/phenotypic.gui.builder._conversion_dag.from_pipeline_dag.html">phenotypic.gui.builder._conversion_dag.from_pipeline_dag</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gui/generated/phenotypic.gui.builder._validation.validate.html">phenotypic.gui.builder._validation.validate</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gui/generated/phenotypic.gui.builder._validation.Issue.html">phenotypic.gui.builder._validation.Issue</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../gui/builder_dispatch.html">Pipeline builder dispatch kinds</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../gui/builder_validation.html">Pipeline builder validation rules</a></li>
+</ul>
+</details></li>
+</ul>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../cli_reference.html">CLI Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../config_reference.html">Configuration Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
@@ -538,8 +559,10 @@
 <li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">phenotypic.analysis</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.DoubleSoftplus.html">phenotypic.analysis.DoubleSoftplus</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.EdgeCorrector.html">phenotypic.analysis.EdgeCorrector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ExpectedVsDetectedCount.html">phenotypic.analysis.ExpectedVsDetectedCount</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearSoftplus.html">phenotypic.analysis.LinearSoftplus</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LogGrowthModel.html">phenotypic.analysis.LogGrowthModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ReplicateAgreement.html">phenotypic.analysis.ReplicateAgreement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.TukeyOutlierRemover.html">phenotypic.analysis.TukeyOutlierRemover</a></li>
 </ul>
 </details></li>
@@ -937,11 +960,17 @@ modeling across time courses, and Tukey-style outlier removal for colony metrics
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.EdgeCorrector" title="phenotypic.analysis.EdgeCorrector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EdgeCorrector</span></code></a></p></td>
 <td><p>Analyzer for detecting and correcting edge effects in arrayed colony growth.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.LinearSoftplus" title="phenotypic.analysis.LinearSoftplus"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LinearSoftplus</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.ExpectedVsDetectedCount" title="phenotypic.analysis.ExpectedVsDetectedCount"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount</span></code></a></p></td>
+<td><p>Flag groups whose detected colony count diverges from metadata.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.LinearSoftplus" title="phenotypic.analysis.LinearSoftplus"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LinearSoftplus</span></code></a></p></td>
 <td><p>Linear-with-softplus lag-phase growth fitter (no saturation).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.LogGrowthModel" title="phenotypic.analysis.LogGrowthModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LogGrowthModel</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.LogGrowthModel" title="phenotypic.analysis.LogGrowthModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LogGrowthModel</span></code></a></p></td>
 <td><p>Logistic-growth model fitter with regularized least-squares objective.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.ReplicateAgreement" title="phenotypic.analysis.ReplicateAgreement"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ReplicateAgreement</span></code></a></p></td>
+<td><p>Flag <code class="docutils literal notranslate"><span class="pre">(group,</span> <span class="pre">time)</span></code> bins with poor agreement across replicates.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.TukeyOutlierRemover" title="phenotypic.analysis.TukeyOutlierRemover"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TukeyOutlierRemover</span></code></a></p></td>
 <td><p>Analyzer for removing outliers using Tukey's fence method.</p></td>
@@ -1736,6 +1765,358 @@ Filtering uses SetAnalyzer._filter_by with AND logic across criteria.</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.analysis.</span></span><span class="sig-name descname"><span class="pre">ExpectedVsDetectedCount</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">pd.DataFrame</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">groupby</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ColumnRefList</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ColumnRef</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'ObjectLabel'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">severity_warn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">severity_fail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_jobs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/analysis/_expected_vs_detected.html#ExpectedVsDetectedCount"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <a class="reference internal" href="../phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.QualityCheck" title="phenotypic.analysis.abc_._quality_check.QualityCheck"><code class="xref py py-class docutils literal notranslate"><span class="pre">QualityCheck</span></code></a></p>
+<p>Flag groups whose detected colony count diverges from metadata.</p>
+<blockquote>
+<div><p>For each <code class="docutils literal notranslate"><span class="pre">groupby</span></code> combination the check compares the number of rows
+in the measurement frame (<code class="docutils literal notranslate"><span class="pre">detected</span></code>) against the number of rows in
+the externally-provided <code class="docutils literal notranslate"><span class="pre">metadata</span></code> frame for the same key
+(<code class="docutils literal notranslate"><span class="pre">expected</span></code>). The signed difference and its normalized magnitude
+drive a tri-state pass/warn/fail label:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">QC_Count_Severity</span> <span class="pre">=</span> <span class="pre">|detected</span> <span class="pre">-</span> <span class="pre">expected|</span> <span class="pre">/</span> <span class="pre">expected</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">QC_Count_Severity</span> <span class="pre">=</span> <span class="pre">numpy.inf</span></code> when <code class="docutils literal notranslate"><span class="pre">expected</span> <span class="pre">==</span> <span class="pre">0</span></code> (i.e. the
+measurement group has no metadata counterpart). This always exceeds
+<code class="docutils literal notranslate"><span class="pre">severity_fail</span></code> so the status becomes <code class="docutils literal notranslate"><span class="pre">&quot;fail&quot;</span></code> and the rows are
+flagged. The offending key tuple is recorded in
+<a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.ExpectedVsDetectedCount.unmatched_groups" title="phenotypic.analysis.ExpectedVsDetectedCount.unmatched_groups"><code class="xref py py-attr docutils literal notranslate"><span class="pre">unmatched_groups</span></code></a> so the GUI can distinguish a real biology
+fail from a metadata-mismatch fail.</p></li>
+</ul>
+<p>The check does <strong>not</strong> aggregate measurement values — it counts rows
+— so <code class="xref py py-attr docutils literal notranslate"><span class="pre">_exposes_agg_func</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code> and the GUI
+parameter-form rendering driver hides the <code class="docutils literal notranslate"><span class="pre">agg_func</span></code> field. The
+base <code class="docutils literal notranslate"><span class="pre">SetAnalyzer.agg_func</span></code> is pinned to <code class="docutils literal notranslate"><span class="pre">&quot;first&quot;</span></code> internally.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">metadata</span></code> argument can be either a ready-made
+<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code></a> or a path (<code class="docutils literal notranslate"><span class="pre">Path</span></code> or <code class="docutils literal notranslate"><span class="pre">str</span></code>) to a
+<code class="docutils literal notranslate"><span class="pre">.csv</span></code>/<code class="docutils literal notranslate"><span class="pre">.parquet</span></code> file. The file is read once at construction
+time and the resolved frame is stored on the instance. Every column
+named in <code class="docutils literal notranslate"><span class="pre">groupby</span></code> must be present in the metadata frame;
+otherwise <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#KeyError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">KeyError</span></code></a> is raised at <code class="docutils literal notranslate"><span class="pre">__init__</span></code> so the failure
+surfaces before <code class="docutils literal notranslate"><span class="pre">analyze</span></code> runs.</p>
+<dl>
+<dt>Args:</dt><dd><dl class="simple">
+<dt>metadata: Layout frame whose row count per <code class="docutils literal notranslate"><span class="pre">groupby</span></code> key is the</dt><dd><p>expected colony count. Either a DataFrame or a path to a CSV
+or Parquet file.</p>
+</dd>
+<dt>groupby: Columns that define a comparison unit. Must be present</dt><dd><p>in both the metadata frame and the measurement frame passed
+to <a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.ExpectedVsDetectedCount.analyze" title="phenotypic.analysis.ExpectedVsDetectedCount.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a>.</p>
+</dd>
+<dt>on: Measurement column the check operates on. Defaults to</dt><dd><p><code class="docutils literal notranslate"><span class="pre">&quot;ObjectLabel&quot;</span></code> since “detected” means “a measurement row
+exists”.</p>
+</dd>
+<dt>severity_warn: Per-instance override for <code class="docutils literal notranslate"><span class="pre">severity_warn</span></code>.</dt><dd><p><code class="docutils literal notranslate"><span class="pre">None</span></code> falls back to the class default (<code class="docutils literal notranslate"><span class="pre">0.05</span></code>).</p>
+</dd>
+<dt>severity_fail: Per-instance override for <code class="docutils literal notranslate"><span class="pre">severity_fail</span></code>.</dt><dd><p><code class="docutils literal notranslate"><span class="pre">None</span></code> falls back to the class default (<code class="docutils literal notranslate"><span class="pre">0.10</span></code>).</p>
+</dd>
+<dt>n_jobs: Worker count. Currently unused by the base <code class="docutils literal notranslate"><span class="pre">analyze</span></code></dt><dd><p>loop; kept on the signature for parity with
+<code class="xref py py-class docutils literal notranslate"><span class="pre">SetAnalyzer</span></code>.</p>
+</dd>
+</dl>
+</dd>
+<dt>Raises:</dt><dd><p>FileNotFoundError: If <code class="docutils literal notranslate"><span class="pre">metadata</span></code> is a path that does not exist.
+KeyError: If any column in <code class="docutils literal notranslate"><span class="pre">groupby</span></code> is absent from the</p>
+<blockquote>
+<div><p>resolved metadata frame.</p>
+</div></blockquote>
+<p>ValueError: If <code class="docutils literal notranslate"><span class="pre">metadata</span></code> is a path with an unsupported suffix.</p>
+</dd>
+<dt>Attributes:</dt><dd><dl class="simple">
+<dt>unmatched_groups: List of group-key tuples that appeared in the</dt><dd><p>measurement frame but had no counterpart in the metadata
+frame during the most recent <a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.ExpectedVsDetectedCount.analyze" title="phenotypic.analysis.ExpectedVsDetectedCount.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> call. Reset at
+the top of each <code class="docutils literal notranslate"><span class="pre">analyze</span></code> so re-runs do not accumulate.</p>
+</dd>
+</dl>
+</dd>
+<dt>Examples:</dt><dd><p>Basic match — 96-well metadata vs. a measurement frame missing
+one well:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis._expected_vs_detected</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<span class="gp">... </span>    <span class="n">ExpectedVsDetectedCount</span><span class="p">,</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">metadata</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+<span class="gp">... </span>    <span class="s2">&quot;Metadata_ImageFile&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;plate1.png&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">96</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;ObjectLabel&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">96</span><span class="p">)),</span>
+<span class="gp">... </span><span class="p">})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">measurements</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+<span class="gp">... </span>    <span class="s2">&quot;Metadata_ImageFile&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;plate1.png&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">95</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;ObjectLabel&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">95</span><span class="p">)),</span>
+<span class="gp">... </span><span class="p">})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">chk</span> <span class="o">=</span> <span class="n">ExpectedVsDetectedCount</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">groupby</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Metadata_ImageFile&quot;</span><span class="p">],</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">chk</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span>  
+<span class="gp">&gt;&gt;&gt; </span><span class="s2">&quot;QC_Count_Severity&quot;</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">columns</span>  
+<span class="go">True</span>
+</pre></div>
+</div>
+<p>Advanced — a measurement group has no metadata counterpart, so
+severity is infinite and the key is recorded:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">metadata</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+<span class="gp">... </span>    <span class="s2">&quot;Metadata_ImageFile&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;plate1.png&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">96</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;ObjectLabel&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">96</span><span class="p">)),</span>
+<span class="gp">... </span><span class="p">})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">measurements</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+<span class="gp">... </span>    <span class="s2">&quot;Metadata_ImageFile&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;plate2.png&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">10</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;ObjectLabel&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">)),</span>
+<span class="gp">... </span><span class="p">})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">chk</span> <span class="o">=</span> <span class="n">ExpectedVsDetectedCount</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">groupby</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Metadata_ImageFile&quot;</span><span class="p">],</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">chk</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span>  
+<span class="gp">&gt;&gt;&gt; </span><span class="n">chk</span><span class="o">.</span><span class="n">unmatched_groups</span>  
+<span class="go">[(&#39;plate2.png&#39;,)]</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+</div></blockquote>
+<div class="pst-scrollable-table-container"><table class="table" id="id2">
+<caption><span class="caption-text">Category: <strong>QC_Count</strong></span><a class="headerlink" href="#id2" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_Count_Flag</span></code></p></td>
+<td><p>True when severity &gt;= severity_fail; eligible for curation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">QC_Count_Severity</span></code></p></td>
+<td><p>Normalized magnitude in [0, inf). Drives Status.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_Count_Status</span></code></p></td>
+<td><p>Categorical: pass | warn | fail.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="pst-scrollable-table-container"><table class="table" id="id3">
+<caption><span class="caption-text">Category: <strong>QC_Count</strong></span><a class="headerlink" href="#id3" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Detected</span></code></p></td>
+<td><p>Detected colony count in the group.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Expected</span></code></p></td>
+<td><p>Expected colony count from the metadata frame.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Delta</span></code></p></td>
+<td><p>Detected − Expected (signed; negative = missing).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>metadata</strong> (<em>pd.DataFrame</em><em> | </em><em>Path</em><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+<li><p><strong>groupby</strong> (<em>ColumnRefList</em>)</p></li>
+<li><p><strong>on</strong> (<em>ColumnRef</em>)</p></li>
+<li><p><strong>severity_warn</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><em>ClassVar</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em>)</p></li>
+<li><p><strong>severity_fail</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><em>ClassVar</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em>)</p></li>
+<li><p><strong>n_jobs</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">__init_subclass__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span></dt>
+<dd><p>Append QC and per-check RST tables to the subclass docstring.</p>
+<p>Skips intermediate ABCs that have not yet bound <code class="docutils literal notranslate"><span class="pre">name</span></code>. When
+the subclass declares both a docstring and a <code class="docutils literal notranslate"><span class="pre">name</span></code>, the
+generic <code class="xref py py-class docutils literal notranslate"><span class="pre">QUALITY_CHECK</span></code> table is appended (substituting
+<code class="docutils literal notranslate"><span class="pre">name</span></code> into the column headers). If
+<code class="docutils literal notranslate"><span class="pre">_measurement_infoclass</span></code> is also set, its table is appended
+as well so check-specific columns are documented alongside the
+generic trio.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>kwargs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">analyze</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/analysis/_expected_vs_detected.html#ExpectedVsDetectedCount.analyze"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Reset <a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.ExpectedVsDetectedCount.unmatched_groups" title="phenotypic.analysis.ExpectedVsDetectedCount.unmatched_groups"><code class="xref py py-attr docutils literal notranslate"><span class="pre">unmatched_groups</span></code></a> and run the base <code class="docutils literal notranslate"><span class="pre">analyze</span></code>.</p>
+<p>Re-running the check on a different measurement frame must not
+carry over unmatched groups from a previous run, so the list is
+cleared before delegating to the base class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>data</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><em>pandas.DataFrame</em></a>) – Measurement frame to evaluate.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The augmented frame from <code class="xref py py-meth docutils literal notranslate"><span class="pre">QualityCheck.analyze()</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)">pandas.DataFrame</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">dash</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="reference internal" href="../../_modules/phenotypic/analysis/_expected_vs_detected.html#ExpectedVsDetectedCount.dash"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Render a horizontal lollipop chart of <code class="docutils literal notranslate"><span class="pre">Delta</span></code> per group.</p>
+<p>Each group’s signed <code class="docutils literal notranslate"><span class="pre">Delta</span></code> is drawn as a horizontal stem from
+zero to <code class="docutils literal notranslate"><span class="pre">Delta</span></code>, with a marker at the tip colored by
+<code class="docutils literal notranslate"><span class="pre">Status</span></code>. The hover label exposes detected, expected, and
+severity for the group.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>**kwargs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – Passed through to <code class="xref py py-func docutils literal notranslate"><span class="pre">plotly.graph_objects.Figure()</span></code>
+/ <code class="docutils literal notranslate"><span class="pre">Figure.update_layout</span></code> — accepted keys are <code class="docutils literal notranslate"><span class="pre">title</span></code>
+and <code class="docutils literal notranslate"><span class="pre">height</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <a class="reference external" href="https://plotly.com/python-api-reference/generated/plotly.graph_objects.html#plotly.graph_objects.Figure" title="(in )"><code class="xref py py-class docutils literal notranslate"><span class="pre">plotly.graph_objects.Figure</span></code></a> with one stem trace
+and one marker trace.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If <a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.ExpectedVsDetectedCount.analyze" title="phenotypic.analysis.ExpectedVsDetectedCount.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> has not been called yet.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>Figure</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">flag_col</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span></dt>
+<dd><p>Return the flag column name for this check.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">flagged_keys</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>Return (<code class="docutils literal notranslate"><span class="pre">Metadata_ImageFile</span></code>, <code class="docutils literal notranslate"><span class="pre">ObjectLabel</span></code>) pairs to curate.</p>
+<p>Used by the GUI “Mark all flagged for removal” button. Requires
+the analyzed frame to carry both <code class="docutils literal notranslate"><span class="pre">Metadata_ImageFile</span></code> and
+<code class="docutils literal notranslate"><span class="pre">ObjectLabel</span></code> columns (the curation key used by
+<code class="docutils literal notranslate"><span class="pre">STORE_REMOVED_KEYS</span></code>). Returns an empty list when those
+columns are absent or when no rows were flagged.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>De-duplicated list of <code class="docutils literal notranslate"><span class="pre">(image_file,</span> <span class="pre">object_label)</span></code> tuples
+for rows where <code class="docutils literal notranslate"><span class="pre">Flag=True</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">results</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></span></dt>
+<dd><p>Return the augmented frame stored by the most recent analyze().</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)">pandas.DataFrame</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">severity_col</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span></dt>
+<dd><p>Return the severity column name for this check.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">show</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span></dt>
+<dd><p>QualityCheck plots are Plotly-only — see <a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.ExpectedVsDetectedCount.dash" title="phenotypic.analysis.ExpectedVsDetectedCount.dash"><code class="xref py py-meth docutils literal notranslate"><span class="pre">dash()</span></code></a>.</p>
+<p><code class="xref py py-class docutils literal notranslate"><span class="pre">SetAnalyzer</span></code>’s matplotlib <code class="docutils literal notranslate"><span class="pre">show()</span></code> is not implemented
+for QC because the QC tab is Plotly-driven. Raising rather than
+falling back to a placeholder so notebook users discover the
+right method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – Always; use <a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.ExpectedVsDetectedCount.dash" title="phenotypic.analysis.ExpectedVsDetectedCount.dash"><code class="xref py py-meth docutils literal notranslate"><span class="pre">dash()</span></code></a> instead.</p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>)</p></li>
+<li><p><strong>kwargs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>)</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">status_col</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span></dt>
+<dd><p>Return the status column name for this check.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">summary</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></span></dt>
+<dd><p>Return a one-row-per-group summary of the most recent analyze.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DataFrame with columns <code class="docutils literal notranslate"><span class="pre">[*self.groupby,</span> <span class="pre">&quot;num_rows&quot;,</span>
+<span class="pre">&quot;num_flagged&quot;,</span> <span class="pre">&quot;max_severity&quot;,</span> <span class="pre">&quot;status&quot;]</span></code>. The <code class="docutils literal notranslate"><span class="pre">status</span></code>
+column is the worst status across the group: <code class="docutils literal notranslate"><span class="pre">&quot;fail&quot;</span></code>
+wins over <code class="docutils literal notranslate"><span class="pre">&quot;warn&quot;</span></code> which wins over <code class="docutils literal notranslate"><span class="pre">&quot;pass&quot;</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)">pandas.DataFrame</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'Count'</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">severity_fail</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.1</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">severity_warn</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.05</span></em></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.analysis.</span></span><span class="sig-name descname"><span class="pre">LinearSoftplus</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><span class="pre">Annotated</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">_ColumnRefMarker</span><span class="p"><span class="pre">(</span></span><span class="s"><span class="pre">'measurements'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">groupby</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><span class="pre">Annotated</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">_ColumnRefMarker</span><span class="p"><span class="pre">(</span></span><span class="s"><span class="pre">'measurements'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><span class="pre">Annotated</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">_ColumnRefMarker</span><span class="p"><span class="pre">(</span></span><span class="s"><span class="pre">'measurements'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Metadata_Time'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stderr_label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s0_prior</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s0_prior_cv</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s0_prior_sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s0_prior_groupby</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prune_saturated</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_jobs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loss</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'linear'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'soft_l1'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'huber'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'cauchy'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'arctan'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'huber'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f_scale</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/analysis/_linear_softplus.html#LinearSoftplus"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_LinearSoftplusBase</span></code></p>
 <p>Linear-with-softplus lag-phase growth fitter (no saturation).</p>
@@ -2321,6 +2702,405 @@ omitted.</p></li>
 </dd>
 </dl>
 </dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.analysis.</span></span><span class="sig-name descname"><span class="pre">ReplicateAgreement</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><span class="pre">Annotated</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">_ColumnRefMarker</span><span class="p"><span class="pre">(</span></span><span class="s"><span class="pre">'measurements'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">groupby</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><span class="pre">Annotated</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">_ColumnRefMarker</span><span class="p"><span class="pre">(</span></span><span class="s"><span class="pre">'measurements'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><span class="pre">Annotated</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">_ColumnRefMarker</span><span class="p"><span class="pre">(</span></span><span class="s"><span class="pre">'measurements'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Metadata_Time'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">severity_warn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">severity_fail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_replicates</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1e-09</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agg_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'mean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_jobs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/analysis/_replicate_agreement.html#ReplicateAgreement"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <a class="reference internal" href="../phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.QualityCheck" title="phenotypic.analysis.abc_._quality_check.QualityCheck"><code class="xref py py-class docutils literal notranslate"><span class="pre">QualityCheck</span></code></a></p>
+<p>Flag <code class="docutils literal notranslate"><span class="pre">(group,</span> <span class="pre">time)</span></code> bins with poor agreement across replicates.</p>
+<blockquote>
+<div><p>For each combination of <code class="docutils literal notranslate"><span class="pre">self.groupby</span></code> columns, this check splits
+the group by <code class="docutils literal notranslate"><span class="pre">self.time_label</span></code> and computes the standard error of
+the measurement across replicates at every timepoint. The relative
+standard error <code class="docutils literal notranslate"><span class="pre">severity</span> <span class="pre">=</span> <span class="pre">|SE|</span> <span class="pre">/</span> <span class="pre">|mean|</span></code> is the per-bin severity;
+bins whose severity exceeds the warn/fail thresholds are surfaced
+for curation. The per-bin scalars are broadcast back to every
+replicate row in the bin so the GUI can pick up the flag from any
+row.</p>
+<p>Three guard paths short-circuit to <code class="docutils literal notranslate"><span class="pre">severity</span> <span class="pre">=</span> <span class="pre">NaN</span></code> so
+under-powered or degenerate bins never gate curation (the base class
+treats <code class="docutils literal notranslate"><span class="pre">NaN</span></code> severity as <code class="docutils literal notranslate"><span class="pre">Status=&quot;pass&quot;</span></code>):</p>
+<ol class="arabic simple">
+<li><p><strong>``n &lt; min_replicates``</strong> — too few replicates for a meaningful
+standard error. Defaults to <code class="docutils literal notranslate"><span class="pre">min_replicates=2</span></code>; raising it lets
+callers demand more statistical power.</p></li>
+<li><p><strong>``|mean| &lt; eps``</strong> — the relative-SE ratio blows up at zero
+mean, so near-zero baseline measurements (t=0 wells, blank wells,
+true-zero conditions) would otherwise flag every row. The default
+<code class="docutils literal notranslate"><span class="pre">eps=1e-9</span></code> catches sensor-zero readouts without losing
+genuinely-above-noise-floor measurements.</p></li>
+<li><p><strong>``stddev == 0`` and ``mean == 0``</strong> — degenerate bin (all
+replicates exactly zero); mathematically undefined. Treated as
+pass.</p></li>
+</ol>
+<p>When <code class="docutils literal notranslate"><span class="pre">self.time_label</span></code> is absent from the input data, the entire
+group is treated as a single timepoint bin so the check remains
+usable on snapshot (non-time-course) measurement frames.</p>
+<p>The check does <strong>not</strong> aggregate measurement values — it builds the
+SE/Mean/CV summary statistics inside <code class="xref py py-meth docutils literal notranslate"><span class="pre">_compute()</span></code> — so
+<code class="xref py py-attr docutils literal notranslate"><span class="pre">_exposes_agg_func</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code> and the GUI parameter-form
+rendering driver hides the <code class="docutils literal notranslate"><span class="pre">agg_func</span></code> field. The base
+<code class="docutils literal notranslate"><span class="pre">SetAnalyzer.agg_func</span></code> is preserved on the signature for parity
+only.</p>
+<dl>
+<dt>Attributes:</dt><dd><dl class="simple">
+<dt>time_label: Column name carrying the timepoint within each</dt><dd><p>group. Defaults to <code class="docutils literal notranslate"><span class="pre">&quot;Metadata_Time&quot;</span></code>.</p>
+</dd>
+<dt>min_replicates: Minimum replicate count required before SE is</dt><dd><p>considered meaningful. Bins below this threshold receive
+<code class="docutils literal notranslate"><span class="pre">severity</span> <span class="pre">=</span> <span class="pre">NaN</span></code>.</p>
+</dd>
+<dt>eps: Floor on <code class="docutils literal notranslate"><span class="pre">|mean|</span></code> below which the relative-SE ratio is</dt><dd><p>considered undefined. Bins below this floor receive
+<code class="docutils literal notranslate"><span class="pre">severity</span> <span class="pre">=</span> <span class="pre">NaN</span></code>.</p>
+</dd>
+</dl>
+</dd>
+<dt>Examples:</dt><dd><p>Basic — three-replicate, four-timepoint synthetic frame; the
+check adds <code class="docutils literal notranslate"><span class="pre">QC_SE_Severity</span></code> plus the per-bin summary columns:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis._replicate_agreement</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<span class="gp">... </span>    <span class="n">ReplicateAgreement</span><span class="p">,</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">times</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+<span class="gp">... </span>    <span class="s2">&quot;Plate&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;P1&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">12</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;Metadata_Time&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">times</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">)],</span>
+<span class="gp">... </span>    <span class="s2">&quot;Replicate&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">*</span> <span class="mi">4</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;Size_Area&quot;</span><span class="p">:</span> <span class="p">[</span>
+<span class="gp">... </span>        <span class="mf">10.0</span><span class="p">,</span> <span class="mf">10.1</span><span class="p">,</span> <span class="mf">9.9</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="mf">20.0</span><span class="p">,</span> <span class="mf">20.2</span><span class="p">,</span> <span class="mf">19.8</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="mf">40.0</span><span class="p">,</span> <span class="mf">40.4</span><span class="p">,</span> <span class="mf">39.6</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="mf">80.0</span><span class="p">,</span> <span class="mf">80.8</span><span class="p">,</span> <span class="mf">79.2</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">],</span>
+<span class="gp">... </span><span class="p">})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">chk</span> <span class="o">=</span> <span class="n">ReplicateAgreement</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">on</span><span class="o">=</span><span class="s2">&quot;Size_Area&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">groupby</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Plate&quot;</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="n">time_label</span><span class="o">=</span><span class="s2">&quot;Metadata_Time&quot;</span><span class="p">,</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">chk</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>  
+<span class="gp">&gt;&gt;&gt; </span><span class="s2">&quot;QC_SE_Severity&quot;</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">columns</span>  
+<span class="go">True</span>
+</pre></div>
+</div>
+<p>Advanced — only one replicate per <code class="docutils literal notranslate"><span class="pre">(group,</span> <span class="pre">time)</span></code> bin with
+<code class="docutils literal notranslate"><span class="pre">min_replicates=2</span></code> triggers the under-powered guard:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">singleton</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+<span class="gp">... </span>    <span class="s2">&quot;Plate&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;P1&quot;</span><span class="p">,</span> <span class="s2">&quot;P1&quot;</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="s2">&quot;Metadata_Time&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="s2">&quot;Size_Area&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">],</span>
+<span class="gp">... </span><span class="p">})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">chk</span> <span class="o">=</span> <span class="n">ReplicateAgreement</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">on</span><span class="o">=</span><span class="s2">&quot;Size_Area&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">groupby</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Plate&quot;</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="n">min_replicates</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">chk</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="n">singleton</span><span class="p">)</span>  
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">bool</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;QC_SE_Severity&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">())</span>  
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+</div></blockquote>
+<div class="pst-scrollable-table-container"><table class="table" id="id4">
+<caption><span class="caption-text">Category: <strong>QC_SE</strong></span><a class="headerlink" href="#id4" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_SE_Flag</span></code></p></td>
+<td><p>True when severity &gt;= severity_fail; eligible for curation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">QC_SE_Severity</span></code></p></td>
+<td><p>Normalized magnitude in [0, inf). Drives Status.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_SE_Status</span></code></p></td>
+<td><p>Categorical: pass | warn | fail.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="pst-scrollable-table-container"><table class="table" id="id5">
+<caption><span class="caption-text">Category: <strong>QC_SE</strong></span><a class="headerlink" href="#id5" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Value</span></code></p></td>
+<td><p>Raw SE = stddev / sqrt(n) across replicates.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Mean</span></code></p></td>
+<td><p>Mean across replicates at this (group, time).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CV</span></code></p></td>
+<td><p>Coefficient of variation, stddev / <a href="#id6"><span class="problematic" id="id7">|mean|</span></a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NumReplicates</span></code></p></td>
+<td><p>Replicate count contributing to the SE.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>on</strong> (<em>ColumnRef</em>)</p></li>
+<li><p><strong>groupby</strong> (<em>ColumnRefList</em>)</p></li>
+<li><p><strong>time_label</strong> (<em>ColumnRef</em>)</p></li>
+<li><p><strong>severity_warn</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><em>ClassVar</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em>)</p></li>
+<li><p><strong>severity_fail</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><em>ClassVar</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em>)</p></li>
+<li><p><strong>min_replicates</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>eps</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>agg_func</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+<li><p><strong>n_jobs</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><span class="pre">Annotated</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">_ColumnRefMarker</span><span class="p"><span class="pre">(</span></span><span class="s"><span class="pre">'measurements'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">groupby</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><span class="pre">Annotated</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">_ColumnRefMarker</span><span class="p"><span class="pre">(</span></span><span class="s"><span class="pre">'measurements'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><span class="pre">Annotated</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">_ColumnRefMarker</span><span class="p"><span class="pre">(</span></span><span class="s"><span class="pre">'measurements'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Metadata_Time'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">severity_warn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">severity_fail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_replicates</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1e-09</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agg_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'mean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_jobs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/analysis/_replicate_agreement.html#ReplicateAgreement.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Construct a replicate-agreement check.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>on</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><em>Annotated</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>_ColumnRefMarker</em><em>(</em><em>'measurements'</em><em>)</em><em>]</em>) – Measurement column whose replicate dispersion is
+evaluated.</p></li>
+<li><p><strong>groupby</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><em>Annotated</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em><em>, </em><em>_ColumnRefMarker</em><em>(</em><em>'measurements'</em><em>)</em><em>]</em>) – Columns that define a comparison unit. Replicates
+are pooled within each <code class="docutils literal notranslate"><span class="pre">(group,</span> <span class="pre">time)</span></code> bin.</p></li>
+<li><p><strong>time_label</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><em>Annotated</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>_ColumnRefMarker</em><em>(</em><em>'measurements'</em><em>)</em><em>]</em>) – Column carrying the timepoint within each
+group. Defaults to <code class="docutils literal notranslate"><span class="pre">&quot;Metadata_Time&quot;</span></code>. When absent
+from the data, the whole group is treated as one bin.</p></li>
+<li><p><strong>severity_warn</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – Per-instance override for <code class="docutils literal notranslate"><span class="pre">severity_warn</span></code>.
+<code class="docutils literal notranslate"><span class="pre">None</span></code> falls back to the class default (<code class="docutils literal notranslate"><span class="pre">0.10</span></code>).</p></li>
+<li><p><strong>severity_fail</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – Per-instance override for <code class="docutils literal notranslate"><span class="pre">severity_fail</span></code>.
+<code class="docutils literal notranslate"><span class="pre">None</span></code> falls back to the class default (<code class="docutils literal notranslate"><span class="pre">0.20</span></code>).</p></li>
+<li><p><strong>min_replicates</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Minimum replicate count per bin before SE
+is reported as a number. Bins with fewer replicates
+receive <code class="docutils literal notranslate"><span class="pre">severity</span> <span class="pre">=</span> <span class="pre">NaN</span></code>. Defaults to <code class="docutils literal notranslate"><span class="pre">2</span></code>.</p></li>
+<li><p><strong>eps</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Floor on <code class="docutils literal notranslate"><span class="pre">|mean|</span></code> below which the relative-SE ratio
+is considered undefined. Bins whose mean falls below
+this floor receive <code class="docutils literal notranslate"><span class="pre">severity</span> <span class="pre">=</span> <span class="pre">NaN</span></code>. Defaults to
+<code class="docutils literal notranslate"><span class="pre">1e-9</span></code>.</p></li>
+<li><p><strong>agg_func</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Forwarded to <code class="xref py py-class docutils literal notranslate"><span class="pre">SetAnalyzer</span></code>. The check does
+not aggregate measurement values itself; the parameter
+is preserved for signature parity.</p></li>
+<li><p><strong>n_jobs</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Worker count. Currently unused by the base
+<code class="docutils literal notranslate"><span class="pre">analyze</span></code> loop.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">__init_subclass__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span></dt>
+<dd><p>Append QC and per-check RST tables to the subclass docstring.</p>
+<p>Skips intermediate ABCs that have not yet bound <code class="docutils literal notranslate"><span class="pre">name</span></code>. When
+the subclass declares both a docstring and a <code class="docutils literal notranslate"><span class="pre">name</span></code>, the
+generic <code class="xref py py-class docutils literal notranslate"><span class="pre">QUALITY_CHECK</span></code> table is appended (substituting
+<code class="docutils literal notranslate"><span class="pre">name</span></code> into the column headers). If
+<code class="docutils literal notranslate"><span class="pre">_measurement_infoclass</span></code> is also set, its table is appended
+as well so check-specific columns are documented alongside the
+generic trio.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>kwargs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">analyze</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></span></dt>
+<dd><p>Run the check on every group and return the augmented frame.</p>
+<p>Iterates over <code class="docutils literal notranslate"><span class="pre">data.groupby(self.groupby,</span> <span class="pre">dropna=False)</span></code>,
+delegates per-group computation to <code class="xref py py-meth docutils literal notranslate"><span class="pre">_compute()</span></code>, and adds
+three generic columns derived from severity:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">QC_&lt;name&gt;_Severity</span></code> (carry-through from <code class="docutils literal notranslate"><span class="pre">_compute</span></code>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">QC_&lt;name&gt;_Flag</span></code> (<code class="docutils literal notranslate"><span class="pre">bool</span></code>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">QC_&lt;name&gt;_Status</span></code> (<code class="docutils literal notranslate"><span class="pre">&quot;pass&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">&quot;warn&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">&quot;fail&quot;</span></code>)</p></li>
+</ul>
+<p>Rows are never dropped. The augmented frame is stored on
+<code class="xref py py-attr docutils literal notranslate"><span class="pre">_latest_measurements</span></code> and returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>data</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><em>pandas.DataFrame</em></a>) – Input measurement frame. Must contain <code class="docutils literal notranslate"><span class="pre">self.on</span></code> and
+every column in <code class="docutils literal notranslate"><span class="pre">self.groupby</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The input frame with the three generic QC columns appended
+plus whatever <code class="docutils literal notranslate"><span class="pre">_compute</span></code> contributed.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#KeyError" title="(in Python v3.14)"><strong>KeyError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">self.on</span></code> or any column in <code class="docutils literal notranslate"><span class="pre">self.groupby</span></code> is
+    missing from <code class="docutils literal notranslate"><span class="pre">data</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)">pandas.DataFrame</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">dash</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="reference internal" href="../../_modules/phenotypic/analysis/_replicate_agreement.html#ReplicateAgreement.dash"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Render mean ± SE bands per group across time.</p>
+<p>For each <code class="docutils literal notranslate"><span class="pre">self.groupby</span></code> combination the plot draws the
+per-timepoint mean as a connected line with vertical
+error-bars sized to the per-bin SE. The line’s color is the
+worst status observed across that group’s timepoints:
+<code class="docutils literal notranslate"><span class="pre">&quot;pass&quot;</span></code> is green, <code class="docutils literal notranslate"><span class="pre">&quot;warn&quot;</span></code> is gold, <code class="docutils literal notranslate"><span class="pre">&quot;fail&quot;</span></code> is red.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>**kwargs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – Passed through to <a class="reference external" href="https://plotly.com/python-api-reference/generated/plotly.graph_objects.html#plotly.graph_objects.Figure" title="(in )"><code class="xref py py-class docutils literal notranslate"><span class="pre">plotly.graph_objects.Figure</span></code></a>
+/ <code class="docutils literal notranslate"><span class="pre">Figure.update_layout</span></code>. Accepted keys are <code class="docutils literal notranslate"><span class="pre">title</span></code>
+and <code class="docutils literal notranslate"><span class="pre">height</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <a class="reference external" href="https://plotly.com/python-api-reference/generated/plotly.graph_objects.html#plotly.graph_objects.Figure" title="(in )"><code class="xref py py-class docutils literal notranslate"><span class="pre">plotly.graph_objects.Figure</span></code></a> with one line + error
+bar trace per group.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If <a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.ReplicateAgreement.analyze" title="phenotypic.analysis.ReplicateAgreement.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> has not been called yet.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>Figure</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">flag_col</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span></dt>
+<dd><p>Return the flag column name for this check.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">flagged_keys</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>Return (<code class="docutils literal notranslate"><span class="pre">Metadata_ImageFile</span></code>, <code class="docutils literal notranslate"><span class="pre">ObjectLabel</span></code>) pairs to curate.</p>
+<p>Used by the GUI “Mark all flagged for removal” button. Requires
+the analyzed frame to carry both <code class="docutils literal notranslate"><span class="pre">Metadata_ImageFile</span></code> and
+<code class="docutils literal notranslate"><span class="pre">ObjectLabel</span></code> columns (the curation key used by
+<code class="docutils literal notranslate"><span class="pre">STORE_REMOVED_KEYS</span></code>). Returns an empty list when those
+columns are absent or when no rows were flagged.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>De-duplicated list of <code class="docutils literal notranslate"><span class="pre">(image_file,</span> <span class="pre">object_label)</span></code> tuples
+for rows where <code class="docutils literal notranslate"><span class="pre">Flag=True</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">results</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></span></dt>
+<dd><p>Return the augmented frame stored by the most recent analyze().</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)">pandas.DataFrame</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">severity_col</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span></dt>
+<dd><p>Return the severity column name for this check.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">show</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span></dt>
+<dd><p>QualityCheck plots are Plotly-only — see <a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.ReplicateAgreement.dash" title="phenotypic.analysis.ReplicateAgreement.dash"><code class="xref py py-meth docutils literal notranslate"><span class="pre">dash()</span></code></a>.</p>
+<p><code class="xref py py-class docutils literal notranslate"><span class="pre">SetAnalyzer</span></code>’s matplotlib <code class="docutils literal notranslate"><span class="pre">show()</span></code> is not implemented
+for QC because the QC tab is Plotly-driven. Raising rather than
+falling back to a placeholder so notebook users discover the
+right method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – Always; use <a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.ReplicateAgreement.dash" title="phenotypic.analysis.ReplicateAgreement.dash"><code class="xref py py-meth docutils literal notranslate"><span class="pre">dash()</span></code></a> instead.</p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>)</p></li>
+<li><p><strong>kwargs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>)</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">status_col</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span></dt>
+<dd><p>Return the status column name for this check.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">summary</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></span></dt>
+<dd><p>Return a one-row-per-group summary of the most recent analyze.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DataFrame with columns <code class="docutils literal notranslate"><span class="pre">[*self.groupby,</span> <span class="pre">&quot;num_rows&quot;,</span>
+<span class="pre">&quot;num_flagged&quot;,</span> <span class="pre">&quot;max_severity&quot;,</span> <span class="pre">&quot;status&quot;]</span></code>. The <code class="docutils literal notranslate"><span class="pre">status</span></code>
+column is the worst status across the group: <code class="docutils literal notranslate"><span class="pre">&quot;fail&quot;</span></code>
+wins over <code class="docutils literal notranslate"><span class="pre">&quot;warn&quot;</span></code> which wins over <code class="docutils literal notranslate"><span class="pre">&quot;pass&quot;</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)">pandas.DataFrame</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'SE'</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">severity_fail</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.2</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">severity_warn</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.1</span></em></dt>
+<dd></dd></dl>
 
 </dd></dl>
 

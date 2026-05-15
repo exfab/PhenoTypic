@@ -1,0 +1,42 @@
+phenotypic.analysis.ExpectedVsDetectedCount
+===========================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autoclass:: ExpectedVsDetectedCount
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ExpectedVsDetectedCount.__init__
+      ~ExpectedVsDetectedCount.analyze
+      ~ExpectedVsDetectedCount.dash
+      ~ExpectedVsDetectedCount.flag_col
+      ~ExpectedVsDetectedCount.flagged_keys
+      ~ExpectedVsDetectedCount.results
+      ~ExpectedVsDetectedCount.severity_col
+      ~ExpectedVsDetectedCount.show
+      ~ExpectedVsDetectedCount.status_col
+      ~ExpectedVsDetectedCount.summary
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ExpectedVsDetectedCount.name
+      ~ExpectedVsDetectedCount.severity_fail
+      ~ExpectedVsDetectedCount.severity_warn
+   
+   

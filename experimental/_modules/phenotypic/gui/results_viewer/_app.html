@@ -568,12 +568,18 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">CFG_FILTERED_STATE</span><span class="p">,</span>
+    <span class="n">CFG_MEASUREMENT_SCHEMA</span><span class="p">,</span>
     <span class="n">CFG_OUTPUT_ROOT</span><span class="p">,</span>
+    <span class="n">CFG_QC_AUGMENTED_FRAME</span><span class="p">,</span>
+    <span class="n">CFG_QC_INSTANCES_CACHE</span><span class="p">,</span>
+    <span class="n">CFG_QC_RECIPE</span><span class="p">,</span>
     <span class="n">CFG_URL_PREFIX</span><span class="p">,</span>
     <span class="n">MOUNT_HOME</span><span class="p">,</span>
     <span class="n">SANDBOX_API_VIEWER_OUTPUT_ROOT</span><span class="p">,</span>
     <span class="n">TITLE_VIEWER</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._qc_recipe</span><span class="w"> </span><span class="kn">import</span> <span class="n">QcRecipe</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._schema_cache</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementSchema</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._design</span><span class="w"> </span><span class="kn">import</span> <span class="n">COLOR_BLUE</span><span class="p">,</span> <span class="n">COLOR_SURFACE</span><span class="p">,</span> <span class="n">inject_design_tokens</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._shared</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_shared_static</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.results_viewer</span><span class="w"> </span><span class="kn">import</span> <span class="n">_ids</span> <span class="k">as</span> <span class="n">ids</span><span class="p">,</span> <span class="n">_tile_routes</span>
@@ -704,6 +710,25 @@
     <span class="n">filtered_state</span> <span class="o">=</span> <span class="n">FilteredMeasurements</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">output_root</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="n">output_root</span><span class="o">.</span><span class="n">master_df</span><span class="p">)</span>
     <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">CFG_FILTERED_STATE</span><span class="p">]</span> <span class="o">=</span> <span class="n">filtered_state</span>
     <span class="n">colony_crop_routes</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">output_root</span><span class="p">)</span>
+
+    <span class="c1"># MeasurementSchema cache shared by the Heatmap tab (and a future</span>
+    <span class="c1"># QC tab) - lazily built once per app instance. Idempotent: do not</span>
+    <span class="c1"># clobber an existing instance e.g. when the analysis sub-app has</span>
+    <span class="c1"># already populated the key.</span>
+    <span class="k">if</span> <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">CFG_MEASUREMENT_SCHEMA</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">CFG_MEASUREMENT_SCHEMA</span><span class="p">]</span> <span class="o">=</span> <span class="n">MeasurementSchema</span><span class="p">(</span>
+            <span class="n">output_root</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">output_root</span><span class="o">.</span><span class="n">root</span><span class="p">)</span>
+        <span class="p">)</span>
+    <span class="c1"># QC tab&#39;s augmented-frame cache starts empty; Wave E&#39;s QC writer</span>
+    <span class="c1"># fills it on its first card refresh. The heatmap render callback</span>
+    <span class="c1"># gracefully falls back to the plain filtered frame until then.</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">CFG_QC_AUGMENTED_FRAME</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+    <span class="c1"># QC recipe sidecar + per-revision instance cache. Loading is cheap</span>
+    <span class="c1"># (a single JSON read) and the cache is keyed on the recipe revision</span>
+    <span class="c1"># counter so a stale entry can never serve a moved configuration.</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">CFG_QC_RECIPE</span><span class="p">]</span> <span class="o">=</span> <span class="n">QcRecipe</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">output_root</span><span class="o">.</span><span class="n">root</span><span class="p">))</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">CFG_QC_INSTANCES_CACHE</span><span class="p">,</span> <span class="p">{})</span>
 
     <span class="n">app</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">build_app_layout</span><span class="p">(</span><span class="n">output_root</span><span class="p">,</span> <span class="n">filtered_state</span><span class="p">,</span> <span class="n">url_prefix</span><span class="o">=</span><span class="n">url_prefix</span><span class="p">)</span>
     <span class="n">register_callbacks</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">output_root</span><span class="p">)</span>

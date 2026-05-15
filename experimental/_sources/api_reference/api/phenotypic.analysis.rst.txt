@@ -23,8 +23,10 @@
    
       DoubleSoftplus
       EdgeCorrector
+      ExpectedVsDetectedCount
       LinearSoftplus
       LogGrowthModel
+      ReplicateAgreement
       TukeyOutlierRemover
    
    
