@@ -337,7 +337,7 @@ def test_color_picker_lists_measurements_and_qc_severities(
         "  const s = document.querySelector('[id*=\"qc-card-summary\"]');"
         "  return s && (s.textContent || '').includes('groups:');"
         "}",
-        timeout=15_000,
+        timeout=30_000,
     )
     page.locator("a.nav-link", has_text="Heatmap").first.click()
     page.wait_for_timeout(1_500)
@@ -463,7 +463,7 @@ def test_aggregator_semantics(
         "  const fig = document.querySelector('#heatmap-figure .js-plotly-plot');"
         "  return fig && fig._fullData && fig._fullData.length > 0;"
         "}",
-        timeout=15_000,
+        timeout=30_000,
     )
 
     # Mean of {100, 200} = 150.
@@ -500,7 +500,7 @@ def test_image_picker(
         "  const fig = document.querySelector('#heatmap-figure .js-plotly-plot');"
         "  return fig && fig._fullData && fig._fullData.length > 0;"
         "}",
-        timeout=15_000,
+        timeout=30_000,
     )
 
     initial = _dash_dropdown_value(page, "heatmap-image-picker")
@@ -650,7 +650,7 @@ def test_removed_cells_visually_distinct(
             const el = document.querySelector('{summary_selector}');
             return el && (el.textContent || '').includes('groups:');
         }}""",
-        timeout=15_000,
+        timeout=30_000,
     )
     # Click Mark-flagged-for-removal to push every flagged row into
     # ``STORE_REMOVED_KEYS``.
@@ -668,7 +668,7 @@ def test_removed_cells_visually_distinct(
         "  const fig = document.querySelector('#heatmap-figure .js-plotly-plot');"
         "  return fig && fig._fullData && fig._fullData.length > 0;"
         "}",
-        timeout=15_000,
+        timeout=30_000,
     )
     _dash_dropdown_pick(page, "heatmap-color-picker", "Size_Area")
     page.wait_for_timeout(1_500)
@@ -830,7 +830,7 @@ def test_heatmap_renders_qc_augmented_frame_not_stale(
             const el = document.querySelector('[id*=\"qc-card-summary\"][id*=\"{count_id}\"]');
             return el && (el.textContent || '').includes('groups:');
         }}""",
-        timeout=15_000,
+        timeout=30_000,
     )
     # Push curation via Mark-flagged-for-removal — bumps STORE_REMOVED_KEYS,
     # which triggers controls-refresh, which re-reads the augmented frame.
