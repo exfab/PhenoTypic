@@ -606,7 +606,7 @@ def test_status_badge_colors(
             const text = (el.textContent || '').trim();
             return text === 'pass' || text === 'warn' || text === 'fail' || text === 'error';
         }}""",
-        timeout=30_000,
+        timeout=15_000,
     )
 
     badge_text = (page.locator(badge_selector).text_content() or "").strip()
@@ -669,7 +669,7 @@ def test_card_refresh_on_curation(
             const el = document.querySelector('{badge_selector}');
             return el && (el.textContent || '').trim() !== '...';
         }}""",
-        timeout=30_000,
+        timeout=15_000,
     )
 
     # The augmented-revision store lives in Dash's private state; we
@@ -743,7 +743,7 @@ def test_summary_strip_counts(
             const el = document.querySelector('{summary_selector}');
             return el && (el.textContent || '').includes('groups:');
         }}""",
-        timeout=30_000,
+        timeout=15_000,
     )
     text = (page.locator(summary_selector).text_content() or "").strip()
     import re
@@ -816,7 +816,7 @@ def test_mark_flagged_pushes_to_removed_keys(
             const el = document.querySelector('{summary_selector}');
             return el && (el.textContent || '').includes('groups:');
         }}""",
-        timeout=30_000,
+        timeout=15_000,
     )
 
     # Switch to the Heatmap tab and snapshot the initial trace count.
@@ -830,7 +830,7 @@ def test_mark_flagged_pushes_to_removed_keys(
         "  const inner = document.querySelector('#heatmap-figure .js-plotly-plot');"
         "  return inner && inner._fullData && inner._fullData.length > 0;"
         "}",
-        timeout=30_000,
+        timeout=15_000,
     )
     trace_count_before = page.evaluate(
         "() => document.querySelector('#heatmap-figure .js-plotly-plot')._fullData.length"
