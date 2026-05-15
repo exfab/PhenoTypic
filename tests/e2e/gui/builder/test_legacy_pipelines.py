@@ -100,7 +100,7 @@ def test_load_legacy_popover_pipeline_json(page: Page, hub_url: str) -> None:
         )
 
     fixture = _FIXTURES / "legacy_popover_pipeline.json"
-    payload = json.loads(fixture.read_text())
+    payload = json.loads(fixture.read_text(encoding="utf-8"))
     page.evaluate("(p) => window.phenoSetState(p)", payload)
 
     # Canvas should render with at least one DAG block (Input Image
@@ -133,7 +133,7 @@ def test_load_shared_instance_clones(page: Page, hub_url: str) -> None:
         )
 
     fixture = _FIXTURES / "shared_aux_instance.json"
-    payload = json.loads(fixture.read_text())
+    payload = json.loads(fixture.read_text(encoding="utf-8"))
     page.evaluate("(p) => window.phenoSetState(p)", payload)
 
     # Toast hinting "shared" should surface within a few ticks.
@@ -228,7 +228,7 @@ def test_load_no_canvas_layout_falls_back_to_dagre(
         )
 
     fixture = _FIXTURES / "legacy_popover_pipeline.json"
-    payload = json.loads(fixture.read_text())
+    payload = json.loads(fixture.read_text(encoding="utf-8"))
     page.evaluate("(p) => window.phenoSetState(p)", payload)
 
     # At least one block must render at a non-default position (dagre

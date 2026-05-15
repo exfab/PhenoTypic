@@ -57,7 +57,7 @@ def _load_state(name: str) -> Any:
     """Load a fixture by stem name and return the BuilderState."""
 
     path = FIXTURE_DIR / f"{name}.json"
-    return state_from_json(json.loads(path.read_text()))
+    return state_from_json(json.loads(path.read_text(encoding="utf-8")))
 
 
 def _elements_by_id(elements: List[dict]) -> Dict[str, dict]:
