@@ -122,6 +122,15 @@ jobs:
           path: gh-pages
           fetch-depth: 1
 
+      - name: Checkout source (for regen script)
+        # Mirrors docs-prune.yml's `path: src` pattern. The deploy job
+        # consumes the build artifact (not a source rebuild), so the
+        # only thing we need from the source tree is the regen helper.
+        uses: actions/checkout@v6
+        with:
+          path: src
+          fetch-depth: 1
+
       - name: Copy build into version slot
         run: |
           mkdir -p "gh-pages/${DOCS_VERSION}"
@@ -148,7 +157,7 @@ jobs:
         run: python -m pip install --quiet packaging
 
       - name: Regenerate versions.json and index.html
-        run: python .github/scripts/regen_versions_json.py gh-pages
+        run: python src/.github/scripts/regen_versions_json.py gh-pages
 
       - name: Commit and push gh-pages
         working-directory: gh-pages

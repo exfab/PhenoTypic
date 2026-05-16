@@ -6,7 +6,8 @@ a function-scoped sandbox override so they don't pollute the
 module-scoped fixture; we provide them in this file.
 
 Per the project's CI gating, these tests run only when ``PLAYWRIGHT=1``
-is set (the ``gui-e2e`` GitHub workflow sets it automatically).
+is set (the ``e2e-tests`` job in the ``gui-checks`` GitHub workflow
+sets it automatically).
 """
 from __future__ import annotations
 
