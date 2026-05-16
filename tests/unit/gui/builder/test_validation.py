@@ -819,9 +819,9 @@ def test_invalid_fixture_matches_expected_issues(name, empty_registry):
     )
     empty_registry.ops["GaussianBlur"] = _make_op_info("GaussianBlur", {})
 
-    with fixture_path.open() as f:
+    with fixture_path.open(encoding="utf-8") as f:
         scope_data = json.load(f)
-    with expected_path.open() as f:
+    with expected_path.open(encoding="utf-8") as f:
         expected_raw = json.load(f)
     # Expected files may use either a bare list or a wrapper dict like
     # ``{"issues": [...]}`` so the formatter can keep them readable.

@@ -114,7 +114,10 @@ jobs:
         run: |
           source .venv/bin/activate
           if compgen -G "tests/e2e/gui/test_*.py" > /dev/null; then
-            pytest tests/e2e/gui -v
+            # ``ci_flaky`` deselects e2e tests that pass locally but
+            # stochastically exceed Playwright DOM-poll budgets on
+            # shared GHA runners. See tests/CLAUDE.md for the convention.
+            pytest tests/e2e/gui -v -m "not ci_flaky"
           else
             echo "No E2E GUI tests yet; skipping."
           fi

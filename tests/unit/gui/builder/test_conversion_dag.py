@@ -581,7 +581,7 @@ class TestFromPipelineDagLegacyJson:
         # ImagePipeline.to_json() payload; we feed it through
         # ImagePipeline.from_json then from_pipeline_dag.
         fixture_path = FIXTURES_DIR / "legacy_popover_pipeline.json"
-        config_str = fixture_path.read_text()
+        config_str = fixture_path.read_text(encoding="utf-8")
         pipe = ImagePipeline.from_json(config_str)
         state = from_pipeline_dag(pipe)
 
