@@ -152,9 +152,35 @@ class TestSam2DetectorSerialization:
 # ---------------------------------------------------------------------------
 
 
+def _sam2_tiny_available() -> bool:
+    """True if the tiny SAM2 checkpoint is cached locally or the download host is reachable.
+
+    The download host (dl.fbaipublicfiles.com) is blocked in some CI environments
+    (network policy returns 403 host_not_allowed). Tests skip rather than fail when
+    neither the cache nor the network is available.
+    """
+    if not SAM2_AVAILABLE:
+        return False
+    from phenotypic.nn._checkpoint_manager import Sam2CheckpointManager
+    if Sam2CheckpointManager.is_cached("tiny"):
+        return True
+    import urllib.error
+    import urllib.request
+    try:
+        req = urllib.request.Request(
+            Sam2CheckpointManager.BASE_URL
+            + Sam2CheckpointManager.MODELS["tiny"]["filename"],
+            method="HEAD",
+        )
+        with urllib.request.urlopen(req, timeout=3):
+            return True
+    except Exception:
+        return False
+
+
 @pytest.mark.skipif(
-    not SAM2_AVAILABLE,
-    reason="Requires phenotypic[torch] (sam2 + torch)",
+    not SAM2_AVAILABLE or not _sam2_tiny_available(),
+    reason="Requires phenotypic[torch] and a cached or downloadable SAM2 tiny checkpoint",
 )
 class TestSam2DetectorFunctional:
     """Functional tests that load a model and run inference."""

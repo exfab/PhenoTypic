@@ -162,8 +162,8 @@ def test_broken_symlink_returns_empty(tmp_path: Path) -> None:
 
 
 @pytest.mark.skipif(
-    sys.platform == "win32",
-    reason="chmod-based permission test is POSIX-specific",
+    sys.platform == "win32" or os.getuid() == 0,
+    reason="chmod-based permission test is POSIX-specific and meaningless as root",
 )
 def test_permission_denied_directory(tmp_path: Path) -> None:
     locked = tmp_path / "locked"
