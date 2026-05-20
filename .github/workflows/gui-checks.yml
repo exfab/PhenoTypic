@@ -65,8 +65,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          # Full history so ``git diff origin/<base>..HEAD`` works on PRs.
-          fetch-depth: 0
+          # On a pull_request the checked-out ref is GitHub's
+          # ``refs/pull/N/merge`` commit; depth 2 fetches it plus its two
+          # parents so ``git diff HEAD^1..HEAD`` resolves the PR's changes.
+          fetch-depth: 2
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -75,14 +77,27 @@ jobs:
 
       - name: 'Cross-PR check: gui/ touched implies FEATURES.md modified'
         if: github.event_name == 'pull_request'
-        env:
-          BASE_REF: ${{ github.base_ref }}
         run: |
           set -euo pipefail
-          git fetch origin "$BASE_REF" --depth=1 || true
-          BASE_SHA=$(git merge-base "origin/$BASE_REF" HEAD)
-          TOUCHED_GUI=$(git diff --name-only "$BASE_SHA"..HEAD -- 'src/phenotypic/gui/' || true)
-          TOUCHED_FEATURES=$(git diff --name-only "$BASE_SHA"..HEAD -- 'src/phenotypic/gui/FEATURES.md' || true)
+          # HEAD is the pull_request merge commit (two parents: base tip +
+          # PR head); its first parent is the base-branch tip. No fetch /
+          # merge-base needed -- avoids the shallow-clone and
+          # unresolved-``origin/<base>`` failure modes. Assert that shape
+          # first: a conflicted PR has no usable merge ref, so HEAD^1 would
+          # diff against a wrong base and silently under-detect -- fail loud.
+          if [ "$(git rev-list --parents -n1 HEAD | wc -w)" -lt 3 ]; then
+            echo "::error::HEAD is not a 2-parent PR merge commit; cannot resolve the PR base (conflicted PR?)."
+            exit 1
+          fi
+          BASE_SHA=$(git rev-parse HEAD^1)
+          # CLAUDE.md / FEATURES.md / WORKFLOWS.md are meta-docs, not GUI
+          # features -- exclude them from the trigger so a docs-only PR is
+          # not flagged. FEATURES.md is still diffed separately below.
+          TOUCHED_GUI=$(git diff --name-only "$BASE_SHA"..HEAD -- 'src/phenotypic/gui/' \
+            ':(exclude)src/phenotypic/gui/CLAUDE.md' \
+            ':(exclude)src/phenotypic/gui/FEATURES.md' \
+            ':(exclude)src/phenotypic/gui/WORKFLOWS.md')
+          TOUCHED_FEATURES=$(git diff --name-only "$BASE_SHA"..HEAD -- 'src/phenotypic/gui/FEATURES.md')
           if [ -n "$TOUCHED_GUI" ] && [ -z "$TOUCHED_FEATURES" ]; then
             echo "::error::PR touches src/phenotypic/gui/ without modifying FEATURES.md"
             echo "Touched files under src/phenotypic/gui/:"
@@ -103,8 +118,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          # Full history so ``git merge-base origin/<base>..HEAD`` resolves on PRs.
-          fetch-depth: 0
+          # On a pull_request the checked-out ref is GitHub's
+          # ``refs/pull/N/merge`` commit; depth 2 fetches it plus its two
+          # parents so ``git diff HEAD^1..HEAD`` resolves the PR's changes.
+          fetch-depth: 2
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -113,14 +130,21 @@ jobs:
 
       - name: 'Cross-PR check: workflow added implies capture function added'
         if: github.event_name == 'pull_request'
-        env:
-          BASE_REF: ${{ github.base_ref }}
         run: |
           set -euo pipefail
-          git fetch origin "$BASE_REF" --depth=1 || true
-          BASE_SHA=$(git merge-base "origin/$BASE_REF" HEAD)
-          TOUCHED_WORKFLOWS=$(git diff --name-only "$BASE_SHA"..HEAD -- 'src/phenotypic/gui/WORKFLOWS.md' || true)
-          TOUCHED_CAPTURE=$(git diff --name-only "$BASE_SHA"..HEAD -- 'scripts/capture_gui_tutorial_screenshots.py' || true)
+          # HEAD is the pull_request merge commit; its first parent is the
+          # base-branch tip. No fetch / merge-base needed -- avoids the
+          # shallow-clone and unresolved-``origin/<base>`` failure modes.
+          # This check is advisory (warning only): if HEAD is not a 2-parent
+          # merge (conflicted PR, no usable merge ref) skip it rather than
+          # fail -- the WORKFLOWS.md validator step below is the real gate.
+          if [ "$(git rev-list --parents -n1 HEAD | wc -w)" -lt 3 ]; then
+            echo "::warning::HEAD is not a 2-parent PR merge commit; skipping the WORKFLOWS.md cross-PR advisory check."
+            exit 0
+          fi
+          BASE_SHA=$(git rev-parse HEAD^1)
+          TOUCHED_WORKFLOWS=$(git diff --name-only "$BASE_SHA"..HEAD -- 'src/phenotypic/gui/WORKFLOWS.md')
+          TOUCHED_CAPTURE=$(git diff --name-only "$BASE_SHA"..HEAD -- 'scripts/capture_gui_tutorial_screenshots.py')
           if [ -n "$TOUCHED_WORKFLOWS" ] && [ -z "$TOUCHED_CAPTURE" ]; then
             echo "::warning::PR touches WORKFLOWS.md without modifying scripts/capture_gui_tutorial_screenshots.py."
             echo "If you added a new workflow row, you also need a matching _capture_<id> function in the capture script."
