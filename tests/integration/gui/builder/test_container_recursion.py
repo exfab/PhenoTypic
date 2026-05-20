@@ -49,7 +49,9 @@ FIXTURE_DIR = (
 def _load_state(name: str) -> Any:
     """Load a fixture by stem name and return the BuilderState."""
 
-    return state_from_json(json.loads((FIXTURE_DIR / f"{name}.json").read_text()))
+    return state_from_json(
+        json.loads((FIXTURE_DIR / f"{name}.json").read_text(encoding="utf-8"))
+    )
 
 
 def _block_elements(elements: List[dict]) -> List[dict]:

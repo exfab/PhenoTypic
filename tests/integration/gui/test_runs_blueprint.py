@@ -144,8 +144,8 @@ def test_missing_file_returns_404(sandbox: SandboxRoot) -> None:
 
 
 @pytest.mark.skipif(
-    sys.platform == "win32",
-    reason="chmod-based permission test is POSIX-specific",
+    sys.platform == "win32" or os.getuid() == 0,
+    reason="chmod-based permission test is POSIX-specific and meaningless as root",
 )
 def test_permission_denied_returns_403(sandbox: SandboxRoot) -> None:
     f = sandbox.root / "locked.txt"
@@ -219,8 +219,8 @@ def test_touch_not_called_on_rejected_request(
 
 
 @pytest.mark.skipif(
-    sys.platform == "win32",
-    reason="chmod-based permission test is POSIX-specific",
+    sys.platform == "win32" or os.getuid() == 0,
+    reason="chmod-based permission test is POSIX-specific and meaningless as root",
 )
 def test_touch_not_called_on_403(
     sandbox: SandboxRoot, viewer_session: ToolSession[str]

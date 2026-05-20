@@ -173,7 +173,7 @@ def test_bake_preview_cache_dag_uses_32char_block_id_keys():
         / "builder_dag"
         / "linear_chain.json"
     )
-    state = state_from_json(json.loads(fixture.read_text()))
+    state = state_from_json(json.loads(fixture.read_text(encoding="utf-8")))
     pipeline = to_pipeline_dag(state)
     result = pipeline.apply_with_intermediates(load_synth_yeast_plate())
 

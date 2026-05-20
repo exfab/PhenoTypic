@@ -54,7 +54,7 @@ def test_wire_card_renders_when_image_edge_selected() -> None:
     """A selected image-flow edge renders the wire card with the right labels."""
 
     state = state_from_json(
-        json.loads((FIXTURE_DIR / "linear_chain.json").read_text())
+        json.loads((FIXTURE_DIR / "linear_chain.json").read_text(encoding="utf-8"))
     )
     # Pick the first image-flow edge in the root scope.
     edge = next(e for e in state.root.edges if e.kind == "image")

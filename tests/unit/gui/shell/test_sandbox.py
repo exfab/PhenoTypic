@@ -183,8 +183,8 @@ def test_list_children_outside_root_raises(tmp_path: Path) -> None:
 
 
 @pytest.mark.skipif(
-    sys.platform == "win32",
-    reason="chmod-based permission test is POSIX-specific",
+    sys.platform == "win32" or os.getuid() == 0,
+    reason="chmod-based permission test is POSIX-specific and meaningless as root",
 )
 def test_list_children_permission_error_propagates(tmp_path: Path) -> None:
     """``list_children`` does not swallow PermissionError.
