@@ -3,5 +3,5 @@ phenotypic.tools\_.napari\_ package
 
 .. automodule:: phenotypic.tools_.napari_
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

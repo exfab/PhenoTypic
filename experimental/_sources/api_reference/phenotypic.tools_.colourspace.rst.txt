@@ -3,5 +3,5 @@ phenotypic.tools\_.colourspace module
 
 .. automodule:: phenotypic.tools_.colourspace
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

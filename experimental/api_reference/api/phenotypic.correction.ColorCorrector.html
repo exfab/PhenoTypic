@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=fb952d1c"></script>
+    <script src="../../_static/documentation_options.js?v=db24b7f7"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -51,7 +51,6 @@
     <script src="../../_static/design-tabs.js?v=f930bc37"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/api/phenotypic.correction.ColorCorrector';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
@@ -67,7 +66,7 @@
     <link rel="prev" title="phenotypic.correction.ColorCheckerProfile" href="phenotypic.correction.ColorCheckerProfile.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.15.1" />
+  <meta name="docsearch:version" content="0.15.2" />
   </head>
   
   
@@ -949,7 +948,7 @@
 <h1>phenotypic.correction.ColorCorrector<a class="headerlink" href="#phenotypic-correction-colorcorrector" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.correction.ColorCorrector">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.correction.</span></span><span class="sig-name descname"><span class="pre">ColorCorrector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">profile</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../phenotypic.correction.html#phenotypic.correction.ColorCheckerProfile" title="phenotypic.correction._color_correction._color_checker_profile.ColorCheckerProfile"><span class="pre">ColorCheckerProfile</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_illuminant</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'D65'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/correction/_color_correction/_color_corrector.html#ColorCorrector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.correction.ColorCorrector" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.correction.</span></span><span class="sig-name descname"><span class="pre">ColorCorrector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">profile</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../phenotypic.correction.html#phenotypic.correction.ColorCheckerProfile" title="phenotypic.correction._color_correction._color_checker_profile.ColorCheckerProfile"><span class="pre">ColorCheckerProfile</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_illuminant</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'D65'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/correction/_color_correction/_color_corrector.html#ColorCorrector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.correction.ColorCorrector" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.ImageCorrector" title="phenotypic.abc_._image_corrector.ImageCorrector"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageCorrector</span></code></a></p>
 <p>Apply root-polynomial color correction to an entire image.</p>
 <p>Takes a fitted <a class="reference internal" href="../phenotypic.correction.html#phenotypic.correction.ColorCheckerProfile" title="phenotypic.correction.ColorCheckerProfile"><code class="xref py py-class docutils literal notranslate"><span class="pre">ColorCheckerProfile</span></code></a> and applies its correction
@@ -1005,15 +1004,15 @@ a nested list (serialisable).</p>
 <p>Correct an image using a pre-fitted profile:</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.correction</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorCheckerProfile</span><span class="p">,</span> <span class="n">ColorCorrector</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">profile</span> <span class="o">=</span> <span class="n">ColorCheckerProfile</span><span class="p">(</span><span class="n">rois</span><span class="o">=</span><span class="p">[</span><span class="o">...</span><span class="p">],</span> <span class="n">degree</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>  
-<span class="gp">&gt;&gt;&gt; </span><span class="n">profile</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>  
-<span class="gp">&gt;&gt;&gt; </span><span class="n">corrector</span> <span class="o">=</span> <span class="n">ColorCorrector</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span>  
-<span class="gp">&gt;&gt;&gt; </span><span class="n">corrected</span> <span class="o">=</span> <span class="n">corrector</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>  
+<span class="gp">&gt;&gt;&gt; </span><span class="n">profile</span> <span class="o">=</span> <span class="n">ColorCheckerProfile</span><span class="p">(</span><span class="n">rois</span><span class="o">=</span><span class="p">[</span><span class="o">...</span><span class="p">],</span> <span class="n">degree</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">profile</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">corrector</span> <span class="o">=</span> <span class="n">ColorCorrector</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">corrected</span> <span class="o">=</span> <span class="n">corrector</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 <p class="rubric">Methods</p>
-<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.correction.html#phenotypic.correction.ColorCorrector.__init__" title="phenotypic.correction.ColorCorrector.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a></p></td>
 <td><p>Initialise the corrector from a fitted profile.</p></td>
@@ -1217,7 +1216,7 @@ visualization controls will be added to the widget.</p></li>
         <div class="footer-item">
 
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
     <br/>
   </p>
 </div>

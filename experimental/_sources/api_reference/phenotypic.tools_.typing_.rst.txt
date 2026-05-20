@@ -3,5 +3,5 @@ phenotypic.tools\_.typing\_ module
 
 .. automodule:: phenotypic.tools_.typing_
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

@@ -68,6 +68,7 @@ phenotypic.abc\_.MeasurementInfo
       ~MeasurementInfo.get_headers
       ~MeasurementInfo.rst_table
       ~MeasurementInfo.append_rst_to_doc
+      ~MeasurementInfo.__init__
    
    
 

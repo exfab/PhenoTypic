@@ -68,6 +68,7 @@ phenotypic.tools\_.constants\_.METADATA
       ~METADATA.format
       ~METADATA.format_map
       ~METADATA.maketrans
+      ~METADATA.__init__
    
    
 

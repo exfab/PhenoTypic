@@ -3,5 +3,5 @@ phenotypic.sweep package
 
 .. automodule:: phenotypic.sweep
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

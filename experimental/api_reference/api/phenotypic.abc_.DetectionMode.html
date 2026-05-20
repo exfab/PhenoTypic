@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=fb952d1c"></script>
+    <script src="../../_static/documentation_options.js?v=db24b7f7"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -51,7 +51,6 @@
     <script src="../../_static/design-tabs.js?v=f930bc37"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/api/phenotypic.abc_.DetectionMode';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
@@ -67,7 +66,7 @@
     <link rel="prev" title="phenotypic.abc_.PostMeasurement" href="phenotypic.abc_.PostMeasurement.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.15.1" />
+  <meta name="docsearch:version" content="0.15.2" />
   </head>
   
   
@@ -949,13 +948,13 @@
 <h1>phenotypic.abc_.DetectionMode<a class="headerlink" href="#phenotypic-abc-detectionmode" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.DetectionMode">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">DetectionMode</span></span><a class="reference internal" href="../../_modules/phenotypic/_core/_image_parts/detection_modes/_detection_mode.html#DetectionMode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.DetectionMode" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">DetectionMode</span></span><a class="reference internal" href="../../_modules/phenotypic/_core/_image_parts/detection_modes/_detection_mode.html#DetectionMode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.DetectionMode" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
 <p>Base class for detection matrix source modes.</p>
 <p>Subclasses define how the detection matrix is computed from
 raw image data (grayscale, individual RGB channels, etc.).</p>
 <p class="rubric">Methods</p>
-<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></p></td>
 <td><p></p></td>
@@ -967,7 +966,7 @@ raw image data (grayscale, individual RGB channels, etc.).</p>
 </table>
 </div>
 <p class="rubric">Attributes</p>
-<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.DetectionMode.name" title="phenotypic.abc_.DetectionMode.name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></a></p></td>
 <td><p>Short identifier used in <code class="docutils literal notranslate"><span class="pre">detect_mode</span></code> strings.</p></td>
@@ -980,19 +979,19 @@ raw image data (grayscale, individual RGB channels, etc.).</p>
 </div>
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.abc_.DetectionMode.name">
-<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.abc_.DetectionMode.name" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">abstract</span></span><span class="w"> </span><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.abc_.DetectionMode.name" title="Link to this definition">#</a></dt>
 <dd><p>Short identifier used in <code class="docutils literal notranslate"><span class="pre">detect_mode</span></code> strings.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.abc_.DetectionMode.requires_rgb">
-<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">requires_rgb</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#phenotypic.abc_.DetectionMode.requires_rgb" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">abstract</span></span><span class="w"> </span><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">requires_rgb</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#phenotypic.abc_.DetectionMode.requires_rgb" title="Link to this definition">#</a></dt>
 <dd><p>Whether this mode needs RGB data to compute.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.DetectionMode.compute">
-<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">np.ndarray</span></span></span><a class="reference internal" href="../../_modules/phenotypic/_core/_image_parts/detection_modes/_detection_mode.html#DetectionMode.compute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.DetectionMode.compute" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">np.ndarray</span></span></span><a class="reference internal" href="../../_modules/phenotypic/_core/_image_parts/detection_modes/_detection_mode.html#DetectionMode.compute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.DetectionMode.compute" title="Link to this definition">#</a></dt>
 <dd><p>Return a fresh detection matrix from <em>image</em>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1086,7 +1085,7 @@ raw image data (grayscale, individual RGB channels, etc.).</p>
         <div class="footer-item">
 
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
     <br/>
   </p>
 </div>

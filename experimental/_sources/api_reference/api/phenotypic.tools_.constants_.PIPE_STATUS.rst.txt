@@ -68,6 +68,7 @@ phenotypic.tools\_.constants\_.PIPE\_STATUS
       ~PIPE_STATUS.format
       ~PIPE_STATUS.format_map
       ~PIPE_STATUS.maketrans
+      ~PIPE_STATUS.__init__
    
    
 

@@ -3,5 +3,5 @@ phenotypic.util.image\_metrics module
 
 .. automodule:: phenotypic.util.image_metrics
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

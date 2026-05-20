@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=fb952d1c"></script>
+    <script src="../_static/documentation_options.js?v=db24b7f7"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -51,7 +51,6 @@
     <script src="../_static/design-tabs.js?v=f930bc37"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/phenotypic.tools_.exceptions_';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
@@ -65,7 +64,7 @@
     <link rel="search" title="Search" href="../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.15.1" />
+  <meta name="docsearch:version" content="0.15.2" />
   </head>
   
   
@@ -540,9 +539,16 @@
 Exceptions are organized by module and functionality.</p>
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.ArrayKeyValueShapeMismatchError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">ArrayKeyValueShapeMismatchError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#ArrayKeyValueShapeMismatchError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.ArrayKeyValueShapeMismatchError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">ArrayKeyValueShapeMismatchError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#ArrayKeyValueShapeMismatchError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.ArrayKeyValueShapeMismatchError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ValueError</span></code></a></p>
 <p>Exception raised when the shape of the other_image doesn’t match the key’s section.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.ArrayKeyValueShapeMismatchError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.ArrayKeyValueShapeMismatchError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.ArrayKeyValueShapeMismatchError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.ArrayKeyValueShapeMismatchError.with_traceback" title="Link to this definition">#</a></dt>
@@ -559,9 +565,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.DataIntegrityError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">DataIntegrityError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">operation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#DataIntegrityError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.DataIntegrityError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">DataIntegrityError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">operation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#DataIntegrityError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.DataIntegrityError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AttributeError</span></code></a></p>
 <p>Exception raised when data integrity is compromised.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.DataIntegrityError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.DataIntegrityError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.DataIntegrityError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.DataIntegrityError.with_traceback" title="Link to this definition">#</a></dt>
@@ -590,9 +603,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.EmptyImageError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">EmptyImageError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#EmptyImageError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.EmptyImageError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">EmptyImageError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#EmptyImageError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.EmptyImageError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AttributeError</span></code></a></p>
 <p>Exception raised when no image data is loaded.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.EmptyImageError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.EmptyImageError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.EmptyImageError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.EmptyImageError.with_traceback" title="Link to this definition">#</a></dt>
@@ -621,9 +641,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.GrayscaleOutOfRangeError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">GrayscaleOutOfRangeError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#GrayscaleOutOfRangeError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.GrayscaleOutOfRangeError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">GrayscaleOutOfRangeError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#GrayscaleOutOfRangeError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.GrayscaleOutOfRangeError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.tools_.exceptions_.PhenoTypicError" title="phenotypic.tools_.exceptions_.PhenoTypicError"><code class="xref py py-class docutils literal notranslate"><span class="pre">PhenoTypicError</span></code></a></p>
 <p>Exception raised when grayscale is out of range.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.GrayscaleOutOfRangeError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.GrayscaleOutOfRangeError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.GrayscaleOutOfRangeError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.GrayscaleOutOfRangeError.with_traceback" title="Link to this definition">#</a></dt>
@@ -640,9 +667,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.GridImageInputError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">GridImageInputError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#GridImageInputError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.GridImageInputError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">GridImageInputError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#GridImageInputError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.GridImageInputError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ValueError</span></code></a></p>
 <p>Exception raised when a non-GriddedImage object is provided as arr.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.GridImageInputError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.GridImageInputError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.GridImageInputError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.GridImageInputError.with_traceback" title="Link to this definition">#</a></dt>
@@ -659,9 +693,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.IllegalAssignmentError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">IllegalAssignmentError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">attr</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#IllegalAssignmentError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.IllegalAssignmentError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">IllegalAssignmentError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">attr</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#IllegalAssignmentError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.IllegalAssignmentError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ValueError</span></code></a></p>
 <p>Exception raised when trying to directly assign a new object to a protected attribute.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.IllegalAssignmentError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.IllegalAssignmentError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.IllegalAssignmentError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.IllegalAssignmentError.with_traceback" title="Link to this definition">#</a></dt>
@@ -678,9 +719,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.IllegalElementAssignmentError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">IllegalElementAssignmentError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component_name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#IllegalElementAssignmentError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.IllegalElementAssignmentError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">IllegalElementAssignmentError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component_name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#IllegalElementAssignmentError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.IllegalElementAssignmentError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.tools_.exceptions_.ImmutableComponentError" title="phenotypic.tools_.exceptions_.ImmutableComponentError"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImmutableComponentError</span></code></a></p>
 <p>Exception raised when trying to change rgb/gray elements directly.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.IllegalElementAssignmentError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.IllegalElementAssignmentError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.IllegalElementAssignmentError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.IllegalElementAssignmentError.with_traceback" title="Link to this definition">#</a></dt>
@@ -709,9 +757,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.ImageOperationError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">ImageOperationError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#ImageOperationError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.ImageOperationError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">ImageOperationError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#ImageOperationError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.ImageOperationError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.tools_.exceptions_.PhenoTypicError" title="phenotypic.tools_.exceptions_.PhenoTypicError"><code class="xref py py-class docutils literal notranslate"><span class="pre">PhenoTypicError</span></code></a></p>
 <p>Base exception for image operation errors.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.ImageOperationError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.ImageOperationError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.ImageOperationError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.ImageOperationError.with_traceback" title="Link to this definition">#</a></dt>
@@ -728,9 +783,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.ImmutableComponentError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">ImmutableComponentError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#ImmutableComponentError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.ImmutableComponentError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">ImmutableComponentError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#ImmutableComponentError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.ImmutableComponentError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AttributeError</span></code></a></p>
 <p>Base exception for immutable component errors.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.ImmutableComponentError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.ImmutableComponentError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.ImmutableComponentError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.ImmutableComponentError.with_traceback" title="Link to this definition">#</a></dt>
@@ -759,9 +821,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.InputShapeMismatchError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">InputShapeMismatchError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">param_name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#InputShapeMismatchError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.InputShapeMismatchError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">InputShapeMismatchError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">param_name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#InputShapeMismatchError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.InputShapeMismatchError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ValueError</span></code></a></p>
 <p>Exception raised when arr shape doesn’t match the image gray.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.InputShapeMismatchError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.InputShapeMismatchError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.InputShapeMismatchError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.InputShapeMismatchError.with_traceback" title="Link to this definition">#</a></dt>
@@ -778,9 +847,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.InterfaceError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">InterfaceError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#InterfaceError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.InterfaceError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">InterfaceError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#InterfaceError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.InterfaceError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>, <a class="reference internal" href="#phenotypic.tools_.exceptions_.PhenoTypicError" title="phenotypic.tools_.exceptions_.PhenoTypicError"><code class="xref py py-class docutils literal notranslate"><span class="pre">PhenoTypicError</span></code></a></p>
 <p>Exception raised when an <code class="docutils literal notranslate"><span class="pre">abc_</span></code> method is called when it’s not supposed to be.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.InterfaceError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.InterfaceError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.InterfaceError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.InterfaceError.with_traceback" title="Link to this definition">#</a></dt>
@@ -797,9 +873,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.InvalidHsvSchemaError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">InvalidHsvSchemaError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">imformat</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#InvalidHsvSchemaError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.InvalidHsvSchemaError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">InvalidHsvSchemaError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">imformat</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#InvalidHsvSchemaError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.InvalidHsvSchemaError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AttributeError</span></code></a></p>
 <p>Exception raised when trying to convert to HSV from a non-RGB imformat.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.InvalidHsvSchemaError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.InvalidHsvSchemaError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.InvalidHsvSchemaError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.InvalidHsvSchemaError.with_traceback" title="Link to this definition">#</a></dt>
@@ -828,9 +911,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.InvalidMapValueError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">InvalidMapValueError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value_type</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#InvalidMapValueError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.InvalidMapValueError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">InvalidMapValueError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value_type</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#InvalidMapValueError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.InvalidMapValueError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ValueError</span></code></a></p>
 <p>Exception raised when trying to set object map with invalid other_image type.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.InvalidMapValueError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.InvalidMapValueError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.InvalidMapValueError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.InvalidMapValueError.with_traceback" title="Link to this definition">#</a></dt>
@@ -847,9 +937,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.InvalidMaskScalarValueError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">InvalidMaskScalarValueError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#InvalidMaskScalarValueError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.InvalidMaskScalarValueError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">InvalidMaskScalarValueError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#InvalidMaskScalarValueError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.InvalidMaskScalarValueError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ValueError</span></code></a></p>
 <p>Exception raised when trying to set mask with invalid scalar other_image.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.InvalidMaskScalarValueError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.InvalidMaskScalarValueError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.InvalidMaskScalarValueError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.InvalidMaskScalarValueError.with_traceback" title="Link to this definition">#</a></dt>
@@ -866,9 +963,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.InvalidMaskValueError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">InvalidMaskValueError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value_type</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#InvalidMaskValueError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.InvalidMaskValueError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">InvalidMaskValueError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value_type</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#InvalidMaskValueError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.InvalidMaskValueError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ValueError</span></code></a></p>
 <p>Exception raised when trying to set mask with invalid other_image type.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.InvalidMaskValueError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.InvalidMaskValueError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.InvalidMaskValueError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.InvalidMaskValueError.with_traceback" title="Link to this definition">#</a></dt>
@@ -885,9 +989,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.InvalidShapeError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">InvalidShapeError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#InvalidShapeError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.InvalidShapeError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">InvalidShapeError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#InvalidShapeError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.InvalidShapeError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ValueError</span></code></a></p>
 <p>Exception raised when a shape mismatch occurs.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.InvalidShapeError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.InvalidShapeError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.InvalidShapeError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.InvalidShapeError.with_traceback" title="Link to this definition">#</a></dt>
@@ -904,9 +1015,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.MetadataKeySpacesError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">MetadataKeySpacesError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#MetadataKeySpacesError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.MetadataKeySpacesError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">MetadataKeySpacesError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#MetadataKeySpacesError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.MetadataKeySpacesError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeError</span></code></a></p>
 <p>Exception raised when metadata key contains spaces.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.MetadataKeySpacesError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.MetadataKeySpacesError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.MetadataKeySpacesError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.MetadataKeySpacesError.with_traceback" title="Link to this definition">#</a></dt>
@@ -923,9 +1041,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.MetadataKeyValueError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">MetadataKeyValueError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">type_received</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#MetadataKeyValueError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.MetadataKeyValueError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">MetadataKeyValueError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">type_received</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#MetadataKeyValueError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.MetadataKeyValueError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ValueError</span></code></a></p>
 <p>Exception raised when metadata key is not a string.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.MetadataKeyValueError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.MetadataKeyValueError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.MetadataKeyValueError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.MetadataKeyValueError.with_traceback" title="Link to this definition">#</a></dt>
@@ -942,9 +1067,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.MetadataValueNonScalarError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">MetadataValueNonScalarError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">type_value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#MetadataValueNonScalarError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.MetadataValueNonScalarError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">MetadataValueNonScalarError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">type_value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#MetadataValueNonScalarError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.MetadataValueNonScalarError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeError</span></code></a></p>
 <p>Exception raised when metadata other_image is not scalar.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.MetadataValueNonScalarError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.MetadataValueNonScalarError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.MetadataValueNonScalarError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.MetadataValueNonScalarError.with_traceback" title="Link to this definition">#</a></dt>
@@ -961,9 +1093,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.NoArrayError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">NoArrayError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#NoArrayError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.NoArrayError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">NoArrayError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#NoArrayError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.NoArrayError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AttributeError</span></code></a></p>
 <p>Exception raised when no array is found.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.NoArrayError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.NoArrayError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.NoArrayError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.NoArrayError.with_traceback" title="Link to this definition">#</a></dt>
@@ -992,9 +1131,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.NoComponentError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">NoComponentError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#NoComponentError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.NoComponentError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">NoComponentError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#NoComponentError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.NoComponentError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AttributeError</span></code></a></p>
 <p>Exception raised when a required object is missing.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.NoComponentError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.NoComponentError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.NoComponentError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.NoComponentError.with_traceback" title="Link to this definition">#</a></dt>
@@ -1023,9 +1169,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.NoImageDataError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">NoImageDataError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#NoImageDataError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.NoImageDataError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">NoImageDataError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#NoImageDataError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.NoImageDataError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AttributeError</span></code></a></p>
 <p>Exception raised when no image data is loaded.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.NoImageDataError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.NoImageDataError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.NoImageDataError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.NoImageDataError.with_traceback" title="Link to this definition">#</a></dt>
@@ -1054,9 +1207,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.NoObjectsError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">NoObjectsError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#NoObjectsError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.NoObjectsError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">NoObjectsError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#NoObjectsError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.NoObjectsError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AttributeError</span></code></a></p>
 <p>Exception raised when no objects are found in an image.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.NoObjectsError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.NoObjectsError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.NoObjectsError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.NoObjectsError.with_traceback" title="Link to this definition">#</a></dt>
@@ -1085,9 +1245,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.NoOutputError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">NoOutputError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#NoOutputError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.NoOutputError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">NoOutputError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#NoOutputError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.NoOutputError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.tools_.exceptions_.PhenoTypicError" title="phenotypic.tools_.exceptions_.PhenoTypicError"><code class="xref py py-class docutils literal notranslate"><span class="pre">PhenoTypicError</span></code></a></p>
 <p>Exception raised when no output was returned in an operation.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.NoOutputError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.NoOutputError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.NoOutputError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.NoOutputError.with_traceback" title="Link to this definition">#</a></dt>
@@ -1104,9 +1271,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.ObjectNotFoundError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">ObjectNotFoundError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">label</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#ObjectNotFoundError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.ObjectNotFoundError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">ObjectNotFoundError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">label</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#ObjectNotFoundError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.ObjectNotFoundError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AttributeError</span></code></a></p>
 <p>Exception raised when an object with a specified label is not found.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.ObjectNotFoundError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.ObjectNotFoundError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.ObjectNotFoundError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.ObjectNotFoundError.with_traceback" title="Link to this definition">#</a></dt>
@@ -1135,9 +1309,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.OperationFailedError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">OperationFailedError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">err_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#OperationFailedError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.OperationFailedError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">OperationFailedError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">err_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#OperationFailedError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.OperationFailedError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.tools_.exceptions_.ImageOperationError" title="phenotypic.tools_.exceptions_.ImageOperationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageOperationError</span></code></a></p>
 <p>Exception raised when an operation fails.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.OperationFailedError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.OperationFailedError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.OperationFailedError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.OperationFailedError.with_traceback" title="Link to this definition">#</a></dt>
@@ -1154,7 +1335,7 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.OperationIntegrityError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">OperationIntegrityError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">opname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">component</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#OperationIntegrityError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.OperationIntegrityError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">OperationIntegrityError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">opname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">component</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#OperationIntegrityError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.OperationIntegrityError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AttributeError</span></code></a></p>
 <p>Exception raised when an operation attempts to change a component it shouldn’t.</p>
 <dl class="field-list simple">
@@ -1165,6 +1346,13 @@ set self.__traceback__ to tb and return self.</p>
 </ul>
 </dd>
 </dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.OperationIntegrityError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.OperationIntegrityError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.OperationIntegrityError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.OperationIntegrityError.with_traceback" title="Link to this definition">#</a></dt>
@@ -1193,9 +1381,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.OutputValueError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">OutputValueError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expected_type</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#OutputValueError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.OutputValueError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">OutputValueError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expected_type</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#OutputValueError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.OutputValueError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.tools_.exceptions_.PhenoTypicError" title="phenotypic.tools_.exceptions_.PhenoTypicError"><code class="xref py py-class docutils literal notranslate"><span class="pre">PhenoTypicError</span></code></a></p>
 <p>Exception raised when output is not of the expected type.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.OutputValueError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.OutputValueError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.OutputValueError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.OutputValueError.with_traceback" title="Link to this definition">#</a></dt>
@@ -1212,9 +1407,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.PhenoTypicError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">PhenoTypicError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#PhenoTypicError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.PhenoTypicError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">PhenoTypicError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#PhenoTypicError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.PhenoTypicError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></a></p>
 <p>Base exception class for all PhenoTypic errors.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.PhenoTypicError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.PhenoTypicError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.PhenoTypicError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.PhenoTypicError.with_traceback" title="Link to this definition">#</a></dt>
@@ -1231,9 +1433,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.UUIDReassignmentError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">UUIDReassignmentError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#UUIDReassignmentError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.UUIDReassignmentError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">UUIDReassignmentError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#UUIDReassignmentError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.UUIDReassignmentError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AttributeError</span></code></a></p>
 <p>Exception raised when trying to change the UUID metadata.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.UUIDReassignmentError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.UUIDReassignmentError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.UUIDReassignmentError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.UUIDReassignmentError.with_traceback" title="Link to this definition">#</a></dt>
@@ -1262,9 +1471,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.UnknownError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">UnknownError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'An</span> <span class="pre">unknown</span> <span class="pre">error</span> <span class="pre">occurred.'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#UnknownError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.UnknownError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">UnknownError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'An</span> <span class="pre">unknown</span> <span class="pre">error</span> <span class="pre">occurred.'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#UnknownError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.UnknownError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.tools_.exceptions_.PhenoTypicError" title="phenotypic.tools_.exceptions_.PhenoTypicError"><code class="xref py py-class docutils literal notranslate"><span class="pre">PhenoTypicError</span></code></a></p>
 <p>Exception raised when an unknown error occurs.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.UnknownError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.UnknownError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.UnknownError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.UnknownError.with_traceback" title="Link to this definition">#</a></dt>
@@ -1281,9 +1497,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.UnsupportedFileTypeError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">UnsupportedFileTypeError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">suffix</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#UnsupportedFileTypeError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.UnsupportedFileTypeError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">UnsupportedFileTypeError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">suffix</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#UnsupportedFileTypeError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.UnsupportedFileTypeError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ValueError</span></code></a></p>
 <p>Exception raised when trying to read an unsupported file type.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.UnsupportedFileTypeError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.UnsupportedFileTypeError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.UnsupportedFileTypeError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.UnsupportedFileTypeError.with_traceback" title="Link to this definition">#</a></dt>
@@ -1300,7 +1523,7 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.UnsupportedImageFormat">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">UnsupportedImageFormat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">imformat</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#UnsupportedImageFormat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.UnsupportedImageFormat" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">UnsupportedImageFormat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">imformat</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#UnsupportedImageFormat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.UnsupportedImageFormat" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ValueError</span></code></a></p>
 <p>Represents an error when an unsupported imformat format is detected.</p>
 <p>This error is raised when a specified imformat format is not supported by the
@@ -1310,6 +1533,13 @@ application or library that utilizes this exception class.</p>
 <dd class="field-odd"><p><strong>schema</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The imformat format that triggered this exception.</p>
 </dd>
 </dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.UnsupportedImageFormat.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.UnsupportedImageFormat.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.UnsupportedImageFormat.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.UnsupportedImageFormat.with_traceback" title="Link to this definition">#</a></dt>
@@ -1326,9 +1556,16 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.UuidAssignmentError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">UuidAssignmentError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#UuidAssignmentError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.UuidAssignmentError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">UuidAssignmentError</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/exceptions_.html#UuidAssignmentError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools_.exceptions_.UuidAssignmentError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AttributeError</span></code></a></p>
 <p>Exception raised when trying to change the UUID of an image.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.UuidAssignmentError.add_note">
+<span class="sig-name descname"><span class="pre">add_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.UuidAssignmentError.add_note" title="Link to this definition">#</a></dt>
+<dd><p>Exception.add_note(note) –
+add a note to the exception</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.exceptions_.UuidAssignmentError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.exceptions_.UuidAssignmentError.with_traceback" title="Link to this definition">#</a></dt>
@@ -1381,11 +1618,13 @@ set self.__traceback__ to tb and return self.</p>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.ArrayKeyValueShapeMismatchError"><code class="docutils literal notranslate"><span class="pre">ArrayKeyValueShapeMismatchError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.ArrayKeyValueShapeMismatchError.add_note"><code class="docutils literal notranslate"><span class="pre">ArrayKeyValueShapeMismatchError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.ArrayKeyValueShapeMismatchError.with_traceback"><code class="docutils literal notranslate"><span class="pre">ArrayKeyValueShapeMismatchError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.ArrayKeyValueShapeMismatchError.args"><code class="docutils literal notranslate"><span class="pre">ArrayKeyValueShapeMismatchError.args</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.DataIntegrityError"><code class="docutils literal notranslate"><span class="pre">DataIntegrityError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.DataIntegrityError.add_note"><code class="docutils literal notranslate"><span class="pre">DataIntegrityError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.DataIntegrityError.with_traceback"><code class="docutils literal notranslate"><span class="pre">DataIntegrityError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.DataIntegrityError.args"><code class="docutils literal notranslate"><span class="pre">DataIntegrityError.args</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.DataIntegrityError.name"><code class="docutils literal notranslate"><span class="pre">DataIntegrityError.name</span></code></a></li>
@@ -1393,6 +1632,7 @@ set self.__traceback__ to tb and return self.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.EmptyImageError"><code class="docutils literal notranslate"><span class="pre">EmptyImageError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.EmptyImageError.add_note"><code class="docutils literal notranslate"><span class="pre">EmptyImageError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.EmptyImageError.with_traceback"><code class="docutils literal notranslate"><span class="pre">EmptyImageError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.EmptyImageError.args"><code class="docutils literal notranslate"><span class="pre">EmptyImageError.args</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.EmptyImageError.name"><code class="docutils literal notranslate"><span class="pre">EmptyImageError.name</span></code></a></li>
@@ -1400,21 +1640,25 @@ set self.__traceback__ to tb and return self.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.GrayscaleOutOfRangeError"><code class="docutils literal notranslate"><span class="pre">GrayscaleOutOfRangeError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.GrayscaleOutOfRangeError.add_note"><code class="docutils literal notranslate"><span class="pre">GrayscaleOutOfRangeError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.GrayscaleOutOfRangeError.with_traceback"><code class="docutils literal notranslate"><span class="pre">GrayscaleOutOfRangeError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.GrayscaleOutOfRangeError.args"><code class="docutils literal notranslate"><span class="pre">GrayscaleOutOfRangeError.args</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.GridImageInputError"><code class="docutils literal notranslate"><span class="pre">GridImageInputError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.GridImageInputError.add_note"><code class="docutils literal notranslate"><span class="pre">GridImageInputError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.GridImageInputError.with_traceback"><code class="docutils literal notranslate"><span class="pre">GridImageInputError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.GridImageInputError.args"><code class="docutils literal notranslate"><span class="pre">GridImageInputError.args</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.IllegalAssignmentError"><code class="docutils literal notranslate"><span class="pre">IllegalAssignmentError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.IllegalAssignmentError.add_note"><code class="docutils literal notranslate"><span class="pre">IllegalAssignmentError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.IllegalAssignmentError.with_traceback"><code class="docutils literal notranslate"><span class="pre">IllegalAssignmentError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.IllegalAssignmentError.args"><code class="docutils literal notranslate"><span class="pre">IllegalAssignmentError.args</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.IllegalElementAssignmentError"><code class="docutils literal notranslate"><span class="pre">IllegalElementAssignmentError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.IllegalElementAssignmentError.add_note"><code class="docutils literal notranslate"><span class="pre">IllegalElementAssignmentError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.IllegalElementAssignmentError.with_traceback"><code class="docutils literal notranslate"><span class="pre">IllegalElementAssignmentError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.IllegalElementAssignmentError.args"><code class="docutils literal notranslate"><span class="pre">IllegalElementAssignmentError.args</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.IllegalElementAssignmentError.name"><code class="docutils literal notranslate"><span class="pre">IllegalElementAssignmentError.name</span></code></a></li>
@@ -1422,11 +1666,13 @@ set self.__traceback__ to tb and return self.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.ImageOperationError"><code class="docutils literal notranslate"><span class="pre">ImageOperationError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.ImageOperationError.add_note"><code class="docutils literal notranslate"><span class="pre">ImageOperationError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.ImageOperationError.with_traceback"><code class="docutils literal notranslate"><span class="pre">ImageOperationError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.ImageOperationError.args"><code class="docutils literal notranslate"><span class="pre">ImageOperationError.args</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.ImmutableComponentError"><code class="docutils literal notranslate"><span class="pre">ImmutableComponentError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.ImmutableComponentError.add_note"><code class="docutils literal notranslate"><span class="pre">ImmutableComponentError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.ImmutableComponentError.with_traceback"><code class="docutils literal notranslate"><span class="pre">ImmutableComponentError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.ImmutableComponentError.args"><code class="docutils literal notranslate"><span class="pre">ImmutableComponentError.args</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.ImmutableComponentError.name"><code class="docutils literal notranslate"><span class="pre">ImmutableComponentError.name</span></code></a></li>
@@ -1434,16 +1680,19 @@ set self.__traceback__ to tb and return self.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InputShapeMismatchError"><code class="docutils literal notranslate"><span class="pre">InputShapeMismatchError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InputShapeMismatchError.add_note"><code class="docutils literal notranslate"><span class="pre">InputShapeMismatchError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InputShapeMismatchError.with_traceback"><code class="docutils literal notranslate"><span class="pre">InputShapeMismatchError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InputShapeMismatchError.args"><code class="docutils literal notranslate"><span class="pre">InputShapeMismatchError.args</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InterfaceError"><code class="docutils literal notranslate"><span class="pre">InterfaceError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InterfaceError.add_note"><code class="docutils literal notranslate"><span class="pre">InterfaceError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InterfaceError.with_traceback"><code class="docutils literal notranslate"><span class="pre">InterfaceError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InterfaceError.args"><code class="docutils literal notranslate"><span class="pre">InterfaceError.args</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InvalidHsvSchemaError"><code class="docutils literal notranslate"><span class="pre">InvalidHsvSchemaError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InvalidHsvSchemaError.add_note"><code class="docutils literal notranslate"><span class="pre">InvalidHsvSchemaError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InvalidHsvSchemaError.with_traceback"><code class="docutils literal notranslate"><span class="pre">InvalidHsvSchemaError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InvalidHsvSchemaError.args"><code class="docutils literal notranslate"><span class="pre">InvalidHsvSchemaError.args</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InvalidHsvSchemaError.name"><code class="docutils literal notranslate"><span class="pre">InvalidHsvSchemaError.name</span></code></a></li>
@@ -1451,41 +1700,49 @@ set self.__traceback__ to tb and return self.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InvalidMapValueError"><code class="docutils literal notranslate"><span class="pre">InvalidMapValueError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InvalidMapValueError.add_note"><code class="docutils literal notranslate"><span class="pre">InvalidMapValueError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InvalidMapValueError.with_traceback"><code class="docutils literal notranslate"><span class="pre">InvalidMapValueError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InvalidMapValueError.args"><code class="docutils literal notranslate"><span class="pre">InvalidMapValueError.args</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InvalidMaskScalarValueError"><code class="docutils literal notranslate"><span class="pre">InvalidMaskScalarValueError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InvalidMaskScalarValueError.add_note"><code class="docutils literal notranslate"><span class="pre">InvalidMaskScalarValueError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InvalidMaskScalarValueError.with_traceback"><code class="docutils literal notranslate"><span class="pre">InvalidMaskScalarValueError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InvalidMaskScalarValueError.args"><code class="docutils literal notranslate"><span class="pre">InvalidMaskScalarValueError.args</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InvalidMaskValueError"><code class="docutils literal notranslate"><span class="pre">InvalidMaskValueError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InvalidMaskValueError.add_note"><code class="docutils literal notranslate"><span class="pre">InvalidMaskValueError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InvalidMaskValueError.with_traceback"><code class="docutils literal notranslate"><span class="pre">InvalidMaskValueError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InvalidMaskValueError.args"><code class="docutils literal notranslate"><span class="pre">InvalidMaskValueError.args</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InvalidShapeError"><code class="docutils literal notranslate"><span class="pre">InvalidShapeError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InvalidShapeError.add_note"><code class="docutils literal notranslate"><span class="pre">InvalidShapeError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InvalidShapeError.with_traceback"><code class="docutils literal notranslate"><span class="pre">InvalidShapeError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.InvalidShapeError.args"><code class="docutils literal notranslate"><span class="pre">InvalidShapeError.args</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.MetadataKeySpacesError"><code class="docutils literal notranslate"><span class="pre">MetadataKeySpacesError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.MetadataKeySpacesError.add_note"><code class="docutils literal notranslate"><span class="pre">MetadataKeySpacesError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.MetadataKeySpacesError.with_traceback"><code class="docutils literal notranslate"><span class="pre">MetadataKeySpacesError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.MetadataKeySpacesError.args"><code class="docutils literal notranslate"><span class="pre">MetadataKeySpacesError.args</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.MetadataKeyValueError"><code class="docutils literal notranslate"><span class="pre">MetadataKeyValueError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.MetadataKeyValueError.add_note"><code class="docutils literal notranslate"><span class="pre">MetadataKeyValueError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.MetadataKeyValueError.with_traceback"><code class="docutils literal notranslate"><span class="pre">MetadataKeyValueError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.MetadataKeyValueError.args"><code class="docutils literal notranslate"><span class="pre">MetadataKeyValueError.args</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.MetadataValueNonScalarError"><code class="docutils literal notranslate"><span class="pre">MetadataValueNonScalarError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.MetadataValueNonScalarError.add_note"><code class="docutils literal notranslate"><span class="pre">MetadataValueNonScalarError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.MetadataValueNonScalarError.with_traceback"><code class="docutils literal notranslate"><span class="pre">MetadataValueNonScalarError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.MetadataValueNonScalarError.args"><code class="docutils literal notranslate"><span class="pre">MetadataValueNonScalarError.args</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoArrayError"><code class="docutils literal notranslate"><span class="pre">NoArrayError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoArrayError.add_note"><code class="docutils literal notranslate"><span class="pre">NoArrayError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoArrayError.with_traceback"><code class="docutils literal notranslate"><span class="pre">NoArrayError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoArrayError.args"><code class="docutils literal notranslate"><span class="pre">NoArrayError.args</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoArrayError.name"><code class="docutils literal notranslate"><span class="pre">NoArrayError.name</span></code></a></li>
@@ -1493,6 +1750,7 @@ set self.__traceback__ to tb and return self.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoComponentError"><code class="docutils literal notranslate"><span class="pre">NoComponentError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoComponentError.add_note"><code class="docutils literal notranslate"><span class="pre">NoComponentError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoComponentError.with_traceback"><code class="docutils literal notranslate"><span class="pre">NoComponentError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoComponentError.args"><code class="docutils literal notranslate"><span class="pre">NoComponentError.args</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoComponentError.name"><code class="docutils literal notranslate"><span class="pre">NoComponentError.name</span></code></a></li>
@@ -1500,6 +1758,7 @@ set self.__traceback__ to tb and return self.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoImageDataError"><code class="docutils literal notranslate"><span class="pre">NoImageDataError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoImageDataError.add_note"><code class="docutils literal notranslate"><span class="pre">NoImageDataError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoImageDataError.with_traceback"><code class="docutils literal notranslate"><span class="pre">NoImageDataError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoImageDataError.args"><code class="docutils literal notranslate"><span class="pre">NoImageDataError.args</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoImageDataError.name"><code class="docutils literal notranslate"><span class="pre">NoImageDataError.name</span></code></a></li>
@@ -1507,6 +1766,7 @@ set self.__traceback__ to tb and return self.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoObjectsError"><code class="docutils literal notranslate"><span class="pre">NoObjectsError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoObjectsError.add_note"><code class="docutils literal notranslate"><span class="pre">NoObjectsError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoObjectsError.with_traceback"><code class="docutils literal notranslate"><span class="pre">NoObjectsError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoObjectsError.args"><code class="docutils literal notranslate"><span class="pre">NoObjectsError.args</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoObjectsError.name"><code class="docutils literal notranslate"><span class="pre">NoObjectsError.name</span></code></a></li>
@@ -1514,11 +1774,13 @@ set self.__traceback__ to tb and return self.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoOutputError"><code class="docutils literal notranslate"><span class="pre">NoOutputError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoOutputError.add_note"><code class="docutils literal notranslate"><span class="pre">NoOutputError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoOutputError.with_traceback"><code class="docutils literal notranslate"><span class="pre">NoOutputError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.NoOutputError.args"><code class="docutils literal notranslate"><span class="pre">NoOutputError.args</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.ObjectNotFoundError"><code class="docutils literal notranslate"><span class="pre">ObjectNotFoundError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.ObjectNotFoundError.add_note"><code class="docutils literal notranslate"><span class="pre">ObjectNotFoundError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.ObjectNotFoundError.with_traceback"><code class="docutils literal notranslate"><span class="pre">ObjectNotFoundError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.ObjectNotFoundError.args"><code class="docutils literal notranslate"><span class="pre">ObjectNotFoundError.args</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.ObjectNotFoundError.name"><code class="docutils literal notranslate"><span class="pre">ObjectNotFoundError.name</span></code></a></li>
@@ -1526,11 +1788,13 @@ set self.__traceback__ to tb and return self.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.OperationFailedError"><code class="docutils literal notranslate"><span class="pre">OperationFailedError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.OperationFailedError.add_note"><code class="docutils literal notranslate"><span class="pre">OperationFailedError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.OperationFailedError.with_traceback"><code class="docutils literal notranslate"><span class="pre">OperationFailedError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.OperationFailedError.args"><code class="docutils literal notranslate"><span class="pre">OperationFailedError.args</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.OperationIntegrityError"><code class="docutils literal notranslate"><span class="pre">OperationIntegrityError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.OperationIntegrityError.add_note"><code class="docutils literal notranslate"><span class="pre">OperationIntegrityError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.OperationIntegrityError.with_traceback"><code class="docutils literal notranslate"><span class="pre">OperationIntegrityError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.OperationIntegrityError.args"><code class="docutils literal notranslate"><span class="pre">OperationIntegrityError.args</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.OperationIntegrityError.name"><code class="docutils literal notranslate"><span class="pre">OperationIntegrityError.name</span></code></a></li>
@@ -1538,16 +1802,19 @@ set self.__traceback__ to tb and return self.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.OutputValueError"><code class="docutils literal notranslate"><span class="pre">OutputValueError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.OutputValueError.add_note"><code class="docutils literal notranslate"><span class="pre">OutputValueError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.OutputValueError.with_traceback"><code class="docutils literal notranslate"><span class="pre">OutputValueError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.OutputValueError.args"><code class="docutils literal notranslate"><span class="pre">OutputValueError.args</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.PhenoTypicError"><code class="docutils literal notranslate"><span class="pre">PhenoTypicError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.PhenoTypicError.add_note"><code class="docutils literal notranslate"><span class="pre">PhenoTypicError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.PhenoTypicError.with_traceback"><code class="docutils literal notranslate"><span class="pre">PhenoTypicError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.PhenoTypicError.args"><code class="docutils literal notranslate"><span class="pre">PhenoTypicError.args</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.UUIDReassignmentError"><code class="docutils literal notranslate"><span class="pre">UUIDReassignmentError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.UUIDReassignmentError.add_note"><code class="docutils literal notranslate"><span class="pre">UUIDReassignmentError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.UUIDReassignmentError.with_traceback"><code class="docutils literal notranslate"><span class="pre">UUIDReassignmentError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.UUIDReassignmentError.args"><code class="docutils literal notranslate"><span class="pre">UUIDReassignmentError.args</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.UUIDReassignmentError.name"><code class="docutils literal notranslate"><span class="pre">UUIDReassignmentError.name</span></code></a></li>
@@ -1555,21 +1822,25 @@ set self.__traceback__ to tb and return self.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.UnknownError"><code class="docutils literal notranslate"><span class="pre">UnknownError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.UnknownError.add_note"><code class="docutils literal notranslate"><span class="pre">UnknownError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.UnknownError.with_traceback"><code class="docutils literal notranslate"><span class="pre">UnknownError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.UnknownError.args"><code class="docutils literal notranslate"><span class="pre">UnknownError.args</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.UnsupportedFileTypeError"><code class="docutils literal notranslate"><span class="pre">UnsupportedFileTypeError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.UnsupportedFileTypeError.add_note"><code class="docutils literal notranslate"><span class="pre">UnsupportedFileTypeError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.UnsupportedFileTypeError.with_traceback"><code class="docutils literal notranslate"><span class="pre">UnsupportedFileTypeError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.UnsupportedFileTypeError.args"><code class="docutils literal notranslate"><span class="pre">UnsupportedFileTypeError.args</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.UnsupportedImageFormat"><code class="docutils literal notranslate"><span class="pre">UnsupportedImageFormat</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.UnsupportedImageFormat.add_note"><code class="docutils literal notranslate"><span class="pre">UnsupportedImageFormat.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.UnsupportedImageFormat.with_traceback"><code class="docutils literal notranslate"><span class="pre">UnsupportedImageFormat.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.UnsupportedImageFormat.args"><code class="docutils literal notranslate"><span class="pre">UnsupportedImageFormat.args</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.UuidAssignmentError"><code class="docutils literal notranslate"><span class="pre">UuidAssignmentError</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.UuidAssignmentError.add_note"><code class="docutils literal notranslate"><span class="pre">UuidAssignmentError.add_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.UuidAssignmentError.with_traceback"><code class="docutils literal notranslate"><span class="pre">UuidAssignmentError.with_traceback()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.UuidAssignmentError.args"><code class="docutils literal notranslate"><span class="pre">UuidAssignmentError.args</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.exceptions_.UuidAssignmentError.name"><code class="docutils literal notranslate"><span class="pre">UuidAssignmentError.name</span></code></a></li>
@@ -1622,7 +1893,7 @@ set self.__traceback__ to tb and return self.</p>
         <div class="footer-item">
 
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
     <br/>
   </p>
 </div>

@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=fb952d1c"></script>
+    <script src="../../_static/documentation_options.js?v=db24b7f7"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -51,7 +51,6 @@
     <script src="../../_static/design-tabs.js?v=f930bc37"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/api/phenotypic.abc_.MeasurementInfo';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
@@ -67,7 +66,7 @@
     <link rel="prev" title="phenotypic.abc_.BaseOperation" href="phenotypic.abc_.BaseOperation.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.15.1" />
+  <meta name="docsearch:version" content="0.15.2" />
   </head>
   
   
@@ -949,7 +948,7 @@
 <h1>phenotypic.abc_.MeasurementInfo<a class="headerlink" href="#phenotypic-abc-measurementinfo" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">MeasurementInfo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">MeasurementInfo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_class_name</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></a></p>
 <p>Base class for creating standardized measurement information enumerations.</p>
 <p>This class provides a structured way to define measurement types with consistent naming
@@ -1074,7 +1073,7 @@ Provides instance-level access to the measurement category.</p>
 </div>
 </div>
 <p class="rubric">Methods</p>
-<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.encode" title="phenotypic.abc_.MeasurementInfo.encode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">encode</span></code></a></p></td>
 <td><p>Encode the string using the codec registered for encoding.</p></td>
@@ -1104,19 +1103,19 @@ Provides instance-level access to the measurement category.</p>
 <td><p>Return a centered string of length width.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.count" title="phenotypic.abc_.MeasurementInfo.count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">count</span></code></a></p></td>
-<td><p>Return the number of non-overlapping occurrences of substring sub in string S[start:end].</p></td>
+<td><p>S.count(sub[, start[, end]]) -&gt; int</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.expandtabs" title="phenotypic.abc_.MeasurementInfo.expandtabs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">expandtabs</span></code></a></p></td>
 <td><p>Return a copy where all tab characters are expanded using spaces.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.find" title="phenotypic.abc_.MeasurementInfo.find"><code class="xref py py-obj docutils literal notranslate"><span class="pre">find</span></code></a></p></td>
-<td><p>Return the lowest index in S where substring sub is found, such that sub is contained within S[start:end].</p></td>
+<td><p>S.find(sub[, start[, end]]) -&gt; int</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.partition" title="phenotypic.abc_.MeasurementInfo.partition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">partition</span></code></a></p></td>
 <td><p>Partition the string into three parts using the given separator.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.index" title="phenotypic.abc_.MeasurementInfo.index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">index</span></code></a></p></td>
-<td><p>Return the lowest index in S where substring sub is found, such that sub is contained within S[start:end].</p></td>
+<td><p>S.index(sub[, start[, end]]) -&gt; int</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.ljust" title="phenotypic.abc_.MeasurementInfo.ljust"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ljust</span></code></a></p></td>
 <td><p>Return a left-justified string of length width.</p></td>
@@ -1128,10 +1127,10 @@ Provides instance-level access to the measurement category.</p>
 <td><p>Return a copy of the string with leading whitespace removed.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.rfind" title="phenotypic.abc_.MeasurementInfo.rfind"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rfind</span></code></a></p></td>
-<td><p>Return the highest index in S where substring sub is found, such that sub is contained within S[start:end].</p></td>
+<td><p>S.rfind(sub[, start[, end]]) -&gt; int</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.rindex" title="phenotypic.abc_.MeasurementInfo.rindex"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rindex</span></code></a></p></td>
-<td><p>Return the highest index in S where substring sub is found, such that sub is contained within S[start:end].</p></td>
+<td><p>S.rindex(sub[, start[, end]]) -&gt; int</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.rjust" title="phenotypic.abc_.MeasurementInfo.rjust"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rjust</span></code></a></p></td>
 <td><p>Return a right-justified string of length width.</p></td>
@@ -1158,10 +1157,10 @@ Provides instance-level access to the measurement category.</p>
 <td><p>Return a copy of the string converted to uppercase.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.startswith" title="phenotypic.abc_.MeasurementInfo.startswith"><code class="xref py py-obj docutils literal notranslate"><span class="pre">startswith</span></code></a></p></td>
-<td><p>Return True if S starts with the specified prefix, False otherwise.</p></td>
+<td><p>S.startswith(prefix[, start[, end]]) -&gt; bool</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.endswith" title="phenotypic.abc_.MeasurementInfo.endswith"><code class="xref py py-obj docutils literal notranslate"><span class="pre">endswith</span></code></a></p></td>
-<td><p>Return True if S ends with the specified suffix, False otherwise.</p></td>
+<td><p>S.endswith(suffix[, start[, end]]) -&gt; bool</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.removeprefix" title="phenotypic.abc_.MeasurementInfo.removeprefix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">removeprefix</span></code></a></p></td>
 <td><p>Return a str with the given prefix string removed if present.</p></td>
@@ -1203,16 +1202,16 @@ Provides instance-level access to the measurement category.</p>
 <td><p>Return True if the string is a valid Python identifier, False otherwise.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.isprintable" title="phenotypic.abc_.MeasurementInfo.isprintable"><code class="xref py py-obj docutils literal notranslate"><span class="pre">isprintable</span></code></a></p></td>
-<td><p>Return True if the string is printable, False otherwise.</p></td>
+<td><p>Return True if all characters in the string are printable, False otherwise.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.zfill" title="phenotypic.abc_.MeasurementInfo.zfill"><code class="xref py py-obj docutils literal notranslate"><span class="pre">zfill</span></code></a></p></td>
 <td><p>Pad a numeric string with zeros on the left, to fill a field of the given width.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.format" title="phenotypic.abc_.MeasurementInfo.format"><code class="xref py py-obj docutils literal notranslate"><span class="pre">format</span></code></a></p></td>
-<td><p>Return a formatted version of S, using substitutions from args and kwargs.</p></td>
+<td><p>S.format(<a href="#id1"><span class="problematic" id="id2">*</span></a>args, <a href="#id3"><span class="problematic" id="id4">**</span></a>kwargs) -&gt; str</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.format_map" title="phenotypic.abc_.MeasurementInfo.format_map"><code class="xref py py-obj docutils literal notranslate"><span class="pre">format_map</span></code></a></p></td>
-<td><p>Return a formatted version of S, using substitutions from mapping.</p></td>
+<td><p>S.format_map(mapping) -&gt; str</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.maketrans" title="phenotypic.abc_.MeasurementInfo.maketrans"><code class="xref py py-obj docutils literal notranslate"><span class="pre">maketrans</span></code></a></p></td>
 <td><p>Return a translation table usable for str.translate().</p></td>
@@ -1232,11 +1231,14 @@ Provides instance-level access to the measurement category.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.append_rst_to_doc" title="phenotypic.abc_.MeasurementInfo.append_rst_to_doc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">append_rst_to_doc</span></code></a></p></td>
 <td><p>Append the measurement documentation table to a module or class docstring.</p></td>
 </tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></p></td>
+<td><p></p></td>
+</tr>
 </tbody>
 </table>
 </div>
 <p class="rubric">Attributes</p>
-<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#id2" title="phenotypic.abc_.MeasurementInfo.CATEGORY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CATEGORY</span></code></a></p></td>
 <td><p>Get the category name for this measurement instance.</p></td>
@@ -1246,7 +1248,7 @@ Provides instance-level access to the measurement category.</p>
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.category">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">category</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo.category"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.category" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">category</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo.category"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.category" title="Link to this definition">#</a></dt>
 <dd><p>Return the category name for this measurement enumeration.</p>
 <p>Subclasses must implement this method to provide a category name that will be used
 to prefix all measurement labels. This ensures consistent naming conventions across
@@ -1271,7 +1273,7 @@ the full header name (e.g., ‘Shape_Area’).</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="id0">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">CATEGORY</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#id0" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">CATEGORY</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#id0" title="Link to this definition">#</a></dt>
 <dd><p>Get the category name for this measurement instance.</p>
 <p>Provides instance-level access to the category name defined by the category()
 classmethod. This is useful when you have a measurement instance and need to know
@@ -1305,7 +1307,7 @@ or used in string formatting.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.get_labels">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_labels</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo.get_labels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.get_labels" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_labels</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo.get_labels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.get_labels" title="Link to this definition">#</a></dt>
 <dd><p>Get all measurement labels without category prefix.</p>
 <p>Returns a list of the short labels (without category prefix) for all measurements
 defined in this enumeration. These are the first element of each enum value tuple.
@@ -1328,7 +1330,7 @@ prefixed names, use get_headers().</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.get_headers">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_headers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo.get_headers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.get_headers" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_headers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo.get_headers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.get_headers" title="Link to this definition">#</a></dt>
 <dd><p>Get all measurement headers with category prefix.</p>
 <p>Returns a list of the full enumeration values (with category prefix) for all
 measurements defined in this enumeration. These strings are suitable for use as
@@ -1351,7 +1353,7 @@ category prefix separated by an underscore.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.rst_table">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rst_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">('Name',</span> <span class="pre">'Description')</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo.rst_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.rst_table" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rst_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">('Name',</span> <span class="pre">'Description')</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo.rst_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.rst_table" title="Link to this definition">#</a></dt>
 <dd><p>Generate an RST (reStructuredText) table documenting the measurements.</p>
 <p>Creates a formatted list-table in reStructuredText format that documents all
 measurements in this enumeration, including their labels and descriptions. This
@@ -1389,7 +1391,7 @@ or appended to docstrings.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.append_rst_to_doc">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo.append_rst_to_doc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.append_rst_to_doc" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo.append_rst_to_doc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.append_rst_to_doc" title="Link to this definition">#</a></dt>
 <dd><p>Append the measurement documentation table to a module or class docstring.</p>
 <p>Generates the RST documentation table for this measurement enumeration and appends
 it to the provided module’s or class’s existing docstring. This is useful for
@@ -1435,7 +1437,7 @@ codecs.register_error that can handle UnicodeEncodeErrors.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.replace">
-<span class="sig-name descname"><span class="pre">replace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">old</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.replace" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">replace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">old</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.replace" title="Link to this definition">#</a></dt>
 <dd><p>Return a copy with all occurrences of substring old replaced by new.</p>
 <blockquote>
 <div><dl class="simple">
@@ -1456,14 +1458,15 @@ replaced.</p>
 <div><dl>
 <dt>sep</dt><dd><p>The separator used to split the string.</p>
 <p>When set to None (the default value), will split on any whitespace
-character (including \n \r \t \f and spaces) and will discard
+character (including n r t f and spaces) and will discard
 empty strings from the result.</p>
 </dd>
-<dt>maxsplit</dt><dd><p>Maximum number of splits (starting from the left).
+<dt>maxsplit</dt><dd><p>Maximum number of splits.
 -1 (the default value) means no limit.</p>
 </dd>
 </dl>
 </div></blockquote>
+<p>Splitting starts at the front of the string and works to the end.</p>
 <p>Note, str.split() is mainly useful for data that has been intentionally
 delimited.  With natural text that includes punctuation, consider using
 the regular expression module.</p>
@@ -1477,10 +1480,10 @@ the regular expression module.</p>
 <div><dl>
 <dt>sep</dt><dd><p>The separator used to split the string.</p>
 <p>When set to None (the default value), will split on any whitespace
-character (including \n \r \t \f and spaces) and will discard
+character (including n r t f and spaces) and will discard
 empty strings from the result.</p>
 </dd>
-<dt>maxsplit</dt><dd><p>Maximum number of splits (starting from the left).
+<dt>maxsplit</dt><dd><p>Maximum number of splits.
 -1 (the default value) means no limit.</p>
 </dd>
 </dl>
@@ -1490,7 +1493,7 @@ empty strings from the result.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.join">
-<span class="sig-name descname"><span class="pre">join</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.join" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">join</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.join" title="Link to this definition">#</a></dt>
 <dd><p>Concatenate any number of strings.</p>
 <p>The string whose method is called is inserted in between each given string.
 The result is returned as a new string.</p>
@@ -1521,7 +1524,7 @@ cased characters have lower case.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.center">
-<span class="sig-name descname"><span class="pre">center</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.center" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">center</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.center" title="Link to this definition">#</a></dt>
 <dd><p>Return a centered string of length width.</p>
 <p>Padding is done using the specified fill character (default is a space).</p>
 </dd></dl>
@@ -1552,7 +1555,7 @@ arguments start and end are interpreted as in slice notation.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.partition">
-<span class="sig-name descname"><span class="pre">partition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.partition" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">partition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.partition" title="Link to this definition">#</a></dt>
 <dd><p>Partition the string into three parts using the given separator.</p>
 <p>This will search for the separator in the string.  If the separator is found,
 returns a 3-tuple containing the part before the separator, the separator
@@ -1572,7 +1575,7 @@ arguments start and end are interpreted as in slice notation.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.ljust">
-<span class="sig-name descname"><span class="pre">ljust</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.ljust" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">ljust</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.ljust" title="Link to this definition">#</a></dt>
 <dd><p>Return a left-justified string of length width.</p>
 <p>Padding is done using the specified fill character (default is a space).</p>
 </dd></dl>
@@ -1585,7 +1588,7 @@ arguments start and end are interpreted as in slice notation.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.lstrip">
-<span class="sig-name descname"><span class="pre">lstrip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.lstrip" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">lstrip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.lstrip" title="Link to this definition">#</a></dt>
 <dd><p>Return a copy of the string with leading whitespace removed.</p>
 <p>If chars is given and not None, remove characters in chars instead.</p>
 </dd></dl>
@@ -1610,21 +1613,21 @@ arguments start and end are interpreted as in slice notation.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.rjust">
-<span class="sig-name descname"><span class="pre">rjust</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.rjust" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">rjust</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.rjust" title="Link to this definition">#</a></dt>
 <dd><p>Return a right-justified string of length width.</p>
 <p>Padding is done using the specified fill character (default is a space).</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.rstrip">
-<span class="sig-name descname"><span class="pre">rstrip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.rstrip" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">rstrip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.rstrip" title="Link to this definition">#</a></dt>
 <dd><p>Return a copy of the string with trailing whitespace removed.</p>
 <p>If chars is given and not None, remove characters in chars instead.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.rpartition">
-<span class="sig-name descname"><span class="pre">rpartition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.rpartition" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">rpartition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.rpartition" title="Link to this definition">#</a></dt>
 <dd><p>Partition the string into three parts using the given separator.</p>
 <p>This will search for the separator in the string, starting at the end. If
 the separator is found, returns a 3-tuple containing the part before the
@@ -1643,7 +1646,7 @@ true.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.strip">
-<span class="sig-name descname"><span class="pre">strip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.strip" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">strip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.strip" title="Link to this definition">#</a></dt>
 <dd><p>Return a copy of the string with leading and trailing whitespace removed.</p>
 <p>If chars is given and not None, remove characters in chars instead.</p>
 </dd></dl>
@@ -1656,7 +1659,7 @@ true.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.translate">
-<span class="sig-name descname"><span class="pre">translate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.translate" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">translate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.translate" title="Link to this definition">#</a></dt>
 <dd><p>Replace each character in the string using the given translation table.</p>
 <blockquote>
 <div><dl class="simple">
@@ -1696,7 +1699,7 @@ suffix can also be a tuple of strings to try.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.removeprefix">
-<span class="sig-name descname"><span class="pre">removeprefix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prefix</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.removeprefix" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">removeprefix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prefix</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.removeprefix" title="Link to this definition">#</a></dt>
 <dd><p>Return a str with the given prefix string removed if present.</p>
 <p>If the string starts with the prefix string, return string[len(prefix):].
 Otherwise, return a copy of the original string.</p>
@@ -1704,7 +1707,7 @@ Otherwise, return a copy of the original string.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.removesuffix">
-<span class="sig-name descname"><span class="pre">removesuffix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">suffix</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.removesuffix" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">removesuffix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">suffix</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.removesuffix" title="Link to this definition">#</a></dt>
 <dd><p>Return a str with the given suffix string removed if present.</p>
 <p>If the string ends with the suffix string and that suffix is not empty,
 return string[:-len(suffix)]. Otherwise, return a copy of the original
@@ -1802,14 +1805,13 @@ such as “def” or “class”.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.isprintable">
 <span class="sig-name descname"><span class="pre">isprintable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.isprintable" title="Link to this definition">#</a></dt>
-<dd><p>Return True if the string is printable, False otherwise.</p>
-<p>A string is printable if all of its characters are considered printable in
-repr() or if it is empty.</p>
+<dd><p>Return True if all characters in the string are printable, False otherwise.</p>
+<p>A character is printable if repr() may use it in its output.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.zfill">
-<span class="sig-name descname"><span class="pre">zfill</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.zfill" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">zfill</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.zfill" title="Link to this definition">#</a></dt>
 <dd><p>Pad a numeric string with zeros on the left, to fill a field of the given width.</p>
 <p>The string is never truncated.</p>
 </dd></dl>
@@ -1829,14 +1831,8 @@ The substitutions are identified by braces (‘{’ and ‘}’).</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.__format__">
-<span class="sig-name descname"><span class="pre">__format__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">format_spec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.__format__" title="Link to this definition">#</a></dt>
-<dd><p>Returns format using actual value type unless __str__ has been overridden.</p>
-</dd></dl>
-
-<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.maketrans">
-<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">maketrans</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.maketrans" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">maketrans</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.maketrans" title="Link to this definition">#</a></dt>
 <dd><p>Return a translation table usable for str.translate().</p>
 <p>If there is only one argument, it must be a dictionary mapping Unicode
 ordinals (integers) or characters to Unicode ordinals, strings or None.
@@ -1881,6 +1877,12 @@ desc, and pair attributes set.</p>
 <dd class="field-odd"><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo" title="phenotypic.abc_.MeasurementInfo">MeasurementInfo</a></p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.__dir__">
+<span class="sig-name descname"><span class="pre">__dir__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.__dir__" title="Link to this definition">#</a></dt>
+<dd><p>Returns public methods and other interesting attributes.</p>
 </dd></dl>
 
 </dd></dl>
@@ -1968,9 +1970,9 @@ desc, and pair attributes set.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.zfill"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.zfill()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.format"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.format()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.format_map"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.format_map()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.__format__"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.__format__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.maketrans"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.maketrans()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.__new_member__"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.__new_member__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.__dir__"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.__dir__()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -2019,7 +2021,7 @@ desc, and pair attributes set.</p>
         <div class="footer-item">
 
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
     <br/>
   </p>
 </div>

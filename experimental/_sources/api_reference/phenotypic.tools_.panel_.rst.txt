@@ -3,5 +3,5 @@ phenotypic.tools\_.panel\_ module
 
 .. automodule:: phenotypic.tools_.panel_
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

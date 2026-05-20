@@ -3,8 +3,8 @@ phenotypic.tools\_ package
 
 .. automodule:: phenotypic.tools_
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Subpackages
 -----------

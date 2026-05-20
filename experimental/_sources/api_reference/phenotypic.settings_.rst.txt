@@ -3,5 +3,5 @@ phenotypic.settings\_ package
 
 .. automodule:: phenotypic.settings_
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

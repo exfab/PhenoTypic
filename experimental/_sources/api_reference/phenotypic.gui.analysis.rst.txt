@@ -3,5 +3,5 @@ phenotypic.gui.analysis package
 
 .. automodule:: phenotypic.gui.analysis
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

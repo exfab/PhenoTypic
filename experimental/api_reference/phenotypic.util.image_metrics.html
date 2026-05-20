@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=fb952d1c"></script>
+    <script src="../_static/documentation_options.js?v=db24b7f7"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -51,7 +51,6 @@
     <script src="../_static/design-tabs.js?v=f930bc37"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/phenotypic.util.image_metrics';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
@@ -65,7 +64,7 @@
     <link rel="search" title="Search" href="../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.15.1" />
+  <meta name="docsearch:version" content="0.15.2" />
   </head>
   
   
@@ -557,7 +556,7 @@ matplotlib-based <code class="xref py py-class docutils literal notranslate"><sp
 </div>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.BackgroundMetrics">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.util.image_metrics.</span></span><span class="sig-name descname"><span class="pre">BackgroundMetrics</span></span><a class="reference internal" href="../_modules/phenotypic/util/image_metrics.html#BackgroundMetrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.util.image_metrics.BackgroundMetrics" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.util.image_metrics.</span></span><span class="sig-name descname"><span class="pre">BackgroundMetrics</span></span><a class="reference internal" href="../_modules/phenotypic/util/image_metrics.html#BackgroundMetrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.util.image_metrics.BackgroundMetrics" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TypedDict" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypedDict</span></code></a></p>
 <p>Background uniformity metrics.</p>
 <dl class="py method">
@@ -572,13 +571,13 @@ matplotlib-based <code class="xref py py-class docutils literal notranslate"><sp
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.BackgroundMetrics.fromkeys">
-<span class="sig-name descname"><span class="pre">fromkeys</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.BackgroundMetrics.fromkeys" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fromkeys</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.BackgroundMetrics.fromkeys" title="Link to this definition">#</a></dt>
 <dd><p>Create a new dictionary with keys from iterable and values set to value.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.BackgroundMetrics.get">
-<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.BackgroundMetrics.get" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.BackgroundMetrics.get" title="Link to this definition">#</a></dt>
 <dd><p>Return the value for key if key is in the dictionary, else default.</p>
 </dd></dl>
 
@@ -609,15 +608,15 @@ Raises KeyError if the dict is empty.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.BackgroundMetrics.setdefault">
-<span class="sig-name descname"><span class="pre">setdefault</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.BackgroundMetrics.setdefault" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">setdefault</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.BackgroundMetrics.setdefault" title="Link to this definition">#</a></dt>
 <dd><p>Insert key with a value of default if key is not in the dictionary.</p>
 <p>Return the value for key if key is in the dictionary, else default.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.BackgroundMetrics.update">
-<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><span class="optional">[</span><em class="sig-param"><span class="n"><span class="pre">E</span></span></em>, <span class="optional">]</span><em class="sig-param"><span class="n"><span class="pre">**F</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None.</span>&#160; <span class="pre">Update</span> <span class="pre">D</span> <span class="pre">from</span> <span class="pre">dict/iterable</span> <span class="pre">E</span> <span class="pre">and</span> <span class="pre">F.</span></span></span><a class="headerlink" href="#phenotypic.util.image_metrics.BackgroundMetrics.update" title="Link to this definition">#</a></dt>
-<dd><p>If E is present and has a .keys() method, then does:  for k in E: D[k] = E[k]
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><span class="optional">[</span><em class="sig-param"><span class="n"><span class="pre">E</span></span></em>, <span class="optional">]</span><em class="sig-param"><span class="n"><span class="pre">**F</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None.</span>&#160; <span class="pre">Update</span> <span class="pre">D</span> <span class="pre">from</span> <span class="pre">mapping/iterable</span> <span class="pre">E</span> <span class="pre">and</span> <span class="pre">F.</span></span></span><a class="headerlink" href="#phenotypic.util.image_metrics.BackgroundMetrics.update" title="Link to this definition">#</a></dt>
+<dd><p>If E is present and has a .keys() method, then does:  for k in E.keys(): D[k] = E[k]
 If E is present and lacks a .keys() method, then does:  for k, v in E: D[k] = v
 In either case, this is followed by: for k in F:  D[k] = F[k]</p>
 </dd></dl>
@@ -646,7 +645,7 @@ In either case, this is followed by: for k in F:  D[k] = F[k]</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.ContrastMetrics">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.util.image_metrics.</span></span><span class="sig-name descname"><span class="pre">ContrastMetrics</span></span><a class="reference internal" href="../_modules/phenotypic/util/image_metrics.html#ContrastMetrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.util.image_metrics.ContrastMetrics" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.util.image_metrics.</span></span><span class="sig-name descname"><span class="pre">ContrastMetrics</span></span><a class="reference internal" href="../_modules/phenotypic/util/image_metrics.html#ContrastMetrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.util.image_metrics.ContrastMetrics" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TypedDict" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypedDict</span></code></a></p>
 <p>Contrast-related metrics from detection matrix analysis.</p>
 <dl class="py method">
@@ -661,13 +660,13 @@ In either case, this is followed by: for k in F:  D[k] = F[k]</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.ContrastMetrics.fromkeys">
-<span class="sig-name descname"><span class="pre">fromkeys</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.ContrastMetrics.fromkeys" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fromkeys</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.ContrastMetrics.fromkeys" title="Link to this definition">#</a></dt>
 <dd><p>Create a new dictionary with keys from iterable and values set to value.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.ContrastMetrics.get">
-<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.ContrastMetrics.get" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.ContrastMetrics.get" title="Link to this definition">#</a></dt>
 <dd><p>Return the value for key if key is in the dictionary, else default.</p>
 </dd></dl>
 
@@ -698,15 +697,15 @@ Raises KeyError if the dict is empty.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.ContrastMetrics.setdefault">
-<span class="sig-name descname"><span class="pre">setdefault</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.ContrastMetrics.setdefault" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">setdefault</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.ContrastMetrics.setdefault" title="Link to this definition">#</a></dt>
 <dd><p>Insert key with a value of default if key is not in the dictionary.</p>
 <p>Return the value for key if key is in the dictionary, else default.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.ContrastMetrics.update">
-<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><span class="optional">[</span><em class="sig-param"><span class="n"><span class="pre">E</span></span></em>, <span class="optional">]</span><em class="sig-param"><span class="n"><span class="pre">**F</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None.</span>&#160; <span class="pre">Update</span> <span class="pre">D</span> <span class="pre">from</span> <span class="pre">dict/iterable</span> <span class="pre">E</span> <span class="pre">and</span> <span class="pre">F.</span></span></span><a class="headerlink" href="#phenotypic.util.image_metrics.ContrastMetrics.update" title="Link to this definition">#</a></dt>
-<dd><p>If E is present and has a .keys() method, then does:  for k in E: D[k] = E[k]
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><span class="optional">[</span><em class="sig-param"><span class="n"><span class="pre">E</span></span></em>, <span class="optional">]</span><em class="sig-param"><span class="n"><span class="pre">**F</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None.</span>&#160; <span class="pre">Update</span> <span class="pre">D</span> <span class="pre">from</span> <span class="pre">mapping/iterable</span> <span class="pre">E</span> <span class="pre">and</span> <span class="pre">F.</span></span></span><a class="headerlink" href="#phenotypic.util.image_metrics.ContrastMetrics.update" title="Link to this definition">#</a></dt>
+<dd><p>If E is present and has a .keys() method, then does:  for k in E.keys(): D[k] = E[k]
 If E is present and lacks a .keys() method, then does:  for k, v in E: D[k] = v
 In either case, this is followed by: for k in F:  D[k] = F[k]</p>
 </dd></dl>
@@ -745,7 +744,7 @@ In either case, this is followed by: for k in F:  D[k] = F[k]</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.ImageMetricsCalculator">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.util.image_metrics.</span></span><span class="sig-name descname"><span class="pre">ImageMetricsCalculator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detect_mat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><span class="pre">numpy.ndarray</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/util/image_metrics.html#ImageMetricsCalculator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.util.image_metrics.ImageMetricsCalculator" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.util.image_metrics.</span></span><span class="sig-name descname"><span class="pre">ImageMetricsCalculator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detect_mat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><span class="pre">numpy.ndarray</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/util/image_metrics.html#ImageMetricsCalculator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.util.image_metrics.ImageMetricsCalculator" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Computes image quality metrics from detection matrices.</p>
 <p>This class extracts noise, contrast, structure, and background
@@ -778,6 +777,48 @@ and Panel-based diagnostics visualizations.</p>
 </pre></div>
 </div>
 </div>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.util.image_metrics.ImageMetricsCalculator.generate_interpretation">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">generate_interpretation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">section</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'noise'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'contrast'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'structure'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'background'</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metrics</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/util/image_metrics.html#ImageMetricsCalculator.generate_interpretation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.util.image_metrics.ImageMetricsCalculator.generate_interpretation" title="Link to this definition">#</a></dt>
+<dd><p>Generate human-readable interpretation text.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>section</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><em>Literal</em></a><em>[</em><em>'noise'</em><em>, </em><em>'contrast'</em><em>, </em><em>'structure'</em><em>, </em><em>'background'</em><em>]</em>) – Section name (“noise”, “contrast”, “structure”, “background”).</p></li>
+<li><p><strong>metrics</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>]</em>) – Computed metrics for the section.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Interpretation text string.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.util.image_metrics.ImageMetricsCalculator.generate_recommendations">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">generate_recommendations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">noise</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#phenotypic.util.image_metrics.NoiseMetrics" title="phenotypic.util.image_metrics.NoiseMetrics"><span class="pre">NoiseMetrics</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">contrast</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#phenotypic.util.image_metrics.ContrastMetrics" title="phenotypic.util.image_metrics.ContrastMetrics"><span class="pre">ContrastMetrics</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">structure</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#phenotypic.util.image_metrics.StructureMetrics" title="phenotypic.util.image_metrics.StructureMetrics"><span class="pre">StructureMetrics</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">background</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#phenotypic.util.image_metrics.BackgroundMetrics" title="phenotypic.util.image_metrics.BackgroundMetrics"><span class="pre">BackgroundMetrics</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/phenotypic/util/image_metrics.html#ImageMetricsCalculator.generate_recommendations"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.util.image_metrics.ImageMetricsCalculator.generate_recommendations" title="Link to this definition">#</a></dt>
+<dd><p>Generate actionable preprocessing recommendations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>noise</strong> (<a class="reference internal" href="#phenotypic.util.image_metrics.NoiseMetrics" title="phenotypic.util.image_metrics.NoiseMetrics"><em>NoiseMetrics</em></a>) – Noise metrics from compute_noise_metrics().</p></li>
+<li><p><strong>contrast</strong> (<a class="reference internal" href="#phenotypic.util.image_metrics.ContrastMetrics" title="phenotypic.util.image_metrics.ContrastMetrics"><em>ContrastMetrics</em></a>) – Contrast metrics from compute_contrast_metrics().</p></li>
+<li><p><strong>structure</strong> (<a class="reference internal" href="#phenotypic.util.image_metrics.StructureMetrics" title="phenotypic.util.image_metrics.StructureMetrics"><em>StructureMetrics</em></a>) – Structure metrics from compute_structure_metrics().</p></li>
+<li><p><strong>background</strong> (<a class="reference internal" href="#phenotypic.util.image_metrics.BackgroundMetrics" title="phenotypic.util.image_metrics.BackgroundMetrics"><em>BackgroundMetrics</em></a>) – Background metrics from compute_background_metrics().</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of recommendation strings.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.ImageMetricsCalculator.compute_all">
 <span class="sig-name descname"><span class="pre">compute_all</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">structure_sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ridge_scales</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ridge_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'meijering'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'frangi'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'hessian'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'meijering'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">background_sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_non_serializable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/phenotypic/util/image_metrics.html#ImageMetricsCalculator.compute_all"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.util.image_metrics.ImageMetricsCalculator.compute_all" title="Link to this definition">#</a></dt>
@@ -952,57 +993,15 @@ ridge_responses, scales, ridge_method, and coherence_map.</p>
 </dl>
 </dd></dl>
 
-<dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.util.image_metrics.ImageMetricsCalculator.generate_interpretation">
-<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">generate_interpretation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">section</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'noise'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'contrast'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'structure'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'background'</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metrics</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/util/image_metrics.html#ImageMetricsCalculator.generate_interpretation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.util.image_metrics.ImageMetricsCalculator.generate_interpretation" title="Link to this definition">#</a></dt>
-<dd><p>Generate human-readable interpretation text.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>section</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><em>Literal</em></a><em>[</em><em>'noise'</em><em>, </em><em>'contrast'</em><em>, </em><em>'structure'</em><em>, </em><em>'background'</em><em>]</em>) – Section name (“noise”, “contrast”, “structure”, “background”).</p></li>
-<li><p><strong>metrics</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>]</em>) – Computed metrics for the section.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Interpretation text string.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.util.image_metrics.ImageMetricsCalculator.generate_recommendations">
-<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">generate_recommendations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">noise</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#phenotypic.util.image_metrics.NoiseMetrics" title="phenotypic.util.image_metrics.NoiseMetrics"><span class="pre">NoiseMetrics</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">contrast</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#phenotypic.util.image_metrics.ContrastMetrics" title="phenotypic.util.image_metrics.ContrastMetrics"><span class="pre">ContrastMetrics</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">structure</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#phenotypic.util.image_metrics.StructureMetrics" title="phenotypic.util.image_metrics.StructureMetrics"><span class="pre">StructureMetrics</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">background</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#phenotypic.util.image_metrics.BackgroundMetrics" title="phenotypic.util.image_metrics.BackgroundMetrics"><span class="pre">BackgroundMetrics</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/phenotypic/util/image_metrics.html#ImageMetricsCalculator.generate_recommendations"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.util.image_metrics.ImageMetricsCalculator.generate_recommendations" title="Link to this definition">#</a></dt>
-<dd><p>Generate actionable preprocessing recommendations.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>noise</strong> (<a class="reference internal" href="#phenotypic.util.image_metrics.NoiseMetrics" title="phenotypic.util.image_metrics.NoiseMetrics"><em>NoiseMetrics</em></a>) – Noise metrics from compute_noise_metrics().</p></li>
-<li><p><strong>contrast</strong> (<a class="reference internal" href="#phenotypic.util.image_metrics.ContrastMetrics" title="phenotypic.util.image_metrics.ContrastMetrics"><em>ContrastMetrics</em></a>) – Contrast metrics from compute_contrast_metrics().</p></li>
-<li><p><strong>structure</strong> (<a class="reference internal" href="#phenotypic.util.image_metrics.StructureMetrics" title="phenotypic.util.image_metrics.StructureMetrics"><em>StructureMetrics</em></a>) – Structure metrics from compute_structure_metrics().</p></li>
-<li><p><strong>background</strong> (<a class="reference internal" href="#phenotypic.util.image_metrics.BackgroundMetrics" title="phenotypic.util.image_metrics.BackgroundMetrics"><em>BackgroundMetrics</em></a>) – Background metrics from compute_background_metrics().</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>List of recommendation strings.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
-</dd>
-</dl>
-</dd></dl>
-
 <dl class="py property">
 <dt class="sig sig-object py" id="id0">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">bit_depth</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#id0" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">bit_depth</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#id0" title="Link to this definition">#</a></dt>
 <dd><p>Image bit depth (8 or 16) inferred from max intensity.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.ImageMetricsCalculator.max_intensity">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">max_intensity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#phenotypic.util.image_metrics.ImageMetricsCalculator.max_intensity" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">max_intensity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#phenotypic.util.image_metrics.ImageMetricsCalculator.max_intensity" title="Link to this definition">#</a></dt>
 <dd><p>Maximum intensity value based on image bit depth.</p>
 </dd></dl>
 
@@ -1010,7 +1009,7 @@ ridge_responses, scales, ridge_method, and coherence_map.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.NoiseMetrics">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.util.image_metrics.</span></span><span class="sig-name descname"><span class="pre">NoiseMetrics</span></span><a class="reference internal" href="../_modules/phenotypic/util/image_metrics.html#NoiseMetrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.util.image_metrics.NoiseMetrics" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.util.image_metrics.</span></span><span class="sig-name descname"><span class="pre">NoiseMetrics</span></span><a class="reference internal" href="../_modules/phenotypic/util/image_metrics.html#NoiseMetrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.util.image_metrics.NoiseMetrics" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TypedDict" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypedDict</span></code></a></p>
 <p>Noise-related metrics from detection matrix analysis.</p>
 <dl class="py method">
@@ -1025,13 +1024,13 @@ ridge_responses, scales, ridge_method, and coherence_map.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.NoiseMetrics.fromkeys">
-<span class="sig-name descname"><span class="pre">fromkeys</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.NoiseMetrics.fromkeys" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fromkeys</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.NoiseMetrics.fromkeys" title="Link to this definition">#</a></dt>
 <dd><p>Create a new dictionary with keys from iterable and values set to value.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.NoiseMetrics.get">
-<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.NoiseMetrics.get" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.NoiseMetrics.get" title="Link to this definition">#</a></dt>
 <dd><p>Return the value for key if key is in the dictionary, else default.</p>
 </dd></dl>
 
@@ -1062,15 +1061,15 @@ Raises KeyError if the dict is empty.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.NoiseMetrics.setdefault">
-<span class="sig-name descname"><span class="pre">setdefault</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.NoiseMetrics.setdefault" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">setdefault</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.NoiseMetrics.setdefault" title="Link to this definition">#</a></dt>
 <dd><p>Insert key with a value of default if key is not in the dictionary.</p>
 <p>Return the value for key if key is in the dictionary, else default.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.NoiseMetrics.update">
-<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><span class="optional">[</span><em class="sig-param"><span class="n"><span class="pre">E</span></span></em>, <span class="optional">]</span><em class="sig-param"><span class="n"><span class="pre">**F</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None.</span>&#160; <span class="pre">Update</span> <span class="pre">D</span> <span class="pre">from</span> <span class="pre">dict/iterable</span> <span class="pre">E</span> <span class="pre">and</span> <span class="pre">F.</span></span></span><a class="headerlink" href="#phenotypic.util.image_metrics.NoiseMetrics.update" title="Link to this definition">#</a></dt>
-<dd><p>If E is present and has a .keys() method, then does:  for k in E: D[k] = E[k]
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><span class="optional">[</span><em class="sig-param"><span class="n"><span class="pre">E</span></span></em>, <span class="optional">]</span><em class="sig-param"><span class="n"><span class="pre">**F</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None.</span>&#160; <span class="pre">Update</span> <span class="pre">D</span> <span class="pre">from</span> <span class="pre">mapping/iterable</span> <span class="pre">E</span> <span class="pre">and</span> <span class="pre">F.</span></span></span><a class="headerlink" href="#phenotypic.util.image_metrics.NoiseMetrics.update" title="Link to this definition">#</a></dt>
+<dd><p>If E is present and has a .keys() method, then does:  for k in E.keys(): D[k] = E[k]
 If E is present and lacks a .keys() method, then does:  for k, v in E: D[k] = v
 In either case, this is followed by: for k in F:  D[k] = F[k]</p>
 </dd></dl>
@@ -1099,7 +1098,7 @@ In either case, this is followed by: for k in F:  D[k] = F[k]</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.QualityScores">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.util.image_metrics.</span></span><span class="sig-name descname"><span class="pre">QualityScores</span></span><a class="reference internal" href="../_modules/phenotypic/util/image_metrics.html#QualityScores"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.util.image_metrics.QualityScores" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.util.image_metrics.</span></span><span class="sig-name descname"><span class="pre">QualityScores</span></span><a class="reference internal" href="../_modules/phenotypic/util/image_metrics.html#QualityScores"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.util.image_metrics.QualityScores" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TypedDict" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypedDict</span></code></a></p>
 <p>Normalized 0-1 quality scores for radar chart visualization.</p>
 <dl class="py method">
@@ -1114,13 +1113,13 @@ In either case, this is followed by: for k in F:  D[k] = F[k]</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.QualityScores.fromkeys">
-<span class="sig-name descname"><span class="pre">fromkeys</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.QualityScores.fromkeys" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fromkeys</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.QualityScores.fromkeys" title="Link to this definition">#</a></dt>
 <dd><p>Create a new dictionary with keys from iterable and values set to value.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.QualityScores.get">
-<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.QualityScores.get" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.QualityScores.get" title="Link to this definition">#</a></dt>
 <dd><p>Return the value for key if key is in the dictionary, else default.</p>
 </dd></dl>
 
@@ -1151,15 +1150,15 @@ Raises KeyError if the dict is empty.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.QualityScores.setdefault">
-<span class="sig-name descname"><span class="pre">setdefault</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.QualityScores.setdefault" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">setdefault</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.QualityScores.setdefault" title="Link to this definition">#</a></dt>
 <dd><p>Insert key with a value of default if key is not in the dictionary.</p>
 <p>Return the value for key if key is in the dictionary, else default.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.QualityScores.update">
-<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><span class="optional">[</span><em class="sig-param"><span class="n"><span class="pre">E</span></span></em>, <span class="optional">]</span><em class="sig-param"><span class="n"><span class="pre">**F</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None.</span>&#160; <span class="pre">Update</span> <span class="pre">D</span> <span class="pre">from</span> <span class="pre">dict/iterable</span> <span class="pre">E</span> <span class="pre">and</span> <span class="pre">F.</span></span></span><a class="headerlink" href="#phenotypic.util.image_metrics.QualityScores.update" title="Link to this definition">#</a></dt>
-<dd><p>If E is present and has a .keys() method, then does:  for k in E: D[k] = E[k]
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><span class="optional">[</span><em class="sig-param"><span class="n"><span class="pre">E</span></span></em>, <span class="optional">]</span><em class="sig-param"><span class="n"><span class="pre">**F</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None.</span>&#160; <span class="pre">Update</span> <span class="pre">D</span> <span class="pre">from</span> <span class="pre">mapping/iterable</span> <span class="pre">E</span> <span class="pre">and</span> <span class="pre">F.</span></span></span><a class="headerlink" href="#phenotypic.util.image_metrics.QualityScores.update" title="Link to this definition">#</a></dt>
+<dd><p>If E is present and has a .keys() method, then does:  for k in E.keys(): D[k] = E[k]
 If E is present and lacks a .keys() method, then does:  for k, v in E: D[k] = v
 In either case, this is followed by: for k in F:  D[k] = F[k]</p>
 </dd></dl>
@@ -1198,7 +1197,7 @@ In either case, this is followed by: for k in F:  D[k] = F[k]</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.StructureMetrics">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.util.image_metrics.</span></span><span class="sig-name descname"><span class="pre">StructureMetrics</span></span><a class="reference internal" href="../_modules/phenotypic/util/image_metrics.html#StructureMetrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.util.image_metrics.StructureMetrics" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.util.image_metrics.</span></span><span class="sig-name descname"><span class="pre">StructureMetrics</span></span><a class="reference internal" href="../_modules/phenotypic/util/image_metrics.html#StructureMetrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.util.image_metrics.StructureMetrics" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TypedDict" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypedDict</span></code></a></p>
 <p>Structure tensor and ridge detection metrics.</p>
 <dl class="py method">
@@ -1213,13 +1212,13 @@ In either case, this is followed by: for k in F:  D[k] = F[k]</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.StructureMetrics.fromkeys">
-<span class="sig-name descname"><span class="pre">fromkeys</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.StructureMetrics.fromkeys" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fromkeys</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.StructureMetrics.fromkeys" title="Link to this definition">#</a></dt>
 <dd><p>Create a new dictionary with keys from iterable and values set to value.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.StructureMetrics.get">
-<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.StructureMetrics.get" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.StructureMetrics.get" title="Link to this definition">#</a></dt>
 <dd><p>Return the value for key if key is in the dictionary, else default.</p>
 </dd></dl>
 
@@ -1250,15 +1249,15 @@ Raises KeyError if the dict is empty.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.StructureMetrics.setdefault">
-<span class="sig-name descname"><span class="pre">setdefault</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.StructureMetrics.setdefault" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">setdefault</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.util.image_metrics.StructureMetrics.setdefault" title="Link to this definition">#</a></dt>
 <dd><p>Insert key with a value of default if key is not in the dictionary.</p>
 <p>Return the value for key if key is in the dictionary, else default.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.util.image_metrics.StructureMetrics.update">
-<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><span class="optional">[</span><em class="sig-param"><span class="n"><span class="pre">E</span></span></em>, <span class="optional">]</span><em class="sig-param"><span class="n"><span class="pre">**F</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None.</span>&#160; <span class="pre">Update</span> <span class="pre">D</span> <span class="pre">from</span> <span class="pre">dict/iterable</span> <span class="pre">E</span> <span class="pre">and</span> <span class="pre">F.</span></span></span><a class="headerlink" href="#phenotypic.util.image_metrics.StructureMetrics.update" title="Link to this definition">#</a></dt>
-<dd><p>If E is present and has a .keys() method, then does:  for k in E: D[k] = E[k]
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><span class="optional">[</span><em class="sig-param"><span class="n"><span class="pre">E</span></span></em>, <span class="optional">]</span><em class="sig-param"><span class="n"><span class="pre">**F</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None.</span>&#160; <span class="pre">Update</span> <span class="pre">D</span> <span class="pre">from</span> <span class="pre">mapping/iterable</span> <span class="pre">E</span> <span class="pre">and</span> <span class="pre">F.</span></span></span><a class="headerlink" href="#phenotypic.util.image_metrics.StructureMetrics.update" title="Link to this definition">#</a></dt>
+<dd><p>If E is present and has a .keys() method, then does:  for k in E.keys(): D[k] = E[k]
 If E is present and lacks a .keys() method, then does:  for k, v in E: D[k] = v
 In either case, this is followed by: for k in F:  D[k] = F[k]</p>
 </dd></dl>
@@ -1368,6 +1367,8 @@ In either case, this is followed by: for k in F:  D[k] = F[k]</p>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.util.image_metrics.ImageMetricsCalculator"><code class="docutils literal notranslate"><span class="pre">ImageMetricsCalculator</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.util.image_metrics.ImageMetricsCalculator.bit_depth"><code class="docutils literal notranslate"><span class="pre">ImageMetricsCalculator.bit_depth</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.util.image_metrics.ImageMetricsCalculator.generate_interpretation"><code class="docutils literal notranslate"><span class="pre">ImageMetricsCalculator.generate_interpretation()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.util.image_metrics.ImageMetricsCalculator.generate_recommendations"><code class="docutils literal notranslate"><span class="pre">ImageMetricsCalculator.generate_recommendations()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.util.image_metrics.ImageMetricsCalculator.compute_all"><code class="docutils literal notranslate"><span class="pre">ImageMetricsCalculator.compute_all()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.util.image_metrics.ImageMetricsCalculator.compute_background_metrics"><code class="docutils literal notranslate"><span class="pre">ImageMetricsCalculator.compute_background_metrics()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.util.image_metrics.ImageMetricsCalculator.compute_contrast_metrics"><code class="docutils literal notranslate"><span class="pre">ImageMetricsCalculator.compute_contrast_metrics()</span></code></a></li>
@@ -1377,8 +1378,6 @@ In either case, this is followed by: for k in F:  D[k] = F[k]</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.util.image_metrics.ImageMetricsCalculator.compute_psd"><code class="docutils literal notranslate"><span class="pre">ImageMetricsCalculator.compute_psd()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.util.image_metrics.ImageMetricsCalculator.compute_quality_scores"><code class="docutils literal notranslate"><span class="pre">ImageMetricsCalculator.compute_quality_scores()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.util.image_metrics.ImageMetricsCalculator.compute_structure_metrics"><code class="docutils literal notranslate"><span class="pre">ImageMetricsCalculator.compute_structure_metrics()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.util.image_metrics.ImageMetricsCalculator.generate_interpretation"><code class="docutils literal notranslate"><span class="pre">ImageMetricsCalculator.generate_interpretation()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.util.image_metrics.ImageMetricsCalculator.generate_recommendations"><code class="docutils literal notranslate"><span class="pre">ImageMetricsCalculator.generate_recommendations()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id0"><code class="docutils literal notranslate"><span class="pre">ImageMetricsCalculator.bit_depth</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.util.image_metrics.ImageMetricsCalculator.max_intensity"><code class="docutils literal notranslate"><span class="pre">ImageMetricsCalculator.max_intensity</span></code></a></li>
 </ul>
@@ -1486,7 +1485,7 @@ In either case, this is followed by: for k in F:  D[k] = F[k]</p>
         <div class="footer-item">
 
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
     <br/>
   </p>
 </div>

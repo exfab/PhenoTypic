@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=fb952d1c"></script>
+    <script src="../../_static/documentation_options.js?v=db24b7f7"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -51,7 +51,6 @@
     <script src="../../_static/design-tabs.js?v=f930bc37"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/api/phenotypic.analysis.ExpectedVsDetectedCount';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
@@ -67,7 +66,7 @@
     <link rel="prev" title="phenotypic.analysis.EdgeCorrector" href="phenotypic.analysis.EdgeCorrector.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.15.1" />
+  <meta name="docsearch:version" content="0.15.2" />
   </head>
   
   
@@ -949,7 +948,7 @@
 <h1>phenotypic.analysis.ExpectedVsDetectedCount<a class="headerlink" href="#phenotypic-analysis-expectedvsdetectedcount" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.analysis.ExpectedVsDetectedCount">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.analysis.</span></span><span class="sig-name descname"><span class="pre">ExpectedVsDetectedCount</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">pd.DataFrame</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">groupby</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ColumnRefList</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ColumnRef</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'ObjectLabel'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">severity_warn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">severity_fail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_jobs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/analysis/_expected_vs_detected.html#ExpectedVsDetectedCount"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.analysis.</span></span><span class="sig-name descname"><span class="pre">ExpectedVsDetectedCount</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">pd.DataFrame</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">groupby</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ColumnRefList</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ColumnRef</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'ObjectLabel'</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">severity_warn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">severity_fail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_jobs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/analysis/_expected_vs_detected.html#ExpectedVsDetectedCount"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="../phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.QualityCheck" title="phenotypic.analysis.abc_._quality_check.QualityCheck"><code class="xref py py-class docutils literal notranslate"><span class="pre">QualityCheck</span></code></a></p>
 <p>Flag groups whose detected colony count diverges from metadata.</p>
 <blockquote>
@@ -1030,8 +1029,8 @@ one well:</p>
 <span class="gp">... </span>    <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span>
 <span class="gp">... </span>    <span class="n">groupby</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Metadata_ImageFile&quot;</span><span class="p">],</span>
 <span class="gp">... </span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">chk</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span>  
-<span class="gp">&gt;&gt;&gt; </span><span class="s2">&quot;QC_Count_Severity&quot;</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">columns</span>  
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">chk</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="s2">&quot;QC_Count_Severity&quot;</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">columns</span>
 <span class="go">True</span>
 </pre></div>
 </div>
@@ -1049,8 +1048,8 @@ severity is infinite and the key is recorded:</p>
 <span class="gp">... </span>    <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span>
 <span class="gp">... </span>    <span class="n">groupby</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Metadata_ImageFile&quot;</span><span class="p">],</span>
 <span class="gp">... </span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">chk</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span>  
-<span class="gp">&gt;&gt;&gt; </span><span class="n">chk</span><span class="o">.</span><span class="n">unmatched_groups</span>  
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">chk</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">chk</span><span class="o">.</span><span class="n">unmatched_groups</span>
 <span class="go">[(&#39;plate2.png&#39;,)]</span>
 </pre></div>
 </div>
@@ -1098,7 +1097,7 @@ severity is infinite and the key is recorded:</p>
 </table>
 </div>
 <p class="rubric">Methods</p>
-<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></p></td>
 <td><p>Construct a quality check.</p></td>
@@ -1134,7 +1133,7 @@ severity is infinite and the key is recorded:</p>
 </table>
 </div>
 <p class="rubric">Attributes</p>
-<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.analysis.html#phenotypic.analysis.ExpectedVsDetectedCount.name" title="phenotypic.analysis.ExpectedVsDetectedCount.name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></a></p></td>
 <td><p></p></td>
@@ -1229,7 +1228,7 @@ and one marker trace.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.analysis.ExpectedVsDetectedCount.__init_subclass__">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">__init_subclass__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.__init_subclass__" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">__init_subclass__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.__init_subclass__" title="Link to this definition">#</a></dt>
 <dd><p>Append QC and per-check RST tables to the subclass docstring.</p>
 <p>Skips intermediate ABCs that have not yet bound <code class="docutils literal notranslate"><span class="pre">name</span></code>. When
 the subclass declares both a docstring and a <code class="docutils literal notranslate"><span class="pre">name</span></code>, the
@@ -1250,7 +1249,7 @@ generic trio.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.analysis.ExpectedVsDetectedCount.flag_col">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">flag_col</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.flag_col" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">flag_col</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.flag_col" title="Link to this definition">#</a></dt>
 <dd><p>Return the flag column name for this check.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -1292,7 +1291,7 @@ for rows where <code class="docutils literal notranslate"><span class="pre">Flag
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.analysis.ExpectedVsDetectedCount.severity_col">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">severity_col</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.severity_col" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">severity_col</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.severity_col" title="Link to this definition">#</a></dt>
 <dd><p>Return the severity column name for this check.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -1327,7 +1326,7 @@ right method.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.analysis.ExpectedVsDetectedCount.status_col">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">status_col</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.status_col" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">status_col</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.status_col" title="Link to this definition">#</a></dt>
 <dd><p>Return the status column name for this check.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -1443,7 +1442,7 @@ wins over <code class="docutils literal notranslate"><span class="pre">&quot;war
         <div class="footer-item">
 
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
     <br/>
   </p>
 </div>

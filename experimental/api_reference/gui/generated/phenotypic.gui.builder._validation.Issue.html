@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=fb952d1c"></script>
+    <script src="../../../_static/documentation_options.js?v=db24b7f7"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -51,7 +51,6 @@
     <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/gui/generated/phenotypic.gui.builder._validation.Issue';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
@@ -67,7 +66,7 @@
     <link rel="prev" title="phenotypic.gui.builder._validation.validate" href="phenotypic.gui.builder._validation.validate.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.15.1" />
+  <meta name="docsearch:version" content="0.15.2" />
   </head>
   
   
@@ -952,7 +951,7 @@
 <h1>phenotypic.gui.builder._validation.Issue<a class="headerlink" href="#phenotypic-gui-builder-validation-issue" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.gui.builder._validation.Issue">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.gui.builder._validation.</span></span><span class="sig-name descname"><span class="pre">Issue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">kind:</span> <span class="pre">~typing.Literal['fork',</span> <span class="pre">'stub',</span> <span class="pre">'required_aux',</span> <span class="pre">'cycle',</span> <span class="pre">'container_mode',</span> <span class="pre">'missing_input',</span> <span class="pre">'duplicate_input',</span> <span class="pre">'stage_order_hint',</span> <span class="pre">'unknown_class'],</span> <span class="pre">block_id:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None,</span> <span class="pre">detail:</span> <span class="pre">str,</span> <span class="pre">scope_path:</span> <span class="pre">~typing.List[str]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">severity:</span> <span class="pre">~typing.Literal['error',</span> <span class="pre">'advisory']</span> <span class="pre">=</span> <span class="pre">'error'</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/phenotypic/gui/builder/_validation.html#Issue"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.gui.builder._validation.Issue" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.gui.builder._validation.</span></span><span class="sig-name descname"><span class="pre">Issue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">kind:</span> <span class="pre">~typing.Literal['fork',</span> <span class="pre">'stub',</span> <span class="pre">'required_aux',</span> <span class="pre">'cycle',</span> <span class="pre">'container_mode',</span> <span class="pre">'missing_input',</span> <span class="pre">'duplicate_input',</span> <span class="pre">'stage_order_hint',</span> <span class="pre">'unknown_class'],</span> <span class="pre">block_id:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None,</span> <span class="pre">detail:</span> <span class="pre">str,</span> <span class="pre">scope_path:</span> <span class="pre">~typing.List[str]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">severity:</span> <span class="pre">~typing.Literal['error',</span> <span class="pre">'advisory']</span> <span class="pre">=</span> <span class="pre">'error'</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/phenotypic/gui/builder/_validation.html#Issue"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.gui.builder._validation.Issue" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>A single validation finding for a block or scope.</p>
 <dl class="field-list simple">
@@ -1034,7 +1033,7 @@ issue; callers gate Run/Save by filtering on this field.</p>
 </dd></dl>
 
 <p class="rubric">Methods</p>
-<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></p></td>
 <td><p></p></td>
@@ -1043,7 +1042,7 @@ issue; callers gate Run/Save by filtering on this field.</p>
 </table>
 </div>
 <p class="rubric">Attributes</p>
-<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#id4" title="phenotypic.gui.builder._validation.Issue.severity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">severity</span></code></a></p></td>
 <td><p></p></td>
@@ -1174,7 +1173,7 @@ issue; callers gate Run/Save by filtering on this field.</p>
         <div class="footer-item">
 
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
     <br/>
   </p>
 </div>

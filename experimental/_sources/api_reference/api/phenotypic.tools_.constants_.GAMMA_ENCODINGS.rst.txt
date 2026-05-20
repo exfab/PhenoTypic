@@ -68,6 +68,7 @@ phenotypic.tools\_.constants\_.GAMMA\_ENCODINGS
       ~GAMMA_ENCODINGS.format
       ~GAMMA_ENCODINGS.format_map
       ~GAMMA_ENCODINGS.maketrans
+      ~GAMMA_ENCODINGS.__init__
    
    
 

@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=fb952d1c"></script>
+    <script src="../_static/documentation_options.js?v=db24b7f7"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -51,7 +51,6 @@
     <script src="../_static/design-tabs.js?v=f930bc37"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/phenotypic.abc_';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
@@ -65,7 +64,7 @@
     <link rel="search" title="Search" href="../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.15.1" />
+  <meta name="docsearch:version" content="0.15.2" />
   </head>
   
   
@@ -535,7 +534,7 @@ tailored to agar plate imaging, building on <cite>MeasurementInfo</cite>, <cite>
 <cite>ImageOperation</cite>, <cite>GridOperation</cite>, and the prefab pipeline foundation.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.BaseOperation">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">BaseOperation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_base_operation.html#BaseOperation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.BaseOperation" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">BaseOperation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_base_operation.html#BaseOperation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.BaseOperation" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
 <p>Root abstract base class for all operations in PhenoTypic.</p>
 <p>BaseOperation is the foundation of PhenoTypic’s operation system. It provides
@@ -708,14 +707,14 @@ will fall back gracefully. psutil is available on all platforms.</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.DetectionMode">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">DetectionMode</span></span><a class="reference internal" href="../_modules/phenotypic/_core/_image_parts/detection_modes/_detection_mode.html#DetectionMode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.DetectionMode" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">DetectionMode</span></span><a class="reference internal" href="../_modules/phenotypic/_core/_image_parts/detection_modes/_detection_mode.html#DetectionMode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.DetectionMode" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
 <p>Base class for detection matrix source modes.</p>
 <p>Subclasses define how the detection matrix is computed from
 raw image data (grayscale, individual RGB channels, etc.).</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.DetectionMode.compute">
-<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">np.ndarray</span></span></span><a class="reference internal" href="../_modules/phenotypic/_core/_image_parts/detection_modes/_detection_mode.html#DetectionMode.compute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.DetectionMode.compute" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">np.ndarray</span></span></span><a class="reference internal" href="../_modules/phenotypic/_core/_image_parts/detection_modes/_detection_mode.html#DetectionMode.compute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.DetectionMode.compute" title="Link to this definition">#</a></dt>
 <dd><p>Return a fresh detection matrix from <em>image</em>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -732,13 +731,13 @@ raw image data (grayscale, individual RGB channels, etc.).</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.abc_.DetectionMode.name">
-<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.abc_.DetectionMode.name" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">abstract</span></span><span class="w"> </span><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.abc_.DetectionMode.name" title="Link to this definition">#</a></dt>
 <dd><p>Short identifier used in <code class="docutils literal notranslate"><span class="pre">detect_mode</span></code> strings.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.abc_.DetectionMode.requires_rgb">
-<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">requires_rgb</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#phenotypic.abc_.DetectionMode.requires_rgb" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">abstract</span></span><span class="w"> </span><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">requires_rgb</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#phenotypic.abc_.DetectionMode.requires_rgb" title="Link to this definition">#</a></dt>
 <dd><p>Whether this mode needs RGB data to compute.</p>
 </dd></dl>
 
@@ -746,7 +745,7 @@ raw image data (grayscale, individual RGB channels, etc.).</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.FootprintMixin">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">FootprintMixin</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/mixin/_footprint_mixin.html#FootprintMixin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.FootprintMixin" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">FootprintMixin</span></span><a class="reference internal" href="../_modules/phenotypic/tools_/mixin/_footprint_mixin.html#FootprintMixin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.FootprintMixin" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Provides a mixin for creating morphological footprints for image processing.</p>
 <p>The FootprintMixin class contains a static utility method to generate structuring elements
@@ -764,7 +763,7 @@ and feature extraction.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.GpuDetector">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">GpuDetector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_gpu_detector.html#GpuDetector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GpuDetector" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">GpuDetector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_gpu_detector.html#GpuDetector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GpuDetector" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.abc_.ObjectDetector" title="phenotypic.abc_._object_detector.ObjectDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">ObjectDetector</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
 <p>Marker ABC for object detectors that require GPU acceleration.</p>
 <p>Subclass GpuDetector when your detection algorithm depends on a GPU
@@ -904,7 +903,7 @@ visualization controls will be added to the widget.</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.GridCorrector">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">GridCorrector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_grid_corrector.html#GridCorrector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GridCorrector" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">GridCorrector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_grid_corrector.html#GridCorrector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GridCorrector" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.abc_.ImageCorrector" title="phenotypic.abc_._image_corrector.ImageCorrector"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageCorrector</span></code></a>, <a class="reference internal" href="#phenotypic.abc_.GridOperation" title="phenotypic.abc_._grid_operation.GridOperation"><code class="xref py py-class docutils literal notranslate"><span class="pre">GridOperation</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
 <p>Apply whole-image transformations (rotation, alignment, perspective) to GridImage objects.</p>
 <p>GridCorrector is a type-safe wrapper around ImageCorrector that enforces GridImage input
@@ -1206,7 +1205,7 @@ visualization controls will be added to the widget.</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.GridFinder">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">GridFinder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nrows</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">ncols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_grid_finder.html#GridFinder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GridFinder" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">GridFinder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nrows</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">ncols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_grid_finder.html#GridFinder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GridFinder" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.abc_.GridMeasureFeatures" title="phenotypic.abc_._grid_measure.GridMeasureFeatures"><code class="xref py py-class docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
 <p>Abstract base class for detecting grid structure and assigning objects to wells.</p>
 <p>GridFinder is the foundation for grid detection algorithms in arrayed plate imaging.
@@ -1434,7 +1433,7 @@ results and correlating with sample metadata:</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.GridFinder.get_col_edges">
-<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_col_edges</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">np.ndarray</span></span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_grid_finder.html#GridFinder.get_col_edges"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GridFinder.get_col_edges" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_col_edges</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">np.ndarray</span></span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_grid_finder.html#GridFinder.get_col_edges"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GridFinder.get_col_edges" title="Link to this definition">#</a></dt>
 <dd><p>This method is to returns the column edges of the grid as a numpy array.
 :param image:</p>
 <dl class="field-list simple">
@@ -1452,7 +1451,7 @@ results and correlating with sample metadata:</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.GridFinder.get_row_edges">
-<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_row_edges</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">np.ndarray</span></span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_grid_finder.html#GridFinder.get_row_edges"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GridFinder.get_row_edges" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_row_edges</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">np.ndarray</span></span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_grid_finder.html#GridFinder.get_row_edges"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GridFinder.get_row_edges" title="Link to this definition">#</a></dt>
 <dd><p>This method is to returns the row edges of the grid as a numpy array.
 :param image: Image object.
 :type image: Image</p>
@@ -1487,7 +1486,7 @@ results and correlating with sample metadata:</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.GridMeasureFeatures">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">GridMeasureFeatures</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_grid_measure.html#GridMeasureFeatures"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GridMeasureFeatures" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">GridMeasureFeatures</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_grid_measure.html#GridMeasureFeatures"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GridMeasureFeatures" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.abc_.MeasureFeatures" title="phenotypic.abc_._measure_features.MeasureFeatures"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureFeatures</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
 <p>Extract feature measurements from detected colonies in GridImage objects.</p>
 <p>GridMeasureFeatures is a type-safe wrapper around MeasureFeatures that enforces
@@ -1746,7 +1745,7 @@ can influence shape interpretation (e.g., elongation along grid rows).</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.GridObjectDetector">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">GridObjectDetector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_grid_object_detector.html#GridObjectDetector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GridObjectDetector" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">GridObjectDetector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_grid_object_detector.html#GridObjectDetector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GridObjectDetector" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.abc_.ObjectDetector" title="phenotypic.abc_._object_detector.ObjectDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">ObjectDetector</span></code></a>, <a class="reference internal" href="#phenotypic.abc_.GridOperation" title="phenotypic.abc_._grid_operation.GridOperation"><code class="xref py py-class docutils literal notranslate"><span class="pre">GridOperation</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
 <p>Detect and label colonies in GridImage objects using grid structure.</p>
 <p>GridObjectDetector is a type-safe wrapper around ObjectDetector that enforces GridImage
@@ -2000,7 +1999,7 @@ visualization controls will be added to the widget.</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.GridObjectRefiner">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">GridObjectRefiner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_grid_object_refiner.html#GridObjectRefiner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GridObjectRefiner" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">GridObjectRefiner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_grid_object_refiner.html#GridObjectRefiner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GridObjectRefiner" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.abc_.ObjectRefiner" title="phenotypic.abc_._object_refiner.ObjectRefiner"><code class="xref py py-class docutils literal notranslate"><span class="pre">ObjectRefiner</span></code></a>, <a class="reference internal" href="#phenotypic.abc_.GridOperation" title="phenotypic.abc_._grid_operation.GridOperation"><code class="xref py py-class docutils literal notranslate"><span class="pre">GridOperation</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
 <p>Abstract base class for post-detection refinement operations on grid-aligned plate images.</p>
 <p>GridObjectRefiner is the grid-aware variant of ObjectRefiner, combining object mask refinement
@@ -2332,7 +2331,7 @@ visualization controls will be added to the widget.</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.GridOperation">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">GridOperation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_grid_operation.html#GridOperation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GridOperation" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">GridOperation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_grid_operation.html#GridOperation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GridOperation" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.abc_.ImageOperation" title="phenotypic.abc_._image_operation.ImageOperation"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageOperation</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
 <p>Abstract base class for operations on grid-aligned plate images.</p>
 <p>GridOperation is a marker abstract base class that enforces type safety for operations
@@ -2571,7 +2570,7 @@ visualization controls will be added to the widget.</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.ImageCorrector">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">ImageCorrector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_image_corrector.html#ImageCorrector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.ImageCorrector" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">ImageCorrector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_image_corrector.html#ImageCorrector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.ImageCorrector" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.abc_.ImageOperation" title="phenotypic.abc_._image_operation.ImageOperation"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageOperation</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
 <p>Abstract base class for whole-image transformation operations affecting all components.</p>
 <p>ImageCorrector is a specialized subclass of ImageOperation for global image transformations
@@ -2862,8 +2861,6 @@ Any active widgets will be detached from the object.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.ImageCorrector.apply">
 <span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Image</span></span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_image_corrector.html#ImageCorrector.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.ImageCorrector.apply" title="Link to this definition">#</a></dt>
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">GridImage</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">GridImage</span></span></span></dt>
 <dd><p>Applies the operation to an image, either in-place or on a copy.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -2910,7 +2907,7 @@ visualization controls will be added to the widget.</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.ImageDenoiser">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">ImageDenoiser</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_image_denoiser.html#ImageDenoiser"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.ImageDenoiser" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">ImageDenoiser</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_image_denoiser.html#ImageDenoiser"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.ImageDenoiser" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.abc_.ImageEnhancer" title="phenotypic.abc_._image_enhancer.ImageEnhancer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancer</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
 <p>Marker ABC for noise-driven enhancers that operate on <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code>.</p>
 <p>Subclasses are conventional <a class="reference internal" href="#phenotypic.abc_.ImageEnhancer" title="phenotypic.abc_.ImageEnhancer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancer</span></code></a> operations whose
@@ -3010,7 +3007,7 @@ visualization controls will be added to the widget.</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.ImageEnhancer">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">ImageEnhancer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_image_enhancer.html#ImageEnhancer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.ImageEnhancer" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">ImageEnhancer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_image_enhancer.html#ImageEnhancer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.ImageEnhancer" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="phenotypic.tools_.mixin.html#phenotypic.tools_.mixin.FootprintMixin" title="phenotypic.tools_.mixin._footprint_mixin.FootprintMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">FootprintMixin</span></code></a>, <a class="reference internal" href="#phenotypic.abc_.ImageOperation" title="phenotypic.abc_._image_operation.ImageOperation"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageOperation</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
 <p>Abstract base class for preprocessing operations that improve colony detection through detection matrix.</p>
 <p>ImageEnhancer is the foundation for all preprocessing algorithms that modify only the enhanced
@@ -3349,9 +3346,7 @@ Any active widgets will be detached from the object.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="id0">
-<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Image</span></span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_image_enhancer.html#ImageEnhancer.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id0" title="Link to this definition">#</a></dt>
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">GridImage</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">GridImage</span></span></span></dt>
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_image_enhancer.html#ImageEnhancer.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id0" title="Link to this definition">#</a></dt>
 <dd><p>Applies the operation to an image, either in-place or on a copy.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -3398,7 +3393,7 @@ visualization controls will be added to the widget.</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.ImageOperation">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">ImageOperation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_image_operation.html#ImageOperation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.ImageOperation" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">ImageOperation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_image_operation.html#ImageOperation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.ImageOperation" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.abc_.BaseOperation" title="phenotypic.abc_._base_operation.BaseOperation"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseOperation</span></code></a>, <a class="reference internal" href="phenotypic.tools_.mixin.html#phenotypic.tools_.mixin.LazyWidgetMixin" title="phenotypic.tools_.mixin._lazy_widget_mixin.LazyWidgetMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">LazyWidgetMixin</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
 <p>Core abstract base class for all single-image transformation operations in PhenoTypic.</p>
 <p>ImageOperation is the foundation of PhenoTypic’s algorithm system. It defines the
@@ -3586,6 +3581,14 @@ operation object (with all parameters) is serialized together.</p>
 <span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_image_operation.html#ImageOperation.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.ImageOperation.apply" title="Link to this definition">#</a></dt>
 <dd><p>User-facing method that applies the operation.
 Handles copy/inplace logic, calls <code class="docutils literal notranslate"><span class="pre">_operate()</span></code>, and validates integrity.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>image</strong> (<em>Image</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Image</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -3779,9 +3782,7 @@ Any active widgets will be detached from the object.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="id1">
-<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Image</span></span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_image_operation.html#ImageOperation.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id1" title="Link to this definition">#</a></dt>
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">GridImage</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">GridImage</span></span></span></dt>
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Image</span></span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_image_operation.html#ImageOperation.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id1" title="Link to this definition">#</a></dt>
 <dd><p>Applies the operation to an image, either in-place or on a copy.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -3828,7 +3829,7 @@ visualization controls will be added to the widget.</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasureFeatures">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">MeasureFeatures</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_measure_features.html#MeasureFeatures"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasureFeatures" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">MeasureFeatures</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_measure_features.html#MeasureFeatures"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasureFeatures" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.abc_.BaseOperation" title="phenotypic.abc_._base_operation.BaseOperation"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseOperation</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
 <p>Extract quantitative measurements from detected colony objects in images.</p>
 <p>MeasureFeatures is the abstract base class for all feature extraction operations
@@ -4167,7 +4168,7 @@ before OBJECT.LABEL (e.g., Filename, GridRow, GridCol).</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">MeasurementInfo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">MeasurementInfo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_class_name</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></a></p>
 <p>Base class for creating standardized measurement information enumerations.</p>
 <p>This class provides a structured way to define measurement types with consistent naming
@@ -4292,9 +4293,161 @@ Provides instance-level access to the measurement category.</p>
 </div>
 </div>
 <dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.__format__">
-<span class="sig-name descname"><span class="pre">__format__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">format_spec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.__format__" title="Link to this definition">#</a></dt>
-<dd><p>Returns format using actual value type unless __str__ has been overridden.</p>
+<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.append_rst_to_doc">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo.append_rst_to_doc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.append_rst_to_doc" title="Link to this definition">#</a></dt>
+<dd><p>Append the measurement documentation table to a module or class docstring.</p>
+<p>Generates the RST documentation table for this measurement enumeration and appends
+it to the provided module’s or class’s existing docstring. This is useful for
+automatically documenting which measurements a class produces or uses.</p>
+<p>If the input is a string, it is treated as the docstring itself. If it is an object
+(class, function, module), its __doc__ attribute is used.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>module</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><em>object</em></a>) – Either a docstring string or an object (class, function,
+module) whose __doc__ attribute contains the docstring. The existing
+docstring is preserved, and the measurement table is appended with a blank
+line separator.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The original docstring (or string) with the RST measurement table appended,</dt><dd><p>separated by two blank lines. The returned string is ready to be assigned back
+to the target’s __doc__ attribute.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.category">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">category</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo.category"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.category" title="Link to this definition">#</a></dt>
+<dd><p>Return the category name for this measurement enumeration.</p>
+<p>Subclasses must implement this method to provide a category name that will be used
+to prefix all measurement labels. This ensures consistent naming conventions across
+the codebase.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>The category name (e.g., ‘Shape’, ‘Color’, ‘Texture’). This string is</dt><dd><p>prepended to each measurement label with an underscore separator to form
+the full header name (e.g., ‘Shape_Area’).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – If not implemented by a subclass.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.get_headers">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_headers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo.get_headers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.get_headers" title="Link to this definition">#</a></dt>
+<dd><p>Get all measurement headers with category prefix.</p>
+<p>Returns a list of the full enumeration values (with category prefix) for all
+measurements defined in this enumeration. These strings are suitable for use as
+DataFrame column names, dictionary keys, or in any context where the full
+categorized name is needed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>List of prefixed measurement names in enumeration order</dt><dd><p>(e.g., [‘Shape_Area’, ‘Shape_Perimeter’]). Each header includes the
+category prefix separated by an underscore.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.get_labels">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_labels</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo.get_labels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.get_labels" title="Link to this definition">#</a></dt>
+<dd><p>Get all measurement labels without category prefix.</p>
+<p>Returns a list of the short labels (without category prefix) for all measurements
+defined in this enumeration. These are the first element of each enum value tuple.
+Useful for creating human-readable lists or column names when the category context
+is already established.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>List of measurement labels in enumeration order (e.g.,</dt><dd><p>[‘Area’, ‘Perimeter’]). Does not include the category prefix; to get
+prefixed names, use get_headers().</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.rst_table">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rst_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">('Name',</span> <span class="pre">'Description')</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo.rst_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.rst_table" title="Link to this definition">#</a></dt>
+<dd><p>Generate an RST (reStructuredText) table documenting the measurements.</p>
+<p>Creates a formatted list-table in reStructuredText format that documents all
+measurements in this enumeration, including their labels and descriptions. This
+is useful for generating API documentation, parameter guides, or measurement
+reference tables that will be rendered in Sphinx documentation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – The title for the RST table. Defaults to the class name
+(e.g., ‘SHAPE’). The title is formatted as “Category: <strong>{title}</strong>” in the
+output.</p></li>
+<li><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em><em>, </em><em>optional</em>) – A tuple of (left_column, right_column)
+header names. Defaults to (“Name”, “Description”). The left column typically
+contains measurement labels and the right column contains their descriptions.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl>
+<dt>A formatted reStructuredText list-table string. The output includes:</dt><dd><ul class="simple">
+<li><p>RST list-table directive with the title</p></li>
+<li><p>Column headers (Name and Description by default)</p></li>
+<li><p>One row per measurement with label and description</p></li>
+</ul>
+<p>The returned string is ready to be embedded in Sphinx documentation files
+or appended to docstrings.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.maketrans">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">maketrans</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.maketrans" title="Link to this definition">#</a></dt>
+<dd><p>Return a translation table usable for str.translate().</p>
+<p>If there is only one argument, it must be a dictionary mapping Unicode
+ordinals (integers) or characters to Unicode ordinals, strings or None.
+Character keys will be then converted to ordinals.
+If there are two arguments, they must be strings of equal length, and
+in the resulting dictionary, each character in x will be mapped to the
+character at the same position in y. If there is a third argument, it
+must be a string, whose characters will be mapped to None in the result.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.__dir__">
+<span class="sig-name descname"><span class="pre">__dir__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.__dir__" title="Link to this definition">#</a></dt>
+<dd><p>Returns public methods and other interesting attributes.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -4351,36 +4504,6 @@ or used in string formatting.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.append_rst_to_doc">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo.append_rst_to_doc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.append_rst_to_doc" title="Link to this definition">#</a></dt>
-<dd><p>Append the measurement documentation table to a module or class docstring.</p>
-<p>Generates the RST documentation table for this measurement enumeration and appends
-it to the provided module’s or class’s existing docstring. This is useful for
-automatically documenting which measurements a class produces or uses.</p>
-<p>If the input is a string, it is treated as the docstring itself. If it is an object
-(class, function, module), its __doc__ attribute is used.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>module</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><em>object</em></a>) – Either a docstring string or an object (class, function,
-module) whose __doc__ attribute contains the docstring. The existing
-docstring is preserved, and the measurement table is appended with a blank
-line separator.</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><dl class="simple">
-<dt>The original docstring (or string) with the RST measurement table appended,</dt><dd><p>separated by two blank lines. The returned string is ready to be assigned back
-to the target’s __doc__ attribute.</p>
-</dd>
-</dl>
-</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.capitalize">
 <span class="sig-name descname"><span class="pre">capitalize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.capitalize" title="Link to this definition">#</a></dt>
 <dd><p>Return a capitalized version of the string.</p>
@@ -4395,33 +4518,8 @@ case.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.category">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">category</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo.category"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.category" title="Link to this definition">#</a></dt>
-<dd><p>Return the category name for this measurement enumeration.</p>
-<p>Subclasses must implement this method to provide a category name that will be used
-to prefix all measurement labels. This ensures consistent naming conventions across
-the codebase.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p><dl class="simple">
-<dt>The category name (e.g., ‘Shape’, ‘Color’, ‘Texture’). This string is</dt><dd><p>prepended to each measurement label with an underscore separator to form
-the full header name (e.g., ‘Shape_Area’).</p>
-</dd>
-</dl>
-</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
-</dd>
-<dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – If not implemented by a subclass.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.center">
-<span class="sig-name descname"><span class="pre">center</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.center" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">center</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.center" title="Link to this definition">#</a></dt>
 <dd><p>Return a centered string of length width.</p>
 <p>Padding is done using the specified fill character (default is a space).</p>
 </dd></dl>
@@ -4487,52 +4585,6 @@ The substitutions are identified by braces (‘{’ and ‘}’).</p>
 <span class="sig-name descname"><span class="pre">format_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mapping</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.format_map" title="Link to this definition">#</a></dt>
 <dd><p>Return a formatted version of S, using substitutions from mapping.
 The substitutions are identified by braces (‘{’ and ‘}’).</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.get_headers">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_headers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo.get_headers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.get_headers" title="Link to this definition">#</a></dt>
-<dd><p>Get all measurement headers with category prefix.</p>
-<p>Returns a list of the full enumeration values (with category prefix) for all
-measurements defined in this enumeration. These strings are suitable for use as
-DataFrame column names, dictionary keys, or in any context where the full
-categorized name is needed.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p><dl class="simple">
-<dt>List of prefixed measurement names in enumeration order</dt><dd><p>(e.g., [‘Shape_Area’, ‘Shape_Perimeter’]). Each header includes the
-category prefix separated by an underscore.</p>
-</dd>
-</dl>
-</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.get_labels">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_labels</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo.get_labels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.get_labels" title="Link to this definition">#</a></dt>
-<dd><p>Get all measurement labels without category prefix.</p>
-<p>Returns a list of the short labels (without category prefix) for all measurements
-defined in this enumeration. These are the first element of each enum value tuple.
-Useful for creating human-readable lists or column names when the category context
-is already established.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p><dl class="simple">
-<dt>List of measurement labels in enumeration order (e.g.,</dt><dd><p>[‘Area’, ‘Perimeter’]). Does not include the category prefix; to get
-prefixed names, use get_headers().</p>
-</dd>
-</dl>
-</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
-</dd>
-</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -4611,9 +4663,8 @@ least one character in the string.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.isprintable">
 <span class="sig-name descname"><span class="pre">isprintable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.isprintable" title="Link to this definition">#</a></dt>
-<dd><p>Return True if the string is printable, False otherwise.</p>
-<p>A string is printable if all of its characters are considered printable in
-repr() or if it is empty.</p>
+<dd><p>Return True if all characters in the string are printable, False otherwise.</p>
+<p>A character is printable if repr() may use it in its output.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -4642,7 +4693,7 @@ there is at least one cased character in the string.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.join">
-<span class="sig-name descname"><span class="pre">join</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.join" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">join</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.join" title="Link to this definition">#</a></dt>
 <dd><p>Concatenate any number of strings.</p>
 <p>The string whose method is called is inserted in between each given string.
 The result is returned as a new string.</p>
@@ -4651,7 +4702,7 @@ The result is returned as a new string.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.ljust">
-<span class="sig-name descname"><span class="pre">ljust</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.ljust" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">ljust</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.ljust" title="Link to this definition">#</a></dt>
 <dd><p>Return a left-justified string of length width.</p>
 <p>Padding is done using the specified fill character (default is a space).</p>
 </dd></dl>
@@ -4664,27 +4715,14 @@ The result is returned as a new string.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.lstrip">
-<span class="sig-name descname"><span class="pre">lstrip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.lstrip" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">lstrip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.lstrip" title="Link to this definition">#</a></dt>
 <dd><p>Return a copy of the string with leading whitespace removed.</p>
 <p>If chars is given and not None, remove characters in chars instead.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.maketrans">
-<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">maketrans</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.maketrans" title="Link to this definition">#</a></dt>
-<dd><p>Return a translation table usable for str.translate().</p>
-<p>If there is only one argument, it must be a dictionary mapping Unicode
-ordinals (integers) or characters to Unicode ordinals, strings or None.
-Character keys will be then converted to ordinals.
-If there are two arguments, they must be strings of equal length, and
-in the resulting dictionary, each character in x will be mapped to the
-character at the same position in y. If there is a third argument, it
-must be a string, whose characters will be mapped to None in the result.</p>
-</dd></dl>
-
-<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.partition">
-<span class="sig-name descname"><span class="pre">partition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.partition" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">partition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.partition" title="Link to this definition">#</a></dt>
 <dd><p>Partition the string into three parts using the given separator.</p>
 <p>This will search for the separator in the string.  If the separator is found,
 returns a 3-tuple containing the part before the separator, the separator
@@ -4695,7 +4733,7 @@ and two empty strings.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.removeprefix">
-<span class="sig-name descname"><span class="pre">removeprefix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prefix</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.removeprefix" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">removeprefix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prefix</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.removeprefix" title="Link to this definition">#</a></dt>
 <dd><p>Return a str with the given prefix string removed if present.</p>
 <p>If the string starts with the prefix string, return string[len(prefix):].
 Otherwise, return a copy of the original string.</p>
@@ -4703,7 +4741,7 @@ Otherwise, return a copy of the original string.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.removesuffix">
-<span class="sig-name descname"><span class="pre">removesuffix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">suffix</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.removesuffix" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">removesuffix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">suffix</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.removesuffix" title="Link to this definition">#</a></dt>
 <dd><p>Return a str with the given suffix string removed if present.</p>
 <p>If the string ends with the suffix string and that suffix is not empty,
 return string[:-len(suffix)]. Otherwise, return a copy of the original
@@ -4712,7 +4750,7 @@ string.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.replace">
-<span class="sig-name descname"><span class="pre">replace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">old</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.replace" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">replace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">old</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.replace" title="Link to this definition">#</a></dt>
 <dd><p>Return a copy with all occurrences of substring old replaced by new.</p>
 <blockquote>
 <div><dl class="simple">
@@ -4745,14 +4783,14 @@ arguments start and end are interpreted as in slice notation.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.rjust">
-<span class="sig-name descname"><span class="pre">rjust</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.rjust" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">rjust</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.rjust" title="Link to this definition">#</a></dt>
 <dd><p>Return a right-justified string of length width.</p>
 <p>Padding is done using the specified fill character (default is a space).</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.rpartition">
-<span class="sig-name descname"><span class="pre">rpartition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.rpartition" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">rpartition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.rpartition" title="Link to this definition">#</a></dt>
 <dd><p>Partition the string into three parts using the given separator.</p>
 <p>This will search for the separator in the string, starting at the end. If
 the separator is found, returns a 3-tuple containing the part before the
@@ -4769,10 +4807,10 @@ and the original string.</p>
 <div><dl>
 <dt>sep</dt><dd><p>The separator used to split the string.</p>
 <p>When set to None (the default value), will split on any whitespace
-character (including \n \r \t \f and spaces) and will discard
+character (including n r t f and spaces) and will discard
 empty strings from the result.</p>
 </dd>
-<dt>maxsplit</dt><dd><p>Maximum number of splits (starting from the left).
+<dt>maxsplit</dt><dd><p>Maximum number of splits.
 -1 (the default value) means no limit.</p>
 </dd>
 </dl>
@@ -4781,46 +4819,8 @@ empty strings from the result.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.rst_table">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rst_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">('Name',</span> <span class="pre">'Description')</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_measurement_info.html#MeasurementInfo.rst_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.rst_table" title="Link to this definition">#</a></dt>
-<dd><p>Generate an RST (reStructuredText) table documenting the measurements.</p>
-<p>Creates a formatted list-table in reStructuredText format that documents all
-measurements in this enumeration, including their labels and descriptions. This
-is useful for generating API documentation, parameter guides, or measurement
-reference tables that will be rendered in Sphinx documentation.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – The title for the RST table. Defaults to the class name
-(e.g., ‘SHAPE’). The title is formatted as “Category: <strong>{title}</strong>” in the
-output.</p></li>
-<li><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em><em>, </em><em>optional</em>) – A tuple of (left_column, right_column)
-header names. Defaults to (“Name”, “Description”). The left column typically
-contains measurement labels and the right column contains their descriptions.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><dl>
-<dt>A formatted reStructuredText list-table string. The output includes:</dt><dd><ul class="simple">
-<li><p>RST list-table directive with the title</p></li>
-<li><p>Column headers (Name and Description by default)</p></li>
-<li><p>One row per measurement with label and description</p></li>
-</ul>
-<p>The returned string is ready to be embedded in Sphinx documentation files
-or appended to docstrings.</p>
-</dd>
-</dl>
-</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.rstrip">
-<span class="sig-name descname"><span class="pre">rstrip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.rstrip" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">rstrip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.rstrip" title="Link to this definition">#</a></dt>
 <dd><p>Return a copy of the string with trailing whitespace removed.</p>
 <p>If chars is given and not None, remove characters in chars instead.</p>
 </dd></dl>
@@ -4833,14 +4833,15 @@ or appended to docstrings.</p>
 <div><dl>
 <dt>sep</dt><dd><p>The separator used to split the string.</p>
 <p>When set to None (the default value), will split on any whitespace
-character (including \n \r \t \f and spaces) and will discard
+character (including n r t f and spaces) and will discard
 empty strings from the result.</p>
 </dd>
-<dt>maxsplit</dt><dd><p>Maximum number of splits (starting from the left).
+<dt>maxsplit</dt><dd><p>Maximum number of splits.
 -1 (the default value) means no limit.</p>
 </dd>
 </dl>
 </div></blockquote>
+<p>Splitting starts at the front of the string and works to the end.</p>
 <p>Note, str.split() is mainly useful for data that has been intentionally
 delimited.  With natural text that includes punctuation, consider using
 the regular expression module.</p>
@@ -4865,7 +4866,7 @@ prefix can also be a tuple of strings to try.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.strip">
-<span class="sig-name descname"><span class="pre">strip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.strip" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">strip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.strip" title="Link to this definition">#</a></dt>
 <dd><p>Return a copy of the string with leading and trailing whitespace removed.</p>
 <p>If chars is given and not None, remove characters in chars instead.</p>
 </dd></dl>
@@ -4886,7 +4887,7 @@ cased characters have lower case.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.translate">
-<span class="sig-name descname"><span class="pre">translate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.translate" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">translate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.translate" title="Link to this definition">#</a></dt>
 <dd><p>Replace each character in the string using the given translation table.</p>
 <blockquote>
 <div><dl class="simple">
@@ -4908,14 +4909,14 @@ left untouched.  Characters mapped to None are deleted.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.zfill">
-<span class="sig-name descname"><span class="pre">zfill</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.zfill" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">zfill</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.zfill" title="Link to this definition">#</a></dt>
 <dd><p>Pad a numeric string with zeros on the left, to fill a field of the given width.</p>
 <p>The string is never truncated.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="id2">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">CATEGORY</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#id2" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">CATEGORY</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#id2" title="Link to this definition">#</a></dt>
 <dd><p>Get the category name for this measurement instance.</p>
 <p>Provides instance-level access to the category name defined by the category()
 classmethod. This is useful when you have a measurement instance and need to know
@@ -4934,7 +4935,7 @@ which category it belongs to without explicitly referencing the class.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.ObjectDetector">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">ObjectDetector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_object_detector.html#ObjectDetector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.ObjectDetector" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">ObjectDetector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_object_detector.html#ObjectDetector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.ObjectDetector" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.abc_.ImageOperation" title="phenotypic.abc_._image_operation.ImageOperation"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageOperation</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
 <p>Abstract base class for colony detection operations on agar plate images.</p>
 <p>ObjectDetector defines the interface for algorithms that identify and label microbial
@@ -5263,9 +5264,7 @@ Any active widgets will be detached from the object.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="id3">
-<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Image</span></span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_object_detector.html#ObjectDetector.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id3" title="Link to this definition">#</a></dt>
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">GridImage</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">GridImage</span></span></span></dt>
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_object_detector.html#ObjectDetector.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id3" title="Link to this definition">#</a></dt>
 <dd><p>Detect colonies using sinusoidal cross-correlation grid estimation.</p>
 <p>This method performs the core detection workflow:
 1. Extract grid dimensions (if GridImage)
@@ -5316,7 +5315,7 @@ visualization controls will be added to the widget.</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.ObjectRefiner">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">ObjectRefiner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_object_refiner.html#ObjectRefiner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.ObjectRefiner" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">ObjectRefiner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_object_refiner.html#ObjectRefiner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.ObjectRefiner" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.abc_.ImageOperation" title="phenotypic.abc_._image_operation.ImageOperation"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageOperation</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
 <p>Abstract base class for post-detection refinement operations that modify object masks and maps.</p>
 <p>ObjectRefiner is the foundation for all post-detection cleanup algorithms that refine colony
@@ -5918,9 +5917,7 @@ Any active widgets will be detached from the object.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="id4">
-<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Image</span></span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_object_refiner.html#ObjectRefiner.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id4" title="Link to this definition">#</a></dt>
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">GridImage</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">GridImage</span></span></span></dt>
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_object_refiner.html#ObjectRefiner.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id4" title="Link to this definition">#</a></dt>
 <dd><p>Applies the operation to an image, either in-place or on a copy.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -5967,7 +5964,7 @@ visualization controls will be added to the widget.</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.PostMeasurement">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">PostMeasurement</span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_post_measurement.html#PostMeasurement"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.PostMeasurement" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">PostMeasurement</span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_post_measurement.html#PostMeasurement"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.PostMeasurement" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.abc_.BaseOperation" title="phenotypic.abc_._base_operation.BaseOperation"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseOperation</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
 <p>Transform a measurement DataFrame after feature extraction.</p>
 <p>PostMeasurement is the abstract base class for operations that reshape,
@@ -6036,7 +6033,7 @@ and return a modified copy.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.PrefabPipeline">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">PrefabPipeline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ops</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#phenotypic.abc_.ImageOperation" title="phenotypic.abc_.ImageOperation"><span class="pre">ImageOperation</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">ImagePipeline</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.ImageOperation" title="phenotypic.abc_.ImageOperation"><span class="pre">ImageOperation</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">ImagePipeline</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">meas</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#phenotypic.abc_.MeasureFeatures" title="phenotypic.abc_.MeasureFeatures"><span class="pre">MeasureFeatures</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.MeasureFeatures" title="phenotypic.abc_.MeasureFeatures"><span class="pre">MeasureFeatures</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">post</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#phenotypic.abc_.PostMeasurement" title="phenotypic.abc_.PostMeasurement"><span class="pre">PostMeasurement</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.PostMeasurement" title="phenotypic.abc_.PostMeasurement"><span class="pre">PostMeasurement</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.SetAnalyzer" title="phenotypic.analysis.abc_.SetAnalyzer"><span class="pre">SetAnalyzer</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.SetAnalyzer" title="phenotypic.analysis.abc_.SetAnalyzer"><span class="pre">SetAnalyzer</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.ModelFitter" title="phenotypic.analysis.abc_.ModelFitter"><span class="pre">ModelFitter</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">benchmark</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">desc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nrows</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ncols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_prefab_pipeline.html#PrefabPipeline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.PrefabPipeline" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">PrefabPipeline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ops</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#phenotypic.abc_.ImageOperation" title="phenotypic.abc_.ImageOperation"><span class="pre">ImageOperation</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">ImagePipeline</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.ImageOperation" title="phenotypic.abc_.ImageOperation"><span class="pre">ImageOperation</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">ImagePipeline</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">meas</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#phenotypic.abc_.MeasureFeatures" title="phenotypic.abc_.MeasureFeatures"><span class="pre">MeasureFeatures</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.MeasureFeatures" title="phenotypic.abc_.MeasureFeatures"><span class="pre">MeasureFeatures</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">post</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#phenotypic.abc_.PostMeasurement" title="phenotypic.abc_.PostMeasurement"><span class="pre">PostMeasurement</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.PostMeasurement" title="phenotypic.abc_.PostMeasurement"><span class="pre">PostMeasurement</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.SetAnalyzer" title="phenotypic.analysis.abc_.SetAnalyzer"><span class="pre">SetAnalyzer</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.SetAnalyzer" title="phenotypic.analysis.abc_.SetAnalyzer"><span class="pre">SetAnalyzer</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.ModelFitter" title="phenotypic.analysis.abc_.ModelFitter"><span class="pre">ModelFitter</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">benchmark</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">desc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nrows</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ncols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_prefab_pipeline.html#PrefabPipeline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.PrefabPipeline" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ImagePipeline</span></code></p>
 <p>Marker class for pre-built, validated image processing pipelines from the PhenoTypic team.</p>
 <p>PrefabPipeline is a specialized subclass of ImagePipeline that distinguishes “official” pre-built
@@ -6330,6 +6327,32 @@ operations (detection, enhancement, measurement), use operation ABCs directly.</
 </dd>
 </dl>
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.abc_.PrefabPipeline.from_json">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">benchmark</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.abc_.PrefabPipeline" title="phenotypic.abc_._prefab_pipeline.PrefabPipeline"><span class="pre">PrefabPipeline</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_prefab_pipeline.html#PrefabPipeline.from_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.PrefabPipeline.from_json" title="Link to this definition">#</a></dt>
+<dd><p>Deserialize a PrefabPipeline from JSON.</p>
+<p>PrefabPipeline subclasses build their ops/meas inside <code class="docutils literal notranslate"><span class="pre">__init__</span></code>,
+so the base <code class="docutils literal notranslate"><span class="pre">from_json</span></code> (which passes <code class="docutils literal notranslate"><span class="pre">ops=</span></code> directly) would
+conflict.  This override deserializes via <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code> and
+re-tags the instance as the correct PrefabPipeline subclass.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>json_data</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – A JSON string, path to a JSON file, or a pre-parsed dict.</p></li>
+<li><p><strong>benchmark</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to enable benchmarking for the pipeline.</p></li>
+<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to enable verbose output.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A PrefabPipeline (or subclass) instance with the loaded
+configuration.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#phenotypic.abc_.PrefabPipeline" title="phenotypic.abc_._prefab_pipeline.PrefabPipeline"><em>PrefabPipeline</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.PrefabPipeline.__del__">
 <span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.abc_.PrefabPipeline.__del__" title="Link to this definition">#</a></dt>
 <dd><p>Automatically stop tracemalloc when the object is deleted.</p>
@@ -6600,32 +6623,6 @@ and <code class="docutils literal notranslate"><span class="pre">RSS</span> <spa
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>pd.DataFrame</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.abc_.PrefabPipeline.from_json">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">benchmark</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.abc_.PrefabPipeline" title="phenotypic.abc_._prefab_pipeline.PrefabPipeline"><span class="pre">PrefabPipeline</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/abc_/_prefab_pipeline.html#PrefabPipeline.from_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.PrefabPipeline.from_json" title="Link to this definition">#</a></dt>
-<dd><p>Deserialize a PrefabPipeline from JSON.</p>
-<p>PrefabPipeline subclasses build their ops/meas inside <code class="docutils literal notranslate"><span class="pre">__init__</span></code>,
-so the base <code class="docutils literal notranslate"><span class="pre">from_json</span></code> (which passes <code class="docutils literal notranslate"><span class="pre">ops=</span></code> directly) would
-conflict.  This override deserializes via <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code> and
-re-tags the instance as the correct PrefabPipeline subclass.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>json_data</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – A JSON string, path to a JSON file, or a pre-parsed dict.</p></li>
-<li><p><strong>benchmark</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to enable benchmarking for the pipeline.</p></li>
-<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to enable verbose output.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A PrefabPipeline (or subclass) instance with the loaded
-configuration.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="#phenotypic.abc_.PrefabPipeline" title="phenotypic.abc_._prefab_pipeline.PrefabPipeline"><em>PrefabPipeline</em></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -6915,19 +6912,19 @@ visualization controls will be added to the widget.</p></li>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.abc_.PrefabPipeline.desc">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">desc</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.abc_.PrefabPipeline.desc" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">desc</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.abc_.PrefabPipeline.desc" title="Link to this definition">#</a></dt>
 <dd><p>Get pipeline description. Returns class docstring if no description set.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.abc_.PrefabPipeline.ncols">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ncols</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.abc_.PrefabPipeline.ncols" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ncols</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.abc_.PrefabPipeline.ncols" title="Link to this definition">#</a></dt>
 <dd><p>Soft preset for grid column count, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if unset.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.abc_.PrefabPipeline.nrows">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">nrows</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.abc_.PrefabPipeline.nrows" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">nrows</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.abc_.PrefabPipeline.nrows" title="Link to this definition">#</a></dt>
 <dd><p>Soft preset for grid row count, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if unset.</p>
 </dd></dl>
 
@@ -6935,7 +6932,7 @@ visualization controls will be added to the widget.</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.ThresholdDetector">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">ThresholdDetector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_threshold_detector.html#ThresholdDetector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.ThresholdDetector" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">ThresholdDetector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/abc_/_threshold_detector.html#ThresholdDetector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.ThresholdDetector" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenotypic.abc_.ObjectDetector" title="phenotypic.abc_._object_detector.ObjectDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">ObjectDetector</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
 <p>Marker ABC for threshold-based colony detection strategies.</p>
 <p>ThresholdDetector specializes ObjectDetector for algorithms that detect colonies
@@ -7425,13 +7422,17 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.desc"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.desc</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.pair"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.pair</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.CATEGORY"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.CATEGORY</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.__format__"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.__format__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.append_rst_to_doc"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.append_rst_to_doc()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.category"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.category()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.get_headers"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.get_headers()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.get_labels"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.get_labels()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.rst_table"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.rst_table()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.maketrans"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.maketrans()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.__dir__"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.__dir__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.__new_member__"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.__new_member__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.__str__"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.__str__()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.append_rst_to_doc"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.append_rst_to_doc()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.capitalize"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.capitalize()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.casefold"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.casefold()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.category"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.category()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.center"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.center()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.count"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.count()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.encode"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.encode()</span></code></a></li>
@@ -7440,8 +7441,6 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.find"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.find()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.format"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.format()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.format_map"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.format_map()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.get_headers"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.get_headers()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.get_labels"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.get_labels()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.index"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.index()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.isalnum"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.isalnum()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.isalpha"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.isalpha()</span></code></a></li>
@@ -7459,7 +7458,6 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.ljust"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.ljust()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.lower"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.lower()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.lstrip"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.lstrip()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.maketrans"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.maketrans()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.partition"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.partition()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.removeprefix"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.removeprefix()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.removesuffix"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.removesuffix()</span></code></a></li>
@@ -7469,7 +7467,6 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.rjust"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.rjust()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.rpartition"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.rpartition()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.rsplit"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.rsplit()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.rst_table"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.rst_table()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.rstrip"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.rstrip()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.split"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.split()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.splitlines"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.splitlines()</span></code></a></li>
@@ -7509,6 +7506,7 @@ visualization controls will be added to the widget.</p></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.PrefabPipeline"><code class="docutils literal notranslate"><span class="pre">PrefabPipeline</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.PrefabPipeline.from_json"><code class="docutils literal notranslate"><span class="pre">PrefabPipeline.from_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.PrefabPipeline.__del__"><code class="docutils literal notranslate"><span class="pre">PrefabPipeline.__del__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.PrefabPipeline.__getstate__"><code class="docutils literal notranslate"><span class="pre">PrefabPipeline.__getstate__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.PrefabPipeline.__init__"><code class="docutils literal notranslate"><span class="pre">PrefabPipeline.__init__()</span></code></a></li>
@@ -7519,7 +7517,6 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.PrefabPipeline.apply_napari"><code class="docutils literal notranslate"><span class="pre">PrefabPipeline.apply_napari()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.PrefabPipeline.apply_with_intermediates"><code class="docutils literal notranslate"><span class="pre">PrefabPipeline.apply_with_intermediates()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.PrefabPipeline.benchmark_results"><code class="docutils literal notranslate"><span class="pre">PrefabPipeline.benchmark_results()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.PrefabPipeline.from_json"><code class="docutils literal notranslate"><span class="pre">PrefabPipeline.from_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.PrefabPipeline.get_filters"><code class="docutils literal notranslate"><span class="pre">PrefabPipeline.get_filters()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.PrefabPipeline.get_meas"><code class="docutils literal notranslate"><span class="pre">PrefabPipeline.get_meas()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.PrefabPipeline.get_model"><code class="docutils literal notranslate"><span class="pre">PrefabPipeline.get_model()</span></code></a></li>
@@ -7592,7 +7589,7 @@ visualization controls will be added to the widget.</p></li>
         <div class="footer-item">
 
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
     <br/>
   </p>
 </div>

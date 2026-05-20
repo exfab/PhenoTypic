@@ -3,5 +3,5 @@ phenotypic.tools\_.constants\_ module
 
 .. automodule:: phenotypic.tools_.constants_
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

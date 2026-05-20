@@ -3,5 +3,5 @@ phenotypic.tools\_.slurm package
 
 .. automodule:: phenotypic.tools_.slurm
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

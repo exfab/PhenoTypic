@@ -3,8 +3,8 @@ phenotypic.gui package
 
 .. automodule:: phenotypic.gui
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Subpackages
 -----------

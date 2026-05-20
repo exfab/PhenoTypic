@@ -68,6 +68,7 @@ phenotypic.tools\_.constants\_.ConstantLabels
       ~ConstantLabels.format
       ~ConstantLabels.format_map
       ~ConstantLabels.maketrans
+      ~ConstantLabels.__init__
    
    
 
