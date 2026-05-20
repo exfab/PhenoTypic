@@ -5,6 +5,7 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+
 [project]
 name = 'phenotypic'
 dynamic = ["version"]
@@ -13,6 +14,7 @@ authors = [
     { name = 'Alexander Nguyen', email = "xander-git@protonmail.com" }
 ]
 
+
 description = "An image processing framework created for Ex-FAB NSF BioFoundry that aims to streamline the development of image processing pipelines for images analysis of phenotypes."
 
 readme = "README.md"
@@ -20,7 +22,7 @@ readme = "README.md"
 requires-python = ">=3.10, <3.13"
 
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 4 - Beta",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Natural Language :: English",
     "Programming Language :: Python",
@@ -88,7 +90,7 @@ gui = [
     "ipykernel>=6.31.0",
     "ipywidgets>=8.1.7",
     "jupyter>=1.1.1",
-    "pyvips>=2.2",  # optional fast path for DZI tile generation
+    "pyvips>=2.2", # optional fast path for DZI tile generation
 ]
 
 torch = [

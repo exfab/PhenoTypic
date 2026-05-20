@@ -1,0 +1,173 @@
+name: docs
+
+# Build + deploy the Sphinx documentation. Two jobs:
+#   1) build  -- runs on PR, push to main, v* tag, and workflow_dispatch.
+#      Always validates that Sphinx compiles. Uploads the rendered HTML
+#      as an artifact so the deploy job consumes the exact bytes that
+#      PR review already saw.
+#   2) deploy -- needs(build). Runs only on push (main or v* tag) and
+#      workflow_dispatch. Drops the build artifact into the matching
+#      gh-pages version slot, regenerates versions.json, and pushes.
+#
+# Replaces the earlier test-docs-build.yml + documentation.yml split.
+# The split meant the deploy could pass a different Python version
+# than the PR build had verified; unifying them removes that drift.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+# Workflow-level concurrency is PR-style: a fresh push to a branch
+# cancels its in-flight build. The deploy job overrides this with a
+# gh-pages-write group (no cancellation) so concurrent deploys
+# serialize against docs-prune and each other rather than racing.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    outputs:
+      docs_version: ${{ steps.resolve.outputs.docs_version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # Full history for the deploy job's versioning logic.
+
+      - name: Resolve DOCS_VERSION
+        id: resolve
+        # Tag pushes deploy under their tag name; everything else
+        # (main pushes, PRs, manual dispatch) renders as "experimental"
+        # so the PR build matches what a same-day main-push would produce.
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            DOCS_VERSION="$GITHUB_REF_NAME"
+          else
+            DOCS_VERSION="experimental"
+          fi
+          echo "docs_version=$DOCS_VERSION" >> "$GITHUB_OUTPUT"
+          echo "DOCS_VERSION=$DOCS_VERSION" >> "$GITHUB_ENV"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          version: 'latest'
+
+      - name: Cache phenotypic sample data
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/phenotypic
+          key: phenotypic-data-data-v1
+
+      - name: Install dependencies
+        run: uv sync --all-extras --group dev --group docs
+
+      - name: Install Pandoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc
+
+      - name: Sphinx build
+        working-directory: docs
+        env:
+          DOCS_VERSION: ${{ env.DOCS_VERSION }}
+          PHENOTYPIC_DOCS_BUILD: "1"
+        run: |
+          uv run make html
+          touch build/html/.nojekyll
+
+      - name: Upload built HTML
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-html
+          path: docs/build/html/
+          include-hidden-files: true   # .nojekyll must round-trip to gh-pages.
+          retention-days: 7
+
+  deploy:
+    needs: build
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: deploy-documentation-to-github-pages
+    permissions:
+      contents: write
+    concurrency:
+      group: gh-pages-write
+      cancel-in-progress: false
+    env:
+      DOCS_VERSION: ${{ needs.build.outputs.docs_version }}
+    steps:
+      - name: Download built HTML
+        uses: actions/download-artifact@v4
+        with:
+          name: docs-html
+          path: docs/build/html/
+
+      - name: Checkout gh-pages
+        uses: actions/checkout@v6
+        with:
+          ref: gh-pages
+          path: gh-pages
+          fetch-depth: 1
+
+      - name: Checkout source (for regen script)
+        # Mirrors docs-prune.yml's `path: src` pattern. The deploy job
+        # consumes the build artifact (not a source rebuild), so the
+        # only thing we need from the source tree is the regen helper.
+        uses: actions/checkout@v6
+        with:
+          path: src
+          fetch-depth: 1
+
+      - name: Copy build into version slot
+        run: |
+          mkdir -p "gh-pages/${DOCS_VERSION}"
+          rsync -a --delete docs/build/html/ "gh-pages/${DOCS_VERSION}/"
+
+      - name: Auto-prune matching pre-releases on stable release
+        if: env.DOCS_VERSION != 'experimental'
+        run: |
+          if [[ "$DOCS_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            base="$DOCS_VERSION"
+            shopt -s nullglob
+            for d in gh-pages/${base}a* gh-pages/${base}b* gh-pages/${base}rc* gh-pages/${base}.dev*; do
+              echo "Pruning pre-release: $d"
+              rm -rf "$d"
+            done
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install packaging for regen script
+        run: python -m pip install --quiet packaging
+
+      - name: Regenerate versions.json and index.html
+        run: python src/.github/scripts/regen_versions_json.py gh-pages
+
+      - name: Commit and push gh-pages
+        working-directory: gh-pages
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No gh-pages changes to commit."
+          else
+            git commit -m "Deploy ${DOCS_VERSION} @ ${GITHUB_SHA}"
+            git push origin gh-pages
+          fi

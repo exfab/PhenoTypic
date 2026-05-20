@@ -38,23 +38,24 @@
 Two ledgers track the GUI surface; both are CI-gated:
 
 - **`src/phenotypic/gui/FEATURES.md`** — every individual user-visible
-  affordance (button, badge, store, callback, route). The `gui-e2e`
-  workflow rejects any PR that touches `src/phenotypic/gui/` without
-  modifying `FEATURES.md`. Pre-commit also validates `Test ref` on
-  `✅ shipping` rows.
+  affordance (button, badge, store, callback, route). The
+  `gui-checks` workflow's `features-md-gate` job rejects any PR that
+  touches `src/phenotypic/gui/` without modifying `FEATURES.md`.
+  Pre-commit also validates `Test ref` on `✅ shipping` rows.
 - **`src/phenotypic/gui/WORKFLOWS.md`** — every end-to-end user flow
   worth a tutorial page. Adding a row here REQUIRES adding a matching
   `_capture_<id>` function in `scripts/capture_gui_tutorial_screenshots.py`
   and a walkthrough page under `docs/source/tutorials/gui/`.
-  The `gui-docs` workflow runs `scripts/check_workflows_md.py` (also
-  available as a pre-commit hook) to enforce the round-trip.
+  The `gui-checks` workflow's `workflows-md-gate` job runs
+  `scripts/check_workflows_md.py` (also available as a pre-commit
+  hook) to enforce the round-trip.
 
 Run `uv run python scripts/capture_gui_tutorial_screenshots.py` after
 any visible chrome change and commit the refreshed PNGs alongside the
-source change. The `gui-docs` CI job regenerates them on Ubuntu and
-uploads as a build artifact for spot-checking, but cross-platform
-font rendering means committed PNGs should come from a developer
-workstation, not CI.
+source change. The `gui-checks` workflow's `smoke-capture` job
+regenerates them on Ubuntu and uploads as a build artifact for
+spot-checking, but cross-platform font rendering means committed PNGs
+should come from a developer workstation, not CI.
 
 ---
 

@@ -246,13 +246,13 @@ badge contrast variants and prohibited combinations.
 ## Adding a new GUI feature
 
 1. **Update [FEATURES.md](FEATURES.md)** — every user-visible affordance
-   gets a row. The `gui-e2e` workflow rejects any PR that touches
-   `gui/` without modifying `FEATURES.md`.
+   gets a row. The `gui-checks` workflow's `features-md-gate` job
+   rejects any PR that touches `gui/` without modifying `FEATURES.md`.
 2. **If it's an end-to-end flow worth a tutorial**, also update
    [WORKFLOWS.md](WORKFLOWS.md), add `_capture_<id>` in
    `scripts/capture_gui_tutorial_screenshots.py`, and add a walkthrough
-   page under `docs/source/tutorials/gui/`. The
-   `gui-docs` CI gate enforces the round-trip.
+   page under `docs/source/tutorials/gui/`. The `gui-checks` workflow's
+   `workflows-md-gate` job enforces the round-trip.
 3. **Use [_config.py](_config.py)** for any new shared constant.
 4. **Use [_design.py](_design.py)** for any color, type size, radius,
    shadow, or motion value.

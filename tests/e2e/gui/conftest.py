@@ -2,7 +2,7 @@
 
 These tests require Playwright + Chromium. They are skipped unless the
 ``PLAYWRIGHT`` environment variable is set to ``1`` (matches the CI gate
-in ``.github/workflows/gui-e2e.yml``).
+in the ``e2e-tests`` job of ``.github/workflows/gui-checks.yml``).
 
 Fixtures shipped:
 
@@ -44,7 +44,7 @@ import pytest
 if os.environ.get("PLAYWRIGHT") != "1":
     pytest.skip(
         "Set PLAYWRIGHT=1 to run browser E2E tests "
-        "(CI sets this automatically when gui-e2e workflow triggers).",
+        "(the e2e-tests job in the gui-checks workflow sets this automatically).",
         allow_module_level=True,
     )
 

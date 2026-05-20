@@ -1,0 +1,240 @@
+name: gui-checks
+
+# Combined GUI gating: FEATURES.md + WORKFLOWS.md registry checks,
+# Playwright E2E suite, and tutorial-screenshot smoke regeneration.
+#
+# Replaces the earlier gui-docs.yml + gui-e2e.yml split. Both gated on
+# the same path slice (anything that touches GUI source, GUI tests,
+# the screenshot capture script, the tutorial pages, or the two
+# registry files); merging them removes a duplicated workflow header
+# and lets the registry-gate jobs share their checkout.
+#
+# Four jobs:
+#   1) features-md-gate   -- structural FEATURES.md check + push-to-main
+#                            strict merge gate.
+#   2) workflows-md-gate  -- structural WORKFLOWS.md check (every row
+#                            has a defined _capture_<id> + tutorial page).
+#   3) e2e-tests          -- needs(features-md-gate). Playwright E2E
+#                            suite under Chromium. Must pass before merge.
+#   4) smoke-capture      -- needs(workflows-md-gate). Regenerates every
+#                            tutorial screenshot end-to-end and uploads
+#                            the folder as a build artifact for visual
+#                            review. NO pixel-diff against committed
+#                            PNGs -- Linux + macOS render fonts
+#                            differently and every PR would flake.
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'src/phenotypic/gui/**'
+      - 'src/phenotypic/_cli/_dashboard/**'
+      - 'tests/e2e/gui/**'
+      - 'tests/integration/gui/**'
+      - 'scripts/capture_gui_tutorial_screenshots.py'
+      - 'scripts/check_workflows_md.py'
+      - 'scripts/check_features_md.py'
+      - 'docs/source/_static/gui_images/**'
+      - 'docs/source/tutorials/gui/**'
+      - 'pyproject.toml'
+      - '.github/workflows/gui-checks.yml'
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - 'src/phenotypic/gui/**'
+      - 'src/phenotypic/_cli/_dashboard/**'
+      - 'tests/e2e/gui/**'
+      - 'tests/integration/gui/**'
+      - 'scripts/capture_gui_tutorial_screenshots.py'
+      - 'scripts/check_workflows_md.py'
+      - 'scripts/check_features_md.py'
+      - 'docs/source/_static/gui_images/**'
+      - 'docs/source/tutorials/gui/**'
+      - 'pyproject.toml'
+      - '.github/workflows/gui-checks.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  features-md-gate:
+    name: 'FEATURES.md gate'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Full history so ``git diff origin/<base>..HEAD`` works on PRs.
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: 'Cross-PR check: gui/ touched implies FEATURES.md modified'
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          git fetch origin "$BASE_REF" --depth=1 || true
+          BASE_SHA=$(git merge-base "origin/$BASE_REF" HEAD)
+          TOUCHED_GUI=$(git diff --name-only "$BASE_SHA"..HEAD -- 'src/phenotypic/gui/' || true)
+          TOUCHED_FEATURES=$(git diff --name-only "$BASE_SHA"..HEAD -- 'src/phenotypic/gui/FEATURES.md' || true)
+          if [ -n "$TOUCHED_GUI" ] && [ -z "$TOUCHED_FEATURES" ]; then
+            echo "::error::PR touches src/phenotypic/gui/ without modifying FEATURES.md"
+            echo "Touched files under src/phenotypic/gui/:"
+            echo "$TOUCHED_GUI"
+            exit 1
+          fi
+
+      - name: 'Per-PR check: FEATURES.md syntax + shipping ref resolution'
+        run: python scripts/check_features_md.py
+
+      - name: 'Merge gate: reject any in-progress rows'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: python scripts/check_features_md.py --strict
+
+  workflows-md-gate:
+    name: 'WORKFLOWS.md gate (vs capture script)'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Full history so ``git merge-base origin/<base>..HEAD`` resolves on PRs.
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: 'Cross-PR check: workflow added implies capture function added'
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          git fetch origin "$BASE_REF" --depth=1 || true
+          BASE_SHA=$(git merge-base "origin/$BASE_REF" HEAD)
+          TOUCHED_WORKFLOWS=$(git diff --name-only "$BASE_SHA"..HEAD -- 'src/phenotypic/gui/WORKFLOWS.md' || true)
+          TOUCHED_CAPTURE=$(git diff --name-only "$BASE_SHA"..HEAD -- 'scripts/capture_gui_tutorial_screenshots.py' || true)
+          if [ -n "$TOUCHED_WORKFLOWS" ] && [ -z "$TOUCHED_CAPTURE" ]; then
+            echo "::warning::PR touches WORKFLOWS.md without modifying scripts/capture_gui_tutorial_screenshots.py."
+            echo "If you added a new workflow row, you also need a matching _capture_<id> function in the capture script."
+          fi
+
+      - name: 'Per-PR check: WORKFLOWS.md syntax + dispatch round-trip'
+        # Pure stdlib (argparse / ast / re / pathlib) -- no uv needed in this
+        # job. The smoke-capture job re-runs the validator under ``uv run
+        # python`` for parity with the rest of that job.
+        run: python scripts/check_workflows_md.py -v
+
+  e2e-tests:
+    name: 'Playwright E2E + integration GUI tests'
+    needs: features-md-gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y exiftool
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          version: 'latest'
+
+      - name: Install dependencies
+        run: |
+          uv lock
+          uv sync --group dev --all-extras
+
+      - name: Install Playwright browsers
+        run: uv run playwright install --with-deps chromium
+
+      - name: Run integration GUI tests (Flask test client)
+        run: |
+          source .venv/bin/activate
+          if compgen -G "tests/integration/gui/test_*.py" > /dev/null; then
+            pytest tests/integration/gui -v
+          else
+            echo "No integration GUI tests yet; skipping."
+          fi
+
+      - name: Run E2E GUI tests (Playwright)
+        env:
+          PLAYWRIGHT: '1'
+        run: |
+          source .venv/bin/activate
+          if compgen -G "tests/e2e/gui/test_*.py" > /dev/null; then
+            # ``ci_flaky`` deselects e2e tests that pass locally but
+            # stochastically exceed Playwright DOM-poll budgets on
+            # shared GHA runners. See tests/CLAUDE.md for the convention.
+            pytest tests/e2e/gui -v -m "not ci_flaky"
+          else
+            echo "No E2E GUI tests yet; skipping."
+          fi
+
+  smoke-capture:
+    name: 'Smoke-regenerate tutorial screenshots'
+    needs: workflows-md-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y exiftool
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          version: 'latest'
+
+      - name: Install dependencies
+        run: |
+          uv lock
+          uv sync --group dev --all-extras
+
+      - name: Install Playwright browsers
+        run: uv run playwright install --with-deps chromium
+
+      - name: Regenerate tutorial screenshots
+        run: uv run python scripts/capture_gui_tutorial_screenshots.py
+
+      - name: 'Show diff against committed screenshots (informational)'
+        run: |
+          echo "File-level diff against committed PNGs (cross-platform"
+          echo "rendering differences are expected; this is informational"
+          echo "only -- the artifact upload below is the canonical output)."
+          git diff --stat docs/source/_static/gui_images/ || true
+
+      - name: 'Re-validate WORKFLOWS.md against refreshed PNGs'
+        run: uv run python scripts/check_workflows_md.py -v
+
+      - name: Upload regenerated screenshots as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gui-tutorial-screenshots-${{ github.sha }}
+          path: |
+            docs/source/_static/gui_images/
+            !docs/source/_static/gui_images/_dataset/**
+          retention-days: 14
+          if-no-files-found: error

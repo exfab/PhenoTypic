@@ -16,10 +16,11 @@ Each row below maps to:
 * A walkthrough page at
   `docs/source/tutorials/gui/<NN>_<id>.md`.
 
-The pre-commit hook + `gui-docs` CI workflow run
-`scripts/check_workflows_md.py`, which rejects mismatches: a row here
-without a matching defined+dispatched `_capture_<id>` (or a
-`_capture_*` function with no row) fails the build.
+The pre-commit hook + the `workflows-md-gate` job in the `gui-checks`
+CI workflow run `scripts/check_workflows_md.py`, which rejects
+mismatches: a row here without a matching defined+dispatched
+`_capture_<id>` (or a `_capture_*` function with no row) fails the
+build.
 
 ## Status legend
 
