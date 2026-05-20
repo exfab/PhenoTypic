@@ -186,6 +186,9 @@ class LinearSoftplus(_LinearSoftplusBase):
     ) -> float | np.ndarray:
         r"""Linear-softplus growth curve, no saturation ceiling.
 
+        .. math::
+            s(t) = \frac{v}{\alpha}\, \ln\!\bigl(1 + e^{\alpha(t-\lambda)}\bigr) + s_0
+
         Args:
             t: Time (scalar or array).
             v: Post-lag growth rate.
