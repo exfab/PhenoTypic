@@ -323,7 +323,7 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
         >>> from phenotypic.data import load_synth_yeast_plate
         >>>
         >>> image = load_synth_yeast_plate()
-        >>> pipeline = ImagePipeline([
+        >>> pipeline = ImagePipeline(pipe_cfgs=[
         ...     GaussianBlur(sigma=1.5),
         ...     CLAHE(clip_limit=2.0),
         ...     OtsuDetector()

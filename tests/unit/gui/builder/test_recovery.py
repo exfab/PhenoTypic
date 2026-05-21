@@ -187,7 +187,7 @@ def test_from_pipeline_dag_shared_instance_clone():
     # FilamentousFungiDetector's inoculum_detector aux.
     shared = OtsuDetector()
     detector = FilamentousFungiDetector(inoculum_detector=shared)
-    pipeline = ImagePipeline([shared, detector])
+    pipeline = ImagePipeline(pipe_cfgs=[shared, detector])
 
     state = from_pipeline_dag(pipeline)
 

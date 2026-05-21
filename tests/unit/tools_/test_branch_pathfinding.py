@@ -804,7 +804,7 @@ class TestFilamentousFungiDetectorReconnection:
                 inoculum_detector=OtsuDetector(ignore_zeros=True),
                 frag_reach_px=15,
         )
-        pipeline = ImagePipeline([detector])
+        pipeline = ImagePipeline(pipe_cfgs=[detector])
         json_str = pipeline.to_json()
         restored = ImagePipeline.from_json(json_str)
 

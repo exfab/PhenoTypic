@@ -269,7 +269,7 @@ class TestSerialization:
             gat_read_sigma=0.5,
             gat_scale_factor=65535.0,
         )
-        pipeline = ImagePipeline([op])
+        pipeline = ImagePipeline(pipe_cfgs=[op])
         json_str = pipeline.to_json()
         loaded = ImagePipeline.from_json(json_str)
 
@@ -284,7 +284,7 @@ class TestSerialization:
 
     def test_default_gat_params_round_trip(self):
         op = BM3DDenoiser(sigma_psd=0.02)
-        pipeline = ImagePipeline([op])
+        pipeline = ImagePipeline(pipe_cfgs=[op])
         loaded = ImagePipeline.from_json(pipeline.to_json())
         loaded_op = list(loaded._ops.values())[0]
         assert loaded_op.use_gat is False

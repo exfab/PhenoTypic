@@ -235,6 +235,16 @@ UNCAPTURABLE: dict[str, str] = {
         "returns the image (implicitly returns None), so there is no "
         "result to freeze as a golden on the current code"
     ),
+    "GridApply": (
+        "not part of the original 137-class migration scope: it was a "
+        "plain wrapper class promoted to a pydantic GridCorrector during "
+        "Phase 6 green-up so it could slot into a pydantic ImagePipeline. "
+        "No pre-migration golden was captured (the un-migrated class was "
+        "not an operation), and it has a required operation-valued "
+        "image_op argument with no synthetic default. GridSectionPipeline "
+        "round-trip coverage in tests/smoke/test_serialization.py "
+        "exercises GridApply end-to-end instead."
+    ),
 }
 
 
