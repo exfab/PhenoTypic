@@ -1156,14 +1156,18 @@ class AutoGridFinder(GridFinder):
     # Diagnostic inspect() method
     # ------------------------------------------------------------------
 
-    _OI_NAVY = "#003660"
-    _OI_ORANGE = "#E69F00"
-    _OI_SKY = "#56B4E9"
-    _OI_GREEN = "#009E73"
-    _OI_VERMILION = "#D55E00"
-    _OI_BLUE = "#0072B2"
-    _OI_PURPLE = "#CC79A7"
-    _OI_GREY = "#BBBBBB"
+    # Okabe-Ito palette for the inspect() diagnostic plots. Annotated
+    # ``ClassVar`` so pydantic keeps them as plain class constants — an
+    # un-annotated underscore name is otherwise collected as a
+    # ``ModelPrivateAttr`` and class-level access returns the wrapper.
+    _OI_NAVY: ClassVar[str] = "#003660"
+    _OI_ORANGE: ClassVar[str] = "#E69F00"
+    _OI_SKY: ClassVar[str] = "#56B4E9"
+    _OI_GREEN: ClassVar[str] = "#009E73"
+    _OI_VERMILION: ClassVar[str] = "#D55E00"
+    _OI_BLUE: ClassVar[str] = "#0072B2"
+    _OI_PURPLE: ClassVar[str] = "#CC79A7"
+    _OI_GREY: ClassVar[str] = "#BBBBBB"
 
     @staticmethod
     def _dashboard_rcparams() -> dict:
