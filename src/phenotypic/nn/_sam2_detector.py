@@ -5,13 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from pydantic import PrivateAttr
+
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from phenotypic.abc_ import GpuDetector
 from phenotypic.nn._checkpoint_manager import (
     Device,
-    Sam2CheckpointManager,
     Sam2ModelSize,
 )
 
@@ -145,32 +146,17 @@ class Sam2Detector(GpuDetector):
         <class 'phenotypic.nn._sam2_detector.Sam2Detector'>
     """
 
-    def __init__(
-        self,
-        model_size: Sam2ModelSize = "tiny",
-        points_per_side: int = 32,
-        pred_iou_thresh: float = 0.7,
-        stability_score_thresh: float = 0.92,
-        min_mask_region_area: int = 100,
-        device: Device = "auto",
-        checkpoint: str | Path | None = None,
-        config: str | None = None,
-    ):
-        super().__init__()
-        if checkpoint is None and model_size not in Sam2CheckpointManager.MODELS:
-            raise ValueError(
-                f"Unknown model_size={model_size!r}. "
-                f"Choose from: {list(Sam2CheckpointManager.MODELS)}"
-            )
-        self.model_size = model_size
-        self.points_per_side = points_per_side
-        self.pred_iou_thresh = pred_iou_thresh
-        self.stability_score_thresh = stability_score_thresh
-        self.min_mask_region_area = min_mask_region_area
-        self.device = device
-        self.checkpoint = checkpoint
-        self.config = config
-        self._generator = None  # _ prefix -> skipped by serialization
+    model_size: Sam2ModelSize = "tiny"
+    points_per_side: int = 32
+    pred_iou_thresh: float = 0.7
+    stability_score_thresh: float = 0.92
+    min_mask_region_area: int = 100
+    device: Device = "auto"
+    checkpoint: str | Path | None = None
+    config: str | None = None
+
+    # Lazy SAM2 mask generator — PrivateAttr -> skipped by serialization.
+    _generator: object = PrivateAttr(default=None)
 
     def _ensure_model_loaded(self) -> None:
         """Build the SAM2 mask generator on first use.
