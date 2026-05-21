@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, List, Literal, Union
+from typing import TYPE_CHECKING, Any, List, Literal
 import numpy as np
 from pydantic import Field, field_validator
 from scipy.ndimage import label
@@ -7,9 +7,9 @@ from scipy.ndimage import label
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
-from phenotypic._core._image_pipeline import ImagePipeline
 from phenotypic.abc_ import ObjectDetector
 from phenotypic.detect import OtsuDetector, RoundPeaksDetector
+from phenotypic.tools_.typing_ import OperationField
 
 
 class CompositeDetector(ObjectDetector):
@@ -76,7 +76,11 @@ class CompositeDetector(ObjectDetector):
             In-depth comparison of all detection strategies.
     """
 
-    detectors: List[Union[ObjectDetector, ImagePipeline]] = Field(
+    # Each detector may be an ``ObjectDetector`` or a nested
+    # ``ImagePipeline``. ``OperationField`` keeps the concrete class of
+    # each entry across a JSON round-trip (a bare ``model_dump`` of an
+    # ``ObjectDetector | ImagePipeline`` union would lose the subclass).
+    detectors: List[OperationField] = Field(
         default_factory=lambda: [OtsuDetector(), RoundPeaksDetector()]
     )
     mode: Literal['union', 'intersection', 'overlap'] = 'overlap'

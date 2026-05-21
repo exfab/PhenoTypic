@@ -7,7 +7,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Union, Optional, NamedTuple
 
 import numpy as np
-from pydantic import ConfigDict, Field, PrivateAttr, field_validator
+from pydantic import (
+    AliasChoices,
+    ConfigDict,
+    Field,
+    PrivateAttr,
+    field_validator,
+)
 
 from phenotypic.tools_.constants_ import OBJECT
 
@@ -182,7 +188,15 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     nrows: Optional[int] = None
     ncols: Optional[int] = None
 
-    ops: Dict[str, Union[ImageOperation, "ImagePipelineCore"]] = {}
+    # ``pipe_cfgs`` is the historical constructor keyword and the JSON
+    # envelope key for the operations collection; ``ops`` is the canonical
+    # field name. ``AliasChoices`` accepts either at construction /
+    # ``model_validate`` while ``validate_by_name=True`` keeps ``ops``
+    # working too.
+    ops: Dict[str, Union[ImageOperation, "ImagePipelineCore"]] = Field(
+        default_factory=dict,
+        validation_alias=AliasChoices("ops", "pipe_cfgs"),
+    )
     meas: Dict[str, MeasureFeatures] = {}
     post: Dict[str, PostMeasurement] = {}
     filters: Dict[str, SetAnalyzer] = {}

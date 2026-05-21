@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import inspect
 import json
 import importlib
 from dataclasses import dataclass
@@ -11,7 +10,6 @@ if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
     from phenotypic.analysis.abc_ import ModelFitter, SetAnalyzer
 
-import pandas as pd
 import warnings
 
 from phenotypic.abc_ import ImageOperation, MeasureFeatures
@@ -62,8 +60,12 @@ class SerializablePipeline(NapariPipelineViewer):
     - Operation instances with their parameters
     - Measurement instances with their parameters
 
-    Internal state (attributes starting with '_') and pandas DataFrames are
-    automatically excluded from serialization.
+    Serialization delegates to pydantic v2: every operation, measurement,
+    post transform, and analyzer is a ``BaseModel``, so each entry is
+    captured as ``{"class": <name>, "params": model.model_dump(mode="json")}``
+    and rebuilt with ``cls.model_validate(params)``. ``model_dump`` skips
+    ``PrivateAttr`` state (loggers, timing dicts, fitted DataFrames)
+    automatically, so internal state is excluded without ad-hoc filtering.
     """
 
     def to_json(self, filepath: Optional[Union[str, Path]] = None) -> str | None:
@@ -71,8 +73,9 @@ class SerializablePipeline(NapariPipelineViewer):
         Serialize the pipeline configuration to JSON format.
 
         This method captures the pipeline's operations and measurements.
-        It excludes internal state (attributes starting with '_') and pandas
-        DataFrames to keep the serialization clean and focused on reproducible configuration.
+        It excludes internal state (pydantic ``PrivateAttr`` fields) and
+        pandas DataFrames to keep the serialization clean and focused on
+        reproducible configuration.
 
         Args:
             filepath: Optional path to save the JSON. If None, returns JSON string.
@@ -113,29 +116,59 @@ class SerializablePipeline(NapariPipelineViewer):
             in a human-readable manner. This includes the phenotypic version, pipeline
             name, description, and the lists of operations and measurements.
         """
+        return json.dumps(
+            SerializablePipeline._serialize_pipeline_config(self), indent=2
+        )
+
+    @staticmethod
+    def _serialize_pipeline_config(
+            pipeline: "SerializablePipeline",
+    ) -> Dict[str, object]:
+        """Build the JSON-native config envelope for a pipeline.
+
+        Shared by :meth:`__str__` (top-level pipeline) and by the
+        pipeline-as-operation / nested-pipeline serialization paths so
+        every pipeline — wherever it sits in the tree — is encoded the
+        same way.
+
+        Args:
+            pipeline: The pipeline whose configuration to capture.
+
+        Returns:
+            Dict: The ``{version, name, desc, reset, pipe_cfgs, meas,
+            post, filters, model[, nrows, ncols]}`` envelope.
+        """
         config: Dict[str, object] = {
             "version"  : __version__,
-            "name"     : self.name,
-            "desc"     : self._desc,
-            "reset"    : self._reset,
-            "pipe_cfgs": self._serialize_operations(self._ops),
-            "meas"     : self._serialize_operations(self._meas),
-            "post"     : self._serialize_operations(self._post),
-            "filters"  : self._serialize_analyzers(self._filters),
+            "name"     : pipeline.name,
+            "desc"     : pipeline._desc,
+            "reset"    : pipeline._reset,
+            "pipe_cfgs": SerializablePipeline._serialize_operations(
+                pipeline._ops
+            ),
+            "meas"     : SerializablePipeline._serialize_operations(
+                pipeline._meas
+            ),
+            "post"     : SerializablePipeline._serialize_operations(
+                pipeline._post
+            ),
+            "filters"  : SerializablePipeline._serialize_analyzers(
+                pipeline._filters
+            ),
             "model"    : (
-                self._serialize_analyzer(self._model)
-                if self._model is not None
+                SerializablePipeline._serialize_analyzer(pipeline._model)
+                if pipeline._model is not None
                 else None
             ),
         }
 
         # Omit when unset so legacy JSONs round-trip unchanged.
-        if self._nrows is not None:
-            config["nrows"] = self._nrows
-        if self._ncols is not None:
-            config["ncols"] = self._ncols
+        if pipeline._nrows is not None:
+            config["nrows"] = pipeline._nrows
+        if pipeline._ncols is not None:
+            config["ncols"] = pipeline._ncols
 
-        return json.dumps(config, indent=2)
+        return config
 
     @classmethod
     def from_json(
@@ -152,7 +185,8 @@ class SerializablePipeline(NapariPipelineViewer):
 
         This method reconstructs a pipeline from a JSON string or file, restoring
         all operations and measurements. Classes are imported from the phenotypic
-        namespace and instantiated with their saved parameters.
+        namespace and instantiated with their saved parameters via
+        ``model_validate``.
 
         Args:
             json_data: A JSON string, path to a JSON file, or a pre-parsed dict.
@@ -215,6 +249,44 @@ class SerializablePipeline(NapariPipelineViewer):
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid JSON data: {e}")
 
+        return cls._deserialize_pipeline_config(
+            config,
+            benchmark=benchmark,
+            verbose=verbose,
+            skip_unknown_analyzers=skip_unknown_analyzers,
+            load_warnings=load_warnings,
+        )
+
+    @classmethod
+    def _deserialize_pipeline_config(
+            cls,
+            config: Dict,
+            *,
+            benchmark: bool = False,
+            verbose: bool = False,
+            skip_unknown_analyzers: bool = False,
+            load_warnings: Optional[List[PipelineLoadWarning]] = None,
+    ) -> ImagePipeline:
+        """Reconstruct a pipeline from a parsed config dict.
+
+        Shared by :meth:`from_json` (top-level pipeline) and by the
+        nested-pipeline / pipeline-as-operation deserialization paths so
+        every pipeline is rebuilt the same way.
+
+        Args:
+            config: A parsed pipeline config envelope (see
+                :meth:`_serialize_pipeline_config`).
+            benchmark: Whether to enable benchmarking for the pipeline.
+            verbose: Whether to enable verbose output.
+            skip_unknown_analyzers: Forwarded to the analyzer
+                deserialization — see :meth:`from_json`.
+            load_warnings: Optional list populated with one
+                :class:`PipelineLoadWarning` per skipped analyzer entry.
+
+        Returns:
+            ImagePipeline: A new pipeline instance with the loaded
+            configuration.
+        """
         # Deserialize operations, measurements, and post-measurement transforms
         ops = cls._deserialize_operations(config.get("pipe_cfgs", {}))
         meas = cls._deserialize_operations(config.get("meas", {}))
@@ -263,308 +335,104 @@ class SerializablePipeline(NapariPipelineViewer):
                     stacklevel=2
             )
 
-        # Create and return new pipeline instance
-        return cls(ops=ops, meas=meas, post=post, filters=filters, model=model,
-                   benchmark=benchmark, verbose=verbose,
-                   name=name, desc=desc, reset=reset, nrows=nrows, ncols=ncols)
+        # Create and return new pipeline instance. ``from_json`` is
+        # documented to yield an ``ImagePipeline``; nested-pipeline /
+        # pipeline-as-operation callers reach this method through the
+        # ``SerializablePipeline`` static context, so the construction
+        # class is pinned to ``ImagePipeline`` rather than ``cls`` (a
+        # prefab pipeline-as-operation is re-tagged by the caller after
+        # reconstruction).
+        from phenotypic._core._image_pipeline import ImagePipeline
+
+        return ImagePipeline(
+            ops=ops, meas=meas, post=post, filters=filters, model=model,
+            benchmark=benchmark, verbose=verbose,
+            name=name, desc=desc, reset=reset, nrows=nrows, ncols=ncols,
+        )
+
+    # ------------------------------------------------------------------ #
+    # Operation / measurement / post serialization
+    # ------------------------------------------------------------------ #
+    #
+    # Every operation is a pydantic ``BaseModel``, so each entry is
+    # encoded as ``{"class": <name>, "params": model.model_dump(mode="json")}``
+    # and rebuilt with ``cls.model_validate(params)``. ``model_dump``
+    # already drops ``PrivateAttr`` state and serializes nested
+    # ``OperationField`` / ``NdArrayField`` parameters, so there is no
+    # ``__dict__`` walking and no ``try/except json.dumps`` block that
+    # could silently drop a non-JSON-native parameter.
+    #
+    # A pipeline used *as* an operation keeps the legacy
+    # ``{"class", "__type__": "pipeline_operation", "config": ...}`` shape
+    # so previously-written JSON round-trips unchanged.
 
     @staticmethod
     def _serialize_operations(
             operations: Dict[str, Union[ImageOperation, MeasureFeatures]],
     ) -> Dict:
         """
-        Serialize a dictionary of operations or measurements.
+        Serialize a dictionary of operations, measurements, or post transforms.
 
         Args:
-            operations: Dictionary mapping names to operation/measurement instances.
+            operations: Dictionary mapping names to operation instances.
 
         Returns:
             Dict: Serialized representation with class names and parameters.
         """
-        serialized = {}
+        serialized: Dict[str, object] = {}
 
         for name, op in operations.items():
-            # Get class name
             class_name = op.__class__.__name__
 
-            # Handle operations that are themselves pipelines (e.g., PrefabPipeline as op)
+            # A pipeline used as an operation keeps the legacy
+            # ``pipeline_operation`` envelope so old JSON round-trips.
             if isinstance(op, SerializablePipeline):
                 serialized[name] = {
                     "class"   : class_name,
                     "__type__": "pipeline_operation",
-                    "config"  : {
-                        "version"  : __version__,
-                        "name"     : op.name,
-                        "desc"     : op._desc,
-                        "reset"    : op._reset,
-                        "pipe_cfgs": SerializablePipeline._serialize_operations(
-                                op._ops),
-                        "meas"     : SerializablePipeline._serialize_operations(
-                                op._meas),
-                    },
+                    "config"  : SerializablePipeline._serialize_pipeline_config(
+                        op
+                    ),
                 }
                 continue
 
-            # Get instance parameters, excluding internal state and DataFrames
-            params = {}
-            for key, value in op.__dict__.items():
-                # Skip private/protected attributes (starting with _)
-                if key.startswith("_"):
-                    continue
-
-                # Skip pandas DataFrames
-                if isinstance(value, pd.DataFrame):
-                    continue
-
-                # Handle nested ImageOperation or MeasureFeatures instances
-                if isinstance(value, (ImageOperation, MeasureFeatures)):
-                    params[key] = {
-                        "__type__": "operation",
-                        "class"   : value.__class__.__name__,
-                        "params"  : SerializablePipeline._serialize_single_operation(
-                                value)
-                    }
-                    continue
-
-                # Handle nested ImagePipeline instances (check before operations)
-                if isinstance(value, SerializablePipeline):
-                    pipeline_config = {
-                        "version"  : __version__,
-                        "name"     : value.name,
-                        "desc"     : value._desc,
-                        "pipe_cfgs": SerializablePipeline._serialize_operations(
-                                value._ops),
-                        "meas"     : SerializablePipeline._serialize_operations(
-                                value._meas),
-                    }
-                    params[key] = {
-                        "__type__": "pipeline",
-                        "config"  : pipeline_config
-                    }
-                    continue
-
-                # Handle lists - check for mixed types (operations and/or pipelines)
-                if isinstance(value, list) and value:
-                    # Check if list contains any pipelines
-                    has_pipeline = any(
-                            isinstance(item, SerializablePipeline) for item in value)
-                    has_operation = any(
-                            isinstance(item, (ImageOperation, MeasureFeatures)) for item
-                            in value)
-
-                    if has_pipeline and not has_operation:
-                        # Pure pipeline list
-                        params[key] = {
-                            "__type__": "pipeline_list",
-                            "items"   : [
-                                {
-                                    "config": {
-                                        "version"  : __version__,
-                                        "name"     : item.name,
-                                        "desc"     : item._desc,
-                                        "pipe_cfgs": SerializablePipeline._serialize_operations(
-                                                item._ops),
-                                        "meas"     : SerializablePipeline._serialize_operations(
-                                                item._meas),
-                                    }
-                                }
-                                for item in value
-                            ]
-                        }
-                        continue
-                    elif has_operation and not has_pipeline:
-                        # Pure operation list
-                        params[key] = {
-                            "__type__": "operation_list",
-                            "items"   : [
-                                {
-                                    "class" : item.__class__.__name__,
-                                    "params": SerializablePipeline._serialize_single_operation(
-                                            item)
-                                }
-                                for item in value
-                            ]
-                        }
-                        continue
-                    elif has_operation and has_pipeline:
-                        # Mixed list - serialize as operation_list with special handling for pipelines
-                        items = []
-                        for item in value:
-                            if isinstance(item, SerializablePipeline):
-                                items.append({
-                                    "__type__": "pipeline",
-                                    "config"  : {
-                                        "version"  : __version__,
-                                        "name"     : item.name,
-                                        "desc"     : item._desc,
-                                        "pipe_cfgs": SerializablePipeline._serialize_operations(
-                                                item._ops),
-                                        "meas"     : SerializablePipeline._serialize_operations(
-                                                item._meas),
-                                    }
-                                })
-                            else:
-                                items.append({
-                                    "class" : item.__class__.__name__,
-                                    "params": SerializablePipeline._serialize_single_operation(
-                                            item)
-                                })
-                        params[key] = {
-                            "__type__": "operation_list",
-                            "items"   : items
-                        }
-                        continue
-
-                # Check if value is JSON serializable
-                try:
-                    json.dumps(value)
-                    params[key] = value
-                except (TypeError, ValueError):
-                    # Skip non-serializable objects
-                    continue
-
-            serialized[name] = {"class": class_name, "params": params}
+            serialized[name] = {
+                "class" : class_name,
+                "params": SerializablePipeline._serialize_single_operation(op),
+            }
 
         return serialized
 
     @staticmethod
-    def _serialize_single_operation(op: Union[ImageOperation, MeasureFeatures]) -> Dict:
+    def _serialize_single_operation(
+            op: Union[ImageOperation, MeasureFeatures],
+    ) -> Dict:
         """
-        Serialize a single operation instance (helper for nested operations).
+        Serialize a single operation instance to its JSON-native parameters.
 
-        This enables recursive serialization of operations containing other operations.
+        Delegates to pydantic's ``model_dump(mode="json")``: the operation
+        is a ``BaseModel``, so this captures every declared field —
+        including nested operations carried by an ``OperationField`` and
+        raw arrays carried by an ``NdArrayField`` — and skips
+        ``PrivateAttr`` internal state.
 
         Args:
-            op: An ImageOperation or MeasureFeatures instance.
+            op: An operation/measurement/post instance.
 
         Returns:
-            Dict: Serialized parameters of the operation.
+            Dict: The JSON-native parameter dict produced by ``model_dump``.
         """
-        params = {}
-        for key, value in op.__dict__.items():
-            # Skip private/internal attributes (starting with _)
-            if key.startswith("_"):
-                continue
-
-            # Skip pandas DataFrames
-            if isinstance(value, pd.DataFrame):
-                continue
-
-            # Handle nested ImagePipeline instances (check before operations)
-            if isinstance(value, SerializablePipeline):
-                pipeline_config = {
-                    "version"  : __version__,
-                    "name"     : value.name,
-                    "desc"     : value._desc,
-                    "pipe_cfgs": SerializablePipeline._serialize_operations(value._ops),
-                    "meas"     : SerializablePipeline._serialize_operations(
-                            value._meas),
-                }
-                params[key] = {
-                    "__type__": "pipeline",
-                    "config"  : pipeline_config
-                }
-                continue
-
-            # Recursively handle nested operations
-            if isinstance(value, (ImageOperation, MeasureFeatures)):
-                params[key] = {
-                    "__type__": "operation",
-                    "class"   : value.__class__.__name__,
-                    "params"  : SerializablePipeline._serialize_single_operation(value)
-                }
-                continue
-
-            # Handle lists - check for mixed types (operations and/or pipelines)
-            if isinstance(value, list) and value:
-                # Check if list contains any pipelines
-                has_pipeline = any(
-                        isinstance(item, SerializablePipeline) for item in value)
-                has_operation = any(
-                        isinstance(item, (ImageOperation, MeasureFeatures)) for item in
-                        value)
-
-                if has_pipeline and not has_operation:
-                    # Pure pipeline list
-                    params[key] = {
-                        "__type__": "pipeline_list",
-                        "items"   : [
-                            {
-                                "config": {
-                                    "version"  : __version__,
-                                    "name"     : item.name,
-                                    "desc"     : item._desc,
-                                    "pipe_cfgs": SerializablePipeline._serialize_operations(
-                                            item._ops),
-                                    "meas"     : SerializablePipeline._serialize_operations(
-                                            item._meas),
-                                }
-                            }
-                            for item in value
-                        ]
-                    }
-                    continue
-                elif has_operation and not has_pipeline:
-                    # Pure operation list
-                    params[key] = {
-                        "__type__": "operation_list",
-                        "items"   : [
-                            {
-                                "class" : item.__class__.__name__,
-                                "params": SerializablePipeline._serialize_single_operation(
-                                        item)
-                            }
-                            for item in value
-                        ]
-                    }
-                    continue
-                elif has_operation and has_pipeline:
-                    # Mixed list - serialize as operation_list with special handling for pipelines
-                    items = []
-                    for item in value:
-                        if isinstance(item, SerializablePipeline):
-                            items.append({
-                                "__type__": "pipeline",
-                                "config"  : {
-                                    "version"  : __version__,
-                                    "name"     : item.name,
-                                    "desc"     : item._desc,
-                                    "pipe_cfgs": SerializablePipeline._serialize_operations(
-                                            item._ops),
-                                    "meas"     : SerializablePipeline._serialize_operations(
-                                            item._meas),
-                                }
-                            })
-                        else:
-                            items.append({
-                                "class" : item.__class__.__name__,
-                                "params": SerializablePipeline._serialize_single_operation(
-                                        item)
-                            })
-                    params[key] = {
-                        "__type__": "operation_list",
-                        "items"   : items
-                    }
-                    continue
-
-            # Try JSON serialization for primitives
-            try:
-                json.dumps(value)
-                params[key] = value
-            except (TypeError, ValueError):
-                continue
-
-        return params
+        return op.model_dump(mode="json")
 
     @staticmethod
     def _deserialize_operations(
             serialized: Dict,
     ) -> Dict[str, Union[ImageOperation, MeasureFeatures]]:
         """
-        Deserialize a dictionary of operations or measurements.
+        Deserialize a dictionary of operations, measurements, or post transforms.
 
         Args:
-            serialized: Dictionary with serialized operation/measurement data.
+            serialized: Dictionary with serialized operation data.
 
         Returns:
             Dict: Dictionary mapping names to reconstructed instances.
@@ -574,65 +442,65 @@ class SerializablePipeline(NapariPipelineViewer):
             AttributeError: If a class cannot be found in phenotypic namespace.
         """
 
-        operations = {}
+        operations: Dict[str, Union[ImageOperation, MeasureFeatures]] = {}
 
         for name, op_data in serialized.items():
             class_name = op_data["class"]
 
-            # Handle pipeline-as-operation entries
+            # Pipeline-as-operation entries carry a nested config envelope.
             if op_data.get("__type__") == "pipeline_operation":
                 from phenotypic._core._image_pipeline import ImagePipeline
 
-                pipeline = ImagePipeline.from_json(op_data["config"])
-                # Re-tag to specific subclass if found
-                op_class = SerializablePipeline._find_class_in_phenotypic(class_name)
+                pipeline = SerializablePipeline._deserialize_pipeline_config(
+                    op_data["config"]
+                )
+                # Re-tag to the specific pipeline subclass when resolvable.
+                op_class = SerializablePipeline._find_class_in_phenotypic(
+                    class_name
+                )
                 if op_class is not None and op_class is not ImagePipeline:
                     pipeline.__class__ = op_class
                 operations[name] = pipeline
                 continue
 
-            params = op_data["params"]
-
-            # Try to find the class in phenotypic namespace
             op_class = SerializablePipeline._find_class_in_phenotypic(class_name)
-
             if op_class is None:
                 raise AttributeError(
                         f"Class '{class_name}' not found in phenotypic namespace. "
                         f"Make sure it's properly imported in phenotypic.__init__.py"
                 )
 
-            # Instantiate the class with empty constructor
-            try:
-                instance = op_class()
-            except TypeError:
-                # If empty constructor fails, try with default parameters
-                raise TypeError(
-                        f"Cannot instantiate {class_name} with empty constructor. "
-                        f"The class may require mandatory parameters."
-                )
-
-            # Set the parameters from saved state, handling nested operations
-            for key, value in params.items():
-                deserialized_value = SerializablePipeline._deserialize_value(value)
-                setattr(instance, key, deserialized_value)
-
-            operations[name] = instance
+            params = SerializablePipeline._deserialize_value(
+                op_data.get("params", {}) or {}
+            )
+            operations[name] = op_class.model_validate(params)
 
         return operations
 
     @classmethod
     def _deserialize_value(cls, value):
         """
-        Recursively deserialize a parameter value, handling nested operations.
+        Normalize a serialized ``params`` payload for ``model_validate``.
+
+        New JSON stores ``params`` as a plain pydantic ``model_dump`` — a
+        dict of JSON-native values that ``model_validate`` consumes
+        directly, with nested ``OperationField`` parameters reconstructed
+        by their own field validators. This method therefore only has to
+        translate the *legacy* pre-pydantic nesting markers
+        (``__type__`` of ``operation`` / ``operation_list`` / ``pipeline``
+        / ``pipeline_list``) into the live operation instances those
+        markers described, so pipelines saved before the pydantic
+        migration still load.
 
         Args:
-            value: The value to deserialize (may be primitive, nested operation, or operation list).
+            value: A serialized value — a primitive, a legacy-tagged dict,
+                a list, or a plain params dict.
 
         Returns:
-            Deserialized value (primitive, ImageOperation, MeasureFeatures, or list thereof).
+            The value with any legacy operation/pipeline markers replaced
+            by reconstructed instances; primitives pass through unchanged.
         """
-        # Handle nested operation
+        # Legacy nested operation marker.
         if isinstance(value, dict) and value.get("__type__") == "operation":
             op_class = cls._find_class_in_phenotypic(value["class"])
             if op_class is None:
@@ -640,59 +508,45 @@ class SerializablePipeline(NapariPipelineViewer):
                         f"Class '{value['class']}' not found in phenotypic namespace. "
                         f"Make sure it's properly imported in phenotypic.__init__.py"
                 )
-            instance = op_class()
-            for nested_key, nested_value in value["params"].items():
-                setattr(instance, nested_key, cls._deserialize_value(nested_value))
-            return instance
+            nested_params = {
+                k: cls._deserialize_value(v)
+                for k, v in (value.get("params", {}) or {}).items()
+            }
+            return op_class.model_validate(nested_params)
 
-        # Handle list of operations (may contain mixed operations and pipelines)
-        elif isinstance(value, dict) and value.get("__type__") == "operation_list":
-            operation_list = []
-            for item_data in value["items"]:
-                # Check if item is a pipeline
-                if item_data.get("__type__") == "pipeline":
-                    from phenotypic import ImagePipeline
+        # Legacy operation-list marker (may mix operations and pipelines).
+        if isinstance(value, dict) and value.get("__type__") == "operation_list":
+            return [
+                cls._deserialize_value(item)
+                if item.get("__type__") in ("operation", "pipeline")
+                else cls._deserialize_value(
+                    {"__type__": "operation", **item}
+                )
+                for item in value["items"]
+            ]
 
-                    json_str = json.dumps(item_data["config"])
-                    pipeline = ImagePipeline.from_json(json_str)
-                    operation_list.append(pipeline)
-                else:
-                    # Handle as operation
-                    item_class = cls._find_class_in_phenotypic(item_data["class"])
-                    if item_class is None:
-                        raise AttributeError(
-                                f"Class '{item_data['class']}' not found in phenotypic namespace. "
-                                f"Make sure it's properly imported in phenotypic.__init__.py"
-                        )
-                    item_instance = item_class()
-                    for item_key, item_value in item_data["params"].items():
-                        setattr(item_instance, item_key,
-                                cls._deserialize_value(item_value))
-                    operation_list.append(item_instance)
-            return operation_list
+        # Legacy nested-pipeline marker.
+        if isinstance(value, dict) and value.get("__type__") == "pipeline":
+            return SerializablePipeline._deserialize_pipeline_config(
+                value["config"]
+            )
 
-        # Handle nested ImagePipeline
-        elif isinstance(value, dict) and value.get("__type__") == "pipeline":
-            from phenotypic import ImagePipeline
+        # Legacy pipeline-list marker.
+        if isinstance(value, dict) and value.get("__type__") == "pipeline_list":
+            return [
+                SerializablePipeline._deserialize_pipeline_config(
+                    item["config"]
+                )
+                for item in value["items"]
+            ]
 
-            json_str = json.dumps(value["config"])
-            pipeline = ImagePipeline.from_json(json_str)
-            return pipeline
-
-        # Handle list of ImagePipeline instances
-        elif isinstance(value, dict) and value.get("__type__") == "pipeline_list":
-            from phenotypic import ImagePipeline
-
-            pipeline_list = []
-            for item_data in value["items"]:
-                json_str = json.dumps(item_data["config"])
-                pipeline = ImagePipeline.from_json(json_str)
-                pipeline_list.append(pipeline)
-            return pipeline_list
-
-        # Primitive value
-        else:
-            return value
+        # Recurse into plain dict params / lists so nested legacy markers
+        # are still reached; pure JSON-native values pass straight through.
+        if isinstance(value, dict):
+            return {k: cls._deserialize_value(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [cls._deserialize_value(v) for v in value]
+        return value
 
     @staticmethod
     def _find_class_in_phenotypic(class_name: str):
@@ -743,24 +597,14 @@ class SerializablePipeline(NapariPipelineViewer):
     # Analysis chain serialization (filters / model)
     # ------------------------------------------------------------------ #
     #
-    # Analyzer subclasses (``SetAnalyzer``, ``ModelFitter``) take required
-    # constructor arguments — ``on``, ``groupby``, plus subclass-specific
-    # parameters — so they cannot be reconstructed via the empty-constructor
-    # + setattr pattern used for ``ImageOperation`` / ``MeasureFeatures``
-    # entries above. Instead we introspect ``cls.__init__`` and reconstruct
-    # via ``cls(**kwargs)``. The alias map below carries forward
-    # backward-compat with JSON written before the ``num_workers`` →
-    # ``n_jobs`` standardization: legacy payloads serialized with
-    # ``num_workers`` are translated to the current constructor's
-    # ``n_jobs`` parameter. Newly written JSON uses ``n_jobs`` directly
-    # (matching ``self.n_jobs`` on every analyzer) and doesn't need the
-    # alias.
-
-    _ANALYZER_INIT_ALIASES: Dict[str, str] = {
-        # Serialized-payload key -> constructor arg name. Used when a
-        # legacy JSON file spells a parameter under its pre-rename name.
-        "num_workers": "n_jobs",
-    }
+    # Analyzers (``SetAnalyzer`` / ``ModelFitter`` subclasses) are pydantic
+    # ``BaseModel``s too, so they serialize and reconstruct exactly like
+    # operations — ``{"class", "params": model_dump(mode="json")}`` out,
+    # ``cls.model_validate(params)`` back. The legacy ``num_workers`` →
+    # ``n_jobs`` rename is handled by an ``AliasChoices`` on
+    # ``SetAnalyzer.n_jobs``: a JSON file written before the rename spells
+    # the key ``num_workers`` and ``model_validate`` accepts it directly,
+    # so no alias map is needed here.
 
     @staticmethod
     def _serialize_analyzer(
@@ -768,23 +612,20 @@ class SerializablePipeline(NapariPipelineViewer):
     ) -> Dict[str, object]:
         """Serialize one analyzer instance to a ``{class, params}`` dict.
 
-        Walks ``analyzer.__dict__``, keeps JSON-serializable primitives, and
-        skips private/internal attributes and pandas DataFrames.
+        Delegates to ``model_dump(mode="json")``; ``PrivateAttr`` state
+        (e.g. the cached ``_latest_measurements`` DataFrame) is excluded
+        automatically.
+
+        Args:
+            analyzer: A :class:`SetAnalyzer` or :class:`ModelFitter`
+                instance.
+
+        Returns:
+            Dict: ``{"class": <name>, "params": {...}}``.
         """
-        params: Dict[str, object] = {}
-        for key, value in analyzer.__dict__.items():
-            if key.startswith("_"):
-                continue
-            if isinstance(value, pd.DataFrame):
-                continue
-            try:
-                json.dumps(value)
-            except (TypeError, ValueError):
-                continue
-            params[key] = value
         return {
             "class" : analyzer.__class__.__name__,
-            "params": params,
+            "params": analyzer.model_dump(mode="json"),
         }
 
     @staticmethod
@@ -806,12 +647,11 @@ class SerializablePipeline(NapariPipelineViewer):
     ) -> Union["SetAnalyzer", "ModelFitter", None]:
         """Reconstruct one analyzer instance from a ``{class, params}`` dict.
 
-        Introspects the target class's constructor signature, picks matching
-        keys from ``params``, applies known aliases (e.g. legacy
-        ``num_workers`` -> ``n_jobs``), then constructs via
-        ``cls(**kwargs)``. Any leftover
-        keys are restored via ``setattr`` so internal attributes (e.g. fitted
-        results that were JSON-serializable) survive the round-trip.
+        Resolves the class through the ``phenotypic`` registry and rebuilds
+        it with ``cls.model_validate(params)``. The legacy
+        ``num_workers`` key is accepted via the ``AliasChoices`` on
+        ``SetAnalyzer.n_jobs`` — ``model_validate`` translates it to
+        ``n_jobs`` with no help needed here.
 
         Args:
             serialized: ``{"class": ..., "params": {...}}`` dict.
@@ -853,26 +693,7 @@ class SerializablePipeline(NapariPipelineViewer):
                 f"analyzer 'params' must be a dict, got {type(params).__name__}"
             )
 
-        sig = inspect.signature(op_class.__init__)
-        accepted = {
-            name for name in sig.parameters if name != "self"
-        }
-
-        kwargs: Dict[str, object] = {}
-        leftover: Dict[str, object] = {}
-        for key, value in params.items():
-            if key in accepted:
-                kwargs[key] = value
-            elif key in cls._ANALYZER_INIT_ALIASES \
-                    and cls._ANALYZER_INIT_ALIASES[key] in accepted:
-                kwargs[cls._ANALYZER_INIT_ALIASES[key]] = value
-            else:
-                leftover[key] = value
-
-        instance = op_class(**kwargs)
-        for key, value in leftover.items():
-            setattr(instance, key, value)
-        return instance
+        return op_class.model_validate(params)
 
     @classmethod
     def _deserialize_analyzers(

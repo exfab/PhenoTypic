@@ -16,13 +16,14 @@ from skimage.filters import threshold_otsu
 from skimage.measure import label
 from skimage.morphology import disk, dilation
 
-from phenotypic.abc_ import GridObjectDetector, ObjectDetector
+from phenotypic.abc_ import GridObjectDetector
 from phenotypic import ImagePipeline
 from phenotypic.enhance import (
     SubtractGaussian,
     ContrastStretching,
     PhaseCongruencyEnhancer,
 )
+from phenotypic.tools_.typing_ import OperationField
 
 from phenotypic.detect import HysteresisDetector
 from phenotypic.detect._inoculum_detector import InoculumDetector
@@ -201,7 +202,10 @@ class FilamentousFungiDetector(GridObjectDetector):
     pct_n_orient: ClassVar[int] = 8      # phase congruency angular resolution
 
     # ── Inoculum detector (None → default pipeline, filled by validator) ──
-    inoculum_detector: Union[ObjectDetector, ImagePipeline, None] = None
+    # ``OperationField`` preserves the concrete detector/pipeline class
+    # across a JSON round-trip; ``| None`` keeps the unset sentinel that
+    # ``_derive_scene_params`` replaces with the default pipeline.
+    inoculum_detector: Union[OperationField, None] = None
 
     # ── Scene parameters ──
     max_colony_radius_px: float = 250.0

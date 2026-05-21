@@ -229,19 +229,21 @@ class TestCompositeDetector:
         composite_key = [k for k in pipe_cfgs.keys() if 'CompositeDetector' in k][0]
         composite_data = pipe_cfgs[composite_key]
 
-        # Verify nested detectors are serialized
+        # Verify nested detectors are serialized. Under the pydantic
+        # serializer each ``OperationField`` entry is a plain
+        # ``{"class", "params"}`` dict, so ``detectors`` is a JSON list.
         assert 'detectors' in composite_data['params']
         detectors_data = composite_data['params']['detectors']
-        assert detectors_data['__type__'] == 'operation_list'
-        assert len(detectors_data['items']) == 2
+        assert isinstance(detectors_data, list)
+        assert len(detectors_data) == 2
 
         # Verify first detector (OtsuDetector)
-        otsu_data = detectors_data['items'][0]
+        otsu_data = detectors_data[0]
         assert otsu_data['class'] == 'OtsuDetector'
         assert otsu_data['params']['ignore_zeros'] is True
 
         # Verify second detector (CannyDetector)
-        canny_data = detectors_data['items'][1]
+        canny_data = detectors_data[1]
         assert canny_data['class'] == 'CannyDetector'
         assert canny_data['params']['sigma'] == 2
 
@@ -415,17 +417,20 @@ class TestCompositeDetector:
         composite_key = [k for k in pipe_cfgs.keys() if 'CompositeDetector' in k][0]
         composite_data = pipe_cfgs[composite_key]
 
-        # Verify detectors list structure
+        # Verify detectors list structure. ``OperationField`` serializes
+        # each entry to a class-tagged dict; an ``ObjectDetector`` entry is
+        # ``{"class", "params"}`` and a nested ``ImagePipeline`` entry is
+        # ``{"__type__": "pipeline", "config": ...}``.
         detectors_data = composite_data['params']['detectors']
-        assert detectors_data['__type__'] == 'operation_list'
-        assert len(detectors_data['items']) == 2
+        assert isinstance(detectors_data, list)
+        assert len(detectors_data) == 2
 
         # First item is ObjectDetector
-        assert detectors_data['items'][0]['class'] == 'OtsuDetector'
+        assert detectors_data[0]['class'] == 'OtsuDetector'
 
         # Second item is ImagePipeline
-        assert detectors_data['items'][1]['__type__'] == 'pipeline'
-        assert 'config' in detectors_data['items'][1]
-        nested_config = detectors_data['items'][1]['config']
+        assert detectors_data[1]['__type__'] == 'pipeline'
+        assert 'config' in detectors_data[1]
+        nested_config = detectors_data[1]['config']
         assert 'pipe_cfgs' in nested_config
         assert len(nested_config['pipe_cfgs']) == 2

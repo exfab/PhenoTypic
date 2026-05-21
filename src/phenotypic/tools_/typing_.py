@@ -3,7 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Annotated, Any, Dict, List, Literal, Tuple
 
 import numpy as np
-from pydantic import BeforeValidator, PlainSerializer, WithJsonSchema
+from pydantic import (
+    AfterValidator,
+    BeforeValidator,
+    PlainSerializer,
+    WithJsonSchema,
+)
 
 if TYPE_CHECKING:
     from phenotypic.abc_ import ImageOperation
@@ -119,4 +124,159 @@ NdArrayField = Annotated[
     BeforeValidator(_coerce_to_ndarray),
     PlainSerializer(_ndarray_to_list, return_type=list),
     WithJsonSchema({"type": "array", "items": {}}),
+]
+
+
+# ---------------------------------------------------------------------------
+# Pydantic-friendly operation field — reusable annotated type for operation
+# parameters that hold *another* operation (or a nested pipeline) whose
+# concrete class must survive a JSON round-trip.
+#
+# A plain ``model_dump`` of a field typed ``ObjectDetector | ImagePipeline``
+# would dump only the *base-class* fields, silently losing the concrete
+# subclass identity (an ``OtsuDetector`` would dump as an empty
+# ``ImageOperation``). ``OperationField`` bundles:
+#   - a ``PlainSerializer`` that tags each value with its class so the
+#     concrete type can be rebuilt — ``{"class", "params"}`` for an
+#     operation, ``{"__type__": "pipeline", "config": ...}`` for a pipeline,
+#   - a ``BeforeValidator`` that reconstructs the operation/pipeline from
+#     that tagged dict via the ``phenotypic`` class registry, while passing
+#     an already-live operation instance straight through.
+#
+# Used by ``CompositeDetector.detectors`` and
+# ``FilamentousFungiDetector.inoculum_detector``. The serialized shape is
+# byte-compatible with what ``SerializablePipeline._serialize_*`` emits, so
+# the two code paths agree and nested operations round-trip losslessly.
+#
+# Host models must declare ``arbitrary_types_allowed=True`` (inherited from
+# ``BaseOperation``) because the underlying field type is an arbitrary
+# (non-pydantic-by-this-annotation) operation class.
+# ---------------------------------------------------------------------------
+
+
+def _serialize_operation_value(value: Any) -> Any:
+    """Serialize one operation/pipeline value to a class-tagged dict.
+
+    Args:
+        value: An ``ImageOperation`` instance or an ``ImagePipeline``
+            (which is itself an ``ImageOperation``).
+
+    Returns:
+        A JSON-native dict carrying the concrete class identity:
+        ``{"__type__": "pipeline", "config": {...}}`` for a pipeline,
+        otherwise ``{"class": <name>, "params": {...}}`` for an operation.
+        Any other input is returned unchanged (pydantic reports the
+        type error).
+    """
+    # Lazy import: the serializer module imports operation classes, so a
+    # top-level import here would create a cycle through ``tools_``.
+    from phenotypic._core._pipeline_parts._serializable_pipeline import (
+        SerializablePipeline,
+    )
+
+    if isinstance(value, SerializablePipeline):
+        return {
+            "__type__": "pipeline",
+            "config": SerializablePipeline._serialize_pipeline_config(value),
+        }
+    if hasattr(value, "model_dump"):
+        return {
+            "class": type(value).__name__,
+            "params": value.model_dump(mode="json"),
+        }
+    return value
+
+
+def _deserialize_operation_value(value: Any) -> Any:
+    """Reconstruct one operation/pipeline value from a class-tagged dict.
+
+    Args:
+        value: Either an already-live operation/pipeline instance (passed
+            straight through), or a class-tagged dict produced by
+            :func:`_serialize_operation_value`.
+
+    Returns:
+        The reconstructed ``ImageOperation`` / ``ImagePipeline`` instance,
+        or ``value`` unchanged when it is not a recognised tagged dict.
+
+    Raises:
+        AttributeError: If a tagged dict names a class that cannot be
+            resolved in the ``phenotypic`` namespace.
+    """
+    from phenotypic._core._pipeline_parts._serializable_pipeline import (
+        SerializablePipeline,
+    )
+
+    # Already a live operation/pipeline — nothing to reconstruct.
+    if not isinstance(value, dict):
+        return value
+
+    # Nested pipeline entry.
+    if value.get("__type__") == "pipeline":
+        return SerializablePipeline._deserialize_pipeline_config(
+            value["config"]
+        )
+
+    # Plain operation entry — ``{"class": ..., "params": {...}}``.
+    if "class" in value:
+        cls = SerializablePipeline._find_class_in_phenotypic(value["class"])
+        if cls is None:
+            raise AttributeError(
+                f"Class '{value['class']}' not found in phenotypic "
+                f"namespace. Make sure it's properly imported in "
+                f"phenotypic.__init__.py"
+            )
+        return cls.model_validate(value.get("params", {}) or {})
+
+    return value
+
+
+def _require_operation_value(value: Any) -> Any:
+    """Assert a reconstructed value is an operation or a pipeline.
+
+    Runs after :func:`_deserialize_operation_value`. Because
+    :data:`OperationField` carries an ``Any`` core (it cannot name the
+    operation base classes without an import cycle through ``tools_``),
+    this validator restores the type guard a plain
+    ``ObjectDetector | ImagePipeline`` annotation would otherwise provide.
+
+    Args:
+        value: The (already reconstructed) field value.
+
+    Returns:
+        ``value`` unchanged when it is a ``BaseOperation`` instance
+        (``ImagePipeline`` is itself a ``BaseOperation``).
+
+    Raises:
+        ValueError: If ``value`` is not an operation/pipeline instance.
+            Raised as ``ValueError`` (not ``TypeError``) so pydantic wraps
+            it into a :class:`pydantic.ValidationError`.
+    """
+    from phenotypic.abc_ import BaseOperation
+
+    if not isinstance(value, BaseOperation):
+        raise ValueError(
+            f"expected an operation or pipeline instance, got "
+            f"{type(value).__name__}"
+        )
+    return value
+
+
+#: Annotated operation type usable as a pydantic field annotation for a
+#: parameter that holds another operation or a nested pipeline.
+#:
+#: Serializes to a class-tagged dict so the concrete subclass survives a
+#: JSON round-trip; deserializes by resolving the class through the
+#: ``phenotypic`` registry. Use it directly (``OperationField``) or inside
+#: a container — e.g. ``list[OperationField]`` — when the field must
+#: accept several operation types and round-trip each losslessly.
+#:
+#: The core type is ``Any`` (naming the operation base classes here would
+#: create an import cycle through ``tools_``); an ``AfterValidator``
+#: restores the operation/pipeline type guard.
+OperationField = Annotated[
+    Any,
+    BeforeValidator(_deserialize_operation_value),
+    AfterValidator(_require_operation_value),
+    PlainSerializer(_serialize_operation_value),
 ]

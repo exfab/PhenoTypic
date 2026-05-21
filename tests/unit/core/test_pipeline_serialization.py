@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 import pandas as pd
+from pydantic import ValidationError
 
 from phenotypic import ImagePipeline, Image
 from phenotypic._core._pipeline_parts._serializable_pipeline import SerializablePipeline
@@ -393,17 +394,157 @@ class TestEdgeCases:
                 )
 
     def test_dataframe_excluded(self):
-        """Test that pandas DataFrames are excluded from serialization."""
+        """Internal DataFrame state never leaks into serialized params.
+
+        Operations are pydantic models with ``extra="forbid"``: an
+        arbitrary attribute (e.g. a stray DataFrame) cannot be attached at
+        all, and any legitimate internal state lives in a ``PrivateAttr``
+        which ``model_dump`` excludes by construction. Both halves of that
+        guarantee are checked here.
+        """
+        # An arbitrary (DataFrame-valued) attribute is rejected outright.
+        op = OtsuDetector()
+        with pytest.raises(ValidationError):
+            op.test_df = pd.DataFrame({"a": [1, 2, 3]})
+
+        # The serialized params carry only declared fields — no DataFrame.
         pipe = ImagePipeline(ops=[OtsuDetector()])
+        config = json.loads(pipe.to_json())
+        params = config["pipe_cfgs"]["OtsuDetector"]["params"]
+        assert set(params) == {"ignore_zeros", "ignore_borders"}
+        assert not any(isinstance(v, dict) and "a" in v for v in params.values())
 
-        # Manually add a DataFrame to an operation (simulating internal state)
-        pipe._ops["OtsuDetector"].test_df = pd.DataFrame({"a": [1, 2, 3]})
 
-        json_str = pipe.to_json()
-        config = json.loads(json_str)
+class TestPreMigrationBackwardCompat:
+    """Loading JSON written before the pydantic v2 migration.
 
-        # Verify DataFrame is not in the serialized data
-        assert "test_df" not in config["pipe_cfgs"]["OtsuDetector"]["params"]
+    The migration was structure-preserving — same class names, same
+    parameter names, same defaults — and kept the on-disk ``{class,
+    params}`` envelope. A hand-written pre-migration ``pipeline.json``
+    must therefore still load via ``model_validate`` and yield an
+    equivalent pipeline.
+    """
+
+    def test_loads_pre_migration_pipeline_json(self):
+        """A hand-written old-style pipeline.json reconstructs equivalently.
+
+        The fixture mimics what the pre-pydantic ``_serialize_operations``
+        emitted: a flat ``params`` dict of public attributes per operation
+        plus a measurer entry, under the historical envelope.
+        """
+        # Hand-written pre-migration payload (a couple of ops + a measurer).
+        old_json = json.dumps({
+            "version"  : "0.13.0",
+            "name"     : "legacy_pipeline",
+            "desc"     : "saved before the pydantic migration",
+            "reset"    : False,
+            "pipe_cfgs": {
+                "GaussianBlur": {
+                    "class" : "GaussianBlur",
+                    "params": {"sigma": 3.0, "mode": "reflect"},
+                },
+                "OtsuDetector": {
+                    "class" : "OtsuDetector",
+                    "params": {"ignore_zeros": True, "ignore_borders": False},
+                },
+                "SmallObjectRemover": {
+                    "class" : "SmallObjectRemover",
+                    "params": {"min_size": 40},
+                },
+            },
+            "meas"     : {
+                "MeasureShape": {"class": "MeasureShape", "params": {}},
+            },
+        })
+
+        loaded = ImagePipeline.from_json(old_json)
+
+        # Build the equivalent pipeline directly and compare.
+        expected = ImagePipeline(
+            ops=[
+                GaussianBlur(sigma=3.0, mode="reflect"),
+                OtsuDetector(ignore_zeros=True, ignore_borders=False),
+                SmallObjectRemover(min_size=40),
+            ],
+            meas=[MeasureShape()],
+            name="legacy_pipeline",
+            desc="saved before the pydantic migration",
+        )
+
+        assert loaded.name == expected.name == "legacy_pipeline"
+        assert loaded.desc == expected.desc
+        assert list(loaded._ops.keys()) == list(expected._ops.keys())
+        assert list(loaded._meas.keys()) == list(expected._meas.keys())
+
+        loaded_blur = loaded._ops["GaussianBlur"]
+        assert isinstance(loaded_blur, GaussianBlur)
+        assert loaded_blur.sigma == 3.0
+        assert loaded_blur.mode == "reflect"
+
+        loaded_otsu = loaded._ops["OtsuDetector"]
+        assert isinstance(loaded_otsu, OtsuDetector)
+        assert loaded_otsu.ignore_zeros is True
+        assert loaded_otsu.ignore_borders is False
+
+        loaded_remover = loaded._ops["SmallObjectRemover"]
+        assert isinstance(loaded_remover, SmallObjectRemover)
+        assert loaded_remover.min_size == 40
+
+        assert isinstance(loaded._meas["MeasureShape"], MeasureShape)
+
+        # A re-serialized round-trip of the loaded pipeline is stable.
+        assert ImagePipeline.from_json(loaded.to_json()).to_json() == \
+            loaded.to_json()
+
+    def test_loads_pre_migration_legacy_nested_operation_list(self):
+        """Legacy ``__type__: operation_list`` nesting still reconstructs.
+
+        Before the migration a ``CompositeDetector`` serialized its
+        ``detectors`` field with the hand-rolled ``operation_list`` marker.
+        ``_deserialize_value`` must translate that legacy marker into live
+        operations so old composite pipelines load.
+        """
+        from phenotypic.detect import CompositeDetector
+
+        old_json = json.dumps({
+            "version"  : "0.13.0",
+            "name"     : "legacy_composite",
+            "desc"     : None,
+            "reset"    : False,
+            "pipe_cfgs": {
+                "CompositeDetector": {
+                    "class" : "CompositeDetector",
+                    "params": {
+                        "mode"             : "union",
+                        "min_overlap_ratio": 0.0,
+                        "detectors"        : {
+                            "__type__": "operation_list",
+                            "items"   : [
+                                {
+                                    "class" : "OtsuDetector",
+                                    "params": {"ignore_zeros": True},
+                                },
+                                {
+                                    "class" : "CannyDetector",
+                                    "params": {"sigma": 2},
+                                },
+                            ],
+                        },
+                    },
+                },
+            },
+            "meas"     : {},
+        })
+
+        loaded = ImagePipeline.from_json(old_json)
+        composite = loaded._ops["CompositeDetector"]
+        assert isinstance(composite, CompositeDetector)
+        assert composite.mode == "union"
+        assert len(composite.detectors) == 2
+        assert type(composite.detectors[0]).__name__ == "OtsuDetector"
+        assert composite.detectors[0].ignore_zeros is True
+        assert type(composite.detectors[1]).__name__ == "CannyDetector"
+        assert composite.detectors[1].sigma == 2
 
 
 class TestErrorHandling:
@@ -515,7 +656,7 @@ class TestNameAndDescAttributes:
         # Should trigger warning
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            loaded = ImagePipeline.from_json(json_str)
+            ImagePipeline.from_json(json_str)
             assert len(w) == 1
             assert "version" in str(w[0].message).lower()
             assert "0.0.0" in str(w[0].message)
@@ -536,7 +677,7 @@ class TestNameAndDescAttributes:
         # Should NOT trigger warning
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            loaded = ImagePipeline.from_json(json_str)
+            ImagePipeline.from_json(json_str)
             # Filter for our specific warning type
             version_warnings = [warn for warn in w if
                                 "version" in str(warn.message).lower()]
