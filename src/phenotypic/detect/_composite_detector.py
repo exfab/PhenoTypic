@@ -124,6 +124,10 @@ class CompositeDetector(ObjectDetector):
         objmaps = []
 
         for detector in self.detectors:
+            if detector is None:
+                # An unfilled list slot (the GUI builder marks an empty
+                # detector slot with None); nothing to apply — skip it.
+                continue
             if isinstance(detector, ImagePipeline):
                 # Apply pipeline (preprocessing + detection)
                 detected_image = detector.apply(image,
