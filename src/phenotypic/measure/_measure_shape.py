@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import ClassVar, TYPE_CHECKING
 
 from phenotypic.tools_.constants_ import OBJECT
 
@@ -62,7 +62,7 @@ class MeasureShape(MeasureFeatures):
         interpreting shape metrics in a biological context.
     """
 
-    _measurement_infoclass = SHAPE
+    _measurement_infoclass: ClassVar[type] = SHAPE
 
     @staticmethod
     def _calculate_feret_diameters(hull_points: np.ndarray) -> tuple[float, float]:

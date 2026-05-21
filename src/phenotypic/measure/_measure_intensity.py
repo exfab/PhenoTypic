@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import ClassVar, TYPE_CHECKING
 
 from phenotypic.tools_.constants_ import OBJECT
 
@@ -57,7 +57,7 @@ class MeasureIntensity(MeasureFeatures):
         interpreting intensity metrics in a biological context.
     """
 
-    _measurement_infoclass = INTENSITY
+    _measurement_infoclass: ClassVar[type] = INTENSITY
 
     def _operate(self, image: Image) -> pd.DataFrame:
         from phenotypic.measure._measure_shape import MeasureShape

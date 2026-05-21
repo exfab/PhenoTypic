@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING
+from typing import ClassVar, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
@@ -56,11 +56,9 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
         walkthrough of grid-level measurements.
     """
 
-    _measurement_infoclass = GRID_LINREG_STATS
+    _measurement_infoclass: ClassVar[type] = GRID_LINREG_STATS
 
-    def __init__(self, section_num: Optional[int] = None):
-        super().__init__()
-        self.section_num = section_num
+    section_num: Optional[int] = None
 
     def _operate(self, image: GridImage) -> pd.DataFrame:
         # Collect the relevant section info. If no section was specified perform calculation on the entire grid info table.

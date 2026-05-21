@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import ClassVar, TYPE_CHECKING
 
 from phenotypic.tools_.constants_ import OBJECT
 
@@ -52,7 +52,7 @@ class MeasureSize(MeasureFeatures):
         interpreting size metrics in a biological context.
     """
 
-    _measurement_infoclass = SIZE
+    _measurement_infoclass: ClassVar[type] = SIZE
 
     def _operate(self, image: Image) -> pd.DataFrame:
         # Create empty numpy arrays to store measurements

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import ClassVar, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -66,17 +66,12 @@ class MeasureColor(MeasureFeatures):
         interpreting color metrics in a biological context.
     """
 
-    _measurement_infoclasses = [ColorXYZ, Colorxy, ColorLab, ColorHSV]
+    _measurement_infoclasses: ClassVar[list[type]] = [
+        ColorXYZ, Colorxy, ColorLab, ColorHSV]
 
-    def __init__(
-            self,
-            white_chroma_max: float = 4.0,
-            chroma_min: float = 8.0,
-            include_XYZ: bool = False,
-    ):
-        self.white_chroma_max = white_chroma_max
-        self.chroma_min = chroma_min
-        self.include_XYZ = include_XYZ
+    white_chroma_max: float = 4.0
+    chroma_min: float = 8.0
+    include_XYZ: bool = False
 
     def _operate(self, image: Image):
         data = {}

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import ClassVar, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
@@ -48,7 +48,7 @@ class MeasureGridSpread(GridMeasureFeatures):
         walkthrough of grid-level measurements.
     """
 
-    _measurement_infoclass = GRID_SPREAD
+    _measurement_infoclass: ClassVar[type] = GRID_SPREAD
 
     def _operate(self, image: GridImage) -> pd.DataFrame:
         gs_table = image.grid.info()

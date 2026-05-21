@@ -1,23 +1,25 @@
 from __future__ import annotations
 
 import functools
-from typing import List, Literal, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from phenotypic._core._image import Image
-
 import warnings
+from typing import ClassVar, List, Literal, TYPE_CHECKING
 
-warnings.filterwarnings('ignore', category=SyntaxWarning, module='mahotas')
-
-import mahotas as mh
 import numpy as np
 import pandas as pd
+from pydantic import field_validator
 from skimage import exposure
 
 from phenotypic.abc_ import MeasureFeatures
 from phenotypic.tools_.constants_ import OBJECT
 from ..tools_.measurement_info import TEXTURE
+
+if TYPE_CHECKING:
+    from phenotypic._core._image import Image
+
+# Suppress mahotas' module-load SyntaxWarning before importing it.
+warnings.filterwarnings('ignore', category=SyntaxWarning, module='mahotas')
+
+import mahotas as mh  # noqa: E402 - must follow the filterwarnings call above
 
 
 class MeasureTexture(MeasureFeatures):
@@ -82,39 +84,27 @@ class MeasureTexture(MeasureFeatures):
         interpreting texture metrics in a biological context.
     """
 
-    _measurement_infoclass = TEXTURE
+    _measurement_infoclass: ClassVar[type] = TEXTURE
 
-    def __init__(
-            self,
-            scale: int | List[int] = 5,
-            quant_lvl: Literal[8, 16, 32, 64] = 32,
-            enhance: bool = False,
-            warn: bool = False,
-    ):
-        """
-        Initializes an object with specific configurations for scale, quantization level,
-        enhance, and warning behaviors. This constructor ensures that the 'scale'
-        parameter is always stored as a list.
+    scale: List[int] = [5]
+    quant_lvl: Literal[8, 16, 32, 64] = 32
+    enhance: bool = False
+    warn: bool = False
 
-        Args:
-            scale (int | List[int]): A single integer or a list of integers representing
-                the scale configuration. If a single integer is provided, it will be
-                converted into a list containing that integer.
-            quant_lvl (Literal[8, 16, 32, 64]): The quantization level. A higher level adds
-                more computational complexity but captures more discrete texture changes. A higher value is
-                not always more meaningful. Think of this like sensitivity to texture. Acceptable values are either 8, 16, 32, or 64.
-            enhance (bool): A flag indicating whether to enhance the image before measuring texture. This can
-                increase the amount of detail captured but can bias the measurements in cases where the relative
-                variance between pixel intensities of an object is small.
-            warn (bool): A flag indicating whether warnings should be issued.
+    @field_validator("scale", mode="before")
+    @classmethod
+    def _coerce_scale_to_list(cls, scale: int | List[int]) -> List[int]:
+        """Normalize a bare integer ``scale`` to a single-element list.
+
+        The legacy constructor stored ``scale`` as a list regardless of
+        whether the caller passed an ``int`` or a ``list[int]`` (the
+        ``_operate`` body indexes ``self.scale[0]`` / ``self.scale[1:]``).
+        This validator reproduces that coercion so both call styles keep
+        working while the declared field type stays an honest list.
         """
         if not hasattr(scale, "__getitem__"):  # coerce iterable input
-            scale = [scale]
-
-        self.scale = scale
-        self.quant_lvl = quant_lvl
-        self.enhance = enhance
-        self.warn = warn
+            return [scale]
+        return scale
 
     def _operate(self, image: Image) -> pd.DataFrame:
         """Performs texture measurements on the image objects.
