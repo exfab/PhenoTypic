@@ -81,45 +81,13 @@ class BayesShrinkCorrector(_GATSupportMixin, ImageCorrector):
     _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"sigma": 1.0}
     _GAT_DEFER_ATTRS: ClassVar[tuple[str, ...]] = ("rescale_sigma", "clip")
 
-    def __init__(
-        self,
-        sigma: float | None = None,
-        wavelet: str = "db2",
-        mode: Literal["soft", "hard"] = "soft",
-        wavelet_levels: int | None = None,
-        convert2ycbcr: bool = True,
-        rescale_sigma: bool = True,
-        clip: bool = True,
-        use_gat: bool = False,
-        **kwargs,
-    ):
-        """Initialize BayesShrink adaptive corrector for all image components.
-
-        Parameters:
-            sigma (float | None): Noise level. None (default) auto-estimates.
-                Retargeted to 1.0 when ``use_gat=True``.
-            wavelet (str): Wavelet type. 'db2' (default).
-            mode (Literal['soft', 'hard']): 'soft' (default) or 'hard'.
-            wavelet_levels (int | None): None = max-3 (automatic).
-            convert2ycbcr (bool): Denoise RGB in YCbCr (default True).
-            rescale_sigma (bool): skimage internal flag. Default True.
-                Auto-deferred during GAT.
-            use_gat (bool): Wrap gray and detect_mat denoising in the
-                Generalized Anscombe Transform for Poisson-Gaussian noise.
-                RGB is not transformed. Default False. See
-                :class:`phenotypic.tools_.mixin._GATSupportMixin`.
-            **kwargs: GAT tuning parameters forwarded to
-                :class:`_GATSupportMixin` (``gat_gain``, ``gat_mu``,
-                ``gat_read_sigma``, ``gat_scale_factor``).
-        """
-        super().__init__(use_gat=use_gat, **kwargs)
-        self.sigma = sigma
-        self.wavelet = wavelet
-        self.mode = mode
-        self.wavelet_levels = wavelet_levels
-        self.convert2ycbcr = convert2ycbcr
-        self.rescale_sigma = rescale_sigma
-        self.clip = clip
+    sigma: float | None = None
+    wavelet: str = "db2"
+    mode: Literal["soft", "hard"] = "soft"
+    wavelet_levels: int | None = None
+    convert2ycbcr: bool = True
+    rescale_sigma: bool = True
+    clip: bool = True
 
     def _operate(self, image: Image) -> Image:
         """Apply BayesShrink adaptive wavelet denoising to all image components.

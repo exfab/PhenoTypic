@@ -55,9 +55,8 @@ class GridAligner(GridCorrector):
         walkthrough of grid alignment on real plate images.
     """
 
-    def __init__(self, axis: int = 0, mode: str = "edge"):
-        self.axis = axis
-        self.mode = mode
+    axis: int = 0
+    mode: str = "edge"
 
     def _operate(self, image: GridImage):
         """Calculates the optimal rotation angle and applies it to a grid image for alignment along the specified axis.

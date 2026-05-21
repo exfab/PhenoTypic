@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Tuple, TYPE_CHECKING
 
+from pydantic import ValidationInfo, field_validator
+
 if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
     from phenotypic._core._image import Image
@@ -42,54 +44,25 @@ class ImageCropper(ImageCorrector):
         cropping and padding operations.
     """
 
-    def __init__(self,
-                 left: int | None = None,
-                 right: int | None = None,
-                 top: int | None = None,
-                 bottom: int | None = None
-                 ):
-        """Initialize an ImageCropper with pixel margins to remove from each edge.
+    left: int | None = None
+    right: int | None = None
+    top: int | None = None
+    bottom: int | None = None
 
-        Creates a cropper that removes the specified number of pixels from each edge of
-        the image. All parameters are optional and default to None (no cropping from that
-        edge).
+    @field_validator("left", "right", "top", "bottom")
+    @classmethod
+    def _reject_negative_margin(
+            cls, value: int | None, info: ValidationInfo
+    ) -> int | None:
+        """Reject a negative crop margin, preserving the legacy message.
 
-        Args:
-            left (int | None, optional): Number of pixels to remove from the left edge.
-                Must be non-negative. If None, the left edge is not cropped (equivalent
-                to 0). Defaults to None.
-            right (int | None, optional): Number of pixels to remove from the right edge.
-                Must be non-negative. If None, the right edge is not cropped (equivalent
-                to 0). Defaults to None.
-            top (int | None, optional): Number of pixels to remove from the top edge.
-                Must be non-negative. If None, the top edge is not cropped (equivalent
-                to 0). Defaults to None.
-            bottom (int | None, optional): Number of pixels to remove from the bottom edge.
-                Must be non-negative. If None, the bottom edge is not cropped (equivalent
-                to 0). Defaults to None.
-
-        Raises:
-            ValueError: If any parameter is negative. All crop margins must be
-                non-negative integers (or None).
+        Reproduces the pre-migration ``__prescreen_idxes`` guard: ``None``
+        is accepted (no cropping on that edge), any negative value raises
+        ``"<edge> cannot be negative"``.
         """
-        self.left = left
-        self.right = right
-        self.top = top
-        self.bottom = bottom
-        self.__prescreen_idxes()
-
-    def __prescreen_idxes(self):
-        if (self.left is not None) and (self.left < 0):
-            raise ValueError("left cannot be negative")
-
-        if (self.right is not None) and (self.right < 0):
-            raise ValueError("right cannot be negative")
-
-        if (self.top is not None) and (self.top < 0):
-            raise ValueError("top cannot be negative")
-
-        if (self.bottom is not None) and (self.bottom < 0):
-            raise ValueError("bottom cannot be negative")
+        if value is not None and value < 0:
+            raise ValueError(f"{info.field_name} cannot be negative")
+        return value
 
     def _operate(self, image: Image) -> Image:
         """Crop the image by removing pixels from edges specified in __init__.

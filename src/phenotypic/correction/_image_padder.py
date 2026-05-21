@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Tuple
+from typing import TYPE_CHECKING, Any, Literal, Tuple
+
+from pydantic import ValidationInfo, field_validator
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -8,6 +10,24 @@ if TYPE_CHECKING:
 import numpy as np
 from scipy.sparse import csr_matrix
 from phenotypic.abc_ import ImageCorrector
+
+#: The eleven fill strategies accepted by ``np.pad``. Declared as a
+#: ``Literal`` so the pre-migration ``__prescreen_params`` mode-membership
+#: check becomes a type-level constraint that also enumerates the allowed
+#: values in ``model_json_schema()``.
+PadMode = Literal[
+    "constant",
+    "edge",
+    "reflect",
+    "symmetric",
+    "wrap",
+    "linear_ramp",
+    "maximum",
+    "mean",
+    "median",
+    "minimum",
+    "empty",
+]
 
 
 class ImagePadder(ImageCorrector):
@@ -68,98 +88,27 @@ class ImagePadder(ImageCorrector):
         padding with rotation correction.
     """
 
-    def __init__(self,
-                 left: int | None = None,
-                 right: int | None = None,
-                 top: int | None = None,
-                 bottom: int | None = None,
-                 mode: str = "constant",
-                 constant_value: int | float = 0
-                 ):
-        """Initialize an ImagePadder with pixel margins to add on each edge.
+    left: int | None = None
+    right: int | None = None
+    top: int | None = None
+    bottom: int | None = None
+    mode: PadMode = "constant"
+    constant_value: int | float = 0
 
-        Creates a padder that adds the specified number of pixels to each edge of the image.
-        All margin parameters are optional and default to None (no padding from that edge).
+    @field_validator("left", "right", "top", "bottom")
+    @classmethod
+    def _reject_negative_margin(
+            cls, value: int | None, info: ValidationInfo
+    ) -> int | None:
+        """Reject a negative padding margin, preserving the legacy message.
 
-        Args:
-            left (int | None, optional): Pixels to add on left edge. Must be non-negative.
-                If None, no left padding (equivalent to 0). Defaults to None.
-            right (int | None, optional): Pixels to add on right edge. Must be non-negative.
-                If None, no right padding (equivalent to 0). Defaults to None.
-            top (int | None, optional): Pixels to add on top edge. Must be non-negative.
-                If None, no top padding (equivalent to 0). Defaults to None.
-            bottom (int | None, optional): Pixels to add on bottom edge. Must be non-negative.
-                If None, no bottom padding (equivalent to 0). Defaults to None.
-            mode (str, optional): Padding mode for np.pad. Options include 'constant'
-                (uniform value), 'reflect' (mirror at boundary), 'edge' (replicate edge pixels),
-                'symmetric' (symmetric reflection), 'wrap' (periodic), and others. Defaults
-                to 'constant'.
-            constant_value (int | float, optional): Value for constant mode padding. Only
-                used when mode='constant'. Typical values: 0 for black (default), 255 for white.
-                Defaults to 0.
-
-        Raises:
-            ValueError: If any padding parameter is negative. All padding margins must be
-                non-negative integers (or None).
-            ValueError: If mode is not a valid np.pad mode.
-
-        Examples:
-            Create a padder for symmetric margins:
-
-            >>> from phenotypic.correction import ImagePadder
-            >>> # Add 50 pixels to all four edges
-            >>> padder = ImagePadder(left=50, right=50, top=50, bottom=50)
-
-            Create a padder for asymmetric margins:
-
-            >>> from phenotypic.correction import ImagePadder
-            >>> # Add padding on top and right, keep left and bottom minimal
-            >>> padder = ImagePadder(top=100, right=75, left=0, bottom=0)
-
-            Create a padder with reflection to avoid artifacts:
-
-            >>> from phenotypic.correction import ImagePadder
-            >>> padder = ImagePadder(
-            ...     left=80, right=80, top=80, bottom=80,
-            ...     mode='reflect'
-            ... )
-            >>> # Reflection preserves edge patterns, good for convolutions
+        Reproduces the pre-migration ``__prescreen_params`` guard: ``None``
+        is accepted (no padding on that edge), any negative value raises
+        ``"<edge> cannot be negative"``.
         """
-        self.left = left
-        self.right = right
-        self.top = top
-        self.bottom = bottom
-        self.mode = mode
-        self.constant_value = constant_value
-        self.__prescreen_params()
-
-    def __prescreen_params(self):
-        """Validate padding parameters before use.
-
-        Raises:
-            ValueError: If any padding parameter is negative.
-            ValueError: If mode is not a valid np.pad mode.
-        """
-        if (self.left is not None) and (self.left < 0):
-            raise ValueError("left cannot be negative")
-
-        if (self.right is not None) and (self.right < 0):
-            raise ValueError("right cannot be negative")
-
-        if (self.top is not None) and (self.top < 0):
-            raise ValueError("top cannot be negative")
-
-        if (self.bottom is not None) and (self.bottom < 0):
-            raise ValueError("bottom cannot be negative")
-
-        valid_modes = [
-            'constant', 'edge', 'reflect', 'symmetric', 'wrap',
-            'linear_ramp', 'maximum', 'mean', 'median', 'minimum', 'empty'
-        ]
-        if self.mode not in valid_modes:
-            raise ValueError(
-                f"mode must be one of {valid_modes}, got '{self.mode}'"
-            )
+        if value is not None and value < 0:
+            raise ValueError(f"{info.field_name} cannot be negative")
+        return value
 
     def _get_pad_width_2d(self) -> Tuple[Tuple[int, int], Tuple[int, int]]:
         """Calculate pad_width tuple for 2D arrays (gray, detect_mat, objmap).

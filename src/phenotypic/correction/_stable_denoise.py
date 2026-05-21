@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Literal
 import bm3d
 import numpy as np
 from bm3d.profiles import BM3DStages
+from pydantic import field_validator
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -75,50 +76,58 @@ class StableDenoise(ImageCorrector):
         denoising with color correction workflows.
     """
 
-    def __init__(
-            self,
-            block_size: int = 8,
-            stage_arg: Literal["all_stages", "hard_thresholding"] = "all_stages",
-            *,
-            gain: float = 1.0,
-            mu: float = 0.0,
-            sigma: float = 0.0,
-            scale_factor: float | None = None,
-    ):
-        """Initialize GAT-stabilized BM3D corrector for gray and detect_mat.
+    block_size: int = 8
+    stage_arg: Literal["all_stages", "hard_thresholding"] = "all_stages"
+    gain: float = 1.0
+    mu: float = 0.0
+    sigma: float = 0.0
+    scale_factor: float | None = None
 
-        Args:
-            block_size (int): BM3D patch size. Default 8.
-            stage_arg (Literal["all_stages", "hard_thresholding"]): Denoising
-                stages. 'all_stages' gives best quality; 'hard_thresholding'
-                is faster.
-            gain (float): Camera gain in electrons per ADU. Default 1.0.
-            mu (float): Read noise mean (baseline offset). Default 0.0.
-            sigma (float): Read noise standard deviation. Default 0.0
-                (pure Poisson noise).
-            scale_factor (float | None): Converts normalized [0,1] data to
-                counts. None (default) auto-detects from image metadata.
+    @field_validator("gain", mode="before")
+    @classmethod
+    def _validate_gain(cls, gain: float) -> float:
+        """Require ``gain`` to be positive; coerce to ``float``.
+
+        Reproduces the pre-migration ``__init__`` guard and ``float()``
+        coercion exactly.
         """
         if gain <= 0:
             raise ValueError(f"gain must be > 0, got {gain}")
+        return float(gain)
+
+    @field_validator("mu", mode="before")
+    @classmethod
+    def _coerce_mu(cls, mu: float) -> float:
+        """Coerce ``mu`` to ``float`` (pre-migration ``__init__`` did this)."""
+        return float(mu)
+
+    @field_validator("sigma", mode="before")
+    @classmethod
+    def _validate_sigma(cls, sigma: float) -> float:
+        """Require ``sigma`` to be non-negative; coerce to ``float``.
+
+        Reproduces the pre-migration ``__init__`` guard and ``float()``
+        coercion exactly.
+        """
         if sigma < 0:
             raise ValueError(f"sigma must be >= 0, got {sigma}")
-        if scale_factor is not None and scale_factor <= 0:
-            raise ValueError(f"scale_factor must be > 0, got {scale_factor}")
-        if stage_arg not in ("all_stages", "hard_thresholding"):
-            raise ValueError(
-                    f"stage_arg must be 'all_stages' or 'hard_thresholding', "
-                    f"got {stage_arg!r}"
-            )
+        return float(sigma)
 
-        self.block_size = block_size
-        self.stage_arg = stage_arg
-        self.gain = float(gain)
-        self.mu = float(mu)
-        self.sigma = float(sigma)
-        self.scale_factor = (
-            float(scale_factor) if scale_factor is not None else None
-        )
+    @field_validator("scale_factor", mode="before")
+    @classmethod
+    def _validate_scale_factor(
+            cls, scale_factor: float | None
+    ) -> float | None:
+        """Require ``scale_factor`` to be positive when supplied.
+
+        Reproduces the pre-migration ``__init__`` guard and ``float()``
+        coercion exactly: ``None`` passes through unchanged.
+        """
+        if scale_factor is None:
+            return None
+        if scale_factor <= 0:
+            raise ValueError(f"scale_factor must be > 0, got {scale_factor}")
+        return float(scale_factor)
 
     def _get_scale_factor(self, image: Image) -> float:
         """Get scale factor, auto-detecting from image metadata.

@@ -42,7 +42,9 @@ class TestImagePadderParameterValidation:
 
     def test_invalid_mode_raises_error(self):
         """Test that invalid padding mode raises ValueError."""
-        with pytest.raises(ValueError, match="mode must be one of"):
+        # ``mode`` is a ``Literal`` field post-pydantic-migration; an
+        # out-of-set value raises ``ValidationError`` (a ``ValueError``).
+        with pytest.raises(ValueError, match="mode"):
             ImagePadder(mode="invalid_mode")
 
 
