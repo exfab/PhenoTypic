@@ -70,7 +70,7 @@ class MeasureFeatures(BaseOperation, ABC):
 
     This class follows a strict pattern where subclasses implement minimal code:
 
-    1. **__init__:** Define parameters and configuration for your measurement
+    1. **Fields:** Declare parameters as annotated class-level fields
     2. **_operate(image: Image) -> pd.DataFrame:** Implement your measurement logic
     3. Everything else (type validation, metadata handling, exception handling) is
        handled by the `measure()` method
@@ -83,13 +83,13 @@ class MeasureFeatures(BaseOperation, ABC):
     Users call the public API method `measure(image, include_meta=False)`, which:
 
     1. Validates input (Image object with detected objects)
-    2. Extracts operation parameters using introspection
-    3. Calls `_operate()` with matched parameters
-    4. Optionally merges image metadata into results
-    5. Returns a pandas DataFrame with object labels in the first column
+    2. Calls `_operate()`, which reads operation parameters from ``self``
+    3. Optionally merges image metadata into results
+    4. Returns a pandas DataFrame with object labels in the first column
 
-    Subclasses **only** override `_operate()` and `__init__()`. The `measure()`
-    method provides automatic validation, exception handling, and metadata merging.
+    Subclasses **only** override `_operate()` and declare their parameter
+    fields. The `measure()` method provides automatic validation, exception
+    handling, and metadata merging.
 
     **Accessing Image Data in _operate():**
 
@@ -162,11 +162,13 @@ class MeasureFeatures(BaseOperation, ABC):
     >>> import pandas as pd
     >>> import numpy as np
     >>> class MeasureCustom(MeasureFeatures):
-    ...     '''Measure custom morphology metrics for microbial colonies.'''
+    ...     '''Measure custom morphology metrics for microbial colonies.
     ...
-    ...     def __init__(self, intensity_threshold=100):
-    ...         '''Initialize with intensity threshold for bright pixels.'''
-    ...         self.intensity_threshold = intensity_threshold
+    ...     Args:
+    ...         intensity_threshold: Intensity cutoff for bright pixels.
+    ...     '''
+    ...
+    ...     intensity_threshold: int = 100  # Annotated class-level field
     ...
     ...     def _operate(self, image):
     ...         '''Extract bright region area and mean intensity.'''
@@ -216,7 +218,8 @@ class MeasureFeatures(BaseOperation, ABC):
     genetic and environmental association studies.
 
     Attributes:
-        No public attributes. Configuration is passed through __init__() parameters.
+        No public attributes at this level. Subclasses declare measurement
+        parameters as annotated class-level fields.
 
     Examples:
         Basic usage: measure colony area and intensity:
@@ -318,8 +321,7 @@ class MeasureFeatures(BaseOperation, ABC):
         When you subclass MeasureFeatures, you only implement _operate(). This
         measure() method automatically:
 
-        - Extracts __init__ parameters from your instance (introspection)
-        - Passes matched parameters to _operate() as keyword arguments
+        - Calls _operate(), which reads its parameters from ``self``
         - Validates the Image has detected objects (objmap)
         - Wraps exceptions in OperationFailedError with context
         - Merges grid/object metadata if requested

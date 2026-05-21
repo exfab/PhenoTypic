@@ -80,10 +80,8 @@ class GridCorrector(ImageCorrector, GridOperation, ABC):
         class GridAligner(GridCorrector):
             '''Rotate GridImage to align colonies with grid rows/columns.'''
 
-            def __init__(self, axis: int = 0, max_rotation: float = 45.0):
-                super().__init__()
-                self.axis = axis
-                self.max_rotation = max_rotation
+            axis: int = 0  # Annotated class-level fields
+            max_rotation: float = 45.0
 
             def _operate(self, image: GridImage) -> GridImage:
                 # image is guaranteed to be GridImage with valid grid structure
@@ -237,9 +235,7 @@ class GridCorrector(ImageCorrector, GridOperation, ABC):
         >>> class GridPerspectiveCorrector(GridCorrector):
         ...     '''Correct camera tilt or lens distortion on grid plate.'''
         ...
-        ...     def __init__(self, tilt_angle: float):
-        ...         super().__init__()
-        ...         self.tilt_angle = tilt_angle
+        ...     tilt_angle: float  # Annotated class-level field
         ...
         ...     def _operate(self, image: GridImage) -> GridImage:
         ...         # Apply perspective transform to all components

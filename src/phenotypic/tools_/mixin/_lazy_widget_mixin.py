@@ -15,14 +15,17 @@ class LazyWidgetMixin:
 
     This mixin allows ImageOperation classes to automatically generate a Jupyter
     widget interface for parameter tuning and visualization.
-    """
 
-    _ui: Optional[Widget] = None
-    _param_widgets: dict[str, Widget]
-    _view_dropdown: Optional[Widget] = None
-    _update_button: Optional[Widget] = None
-    _output_widget: Optional[Widget] = None
-    _image_ref: Optional[Image] = None
+    The six lazily-populated UI handles this mixin uses (``_ui``,
+    ``_param_widgets``, ``_view_dropdown``, ``_update_button``,
+    ``_output_widget``, ``_image_ref``) are declared as ``PrivateAttr``
+    on :class:`~phenotypic.abc_.ImageOperation` rather than here. A plain
+    (non-``BaseModel``) mixin's ``PrivateAttr`` declarations are not
+    collected by pydantic, so this mixin stays a stateless methods-only
+    class and the private attrs live on the pydantic model that mixes it
+    in. This keeps the mixin safe to combine with any ``BaseModel`` in
+    any MRO position.
+    """
 
     def widget(self, image: Optional[Image] = None, show: bool = False) -> Widget:
         """Return (and optionally display) the root widget.

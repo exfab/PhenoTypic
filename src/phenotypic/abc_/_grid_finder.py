@@ -243,10 +243,8 @@ class GridFinder(GridMeasureFeatures, ABC):
         >>> well_col = 5 % 12   # Column index
     """
 
-    def __init__(self, nrows: int, ncols: int) -> None:
-        super().__init__()
-        self.nrows = nrows
-        self.ncols = ncols
+    nrows: int
+    ncols: int
 
     @abstractmethod
     def _operate(self, image: Image) -> pd.DataFrame:

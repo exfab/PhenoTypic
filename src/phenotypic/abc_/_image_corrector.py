@@ -101,14 +101,11 @@ class ImageCorrector(ImageOperation, ABC):
         from phenotypic import Image
 
         class MyRotator(ImageCorrector):
-            def __init__(self, angle: float):
-                super().__init__()
-                self.angle = angle  # Instance attribute, matched to _operate()
+            angle: float  # Annotated class-level field
 
-            @staticmethod
-            def _operate(image: Image, angle: float) -> Image:
+            def _operate(self, image: Image) -> Image:
                 # Rotate ALL image components together
-                image.rotate(angle_of_rotation=angle, mode='edge')
+                image.rotate(angle_of_rotation=self.angle, mode='edge')
                 return image
 
         # Usage
@@ -118,39 +115,24 @@ class ImageCorrector(ImageOperation, ABC):
     **Key Implementation Rules**
 
     1. ``_operate()`` must be an **instance method** (access parameters via ``self``).
-    2. All parameters must be stored as instance attributes.
+    2. All parameters must be declared as annotated class-level fields.
     3. The method must transform **all components equally** (rgb, gray, detect_mat, objmask, objmap).
     4. Never modify only one component—this breaks the "whole-image transformation" contract.
     5. Use the Image class's helper methods (``image.rotate()``) whenever possible for consistency.
     6. Always return the modified Image object after transformation.
 
-    **Parameter Matching Example**
+    **Parameter Declaration Example**
 
-    When instance attributes don't match ``_operate()`` parameters, serialization and parallelization fail:
+    Operation parameters are declared as annotated class-level fields; pydantic
+    generates the constructor and handles serialization automatically:
 
     .. code-block:: python
 
-        # CORRECT: attribute names match parameter names
-        class GoodRotator(ImageCorrector):
-            def __init__(self, angle: float):
-                super().__init__()
-                self.angle = angle  # Matches _operate() parameter
+        class RotatorCorrector(ImageCorrector):
+            angle: float  # Annotated class-level field
 
-            @staticmethod
-            def _operate(image: Image, angle: float) -> Image:
-                image.rotate(angle_of_rotation=angle, mode='edge')
-                return image
-
-        # WRONG: attribute name doesn't match parameter name
-        class BadRotator(ImageCorrector):
-            def __init__(self, angle: float):
-                super().__init__()
-                self.rotation_angle = angle  # Mismatch!
-
-            @staticmethod
-            def _operate(image: Image, angle: float) -> Image:  # Parameter is 'angle'
-                # This will fail—no 'angle' attribute on self
-                image.rotate(angle_of_rotation=angle, mode='edge')
+            def _operate(self, image: Image) -> Image:
+                image.rotate(angle_of_rotation=self.angle, mode='edge')
                 return image
 
     **Critical Implementation Detail: Updating All Components**
@@ -160,10 +142,9 @@ class ImageCorrector(ImageOperation, ABC):
 
     .. code-block:: python
 
-        @staticmethod
-        def _operate(image: Image, angle: float) -> Image:
+        def _operate(self, image: Image) -> Image:
             # Rotate rgb and gray (color representation)
-            image.rotate(angle_of_rotation=angle, mode='edge')
+            image.rotate(angle_of_rotation=self.angle, mode='edge')
 
             # The following are automatically handled by image.rotate():
             # - Rotate detect_mat (enhanced version for detection)
@@ -254,7 +235,7 @@ class ImageCorrector(ImageOperation, ABC):
     **Notes**
 
     - **Instance method:** ``_operate()`` is an instance method; access parameters via ``self``.
-    - **Parameter matching:** All ``_operate()`` parameters (except ``image``) must exist as instance attributes.
+    - **Field declaration:** Operation parameters are declared as annotated class-level fields.
     - **No copy by default:** Operations return modified copies by default (inplace=False).
     - **Coordinate system changes:** Downstream operations may need re-detection after transformation.
     - **Grid alignment workflow:** [GridAligner](src/phenotypic/correction/_grid_aligner.py) is the canonical example.
@@ -267,12 +248,9 @@ class ImageCorrector(ImageOperation, ABC):
     >>> from phenotypic.data import load_synth_yeast_plate
     >>>
     >>> class SimpleRotator(ImageCorrector):
-    ...     def __init__(self, angle=5.0):
-    ...         super().__init__()
-    ...         self.angle = angle
-    ...     @staticmethod
-    ...     def _operate(image, angle):
-    ...         image.rotate(angle_of_rotation=angle, mode='edge')
+    ...     angle: float = 5.0
+    ...     def _operate(self, image):
+    ...         image.rotate(angle_of_rotation=self.angle, mode='edge')
     ...         return image
     >>>
     >>> image = load_synth_yeast_plate()
@@ -289,13 +267,10 @@ class ImageCorrector(ImageOperation, ABC):
     >>> import numpy as np
     >>>
     >>> class PerspectiveCorrector(ImageCorrector):
-    ...     def __init__(self, tilt_angle=10.0):
-    ...         super().__init__()
-    ...         self.tilt_angle = tilt_angle
-    ...     @staticmethod
-    ...     def _operate(image, tilt_angle):
+    ...     tilt_angle: float = 10.0
+    ...     def _operate(self, image):
     ...         # Apply perspective transform to all components
-    ...         image.rotate(angle_of_rotation=tilt_angle, mode='edge')
+    ...         image.rotate(angle_of_rotation=self.tilt_angle, mode='edge')
     ...         return image
     >>>
     >>> image = load_synth_yeast_plate()

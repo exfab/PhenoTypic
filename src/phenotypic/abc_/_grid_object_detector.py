@@ -73,12 +73,9 @@ class GridObjectDetector(ObjectDetector, GridOperation, ABC):
         class GridAdaptiveDetector(GridObjectDetector):
             '''Detect colonies using per-well adaptive thresholding.'''
 
-            def __init__(self, neighborhood_size: int = 15):
-                super().__init__()
-                self.neighborhood_size = neighborhood_size
+            neighborhood_size: int = 15  # Annotated class-level field
 
-            @staticmethod
-            def _operate(image: GridImage, neighborhood_size: int = 15) -> GridImage:
+            def _operate(self, image: GridImage) -> GridImage:
                 # image is guaranteed to be GridImage with grid structure
                 # Use well positions to apply per-well detection
                 from scipy.ndimage import label
@@ -88,7 +85,7 @@ class GridObjectDetector(ObjectDetector, GridOperation, ABC):
                 grid = image.grid  # Access grid structure
 
                 # Apply adaptive threshold per well
-                mask = threshold_local(enh, neighborhood_size) > enh
+                mask = threshold_local(enh, self.neighborhood_size) > enh
 
                 # Label connected components
                 labeled, _ = label(mask)
@@ -181,9 +178,7 @@ class GridObjectDetector(ObjectDetector, GridOperation, ABC):
         >>> class GridAdaptiveDetector(GridObjectDetector):
         ...     '''Adaptive per-well detection using well center positions.'''
         ...
-        ...     def __init__(self, neighborhood_size: int = 31):
-        ...         super().__init__()
-        ...         self.neighborhood_size = neighborhood_size
+        ...     neighborhood_size: int = 31
         ...
         ...     def _operate(self, image: GridImage) -> GridImage:
         ...         enh = image.detect_mat[:]

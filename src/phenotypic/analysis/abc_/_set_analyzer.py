@@ -8,23 +8,72 @@ import numpy as np
 from collections.abc import Iterable
 from typing import Any, Mapping
 
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    PrivateAttr,
+)
+
 from phenotypic.tools_ import ColumnRef, ColumnRefList
+from phenotypic.tools_._docstring_params import apply_docstring_descriptions
 
 
-class SetAnalyzer(abc.ABC):
-    def __init__(
-        self,
-        on: ColumnRef,
-        groupby: ColumnRefList,
-        agg_func: Callable | str | list | dict | None = "mean",
-        *,
-        n_jobs: int = 1,
-    ):
-        self.groupby = groupby
-        self.agg_func = agg_func
-        self.on = on
-        self.n_jobs = n_jobs
-        self._latest_measurements: pd.DataFrame = pd.DataFrame()
+class SetAnalyzer(BaseModel, abc.ABC):
+    """Abstract base for grouped analyses over a measurement DataFrame.
+
+    ``SetAnalyzer`` is the root of PhenoTypic's analyzer hierarchy. It is a
+    separate pydantic ``BaseModel`` root — it is **not** a
+    :class:`~phenotypic.abc_.BaseOperation`. Subclasses operate on an
+    already-assembled measurement DataFrame via :meth:`analyze` (analyzers
+    use ``.analyze()``, not ``.apply()``).
+
+    Analyzer parameters are declared as annotated class-level fields;
+    pydantic generates the constructor and validates inputs.
+
+    Args:
+        on: Measurement column the analysis operates on.
+        groupby: Columns that define the per-group iteration unit.
+        agg_func: Aggregation applied within each group. A ``Callable`` is
+            accepted at runtime but cannot round-trip through JSON; only
+            the ``str``/``list``/``dict`` forms serialize losslessly.
+            Defaults to ``"mean"``.
+        n_jobs: Worker count for parallel group processing. The legacy
+            ``num_workers`` keyword is accepted as an alias. Defaults to 1.
+    """
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=True,
+        extra="forbid",
+    )
+
+    on: ColumnRef
+    groupby: ColumnRefList
+    agg_func: Callable | str | list | dict | None = "mean"
+    n_jobs: int = Field(
+        default=1,
+        validation_alias=AliasChoices("n_jobs", "num_workers"),
+    )
+
+    _latest_measurements: pd.DataFrame = PrivateAttr(
+        default_factory=pd.DataFrame
+    )
+
+    @classmethod
+    def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
+        """Populate field descriptions from the subclass docstring.
+
+        Runs once per concrete subclass after pydantic has built its
+        model, copying parameter descriptions parsed from the Google-style
+        ``Args:`` docstring block onto each field's ``description`` slot.
+
+        Args:
+            **kwargs: Class-keyword arguments forwarded by pydantic.
+        """
+        super().__pydantic_init_subclass__(**kwargs)
+        apply_docstring_descriptions(cls)
 
     @abc.abstractmethod
     def analyze(self, data: pd.DataFrame) -> pd.DataFrame:

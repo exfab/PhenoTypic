@@ -31,22 +31,23 @@ class PostMeasurement(BaseOperation, ABC):
         >>> from phenotypic.abc_ import PostMeasurement
         >>> import pandas as pd
         >>> class AddConstant(PostMeasurement):
-        ...     def __init__(self, column, value):
-        ...         super().__init__()
-        ...         self.column = column
-        ...         self.value = value
+        ...     '''Add a constant-valued column.
+        ...
+        ...     Args:
+        ...         column: Name of the column to add.
+        ...         value: Constant value to assign to every row.
+        ...     '''
+        ...     column: str
+        ...     value: str
         ...     def _operate(self, df):
         ...         df[self.column] = self.value
         ...         return df
-        >>> post = AddConstant("Metadata_Flag", "OK")
+        >>> post = AddConstant(column="Metadata_Flag", value="OK")
         >>> df = pd.DataFrame({"ObjectLabel": [1, 2]})
         >>> result = post.apply(df)
         >>> list(result.columns)
         ['ObjectLabel', 'Metadata_Flag']
     """
-
-    def __init__(self):
-        super().__init__()
 
     @abstractmethod
     def _operate(self, df: pd.DataFrame) -> pd.DataFrame:

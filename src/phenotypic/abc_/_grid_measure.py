@@ -83,9 +83,7 @@ class GridMeasureFeatures(MeasureFeatures, ABC):
         class GridMeasureWellOccupancy(GridMeasureFeatures):
             '''Measure fraction of well area occupied by colonies.'''
 
-            def __init__(self, normalize: bool = True):
-                super().__init__()
-                self.normalize = normalize
+            normalize: bool = True  # Annotated class-level field
 
             def _operate(self, image: GridImage) -> pd.DataFrame:
                 # image is guaranteed to be GridImage with validated grid structure

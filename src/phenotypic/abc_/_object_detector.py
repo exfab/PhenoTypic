@@ -117,13 +117,10 @@ class ObjectDetector(ImageOperation, ABC):
            from phenotypic import Image
 
            class MyDetector(ObjectDetector):
-               def __init__(self, param1: float, param2: int = 10):
-                   super().__init__()
-                   self.param1 = param1
-                   self.param2 = param2
+               param1: float  # Annotated class-level fields
+               param2: int = 10
 
-               @staticmethod
-               def _operate(image: Image, param1: float, param2: int = 10) -> Image:
+               def _operate(self, image: Image) -> Image:
                    # Detection logic here
                    return image
 

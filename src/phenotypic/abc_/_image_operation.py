@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, overload
+from typing import TYPE_CHECKING, Any, overload
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
     from phenotypic._core._grid_image import GridImage
+
+from pydantic import PrivateAttr
 
 from ._base_operation import BaseOperation
 from phenotypic.tools_.mixin import LazyWidgetMixin
@@ -113,9 +115,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
     .. code-block:: python
 
         class MyEnhancer(ImageEnhancer):
-            def __init__(self, sigma: float):
-                super().__init__()
-                self.sigma = sigma  # Instance attribute
+            sigma: float  # Annotated class-level field
 
             def _operate(self, image: Image) -> Image:
                 # Access parameters via self
@@ -207,16 +207,16 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
     ImageOperation supports parallel execution through operation serialization. When
     ``ImagePipeline`` runs with multiple images, it:
 
-    1. Serializes the operation instance with all attributes (``op.__dict__``)
-    2. Sends the pickled operation to worker processes
-    3. Workers unpickle the operation (restoring all ``self.param`` values)
+    1. Serializes the operation instance with all fields (pydantic ``model_dump()``)
+    2. Sends the operation to worker processes
+    3. Workers reconstruct the operation (restoring all field values)
     4. Workers call ``operation.apply(image)`` which invokes ``_operate(self, image)``
 
     Instance methods work perfectly with parallel execution because the entire
     operation object (with all parameters) is serialized together.
 
     Attributes:
-        None (all operation state is stored in subclass instances as attributes).
+        None (all operation state is stored in subclass instances as fields).
 
     Methods:
         apply(image, inplace=False): User-facing method that applies the operation.
@@ -242,8 +242,8 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
           static method approach.
 
         - **Parallel execution compatibility:** Instance methods work seamlessly with
-          parallel execution. Operations are serialized with all instance attributes
-          (``op.__dict__``) and unpickled in worker processes with full state restored.
+          parallel execution. Operations are serialized with all fields via pydantic
+          and reconstructed in worker processes with full state restored.
 
         - **Automatic memory/performance tracking:** BaseOperation (parent class)
           automatically tracks memory usage and execution time when the logger is
@@ -265,9 +265,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
         >>> class GaussianEnhancer(ImageEnhancer):
         ...     '''Custom enhancer applying Gaussian blur to detect_mat.'''
         ...
-        ...     def __init__(self, sigma: float = 1.0):
-        ...         super().__init__()
-        ...         self.sigma = sigma  # Instance attribute
+        ...     sigma: float = 1.0  # Annotated class-level field
         ...
         ...     def _operate(self, image: Image) -> Image:
         ...         '''Apply Gaussian blur to detect_mat.'''
@@ -293,10 +291,8 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
         >>> class PeakDetector(ObjectDetector):
         ...     '''Detector using local peak finding to locate colonies.'''
         ...
-        ...     def __init__(self, min_distance: int = 10, threshold_abs: int = 100):
-        ...         super().__init__()
-        ...         self.min_distance = min_distance
-        ...         self.threshold_abs = threshold_abs
+        ...     min_distance: int = 10  # Annotated class-level fields
+        ...     threshold_abs: int = 100
         ...
         ...     def _operate(self, image: Image) -> Image:
         ...         '''Find peaks in detect_mat and create object mask/map.'''
@@ -364,10 +360,8 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
         >>> from phenotypic.abc_ import ImageOperation
         >>> from phenotypic import Image
         >>> class CustomThreshold(ImageOperation):
-        ...     def __init__(self, threshold: int, min_size: int = 5):
-        ...         super().__init__()
-        ...         self.threshold = threshold
-        ...         self.min_size = min_size
+        ...     threshold: int  # Annotated class-level fields
+        ...     min_size: int = 5
         ...
         ...     def _operate(self, image: Image) -> Image:
         ...         # Access parameters via self
@@ -382,11 +376,18 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
         # 3. The bound method includes self, so all parameters are available
         >>> result = op.apply(image)
         # For parallel execution, the entire operation object (with all
-        # attributes) is pickled and sent to worker processes
+        # fields) is serialized via pydantic and sent to worker processes
     """
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+    # Lazily-populated ipywidget UI handles used by ``LazyWidgetMixin``.
+    # Declared here (not on the plain mixin) so pydantic collects them as
+    # private attributes — see ``LazyWidgetMixin`` for the rationale.
+    _ui: Any = PrivateAttr(default=None)
+    _param_widgets: dict[str, Any] = PrivateAttr(default_factory=dict)
+    _view_dropdown: Any = PrivateAttr(default=None)
+    _update_button: Any = PrivateAttr(default=None)
+    _output_widget: Any = PrivateAttr(default=None)
+    _image_ref: Any = PrivateAttr(default=None)
 
     @overload
     def apply(self, image: Image, inplace: bool = False) -> Image:

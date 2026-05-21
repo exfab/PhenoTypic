@@ -163,9 +163,18 @@ class FilamentousFungiDetector(GridObjectDetector):
         :doc:`/explanation/detection_strategies_compared`
             In-depth comparison of all detection strategies.
     """
-    __center_pipe = ImagePipeline(
-            ops=[InoculumDetector(), GridSectionLargest()]
-    )
+    @staticmethod
+    def __build_center_pipe() -> "ImagePipeline":
+        """Build the default inoculum-center detection pipeline.
+
+        Constructed lazily (rather than as a class-body attribute) so
+        importing this module does not instantiate operations — the
+        pydantic v2 migration makes leaf operations uninstantiable until
+        their own migration phase completes.
+        """
+        return ImagePipeline(
+                ops=[InoculumDetector(), GridSectionLargest()]
+        )
 
     # Scene-derivation multipliers (private; override in subclass to tune).
     # Raw param = multiplier * scene knob (rounded to int where required).
@@ -225,7 +234,7 @@ class FilamentousFungiDetector(GridObjectDetector):
             )
 
         self.inoculum_detector = inoculum_detector if inoculum_detector \
-            else self.__center_pipe
+            else self.__build_center_pipe()
 
         # ── Scene knobs ──
         self.max_colony_radius_px = float(max_colony_radius_px)
