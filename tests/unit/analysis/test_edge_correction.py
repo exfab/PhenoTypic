@@ -145,11 +145,7 @@ class TestThresholdCalculation:
                 on="Area", groupby=["ImageName"], top_n=10, nrows=8, ncols=12
         )
 
-        # Get top 10 values manually
-        expected_top_10 = data.nlargest(10, "Area")["Area"]
-        expected_threshold = expected_top_10.mean()
-
-        # The corrector should use this threshold internally
+        # The corrector should use a top-N interior threshold internally.
         # We can't directly test the threshold, but we can verify behavior
         corrected = corrector.analyze(data)
 
@@ -229,7 +225,6 @@ class TestValueCapping:
                 pvalue=0.0,  # Disable statistical test to always apply correction
         )
 
-        original = data.copy()
         corrected = corrector.analyze(data)
 
         # All values should be capped at or below the threshold
@@ -277,9 +272,7 @@ class TestValueCapping:
         assert corrected.loc[50, f"{EDGE_CORRECTION.NEW_VAL}-Area"] <= original.loc[
             50, "Area"]
 
-        # Values already below threshold should be unchanged
-        # Only check values that were originally below 200 AND below the threshold
-        low_value_indices = original[original["Area"] < 200].index
+        # Values already below threshold should be unchanged.
         # The threshold is based on top 10 interior values, so most low values should be unchanged
         # Just verify no values went UP
         assert (corrected["Area"] <= original["Area"]).all()

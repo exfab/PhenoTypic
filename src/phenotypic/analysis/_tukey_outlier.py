@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from typing import Callable
+
 import numpy as np
 import pandas as pd
 from joblib import delayed, Parallel
 import matplotlib.pyplot as plt
-
-from phenotypic.tools_ import ColumnRef, ColumnRefList
+from pydantic import field_validator, PrivateAttr
 
 from .abc_ import SetAnalyzer
 
@@ -62,29 +63,28 @@ class TukeyOutlierRemover(SetAnalyzer):
         >>> fig = detector.show()  # doctest: +SKIP
     """
 
-    def __init__(
-            self, on: ColumnRef, groupby: ColumnRefList, k: float = 1.5, n_jobs: int = 1
-    ):
-        """Initialize TukeyOutlierRemover with test parameters.
+    agg_func: Callable | str | list | dict | None = None
+    k: float = 1.5
+
+    _original_data: pd.DataFrame = PrivateAttr(default_factory=pd.DataFrame)
+
+    @field_validator("k")
+    @classmethod
+    def _validate_k(cls, value: float) -> float:
+        """Reject non-positive IQR multipliers.
 
         Args:
-            on: Column name for grouping/aggregation operations.
-            groupby: List of column names to group by.
-            measurement_col: Name of measurement column to test for outliers.
-            k: IQR multiplier for fence calculation. Default is 1.5.
-            agg_func: Aggregation function. Default is 'mean'.
-            n_jobs: Number of workers. Default is 1.
+            value: The candidate ``k`` IQR multiplier.
+
+        Returns:
+            The validated ``k`` value.
 
         Raises:
-            ValueError: If k is not positive.
+            ValueError: If ``k`` is not positive.
         """
-        super().__init__(on=on, groupby=groupby, agg_func=None, n_jobs=n_jobs)
-
-        if k <= 0:
-            raise ValueError(f"k must be positive, got {k}")
-
-        self.k = k
-        self._original_data: pd.DataFrame = pd.DataFrame()
+        if value <= 0:
+            raise ValueError(f"k must be positive, got {value}")
+        return value
 
     def analyze(self, data: pd.DataFrame) -> pd.DataFrame:
         """Remove outliers from data using Tukey's fence method.
@@ -387,7 +387,7 @@ class TukeyOutlierRemover(SetAnalyzer):
                 )
 
             # Create box plot
-            bp = ax.boxplot(
+            ax.boxplot(
                     [values],
                     positions=[1],
                     widths=0.3,

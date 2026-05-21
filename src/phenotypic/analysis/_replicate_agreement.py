@@ -18,7 +18,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from phenotypic.analysis.abc_._quality_check import QualityCheck
-from phenotypic.tools_ import ColumnRef, ColumnRefList
+from phenotypic.tools_ import ColumnRef
 from phenotypic.tools_.measurement_info import QUALITY_SE
 
 
@@ -124,57 +124,9 @@ class ReplicateAgreement(QualityCheck):
     _exposes_agg_func: ClassVar[bool] = False
     _measurement_infoclass = QUALITY_SE
 
-    def __init__(
-        self,
-        on: ColumnRef,
-        groupby: ColumnRefList,
-        time_label: ColumnRef = "Metadata_Time",
-        *,
-        severity_warn: float | None = None,
-        severity_fail: float | None = None,
-        min_replicates: int = 2,
-        eps: float = 1e-9,
-        agg_func: str = "mean",
-        n_jobs: int = 1,
-    ) -> None:
-        """Construct a replicate-agreement check.
-
-        Args:
-            on: Measurement column whose replicate dispersion is
-                evaluated.
-            groupby: Columns that define a comparison unit. Replicates
-                are pooled within each ``(group, time)`` bin.
-            time_label: Column carrying the timepoint within each
-                group. Defaults to ``"Metadata_Time"``. When absent
-                from the data, the whole group is treated as one bin.
-            severity_warn: Per-instance override for ``severity_warn``.
-                ``None`` falls back to the class default (``0.10``).
-            severity_fail: Per-instance override for ``severity_fail``.
-                ``None`` falls back to the class default (``0.20``).
-            min_replicates: Minimum replicate count per bin before SE
-                is reported as a number. Bins with fewer replicates
-                receive ``severity = NaN``. Defaults to ``2``.
-            eps: Floor on ``|mean|`` below which the relative-SE ratio
-                is considered undefined. Bins whose mean falls below
-                this floor receive ``severity = NaN``. Defaults to
-                ``1e-9``.
-            agg_func: Forwarded to :class:`SetAnalyzer`. The check does
-                not aggregate measurement values itself; the parameter
-                is preserved for signature parity.
-            n_jobs: Worker count. Currently unused by the base
-                ``analyze`` loop.
-        """
-        super().__init__(
-            on=on,
-            groupby=groupby,
-            severity_warn=severity_warn,
-            severity_fail=severity_fail,
-            agg_func=agg_func,
-            n_jobs=n_jobs,
-        )
-        self.time_label = time_label
-        self.min_replicates = min_replicates
-        self.eps = eps
+    time_label: ColumnRef = "Metadata_Time"
+    min_replicates: int = 2
+    eps: float = 1e-9
 
     def _compute(self, group: pd.DataFrame) -> pd.DataFrame:
         """Compute per-``(group, time)`` SE statistics and broadcast back.
