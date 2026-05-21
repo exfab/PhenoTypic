@@ -284,7 +284,7 @@ class TestPipelineIntegration:
         arr = rng.random((64, 64)).astype(np.float64) * 0.5 + 0.25
         image = Image(arr=arr)
 
-        pipeline = ImagePipeline([
+        pipeline = ImagePipeline(ops=[
             CoherenceEnhancingDiffusion(num_iter=3, sigma=1.0),
             GaussianBlur(sigma=1.0),
         ])
@@ -301,7 +301,7 @@ class TestSerialization:
     """to_json/from_json preserves all parameters including C."""
 
     def test_roundtrip_preserves_params(self):
-        pipeline = ImagePipeline([
+        pipeline = ImagePipeline(ops=[
             CoherenceEnhancingDiffusion(
                 num_iter=15, sigma=2.5, rho=5.0, dt=0.08, alpha=0.01, C=85.0,
             ),
@@ -321,7 +321,7 @@ class TestSerialization:
         assert ced.C == 85.0
 
     def test_default_params_roundtrip(self):
-        pipeline = ImagePipeline([CoherenceEnhancingDiffusion()])
+        pipeline = ImagePipeline(ops=[CoherenceEnhancingDiffusion()])
         json_str = pipeline.to_json()
         loaded = ImagePipeline.from_json(json_str)
 

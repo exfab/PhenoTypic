@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
+from pydantic import field_validator
 from skimage.filters import unsharp_mask
 
 from ..abc_ import ImageEnhancer
@@ -61,47 +62,26 @@ class UnsharpMask(ImageEnhancer):
         unsharp masking and sharpening strategies.
     """
 
-    def __init__(
-            self,
-            radius: float = 2.0,
-            amount: float = 1.0,
-            preserve_range: bool = False,
-            n_iter: int = 1,
-    ):
-        """
-        Parameters:
-            radius (float): Standard deviation (sigma) of the Gaussian blur in pixels.
-                Defines the scale of features to enhance. Small values (0.5–2) sharpen
-                fine details (thin colony edges, small morphologies); larger values
-                (5–15) enhance broad features (large colonies, colony-background
-                separation). Must be > 0. For fungal colonies, keep below the typical
-                colony width to avoid merging adjacent colonies. Recommended: 2.0–3.0
-                for general-purpose use, 1.0 for high-density plates, 5.0+ for
-                emphasizing large-scale features on low-resolution images.
-            amount (float): Amplification factor for the sharpening effect. Controls
-                how much the edge enhancement contributes to the output. Typical range:
-                0.3–2.5. Low values (0.3–0.7) produce subtle enhancement suitable for
-                noisy images; standard values (1.0–1.5) give balanced sharpening;
-                high values (2.0+) create aggressive enhancement for very low-contrast
-                colonies. Can be negative to produce blurring instead. Excessive amounts
-                risk visible artifacts and noise amplification.
-            preserve_range (bool): If False (default), output may be rescaled if
-                necessary. If True, the original range of input values is preserved.
-                Keep as False for consistency with other enhancers.
-            n_iter (int): Number of successive unsharp mask passes to apply. Must be >= 1.
-                One pass (default) applies the filter once. Multiple passes (2+) compound
-                the sharpening effect for progressively more aggressive enhancement, but
-                at increased risk of noise amplification and halo artifacts.
-        """
+    radius: float = 2.0
+    amount: float = 1.0
+    preserve_range: bool = False
+    n_iter: int = 1
+
+    @field_validator("radius")
+    @classmethod
+    def _check_radius(cls, radius: float) -> float:
+        """Require a positive blur radius (matches the legacy guard)."""
         if radius <= 0:
             raise ValueError("width must be > 0")
+        return radius
+
+    @field_validator("n_iter")
+    @classmethod
+    def _check_n_iter(cls, n_iter: int) -> int:
+        """Require at least one sharpening pass (matches the legacy guard)."""
         if n_iter < 1:
             raise ValueError("n_iter must be >= 1")
-
-        self.radius = float(radius)
-        self.amount = float(amount)
-        self.preserve_range = bool(preserve_range)
-        self.n_iter = int(n_iter)
+        return n_iter
 
     def _operate(self, image: Image) -> Image:
         """Apply unsharp masking to enhance colony edges in the detection matrix channel."""

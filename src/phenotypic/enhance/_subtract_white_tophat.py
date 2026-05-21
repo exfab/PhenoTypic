@@ -54,20 +54,8 @@ class SubtractWhiteTophat(ImageEnhancer):
         visual walkthrough of artifact removal on plate images.
     """
 
-    def __init__(self, shape: str = "diamond", width: int = None):
-        """
-        Parameters:
-            shape (str): Footprint geometry controlling which bright features are
-                removed. 'diamond' or 'disk' provide isotropic behavior on plates;
-                'square' can align with sensor grid artifacts. Advanced: 'sphere'
-                or 'cube' for volumetric data.
-            width (int | None): Maximum bright-object width (in pixels) targeted
-                for removal. Set slightly smaller than the smallest colonies to
-                avoid suppressing real colonies. None picks a small default based
-                on image dimensions.
-        """
-        self.shape = shape
-        self.width = width
+    shape: str = "diamond"
+    width: int | None = None
 
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(

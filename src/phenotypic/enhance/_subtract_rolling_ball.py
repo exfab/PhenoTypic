@@ -5,10 +5,10 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
-import numpy as np
 from skimage.restoration import rolling_ball
 
 from phenotypic.abc_ import ImageEnhancer
+from phenotypic.tools_.typing_ import NdArrayField
 
 
 class SubtractRollingBall(ImageEnhancer):
@@ -57,21 +57,9 @@ class SubtractRollingBall(ImageEnhancer):
         rolling-ball and other illumination correction strategies.
     """
 
-    def __init__(
-            self, radius: int = 100, kernel: np.ndarray = None, nansafe: bool = False
-    ):
-        """
-        Parameters:
-            radius (int): Rolling-ball width (pixels). Use a value larger than
-                colony diameter to avoid removing colony signal. Default 100.
-            kernel (np.ndarray): Optional custom ball/shape; when provided it
-                overrides `width`.
-            nansafe (bool): If True, treat NaNs as missing data to avoid artifacts
-                when using masked images (e.g., outside the plate).
-        """
-        self.radius: int = radius
-        self.kernel: np.ndarray = kernel
-        self.nansafe: bool = nansafe
+    radius: int = 100
+    kernel: NdArrayField | None = None
+    nansafe: bool = False
 
     def _operate(self, image: Image):
         image.detect_mat[:] = image.detect_mat[:] - rolling_ball(

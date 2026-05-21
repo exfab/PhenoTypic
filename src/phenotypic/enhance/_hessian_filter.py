@@ -4,6 +4,7 @@ from typing import Iterable, TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
+from pydantic import field_validator
 from skimage.filters import hessian
 
 from phenotypic.abc_ import ImageEnhancer
@@ -63,48 +64,24 @@ class HessianFilter(ImageEnhancer):
         Hessian-based structure detection.
     """
 
-    def __init__(
-            self,
-            sigmas: Iterable[float] = (1, 2, 3),
-            alpha: float = 0.5,
-            beta: float = 0.5,
-            gamma: float = 15,
-            black_ridges: bool = False,
-            mode: str = 'reflect',
-            cval: float = 0,
-    ):
-        """
-        Parameters:
-            sigmas (tuple | list): Sequence of standard deviations for Gaussian
-                derivatives. Smaller values detect finer edges, larger values
-                detect thicker structures. Default (1, 2, 3).
-            alpha (float): Sensitivity to plate-like structure deviations. Lower
-                values are more permissive. Range: 0 to 1. Default 0.5.
-            beta (float): Sensitivity to blob-like structure deviations. Lower
-                values are more permissive. Range: 0 to 1. Default 0.5.
-            gamma (float): Threshold for background suppression. Larger values
-                suppress low-curvature regions (agar background) more aggressively.
-                Default 15.
-            black_ridges (bool): If True, detect dark ridges (colonies) on bright
-                background. If False, detect bright ridges on dark background.
-                For agar plates with dark colonies on light background, use True.
-                Default False.
-            mode (str): Boundary handling mode ('reflect', 'constant', 'nearest',
-                'mirror', 'wrap'). Default 'reflect'.
-            cval (float): Constant value used if mode='constant'. Default 0.
-        """
-        self.sigmas = sigmas
-        self.alpha = alpha
-        self.beta = beta
-        self.gamma = gamma
-        self.black_ridges = black_ridges
-        self.mode = mode
-        self.cval = cval
+    sigmas: tuple[float, ...] = (1, 2, 3)
+    alpha: float = 0.5
+    beta: float = 0.5
+    gamma: float = 15
+    black_ridges: bool = False
+    mode: str = "reflect"
+    cval: float = 0
 
-    def __setattr__(self, name: str, value: object) -> None:
-        if name == "sigmas" and value is not None:
-            value = tuple(value)  # type: ignore[arg-type]
-        super().__setattr__(name, value)
+    @field_validator("sigmas", mode="before")
+    @classmethod
+    def _coerce_sigmas(cls, sigmas: Iterable[float]) -> tuple[float, ...]:
+        """Coerce any iterable of sigmas to a tuple.
+
+        Reproduces the pre-migration ``__setattr__`` override, which
+        normalized ``sigmas`` (passed as a list or other iterable) to a
+        tuple before storing it.
+        """
+        return tuple(sigmas)
 
     def _operate(self, image: Image) -> Image:
         image.detect_mat[:] = hessian(

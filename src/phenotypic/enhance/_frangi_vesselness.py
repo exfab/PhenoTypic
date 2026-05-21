@@ -4,6 +4,7 @@ from typing import Iterable, TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
+from pydantic import field_validator
 from skimage.filters import frangi
 
 from phenotypic.abc_ import ImageEnhancer
@@ -66,41 +67,22 @@ class FrangiVesselness(ImageEnhancer):
 
     """
 
-    def __init__(
-            self,
-            sigmas: Iterable[float] = (0.5, 1, 1.5),
-            alpha: float = 0.5,
-            beta: float = 0.5,
-            gamma: float = None,
-            black_ridges: bool = False,
-    ):
-        """
-        Parameters:
-            sigmas (tuple | list): Sequence of standard deviations for Gaussian
-                derivatives. Smaller values detect finer features, larger values
-                detect thicker structures. Default (0.5, 1, 1.5).
-            alpha (float): Vesselness sensitivity to blobness. Lower values are
-                more permissive. Range: 0 to 1. Default 0.5.
-            beta (float): Vesselness sensitivity to structuredness. Lower values
-                are more permissive. Range: 0 to 1. Default is None which uses
-                half of the max Hessian norm.
-            gamma (float): Threshold for background suppression. Larger values
-                suppress low-curvature regions more aggressively. Default 15.
-            black_ridges (bool): If True, detect dark ridges (colonies) on bright
-                background. If False, detect bright ridges on dark background.
-                For agar plates with dark colonies on light background, use True.
-                Default False.
-        """
-        self.sigmas = sigmas
-        self.alpha = alpha
-        self.beta = beta
-        self.gamma = gamma
-        self.black_ridges = black_ridges
+    sigmas: tuple[float, ...] = (0.5, 1, 1.5)
+    alpha: float = 0.5
+    beta: float = 0.5
+    gamma: float | None = None
+    black_ridges: bool = False
 
-    def __setattr__(self, name: str, value: object) -> None:
-        if name == "sigmas" and value is not None:
-            value = tuple(value)  # type: ignore[arg-type]
-        super().__setattr__(name, value)
+    @field_validator("sigmas", mode="before")
+    @classmethod
+    def _coerce_sigmas(cls, sigmas: Iterable[float]) -> tuple[float, ...]:
+        """Coerce any iterable of sigmas to a tuple.
+
+        Reproduces the pre-migration ``__setattr__`` override, which
+        normalized ``sigmas`` (passed as a list or other iterable) to a
+        tuple before storing it.
+        """
+        return tuple(sigmas)
 
     def _operate(self, image: Image) -> Image:
         image.detect_mat[:] = frangi(

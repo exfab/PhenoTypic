@@ -230,7 +230,7 @@ class TestPipelineIntegration:
         arr = rng.random((64, 64)).astype(np.float64) * 0.5 + 0.25
         image = Image(arr=arr)
 
-        pipeline = ImagePipeline([
+        pipeline = ImagePipeline(ops=[
             HomomorphicFilter(sigma=10.0),
             GaussianBlur(sigma=1.0),
         ])
@@ -247,7 +247,7 @@ class TestSerialization:
     """to_json / from_json preserves all parameters."""
 
     def test_roundtrip_preserves_params(self):
-        pipeline = ImagePipeline([
+        pipeline = ImagePipeline(ops=[
             HomomorphicFilter(sigma=100.0, gamma_low=0.3, gamma_high=2.0, eps=1e-8),
         ])
         json_str = pipeline.to_json()
@@ -263,7 +263,7 @@ class TestSerialization:
         assert op.eps == 1e-8
 
     def test_default_params_roundtrip(self):
-        pipeline = ImagePipeline([HomomorphicFilter()])
+        pipeline = ImagePipeline(ops=[HomomorphicFilter()])
         json_str = pipeline.to_json()
         loaded = ImagePipeline.from_json(json_str)
 

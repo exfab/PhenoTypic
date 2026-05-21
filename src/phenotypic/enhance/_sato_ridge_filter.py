@@ -5,6 +5,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import numpy as np
+from pydantic import field_validator
 from skimage.feature import hessian_matrix, hessian_matrix_eigvals
 
 from phenotypic.abc_ import ImageEnhancer
@@ -59,36 +60,21 @@ class SatoRidgeFilter(ImageEnhancer):
         Hessian-based ridge detection methods.
     """
 
-    def __init__(
-            self,
-            sigmas: Iterable[float] = (1, 2, 3),
-            black_ridges: bool = False,
-            mode: str = 'reflect',
-            cval: float = 0,
-    ):
-        """
-        Parameters:
-            sigmas (tuple | list): Sequence of standard deviations for Gaussian
-                derivatives. Smaller values detect finer features, larger values
-                detect thicker structures. Default (1, 2, 3).
-            black_ridges (bool): If True, detect dark ridges (colonies) on bright
-                background. If False, detect bright ridges on dark background.
-                For agar plates with dark colonies on light background, use True.
-                Default False.
-            mode (str): How to handle image boundaries. Options: 'constant'
-                (pad with cval), 'reflect' (mirror), 'wrap' (tile), 'nearest'
-                (replicate edge), 'mirror' (symmetric mirror). Default 'reflect'.
-            cval (float): Fill value when mode='constant'. Default 0.
-        """
-        self.sigmas = sigmas
-        self.black_ridges = black_ridges
-        self.mode = mode
-        self.cval = cval
+    sigmas: tuple[float, ...] = (1, 2, 3)
+    black_ridges: bool = False
+    mode: str = "reflect"
+    cval: float = 0
 
-    def __setattr__(self, name: str, value: object) -> None:
-        if name == "sigmas" and value is not None:
-            value = tuple(value)  # type: ignore[arg-type]
-        super().__setattr__(name, value)
+    @field_validator("sigmas", mode="before")
+    @classmethod
+    def _coerce_sigmas(cls, sigmas: Iterable[float]) -> tuple[float, ...]:
+        """Coerce any iterable of sigmas to a tuple.
+
+        Reproduces the pre-migration ``__setattr__`` override, which
+        normalized ``sigmas`` (passed as a list or other iterable) to a
+        tuple before storing it.
+        """
+        return tuple(sigmas)
 
     def _operate(self, image: Image) -> Image:
         # Manual Sato tubeness loop (replaces skimage.filters.sato) for

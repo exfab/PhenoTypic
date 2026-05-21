@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
+from pydantic import field_validator
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -62,30 +63,18 @@ class HomomorphicFilter(ImageEnhancer):
         contrast and illumination correction methods.
     """
 
-    def __init__(
-        self,
-        sigma: float = 200.0,
-        gamma_low: float = 0.5,
-        gamma_high: float = 1.5,
-        eps: float = 1e-6,
-    ):
-        """
-        Parameters:
-            sigma: Gaussian sigma for the illumination/reflectance cutoff.
-                Larger values capture broader illumination gradients.  Start
-                with a value several times the largest colony diameter.
-            gamma_low: Gain for low frequencies (illumination).  < 1
-                suppresses illumination variation; 1.0 leaves it unchanged.
-            gamma_high: Gain for high frequencies (reflectance).  > 1
-                enhances colony detail; 1.0 leaves it unchanged.
-            eps: Offset to avoid ``log(0)``.  Rarely needs adjustment.
-        """
+    sigma: float = 200.0
+    gamma_low: float = 0.5
+    gamma_high: float = 1.5
+    eps: float = 1e-6
+
+    @field_validator("sigma")
+    @classmethod
+    def _check_sigma_positive(cls, sigma: float) -> float:
+        """Reject a non-positive ``sigma`` (matches the pre-migration guard)."""
         if sigma <= 0:
             raise ValueError(f"sigma must be positive, got {sigma}")
-        self.sigma = sigma
-        self.gamma_low = gamma_low
-        self.gamma_high = gamma_high
-        self.eps = eps
+        return sigma
 
     @staticmethod
     def _filter(

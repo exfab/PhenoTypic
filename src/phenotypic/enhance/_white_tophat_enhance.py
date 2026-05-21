@@ -58,10 +58,8 @@ class WhiteTophatEnhance(ImageEnhancer):
         visual walkthrough of morphological enhancement on plate images.
     """
 
-    def __init__(self, shape: str = "disk", width: int = None):
-        super().__init__()
-        self.shape = shape
-        self.width = width
+    shape: str = "disk"
+    width: int | None = None
 
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(

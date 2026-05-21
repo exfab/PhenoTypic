@@ -6,9 +6,9 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 from skimage.filters import laplace
 from typing import Optional
-import numpy as np
 
 from ..abc_ import ImageEnhancer
+from phenotypic.tools_.typing_ import NdArrayField
 
 
 class LaplaceEnhancer(ImageEnhancer):
@@ -51,20 +51,8 @@ class LaplaceEnhancer(ImageEnhancer):
         visual walkthrough of edge enhancement on plate images.
     """
 
-    def __init__(
-        self, kernel_size: Optional[int] = 3, mask: Optional[np.ndarray] = None
-    ):
-        """
-        Parameters:
-            kernel_size (Optional[int]): Controls the edge scale. Smaller values
-                pick up fine edges but increase noise sensitivity; larger values
-                smooth noise and emphasize broader boundaries.
-            mask (Optional[np.ndarray]): Boolean/0-1 mask to limit processing to
-                regions of interest (e.g., the circular plate), reducing artifacts
-                from dish rims or labels.
-        """
-        self.kernel_size: Optional[np.ndarray] = kernel_size
-        self.mask: Optional[np.ndarray] = mask
+    kernel_size: Optional[int] = 3
+    mask: NdArrayField | None = None
 
     def _operate(self, image: Image) -> Image:
         image.detect_mat[:] = laplace(

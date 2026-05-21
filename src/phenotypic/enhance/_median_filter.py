@@ -51,54 +51,10 @@ class MedianFilter(ImageEnhancer):
         into the pipeline model.
     """
 
-    def __init__(
-            self,
-            mode: Literal[
-                "nearest", "reflect", "constant", "mirror", "wrap"] = "nearest",
-            shape: Literal["disk", "square", "diamond"] | None = None,
-            width: int = 5,
-            cval: float = 0.0,
-    ):
-        """
-        This class is designed to facilitate image processing tasks, particularly for analyzing microbe
-        colonies on solid media agar. By adjusting the mode, shape, width, and cval attributes,
-        users can modify the processing behavior and results to suit their specific requirements for
-        studying spatial arrangements, colony boundaries, and other morphological features.
-
-        Attributes:
-            mode (Literal["nearest", "reflect", "constant", "mirror", "wrap"]):
-                Determines how boundaries of the image are handled during processing.
-                For instance, "reflect" can help minimize edge artifacts when analyzing
-                colonies near the edge of the image by mirroring boundary pixels, while
-                "constant" fills with a value (cval), which might highlight isolated colonies.
-                Adjusting this can significantly affect how edge regions are interpreted.
-
-            shape (Literal["disk", "square", "diamond"] | None):
-                Specifies the shape of the structuring element used in morphological
-                operations. For instance, "disk" simulates circular neighborhood which works
-                well for circular colonies, whereas "square" gives a grid-like neighborhood.
-                This can directly impact how structures are identified or segmented.
-
-            width (int):
-                Size of the structuring element. Larger widths result in broader neighborhoods
-                being considered, which may smooth or connect distant colonies, while smaller
-                widths preserve finer details but may miss larger structural relationships. Only
-                if shape is not None.
-
-            cval (float):
-                Value used to fill borders when mode is set to "constant". This directly affects
-                colony recognition at the edges; for example, setting a high cval compared to
-                colony intensity might obscure colonies near the borders.
-        """
-        if mode in ["nearest", "reflect", "constant", "mirror", "wrap"]:
-            self.mode = mode
-            self.shape = shape
-            self.width = width
-            self.cval = cval
-        else:
-            raise ValueError(
-                    'mode must be one of "nearest","reflect","constant","mirror","wrap"'
-            )
+    mode: Literal["nearest", "reflect", "constant", "mirror", "wrap"] = "nearest"
+    shape: Literal["disk", "square", "diamond"] | None = None
+    width: int = 5
+    cval: float = 0.0
 
     def _operate(self, image: Image) -> Image:
         image.detect_mat[:] = median(

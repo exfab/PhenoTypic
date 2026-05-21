@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 import bm3d
 from bm3d.profiles import BM3DStages
+from pydantic import field_validator
 
 from ..abc_ import ImageDenoiser
 from ..tools_.mixin import _GATSupportMixin
@@ -86,50 +87,18 @@ class BM3DDenoiser(_GATSupportMixin, ImageDenoiser):
     _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"sigma_psd": 1.0}
     _GAT_DEFER_ATTRS: ClassVar[tuple[str, ...]] = ("clip",)
 
-    def __init__(
-            self,
-            sigma_psd: float = 0.02,
-            block_size: int = 8,
-            *,
-            stage_arg: Literal["all_stages", "hard_thresholding"] = "all_stages",
-            clip: bool = True,
-            use_gat: bool = False,
-            **kwargs,
-    ):
-        """
-        Parameters:
-            sigma_psd (float): Noise level estimate in [0, 1] normalized
-                scale. Start with 0.02-0.05 for typical scanner noise on
-                plates (equivalent to σ=5-12 on 8-bit).
-                Higher value -> more noise.
-            block_size (int): Block size for BM3D denoising. Default is 8.
-            stage_arg (Literal["all_stages", "hard_thresholding"]): Denoising
-                stages to run. 'all_stages' gives best quality at the cost of
-                speed; 'hard_thresholding' is faster and adequate for routine
-                plate analysis.
-            clip (bool): Whether to clip output to [0, 1] range. Default True.
-                Automatically deferred when ``use_gat=True``.
-            use_gat (bool): Wrap denoising in the Generalized Anscombe
-                Transform for Poisson-Gaussian noise. Default False. See
-                :class:`phenotypic.tools_.mixin._GATSupportMixin`.
-            **kwargs: GAT tuning parameters forwarded to
-                :class:`_GATSupportMixin` (``gat_gain``, ``gat_mu``,
-                ``gat_read_sigma``, ``gat_scale_factor``).
-        """
-        if not isinstance(sigma_psd, (int, float)):
-            raise TypeError("sigma_psd must be a number or None")
+    sigma_psd: float = 0.02
+    block_size: int = 8
+    stage_arg: Literal["all_stages", "hard_thresholding"] = "all_stages"
+    clip: bool = True
+
+    @field_validator("sigma_psd")
+    @classmethod
+    def _check_sigma_psd(cls, sigma_psd: float) -> float:
+        """Require a non-negative noise estimate (matches the legacy guard)."""
         if sigma_psd < 0:
             raise ValueError("sigma_psd must be non-negative")
-        if stage_arg not in ["all_stages", "hard_thresholding"]:
-            raise ValueError(
-                "stage_arg must be 'all_stages' or 'hard_thresholding'"
-            )
-
-        super().__init__(use_gat=use_gat, **kwargs)
-        self.sigma_psd = float(sigma_psd)
-        self.stage_arg = stage_arg
-        self.block_size = block_size
-        self.clip = clip
+        return sigma_psd
 
     def _operate(self, image: Image) -> Image:
         # detect_mat is guaranteed to be in [0, 1] range, which BM3D expects
