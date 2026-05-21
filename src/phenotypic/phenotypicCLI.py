@@ -191,11 +191,10 @@ from phenotypic.tools_ import (
     JobMetadataKey,
     dashboard_html_path,
     dataset_measurements_dir,
-    resolve_execution_mode,
     load_image_from_hdf,
     processing_report_html_path,
 )
-from phenotypic.tools_.typing_ import ExecutionMode, ImageTypeName
+from phenotypic.tools_.typing_ import ImageTypeName
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -1702,8 +1701,6 @@ def _handle_recompile(
     from phenotypic._cli._cli_output_manager import aggregate_measurements
     from phenotypic._cli._cli_utils import load_job_metadata
     from phenotypic._cli._dashboard import (
-        build_manifest,
-        generate_dashboard,
         regenerate_dashboard_artifacts,
     )
 
