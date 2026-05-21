@@ -135,7 +135,7 @@ class TestSineAlignmentRefinerParameters:
         """Test JSON serialization roundtrip of SineAlignmentRefiner in pipeline."""
         from phenotypic import ImagePipeline
 
-        pipeline = ImagePipeline([
+        pipeline = ImagePipeline(ops=[
             RoundPeaksDetector(),
             SineAlignmentRefiner(
                     smoothing_sigma=1.5,

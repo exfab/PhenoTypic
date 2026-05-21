@@ -5,7 +5,7 @@ if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
 
 import numpy as np
-from typing import Optional
+from pydantic import AliasChoices, Field
 
 from phenotypic.abc_ import GridObjectRefiner
 from phenotypic.measure import MeasureGridLinRegStats
@@ -58,33 +58,19 @@ class ResidualOutlierRemover(GridObjectRefiner):
         grid refinement approaches.
     """
 
-    def __init__(
-            self,
-            axis: Optional[int] = None,
-            stddev_multiplier=1.5,
-            max_coeff_variance: int = 1,
-    ):
-        """Initialize the remover.
-
-        Args:
-            axis (Optional[int]): Axis selection for analysis. ``None`` runs
-                both directions; ``0`` rows; ``1`` columns. Limiting the axis
-                reduces runtime and targets known problem directions.
-            stddev_multiplier (float): Robust residual cutoff multiplier. Lower
-                values remove more outliers (stronger cleanup) but risk dropping
-                valid off-center colonies; higher values are conservative.
-            max_coeff_variance (int): Threshold for row/column variability
-                (std/mean) to trigger outlier analysis. Lower values clean more
-                lines; higher values only address extremely noisy lines.
-
-        Raises:
-            ValueError: If parameters are not consistent with the operation
-                (e.g., invalid types). Errors may arise during execution when
-                measuring grid statistics.
-        """
-        self.axis = axis  # Either none for both axis, 0 for row, or 1 for column
-        self.cutoff_multiplier = stddev_multiplier
-        self.max_coeff_variance = max_coeff_variance
+    #: Axis selection — ``None`` for both, ``0`` for row, ``1`` for column.
+    axis: int | None = None
+    #: Robust residual cutoff multiplier. The public constructor keyword is
+    #: the legacy ``stddev_multiplier``; the attribute the algorithm reads is
+    #: ``cutoff_multiplier`` (the pre-migration ``__init__`` renamed the
+    #: parameter on assignment). ``AliasChoices`` accepts both the legacy
+    #: keyword and the field name so existing call sites and JSON
+    #: round-trips keep working.
+    cutoff_multiplier: float = Field(
+            default=1.5,
+            validation_alias=AliasChoices("stddev_multiplier", "cutoff_multiplier"),
+    )
+    max_coeff_variance: int = 1
 
     def _operate(self, image: GridImage) -> GridImage:
         """Identify and remove residual outliers per noisy row/column.

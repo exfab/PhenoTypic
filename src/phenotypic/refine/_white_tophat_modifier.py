@@ -10,6 +10,7 @@ from skimage.morphology import white_tophat
 
 from phenotypic.abc_ import ObjectRefiner
 from phenotypic.tools_.mixin import FootprintMixin
+from phenotypic.tools_.typing_ import NdArrayField
 
 
 class WhiteTophat(ObjectRefiner, FootprintMixin):
@@ -56,35 +57,8 @@ class WhiteTophat(ObjectRefiner, FootprintMixin):
         morphological refinement methods.
     """
 
-    def __init__(self,
-                 shape: Literal["disk", "square", "diamond"] | np.ndarray = "disk",
-                 width: int | None = None):
-        """
-        Represents a structural element used to analyze and process images, specifically useful for microbial
-        colony analysis on solid media agar.
-
-        The class encapsulates the shape and size of the structural element. Structural elements are commonly
-        used in morphological image processing tasks such as dilations, erosions, opening, and closing. These
-        operations can enhance or isolate features of microbe colonies on agar plates, such as determining
-        colony size, spacing, or detecting connections between colonies.
-
-        Attributes:
-            shape (Literal["disk", "square", "diamond"] | np.ndarray):
-                Defines the shape of the structural element. Choosing "disk" may help preserve the rounded
-                geometry of typical microbial colonies. "Square" and "diamond" shapes may be more useful for
-                colonies that form irregular or grid-based patterns. Supplying a custom numpy array (np.ndarray)
-                allows for complete customization of the structural element, which could be beneficial for non-
-                standard colony morphologies.
-
-            width (int | None):
-                Specifies the size of the structural element by defining the width. Larger widths will create
-                structural elements that can encompass larger colonies or areas of colonies, potentially aiding
-                in operations designed to merge close colonies. Smaller widths will result in more localized
-                structural elements, which can preserve fine details and delineate smaller colonies. A None
-                value assumes a default or minimal size.
-        """
-        self.shape = shape
-        self.width = width
+    shape: Literal["disk", "square", "diamond"] | NdArrayField = "disk"
+    width: int | None = None
 
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(

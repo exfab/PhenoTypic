@@ -1,4 +1,11 @@
-"""Tests for ManualSelector: init, __setattr__ coercion, _operate, and napari."""
+"""Tests for ManualSelector: init, centers coercion, _operate, and napari.
+
+Since the pydantic migration ``centers`` is stored as a JSON-native
+``list[tuple[int, int]]`` (not an ``np.ndarray``). A
+``field_validator(mode="before")`` coerces ``np.ndarray`` / list / tuple
+input to that list form — replacing the ``PointPickerMixin.__setattr__``
+coercion that was removed when the operation became a pydantic model.
+"""
 
 from __future__ import annotations
 
@@ -34,7 +41,7 @@ def _label_centroid(objmap: np.ndarray, label: int) -> tuple[int, int]:
 
 
 class TestManualSelectorInit:
-    """__init__ defaults and __setattr__ coercion."""
+    """Field defaults and ``centers`` coercion to a list of pairs."""
 
     def test_default_init(self):
         sel = ManualSelector()
@@ -44,26 +51,23 @@ class TestManualSelectorInit:
 
     def test_init_with_centers_list(self):
         sel = ManualSelector(centers=[[50, 60], [100, 120]])
-        assert isinstance(sel.centers, np.ndarray)
-        assert sel.centers.shape == (2, 2)
-        np.testing.assert_array_equal(sel.centers, [[50, 60], [100, 120]])
+        # Stored as a JSON-native list of (y, x) pairs.
+        assert sel.centers == [(50, 60), (100, 120)]
 
     def test_init_with_tuples(self):
         sel = ManualSelector(centers=[(10, 20), (30, 40)])
-        assert isinstance(sel.centers, np.ndarray)
-        np.testing.assert_array_equal(sel.centers, [[10, 20], [30, 40]])
+        assert sel.centers == [(10, 20), (30, 40)]
 
-    def test_init_preserves_ndarray(self):
+    def test_init_coerces_ndarray_to_list(self):
         arr = np.array([[5, 6]])
         sel = ManualSelector(centers=arr)
-        assert isinstance(sel.centers, np.ndarray)
-        np.testing.assert_array_equal(sel.centers, arr)
+        # The before-validator normalizes an ndarray to a list of pairs.
+        assert sel.centers == [(5, 6)]
 
     def test_setattr_coercion(self):
         sel = ManualSelector()
         sel.centers = [[10, 20]]
-        assert isinstance(sel.centers, np.ndarray)
-        np.testing.assert_array_equal(sel.centers, [[10, 20]])
+        assert sel.centers == [(10, 20)]
 
     def test_setattr_none_passthrough(self):
         sel = ManualSelector(centers=[[10, 20]])
@@ -237,8 +241,9 @@ class TestManualSelectorNapari:
             mock_instance.run.return_value = np.array([[50, 60], [100, 120]])
             result = sel.napari(MagicMock())
 
-        assert isinstance(sel.centers, np.ndarray)
-        np.testing.assert_array_equal(sel.centers, [[50, 60], [100, 120]])
+        # napari's setattr triggers the centers before-validator under
+        # validate_assignment, normalizing the ndarray to a list of pairs.
+        assert sel.centers == [(50, 60), (100, 120)]
         assert result is sel
 
     def test_napari_empty_result_preserves_existing_centers(self):

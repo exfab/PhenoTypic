@@ -87,40 +87,13 @@ class SineAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
         grid refinement approaches.
     """
 
-    def __init__(
-            self,
-            smoothing_sigma: float = 2.0,
-            min_peak_distance: int | None = None,
-            peak_prominence: float | None = None,
-            edge_refinement: bool = True,
-            correlation_threshold: float = 0.3,
-            selection_mode: Literal["dominant", "centered", "regularized"] = "dominant",
-            split_merged: bool = False,
-    ):
-        """Initialize SineAlignmentRefiner with grid inference and correlation parameters.
-
-        Args:
-            smoothing_sigma: Gaussian smoothing sigma for intensity profiles.
-            min_peak_distance: Minimum distance between grid peaks.
-            peak_prominence: Minimum prominence for peak detection.
-            edge_refinement: Enable edge refinement via local intensity minima.
-            correlation_threshold: Minimum NCC value for valid peaks.
-            selection_mode: Strategy for choosing the object per grid cell.
-                'dominant' (default) keeps the largest, 'centered' keeps
-                the most centred, 'regularized' uses a global fit.
-            split_merged: If True, pre-split merged colonies that span
-                multiple grid cells using EDT watershed before assignment.
-                Default False for refiners (splitting is more useful during
-                initial detection).
-        """
-        super().__init__()
-        self.smoothing_sigma = smoothing_sigma
-        self.min_peak_distance = min_peak_distance
-        self.peak_prominence = peak_prominence
-        self.edge_refinement = edge_refinement
-        self.correlation_threshold = correlation_threshold
-        self.selection_mode = selection_mode
-        self.split_merged = split_merged
+    smoothing_sigma: float = 2.0
+    min_peak_distance: int | None = None
+    peak_prominence: float | None = None
+    edge_refinement: bool = True
+    correlation_threshold: float = 0.3
+    selection_mode: Literal["dominant", "centered", "regularized"] = "dominant"
+    split_merged: bool = False
 
     @validate_operation_integrity("image.rgb", "image.gray", "image.detect_mat")
     def apply(self, image: Image, inplace: bool = False) -> Image:

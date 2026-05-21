@@ -10,7 +10,7 @@ from phenotypic.tools_.mixin import FootprintMixin
 
 import numpy as np
 from skimage.morphology import opening
-from phenotypic.tools_.typing_ import FootprintShape
+from phenotypic.tools_.typing_ import NdArrayField
 
 
 class MaskOpener(ObjectRefiner, FootprintMixin):
@@ -53,34 +53,9 @@ class MaskOpener(ObjectRefiner, FootprintMixin):
         refinement sequence.
     """
 
-    def __init__(
-            self,
-            shape: Literal["auto"] | FootprintShape | np.ndarray | None = None,
-            width: int = 5,
-            n_iter: int = 1,
-    ):
-        """Initialize the opener.
-
-        Args:
-            shape (Literal["auto"] | np.ndarray | int | None): Structuring
-                element for opening. Use:
-
-                - "auto" to select a diamond shape scaled to image size
-                  (larger plates → slightly larger width),
-                - a NumPy array to pass a custom shape,
-                - an ``int`` width to build a diamond shape of that size,
-                - or ``None`` to use the library default.
-
-                Larger widths disconnect wider bridges and suppress more
-                speckles, but erode edges and can remove small colonies.
-            n_iter (int): Number of times to apply opening. Repeated opening
-                with a small element produces smoother results than a single
-                pass with a larger element. Default: 1.
-        """
-        super().__init__()
-        self.shape: Literal["auto"] | FootprintShape | np.ndarray | None = shape
-        self.width = width
-        self.n_iter = n_iter
+    shape: Literal["auto", "square", "diamond", "disk"] | NdArrayField | None = None
+    width: int = 5
+    n_iter: int = 1
 
     def _operate(self, image: Image) -> Image:
         if self.shape == "auto":

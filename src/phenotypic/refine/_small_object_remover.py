@@ -44,16 +44,7 @@ class SmallObjectRemover(ObjectRefiner):
         refinement sequence.
     """
 
-    def __init__(self, min_size=64):
-        """Initialize the remover.
-
-        Args:
-            min_size (int): Minimum object area (in pixels) to keep. Higher
-                values remove more small artifacts and fragmented edges,
-                generally improving mask cleanliness but risking loss of tiny
-                colonies.
-        """
-        self.min_size = min_size
+    min_size: int = 64
 
     def _operate(self, image: Image) -> Image:
         objmap = image.objmap[:]

@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 import logging
 
 import numpy as np
+from pydantic import field_validator
 from scipy.ndimage import distance_transform_edt, label as ndi_label
 from skimage.measure import euler_number, regionprops
 
@@ -109,43 +110,45 @@ class AsymmetricSpurTrimmer(ObjectRefiner):
         True
     """
 
-    def __init__(
-            self,
-            symmetry_threshold: float = 3 / 6,
-            n_angular_bins: int = 6,
-            n_annuli: int = 100,
-            pelt_penalty: float = 5.0,
-            smoothing_window: int = 3,
-            method: Literal["distance", "intensity"] = "distance",
-            beehive_threshold: float | None = None,
-            min_cc_area: int = 50,
-            min_object_area: int = 100,
-    ):
-        super().__init__()
+    symmetry_threshold: float = 3 / 6
+    n_angular_bins: int = 6
+    n_annuli: int = 100
+    pelt_penalty: float = 5.0
+    smoothing_window: int = 3
+    method: Literal["distance", "intensity"] = "distance"
+    beehive_threshold: float | None = None
+    min_cc_area: int = 50
+    min_object_area: int = 100
+
+    @field_validator("symmetry_threshold")
+    @classmethod
+    def _validate_symmetry_threshold(cls, symmetry_threshold: float) -> float:
+        """Reject a ``symmetry_threshold`` outside ``[0, 1]``.
+
+        Reproduces the pre-migration ``__init__`` guard verbatim.
+        """
         if not 0.0 <= symmetry_threshold <= 1.0:
             raise ValueError(
                     "symmetry_threshold must be in [0, 1]; "
                     f"got {symmetry_threshold}."
             )
-        if method not in ("distance", "intensity"):
-            raise ValueError(
-                    f"method must be 'distance' or 'intensity'; got {method!r}."
-            )
+        return symmetry_threshold
+
+    @field_validator("beehive_threshold")
+    @classmethod
+    def _validate_beehive_threshold(
+            cls, beehive_threshold: float | None
+    ) -> float | None:
+        """Reject a negative ``beehive_threshold``.
+
+        Reproduces the pre-migration ``__init__`` guard verbatim.
+        """
         if beehive_threshold is not None and beehive_threshold < 0.0:
             raise ValueError(
                     "beehive_threshold must be non-negative or None; "
                     f"got {beehive_threshold}."
             )
-
-        self.symmetry_threshold = symmetry_threshold
-        self.n_angular_bins = n_angular_bins
-        self.n_annuli = n_annuli
-        self.pelt_penalty = pelt_penalty
-        self.smoothing_window = smoothing_window
-        self.method = method
-        self.beehive_threshold = beehive_threshold
-        self.min_cc_area = min_cc_area
-        self.min_object_area = min_object_area
+        return beehive_threshold
 
     def _operate(self, image: Image) -> Image:
         """Trim asymmetric spurs / beehive noise from each colony in the objmap.

@@ -70,34 +70,11 @@ class GMMCoreExtractor(ObjectRefiner):
         refinement approaches including GMM-based extraction.
     """
 
-    def __init__(
-        self,
-        n_components: int = 2,
-        separation_threshold: float = 0.8,
-        min_core_area: int = 30,
-        morph_open_radius: int = 1,
-        morph_close_radius: int = 2,
-    ):
-        """Initialise the GMM core extractor.
-
-        Args:
-            n_components (int): Number of Gaussian components to fit per
-                labelled region (default 2 — core vs. surround).
-            separation_threshold (float): Normalised mean separation
-                below which the region is left unchanged (0.0–1.0+).
-            min_core_area (int): Minimum core area in pixels.  Regions
-                or connected components below this size are kept as-is
-                or discarded.
-            morph_open_radius (int): Radius for morphological opening
-                (0 disables).
-            morph_close_radius (int): Radius for morphological closing
-                (0 disables).
-        """
-        self.n_components = n_components
-        self.separation_threshold = separation_threshold
-        self.min_core_area = min_core_area
-        self.morph_open_radius = morph_open_radius
-        self.morph_close_radius = morph_close_radius
+    n_components: int = 2
+    separation_threshold: float = 0.8
+    min_core_area: int = 30
+    morph_open_radius: int = 1
+    morph_close_radius: int = 2
 
     # ------------------------------------------------------------------
     # Static helpers

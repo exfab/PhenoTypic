@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import numpy as np
+from pydantic import field_validator
 from scipy.spatial import cKDTree
 from skimage.measure import regionprops_table
 import pandas as pd
@@ -65,24 +66,30 @@ class SmallToLargeMerger(ObjectRefiner):
         merging strategies.
     """
 
-    def __init__(self, distance_threshold: float = 30.0, size_threshold: int = 100):
-        """Initialize the merger.
+    distance_threshold: float = 30.0
+    size_threshold: int = 100
 
-        Args:
-            distance_threshold (float): Maximum distance from small fragment to
-                large colony for merging (pixels).
-            size_threshold (int): Minimum area for an object to be considered a
-                "large" anchor colony. Smaller objects are candidates for merging.
+    @field_validator("distance_threshold")
+    @classmethod
+    def _validate_distance_threshold(cls, distance_threshold: float) -> float:
+        """Reject a non-positive ``distance_threshold``.
 
-        Raises:
-            ValueError: If distance_threshold or size_threshold are not positive.
+        Reproduces the pre-migration ``__init__`` guard verbatim.
         """
         if distance_threshold <= 0:
             raise ValueError("distance_threshold must be positive")
+        return distance_threshold
+
+    @field_validator("size_threshold")
+    @classmethod
+    def _validate_size_threshold(cls, size_threshold: int) -> int:
+        """Reject a non-positive ``size_threshold``.
+
+        Reproduces the pre-migration ``__init__`` guard verbatim.
+        """
         if size_threshold <= 0:
             raise ValueError("size_threshold must be positive")
-        self.distance_threshold = distance_threshold
-        self.size_threshold = size_threshold
+        return size_threshold
 
     def _operate(self, image: Image) -> Image:
         """Apply small-to-large hierarchical merging to objmap.

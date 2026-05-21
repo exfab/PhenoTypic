@@ -7,6 +7,7 @@ if TYPE_CHECKING:
 
 import pandas as pd
 import numpy as np
+from pydantic import field_validator
 from skimage.measure import regionprops_table
 import math
 
@@ -57,21 +58,18 @@ class LowCircularityRemover(ObjectRefiner):
         morphological refinement methods.
     """
 
-    def __init__(self, cutoff: float = 0.785):
-        """Initialize the remover.
+    cutoff: float = 0.785
 
-        Args:
-            cutoff (float): Minimum allowed circularity in [0, 1]. Increasing
-                the cutoff favors compact, round objects (often cleaner masks),
-                whereas lowering it retains irregular colonies but may keep more
-                debris or merged objects.
+    @field_validator("cutoff")
+    @classmethod
+    def _validate_cutoff(cls, cutoff: float) -> float:
+        """Reject a ``cutoff`` outside ``[0, 1]``.
 
-        Raises:
-            ValueError: If ``cutoff`` is outside [0, 1].
+        Reproduces the pre-migration ``__init__`` guard verbatim.
         """
         if cutoff < 0 or cutoff > 1:
             raise ValueError("threshold should be a number between 0 and 1.")
-        self.cutoff = cutoff
+        return cutoff
 
     def _operate(self, image: Image) -> Image:
         # Create intial measurement table
