@@ -98,49 +98,13 @@ class CannyDetector(ThresholdDetector):
             In-depth comparison of all detection strategies.
     """
 
-    def __init__(
-            self,
-            sigma: float = 1.0,
-            low_threshold: float = 0.1,
-            high_threshold: float = 0.2,
-            use_quantiles: bool = True,
-            min_size: int = 50,
-            invert_edges: bool = True,
-            connectivity: int = 2,
-    ):
-        """
-        Parameters:
-            sigma (float): Gaussian smoothing strength before edge detection. Start
-                with 1-2 for clean images; increase for noisy scans to suppress
-                spurious edges. Keep below typical colony width to avoid merging.
-            low_threshold (float): Lower hysteresis threshold. If use_quantiles=True,
-                a fraction (e.g., 0.1 = retain edges stronger than 10% of gradients).
-                If False, an absolute gradient magnitude. Increase to suppress weak
-                edges from noise; decrease to recover faint colony boundaries.
-            high_threshold (float): Upper hysteresis threshold. Seeds edge traces.
-                If use_quantiles=True, a fraction (e.g., 0.2 = top 80% gradients);
-                if False, an absolute magnitude. Raise to focus on strong boundaries;
-                lower to include fainter edges. Must exceed low_threshold.
-            use_quantiles (bool): Interpret thresholds as quantiles (True, default)
-                or absolute values (False). Quantiles adapt to image contrast
-                automatically, reducing manual tuning.
-            min_size (int): Minimum object area in pixels. Increase to filter out
-                dust, debris, and small artifacts; decrease to retain tiny colonies.
-            invert_edges (bool): If True (default), label enclosed regions as
-                objects (colonies). If False, label edge pixels (for atypical cases
-                like ring colonies or edge quality checks).
-            connectivity (int): Connectivity for labeling regions (1 or 2 in 2D).
-                Higher values merge diagonally touching pixels, useful for bridging
-                fragmented boundaries but may merge touching colonies.
-        """
-        super().__init__()
-        self.sigma = sigma
-        self.low_threshold = low_threshold
-        self.high_threshold = high_threshold
-        self.use_quantiles = use_quantiles
-        self.min_size = min_size
-        self.invert_edges = invert_edges
-        self.connectivity = connectivity
+    sigma: float = 1.0
+    low_threshold: float = 0.1
+    high_threshold: float = 0.2
+    use_quantiles: bool = True
+    min_size: int = 50
+    invert_edges: bool = True
+    connectivity: int = 2
 
     def _operate(self, image: Image | GridImage) -> Image:
 

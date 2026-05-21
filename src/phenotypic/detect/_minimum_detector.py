@@ -62,9 +62,8 @@ class MinimumDetector(ThresholdDetector):
             In-depth comparison of all detection strategies.
     """
 
-    def __init__(self, ignore_zeros: bool = False, ignore_borders: bool = True):
-        self.ignore_zeros = ignore_zeros
-        self.ignore_borders = ignore_borders
+    ignore_zeros: bool = False
+    ignore_borders: bool = True
 
     def _operate(self, image: Image) -> Image:
         """Binarizes the given image matrix using the Minimum threshold method.

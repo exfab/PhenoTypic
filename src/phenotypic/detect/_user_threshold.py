@@ -72,15 +72,9 @@ class UserThreshold(ThresholdDetector):
             In-depth comparison of all detection strategies.
     """
 
-    def __init__(
-            self,
-            threshold: float = 0.5,
-            ignore_zeros: bool = False,
-            ignore_borders: bool = True
-    ):
-        self.threshold = threshold
-        self.ignore_zeros = ignore_zeros
-        self.ignore_borders = ignore_borders
+    threshold: float = 0.5
+    ignore_zeros: bool = False
+    ignore_borders: bool = True
 
     def _operate(self, image: Image) -> Image:
         """Apply manual binary thresholding to the detection matrix image.

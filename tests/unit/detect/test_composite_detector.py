@@ -104,12 +104,20 @@ class TestCompositeDetector:
             CompositeDetector(detectors=[]).apply(synth_plate.copy())
 
     def test_invalid_mode_raises(self, synth_plate):
-        """Test that invalid mode raises an error."""
-        with pytest.raises(Exception, match="Invalid mode"):
+        """Test that an invalid mode is rejected at construction.
+
+        Under the pydantic v2 migration ``mode`` is typed
+        ``Literal['union', 'intersection', 'overlap']``, so a bad value
+        raises ``pydantic.ValidationError`` (a ``ValueError`` subclass)
+        when the detector is constructed rather than when ``apply`` runs.
+        """
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
             CompositeDetector(
                     detectors=[OtsuDetector()],
                     mode='invalid'
-            ).apply(synth_plate.copy())
+            )
 
     def test_serialization_roundtrip(self):
         """Test that CompositeDetector serializes and deserializes correctly."""
@@ -123,7 +131,7 @@ class TestCompositeDetector:
         )
 
         # Create pipeline
-        pipeline = ImagePipeline([composite])
+        pipeline = ImagePipeline(ops=[composite])
 
         # Serialize to JSON
         json_str = pipeline.to_json()
@@ -141,7 +149,7 @@ class TestCompositeDetector:
         assert restored_composite.mode == 'union'
 
         # Verify parameters preserved
-        assert restored_composite.detectors[0].ignore_zeros == True
+        assert restored_composite.detectors[0].ignore_zeros is True
         assert restored_composite.detectors[1].sigma == 2
 
     def test_serialization_functional_equivalence(self, synth_plate):
@@ -156,7 +164,7 @@ class TestCompositeDetector:
         original_result = composite.apply(image, inplace=False)
 
         # Serialize and deserialize
-        pipeline = ImagePipeline([composite])
+        pipeline = ImagePipeline(ops=[composite])
         json_str = pipeline.to_json()
         restored_pipeline = ImagePipeline.from_json(json_str)
 
@@ -212,7 +220,7 @@ class TestCompositeDetector:
                 min_overlap_ratio=0.6
         )
 
-        pipeline = ImagePipeline([composite])
+        pipeline = ImagePipeline(ops=[composite])
         json_str = pipeline.to_json()
         config = json.loads(json_str)
 
@@ -230,7 +238,7 @@ class TestCompositeDetector:
         # Verify first detector (OtsuDetector)
         otsu_data = detectors_data['items'][0]
         assert otsu_data['class'] == 'OtsuDetector'
-        assert otsu_data['params']['ignore_zeros'] == True
+        assert otsu_data['params']['ignore_zeros'] is True
 
         # Verify second detector (CannyDetector)
         canny_data = detectors_data['items'][1]
@@ -248,7 +256,7 @@ class TestCompositeDetector:
 
         image = synth_plate.copy()
 
-        pipeline = ImagePipeline([
+        pipeline = ImagePipeline(ops=[
             GaussianBlur(sigma=2),
             CompositeDetector(
                     detectors=[OtsuDetector(), CannyDetector(sigma=2)],
@@ -283,7 +291,7 @@ class TestCompositeDetector:
         image = synth_plate.copy()
 
         # Pipeline with preprocessing + detection
-        pipeline = ImagePipeline([
+        pipeline = ImagePipeline(ops=[
             GaussianBlur(sigma=2),
             OtsuDetector()
         ])
@@ -306,7 +314,7 @@ class TestCompositeDetector:
         composite = CompositeDetector(
                 detectors=[
                     OtsuDetector(),  # Direct detector
-                    ImagePipeline([  # Pipeline
+                    ImagePipeline(ops=[  # Pipeline
                         GaussianBlur(sigma=2),
                         CannyDetector(sigma=2)
                     ])
@@ -326,7 +334,7 @@ class TestCompositeDetector:
         composite = CompositeDetector(
                 detectors=[
                     OtsuDetector(),
-                    ImagePipeline([
+                    ImagePipeline(ops=[
                         GaussianBlur(sigma=2),
                         CannyDetector(sigma=2)
                     ])
@@ -334,7 +342,7 @@ class TestCompositeDetector:
                 mode='intersection'
         )
 
-        pipeline = ImagePipeline([composite])
+        pipeline = ImagePipeline(ops=[composite])
         json_str = pipeline.to_json()
 
         # Deserialize
@@ -359,7 +367,7 @@ class TestCompositeDetector:
         composite = CompositeDetector(
                 detectors=[
                     OtsuDetector(),
-                    ImagePipeline([
+                    ImagePipeline(ops=[
                         GaussianBlur(sigma=2),
                         CannyDetector(sigma=2)
                     ])
@@ -369,7 +377,7 @@ class TestCompositeDetector:
         original_result = composite.apply(image, inplace=False)
 
         # Serialize and deserialize
-        pipeline = ImagePipeline([composite])
+        pipeline = ImagePipeline(ops=[composite])
         json_str = pipeline.to_json()
         restored = ImagePipeline.from_json(json_str)
 
@@ -390,7 +398,7 @@ class TestCompositeDetector:
         composite = CompositeDetector(
                 detectors=[
                     OtsuDetector(),
-                    ImagePipeline([
+                    ImagePipeline(ops=[
                         GaussianBlur(sigma=2),
                         OtsuDetector()
                     ])
@@ -398,7 +406,7 @@ class TestCompositeDetector:
                 mode='union'
         )
 
-        pipeline = ImagePipeline([composite])
+        pipeline = ImagePipeline(ops=[composite])
         json_str = pipeline.to_json()
         config = json.loads(json_str)
 

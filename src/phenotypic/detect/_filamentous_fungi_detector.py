@@ -1,12 +1,14 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Union, Optional
+from typing import TYPE_CHECKING, ClassVar, Optional, Union
 import numpy as np
 import gc
+
+from pydantic import model_validator
+from typing_extensions import Self
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
     from phenotypic._core._grid_image import GridImage
-    from phenotypic._core._image_pipeline import ImagePipeline  # type: ignore
     from phenotypic.enhance._phase_congruency import _PhaseCong3Result
 
 from scipy.ndimage import center_of_mass, label as ndi_label
@@ -178,117 +180,101 @@ class FilamentousFungiDetector(GridObjectDetector):
 
     # Scene-derivation multipliers (private; override in subclass to tune).
     # Raw param = multiplier * scene knob (rounded to int where required).
-    _GAUSS_SIGMA_PER_R: float = 1.2
-    _TILE_SIZE_PER_R: float = 4.8
-    _TILE_OVERLAP_PER_R: float = 2.4
-    _WAVELENGTH_PER_W: float = 2.0
-    _MAD_WINDOW_PER_W: float = 2.0
-    _PATH_DILATION_PER_W: float = 0.5
-    _SNR_MARGIN_PER_W: float = 0.5
-    _COHERENCE_RADIUS_PER_W: float = 5.0
+    # Declared ``ClassVar`` so they stay class-level constants (not pydantic
+    # fields) while remaining subclass-overridable, exactly as before.
+    _GAUSS_SIGMA_PER_R: ClassVar[float] = 1.2
+    _TILE_SIZE_PER_R: ClassVar[float] = 4.8
+    _TILE_OVERLAP_PER_R: ClassVar[float] = 2.4
+    _WAVELENGTH_PER_W: ClassVar[float] = 2.0
+    _MAD_WINDOW_PER_W: ClassVar[float] = 2.0
+    _PATH_DILATION_PER_W: ClassVar[float] = 0.5
+    _SNR_MARGIN_PER_W: ClassVar[float] = 0.5
+    _COHERENCE_RADIUS_PER_W: ClassVar[float] = 5.0
 
-    # Algorithm internals (hidden from __init__; override in subclass to tune).
-    beta: float = 2.0          # anisotropy exponent in composite cost
-    gamma: float = 1.2         # MAD penalty weight in composite cost numerator
-    gauss_n_iter: int = 2      # SubtractGaussian iterations
-    delta: float = 1.0         # Dijkstra radial retreat penalty
-    pct_n_orient: int = 8      # phase congruency angular resolution
+    # Algorithm internals (hidden from the constructor; override in subclass
+    # to tune). ``ClassVar` keeps them out of ``model_fields`` so they are
+    # not constructor parameters, matching the pre-migration behaviour.
+    beta: ClassVar[float] = 2.0          # anisotropy exponent in composite cost
+    gamma: ClassVar[float] = 1.2         # MAD penalty weight in composite cost numerator
+    gauss_n_iter: ClassVar[int] = 2      # SubtractGaussian iterations
+    delta: ClassVar[float] = 1.0         # Dijkstra radial retreat penalty
+    pct_n_orient: ClassVar[int] = 8      # phase congruency angular resolution
 
-    def __init__(
-            self,
-            inoculum_detector: Union[ObjectDetector, 'ImagePipeline', None] = None,
-            # ── Scene parameters ──
-            max_colony_radius_px: float = 250.0,
-            min_branch_width_px: int = 3,
-            # ── Explicit user knobs ──
-            ignore_borders: bool = True,
-            edge_noise_threshold: float = 6.0,
-            reconnection_tolerance: float = 2.5,
-            max_gap_length: int = 30,
-            border_margin_px: int = 50,
-            frag_reach_px: int = 10,
-            gap_crossing_penalty: float = 4.0,
-            *,
-            # ── Scene-derivation overrides (None → auto-derived) ──
-            gauss_sigma: Optional[float] = None,
-            tile_size: Optional[int] = None,
-            tile_overlap: Optional[int] = None,
-            pct_min_wavelength: Optional[float] = None,
-            mad_window: Optional[int] = None,
-            path_dilation_radius: Optional[int] = None,
-            snr_margin: Optional[int] = None,
-            coherence_window_radius: Optional[int] = None,
-    ):
-        super().__init__()
+    # ── Inoculum detector (None → default pipeline, filled by validator) ──
+    inoculum_detector: Union[ObjectDetector, ImagePipeline, None] = None
 
-        # Type validation (allow None for serialization/deserialization)
-        from phenotypic import ImagePipeline
+    # ── Scene parameters ──
+    max_colony_radius_px: float = 250.0
+    min_branch_width_px: int = 3
 
-        if inoculum_detector is not None and not isinstance(
-                inoculum_detector, (ObjectDetector, ImagePipeline)
-        ):
-            raise TypeError(
-                    "inoculum_detector must be an ObjectDetector or "
-                    "ImagePipeline instance, "
-                    f"got {type(inoculum_detector).__name__}"
-            )
+    # ── Explicit user knobs ──
+    ignore_borders: bool = True
+    edge_noise_threshold: float = 6.0
+    reconnection_tolerance: float = 2.5
+    max_gap_length: int = 30
+    border_margin_px: int = 50
+    frag_reach_px: int = 10
+    gap_crossing_penalty: float = 4.0
 
-        self.inoculum_detector = inoculum_detector if inoculum_detector \
-            else self.__build_center_pipe()
+    # ── Scene-derivation overrides (None → auto-derived by the validator) ──
+    gauss_sigma: Optional[float] = None
+    tile_size: Optional[int] = None
+    tile_overlap: Optional[int] = None
+    pct_min_wavelength: Optional[float] = None
+    mad_window: Optional[int] = None
+    path_dilation_radius: Optional[int] = None
+    snr_margin: Optional[int] = None
+    coherence_window_radius: Optional[int] = None
 
-        # ── Scene knobs ──
-        self.max_colony_radius_px = float(max_colony_radius_px)
-        self.min_branch_width_px = int(min_branch_width_px)
+    @model_validator(mode="after")
+    def _derive_scene_params(self) -> Self:
+        """Fill the default pipeline and scene-derived parameters.
 
-        # ── Explicit user knobs ──
-        self.ignore_borders = ignore_borders
-        self.edge_noise_threshold = edge_noise_threshold
-        self.reconnection_tolerance = reconnection_tolerance
-        self.max_gap_length = max_gap_length
-        self.border_margin_px = border_margin_px
-        self.frag_reach_px = frag_reach_px
-        self.gap_crossing_penalty = gap_crossing_penalty
+        Reproduces the body of the pre-migration ``__init__``:
 
-        # ── Scene-derived params (apply overrides if supplied) ──
+        * a ``None`` ``inoculum_detector`` is replaced with the lazily
+          built default ``InoculumDetector`` + ``GridSectionLargest``
+          pipeline (the field default cannot be a live pipeline because
+          operations are uninstantiable at class-definition time);
+        * each scene-derivation override left at ``None`` is computed
+          from ``max_colony_radius_px`` / ``min_branch_width_px`` using
+          the ``_*_PER_*`` multipliers, with ``mad_window`` forced odd.
+
+        Bad ``inoculum_detector`` types are rejected by the field's
+        ``ObjectDetector | ImagePipeline | None`` annotation before this
+        validator runs.
+        """
+        if self.inoculum_detector is None:
+            self.inoculum_detector = self.__build_center_pipe()
+
         R = self.max_colony_radius_px
         w = self.min_branch_width_px
 
-        self.gauss_sigma = (
-            float(gauss_sigma) if gauss_sigma is not None
-            else self._GAUSS_SIGMA_PER_R * R
-        )
-        self.tile_size = (
-            int(tile_size) if tile_size is not None
-            else int(round(self._TILE_SIZE_PER_R * R))
-        )
-        self.tile_overlap = (
-            int(tile_overlap) if tile_overlap is not None
-            else int(round(self._TILE_OVERLAP_PER_R * R))
-        )
-
-        self.pct_min_wavelength = (
-            float(pct_min_wavelength) if pct_min_wavelength is not None
-            else self._WAVELENGTH_PER_W * w
-        )
-        # mad_window must be odd; +1 on an even 2w keeps it odd.
-        _mad_default = int(round(self._MAD_WINDOW_PER_W * w)) + 1
-        if _mad_default % 2 == 0:
-            _mad_default += 1
-        self.mad_window = (
-            int(mad_window) if mad_window is not None else _mad_default
-        )
-        self.path_dilation_radius = (
-            int(path_dilation_radius) if path_dilation_radius is not None
-            else max(1, int(round(self._PATH_DILATION_PER_W * w)))
-        )
-        self.snr_margin = (
-            int(snr_margin) if snr_margin is not None
-            else max(2, int(round(self._SNR_MARGIN_PER_W * w)))
-        )
-        self.coherence_window_radius = (
-            int(coherence_window_radius) if coherence_window_radius is not None
-            else int(round(self._COHERENCE_RADIUS_PER_W * w))
-        )
+        if self.gauss_sigma is None:
+            self.gauss_sigma = self._GAUSS_SIGMA_PER_R * R
+        if self.tile_size is None:
+            self.tile_size = int(round(self._TILE_SIZE_PER_R * R))
+        if self.tile_overlap is None:
+            self.tile_overlap = int(round(self._TILE_OVERLAP_PER_R * R))
+        if self.pct_min_wavelength is None:
+            self.pct_min_wavelength = self._WAVELENGTH_PER_W * w
+        if self.mad_window is None:
+            # mad_window must be odd; +1 on an even 2w keeps it odd.
+            _mad_default = int(round(self._MAD_WINDOW_PER_W * w)) + 1
+            if _mad_default % 2 == 0:
+                _mad_default += 1
+            self.mad_window = _mad_default
+        if self.path_dilation_radius is None:
+            self.path_dilation_radius = max(
+                    1, int(round(self._PATH_DILATION_PER_W * w))
+            )
+        if self.snr_margin is None:
+            self.snr_margin = max(2, int(round(self._SNR_MARGIN_PER_W * w)))
+        if self.coherence_window_radius is None:
+            self.coherence_window_radius = int(
+                    round(self._COHERENCE_RADIUS_PER_W * w)
+            )
+        return self
 
     def _operate(self, image: 'GridImage') -> 'GridImage':
         """Detect and separate filamentous fungi using grid-based Voronoi partition.

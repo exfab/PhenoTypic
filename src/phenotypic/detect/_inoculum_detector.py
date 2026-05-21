@@ -10,6 +10,8 @@ import logging
 from typing import Literal
 
 import numpy as np
+from pydantic import field_validator, model_validator
+from typing_extensions import Self
 
 from phenotypic.abc_ import ObjectDetector
 from phenotypic.detect._round_peaks_detector import RoundPeaksDetector
@@ -107,52 +109,55 @@ class InoculumDetector(ObjectDetector):
             In-depth comparison of all detection strategies.
     """
 
-    def __init__(
-            self,
-            min_diameter: float = 30.0,
-            max_diameter: float = 100.0,
-            thresh_method: Literal[
-                "otsu", "mean", "local", "triangle", "minimum", "isodata", "li"
-            ] = "otsu",
-            enable_gmm: bool = True,
-            gmm_n_components: int = 2,
-            gmm_separation_threshold: float = 0.9,
-            validate_obj_count: bool = True,
-    ):
-        """Initialise InoculumDetector with biology-driven parameters.
+    min_diameter: float = 30.0
+    max_diameter: float = 100.0
+    thresh_method: Literal[
+        "otsu", "mean", "local", "triangle", "minimum", "isodata", "li"
+    ] = "otsu"
+    enable_gmm: bool = True
+    gmm_n_components: int = 2
+    gmm_separation_threshold: float = 0.9
+    validate_obj_count: bool = True
 
-        Args:
-            min_diameter: Smallest expected inoculum diameter (pixels).
-                Default: 30.0.
-            max_diameter: Largest expected inoculum diameter (pixels).
-                Default: 100.0.
-            thresh_method: Thresholding method. Default: ``'otsu'``.
-            enable_gmm: Apply GMM core extraction. Default: True.
-            gmm_n_components: GMM components per region. Default: 2.
-            gmm_separation_threshold: GMM mean separation threshold.
-                Default: 0.9.
-            validate_obj_count: Validate object count for GridImage.
-                Default: True.
+    @field_validator("min_diameter")
+    @classmethod
+    def _check_min_diameter_positive(cls, value: float) -> float:
+        """Require ``min_diameter`` to be strictly positive.
+
+        Reproduces the ``min_diameter <= 0`` guard from the pre-migration
+        ``__init__`` (kept as a validator, not a ``Field(gt=0)``
+        constraint, so the original error message is preserved).
         """
-        super().__init__()
+        if value <= 0:
+            raise ValueError(f"min_diameter must be positive, got {value}")
+        return value
 
-        if min_diameter <= 0:
-            raise ValueError(f"min_diameter must be positive, got {min_diameter}")
-        if max_diameter <= 0:
-            raise ValueError(f"max_diameter must be positive, got {max_diameter}")
-        if min_diameter >= max_diameter:
+    @field_validator("max_diameter")
+    @classmethod
+    def _check_max_diameter_positive(cls, value: float) -> float:
+        """Require ``max_diameter`` to be strictly positive.
+
+        Reproduces the ``max_diameter <= 0`` guard from the pre-migration
+        ``__init__``.
+        """
+        if value <= 0:
+            raise ValueError(f"max_diameter must be positive, got {value}")
+        return value
+
+    @model_validator(mode="after")
+    def _check_diameter_order(self) -> Self:
+        """Require ``min_diameter`` to be strictly less than ``max_diameter``.
+
+        Reproduces the cross-field guard from the pre-migration
+        ``__init__``; the per-field positivity checks live in the
+        ``min_diameter`` / ``max_diameter`` field validators above.
+        """
+        if self.min_diameter >= self.max_diameter:
             raise ValueError(
-                    f"min_diameter ({min_diameter}) must be less than "
-                    f"max_diameter ({max_diameter})"
+                    f"min_diameter ({self.min_diameter}) must be less than "
+                    f"max_diameter ({self.max_diameter})"
             )
-
-        self.min_diameter = min_diameter
-        self.max_diameter = max_diameter
-        self.thresh_method = thresh_method
-        self.enable_gmm = enable_gmm
-        self.gmm_n_components = gmm_n_components
-        self.gmm_separation_threshold = gmm_separation_threshold
-        self.validate_obj_count = validate_obj_count
+        return self
 
     def _operate(self, image: Image) -> Image:
         """Detect inoculation sites via composable Gaussian pipeline.

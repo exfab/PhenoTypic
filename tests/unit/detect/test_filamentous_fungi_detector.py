@@ -57,8 +57,16 @@ class TestFilamentousFungiDetector:
         assert result.objmask[:].sum() > 0
 
     def test_invalid_center_detector_type_raises(self):
-        """Test that TypeError is raised for invalid inoculum_detector type."""
-        with pytest.raises(TypeError, match="inoculum_detector must be"):
+        """Test that a bad inoculum_detector type is rejected at construction.
+
+        Under the pydantic v2 migration the ``inoculum_detector`` field is
+        typed ``ObjectDetector | ImagePipeline | None``; a bad value
+        raises ``pydantic.ValidationError`` (a ``ValueError`` subclass) at
+        construction time instead of the hand-rolled ``TypeError``.
+        """
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
             FilamentousFungiDetector(
                     inoculum_detector="not_a_detector",
             )
@@ -71,7 +79,7 @@ class TestFilamentousFungiDetector:
         image = synth_plate.copy()
 
         # Create pipeline for center detection with preprocessing
-        center_pipeline = ImagePipeline([
+        center_pipeline = ImagePipeline(ops=[
             GaussianBlur(sigma=0.5),
             OtsuDetector()
         ])
@@ -92,7 +100,7 @@ class TestFilamentousFungiDetector:
         )
 
         # Create pipeline
-        pipeline = ImagePipeline([detector])
+        pipeline = ImagePipeline(ops=[detector])
 
         # Serialize to JSON
         json_str = pipeline.to_json()
@@ -117,7 +125,7 @@ class TestFilamentousFungiDetector:
         original_result = detector.apply(image, inplace=False)
 
         # Serialize and deserialize
-        pipeline = ImagePipeline([detector])
+        pipeline = ImagePipeline(ops=[detector])
         json_str = pipeline.to_json()
         restored_pipeline = ImagePipeline.from_json(json_str)
 
@@ -139,7 +147,7 @@ class TestFilamentousFungiDetector:
         image = synth_plate.copy()
 
         # Build pipeline with enhancement and detection
-        pipeline = ImagePipeline([
+        pipeline = ImagePipeline(ops=[
             GaussianBlur(sigma=1.0),
             FilamentousFungiDetector(
                     inoculum_detector=OtsuDetector(),

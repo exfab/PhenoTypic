@@ -69,15 +69,9 @@ class RankOtsuDetector(ObjectDetector, FootprintMixin):
             In-depth comparison of all detection strategies.
     """
 
-    def __init__(
-            self,
-            shape: Literal["square", "diamond", "disk"] = "square",
-            width: int | None = None,
-            ignore_zeros: bool = False,
-    ):
-        self.shape = shape
-        self.width = width
-        self.ignore_zeros = ignore_zeros
+    shape: Literal["square", "diamond", "disk"] = "square"
+    width: int | None = None
+    ignore_zeros: bool = False
 
     def _operate(self, image: Image) -> Image:
         detect_mat = img_as_ubyte(image.detect_mat[:])

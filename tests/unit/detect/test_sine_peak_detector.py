@@ -274,7 +274,7 @@ class TestSinePeakDetectorIntegration:
         from phenotypic import ImagePipeline
         from phenotypic.enhance import GaussianBlur
 
-        pipeline = ImagePipeline([
+        pipeline = ImagePipeline(ops=[
             GaussianBlur(sigma=1.0),
             SinePeakDetector(thresh_method="otsu"),
         ])
@@ -294,7 +294,7 @@ class TestSinePeakDetectorIntegration:
             noise_radius=2,
             smoothing_sigma=3.0,
         )
-        pipeline = ImagePipeline([detector])
+        pipeline = ImagePipeline(ops=[detector])
 
         json_str = pipeline.to_json()
         restored = ImagePipeline.from_json(json_str)
@@ -312,7 +312,7 @@ class TestSinePeakDetectorIntegration:
         from phenotypic import ImagePipeline
 
         detector = SinePeakDetector(correlation_threshold=0.4)
-        pipeline = ImagePipeline([detector])
+        pipeline = ImagePipeline(ops=[detector])
 
         json_str = pipeline.to_json()
         restored = ImagePipeline.from_json(json_str)
