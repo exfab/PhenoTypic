@@ -88,6 +88,7 @@ class _LinearSoftplusBase(ModelFitter):
         Args:
             __context: Pydantic post-init context (unused).
         """
+        super().model_post_init(__context)
         self._prior = _InoculumPrior(
                 s0_prior=self.s0_prior,
                 s0_prior_cv=self.s0_prior_cv,

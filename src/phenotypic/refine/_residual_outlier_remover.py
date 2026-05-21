@@ -69,6 +69,11 @@ class ResidualOutlierRemover(GridObjectRefiner):
     cutoff_multiplier: float = Field(
             default=1.5,
             validation_alias=AliasChoices("stddev_multiplier", "cutoff_multiplier"),
+            description=(
+                "IQR-based cutoff multiplier for outlier removal. Lower "
+                "values prune more aggressively; higher values are "
+                "conservative. Typical range: 1.0--3.0. Default: 1.5."
+            ),
     )
     max_coeff_variance: int = 1
 

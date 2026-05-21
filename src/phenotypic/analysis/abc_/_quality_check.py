@@ -58,10 +58,12 @@ class QualityCheck(SetAnalyzer, ABC):
         name: Short identifier composed into output column names. Set on
             each concrete subclass (e.g. ``"Count"``, ``"SE"``).
         severity_warn: Severity at/above which ``Status="warn"``.
-            Class-level default; instance can override via constructor.
+            A class-level constant; subclasses may override it by
+            re-declaring the ``ClassVar`` in their class body.
         severity_fail: Severity at/above which ``Status="fail"`` and
-            ``Flag=True``. Class-level default; instance can override
-            via constructor.
+            ``Flag=True``. A class-level constant; subclasses may
+            override it by re-declaring the ``ClassVar`` in their
+            class body.
         unmatched_groups: Groups that the check could not evaluate (for
             example, expected counts whose group key never appeared in
             the data). Populated by subclasses that need to report
@@ -72,8 +74,8 @@ class QualityCheck(SetAnalyzer, ABC):
     _exposes_agg_func: ClassVar[bool] = False
     _measurement_infoclass: ClassVar[type | None] = None
 
-    severity_warn: float = 0.05
-    severity_fail: float = 0.10
+    severity_warn: ClassVar[float] = 0.05
+    severity_fail: ClassVar[float] = 0.10
     unmatched_groups: list = Field(default_factory=list)
 
     @abc.abstractmethod

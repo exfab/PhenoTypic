@@ -262,6 +262,36 @@ def _require_operation_value(value: Any) -> Any:
     return value
 
 
+class _OperationFieldMarker:
+    """Sentinel attached to :data:`OperationField`'s ``Annotated`` chain.
+
+    :data:`OperationField` erases its core type to ``Any`` (it cannot
+    name the operation base classes without an import cycle through
+    ``tools_``). That erasure also hides the field from the GUI's
+    ``OperationRegistry``, which detects operation-valued parameters by
+    inspecting the annotation. This marker is the distinguishing token
+    the registry scans for — analogous to
+    :class:`~phenotypic.tools_._column_ref._ColumnRefMarker` — so a
+    field typed ``OperationField`` (or ``list[OperationField]`` /
+    ``OperationField | None``) is still recognised as accepting an
+    operation **or** a nested pipeline.
+
+    Singleton-like: all instances compare equal so a duplicate marker in
+    an ``Annotated`` chain de-dupes.
+    """
+
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        return "_OperationFieldMarker()"
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, _OperationFieldMarker)
+
+    def __hash__(self) -> int:
+        return hash("_OperationFieldMarker")
+
+
 #: Annotated operation type usable as a pydantic field annotation for a
 #: parameter that holds another operation or a nested pipeline.
 #:
@@ -273,10 +303,13 @@ def _require_operation_value(value: Any) -> Any:
 #:
 #: The core type is ``Any`` (naming the operation base classes here would
 #: create an import cycle through ``tools_``); an ``AfterValidator``
-#: restores the operation/pipeline type guard.
+#: restores the operation/pipeline type guard. The trailing
+#: :class:`_OperationFieldMarker` lets the GUI ``OperationRegistry``
+#: recognise the field despite the ``Any`` erasure.
 OperationField = Annotated[
     Any,
     BeforeValidator(_deserialize_operation_value),
     AfterValidator(_require_operation_value),
     PlainSerializer(_serialize_operation_value),
+    _OperationFieldMarker(),
 ]

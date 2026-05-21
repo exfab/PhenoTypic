@@ -116,7 +116,7 @@ class PhaseCongruencyEnhancer(ImageEnhancer):
     k: float = 2.0
     cutoff: float = 0.5
     g: float = 10.0
-    noise_method: float = -1
+    noise_method: float = -1.0
     output: Literal["M", "m", "pc_sum"] = "pc_sum"
 
     @field_validator("n_scale")

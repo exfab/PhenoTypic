@@ -20,12 +20,42 @@ from phenotypic.abc_ import ImageOperation
 from phenotypic.tools_._column_ref import _ColumnRefMarker
 from phenotypic.tools_._docstring_params import parse_param_descriptions
 from phenotypic.tools_.mixin import PointPickerMixin
+from phenotypic.tools_.typing_ import _OperationFieldMarker
 
 
 def _is_union_origin(origin: Any) -> bool:
     """Return ``True`` for both ``typing.Union`` and PEP 604 unions."""
 
     return origin is Union or origin is types.UnionType
+
+
+def _has_operation_field_marker(hint: Any) -> bool:
+    """Return ``True`` if ``hint`` carries an :class:`_OperationFieldMarker`.
+
+    :data:`~phenotypic.tools_.typing_.OperationField` erases its core
+    type to ``Any``, so the usual ``issubclass(..., ImageOperation)``
+    detection in :meth:`OperationRegistry._detect_operation_types` never
+    fires. The marker is the distinguishing token. Because a field is
+    typically declared as ``list[OperationField]`` or
+    ``OperationField | None``, the ``Annotated`` carrying the marker is
+    nested *inside* a ``list`` / ``Optional`` wrapper rather than sitting
+    in ``FieldInfo.metadata``; this walks the annotation tree —
+    ``Annotated`` extras and every ``get_args`` branch — to find it at
+    any depth.
+
+    Args:
+        hint: A type annotation (possibly wrapped / nested).
+
+    Returns:
+        ``True`` if an :class:`_OperationFieldMarker` is present anywhere
+        in the annotation tree.
+    """
+    # Direct ``Annotated[...]`` extras.
+    for meta in getattr(hint, "__metadata__", ()):
+        if isinstance(meta, _OperationFieldMarker):
+            return True
+    # Recurse into list / Optional / Union element types.
+    return any(_has_operation_field_marker(arg) for arg in get_args(hint))
 
 
 @dataclass
@@ -462,6 +492,13 @@ class OperationRegistry:
         substring scan recognises ``List[`` / ``list[`` carriers and the
         ``Optional[...]`` / ``... | None`` wrappers around them.
 
+        A field typed :data:`~phenotypic.tools_.typing_.OperationField`
+        (whose core type is erased to ``Any``) is recognised via an
+        :class:`_OperationFieldMarker` scan of the annotation tree —
+        ``OperationField`` accepts an operation *or* a nested pipeline,
+        so both ``is_operation`` and ``is_pipeline`` are set when the
+        marker is found.
+
         Args:
             hint: Type hint to analyze
 
@@ -472,6 +509,16 @@ class OperationRegistry:
         is_pipeline = False
         is_optional = False
         is_list = False
+
+        # ``OperationField`` erases its core type to ``Any``; the marker
+        # scan is the only reliable signal that the field accepts an
+        # operation / nested pipeline. Detected up front so it survives
+        # every wrapper-peeling branch (including the early ``list``
+        # return below).
+        operation_field = _has_operation_field_marker(hint)
+        if operation_field:
+            is_operation = True
+            is_pipeline = True
 
         # Step 1: peel an Optional/Union wrapper. If the union contains
         # exactly one non-None branch we recurse into it so callers see the
@@ -500,8 +547,10 @@ class OperationRegistry:
                 inner_op, inner_pipe, _, _ = self._detect_operation_types(
                     element_args[0]
                 )
-                is_operation = inner_op
-                is_pipeline = inner_pipe
+                # OR rather than assign so a top-level ``OperationField``
+                # marker (already detected above) is never clobbered.
+                is_operation = is_operation or inner_op
+                is_pipeline = is_pipeline or inner_pipe
             return is_operation, is_pipeline, is_optional, is_list
 
         # Step 2b: ``get_type_hints`` falls back to raw string annotations

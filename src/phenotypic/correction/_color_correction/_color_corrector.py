@@ -46,6 +46,10 @@ class ColorCorrector(ImageCorrector):
       dyed or pigmented colonies.
 
     Attributes:
+        profile: A fitted :class:`ColorCheckerProfile` supplying the
+            root-polynomial correction matrix and expansion degree. Must
+            already be fitted; an unfitted profile is rejected at
+            construction.
         correction_matrix: The root-polynomial correction matrix stored as
             a nested list (serialisable).
         degree: Polynomial expansion degree matching the profile.

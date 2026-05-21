@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -231,17 +233,32 @@ class TestSetAnalyzerOverrides:
             check.show()
 
 
-class TestInstanceOverrides:
-    """Constructor severity overrides win over class-level defaults."""
+class TestSubclassThresholdOverrides:
+    """Subclasses override the severity thresholds via the ``ClassVar``.
 
-    def test_instance_severity_overrides_class_defaults(self):
-        check = DummyQC(
-            on="Size_Area",
-            groupby=["Metadata_ImageFile"],
-            severity_warn=0.5,
-            severity_fail=0.9,
-        )
+    ``severity_warn``/``severity_fail`` are class-level constants
+    (``ClassVar[float]``); a check tunes them by re-declaring the
+    ``ClassVar`` in its class body, exactly as ``ReplicateAgreement``
+    does. They are not constructor parameters.
+    """
 
+    def test_subclass_severity_overrides_class_defaults(self):
+        class TunedQC(QualityCheck):
+            """QC with custom severity thresholds."""
+
+            name = "Tuned"
+            severity_warn: ClassVar[float] = 0.5
+            severity_fail: ClassVar[float] = 0.9
+
+            def _compute(self, group: pd.DataFrame) -> pd.DataFrame:
+                out = group.copy()
+                out[self.severity_col()] = group["input_severity"].astype(float)
+                return out
+
+        assert TunedQC.severity_warn == 0.5
+        assert TunedQC.severity_fail == 0.9
+
+        check = TunedQC(on="Size_Area", groupby=["Metadata_ImageFile"])
         assert check.severity_warn == 0.5
         assert check.severity_fail == 0.9
 

@@ -182,6 +182,7 @@ class ExpectedVsDetectedCount(QualityCheck):
             KeyError: If any column in ``groupby`` is absent from the
                 resolved metadata frame.
         """
+        super().model_post_init(__context)
         missing = [
             col for col in self.groupby if col not in self.metadata.columns
         ]

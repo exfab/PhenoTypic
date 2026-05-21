@@ -186,13 +186,16 @@ class SetAnalyzer(BaseModel, abc.ABC):
         2    P2     WT    2    9.7
         3    P2     KO    2   11.2
 
-        Match NA values explicitly:
+        Match NA values explicitly. With ``match_na=True`` the criterion
+        ``[pd.NA, 'WT']`` keeps every ``'WT'`` row *and* every NA row, so
+        all three matching rows are returned:
         >>> data2 = data.copy()
         >>> data2.loc[1, 'strain'] = pd.NA
         >>> SetAnalyzer._filter_by(data2, {'strain': [pd.NA, 'WT']}, match_na=True)
           plate strain  rep  value
         0    P1     WT    1   10.0
         1    P1   <NA>    1   12.5
+        2    P2     WT    2    9.7
         """
 
         def _is_list_like(x: Any) -> bool:
