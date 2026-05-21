@@ -80,7 +80,10 @@ class CompositeDetector(ObjectDetector):
     # ``ImagePipeline``. ``OperationField`` keeps the concrete class of
     # each entry across a JSON round-trip (a bare ``model_dump`` of an
     # ``ObjectDetector | ImagePipeline`` union would lose the subclass).
-    detectors: List[OperationField] = Field(
+    # ``| None`` permits an empty list slot: the GUI builder marks an
+    # unfilled detector slot in an in-progress pipeline with ``None``
+    # (pre-migration the un-validated list accepted these implicitly).
+    detectors: List[OperationField | None] = Field(
         default_factory=lambda: [OtsuDetector(), RoundPeaksDetector()]
     )
     mode: Literal['union', 'intersection', 'overlap'] = 'overlap'
