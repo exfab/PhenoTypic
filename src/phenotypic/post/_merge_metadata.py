@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import List
 
 import pandas as pd
+from pydantic import field_validator
 
 from phenotypic.abc_._post_measurement import PostMeasurement
 from ._utils import _ensure_prefix
@@ -53,18 +54,27 @@ class MergeMetadata(PostMeasurement):
         ['WT_30C', 'mut_37C']
     """
 
-    def __init__(
-        self,
-        columns: List[str] | None = None,
-        label: str = "",
-        delimiter: str = "_",
-    ):
-        super().__init__()
+    columns: List[str] = []
+    label: str = ""
+    delimiter: str = "_"
+
+    @field_validator("columns", mode="before")
+    @classmethod
+    def _prefix_columns(cls, columns: List[str] | None) -> List[str]:
+        """Require at least 2 columns and add the ``Metadata_`` prefix.
+
+        Accepts ``None`` (the legacy "unset" sentinel) and normalizes it
+        to an empty list, matching the pre-migration constructor.
+        """
         if columns is not None and len(columns) < 2:
             raise ValueError("columns must contain at least 2 column names to merge")
-        self.columns = [_ensure_prefix(c) for c in columns] if columns else []
-        self.label = _ensure_prefix(label) if label else ""
-        self.delimiter = delimiter
+        return [_ensure_prefix(c) for c in columns] if columns else []
+
+    @field_validator("label")
+    @classmethod
+    def _prefix_label(cls, label: str) -> str:
+        """Prepend the ``Metadata_`` prefix to a non-empty label."""
+        return _ensure_prefix(label) if label else ""
 
     def _operate(self, df: pd.DataFrame) -> pd.DataFrame:
         """Merge the specified columns into a new column.

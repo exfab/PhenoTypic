@@ -4,6 +4,7 @@ import re
 from typing import List
 
 import pandas as pd
+from pydantic import field_validator
 
 from phenotypic.abc_._post_measurement import PostMeasurement
 from ._utils import _ensure_prefix
@@ -55,20 +56,28 @@ class ExpandMetadata(PostMeasurement):
         ['WT', 'mut']
     """
 
-    def __init__(
-        self,
-        column: str = "",
-        labels: List[str] | None = None,
-        delimiter: str = "_",
-        regex: bool = False,
-    ):
-        super().__init__()
+    column: str = ""
+    labels: List[str] = []
+    delimiter: str = "_"
+    regex: bool = False
+
+    @field_validator("column")
+    @classmethod
+    def _prefix_column(cls, column: str) -> str:
+        """Prepend the ``Metadata_`` prefix to a non-empty column name."""
+        return _ensure_prefix(column) if column else ""
+
+    @field_validator("labels", mode="before")
+    @classmethod
+    def _prefix_labels(cls, labels: List[str] | None) -> List[str]:
+        """Reject an empty list and add the ``Metadata_`` prefix to each label.
+
+        Accepts ``None`` (the legacy "unset" sentinel) and normalizes it
+        to an empty list, matching the pre-migration constructor.
+        """
         if labels is not None and not labels:
             raise ValueError("labels must be a non-empty list")
-        self.column = _ensure_prefix(column) if column else ""
-        self.labels = [_ensure_prefix(lbl) for lbl in labels] if labels else []
-        self.delimiter = delimiter
-        self.regex = regex
+        return [_ensure_prefix(lbl) for lbl in labels] if labels else []
 
     def _operate(self, df: pd.DataFrame) -> pd.DataFrame:
         """Split the metadata column and insert new columns.
